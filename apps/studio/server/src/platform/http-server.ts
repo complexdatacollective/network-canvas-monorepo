@@ -6,6 +6,8 @@ import { Effect, Layer } from 'effect';
 import type { Etag, HttpPlatform, HttpServer } from 'effect/unstable/http';
 import type { ServeError } from 'effect/unstable/http/HttpServerError';
 
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
+
 import { Environment } from '../env.ts';
 
 // The listeners the two long-running processes bind. Studio's own
@@ -41,6 +43,7 @@ export const HttpServerLive: StudioHttpServer = Layer.unwrap(
       port: env.port,
       host: env.host,
       gracefulShutdownTimeout: GRACEFUL_SHUTDOWN_TIMEOUT,
+      websocket: { maxPayload: MAX_SOCKET_FRAME_BYTES },
     }),
   ),
 );

@@ -1,52 +1,45 @@
-// Which browser tab is calling, read from one header on both transports.
+// Which browser tab is calling, read from one header on the request.
 //
 // A protocol-builder lock belongs to a tab rather than to a connection, so this
-// id is what a lease's owner will be (#1930, stage 8). The two halves below are
-// the two ways it arrives: a fetch request to `/rpc` carries the header itself,
-// and a `/ws` handshake — which a browser cannot put a header on — names the tab
-// on the upgrade URL, where a route middleware rewrites it into the same header
-// before anything downstream reads it.
+// id is what a lease's owner is. A fetch request carries the header itself, and
+// a `/ws` handshake — which a browser cannot put a header on — names the tab on
+// the upgrade URL, where a route middleware rewrites it into the same header
+// before anything downstream reads it; that half is proved over a real socket,
+// by lock ownership, in `ws-protocol-builder.test.ts`.
 //
-// No `StudioRpcs` procedure declares `ClientSessionMiddleware` yet, so the `/rpc`
-// half is a scratch mount: a group of one procedure whose whole implementation
-// is to report the id it was given, served by a scratch `RpcServer.layerHttp`
-// rather than by `RpcRoutes`. What it shares with the deployment is the real rpc
-// server, the real ndjson framing and the real middleware layer — not the mount.
-// So nothing here is an oracle for `/rpc`'s own provision of that middleware:
-// deleting `Layer.provide(ClientSessionMiddlewareLive)` from
-// `http/rpc-routes.ts` is behaviour-identical today and fails no case. It gets
-// one when a procedure declares the middleware, at stage 8.
+// Two readers of the header are proved here, each through a scratch group of
+// one procedure whose whole implementation is to report what it was given,
+// over the real rpc server and the real ndjson framing: the contract's
+// `ClientSessionMiddleware`, and the protocol builder's `HostSessionLive`,
+// which resolves the tab itself because the core group declares `HostSession`
+// alone. No `StudioRpcs` procedure declares `ClientSessionMiddleware`, so
+// nothing here is an oracle for `/rpc`'s own provision of it: deleting
+// `Layer.provide(ClientSessionMiddlewareLive)` from `http/rpc-routes.ts` is
+// behaviour-identical today and fails no case.
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Layer, Predicate, Schema } from 'effect';
-import { HttpRouter } from 'effect/unstable/http';
-import {
-  Rpc,
-  RpcGroup,
-  RpcSerialization,
-  RpcServer,
-} from 'effect/unstable/rpc';
-import { Hono } from 'hono';
+import { Effect, Layer, Option, Predicate, Schema } from 'effect';
+import * as HttpRouter from 'effect/unstable/http/HttpRouter';
+import * as Rpc from 'effect/unstable/rpc/Rpc';
+import * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
+import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
+import * as RpcServer from 'effect/unstable/rpc/RpcServer';
 import { afterAll, describe, expect, it } from 'vitest';
-import { WebSocket } from 'ws';
 
 import {
-  CLIENT_SESSION_HEADER,
-  CLIENT_SESSION_PARAM,
-} from '@codaco/studio-contract/client-session';
+  HostCaller,
+  HostSession,
+} from '@codaco/protocol-builder-core/contract/session';
+import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 import {
   ClientSession,
   ClientSessionMiddleware,
 } from '@codaco/studio-contract/middleware/client-session';
 
-import type { Studio, WsBridgeDeps } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
-import { getDeploymentStatus } from '../domain.ts';
-import { resolve } from '../env/resolve.ts';
+import { HostSessionLive } from '../protocol-builder/session.ts';
 import { ClientSessionMiddlewareLive } from '../rpc/client-session.ts';
-import type { RpcDeps } from '../rpc/deps.ts';
-import { authServiceStub } from './support/auth.ts';
-import { startStudioServer } from './support/serve.ts';
+import { AuthServiceStub } from './support/auth.ts';
 
 /** A minted id, as `crypto.randomUUID()` produces and the contract accepts. */
 const TAB = randomUUID();
@@ -135,118 +128,6 @@ async function probeOverHttp(
   return exit.exit.value;
 }
 
-// ----------------------------------------------------------------- /ws ----
-
-const PRINCIPAL: SessionPrincipal = {
-  kind: 'user',
-  userId: 'client-session-user',
-  email: 'client-session@example.com',
-  emailVerified: true,
-  name: 'Tab Researcher',
-  locale: null,
-  sessionId: 'client-session-session',
-};
-
-/**
- * The tab id out of the context the bridge hands its socket handler.
- *
- * oRPC types `context` as a `Value`: a context, a promise of one, or a function
- * that produces one. The bridge passes a plain object, so this narrows with
- * `Predicate` rather than asserting — and a context that named no tab reads as
- * null, because a header nobody set has no entry in Effect's header record at
- * all.
- */
-function tabIn(context: unknown): string | null {
-  return Predicate.hasProperty(context, 'clientSessionId') &&
-    Predicate.isString(context.clientSessionId)
-    ? context.clientSessionId
-    : null;
-}
-
-/**
- * A Studio whose socket handler answers every frame with the tab id it was
- * handed, so the assertion reads the value off the wire rather than polling a
- * variable the bridge may not have written yet.
- */
-function reporting(): Studio {
-  const ws: WsBridgeDeps = {
-    socket: (() => {
-      const deps: WsBridgeDeps['socket'] = {
-        message: (peer, _data, options) => {
-          peer.send(
-            JSON.stringify({ clientSessionId: tabIn(options?.context) }),
-          );
-          return Promise.resolve({ matched: true });
-        },
-        close: () => Promise.resolve(),
-      };
-      return deps;
-    })(),
-  };
-  // The `/rpc` route is registered from this too; this half drives the socket
-  // alone, so the plane behind it answers nothing useful.
-  const rpc: RpcDeps = {
-    capabilities: {
-      enabled: false,
-      magicLink: false,
-      emailAndPassword: false,
-      socialProviders: [],
-    },
-    deployment: getDeploymentStatus('self-hosted'),
-    readInstallation: () => Promise.resolve(null),
-  };
-  return {
-    app: new Hono(),
-    ws,
-    // The upgrade's principal gate asks the auth service, so the stub is the
-    // researcher the socket is admitted as.
-    auth: authServiceStub({ getSession: () => Effect.succeedSome(PRINCIPAL) }),
-    limiter: undefined,
-    rpc,
-    checks: {},
-  };
-}
-
-function opened(socket: WebSocket): Promise<void> {
-  return new Promise<void>((settle, reject) => {
-    socket.once('open', () => settle());
-    socket.once('error', reject);
-  });
-}
-
-function nextMessage(socket: WebSocket): Promise<string> {
-  return new Promise<string>((settle, reject) => {
-    socket.once('message', (data: Buffer) => settle(String(data)));
-    socket.once('error', reject);
-  });
-}
-
-const env = resolve({ NODE_ENV: 'test' });
-const server = await startStudioServer(env, reporting());
-
-/** Opens a socket with the given query string and reports what reached the bridge. */
-async function tabReachingTheBridge(query: string): Promise<unknown> {
-  const socket = new WebSocket(
-    `${server.origin.replace('http://', 'ws://')}/ws${query}`,
-  );
-  try {
-    await opened(socket);
-    const answered = nextMessage(socket);
-    socket.send('name the tab');
-    const reported: unknown = JSON.parse(await answered);
-    return Predicate.hasProperty(reported, 'clientSessionId')
-      ? reported.clientSessionId
-      : reported;
-  } finally {
-    socket.close();
-  }
-}
-
-afterAll(async () => {
-  await server.dispose();
-  await probeServed.dispose();
-});
-
 describe('the tab behind a call, over /rpc', () => {
   it('reports the tab a request named in the header', async () => {
     expect(await probeOverHttp({ [CLIENT_SESSION_HEADER]: TAB })).toBe(TAB);
@@ -284,27 +165,165 @@ describe('the tab behind a call, over /rpc', () => {
   });
 });
 
-describe('the tab behind a socket, over /ws', () => {
-  it('carries the tab from the upgrade URL to the bridge', async () => {
-    // A browser cannot set a header on a WebSocket handshake, so the id rides
-    // on the query string and `ClientSessionQuery` rewrites it into the header
-    // the bridge reads.
-    expect(await tabReachingTheBridge(`?${CLIENT_SESSION_PARAM}=${TAB}`)).toBe(
-      TAB,
-    );
-  });
+// ------------------------------------------------------- HostSession ----
 
-  it('names no tab for a socket that named none', async () => {
-    expect(await tabReachingTheBridge('')).toBeNull();
-  });
+const PRINCIPAL: SessionPrincipal = {
+  kind: 'user',
+  userId: 'client-session-user',
+  email: 'client-session@example.com',
+  emailVerified: true,
+  name: 'Tab Researcher',
+  locale: null,
+  sessionId: 'client-session-session',
+};
 
-  it('names no tab for a socket that named two', async () => {
-    // A parameter given twice arrives as an array, which names no tab: the
-    // rewrite refuses it rather than picking one of them.
+const OTHER: SessionPrincipal = {
+  ...PRINCIPAL,
+  userId: 'client-session-other-user',
+  sessionId: 'client-session-other-session',
+};
+
+/** Reports the caller `HostSessionLive` resolved, and nothing else. */
+const CallerProbe = RpcGroup.make(
+  Rpc.make('caller', {
+    success: Schema.Struct({
+      connectionId: Schema.String,
+      clientSessionId: Schema.String,
+      userId: Schema.String,
+    }),
+  }).middleware(HostSession),
+);
+
+const CallerHandlers = CallerProbe.toLayer({
+  caller: () =>
+    Effect.map(HostCaller, ({ connectionId, clientSessionId, userId }) => ({
+      connectionId,
+      clientSessionId,
+      userId,
+    })),
+});
+
+const callerServed = HttpRouter.toWebHandler(
+  RpcServer.layerHttp({
+    group: CallerProbe,
+    path: '/rpc/protocol-builder',
+    protocol: 'http',
+  }).pipe(
+    Layer.provide(CallerHandlers),
+    Layer.provide(HostSessionLive),
+    Layer.provide(
+      AuthServiceStub({
+        getSession: (headers) =>
+          Effect.succeed(
+            headers.cookie === 'session=principal'
+              ? Option.some(PRINCIPAL)
+              : headers.cookie === 'session=other'
+                ? Option.some(OTHER)
+                : Option.none(),
+          ),
+      }),
+    ),
+    Layer.provide(RpcSerialization.layerNdjson),
+  ),
+  { disableLogger: true },
+);
+
+/** The caller a unary request resolves to, as the probe reports it. */
+async function callerOverHttp(
+  headers: Record<string, string>,
+  messageHeaders: ReadonlyArray<readonly [string, string]> = [],
+): Promise<unknown> {
+  const response = await callerServed.handler(
+    new Request('http://studio.test/rpc/protocol-builder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/ndjson', ...headers },
+      body: `${JSON.stringify({
+        _tag: 'Request',
+        id: 1,
+        tag: 'caller',
+        payload: null,
+        headers: messageHeaders,
+      })}\n`,
+    }),
+  );
+  expect(response.status).toBe(200);
+  const frames = (await response.text())
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line: string): unknown => JSON.parse(line));
+  const exit = frames.find(
+    (frame) => Predicate.hasProperty(frame, '_tag') && frame._tag === 'Exit',
+  );
+  if (!Predicate.hasProperty(exit, 'exit')) {
+    throw new Error(`no Exit frame in ${JSON.stringify(frames)}`);
+  }
+  return exit.exit;
+}
+
+describe('the caller behind a protocol-builder call', () => {
+  it('names the tab the request carried', async () => {
     expect(
-      await tabReachingTheBridge(
-        `?${CLIENT_SESSION_PARAM}=${TAB}&${CLIENT_SESSION_PARAM}=${randomUUID()}`,
-      ),
-    ).toBeNull();
+      await callerOverHttp({
+        cookie: 'session=principal',
+        [CLIENT_SESSION_HEADER]: TAB,
+      }),
+    ).toEqual({
+      _tag: 'Success',
+      value: {
+        // No socket: the connection is the cookie session.
+        connectionId: PRINCIPAL.sessionId,
+        clientSessionId: TAB,
+        userId: PRINCIPAL.userId,
+      },
+    });
   });
+
+  it('falls back to the connection for a request that named no usable tab', async () => {
+    const unnamed: ReadonlyArray<Record<string, string>> = [
+      {},
+      { [CLIENT_SESSION_HEADER]: REJECTED },
+    ];
+    for (const named of unnamed) {
+      expect(
+        await callerOverHttp({ cookie: 'session=principal', ...named }),
+      ).toMatchObject({
+        _tag: 'Success',
+        value: { clientSessionId: PRINCIPAL.sessionId },
+      });
+    }
+  });
+
+  it('never lets a message name the caller or its tab', async () => {
+    // `RpcServer` merges a message's own headers over the request's, so a
+    // middleware reading the merged set would let a caller present another
+    // cookie, or name another tab as the owner of a lock. Mutation: read
+    // `options.headers` in `HostSessionLive` → the message's cookie and tab
+    // win.
+    const otherTab = randomUUID();
+    expect(
+      await callerOverHttp(
+        { cookie: 'session=principal', [CLIENT_SESSION_HEADER]: TAB },
+        [
+          ['cookie', 'session=other'],
+          [CLIENT_SESSION_HEADER, otherTab],
+        ],
+      ),
+    ).toMatchObject({
+      _tag: 'Success',
+      value: { clientSessionId: TAB, userId: PRINCIPAL.userId },
+    });
+    // And a request with no cookie stays unauthenticated, whatever the message
+    // carries.
+    expect(
+      await callerOverHttp({}, [['cookie', 'session=principal']]),
+    ).toMatchObject({
+      _tag: 'Failure',
+      cause: [{ _tag: 'Fail', error: { _tag: 'HostUnauthorized' } }],
+    });
+  });
+});
+
+afterAll(async () => {
+  await probeServed.dispose();
+  await callerServed.dispose();
 });

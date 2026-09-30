@@ -12,7 +12,7 @@ import { sourceTokens } from './support/source-tokens.ts';
 // migration, and the invariants that keep the first from outliving the second
 // are structural rather than conventional: every call goes through the adapter
 // (so none can bypass the unauthorized report a 401 owes the router), and the
-// oRPC stack shrinks to the editor's socket and then to nothing.
+// oRPC stack is gone.
 
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -48,9 +48,8 @@ const isLiteral = (raw: string | undefined): boolean =>
  * expression produces; `import` is reserved, so a literal after it, or after its
  * opening parenthesis, is always a specifier.
  *
- * The `vi.mock` form is here because a suite that mocks `@orpc/client` is still
- * a suite the second stack has to exist for — the allowlist should catch it —
- * and because a mocked specifier is otherwise invisible to a walk that follows
+ * The `vi.mock` form is here because a suite that mocks `@orpc/client` still
+ * depends on it — the check below should catch it — and because a mocked specifier is otherwise invisible to a walk that follows
  * imports alone.
  */
 function moduleSpecifiers(source: string): string[] {
@@ -215,41 +214,64 @@ describe('the rpc client', () => {
     expect(importers).toEqual(['runtime/rpc.ts']);
   });
 
-  it('keeps the rpc machinery in the runtime layer', () => {
-    // `effect/unstable/rpc` is the transport's own vocabulary. The two runtime
-    // modules and the test harness are the whole of what may name it; a screen
-    // that did would be building a second way to call the server.
+  it('keeps the rpc and socket machinery in the runtime layer', () => {
+    // `effect/unstable/rpc` and `effect/unstable/socket` are the transport's own
+    // vocabulary. The two runtime modules and the two test harnesses are the
+    // whole of what may name them; a screen that did would be building a
+    // second way to call the server.
     expect(
-      filesImporting((specifier) =>
-        specifier.startsWith('effect/unstable/rpc'),
+      filesImporting(
+        (specifier) =>
+          specifier.startsWith('effect/unstable/rpc') ||
+          specifier.startsWith('effect/unstable/socket'),
       ),
     ).toEqual([
       'runtime/errors.ts',
       'runtime/runtime.ts',
+      'test/hostHarness.ts',
       'test/rpcHarness.ts',
     ]);
   });
 });
 
-describe('the oRPC stack', () => {
-  /**
-   * What is left of it, and the whole of what may be left of it.
-   *
-   * The editor still talks to its protocol-builder host over oRPC on the
-   * stage-1 websocket bridge; that is the one thing this stage does not move,
-   * and stage 8 is where the contract half lands and this list empties. Every
-   * other file that imports `@orpc/*` today is a screen or a screen's suite
-   * that task 6 rewrites onto `runtime/rpc.ts`.
-   *
-   * Task 6 has moved every SOURCE file and tasks 7 and 8 every suite that
-   * stood up an oRPC client of its own, so what is left is the editor's module
-   * and the suite that shims its host socket. Both entries come out at stage 8.
-   */
-  const ALLOWED = ['routes/Editor.tsx', 'routes/__tests__/Editor.test.tsx'];
+describe('the editor’s host socket', () => {
+  /** Files in which the tokens `sequence` occur in order, comments aside. */
+  const filesWithTokens = (sequence: ReadonlyArray<string>): string[] =>
+    FILES.filter((file) => {
+      const raw = sourceTokens(read(file)).map((token) => token.raw);
+      return raw.some((_, start) =>
+        sequence.every((token, offset) => raw[start + offset] === token),
+      );
+    }).map((file) => relative(SRC, file));
 
-  it('survives only in the editor’s host socket', () => {
+  it('is dialled from the runtime module alone', () => {
+    // One socket client, built in one place: a second `layerProtocolSocket`
+    // or `layerWebSocket` would be a socket the host session does not own, and
+    // so one that sign-out could not close.
+    expect(filesWithTokens(['layerProtocolSocket'])).toEqual([
+      'runtime/runtime.ts',
+    ]);
+    expect(filesWithTokens(['layerWebSocket'])).toEqual(['runtime/runtime.ts']);
+  });
+
+  it('never retries a transient error underneath the call waiting on it', () => {
+    // With `retryTransientErrors` on, a ping timeout reconnects the socket
+    // without failing the call and the stream that were in flight on it, and
+    // both hang for good (the behavioural oracle is
+    // runtime/__tests__/hostClient.test.ts). Off is stated, not defaulted.
+    expect(filesWithTokens(['retryTransientErrors', ':', 'true'])).toEqual([]);
+    expect(filesWithTokens(['retryTransientErrors', ':', 'false'])).toEqual([
+      'runtime/runtime.ts',
+    ]);
+  });
+});
+
+describe('the oRPC stack', () => {
+  it('is gone', () => {
+    // The editor's host socket was the last of it; it moved onto Effect rpc
+    // with the protocol-builder contract in stage 8.
     expect(
       filesImporting((specifier) => specifier.startsWith('@orpc/')),
-    ).toEqual(ALLOWED.toSorted());
+    ).toEqual([]);
   });
 });

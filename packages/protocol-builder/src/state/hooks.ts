@@ -1,4 +1,3 @@
-import { safe } from '@orpc/client';
 import {
   skipToken,
   useQueries,
@@ -6,7 +5,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { z } from 'zod';
 
 import type {
   Presence,
@@ -24,6 +22,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { attempt } from './attempt.ts';
 import {
   lockQueryKey,
   useProtocolBuilderContext,
@@ -36,10 +35,10 @@ export type SectionAtRevision = Readonly<{
   revision: Revision;
 }>;
 
-export type SectionIssue = z.output<typeof SectionIssueSchema>;
-export type ResourcePromotion = z.output<typeof ResourcePromotionRequestSchema>;
-export type ResourceFailure = z.output<typeof ResourceGatewayFailureSchema>;
-export type SectionHolder = z.output<typeof SectionHolderSchema>;
+export type SectionIssue = (typeof SectionIssueSchema)['Type'];
+export type ResourcePromotion = (typeof ResourcePromotionRequestSchema)['Type'];
+export type ResourceFailure = (typeof ResourceGatewayFailureSchema)['Type'];
+export type SectionHolder = (typeof SectionHolderSchema)['Type'];
 
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
@@ -54,9 +53,9 @@ export function useSection<TSelected = SectionAtRevision>(
   id: ProtocolSectionId,
   select?: (section: SectionAtRevision) => TSelected,
 ): TSelected | undefined {
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const { data } = useQuery({
-    ...utils.getSection.queryOptions({ input: { protocolId, sectionId: id } }),
+    ...adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
     select,
   });
   return data;
@@ -74,10 +73,10 @@ export type EntityTypeSummary = Readonly<{
 export function useEntityTypes(
   entity: 'node' | 'edge',
 ): readonly EntityTypeSummary[] {
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const kind = entity === 'node' ? 'codebookNode' : 'codebookEdge';
   const { data: list } = useQuery(
-    utils.listSections.queryOptions({ input: { protocolId } }),
+    adapter.rpcQuery('ListSections', { protocolId }),
   );
   const ids = (list?.sectionIds ?? []).filter(
     (candidate) => parseSectionId(candidate).kind === kind,
@@ -85,9 +84,7 @@ export function useEntityTypes(
 
   return useQueries({
     queries: ids.map((id) => ({
-      ...utils.getSection.queryOptions({
-        input: { protocolId, sectionId: id },
-      }),
+      ...adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
       select: (section: SectionAtRevision): EntityTypeSummary =>
         entityTypeSummary(id, section.document),
     })),
@@ -106,7 +103,7 @@ export type StageSummary = Readonly<{
 
 /** The protocol's stages in order, for a destination picker or a heading. */
 export function useStageIndex(): readonly StageSummary[] {
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const stageIds = useSection(STAGE_ORDER, (section) =>
     stageIdsOf(section.document),
   );
@@ -114,11 +111,9 @@ export function useStageIndex(): readonly StageSummary[] {
 
   return useQueries({
     queries: ids.map((id) => ({
-      ...utils.getSection.queryOptions({
-        input: {
-          protocolId,
-          sectionId: sectionId({ kind: 'stage', stageId: id }),
-        },
+      ...adapter.rpcQuery('GetSection', {
+        protocolId,
+        sectionId: sectionId({ kind: 'stage', stageId: id }),
       }),
       select: (section: SectionAtRevision): StageSummary =>
         stageSummary(id, section.document),
@@ -140,17 +135,15 @@ export function useStageIndex(): readonly StageSummary[] {
  * `undefined` until a section has been read.
  */
 export function useProtocolRevision(): bigint | undefined {
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const { data: list } = useQuery(
-    utils.listSections.queryOptions({ input: { protocolId } }),
+    adapter.rpcQuery('ListSections', { protocolId }),
   );
   const ids = list?.sectionIds ?? [];
 
   return useQueries({
     queries: ids.map((id) => ({
-      ...utils.getSection.queryOptions({
-        input: { protocolId, sectionId: id },
-      }),
+      ...adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
       select: (section: SectionAtRevision): bigint => section.revision.sequence,
     })),
     combine: (results) =>
@@ -180,19 +173,21 @@ export function useProtocolRevision(): bigint | undefined {
  * could not see.
  */
 export function useRereadProtocol(): () => Promise<void> {
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
 
   return useCallback(async () => {
     await queryClient.invalidateQueries(
-      { queryKey: utils.listSections.key({ input: { protocolId } }) },
+      { queryKey: adapter.rpcKey('ListSections', { protocolId }) },
       { throwOnError: true },
     );
+    // Every section of this protocol: a key prefix matches the payloads it
+    // is a part of.
     await queryClient.invalidateQueries(
-      { queryKey: utils.getSection.key({ input: { protocolId } }) },
+      { queryKey: [...adapter.rpcKey('GetSection'), { protocolId }] },
       { throwOnError: true },
     );
-  }, [protocolId, queryClient, utils]);
+  }, [adapter, protocolId, queryClient]);
 }
 
 export type SubmitResult =
@@ -247,7 +242,7 @@ export type SectionMutation = Readonly<{
  * hold the section any more, and nothing here is going to ask for it again.
  */
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
-  const { client, protocolId, utils } = useProtocolBuilderContext();
+  const { adapter, protocolId } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const [access, setAccess] = useState<SectionAccess>('pending');
   // A fault the acquire's success handler threw, which is a bug in this hook
@@ -283,7 +278,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   });
 
   // Giving a lock back is best effort, which is why every one of them goes
-  // through `safe`: a host that will not take it — the section has gone, the
+  // through `attempt`: a host that will not take it — the section has gone, the
   // socket dropped — leaves the editor nothing to do and the researcher nothing
   // to act on, and a bare promise would make it an unhandled rejection instead.
   useEffect(() => {
@@ -294,7 +289,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     // Nothing has been answered for this section yet, whatever the last one
     // this editor was pointed at said.
     setAccess('pending');
-    void client.acquireLock({ protocolId, sectionId: id }).then(
+    void adapter.rpcCall('AcquireLock', { protocolId, sectionId: id }).then(
       (result) => {
         if (acquisition.current !== mine) {
           // A later effect took over. When it is for this same section — a
@@ -304,14 +299,14 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           // cleanup's release went out before the host granted this one, so
           // nothing else will ever give it back.
           if (wanted.current !== id && result.lock === 'held') {
-            void safe(client.releaseLock({ protocolId, sectionId: id }));
+            void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
           }
           return;
         }
         if (released.current) {
           // Acquired after unmount: hand it straight back rather than holding a
           // lock no editor is behind.
-          void safe(client.releaseLock({ protocolId, sectionId: id }));
+          void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
           return;
         }
         try {
@@ -328,7 +323,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           // client has not seen yet — the channel is reconnecting, say — would
           // be submitted back whole over the newer one.
           queryClient.setQueryData<SectionAtRevision>(
-            utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+            adapter.rpcKey('GetSection', { protocolId, sectionId: id }),
             { document: result.document, revision: result.revision },
           );
           setAccess(result.lock === 'readOnly' ? 'readOnly' : 'editing');
@@ -359,9 +354,9 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     released.current = false;
     return () => {
       released.current = true;
-      void safe(client.releaseLock({ protocolId, sectionId: id }));
+      void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
     };
-  }, [client, protocolId, id, queryClient, saveKey, utils]);
+  }, [adapter, protocolId, id, queryClient, saveKey]);
 
   const submit = useCallback(
     async (
@@ -377,25 +372,27 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       // different document, and an id shared with the last one would be
       // answered with the revision that one wrote.
       const requestId = saveKey.forAsk(contentHash(document));
-      const { data, definedError, isSuccess } = await safe(
-        client.submit({
-          protocolId,
-          requestId,
-          sectionId: id,
-          document,
-          revision: section.revision,
-          ...(promote === undefined ? {} : { promote }),
-        }),
-      );
-      if (isSuccess || definedError !== null) saveKey.settled(requestId);
-      if (isSuccess) {
+      const submitted = await attempt(adapter, 'Submit', {
+        protocolId,
+        requestId,
+        sectionId: id,
+        document,
+        revision: section.revision,
+        ...(promote === undefined ? {} : { promote }),
+      });
+      if (submitted.isSuccess || submitted.refusal !== undefined) {
+        saveKey.settled(requestId);
+      }
+      if (submitted.isSuccess) {
+        const { data } = submitted;
         return {
           status: 'written',
           revision: data.revision,
           ...(data.promoted === undefined ? {} : { promoted: data.promoted }),
         };
       }
-      if (definedError?.code === 'NOT_LOCK_HOLDER') {
+      const { refusal } = submitted;
+      if (refusal?._tag === 'NotLockHolder') {
         // The section is somebody else's now, and nothing here re-acquires it:
         // the editor above discards the draft it could not write, and this is
         // what stops the form it puts back from being editable. Left
@@ -416,37 +413,30 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         // one editing the stage they have just been refused.
         queryClient.setQueryData<LockState>(
           lockQueryKey(protocolId, id),
-          definedError.data.holder === undefined
-            ? {}
-            : { holder: definedError.data.holder },
+          refusal.holder === undefined ? {} : { holder: refusal.holder },
         );
         return {
           status: 'notLockHolder',
-          ...(definedError.data.holder === undefined
-            ? {}
-            : { holder: definedError.data.holder }),
+          ...(refusal.holder === undefined ? {} : { holder: refusal.holder }),
         };
       }
-      if (definedError?.code === 'SECTIONS_LOCKED') {
-        return { status: 'sectionsLocked', blocked: definedError.data.blocked };
+      if (refusal?._tag === 'SectionsLocked') {
+        return { status: 'sectionsLocked', blocked: refusal.blocked };
       }
-      if (definedError?.code === 'INVALID_SHAPE') {
-        return { status: 'invalidShape', issues: definedError.data.issues };
+      if (refusal?._tag === 'InvalidShape') {
+        return { status: 'invalidShape', issues: refusal.issues };
       }
-      if (definedError?.code === 'PROMOTION_FAILED') {
-        return {
-          status: 'promotionFailed',
-          failure: definedError.data.failure,
-        };
+      if (refusal?._tag === 'PromotionFailed') {
+        return { status: 'promotionFailed', failure: refusal.failure };
       }
-      throw definedError ?? new Error(`submit of ${id} failed`);
+      throw refusal ?? new Error(`submit of ${id} failed`);
     },
-    [client, protocolId, id, queryClient, saveKey, section],
+    [adapter, protocolId, id, queryClient, saveKey, section],
   );
 
   const release = useCallback(() => {
-    void safe(client.releaseLock({ protocolId, sectionId: id }));
-  }, [client, protocolId, id]);
+    void attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
+  }, [adapter, protocolId, id]);
 
   if (handlerFault !== undefined) throw handlerFault.error;
 

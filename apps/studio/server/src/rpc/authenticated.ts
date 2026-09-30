@@ -55,11 +55,8 @@ export const principalOf = (session: SessionPrincipal): Principal['Service'] =>
  * The browser's cookie reaches here on the one transport `StudioRpcs` is
  * mounted on: a fetch request to `/rpc`, which carries it directly
  * (`RpcServer.layerHttp` in `http/rpc-routes.ts`, the group's only mount).
- * `/ws` is the protocol builder's oRPC bridge and runs no rpc middleware at
- * all; when stage 8 moves it onto this plane, a frame will inherit the
- * handshake's cookie and arrive here the same way. Either transport puts it on
- * the headers of the HTTP request, which is the only set this reads —
- * `transportHeaders` says why.
+ * It is on the headers of the HTTP request, which is the only set this reads
+ * — `transportHeaders` says why.
  *
  * A caller with no cookie, an expired one, an instance with auth switched off,
  * and a caller on the token plane are one answer — `Unauthorized`, saying no

@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { safe } from '@orpc/client';
-import { createRouterClient } from '@orpc/server';
-import { Effect, Option } from 'effect';
+import { Effect, Exit, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -11,12 +9,11 @@ import {
   StageId,
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
+import { sectionId as sectionIdOf } from '@codaco/studio-sync/taxonomy';
 
-import { createStudio, type Studio } from '../app.ts';
+import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
-import { createRpcRouter } from '../rpc.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -27,37 +24,17 @@ import {
   uniqueTeamId,
 } from './support/database.ts';
 import {
+  type Caller,
+  createProtocolBuilderClient,
+  type ProtocolBuilderTestClient,
+} from './support/protocol-builder.ts';
+import {
   createRpcClient,
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
 
 const TEAM_ID = TeamId.make(uniqueTeamId('rpc-audit-protocol-team'));
-
-/**
- * The protocol-builder host beside the rpc plane. It is still an oRPC router
- * served over `/ws` until stage 8, so this file drives it in process — the
- * same `Studio` behind both, so an edit made through one is the edit the other
- * reads back.
- */
-function builderClientFor(studio: Studio, who: SessionPrincipal) {
-  return createRouterClient(
-    createRpcRouter({
-      ...studio.rpc,
-      auth: studio.auth,
-      limiter: studio.limiter,
-      protocolBuilder: createProtocolBuilderRuntime(),
-    }),
-    {
-      context: {
-        principal: who,
-        requestId: randomUUID(),
-        connectionId: `${who.userId}-connection`,
-        clientSessionId: `${who.userId}-tab`,
-      },
-    },
-  );
-}
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -69,10 +46,20 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'rpc-audit-protocol-owner-session',
 };
 
+/**
+ * The protocol-builder host beside the rpc plane, driven in process over the
+ * same `Studio`, so an edit made through one is the edit the other reads back.
+ */
+const BUILDER_CALLER: Caller = {
+  principal: PRINCIPAL,
+  connection: `${PRINCIPAL.userId}-connection`,
+  tab: `${PRINCIPAL.userId}-tab`,
+};
+
 describe.skipIf(!testDb)('audited protocol RPC', () => {
   let database: TestDatabaseRuntime;
   let client: RpcTestClient;
-  let builder: ReturnType<typeof builderClientFor>;
+  let builder: ProtocolBuilderTestClient;
   let extraClients: RpcTestClient[];
 
   beforeAll(async () => {
@@ -110,12 +97,13 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       services: database.services,
     });
     client = await createRpcClient(studio);
-    builder = builderClientFor(studio, PRINCIPAL);
+    builder = await createProtocolBuilderClient(studio);
     extraClients = [];
   });
 
   afterAll(async () => {
     await client.dispose();
+    await builder.dispose();
     for (const extra of extraClients) await extra.dispose();
     await database.dispose();
   });
@@ -201,11 +189,11 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     );
     expect(staleMove.reason).toBe('staleRevision');
 
-    const sectionId = `stage:${stageA}`;
-    const held = await builder.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const sectionId = sectionIdOf({ kind: 'stage', stageId: stageA });
+    const held = await builder.call(
+      BUILDER_CALLER,
+      builder.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     if (held.lock !== 'held') throw new Error('expected to hold the section');
     const submitInput = {
       protocolId,
@@ -214,12 +202,15 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       document: { ...held.document, label: 'Secret value' },
       revision: held.revision,
     };
-    const committed = await builder.protocolBuilder.submit(submitInput);
+    const committed = await builder.call(
+      BUILDER_CALLER,
+      builder.rpc('Submit', submitInput),
+    );
     // The same request id: a client whose answer was lost. It must be answered
     // with what the first attempt wrote, and add no second event.
-    await expect(builder.protocolBuilder.submit(submitInput)).resolves.toEqual(
-      committed,
-    );
+    await expect(
+      builder.call(BUILDER_CALLER, builder.rpc('Submit', submitInput)),
+    ).resolves.toEqual(committed);
 
     const events = await database.run(
       ownerRows<{
@@ -320,11 +311,11 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       client.rpc('protocols.addInformationStage', { ...scope, stageId }),
     );
     const before = await client.call(client.rpc('protocols.draft', scope));
-    const sectionId = `stage:${stageId}`;
-    const held = await builder.protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const sectionId = sectionIdOf({ kind: 'stage', stageId });
+    const held = await builder.call(
+      BUILDER_CALLER,
+      builder.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     if (held.lock !== 'held') throw new Error('expected to hold the section');
 
     await database.run(
@@ -349,8 +340,11 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       revision: held.revision,
     };
     try {
-      const { error } = await safe(builder.protocolBuilder.submit(submitInput));
-      expect(error).not.toBeNull();
+      const exit = await builder.callExit(
+        BUILDER_CALLER,
+        builder.rpc('Submit', submitInput),
+      );
+      expect(Exit.isFailure(exit)).toBe(true);
     } finally {
       await database.run(
         ownerRows('DROP TRIGGER reject_protocol_audit_insert ON audit_events'),
@@ -379,7 +373,9 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     // The write receipt rolled back too, so a retry carrying the same request
     // id is a real first write rather than a replay of one that never
     // happened — which is what would otherwise hide the missing audit event.
-    await expect(builder.protocolBuilder.submit(submitInput)).resolves.toEqual({
+    await expect(
+      builder.call(BUILDER_CALLER, builder.rpc('Submit', submitInput)),
+    ).resolves.toEqual({
       revision: {
         sequence: BigInt(before.revision.sequence) + 1n,
         contentHash: expect.any(String),
@@ -474,8 +470,7 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     );
 
     // The protocol tier's own refusal for a membership that lost its role
-    // under the lock, which is what the oRPC plane flattened into
-    // `FORBIDDEN`.
+    // under the lock.
     await expectRpcFailure(request, 'ProtocolAuthorizationError');
     expect(
       await database.run(

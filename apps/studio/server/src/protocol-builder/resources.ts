@@ -8,25 +8,29 @@
 // their manifest entries land in the `assets` section as one revision. A
 // discarded stage leaves nothing behind, which is the property that made
 // staging worth having.
-import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
+
+import { Clock, Context, Effect, Exit, Layer, Option, Schema } from 'effect';
 
 import {
+  ResourceKindSchema,
   type ResourceDescriptorSchema,
   type ResourceGatewayFailureSchema,
   type ResourceInspectionSchema,
   type ResourcePreviewSchema,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
+import type { ObjectStore } from '../storage/object-store.ts';
 
-type Descriptor = z.output<typeof ResourceDescriptorSchema>;
-type Failure = z.output<typeof ResourceGatewayFailureSchema>;
-/** Exported so the router can fill a committed API key's value in (#1900). */
-export type Inspection = z.output<typeof ResourceInspectionSchema>;
-type Preview = z.output<typeof ResourcePreviewSchema>;
-type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
+type Descriptor = typeof ResourceDescriptorSchema.Type;
+type Failure = typeof ResourceGatewayFailureSchema.Type;
+/** Exported so the handlers can fill a committed API key's value in (#1900). */
+export type Inspection = typeof ResourceInspectionSchema.Type;
+type Preview = typeof ResourcePreviewSchema.Type;
+type StageRequest = (typeof StageResourceInputSchema.Type)['request'];
 
 export type ResourceOutcome<TData> =
   | { status: 'ok'; data: TData }
@@ -45,20 +49,13 @@ export type PromotionPlan = {
 
 type StagedEntry = {
   descriptor: Descriptor;
-  bytes?: Blob;
+  bytes?: Uint8Array;
   secret?: string;
 };
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
-const KindSchema = z.enum([
-  'audio',
-  'geojson',
-  'image',
-  'network',
-  'video',
-  'apikey',
-]);
+const decodeKind = Schema.decodeUnknownOption(ResourceKindSchema);
 
 function failure(
   reason: Failure['reason'],
@@ -80,8 +77,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-async function base64(blob: Blob): Promise<string> {
-  return Buffer.from(await blob.arrayBuffer()).toString('base64');
+function base64(bytes: Uint8Array): string {
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString(
+    'base64',
+  );
 }
 
 /**
@@ -107,16 +106,80 @@ function descriptorFromManifestEntry(
   id: string,
   entry: Record<string, unknown>,
 ): Descriptor | undefined {
-  const kind = KindSchema.safeParse(entry.type);
-  if (!kind.success || typeof entry.name !== 'string') return undefined;
+  const kind = decodeKind(entry.type);
+  if (Option.isNone(kind) || typeof entry.name !== 'string') return undefined;
   return {
     id,
-    kind: kind.data,
+    kind: kind.value,
     name: entry.name,
     status: 'committed',
     ...(typeof entry.source === 'string' ? { source: entry.source } : {}),
   };
 }
+
+const planPromotion = Effect.fnUntraced(function* (
+  staged: ReadonlyMap<string, StagedEntry>,
+  store: ObjectStore['Service'],
+  resourceIds: readonly string[],
+): Effect.fn.Return<ResourceOutcome<PromotionPlan>> {
+  const entries: Record<string, unknown> = {};
+  const promoted: Descriptor[] = [];
+  for (const resourceId of resourceIds) {
+    const entry = staged.get(resourceId);
+    if (entry === undefined) {
+      return failure('not-found', 'no such staged resource', resourceId);
+    }
+    if (entry.secret !== undefined) {
+      entries[resourceId] = {
+        name: entry.descriptor.name,
+        type: 'apikey',
+        value: entry.secret,
+      };
+      promoted.push({ ...entry.descriptor, status: 'committed' });
+      continue;
+    }
+    if (!store.configured) {
+      return failure(
+        'unavailable',
+        'this deployment has no object storage configured',
+        resourceId,
+      );
+    }
+    if (entry.bytes === undefined || entry.descriptor.source === undefined) {
+      return failure(
+        'invalid-content',
+        'staged resource has no bytes',
+        resourceId,
+      );
+    }
+    // An object store that is unreachable is the researcher's situation
+    // rather than the host's: the contract has a retryable failure for it,
+    // and reaching the generic error boundary instead would tell an editor
+    // that has staged a file to give up on a promotion it could make a
+    // minute later.
+    const stored = yield* Effect.exit(
+      store.put(
+        entry.bytes,
+        entry.descriptor.contentType ?? 'application/octet-stream',
+      ),
+    );
+    if (Exit.isFailure(stored)) {
+      return failure(
+        'unavailable',
+        'the object store could not be reached',
+        resourceId,
+      );
+    }
+    const source = storedSource(stored.value.hash, entry.descriptor.source);
+    entries[resourceId] = {
+      name: entry.descriptor.name,
+      type: entry.descriptor.kind,
+      source,
+    };
+    promoted.push({ ...entry.descriptor, status: 'committed', source });
+  }
+  return { status: 'ok', data: { entries, promoted } };
+});
 
 /**
  * One edit's staged resources.
@@ -161,14 +224,17 @@ export class StagedResources {
     if (existing !== undefined) {
       return { status: 'ok', data: { descriptor: existing.descriptor } };
     }
-    if (request.kind === 'content' && request.bytes.size === 0) {
+    if (request.kind === 'content' && request.bytes.byteLength === 0) {
       // An empty file promotes into a manifest entry an interview would try to
       // show: an image with no pixels, a roster with no network. The contract's
       // own host refuses it, and a picker that offers it here and nowhere else
       // would be Studio disagreeing with the contract it serves.
       return failure('invalid-content', 'that file is empty');
     }
-    if (request.kind === 'content' && request.bytes.size > MAX_UPLOAD_BYTES) {
+    if (
+      request.kind === 'content' &&
+      request.bytes.byteLength > MAX_UPLOAD_BYTES
+    ) {
       // Refused before the blob is kept rather than after: the bytes reach the
       // handler with the request, and what this bounds is how long an
       // authenticated caller can make the process hold them — an edit's
@@ -197,7 +263,7 @@ export class StagedResources {
               name: request.name,
               status: 'staged',
               source: request.source,
-              byteLength: request.bytes.size,
+              byteLength: request.bytes.byteLength,
               contentType: request.contentType,
             },
             bytes: request.bytes,
@@ -213,67 +279,11 @@ export class StagedResources {
    * and the section naming them land in one revision — and until it does,
    * nothing here is committed and the staged resources are still staged.
    */
-  async plan(
-    store: AssetStore | undefined,
+  plan(
+    store: ObjectStore['Service'],
     resourceIds: readonly string[],
-  ): Promise<ResourceOutcome<PromotionPlan>> {
-    const entries: Record<string, unknown> = {};
-    const promoted: Descriptor[] = [];
-    for (const resourceId of resourceIds) {
-      const entry = this.#staged.get(resourceId);
-      if (entry === undefined) {
-        return failure('not-found', 'no such staged resource', resourceId);
-      }
-      if (entry.secret !== undefined) {
-        entries[resourceId] = {
-          name: entry.descriptor.name,
-          type: 'apikey',
-          value: entry.secret,
-        };
-        promoted.push({ ...entry.descriptor, status: 'committed' });
-        continue;
-      }
-      if (store === undefined) {
-        return failure(
-          'unavailable',
-          'this deployment has no object storage configured',
-          resourceId,
-        );
-      }
-      if (entry.bytes === undefined || entry.descriptor.source === undefined) {
-        return failure(
-          'invalid-content',
-          'staged resource has no bytes',
-          resourceId,
-        );
-      }
-      // An object store that is unreachable is the researcher's situation
-      // rather than the host's: the contract has a retryable failure for it,
-      // and reaching the generic error boundary instead would tell an editor
-      // that has staged a file to give up on a promotion it could make a
-      // minute later.
-      let stored: Awaited<ReturnType<AssetStore['put']>>;
-      try {
-        stored = await store.put(
-          new Uint8Array(await entry.bytes.arrayBuffer()),
-          entry.descriptor.contentType ?? 'application/octet-stream',
-        );
-      } catch {
-        return failure(
-          'unavailable',
-          'the object store could not be reached',
-          resourceId,
-        );
-      }
-      const source = storedSource(stored.hash, entry.descriptor.source);
-      entries[resourceId] = {
-        name: entry.descriptor.name,
-        type: entry.descriptor.kind,
-        source,
-      };
-      promoted.push({ ...entry.descriptor, status: 'committed', source });
-    }
-    return { status: 'ok', data: { entries, promoted } };
+  ): Effect.Effect<ResourceOutcome<PromotionPlan>> {
+    return planPromotion(this.#staged, store, resourceIds);
   }
 
   /**
@@ -314,10 +324,7 @@ export class StagedResources {
    * inlined; a committed one is served from the object store by content hash,
    * so its URL is immutable and needs no expiry.
    */
-  async preview(
-    assets: SectionDoc,
-    resourceId: string,
-  ): Promise<ResourceOutcome<Preview>> {
+  preview(assets: SectionDoc, resourceId: string): ResourceOutcome<Preview> {
     const staged = this.#staged.get(resourceId);
     if (staged === undefined) return committedPreview(assets, resourceId);
     if (staged.bytes === undefined) {
@@ -333,7 +340,7 @@ export class StagedResources {
       status: 'ok',
       data: {
         resourceId,
-        url: `data:${contentType};base64,${await base64(staged.bytes)}`,
+        url: `data:${contentType};base64,${base64(staged.bytes)}`,
       },
     };
   }
@@ -412,12 +419,12 @@ function committedDescriptor(
 /**
  * One staging area per edit, for as long as that edit is open.
  *
- * The router keys these by the draft, the owner and the edit, so the two
+ * The handlers key these by the draft, the owner and the edit, so the two
  * boundaries the contract names are the same boundary here: one editor's
  * staging is unreachable from another's, and one edit's is unreachable from
  * the second edit its own researcher has open.
  */
-export class StagedResourceRegistry {
+class StagedResourceRegistry {
   readonly #byEdit = new Map<string, OpenEdit>();
   readonly #mintId: () => string;
 
@@ -436,6 +443,11 @@ export class StagedResourceRegistry {
   /** What one edit staged, if that edit has staged anything. */
   opened(key: string): StagedResources | undefined {
     return this.#byEdit.get(key)?.resources;
+  }
+
+  /** Every owner with an edit open. */
+  owners(): ReadonlySet<string> {
+    return new Set([...this.#byEdit.values()].map((edit) => edit.owner));
   }
 
   /** An owner that called is here, so every edit it has open is too. */
@@ -479,3 +491,60 @@ type OpenEdit = {
   resources: StagedResources;
   touchedAt: number;
 };
+
+/**
+ * This process's staged imports, as the handlers reach them.
+ *
+ * Process-local by design, like the imports themselves: a staged file lives in
+ * this process's memory until the submit that promotes it or the cancel that
+ * drops it, so the registry is one per server and outlives every connection.
+ */
+export class StagedImports extends Context.Service<
+  StagedImports,
+  {
+    /** This edit's staging area, opened now if it has none yet. */
+    readonly for: (
+      key: string,
+      owner: string,
+    ) => Effect.Effect<StagedResources>;
+    readonly opened: (
+      key: string,
+    ) => Effect.Effect<StagedResources | undefined>;
+    readonly touch: (prefix: string) => Effect.Effect<void>;
+    /**
+     * Drops what every owner idle since `before` was holding, unless
+     * `connected` says it still has a channel.
+     */
+    readonly expire: (
+      before: number,
+      connected: (owner: string) => Effect.Effect<boolean>,
+    ) => Effect.Effect<void>;
+    readonly releaseMatching: (prefix: string) => Effect.Effect<void>;
+  }
+>()('@studio/protocol-builder/StagedImports') {
+  static readonly layer: Layer.Layer<StagedImports> = Layer.sync(StagedImports)(
+    () => {
+      const registry = new StagedResourceRegistry(randomUUID);
+      return StagedImports.of({
+        for: (key, owner) =>
+          Effect.map(Clock.currentTimeMillis, (at) =>
+            registry.for(key, owner, at),
+          ),
+        opened: (key) => Effect.sync(() => registry.opened(key)),
+        touch: (prefix) =>
+          Effect.map(Clock.currentTimeMillis, (at) =>
+            registry.touch(prefix, at),
+          ),
+        expire: Effect.fnUntraced(function* (before, connected) {
+          const kept = new Set<string>();
+          for (const owner of registry.owners()) {
+            if (yield* connected(owner)) kept.add(owner);
+          }
+          registry.expire(before, (owner) => kept.has(owner));
+        }),
+        releaseMatching: (prefix) =>
+          Effect.sync(() => registry.releaseMatching(prefix)),
+      });
+    },
+  );
+}

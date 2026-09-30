@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +8,6 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../../protocol-context.ts';
-import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -58,21 +58,19 @@ const openWithHeldWrite = (
   let held = true;
   const harness = renderStageEditor({
     stageId: 'ego-form-1',
-    client: (host) => {
-      const submit: InMemoryClient['submit'] = async (
-        ...args: Parameters<InMemoryClient['submit']>
-      ) => {
-        if (held) {
-          held = false;
-          await first.promise;
-        }
-        return host.client.submit(...args);
-      };
-      return new Proxy(host.client, {
-        get: (target, property) =>
-          property === 'submit' ? submit : Reflect.get(target, property),
-      });
-    },
+    adapter: (host) =>
+      host.adapterWith({
+        Submit: (input) =>
+          Effect.flatMap(
+            Effect.promise(async () => {
+              if (held) {
+                held = false;
+                await first.promise;
+              }
+            }),
+            () => host.handle.Submit(input),
+          ),
+      }),
     sections: (
       <CodebookVariableValidationSection
         subject={subject}
@@ -625,7 +623,7 @@ describe('a refusal the researcher has moved on from', () => {
         userId: 'user-2',
         displayName: 'Robin',
       })
-      .acquireLock({
+      .rpcCall('AcquireLock', {
         protocolId: harness.host.protocolId,
         sectionId: EGO_SECTION,
       });
@@ -674,7 +672,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
       userId: 'user-2',
       displayName: 'Robin',
     });
-    await robin.acquireLock({
+    await robin.rpcCall('AcquireLock', {
       protocolId: harness.host.protocolId,
       sectionId: EGO_SECTION,
     });
@@ -692,7 +690,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
     ).toBeInTheDocument();
     expect(egoValidation(harness, 'ego_name')).toBeUndefined();
 
-    await robin.releaseLock({
+    await robin.rpcCall('ReleaseLock', {
       protocolId: harness.host.protocolId,
       sectionId: EGO_SECTION,
     });
@@ -758,23 +756,18 @@ describe('the marker a refused write leaves behind', () => {
     let drop = true;
     const harness = renderStageEditor({
       stageId: 'ego-form-1',
-      client: (host) => {
-        const submit: InMemoryClient['submit'] = async (
-          ...args: Parameters<InMemoryClient['submit']>
-        ) => {
-          if (drop) {
-            drop = false;
-            // What a dropped socket is: the host took the lock and handed back
-            // the document, and the answer to the write never arrived.
-            throw new Error('the connection dropped');
-          }
-          return host.client.submit(...args);
-        };
-        return new Proxy(host.client, {
-          get: (target, property) =>
-            property === 'submit' ? submit : Reflect.get(target, property),
-        });
-      },
+      adapter: (host) =>
+        host.adapterWith({
+          Submit: (input) => {
+            if (drop) {
+              drop = false;
+              // What a dropped socket is: the host took the lock and handed
+              // back the document, and the answer to the write never arrived.
+              return Effect.die(new Error('the connection dropped'));
+            }
+            return host.handle.Submit(input);
+          },
+        }),
       sections: (
         <CodebookVariableValidationSection
           subject={EGO}

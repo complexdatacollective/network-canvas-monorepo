@@ -3,32 +3,44 @@
 // created stage reachable, and the replay that makes a dropped connection
 // recoverable.
 //
-// These procedures are served at `/ws` alone, through stage 1's socket bridge
-// — the SPA's own twenty live on the Effect rpc plane at `/rpc` and this
-// router no longer has a unary mount of its own. Driven through
-// `createRouterClient` rather than a transport, so what is under test is the
-// router and its storage rather than a serialization: the WebSocket wiring is
-// covered by ws-protocol-builder.test.ts.
+// These procedures are served at `/ws` and `/rpc/protocol-builder` by the
+// Effect rpc host. Driven through the handlers in process
+// (`support/protocol-builder.ts`) rather than a transport, so what is under
+// test is the handlers and their storage rather than a serialization: the
+// WebSocket wiring is covered by ws-protocol-builder.test.ts.
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { getEventMeta, isDefinedError, ORPCError, safe } from '@orpc/client';
-import { createRouterClient } from '@orpc/server';
-import { Context, Effect, Layer, Option } from 'effect';
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Layer,
+  Option,
+  Stream,
+} from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
 import {
   DraftId,
   ProtocolId,
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
-import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
+import {
+  parseSectionId,
+  sectionId as makeSectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
-import { createStudio } from '../app.ts';
-import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
+import { createStudio, type Studio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
+import { Database } from '../db/client.ts';
 import {
   type TeamAccess,
   TenantScope,
@@ -36,18 +48,21 @@ import {
 } from '../db/tenant.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
 import { collectLogs } from '../platform/__tests__/support/logs.ts';
+import type { LoggedProtocolEvent } from '../protocol-builder/events.ts';
+import { REAUTHORIZE_MS } from '../protocol-builder/handlers.ts';
 import {
-  createProtocolBuilderRuntime,
   IDLE_MS,
-  REAUTHORIZE_MS,
+  Leases,
   RECONNECT_GRACE_MS,
-  type ProtocolBuilderRuntime,
-} from '../protocol-builder/runtime.ts';
+  RENEW_INTERVAL_MS,
+} from '../protocol-builder/leases.ts';
+import { Presence } from '../protocol-builder/presence.ts';
+import { ProtocolEvents } from '../protocol-builder/publisher.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
 import { createProtocol, latestDraftId } from '../protocol/store.ts';
-import { createRpcRouter } from '../rpc.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
+import { ObjectStore, ObjectStoreError } from '../storage/object-store.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -57,7 +72,17 @@ import {
   testDb,
   tenantRows,
 } from './support/database.ts';
-import { createRpcClient, type RpcTestClient } from './support/rpc.ts';
+import {
+  type Caller,
+  createProtocolBuilderClient,
+  makeShiftableClock,
+  type ProtocolBuilderTestClient,
+} from './support/protocol-builder.ts';
+import {
+  createRpcClient,
+  expectRpcFailure,
+  type RpcTestClient,
+} from './support/rpc.ts';
 import { testCipher, testKeyringEntry } from './support/secrets.ts';
 import {
   openRateLimitStore,
@@ -96,6 +121,16 @@ function researcher(slug: string): Researcher {
   };
 }
 
+/** A researcher's calls, made over their socket from their tab. */
+const callerOf = (who: Researcher | Caller): Caller =>
+  'memberId' in who
+    ? {
+        principal: who.principal,
+        connection: who.connectionId,
+        tab: who.clientSessionId,
+      }
+    : who;
+
 const ADA = researcher('ada');
 const GRACE = researcher('grace');
 
@@ -107,6 +142,10 @@ const EDIT = 'edit-1';
 
 /** A second edit open beside it — a codebook dialog over a stage editor. */
 const OTHER_EDIT = 'edit-2';
+
+/** A section id as the contract takes it, checked against the taxonomy. */
+const sid = (id: string): ProtocolSectionId =>
+  makeSectionId(parseSectionId(id));
 
 type VariableReference = {
   typeId: string;
@@ -170,15 +209,110 @@ function soleVariablePrompt(protocol: CurrentProtocol): VariableReference {
   throw new Error('the sample protocol has no stage with one variable prompt');
 }
 
+/** A promise a case settles by hand. */
+function latch() {
+  let open: () => void = () => undefined;
+  const opened = new Promise<void>((settle) => {
+    open = settle;
+  });
+  return { opened, open };
+}
+
+/** A wait a hooked service makes once: `reached` when it starts, until `release`. */
+type Hold = {
+  readonly reached: Promise<void>;
+  readonly release: () => void;
+};
+
+/**
+ * A hook that makes the next matching call wait at its start until the case
+ * releases it — the window between a command's commit and what follows it.
+ */
+function holdOnce<A>() {
+  let pending:
+    | {
+        readonly matches: (input: A) => boolean;
+        readonly reached: () => void;
+        readonly released: Promise<void>;
+      }
+    | undefined;
+  return {
+    next: (matches: (input: A) => boolean = () => true): Hold => {
+      const reached = latch();
+      const released = latch();
+      pending = { matches, reached: reached.open, released: released.opened };
+      return { reached: reached.opened, release: released.open };
+    },
+    /** Waits, if `input` is the call being held, before `self` runs. */
+    around: <B>(input: A, self: Effect.Effect<B>): Effect.Effect<B> =>
+      Effect.suspend(() => {
+        const current = pending;
+        if (current === undefined || !current.matches(input)) return self;
+        pending = undefined;
+        current.reached();
+        return Effect.andThen(
+          Effect.promise(() => current.released),
+          self,
+        );
+      }),
+  };
+}
+
+/** The fan-out, with a publish a case can hold. */
+function holdingEvents() {
+  const hold = holdOnce<ReadonlyArray<LoggedProtocolEvent>>();
+  const layer = Layer.effect(
+    ProtocolEvents,
+    Effect.gen(function* () {
+      const real = yield* ProtocolEvents;
+      return ProtocolEvents.of({
+        ...real,
+        publish: (draft, entries) =>
+          hold.around(entries, real.publish(draft, entries)),
+      });
+    }),
+  ).pipe(Layer.provide(ProtocolEvents.layer));
+  return { layer, next: hold.next };
+}
+
+/** The lease keeper, with a `hold` a case can hold. */
+function holdingLeases() {
+  const hold = holdOnce<undefined>();
+  const layer = Layer.effect(
+    Leases,
+    Effect.gen(function* () {
+      const real = yield* Leases;
+      return Leases.of({
+        ...real,
+        hold: (lease) => hold.around(undefined, real.hold(lease)),
+      });
+    }),
+  ).pipe(Layer.provide(Leases.layer));
+  return { layer, next: hold.next };
+}
+
+/** Polls until `predicate` holds, for state a fiber settles after a call. */
+async function until(
+  predicate: () => boolean | Promise<boolean>,
+  what: string,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!(await predicate())) {
+    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   let database: TestDatabaseRuntime;
-  let clients: Map<Researcher, ReturnType<typeof clientFor>>;
+  let studio: Studio;
+  let host: ProtocolBuilderTestClient;
   let protocolId: string;
   let draftId: string;
   /**
-   * The Effect half of the suite: the router's handlers are promises, and
-   * everything under them is Effect, so the router is handed the context the
-   * program builds — exactly as `programs/serve.ts` does.
+   * The Effect half of the suite's own setup and reads: the same context the
+   * Studio is built over, so everything that seals or opens a key agrees.
    */
   let services: Context.Context<StudioServices>;
   let runEffect: <A, E>(
@@ -195,13 +329,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   let unstrippable: VariableReference;
   /** A protocol whose researcher has given the participant no attributes. */
   let egolessProtocolId: string;
-  let router: ReturnType<typeof createRpcRouter>;
-  let buildRouter: () => ReturnType<typeof createRpcRouter>;
-  let runtime: ProtocolBuilderRuntime;
   /**
    * The researcher-facing plane beside the host: `protocols.draft` is served
    * by the Effect rpc server at `/rpc`, so the one case that reads a whole
-   * draft back drives it through that client rather than this router.
+   * draft back drives it through that client rather than this host.
    */
   let adaRpc: RpcTestClient;
   /**
@@ -214,69 +345,94 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const stored = new Map<string, { bytes: Uint8Array; mediaType: string }>();
   /** Set while a test needs the object store to be the thing that is down. */
   let storeUnreachable = false;
-  const assetStore: AssetStore = {
-    put: (bytes, mediaType) => {
-      if (storeUnreachable) {
-        return Promise.reject(new Error('the object store is unreachable'));
-      }
-      const hash = createHash('sha256').update(bytes).digest('hex');
-      if (!stored.has(hash)) stored.set(hash, { bytes, mediaType });
-      const existing = stored.get(hash);
-      if (existing === undefined) throw new Error('unreachable');
-      return Promise.resolve({
-        hash,
-        size: existing.bytes.byteLength,
-        mediaType: existing.mediaType,
-      });
-    },
-    get: () => Promise.resolve(null),
-    head: () =>
-      storeUnreachable
-        ? Promise.reject(new Error('the object store is unreachable'))
-        : Promise.resolve(),
-  };
-  /**
-   * The clock the lease keeper reads, so a test can reach the idle bound
-   * without spending five minutes there. Timers are left real: this suite
-   * drives Postgres and oRPC event iterators, both of which are timer-driven.
-   */
-  let now = Date.now();
-
-  function clientFor(who: Researcher) {
-    return clientOn(router, who);
-  }
-
-  /** The same researcher, on whichever router is serving them. */
-  function clientOn(
-    served: ReturnType<typeof createRpcRouter>,
-    who: Researcher,
-  ) {
-    return createRouterClient(served, {
-      context: {
-        principal: who.principal,
-        requestId: randomUUID(),
-        connectionId: who.connectionId,
-        clientSessionId: who.clientSessionId,
-      },
+  const unreachable = (operation: 'put' | 'head') =>
+    new ObjectStoreError({
+      operation,
+      cause: new Error('the object store is unreachable'),
     });
-  }
+  const objectStore: ObjectStore['Service'] = ObjectStore.of({
+    configured: true,
+    put: (bytes, mediaType) =>
+      Effect.suspend(() => {
+        if (storeUnreachable) return Effect.fail(unreachable('put'));
+        const hash = createHash('sha256').update(bytes).digest('hex');
+        if (!stored.has(hash)) stored.set(hash, { bytes, mediaType });
+        const existing = stored.get(hash);
+        if (existing === undefined) return Effect.die(new Error('unreachable'));
+        return Effect.succeed({
+          hash,
+          size: existing.bytes.byteLength,
+          mediaType: existing.mediaType,
+        });
+      }),
+    get: () => Effect.succeed(Option.none()),
+    head: Effect.suspend(() =>
+      storeUnreachable ? Effect.fail(unreachable('head')) : Effect.void,
+    ),
+  });
+  /**
+   * The clock the handlers and the lease keeper read, so a test can reach the
+   * idle bound without spending five minutes there. Sleeps are left real
+   * otherwise: this suite drives Postgres and rpc streams, both of which are
+   * timer-driven.
+   */
+  const clock = makeShiftableClock();
 
-  const asClient = (who: Researcher) => {
-    const client = clients.get(who);
-    if (!client) throw new Error(`no client for ${who.principal.userId}`);
-    return client;
-  };
+  const call = <A, E>(who: Researcher | Caller, effect: Effect.Effect<A, E>) =>
+    host.call(callerOf(who), effect);
+  const callExit = <A, E>(
+    who: Researcher | Caller,
+    effect: Effect.Effect<A, E>,
+  ) => host.callExit(callerOf(who), effect);
 
-  const stageSection = (stageId: string) => `stage:${stageId}`;
+  const stageSection = (stageId: string) => sid(`stage:${stageId}`);
+  const STAGE_ORDER = sid('stageOrder');
+  const ASSETS = sid('assets');
 
   /** A stage of this test's own, so nothing here reads another test's edit. */
   const createStage = (who: Researcher, label: string) =>
-    asClient(who).protocolBuilder.create({
-      protocolId,
-      requestId: randomUUID(),
-      kind: 'stage',
-      document: { type: 'Information', label, title: label, items: [] },
-    });
+    call(
+      who,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: { type: 'Information', label, title: label, items: [] },
+      }),
+    );
+
+  const heldSections = (owner: string) =>
+    host.run(Leases.use((leases) => leases.heldSections(draftId, owner)));
+
+  const present = () =>
+    host.run(Presence.use((presence) => presence.list(draftId)));
+
+  /** What one of Ada's edits still has staged. */
+  const stagedIds = async (editId: string) => {
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId, status: 'staged' }),
+    );
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    return listed.data.resources.map((resource) => resource.id);
+  };
+
+  /**
+   * One renewal tick of the lease keeper: waits for it to be sleeping, moves
+   * the clock `millis` on, and waits for it to be sleeping again — which it is
+   * only once every lease it holds has been asked about.
+   */
+  const keeperTick = async (millis: number = RENEW_INTERVAL_MS) => {
+    await until(
+      () => clock.pending(RENEW_INTERVAL_MS) > 0,
+      'the lease keeper to be waiting',
+    );
+    clock.advance(millis);
+    await until(
+      () => clock.pending(RENEW_INTERVAL_MS) > 0,
+      'the lease keeper to finish its tick',
+    );
+  };
 
   /** Researchers whose membership the team has taken away. */
   const revoked = new Set<string>();
@@ -297,7 +453,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   beforeAll(async () => {
     database = await openTestDatabase();
     await database.run(insertTeam(TEAM_ID));
-    // The services carry the test keyring the router and the rpc plane below
+    // The services carry the test keyring the host and the rpc plane below
     // are built with, so everything that seals or opens a key agrees on it.
     services = Context.add(database.services, SecretsCipher, testCipher());
     runEffect = (effect) => Effect.runPromiseWith(services)(effect);
@@ -350,59 +506,22 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (draft === undefined) throw new Error('the new protocol has no draft');
     draftId = draft;
 
-    runtime = createProtocolBuilderRuntime(() => now);
-    // A factory rather than one router: everything a host keeps in memory —
-    // its staging areas, its lease keeper — is built here, so calling it again
-    // is a restarted server serving the same database.
-    buildRouter = () =>
-      createRpcRouter({
-        auth: authServiceStub({
-          listMemberships: memberships,
-          getMembership: membership,
-        }),
-        limiter: undefined,
-        capabilities: {
-          enabled: true,
-          emailAndPassword: true,
-          magicLink: false,
-          socialProviders: [],
-        },
-        deployment: { mode: 'self-hosted', billing: false },
-        // Nothing here reads `status`; the installation row is the first-run
-        // bootstrap's (#1909), and an unset one is "no installation to
-        // report".
-        readInstallation: () => Promise.resolve(null),
-        pool: database.appPool,
-        services,
-        protocolBuilder: createProtocolBuilderRuntime(() => now),
-        assetStore,
-        cipher: testCipher(),
-      });
-    router = createRpcRouter({
+    studio = createStudio(resolveEnv({ NODE_ENV: 'test' }), {
       auth: authServiceStub({
         listMemberships: memberships,
         getMembership: membership,
       }),
-      limiter: undefined,
-      capabilities: {
-        enabled: true,
-        emailAndPassword: true,
-        magicLink: false,
-        socialProviders: [],
-      },
-      deployment: { mode: 'self-hosted', billing: false },
-      readInstallation: () => Promise.resolve(null),
       pool: database.appPool,
       services,
-      protocolBuilder: runtime,
-      assetStore,
-      cipher: testCipher(),
     });
-    clients = new Map([
-      [ADA, clientFor(ADA)],
-      [GRACE, clientFor(GRACE)],
-    ]);
-    // The same keyring the router above is built with, so a draft read back
+    // Everything a host keeps in memory — its staging areas, its lease keeper
+    // — is built here, so building another over the same Studio is a
+    // restarted server serving the same database.
+    host = await createProtocolBuilderClient(studio, {
+      clock: clock.clock,
+      objectStore,
+    });
+    // The same keyring the host above is built with, so a draft read back
     // through the rpc plane opens the rows this suite sealed.
     adaRpc = await createRpcClient(
       createStudio(
@@ -426,56 +545,132 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   afterAll(async () => {
-    await adaRpc.dispose();
+    await adaRpc?.dispose();
+    await host?.dispose();
     await database?.dispose();
   });
+
+  /**
+   * An open channel, drained in the background into `events`. `stop` is the
+   * client going away: it interrupts the watch, which is what ends the
+   * connection on the host. `ended` settles with how the watch finished.
+   */
+  const watch = (
+    who: Researcher | Caller,
+    watched: string,
+    over: ProtocolBuilderTestClient = host,
+  ) => {
+    const events: ProtocolEvent[] = [];
+    const stop = Deferred.makeUnsafe<void>();
+    const ended = over.callExit(
+      callerOf(who),
+      over.rpc('WatchProtocol', { protocolId: watched }).pipe(
+        Stream.interruptWhen(Deferred.await(stop)),
+        Stream.runForEach((event) =>
+          Effect.sync(() => {
+            events.push(event);
+          }),
+        ),
+      ),
+    );
+    return {
+      events,
+      ended,
+      stop: async () => {
+        Deferred.doneUnsafe(stop, Effect.void);
+        await ended;
+      },
+    };
+  };
+
+  /**
+   * A watch that has published this watcher's own arrival, so nothing after it
+   * can land in the gap before the handler subscribed.
+   */
+  const watching = async (
+    who: Researcher | Caller,
+    watched: string,
+    over: ProtocolBuilderTestClient = host,
+  ) => {
+    const channel = watch(who, watched, over);
+    await until(
+      () => channel.events.some((event) => event.type === 'presence'),
+      'the watcher’s own arrival',
+    );
+    return channel;
+  };
+
+  type WatchedEvent = { cursor: string; event: ProtocolEvent };
+
+  /**
+   * The replayable events a watcher is handed before it goes live.
+   *
+   * Presence is dropped: it carries no cursor by design, arrives from process
+   * memory rather than the log, and would make a replay comparison depend on
+   * who happened to be watching.
+   */
+  const drain = async (
+    who: Researcher,
+    input: { protocolId: string; since?: string },
+  ): Promise<WatchedEvent[]> => {
+    const events = await call(
+      who,
+      Stream.runCollect(
+        host
+          .rpc('WatchProtocol', input)
+          .pipe(
+            Stream.takeWhile(
+              (event) =>
+                event.type !== 'presence' && event.cursor !== undefined,
+            ),
+          ),
+      ),
+    );
+    return events.flatMap((event) =>
+      event.type !== 'presence' && event.cursor !== undefined
+        ? [{ cursor: event.cursor, event }]
+        : [],
+    );
+  };
 
   it.skipIf(!limiterUrl)(
     "logs a spent rpc_user budget through the program's logger",
     async () => {
-      // The router's handlers are promises, so its limiter checks leave the
-      // program's fibers; a denial's warning must still reach the logger the
-      // program's services carry, not Effect's default one — in a deployment
-      // the difference between a JSON line and plain text nothing reads.
+      // The handlers run on the runtime the program builds; a denial's warning
+      // must reach the logger that runtime carries, not Effect's default one —
+      // in a deployment the difference between a JSON line and plain text
+      // nothing reads.
       const logs = collectLogs();
-      const loggers = await Effect.runPromise(
-        Effect.scoped(Layer.build(logs.layer)),
-      );
       const store = await openRateLimitStore(limiterUrl);
-      try {
-        const limited = createRpcRouter({
+      const limited = await createProtocolBuilderClient(
+        createStudio(resolveEnv({ NODE_ENV: 'test' }), {
           auth: authServiceStub({
             listMemberships: memberships,
             getMembership: membership,
           }),
           limiter: store.limiter({ rpc_user: { max: 1, windowMs: 60_000 } }),
-          capabilities: {
-            enabled: true,
-            emailAndPassword: true,
-            magicLink: false,
-            socialProviders: [],
-          },
-          deployment: { mode: 'self-hosted', billing: false },
-          readInstallation: () => Promise.resolve(null),
           pool: database.appPool,
-          services: Context.merge(services, loggers),
-          protocolBuilder: createProtocolBuilderRuntime(() => now),
-          assetStore,
-          cipher: testCipher(),
-        });
-        const client = clientOn(limited, ADA);
+          services,
+        }),
+        { objectStore, layer: logs.layer },
+      );
+      try {
         const read = () =>
-          client.protocolBuilder.getSection({
-            protocolId,
-            sectionId: stageSection(reference.stageId),
-          });
+          limited.callExit(
+            callerOf(ADA),
+            limited.rpc('GetSection', {
+              protocolId,
+              sectionId: stageSection(reference.stageId),
+            }),
+          );
 
-        await read();
-        const { error } = await safe(read());
-        if (!(error instanceof ORPCError)) {
-          throw error ?? new Error('the second read was not refused at all');
-        }
-        expect(error.code).toBe('TOO_MANY_REQUESTS');
+        expect(Exit.isSuccess(await read())).toBe(true);
+        const refused = await read();
+        expect(Exit.isFailure(refused)).toBe(true);
+        if (Exit.isSuccess(refused)) return;
+        // Not one of the group's declared errors: `RateLimited` is not on the
+        // contract, so the refusal is a defect the client cannot name.
+        expect(Option.isNone(Cause.findErrorOption(refused.cause))).toBe(true);
         // Mutation: run the check with `Effect.runPromise` → the warning goes
         // to the default logger and nothing is captured.
         expect(
@@ -484,6 +679,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           'Rate limit reached for rpc_user; callers are refused for up to 60s.',
         ]);
       } finally {
+        await limited.dispose();
         await store.dispose();
       }
     },
@@ -491,122 +687,122 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
 
   it('refuses a submit from a caller that does not hold the lock', async () => {
     const sectionId = stageSection(reference.stageId);
-    const before = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId,
-    });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.submit({
-        protocolId,
-        requestId: randomUUID(),
-        sectionId,
-        document: { ...before.document, label: 'Renamed without the lock' },
-        revision: before.revision,
-      }),
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId }),
     );
 
-    if (!isDefinedError(error)) {
-      throw error ?? new Error('the submit was not refused at all');
-    }
-    expect(error.code).toBe('NOT_LOCK_HOLDER');
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId,
+          document: { ...before.document, label: 'Renamed without the lock' },
+          revision: before.revision,
+        }),
+      ),
+      'NotLockHolder',
+    );
+
     // The refusal has to be a refusal: an error the host reports while having
     // written anyway would pass a code-only assertion.
-    const after = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId,
-    });
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId }),
+    );
     expect(after.document).toEqual(before.document);
     expect(after.revision).toEqual(before.revision);
   });
 
   it('opens read-only behind the holder, and names them', async () => {
     const sectionId = stageSection(reference.stageId);
-    const held = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const held = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     expect(held.lock).toBe('held');
     try {
-      const second = await asClient(ADA).protocolBuilder.acquireLock({
-        protocolId,
-        sectionId,
-      });
+      const second = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
       expect(second.lock).toBe('readOnly');
       if (second.lock !== 'readOnly') throw new Error('unreachable');
       expect(second.holder.userId).toBe(GRACE.principal.userId);
       expect(second.holder.displayName).toBe(GRACE.principal.name);
       expect(second.holder.sessionId).toBe(GRACE.connectionId);
     } finally {
-      await asClient(GRACE).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId,
-      });
+      await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
     }
   });
 
   it('writes a submit from the holder, and lets the next editor take it', async () => {
     const sectionId = stageSection(reference.stageId);
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     if (held.lock !== 'held') throw new Error('the section was already taken');
     const document = { ...held.document, label: 'Renamed by its holder' };
-    const written = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId,
-      document,
-      revision: held.revision,
-    });
+    const written = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId,
+        document,
+        revision: held.revision,
+      }),
+    );
     expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
 
-    const read = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId,
-    });
+    const read = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId }),
+    );
     expect(read.document.label).toBe('Renamed by its holder');
     expect(read.revision.sequence).toBe(written.revision.sequence);
 
-    await asClient(ADA).protocolBuilder.releaseLock({ protocolId, sectionId });
-    const next = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+    const next = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     expect(next.lock).toBe('held');
-    await asClient(GRACE).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId,
-    });
+    await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
   });
 
   it('registers a created stage in the stage order at the same revision', async () => {
-    const before = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     const orderBefore = before.document.stages;
     if (!Array.isArray(orderBefore))
       throw new Error('stageOrder is not a list');
 
-    const created = await asClient(ADA).protocolBuilder.create({
-      protocolId,
-      requestId: randomUUID(),
-      kind: 'stage',
-      document: {
-        type: 'Information',
-        label: 'Created by the host',
-        title: 'Created by the host',
-        items: [],
-      },
-      position: 1,
-    });
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: {
+          type: 'Information',
+          label: 'Created by the host',
+          title: 'Created by the host',
+          items: [],
+        },
+        position: 1,
+      }),
+    );
 
-    const order = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     const stageId = created.sectionId.slice('stage:'.length);
     expect(order.document.stages).toEqual([
       orderBefore[0],
@@ -616,43 +812,42 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // One atomic operation, so both sections carry one sequence — that is what
     // makes "the stage and its pointer landed together" observable.
     expect(order.revision.sequence).toBe(created.revision.sequence);
-    const stage = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: created.sectionId,
-    });
+    const stage = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: created.sectionId }),
+    );
     expect(stage.revision.sequence).toBe(created.revision.sequence);
     expect(stage.document.id).toBe(stageId);
 
-    const listed = await asClient(ADA).protocolBuilder.listSections({
-      protocolId,
-    });
+    const listed = await call(ADA, host.rpc('ListSections', { protocolId }));
     expect(listed.sectionIds).toContain(created.sectionId);
   });
 
   it('refuses a refactor whose sections another editor holds, naming them', async () => {
     const sectionId = stageSection(reference.stageId);
-    const held = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const held = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     expect(held.lock).toBe('held');
-    const codebookSection = `codebook:node:${reference.typeId}`;
-    const before = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: codebookSection,
-    });
+    const codebookSection = sid(`codebook:node:${reference.typeId}`);
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: codebookSection }),
+    );
     try {
-      const { error } = await safe(
-        asClient(ADA).protocolBuilder.refactor.deleteVariable({
-          protocolId,
-          subject: { entity: 'node', type: reference.typeId },
-          variableId: reference.variableId,
-        }),
+      const error = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('RefactorDeleteVariable', {
+            protocolId,
+            subject: { entity: 'node', type: reference.typeId },
+            variableId: reference.variableId,
+          }),
+        ),
+        'SectionsLocked',
       );
-      if (!isDefinedError(error) || error.code !== 'SECTIONS_LOCKED') {
-        throw error ?? new Error('the refactor was not refused at all');
-      }
-      const blocked = error.data.blocked;
+      const blocked = error.blocked;
       expect(blocked.map((entry) => entry.sectionId)).toContain(sectionId);
       const holder = blocked.find(
         (entry) => entry.sectionId === sectionId,
@@ -660,16 +855,13 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       expect(holder?.userId).toBe(GRACE.principal.userId);
       expect(holder?.displayName).toBe(GRACE.principal.name);
     } finally {
-      await asClient(GRACE).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId,
-      });
+      await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
     }
     // Blocked means nothing was written, including the section nobody held.
-    const after = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: codebookSection,
-    });
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: codebookSection }),
+    );
     expect(after.document).toEqual(before.document);
   });
 
@@ -681,10 +873,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    */
   it('applies a refactor once every section it writes is free', async () => {
     const sectionId = stageSection(reference.stageId);
-    const stageBefore = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId,
-    });
+    const stageBefore = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId }),
+    );
     const fieldsBefore = formFields(stageBefore.document);
     if (fieldsBefore === undefined) throw new Error('stage has no form');
     expect(
@@ -694,28 +886,32 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ),
     ).not.toHaveLength(0);
 
-    const applied = await asClient(ADA).protocolBuilder.refactor.deleteVariable(
-      {
+    const applied = await call(
+      ADA,
+      host.rpc('RefactorDeleteVariable', {
         protocolId,
         subject: { entity: 'node', type: reference.typeId },
         variableId: reference.variableId,
-      },
+      }),
     );
     expect(applied.changedSections).toContain(sectionId);
 
-    const codebook = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: `codebook:node:${reference.typeId}`,
-    });
+    const codebook = await call(
+      ADA,
+      host.rpc('GetSection', {
+        protocolId,
+        sectionId: sid(`codebook:node:${reference.typeId}`),
+      }),
+    );
     expect(
       (codebook.document.variables as Record<string, unknown>)[
         reference.variableId
       ],
     ).toBeUndefined();
-    const stage = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId,
-    });
+    const stage = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId }),
+    );
     expect(formFields(stage.document)).toEqual(
       fieldsBefore.filter(
         (field) =>
@@ -729,34 +925,34 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
 
   it('refuses a deletion whose references it cannot remove, and names them', async () => {
     const sectionId = stageSection(unstrippable.stageId);
-    const codebookSection = `codebook:node:${unstrippable.typeId}`;
-    const before = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: codebookSection,
-    });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.refactor.deleteVariable({
-        protocolId,
-        subject: { entity: 'node', type: unstrippable.typeId },
-        variableId: unstrippable.variableId,
-      }),
+    const codebookSection = sid(`codebook:node:${unstrippable.typeId}`);
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: codebookSection }),
     );
 
     // Dropping the prompt would leave a stage with none, and no other reading
     // of "remove this reference" is one the researcher asked for — so the
     // change is refused whole, naming what is still using the variable.
-    if (!isDefinedError(error) || error.code !== 'REFERENCES_REMAIN') {
-      throw error ?? new Error('the deletion was not refused at all');
-    }
-    expect(error.data.remaining).toContainEqual({
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('RefactorDeleteVariable', {
+          protocolId,
+          subject: { entity: 'node', type: unstrippable.typeId },
+          variableId: unstrippable.variableId,
+        }),
+      ),
+      'ReferencesRemain',
+    );
+    expect(error.remaining).toContainEqual({
       sectionId,
       path: ['prompts', 0, 'variable'],
     });
-    const after = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: codebookSection,
-    });
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: codebookSection }),
+    );
     expect(after.document).toEqual(before.document);
   });
 
@@ -768,34 +964,40 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    */
   it('promotes a staged resource in the submitting section’s own revision', async () => {
     const stage = await createStage(ADA, 'Names a secret');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'promoted-secret',
-      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'promoted-secret',
+        request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
 
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-    const written = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Names a secret' },
-      revision: held.revision,
-      promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    const written = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Names a secret' },
+        revision: held.revision,
+        promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
+      }),
+    );
 
     expect(written.promoted?.map((entry) => entry.status)).toEqual([
       'committed',
     ]);
-    const assets = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'assets',
-    });
+    const assets = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
+    );
     expect(assets.document[staged.data.descriptor.id]).toMatchObject({
       name: 'Mapbox token',
       type: 'apikey',
@@ -803,56 +1005,60 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // One sequence across both sections is what "atomic" means to a watcher
     // reading the stream in order.
     expect(assets.revision.sequence).toBe(written.revision.sequence);
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    // Mutation: skip Submit's `completePromotion` → the edit still lists
+    // the promoted resource as staged.
+    expect(await stagedIds(EDIT)).not.toContain(staged.data.descriptor.id);
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   it('writes neither the section nor the manifest when a promotion fails', async () => {
     const stage = await createStage(ADA, 'Renamed beside a bad promotion');
-    const assetsBefore = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'assets',
-    });
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.submit({
-        protocolId,
-        requestId: randomUUID(),
-        sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Renamed' },
-        revision: held.revision,
-        promote: { editId: EDIT, resourceIds: ['never-staged'] },
-      }),
+    const assetsBefore = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
+    );
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
     );
 
-    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
-      throw error ?? new Error('the submit was not refused at all');
-    }
-    expect(error.data).toMatchObject({
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId: stage.sectionId,
+          document: { ...held.document, label: 'Renamed' },
+          revision: held.revision,
+          promote: { editId: EDIT, resourceIds: ['never-staged'] },
+        }),
+      ),
+      'PromotionFailed',
+    );
+
+    expect(error).toMatchObject({
       sectionId: stage.sectionId,
       failure: { reason: 'not-found', resourceId: 'never-staged' },
     });
-    const after = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+    );
     expect(after.document.label).toBe('Renamed beside a bad promotion');
     expect(after.revision).toEqual(held.revision);
-    const assets = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'assets',
-    });
+    const assets = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
+    );
     expect(assets.document).toEqual(assetsBefore.document);
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   /**
@@ -863,48 +1069,57 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    */
   it('hands a staged and a promoted API key back through inspect', async () => {
     const stage = await createStage(ADA, 'Reads its key back');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'readable-secret',
-      request: { kind: 'secret', name: 'Readable token', value: 'pk.readable' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'readable-secret',
+        request: {
+          kind: 'secret',
+          name: 'Readable token',
+          value: 'pk.readable',
+        },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
     const resourceId = staged.data.descriptor.id;
 
-    const whileStaged = await asClient(ADA).protocolBuilder.resources.inspect({
-      protocolId,
-      editId: EDIT,
-      resourceId,
-    });
+    const whileStaged = await call(
+      ADA,
+      host.rpc('ResourcesInspect', { protocolId, editId: EDIT, resourceId }),
+    );
     expect(whileStaged.status === 'ok' && whileStaged.data.value).toBe(
       'pk.readable',
     );
 
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-    await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Reads its key back' },
-      revision: held.revision,
-      promote: { editId: EDIT, resourceIds: [resourceId] },
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Reads its key back' },
+        revision: held.revision,
+        promote: { editId: EDIT, resourceIds: [resourceId] },
+      }),
+    );
 
-    const committed = await asClient(ADA).protocolBuilder.resources.inspect({
-      protocolId,
-      resourceId,
-    });
+    const committed = await call(
+      ADA,
+      host.rpc('ResourcesInspect', { protocolId, resourceId }),
+    );
     expect(committed.status === 'ok' && committed.data.value).toBe(
       'pk.readable',
     );
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   it('seals a promoted API key instead of writing it into the protocol', async () => {
@@ -913,37 +1128,43 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // shape fails the repository-wide guard whether or not it is a real token.
     const SECRET = 'map-key-never-at-rest';
     const stage = await createStage(ADA, 'Seals its key');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'sealed-secret',
-      request: { kind: 'secret', name: 'Sealed token', value: SECRET },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'sealed-secret',
+        request: { kind: 'secret', name: 'Sealed token', value: SECRET },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
     const resourceId = staged.data.descriptor.id;
 
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-    await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Seals its key' },
-      revision: held.revision,
-      promote: { editId: EDIT, resourceIds: [resourceId] },
-    });
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Seals its key' },
+        revision: held.revision,
+        promote: { editId: EDIT, resourceIds: [resourceId] },
+      }),
+    );
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
 
     // The manifest entry names the asset and carries no value.
-    const manifest = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'assets',
-    });
+    const manifest = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
+    );
     const entry = (manifest?.document as Record<string, unknown> | undefined)?.[
       resourceId
     ];
@@ -1003,60 +1224,66 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // asset beside one, or renaming anything in it.
     const SECRET = 'map-key-submitted-beside';
     const stage = await createStage(ADA, 'Keeps its key');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'redacted-beside',
-      request: { kind: 'secret', name: 'Beside token', value: SECRET },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'redacted-beside',
+        request: { kind: 'secret', name: 'Beside token', value: SECRET },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
     const resourceId = staged.data.descriptor.id;
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-    await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Keeps its key' },
-      revision: held.revision,
-      promote: { editId: EDIT, resourceIds: [resourceId] },
-    });
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Keeps its key' },
+        revision: held.revision,
+        promote: { editId: EDIT, resourceIds: [resourceId] },
+      }),
+    );
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
 
     // The manifest as the editor now reads it: the key entry, redacted.
-    const manifest = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: 'assets',
-    });
+    const manifest = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: ASSETS }),
+    );
     expect((manifest.document as Record<string, unknown>)[resourceId]).toEqual({
       name: 'Beside token',
       type: 'apikey',
     });
 
-    const submitted = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: 'assets',
-      document: {
-        ...manifest.document,
-        districts: {
-          name: 'Districts',
-          type: 'geojson',
-          source: 'districts.geojson',
+    const submitted = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: ASSETS,
+        document: {
+          ...manifest.document,
+          districts: {
+            name: 'Districts',
+            type: 'geojson',
+            source: 'districts.geojson',
+          },
         },
-      },
-      revision: manifest.revision,
-    });
+        revision: manifest.revision,
+      }),
+    );
     expect(submitted.revision).toBeDefined();
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: 'assets',
-    });
+    await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId: ASSETS }));
 
     // The placeholder the shape check was given is never written.
     const sections = await teamRows<{ doc: string }>(
@@ -1082,28 +1309,37 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('answers a discard with the status alone', async () => {
-    const staged = await asClient(GRACE).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'discarded-secret',
-      request: { kind: 'secret', name: 'Throwaway', value: 'pk.throwaway' },
-    });
+    const staged = await call(
+      GRACE,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'discarded-secret',
+        request: { kind: 'secret', name: 'Throwaway', value: 'pk.throwaway' },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
 
-    const discarded = await asClient(GRACE).protocolBuilder.resources.discard({
-      protocolId,
-      editId: EDIT,
-      resourceId: staged.data.descriptor.id,
-    });
+    const discarded = await call(
+      GRACE,
+      host.rpc('ResourcesDiscard', {
+        protocolId,
+        editId: EDIT,
+        resourceId: staged.data.descriptor.id,
+      }),
+    );
 
     // The whole answer is the status: a `data` key whose only value is
     // `undefined` is one a transport may drop and a schema then rejects.
     expect(discarded).toStrictEqual({ status: 'ok' });
-    const again = await asClient(GRACE).protocolBuilder.resources.discard({
-      protocolId,
-      editId: EDIT,
-      resourceId: staged.data.descriptor.id,
-    });
+    const again = await call(
+      GRACE,
+      host.rpc('ResourcesDiscard', {
+        protocolId,
+        editId: EDIT,
+        resourceId: staged.data.descriptor.id,
+      }),
+    );
     expect(again).toStrictEqual({
       status: 'failed',
       failure: {
@@ -1119,68 +1355,61 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const created = await createStage(ADA, 'Created to be deleted');
     const stageId = created.sectionId.slice('stage:'.length);
 
-    const deleted = await asClient(ADA).protocolBuilder.delete({
-      protocolId,
-      sectionId: created.sectionId,
-    });
+    const deleted = await call(
+      ADA,
+      host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+    );
 
     expect(deleted.changedSections).toEqual([created.sectionId, 'stageOrder']);
-    const order = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     // A pointer left behind, or a section left out of the order, is a protocol
     // that cannot be assembled at all.
     expect(order.document.stages).not.toContain(stageId);
     expect(order.revision.sequence).toBe(deleted.revision.sequence);
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.getSection({
-        protocolId,
-        sectionId: created.sectionId,
-      }),
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: created.sectionId }),
+      ),
+      'SectionNotFound',
     );
-    expect(isDefinedError(error) && error.code).toBe('SECTION_NOT_FOUND');
-    const listed = await asClient(ADA).protocolBuilder.listSections({
-      protocolId,
-    });
+    const listed = await call(ADA, host.rpc('ListSections', { protocolId }));
     expect(listed.sectionIds).not.toContain(created.sectionId);
   });
 
   it('refuses to delete a stage an editor holds, and names them', async () => {
     const created = await createStage(ADA, 'Held while someone deletes it');
-    const held = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: created.sectionId,
-    });
+    const held = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId: created.sectionId }),
+    );
     expect(held.lock).toBe('held');
 
     try {
-      const { error } = await safe(
-        asClient(ADA).protocolBuilder.delete({
-          protocolId,
-          sectionId: created.sectionId,
-        }),
+      const error = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+        ),
+        'SectionsLocked',
       );
-
-      if (!isDefinedError(error) || error.code !== 'SECTIONS_LOCKED') {
-        throw error ?? new Error('the deletion was not refused at all');
-      }
-      expect(error.data.blocked.map((entry) => entry.sectionId)).toEqual([
+      expect(error.blocked.map((entry) => entry.sectionId)).toEqual([
         created.sectionId,
       ]);
-      expect(error.data.blocked[0]?.holder?.userId).toBe(
-        GRACE.principal.userId,
-      );
+      expect(error.blocked[0]?.holder?.userId).toBe(GRACE.principal.userId);
     } finally {
-      await asClient(GRACE).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId: created.sectionId,
-      });
+      await call(
+        GRACE,
+        host.rpc('ReleaseLock', { protocolId, sectionId: created.sectionId }),
+      );
     }
-    const order = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     expect(order.document.stages).toContain(
       created.sectionId.slice('stage:'.length),
     );
@@ -1194,59 +1423,59 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   it('refuses to delete a stage another stage jumps to, naming where', async () => {
     const destination = await createStage(ADA, 'Jumped to');
     const source = await createStage(ADA, 'Jumps somewhere');
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: source.sectionId,
-    });
-    await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: source.sectionId,
-      document: {
-        ...held.document,
-        skipLogic: {
-          action: 'SKIP',
-          filter: {
-            rules: [
-              { type: 'node', id: 'rule-1', options: { operator: 'EXISTS' } },
-            ],
-          },
-          destination: {
-            type: 'stage',
-            stageId: destination.sectionId.slice('stage:'.length),
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: source.sectionId }),
+    );
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: source.sectionId,
+        document: {
+          ...held.document,
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              rules: [
+                { type: 'node', id: 'rule-1', options: { operator: 'EXISTS' } },
+              ],
+            },
+            destination: {
+              type: 'stage',
+              stageId: destination.sectionId.slice('stage:'.length),
+            },
           },
         },
-      },
-      revision: held.revision,
-    });
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: source.sectionId,
-    });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.delete({
-        protocolId,
-        sectionId: destination.sectionId,
+        revision: held.revision,
       }),
+    );
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: source.sectionId }),
     );
 
     // Rewriting a collaborator's skip logic as a side effect of removing
     // something else is not a deletion anybody asked for, so the dependants are
     // named — with the field, which is what a dialog points the researcher at.
-    if (!isDefinedError(error) || error.code !== 'REFERENCES_REMAIN') {
-      throw error ?? new Error('the deletion was not refused at all');
-    }
-    expect(error.data.remaining).toEqual([
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: destination.sectionId }),
+      ),
+      'ReferencesRemain',
+    );
+    expect(error.remaining).toEqual([
       {
         sectionId: source.sectionId,
         path: ['skipLogic', 'destination', 'stageId'],
       },
     ]);
-    const order = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     expect(order.document.stages).toContain(
       destination.sectionId.slice('stage:'.length),
     );
@@ -1254,105 +1483,114 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
 
   it('refuses a promoting submit while an editor holds the asset manifest', async () => {
     const stage = await createStage(ADA, 'Promotes behind a held manifest');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'blocked-manifest-secret',
-      request: { kind: 'secret', name: 'Blocked token', value: 'pk.blocked' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'blocked-manifest-secret',
+        request: { kind: 'secret', name: 'Blocked token', value: 'pk.blocked' },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const manifest = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: 'assets',
-    });
+    const manifest = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId: ASSETS }),
+    );
     expect(manifest.lock).toBe('held');
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
 
     try {
-      const { error } = await safe(
-        asClient(ADA).protocolBuilder.submit({
-          protocolId,
-          requestId: randomUUID(),
-          sectionId: stage.sectionId,
-          document: { ...held.document, label: 'Renamed' },
-          revision: held.revision,
-          promote: {
-            editId: EDIT,
-            resourceIds: [staged.data.descriptor.id],
-          },
-        }),
-      );
-
       // The editor holding the manifest would submit its own whole manifest
       // next, over the entry this promotion added — leaving the saved section
       // naming a resource the protocol no longer has.
-      if (!isDefinedError(error) || error.code !== 'SECTIONS_LOCKED') {
-        throw error ?? new Error('the submit was not refused at all');
-      }
-      expect(error.data.blocked.map((entry) => entry.sectionId)).toEqual([
-        'assets',
-      ]);
-      expect(error.data.blocked[0]?.holder?.userId).toBe(
-        GRACE.principal.userId,
+      const error = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId: stage.sectionId,
+            document: { ...held.document, label: 'Renamed' },
+            revision: held.revision,
+            promote: {
+              editId: EDIT,
+              resourceIds: [staged.data.descriptor.id],
+            },
+          }),
+        ),
+        'SectionsLocked',
       );
-      const after = await asClient(ADA).protocolBuilder.getSection({
-        protocolId,
-        sectionId: stage.sectionId,
-      });
+      expect(error.blocked.map((entry) => entry.sectionId)).toEqual(['assets']);
+      expect(error.blocked[0]?.holder?.userId).toBe(GRACE.principal.userId);
+      const after = await call(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+      );
       expect(after.revision).toEqual(held.revision);
       expect(manifest.document[staged.data.descriptor.id]).toBeUndefined();
     } finally {
-      await asClient(GRACE).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId: 'assets',
-      });
-      await asClient(ADA).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId: stage.sectionId,
-      });
+      await call(
+        GRACE,
+        host.rpc('ReleaseLock', { protocolId, sectionId: ASSETS }),
+      );
+      await call(
+        ADA,
+        host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+      );
     }
   });
 
   it('refuses a create while an editor holds the stage index', async () => {
-    const before = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
-    const held = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    const held = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId: STAGE_ORDER }),
+    );
     expect(held.lock).toBe('held');
 
     try {
-      const { error } = await safe(createStage(ADA, 'Never registered'));
-
       // The editor holding the index has a whole-section draft that does not
       // know about the new stage: its next submit would take the pointer out
       // and leave the section behind, which is a protocol that cannot be
       // assembled.
-      if (!isDefinedError(error) || error.code !== 'SECTIONS_LOCKED') {
-        throw error ?? new Error('the create was not refused at all');
-      }
-      expect(error.data.blocked.map((entry) => entry.sectionId)).toEqual([
+      const error = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Create', {
+            protocolId,
+            requestId: randomUUID(),
+            kind: 'stage',
+            document: {
+              type: 'Information',
+              label: 'Never registered',
+              title: 'Never registered',
+              items: [],
+            },
+          }),
+        ),
+        'SectionsLocked',
+      );
+      expect(error.blocked.map((entry) => entry.sectionId)).toEqual([
         'stageOrder',
       ]);
-      expect(error.data.blocked[0]?.holder?.userId).toBe(
-        GRACE.principal.userId,
-      );
+      expect(error.blocked[0]?.holder?.userId).toBe(GRACE.principal.userId);
     } finally {
-      await asClient(GRACE).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId: 'stageOrder',
-      });
+      await call(
+        GRACE,
+        host.rpc('ReleaseLock', { protocolId, sectionId: STAGE_ORDER }),
+      );
     }
-    const after = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     expect(after.document.stages).toEqual(before.document.stages);
   });
 
@@ -1361,92 +1599,105 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    * place a resource imported while composing it can become the protocol's.
    */
   it('promotes a staged resource with the stage being created', async () => {
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'created-with-secret',
-      request: { kind: 'secret', name: 'Created token', value: 'pk.created' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'created-with-secret',
+        request: { kind: 'secret', name: 'Created token', value: 'pk.created' },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
 
-    const created = await asClient(ADA).protocolBuilder.create({
-      protocolId,
-      requestId: randomUUID(),
-      kind: 'stage',
-      document: {
-        type: 'Information',
-        label: 'Carries a secret',
-        title: 'Carries a secret',
-        items: [],
-      },
-      promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
-    });
-
-    expect(created.promoted?.map((entry) => entry.status)).toEqual([
-      'committed',
-    ]);
-    const assets = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'assets',
-    });
-    expect(assets.document[staged.data.descriptor.id]).toMatchObject({
-      name: 'Created token',
-      type: 'apikey',
-    });
-    const order = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
-    // The section, its pointer and the manifest entry are one revision, which
-    // is what a watcher reading the stream in order sees.
-    expect(assets.revision.sequence).toBe(created.revision.sequence);
-    expect(order.revision.sequence).toBe(created.revision.sequence);
-  });
-
-  it('creates no stage when the promotion it carries cannot be committed', async () => {
-    const before = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.create({
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
         document: {
           type: 'Information',
-          label: 'Never made',
-          title: 'Never made',
+          label: 'Carries a secret',
+          title: 'Carries a secret',
           items: [],
         },
-        promote: { editId: EDIT, resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
       }),
     );
 
-    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
-      throw error ?? new Error('the create was not refused at all');
-    }
+    expect(created.promoted?.map((entry) => entry.status)).toEqual([
+      'committed',
+    ]);
+    const assets = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
+    );
+    expect(assets.document[staged.data.descriptor.id]).toMatchObject({
+      name: 'Created token',
+      type: 'apikey',
+    });
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    // The section, its pointer and the manifest entry are one revision, which
+    // is what a watcher reading the stream in order sees.
+    expect(assets.revision.sequence).toBe(created.revision.sequence);
+    expect(order.revision.sequence).toBe(created.revision.sequence);
+    // Mutation: skip Create's `completePromotion` → the edit still lists the
+    // promoted resource as staged.
+    expect(await stagedIds(EDIT)).not.toContain(staged.data.descriptor.id);
+  });
+
+  it('creates no stage when the promotion it carries cannot be committed', async () => {
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'stage',
+          document: {
+            type: 'Information',
+            label: 'Never made',
+            title: 'Never made',
+            items: [],
+          },
+          promote: { editId: EDIT, resourceIds: ['never-staged'] },
+        }),
+      ),
+      'PromotionFailed',
+    );
+
     // No section id: the host mints one only for a section it will write.
-    expect(error.data.sectionId).toBeUndefined();
-    expect(error.data.failure).toMatchObject({
+    expect(error.sectionId).toBeUndefined();
+    expect(error.failure).toMatchObject({
       reason: 'not-found',
       resourceId: 'never-staged',
     });
-    const after = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     expect(after.document.stages).toEqual(before.document.stages);
   });
 
   it('replays the stage a retried create already made, rather than a second one', async () => {
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'retried-create-secret',
-      request: { kind: 'secret', name: 'Retried token', value: 'pk.retried' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'retried-create-secret',
+        request: { kind: 'secret', name: 'Retried token', value: 'pk.retried' },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
     const document = {
       type: 'Information',
@@ -1456,82 +1707,101 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     };
     const promote = {
       editId: EDIT,
-      resourceIds: [staged.data.descriptor.id],
+      resourceIds: [staged.data.descriptor.id] as const,
     };
     // The id the retry repeats: one intent, asked twice, because the answer
     // to the first attempt can be lost on its way back.
     const requestId = randomUUID();
-    const created = await asClient(ADA).protocolBuilder.create({
-      protocolId,
-      requestId,
-      kind: 'stage',
-      document,
-      promote,
-    });
-    const afterFirst = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId,
+        kind: 'stage',
+        document,
+        promote,
+      }),
+    );
+    const afterFirst = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
 
-    const retried = await asClient(ADA).protocolBuilder.create({
-      protocolId,
-      requestId,
-      kind: 'stage',
-      document,
-      promote,
-    });
+    const retried = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId,
+        kind: 'stage',
+        document,
+        promote,
+      }),
+    );
 
     // A second create would mint a second stage id, and the retry would be
     // told about a stage its first attempt never made.
     expect(retried.sectionId).toBe(created.sectionId);
     expect(retried.revision).toEqual(created.revision);
-    const order = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     expect(order.document.stages).toEqual(afterFirst.document.stages);
   });
 
   it('replays what a retried promoting submit already wrote', async () => {
     const stage = await createStage(ADA, 'Saved once');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'retried-submit-secret',
-      request: { kind: 'secret', name: 'Resubmitted', value: 'pk.resubmitted' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'retried-submit-secret',
+        request: {
+          kind: 'secret',
+          name: 'Resubmitted',
+          value: 'pk.resubmitted',
+        },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
     const promote = {
       editId: EDIT,
-      resourceIds: [staged.data.descriptor.id],
+      resourceIds: [staged.data.descriptor.id] as const,
     };
     const requestId = randomUUID();
-    const written = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId,
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Saved once' },
-      revision: held.revision,
-      promote,
-    });
+    const written = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId,
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Saved once' },
+        revision: held.revision,
+        promote,
+      }),
+    );
     // The editor closed on the answer it never received, giving the lock back.
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
 
-    const retried = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId,
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Saved once' },
-      revision: held.revision,
-      promote,
-    });
+    const retried = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId,
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Saved once' },
+        revision: held.revision,
+        promote,
+      }),
+    );
 
     // Refusing here would turn a save that succeeded into one the researcher
     // is told to discard a draft over.
@@ -1549,35 +1819,47 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    * the edit beside the one that staged it.
    */
   it('keeps one edit’s staged resource out of the edit open beside it', async () => {
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'two-edits-secret',
-      request: { kind: 'secret', name: 'One edit’s token', value: 'pk.one' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'two-edits-secret',
+        request: { kind: 'secret', name: 'One edit’s token', value: 'pk.one' },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
     const resourceId = staged.data.descriptor.id;
 
-    const listed = await asClient(ADA).protocolBuilder.resources.list({
-      protocolId,
-      editId: OTHER_EDIT,
-      status: 'staged',
-    });
-    const inspected = await asClient(ADA).protocolBuilder.resources.inspect({
-      protocolId,
-      editId: OTHER_EDIT,
-      resourceId,
-    });
-    const discarded = await asClient(ADA).protocolBuilder.resources.discard({
-      protocolId,
-      editId: OTHER_EDIT,
-      resourceId,
-    });
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', {
+        protocolId,
+        editId: OTHER_EDIT,
+        status: 'staged',
+      }),
+    );
+    const inspected = await call(
+      ADA,
+      host.rpc('ResourcesInspect', {
+        protocolId,
+        editId: OTHER_EDIT,
+        resourceId,
+      }),
+    );
+    const discarded = await call(
+      ADA,
+      host.rpc('ResourcesDiscard', {
+        protocolId,
+        editId: OTHER_EDIT,
+        resourceId,
+      }),
+    );
     // The other edit's own cancel, which drops everything IT staged.
-    await asClient(ADA).protocolBuilder.resources.discard({
-      protocolId,
-      editId: OTHER_EDIT,
-    });
+    await call(
+      ADA,
+      host.rpc('ResourcesDiscard', { protocolId, editId: OTHER_EDIT }),
+    );
 
     if (listed.status !== 'ok') throw new Error('listing failed');
     expect(listed.data.resources.map((entry) => entry.id)).not.toContain(
@@ -1588,71 +1870,78 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       failure: { reason: 'not-found' },
     });
     expect(discarded).toMatchObject({ status: 'failed' });
-    const mine = await asClient(ADA).protocolBuilder.resources.list({
-      protocolId,
-      editId: EDIT,
-      status: 'staged',
-    });
+    const mine = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId: EDIT, status: 'staged' }),
+    );
     if (mine.status !== 'ok') throw new Error('listing failed');
     expect(mine.data.resources.map((entry) => entry.id)).toContain(resourceId);
   });
 
   it('refuses a promotion naming a resource another edit staged', async () => {
     const stage = await createStage(ADA, 'Promotes what it never staged');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'not-this-edits-secret',
-      request: { kind: 'secret', name: 'Not yours', value: 'pk.notyours' },
-    });
-    if (staged.status !== 'ok') throw new Error('staging failed');
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.submit({
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
         protocolId,
-        requestId: randomUUID(),
-        sectionId: stage.sectionId,
-        document: held.document,
-        revision: held.revision,
-        promote: {
-          editId: OTHER_EDIT,
-          resourceIds: [staged.data.descriptor.id],
-        },
+        editId: EDIT,
+        requestId: 'not-this-edits-secret',
+        request: { kind: 'secret', name: 'Not yours', value: 'pk.notyours' },
       }),
+    );
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
     );
 
     // A promotion takes the naming edit's own files and no others: a dialog
     // saving over a stage editor must not commit what the editor imported and
     // has not saved.
-    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
-      throw error ?? new Error('the submit was not refused at all');
-    }
-    expect(error.data.failure).toMatchObject({
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId: stage.sectionId,
+          document: held.document,
+          revision: held.revision,
+          promote: {
+            editId: OTHER_EDIT,
+            resourceIds: [staged.data.descriptor.id],
+          },
+        }),
+      ),
+      'PromotionFailed',
+    );
+    expect(error.failure).toMatchObject({
       reason: 'not-found',
       resourceId: staged.data.descriptor.id,
     });
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   it('lists only what the protocol has committed when no edit is named', async () => {
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'unnamed-edit-secret',
-      request: { kind: 'secret', name: 'Still an import', value: 'pk.import' },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'unnamed-edit-secret',
+        request: {
+          kind: 'secret',
+          name: 'Still an import',
+          value: 'pk.import',
+        },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
 
-    const listed = await asClient(ADA).protocolBuilder.resources.list({
-      protocolId,
-    });
+    const listed = await call(ADA, host.rpc('ResourcesList', { protocolId }));
 
     // A caller that names no edit is asking what the protocol holds, and an
     // import nobody has saved yet is not part of it.
@@ -1671,10 +1960,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    */
   it('replays a retried submit and a retried create that promote nothing', async () => {
     const stage = await createStage(ADA, 'Saved without a promotion');
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
     const submitId = randomUUID();
     const submitted = {
       protocolId,
@@ -1683,12 +1972,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       document: { ...held.document, label: 'Saved without a promotion' },
       revision: held.revision,
     };
-    const written = await asClient(ADA).protocolBuilder.submit(submitted);
+    const written = await call(ADA, host.rpc('Submit', submitted));
     // The editor closed on the answer it never received, giving the lock back.
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
     const createId = randomUUID();
     const creating = {
       protocolId,
@@ -1701,14 +1990,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         items: [],
       },
     };
-    const created = await asClient(ADA).protocolBuilder.create(creating);
-    const afterFirst = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const created = await call(ADA, host.rpc('Create', creating));
+    const afterFirst = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
 
-    const retriedSubmit = await asClient(ADA).protocolBuilder.submit(submitted);
-    const retriedCreate = await asClient(ADA).protocolBuilder.create(creating);
+    const retriedSubmit = await call(ADA, host.rpc('Submit', submitted));
+    const retriedCreate = await call(ADA, host.rpc('Create', creating));
 
     // A second submit would make a revision nothing changed in — and, with
     // the lock given back, be refused outright; a second create would leave
@@ -1716,51 +2005,60 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(retriedSubmit.revision).toEqual(written.revision);
     expect(retriedCreate.sectionId).toBe(created.sectionId);
     expect(retriedCreate.revision).toEqual(created.revision);
-    const order = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'stageOrder',
-    });
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
     expect(order.document.stages).toEqual(afterFirst.document.stages);
   });
 
   it('replays a retried write against a server that restarted in between', async () => {
     const stage = await createStage(ADA, 'Saved before the restart');
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-    const call = {
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    const payload = {
       protocolId,
       requestId: randomUUID(),
       sectionId: stage.sectionId,
       document: { ...held.document, label: 'Saved before the restart' },
       revision: held.revision,
     };
-    const written = await asClient(ADA).protocolBuilder.submit(call);
-    const afterFirst = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const written = await call(ADA, host.rpc('Submit', payload));
+    const afterFirst = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+    );
 
-    // A new router is a new process: its staging areas and its lease keeper
+    // A new host is a new process: its staging areas and its lease keeper
     // are empty, and the database is all it has. The client whose answer went
     // missing is exactly the client that reconnects to a server that came
     // back up, so a record kept only in memory would answer nothing.
-    const restarted = clientOn(buildRouter(), ADA);
-    const retried = await restarted.protocolBuilder.submit(call);
+    const restarted = await createProtocolBuilderClient(studio, {
+      objectStore,
+    });
+    try {
+      const retried = await restarted.call(
+        callerOf(ADA),
+        restarted.rpc('Submit', payload),
+      );
 
-    expect(retried.revision).toEqual(written.revision);
+      expect(retried.revision).toEqual(written.revision);
+    } finally {
+      await restarted.dispose();
+    }
     // And wrote nothing on its way to that answer: the section is where the
     // first attempt left it.
-    const section = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const section = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+    );
     expect(section.revision).toEqual(afterFirst.revision);
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   /**
@@ -1771,44 +2069,50 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   it('commits promoted bytes under their content hash, keeping the display name', async () => {
     const stage = await createStage(ADA, 'Names a photograph');
     const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'promoted-portrait',
-      request: {
-        kind: 'content',
-        contentKind: 'image',
-        name: 'Nook',
-        source: 'nook.png',
-        contentType: 'image/png',
-        bytes: new Blob([bytes], { type: 'image/png' }),
-      },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'promoted-portrait',
+        request: {
+          kind: 'content',
+          contentKind: 'image',
+          name: 'Nook',
+          source: 'nook.png',
+          contentType: 'image/png',
+          bytes,
+        },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
     const resourceId = staged.data.descriptor.id;
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
 
-    const written = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: stage.sectionId,
-      document: held.document,
-      revision: held.revision,
-      promote: { editId: EDIT, resourceIds: [resourceId] },
-    });
+    const written = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: held.document,
+        revision: held.revision,
+        promote: { editId: EDIT, resourceIds: [resourceId] },
+      }),
+    );
 
     // Worked out from the bytes here rather than read back off the host: a
     // host still committing them under the caller's filename fails this
     // instead of agreeing with itself.
     const digest = createHash('sha256').update(bytes).digest('hex');
     const source = `${digest}.png`;
-    const assets = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: 'assets',
-    });
+    const assets = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
+    );
     expect(assets.document[resourceId]).toEqual({
       name: 'Nook',
       type: 'image',
@@ -1817,9 +2121,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(written.promoted).toEqual([
       expect.objectContaining({ id: resourceId, status: 'committed', source }),
     ]);
-    const listed = await asClient(ADA).protocolBuilder.resources.list({
-      protocolId,
-    });
+    const listed = await call(ADA, host.rpc('ResourcesList', { protocolId }));
     if (listed.status !== 'ok') throw new Error('listing failed');
     expect(listed.data.resources).toContainEqual(
       expect.objectContaining({
@@ -1830,48 +2132,50 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       }),
     );
     // The bytes are reachable at the hash the manifest names them by.
-    const preview = await asClient(ADA).protocolBuilder.resources.preview({
-      protocolId,
-      resourceId,
-    });
+    const preview = await call(
+      ADA,
+      host.rpc('ResourcesPreview', { protocolId, resourceId }),
+    );
     expect(preview).toMatchObject({
       status: 'ok',
       data: { url: `/storage/${digest}` },
     });
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   it('keeps a staged resource out of another editor’s discard', async () => {
-    const staged = await asClient(GRACE).protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'grace-keeps-this',
-      request: { kind: 'secret', name: 'Grace’s token', value: 'pk.grace' },
-    });
+    const staged = await call(
+      GRACE,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: EDIT,
+        requestId: 'grace-keeps-this',
+        request: { kind: 'secret', name: 'Grace’s token', value: 'pk.grace' },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error('staging failed');
     const resourceId = staged.data.descriptor.id;
 
-    const byId = await asClient(ADA).protocolBuilder.resources.discard({
-      protocolId,
-      editId: EDIT,
-      resourceId,
-    });
-    const wholesale = await asClient(ADA).protocolBuilder.resources.discard({
-      protocolId,
-      editId: EDIT,
-    });
+    const byId = await call(
+      ADA,
+      host.rpc('ResourcesDiscard', { protocolId, editId: EDIT, resourceId }),
+    );
+    const wholesale = await call(
+      ADA,
+      host.rpc('ResourcesDiscard', { protocolId, editId: EDIT }),
+    );
 
     // A protocol has as many edits open as it has editors, and cancelling one
     // must not take away the file another is about to submit.
     expect(byId).toMatchObject({ status: 'failed' });
     expect(wholesale).toStrictEqual({ status: 'ok' });
-    const listed = await asClient(GRACE).protocolBuilder.resources.list({
-      protocolId,
-      editId: EDIT,
-    });
+    const listed = await call(
+      GRACE,
+      host.rpc('ResourcesList', { protocolId, editId: EDIT }),
+    );
     if (listed.status !== 'ok') throw new Error('listing failed');
     expect(listed.data.resources.map((entry) => entry.id)).toContain(
       resourceId,
@@ -1889,52 +2193,64 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   it('drops what a caller with no channel staged once the idle bound passes', async () => {
     // A tab of Ada's that never opens one, which is the whole population this
     // bound is for.
-    const unary = clientOn(router, {
+    const unary = callerOf({
       ...ADA,
       connectionId: 'pb-ada-unary-connection',
       clientSessionId: 'pb-ada-unary-tab',
     });
-    const abandoned = await unary.protocolBuilder.resources.stage({
-      protocolId,
-      editId: EDIT,
-      requestId: 'unary-import',
-      request: {
-        kind: 'secret',
-        name: 'A token nobody saved',
-        value: 'pk.gone',
-      },
-    });
-    const watch = await watching(asClient(GRACE), protocolId);
-    try {
-      const watched = await asClient(GRACE).protocolBuilder.resources.stage({
+    const abandoned = await call(
+      unary,
+      host.rpc('ResourcesStage', {
         protocolId,
-        editId: OTHER_EDIT,
-        requestId: 'watched-import',
+        editId: EDIT,
+        requestId: 'unary-import',
         request: {
           kind: 'secret',
-          name: 'A token being thought about',
-          value: 'pk.kept',
+          name: 'A token nobody saved',
+          value: 'pk.gone',
         },
-      });
+      }),
+    );
+    const channel = await watching(GRACE, protocolId);
+    try {
+      const watched = await call(
+        GRACE,
+        host.rpc('ResourcesStage', {
+          protocolId,
+          editId: OTHER_EDIT,
+          requestId: 'watched-import',
+          request: {
+            kind: 'secret',
+            name: 'A token being thought about',
+            value: 'pk.kept',
+          },
+        }),
+      );
       if (abandoned.status !== 'ok' || watched.status !== 'ok') {
         throw new Error('staging failed');
       }
 
-      now += IDLE_MS + 1;
+      clock.advance(IDLE_MS + 1);
       // Somebody else's call, so neither of the two above is refreshed by
       // being the one that asked.
-      await asClient(ADA).protocolBuilder.listSections({ protocolId });
+      await call(ADA, host.rpc('ListSections', { protocolId }));
 
-      const gone = await unary.protocolBuilder.resources.list({
-        protocolId,
-        editId: EDIT,
-        status: 'staged',
-      });
-      const kept = await asClient(GRACE).protocolBuilder.resources.list({
-        protocolId,
-        editId: OTHER_EDIT,
-        status: 'staged',
-      });
+      const gone = await call(
+        unary,
+        host.rpc('ResourcesList', {
+          protocolId,
+          editId: EDIT,
+          status: 'staged',
+        }),
+      );
+      const kept = await call(
+        GRACE,
+        host.rpc('ResourcesList', {
+          protocolId,
+          editId: OTHER_EDIT,
+          status: 'staged',
+        }),
+      );
       if (gone.status !== 'ok' || kept.status !== 'ok') {
         throw new Error('listing failed');
       }
@@ -1947,88 +2263,93 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         watched.data.descriptor.id,
       );
     } finally {
-      await watch.close();
-      now = Date.now();
+      await channel.stop();
     }
   });
 
   it('creates the ego codebook a protocol does not have yet, once', async () => {
-    const { error: gone } = await safe(
-      asClient(ADA).protocolBuilder.getSection({
+    const EGO = sid('codebook:ego');
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('GetSection', {
+          protocolId: egolessProtocolId,
+          sectionId: EGO,
+        }),
+      ),
+      'SectionNotFound',
+    );
+
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
         protocolId: egolessProtocolId,
-        sectionId: 'codebook:ego',
+        requestId: randomUUID(),
+        kind: 'codebookEgo',
+        document: {
+          variables: {
+            ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+          },
+        },
       }),
     );
-    expect(isDefinedError(gone) && gone.code).toBe('SECTION_NOT_FOUND');
-
-    const created = await asClient(ADA).protocolBuilder.create({
-      protocolId: egolessProtocolId,
-      requestId: randomUUID(),
-      kind: 'codebookEgo',
-      document: {
-        variables: {
-          ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
-        },
-      },
-    });
     expect(created.sectionId).toBe('codebook:ego');
-    const ego = await asClient(ADA).protocolBuilder.getSection({
-      protocolId: egolessProtocolId,
-      sectionId: 'codebook:ego',
-    });
+    const ego = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId: egolessProtocolId, sectionId: EGO }),
+    );
     expect(ego.document.variables).toMatchObject({
       ego_age: { name: 'ego_age' },
     });
 
     // Adding the first ego attribute is what creates the section, and a second
     // create is a mistake rather than a way to replace what is there.
-    const { error } = await safe(
-      asClient(ADA).protocolBuilder.create({
-        protocolId: egolessProtocolId,
-        requestId: randomUUID(),
-        kind: 'codebookEgo',
-        document: { variables: {} },
-      }),
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Create', {
+          protocolId: egolessProtocolId,
+          requestId: randomUUID(),
+          kind: 'codebookEgo',
+          document: { variables: {} },
+        }),
+      ),
+      'SectionExists',
     );
-    if (!isDefinedError(error) || error.code !== 'SECTION_EXISTS') {
-      throw error ?? new Error('the second create was not refused');
-    }
-    expect(error.data.sectionId).toBe('codebook:ego');
-    const unchanged = await asClient(ADA).protocolBuilder.getSection({
-      protocolId: egolessProtocolId,
-      sectionId: 'codebook:ego',
-    });
+    expect(error.sectionId).toBe('codebook:ego');
+    const unchanged = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId: egolessProtocolId, sectionId: EGO }),
+    );
     expect(unchanged.document).toEqual(ego.document);
   });
 
   it('replays from a cursor with nothing missed and nothing repeated', async () => {
     // Two sections at one revision, so the tail this test resumes into
     // contains more than one event and an off-by-one replay cannot look right.
-    await asClient(ADA).protocolBuilder.create({
-      protocolId,
-      requestId: randomUUID(),
-      kind: 'stage',
-      document: {
-        type: 'Information',
-        label: 'Watched write',
-        title: 'Watched write',
-        items: [],
-      },
-    });
-
-    const wholeLog = await drain(asClient(ADA), { protocolId });
-    const cursors = wholeLog.map((entry) => entry.cursor);
-    expect(cursors.filter((cursor) => cursor !== undefined)).not.toHaveLength(
-      0,
+    await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: {
+          type: 'Information',
+          label: 'Watched write',
+          title: 'Watched write',
+          items: [],
+        },
+      }),
     );
+
+    const wholeLog = await drain(ADA, { protocolId });
+    const cursors = wholeLog.map((entry) => entry.cursor);
+    expect(cursors).not.toHaveLength(0);
     expect(new Set(cursors).size).toBe(cursors.length);
 
     const resumeFrom = cursors.at(-2);
     if (resumeFrom === undefined) throw new Error('no cursor to resume from');
-    const replayed = await drain(asClient(GRACE), {
-      protocolId,
-      since: resumeFrom,
-    });
+    const replayed = await drain(GRACE, { protocolId, since: resumeFrom });
 
     // Exactly the tail: a replay that dropped an event, or repeated the one it
     // resumed from, fails here rather than looking plausible.
@@ -2042,16 +2363,67 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       tail.map((entry) => entry.event),
     );
 
-    // A transport resuming a dropped iterator re-invokes it with the same
-    // input and the cursor this connection actually reached. Starting from the
-    // input would hand the client the whole tail a second time, on every
-    // reconnect, so the resume reads whichever of the two is further on.
-    const resumed = await drain(
-      asClient(GRACE),
-      { protocolId, since: resumeFrom },
-      cursors.at(-1),
-    );
+    // A client resuming a dropped watch asks again from the cursor its
+    // connection actually reached, which the event itself carries. Resuming
+    // from there hands it nothing it already has.
+    const resumed = await drain(GRACE, {
+      protocolId,
+      since: cursors.at(-1) ?? resumeFrom,
+    });
     expect(resumed).toEqual([]);
+  });
+
+  it('never hands a live watcher an event at or before one it already has', async () => {
+    const channel = await watching(GRACE, protocolId);
+    const createOne = (label: string) =>
+      call(
+        ADA,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'stage',
+          document: { type: 'Information', label, title: label, items: [] },
+        }),
+      );
+    const revisions = () =>
+      channel.events.filter(
+        (event): event is Extract<ProtocolEvent, { type: 'revision' }> =>
+          event.type === 'revision',
+      );
+    const first = await createOne('Seen once');
+    await until(
+      () =>
+        revisions().some((revision) => revision.sectionId === first.sectionId),
+      'the first write',
+    );
+    const seen = revisions().find(
+      (revision) => revision.sectionId === first.sectionId,
+    );
+    if (seen?.cursor === undefined)
+      throw new Error('the revision had no cursor');
+    // The same logged event again, as a subscription that went live before
+    // the backlog it overlaps was read would hand it over a second time.
+    const { cursor, ...logged } = seen;
+    await host.run(
+      ProtocolEvents.use((events) =>
+        events.publish(draftId, [{ cursor, event: logged }]),
+      ),
+    );
+    const second = await createOne('Seen after');
+    await until(
+      () =>
+        revisions().some((revision) => revision.sectionId === second.sectionId),
+      'the second write',
+    );
+    await channel.stop();
+    // Mutation: drop the cursor check from `WatchProtocol` → the duplicate is
+    // delivered and this counts two.
+    expect(
+      channel.events.filter(
+        (delivered) =>
+          delivered.type !== 'presence' && delivered.cursor === cursor,
+      ),
+    ).toHaveLength(1);
   });
 
   /**
@@ -2061,23 +2433,23 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    */
   it('refuses a second tab of the same researcher, and names the tab holding it', async () => {
     const sectionId = stageSection(reference.stageId);
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     expect(held.lock).toBe('held');
     try {
       // The same person on the same cookie session, in a second tab: a
       // different tab id, and so a different owner.
-      const secondTab = clientFor({
+      const secondTab = callerOf({
         ...ADA,
         connectionId: 'pb-ada-second-connection',
         clientSessionId: 'pb-ada-second-tab',
       });
-      const behind = await secondTab.protocolBuilder.acquireLock({
-        protocolId,
-        sectionId,
-      });
+      const behind = await call(
+        secondTab,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
       expect(behind.lock).toBe('readOnly');
       if (behind.lock !== 'readOnly') throw new Error('unreachable');
       expect(behind.holder.userId).toBe(ADA.principal.userId);
@@ -2085,24 +2457,24 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
 
       // The refusal has to be a refusal: the second tab cannot write the
       // section it is reading.
-      const { error } = await safe(
-        secondTab.protocolBuilder.submit({
-          protocolId,
-          requestId: randomUUID(),
-          sectionId,
-          document: { ...behind.document, label: 'Renamed by the second tab' },
-          revision: behind.revision,
-        }),
+      await expectRpcFailure(
+        callExit(
+          secondTab,
+          host.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: {
+              ...behind.document,
+              label: 'Renamed by the second tab',
+            },
+            revision: behind.revision,
+          }),
+        ),
+        'NotLockHolder',
       );
-      if (!isDefinedError(error)) {
-        throw error ?? new Error('the second tab was allowed to write');
-      }
-      expect(error.code).toBe('NOT_LOCK_HOLDER');
     } finally {
-      await asClient(ADA).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId,
-      });
+      await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
     }
   });
 
@@ -2115,30 +2487,25 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    */
   it('adds no participant for a lock taken without a connection', async () => {
     const sectionId = stageSection(reference.stageId);
-    const unary = createRouterClient(router, {
-      context: {
-        principal: ADA.principal,
-        requestId: randomUUID(),
-        clientSessionId: 'pb-ada-unary-tab',
-      },
-    });
-    const watch = await watching(asClient(GRACE), protocolId);
+    const unary: Caller = {
+      principal: ADA.principal,
+      tab: 'pb-ada-unary-tab',
+    };
+    const channel = await watching(GRACE, protocolId);
     try {
-      const taken = await unary.protocolBuilder.acquireLock({
-        protocolId,
-        sectionId,
-      });
+      const taken = await call(
+        unary,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
       expect(taken.lock).toBe('held');
 
-      const present = runtime.presence
-        .list(draftId)
-        .map((who) => who.sessionId);
+      const sessions = (await present()).map((who) => who.sessionId);
       // The socket is here; the unary caller is not.
-      expect(present).toContain(GRACE.connectionId);
-      expect(present).not.toContain(ADA.principal.sessionId);
+      expect(sessions).toContain(GRACE.connectionId);
+      expect(sessions).not.toContain(ADA.principal.sessionId);
     } finally {
-      await unary.protocolBuilder.releaseLock({ protocolId, sectionId });
-      await watch.close();
+      await call(unary, host.rpc('ReleaseLock', { protocolId, sectionId }));
+      await channel.stop();
     }
   });
 
@@ -2155,41 +2522,39 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   it('keeps a lock past the channel that took it, and gives it back when the reconnect grace runs out', async () => {
     const sectionId = stageSection(reference.stageId);
     const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
-    const watch = await watching(asClient(ADA), protocolId);
-    /** When the channel ended, which is when the reconnect grace starts. */
-    let strandedAt: number;
+    const channel = await watching(ADA, protocolId);
+    let gracesBefore = 0;
     try {
-      await asClient(ADA).protocolBuilder.acquireLock({
-        protocolId,
-        sectionId,
-      });
-      expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+      await call(ADA, host.rpc('AcquireLock', { protocolId, sectionId }));
+      expect(await heldSections(owner)).toContain(sectionId);
 
       // Long past the idle bound, with nothing called in between.
-      now += 6 * 60_000;
-      await runtime.leases.renewDue();
+      await keeperTick(6 * 60_000);
 
-      expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
-      const behind = await asClient(GRACE).protocolBuilder.acquireLock({
-        protocolId,
-        sectionId,
-      });
+      expect(await heldSections(owner)).toContain(sectionId);
+      const behind = await call(
+        GRACE,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
       expect(behind.lock).toBe('readOnly');
     } finally {
-      strandedAt = Date.now();
-      now = strandedAt;
-      await watch.close();
+      gracesBefore = clock.pending(RECONNECT_GRACE_MS);
+      await channel.stop();
     }
+    // The channel has ended, which is when the reconnect grace starts.
+    await until(
+      () => clock.pending(RECONNECT_GRACE_MS) > gracesBefore,
+      'the reconnect grace to start',
+    );
 
     // The channel has closed and the section is still ADA's tab's: the whole
-    // of the grace is a reconnection in progress.
-    now = strandedAt + RECONNECT_GRACE_MS;
-    await runtime.leases.renewDue();
-    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
-    const tooSoon = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    // of the grace is a reconnection in progress, renewed all the way.
+    await keeperTick(RECONNECT_GRACE_MS - 1_000);
+    expect(await heldSections(owner)).toContain(sectionId);
+    const tooSoon = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     expect(tooSoon.lock).toBe('readOnly');
     if (tooSoon.lock !== 'readOnly') throw new Error('unreachable');
     expect(tooSoon.holder.userId).toBe(ADA.principal.userId);
@@ -2197,21 +2562,17 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // Nothing came back, so the tab has gone rather than blinked: the lease
     // ends here rather than at its own expiry, so the section is free the
     // moment the grace is up and the next editor takes it.
-    now = strandedAt + RECONNECT_GRACE_MS + 1;
-    await runtime.leases.renewDue();
-    expect(runtime.leases.heldSections(draftId, owner)).not.toContain(
-      sectionId,
+    clock.advance(1_001);
+    await until(
+      async () => !(await heldSections(owner)).includes(sectionId),
+      'the stranded lease to be given back',
     );
-    const taken = await asClient(GRACE).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const taken = await call(
+      GRACE,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     expect(taken.lock).toBe('held');
-    await asClient(GRACE).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId,
-    });
-    now = Date.now();
+    await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
   });
 
   /**
@@ -2219,49 +2580,48 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
    * database briefly out of reach used to be read as the same answer an
    * expiry gives, and the section was dropped from the keeper while the
    * researcher's editor was still open on it: the lease then ran out at its
-   * own expiry and their next submit was refused as `NOT_LOCK_HOLDER`.
+   * own expiry and their next submit was refused as `NotLockHolder`.
    */
   it('keeps a lease the database never answered a renewal for', async () => {
     const sectionId = stageSection(reference.stageId);
     const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
     expect(held.lock).toBe('held');
-    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+    expect(await heldSections(owner)).toContain(sectionId);
 
     // Postgres briefly unreachable: the renewal is not refused, it is never
-    // made. Put where the acquire above put the keeper's own sync server.
-    // The keeper holds a renewal callback rather than a sync server now — a
-    // sync operation requires an open transaction, and a timer has none to
-    // give — so the unreachable database is the callback rejecting, which is
-    // the same thing this case has always been about: a renewal that could
-    // not be MADE, told apart from one the storage answered.
+    // made. Put where the acquire above put the keeper's own renewal, which is
+    // what this case has always been about: a renewal that could not be MADE,
+    // told apart from one the storage answered.
     let attempts = 0;
-    runtime.leases.hold({
-      renew: () => {
-        attempts += 1;
-        return Promise.reject(new Error('ECONNREFUSED'));
-      },
-      draftId,
-      sectionId,
-      owner,
-    });
+    await host.run(
+      Leases.use((leases) =>
+        leases.hold({
+          renew: Effect.suspend(() => {
+            attempts += 1;
+            return Effect.fail(new Error('ECONNREFUSED'));
+          }),
+          draftId,
+          sectionId,
+          owner,
+        }),
+      ),
+    );
 
-    await runtime.leases.renewDue();
+    await keeperTick();
     expect(attempts).toBe(1);
-    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+    expect(await heldSections(owner)).toContain(sectionId);
     // The next tick asks again rather than having given the section up, which
     // is what the renewal interval being a third of the TTL is for.
-    await runtime.leases.renewDue();
+    await keeperTick();
     expect(attempts).toBe(2);
-    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+    expect(await heldSections(owner)).toContain(sectionId);
 
-    await asClient(ADA).protocolBuilder.releaseLock({ protocolId, sectionId });
-    expect(runtime.leases.heldSections(draftId, owner)).not.toContain(
-      sectionId,
-    );
+    await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+    expect(await heldSections(owner)).not.toContain(sectionId);
   });
 
   it('answers a write with the written section’s own content hash', async () => {
@@ -2270,49 +2630,55 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // — or compared it with the revision the event channel carried — would be
     // comparing it with something else entirely.
     const stage = await createStage(ADA, 'Answers with its own hash');
-    const created = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const created = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+    );
     expect(stage.revision).toEqual(created.revision);
 
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
-    const written = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Renamed, and hashed as itself' },
-      revision: held.revision,
-    });
-    const after = await asClient(ADA).protocolBuilder.getSection({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    const written = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Renamed, and hashed as itself' },
+        revision: held.revision,
+      }),
+    );
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+    );
     expect(written.revision).toEqual(after.revision);
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   it('refuses an empty file, and keeps nothing staged for it', async () => {
     const edit = 'edit-empty';
-    const empty = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: edit,
-      requestId: 'empty',
-      request: {
-        kind: 'content',
-        contentKind: 'image',
-        name: 'A photograph with no pixels',
-        source: 'blank.png',
-        contentType: 'image/png',
-        bytes: new Blob([], { type: 'image/png' }),
-      },
-    });
+    const empty = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'empty',
+        request: {
+          kind: 'content',
+          contentKind: 'image',
+          name: 'A photograph with no pixels',
+          source: 'blank.png',
+          contentType: 'image/png',
+          bytes: new Uint8Array(0),
+        },
+      }),
+    );
 
     // What the contract's own host answers: an empty file promoted into the
     // manifest is an asset the interview would try to show and could not.
@@ -2320,32 +2686,32 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       status: 'failed',
       failure: { reason: 'invalid-content' },
     });
-    const listed = await asClient(ADA).protocolBuilder.resources.list({
-      protocolId,
-      editId: edit,
-      status: 'staged',
-    });
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
+    );
     if (listed.status !== 'ok') throw new Error(listed.failure.message);
     expect(listed.data.resources).toEqual([]);
   });
 
   it('refuses a resource larger than this deployment stores, and keeps none of it', async () => {
     const edit = 'edit-oversize';
-    const oversized = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: edit,
-      requestId: 'oversized',
-      request: {
-        kind: 'content',
-        contentKind: 'image',
-        name: 'A photograph nobody can send',
-        source: 'huge.png',
-        contentType: 'image/png',
-        bytes: new Blob([new Uint8Array(MAX_UPLOAD_BYTES + 1)], {
-          type: 'image/png',
-        }),
-      },
-    });
+    const oversized = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'oversized',
+        request: {
+          kind: 'content',
+          contentKind: 'image',
+          name: 'A photograph nobody can send',
+          source: 'huge.png',
+          contentType: 'image/png',
+          bytes: new Uint8Array(MAX_UPLOAD_BYTES + 1),
+        },
+      }),
+    );
 
     expect(oversized).toMatchObject({
       status: 'failed',
@@ -2353,11 +2719,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     });
     // Refused before the bytes were kept: an authenticated caller cannot make
     // the process hold what it will not store.
-    const listed = await asClient(ADA).protocolBuilder.resources.list({
-      protocolId,
-      editId: edit,
-      status: 'staged',
-    });
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
+    );
     if (listed.status !== 'ok') throw new Error(listed.failure.message);
     expect(listed.data.resources).toEqual([]);
   });
@@ -2365,34 +2730,38 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   it('answers an unreachable object store with a failure the editor can retry', async () => {
     const edit = 'edit-store-down';
     const stage = await createStage(ADA, 'Names a file the store cannot take');
-    const staged = await asClient(ADA).protocolBuilder.resources.stage({
-      protocolId,
-      editId: edit,
-      requestId: 'store-down',
-      request: {
-        kind: 'content',
-        contentKind: 'image',
-        name: 'A photograph',
-        source: 'photo.png',
-        contentType: 'image/png',
-        bytes: new Blob([new Uint8Array([9, 9, 9])], { type: 'image/png' }),
-      },
-    });
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'store-down',
+        request: {
+          kind: 'content',
+          contentKind: 'image',
+          name: 'A photograph',
+          source: 'photo.png',
+          contentType: 'image/png',
+          bytes: new Uint8Array([9, 9, 9]),
+        },
+      }),
+    );
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
-    const held = await asClient(ADA).protocolBuilder.acquireLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
     const promote = {
       editId: edit,
-      resourceIds: [staged.data.descriptor.id],
+      resourceIds: [staged.data.descriptor.id] as const,
     };
 
     storeUnreachable = true;
     let refused;
     try {
-      refused = await safe(
-        asClient(ADA).protocolBuilder.submit({
+      refused = await callExit(
+        ADA,
+        host.rpc('Submit', {
           protocolId,
           requestId: randomUUID(),
           sectionId: stage.sectionId,
@@ -2404,11 +2773,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     } finally {
       storeUnreachable = false;
     }
-    const { error } = refused;
-    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
-      throw error ?? new Error('the submit was not refused at all');
-    }
-    expect(error.data.failure).toMatchObject({
+    const error = await expectRpcFailure(
+      Promise.resolve(refused),
+      'PromotionFailed',
+    );
+    expect(error.failure).toMatchObject({
       reason: 'unavailable',
       retryable: true,
       resourceId: staged.data.descriptor.id,
@@ -2417,21 +2786,24 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // Retryable is a promise about what is still there: the resource is
     // staged, the section is unwritten, and the same submit lands once the
     // store is back.
-    const written = await asClient(ADA).protocolBuilder.submit({
-      protocolId,
-      requestId: randomUUID(),
-      sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Renamed with a file' },
-      revision: held.revision,
-      promote,
-    });
+    const written = await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: { ...held.document, label: 'Renamed with a file' },
+        revision: held.revision,
+        promote,
+      }),
+    );
     expect(written.promoted?.map((entry) => entry.status)).toEqual([
       'committed',
     ]);
-    await asClient(ADA).protocolBuilder.releaseLock({
-      protocolId,
-      sectionId: stage.sectionId,
-    });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
   });
 
   it('keeps a tab editing the section it still holds when it gives the other back', async () => {
@@ -2439,30 +2811,25 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     // closing the dialog is not the researcher stopping editing.
     const editor = await createStage(ADA, 'Held while a dialog is open');
     const dialog = await createStage(ADA, 'The dialog over it');
-    const watch = await watching(asClient(ADA), protocolId);
+    const channel = await watching(ADA, protocolId);
     try {
       for (const sectionId of [editor.sectionId, dialog.sectionId]) {
-        await asClient(ADA).protocolBuilder.acquireLock({
-          protocolId,
-          sectionId,
-        });
+        await call(ADA, host.rpc('AcquireLock', { protocolId, sectionId }));
       }
-      await asClient(ADA).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId: dialog.sectionId,
-      });
+      await call(
+        ADA,
+        host.rpc('ReleaseLock', { protocolId, sectionId: dialog.sectionId }),
+      );
 
       expect(
-        runtime.presence
-          .list(draftId)
-          .find((who) => who.sessionId === ADA.connectionId),
+        (await present()).find((who) => who.sessionId === ADA.connectionId),
       ).toMatchObject({ mode: 'editing', sectionId: editor.sectionId });
     } finally {
-      await asClient(ADA).protocolBuilder.releaseLock({
-        protocolId,
-        sectionId: editor.sectionId,
-      });
-      await watch.close();
+      await call(
+        ADA,
+        host.rpc('ReleaseLock', { protocolId, sectionId: editor.sectionId }),
+      );
+      await channel.stop();
     }
   });
 
@@ -2472,135 +2839,633 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       'Watched by a colleague who is removed',
     );
-    const controller = new AbortController();
-    const stream = await asClient(GRACE).protocolBuilder.watchProtocol(
-      { protocolId },
-      { signal: controller.signal },
-    );
-    /** Whatever ends the stream, or nothing if it is still running. */
-    const ending = (async () => {
-      try {
-        for await (const event of stream) void event;
-        return new Error('the stream ended without saying why');
-      } catch (error: unknown) {
-        return error;
-      }
-    })();
+    const channel = await watching(GRACE, protocolId);
+    let gracesBefore = 0;
 
-    let ended: unknown;
+    let ended: Exit.Exit<void, unknown> | undefined;
     try {
-      await asClient(GRACE).protocolBuilder.acquireLock({
-        protocolId,
-        sectionId: stage.sectionId,
-      });
-      expect(runtime.leases.heldSections(draftId, owner)).toContain(
-        stage.sectionId,
+      await call(
+        GRACE,
+        host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
       );
+      expect(await heldSections(owner)).toContain(stage.sectionId);
 
       // The team takes GRACE off the study while her socket is open.
       revoked.add(GRACE.principal.userId);
-      now += REAUTHORIZE_MS;
+      clock.advance(REAUTHORIZE_MS);
+      gracesBefore = clock.pending(RECONNECT_GRACE_MS);
       // ADA goes on working, and none of it is GRACE's to receive.
       await createStage(ADA, 'Written after the membership was revoked');
       ended = await Promise.race([
-        ending,
-        new Promise((resolve) => setTimeout(() => resolve(undefined), 2_000)),
+        channel.ended,
+        new Promise<undefined>((resolve) =>
+          setTimeout(() => resolve(undefined), 2_000),
+        ),
       ]);
     } finally {
       revoked.delete(GRACE.principal.userId);
-      controller.abort();
-      await ending;
+      await channel.stop();
     }
 
-    if (!(ended instanceof ORPCError) || ended.code !== 'PROTOCOL_NOT_FOUND') {
-      throw ended ?? new Error('the watch went on delivering the protocol');
+    if (ended === undefined) {
+      throw new Error('the watch went on delivering the protocol');
     }
+    await expectRpcFailure(Promise.resolve(ended), 'ProtocolNotFound');
     // The channel was also what kept her leases renewed, so the section goes
     // back to the team once the reconnect grace has run out.
-    now += RECONNECT_GRACE_MS + 1;
-    await runtime.leases.renewDue();
-    expect(runtime.leases.heldSections(draftId, owner)).not.toContain(
-      stage.sectionId,
+    await until(
+      () => clock.pending(RECONNECT_GRACE_MS) > gracesBefore,
+      'the reconnect grace to start',
     );
-    now = Date.now();
+    clock.advance(RECONNECT_GRACE_MS + 1);
+    await until(
+      async () => !(await heldSections(owner)).includes(stage.sectionId),
+      'the stranded lease to be given back',
+    );
+  });
+
+  /** A stage created over `over`, so a case on its own host has one. */
+  const createOn = (over: ProtocolBuilderTestClient, label: string) =>
+    over.call(
+      callerOf(ADA),
+      over.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: { type: 'Information', label, title: label, items: [] },
+      }),
+    );
+
+  const revisionsOf = (events: readonly ProtocolEvent[], sectionId: string) =>
+    events.filter(
+      (event): event is Extract<ProtocolEvent, { type: 'revision' }> =>
+        event.type === 'revision' && event.sectionId === sectionId,
+    );
+
+  const cursorOf = (event: ProtocolEvent) =>
+    event.type === 'presence' ? undefined : event.cursor;
+
+  it('drops a live event whose cursor is the last one it delivered', async () => {
+    const channel = await watching(GRACE, protocolId);
+    try {
+      const first = await createStage(ADA, 'Delivered last');
+      const sequence = first.revision.sequence;
+      // Everything the create published: its stage and the stage order, at
+      // one revision.
+      await until(
+        () =>
+          revisionsOf(channel.events, first.sectionId).length > 0 &&
+          revisionsOf(channel.events, STAGE_ORDER).some(
+            (revision) => revision.revision.sequence === sequence,
+          ),
+        'the create',
+      );
+      const newest = channel.events
+        .filter((event) => cursorOf(event) !== undefined)
+        .reduce((a, b) =>
+          BigInt(cursorOf(a) ?? 0) >= BigInt(cursorOf(b) ?? 0) ? a : b,
+        );
+      if (newest.type === 'presence' || newest.cursor === undefined) {
+        throw new Error('nothing with a cursor was delivered');
+      }
+      const { cursor, ...logged } = newest;
+      await host.run(
+        ProtocolEvents.use((events) =>
+          events.publish(draftId, [{ cursor, event: logged }]),
+        ),
+      );
+      const second = await createStage(ADA, 'Delivered after it');
+      await until(
+        () => revisionsOf(channel.events, second.sectionId).length > 0,
+        'the second create',
+      );
+      // Mutation: `cursor < last` in the overlap check → the event at exactly
+      // the last cursor is delivered again and this counts two.
+      expect(
+        channel.events.filter((event) => cursorOf(event) === cursor),
+      ).toHaveLength(1);
+    } finally {
+      await channel.stop();
+    }
+  });
+
+  it('delivers a write committed while a watch reads its backlog exactly once', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      // The watcher's own arrival is published after it subscribed and before
+      // it reads the backlog, so holding it holds the watch in that gap.
+      const gap = events.next((entries) =>
+        entries.some(
+          (entry) =>
+            entry.event.type === 'presence' &&
+            entry.event.present.some(
+              (who) => who.sessionId === GRACE.connectionId,
+            ),
+        ),
+      );
+      const channel = watch(GRACE, protocolId, other);
+      try {
+        await gap.reached;
+        // In the log the backlog is about to read, and in the queue.
+        const written = await createOn(other, 'Committed in the gap');
+        gap.release();
+        const after = await createOn(other, 'Committed after the gap');
+        await until(
+          () => revisionsOf(channel.events, after.sectionId).length > 0,
+          'the write after the gap',
+        );
+        expect(revisionsOf(channel.events, written.sectionId)).toHaveLength(1);
+        const cursors = channel.events.flatMap((event) => {
+          const cursor = cursorOf(event);
+          return cursor === undefined ? [] : [cursor];
+        });
+        // Mutation: drop the cursor check, or make it `<` → the gap's write
+        // arrives from the backlog and again from the queue.
+        expect(new Set(cursors).size).toBe(cursors.length);
+      } finally {
+        gap.release();
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('ends a watcher too far behind with a failure, for the replay path', async () => {
+    const stalled = latch();
+    let delivered = 0;
+    const ended = callExit(
+      GRACE,
+      host.rpc('WatchProtocol', { protocolId }).pipe(
+        Stream.runForEach(() =>
+          Effect.promise(async () => {
+            delivered += 1;
+            if (delivered === 1) await stalled.opened;
+          }),
+        ),
+      ),
+    );
+    await until(() => delivered === 1, 'the first event');
+    // Nothing is acknowledged while the consumer is stalled, so everything
+    // published now waits in the watcher's queue, past its bound.
+    await host.run(
+      ProtocolEvents.use((events) =>
+        events.publish(
+          draftId,
+          Array.from({ length: 1100 }, () => ({
+            event: { type: 'presence' as const, present: [] },
+          })),
+        ),
+      ),
+    );
+    stalled.open();
+    const exit = await ended;
+    // Mutation: end the overflowed stream quietly → it succeeds.
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isSuccess(exit)) return;
+    expect(Cause.hasDies(exit.cause)).toBe(true);
+    expect(Cause.hasInterruptsOnly(exit.cause)).toBe(false);
+  });
+
+  it('publishes a committed submit to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const stage = await createOn(other, 'Submitted by a closing tab');
+      const sectionId = stage.sectionId;
+      const held = await other.call(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        const committed = events.next((entries) =>
+          entries.some(
+            (entry) =>
+              entry.event.type === 'revision' &&
+              entry.event.sectionId === sectionId,
+          ),
+        );
+        const leaving = new AbortController();
+        const submitting = other.callExit(
+          callerOf(ADA),
+          other.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: { ...held.document, label: 'Written as the tab closed' },
+            revision: held.revision,
+          }),
+          { signal: leaving.signal },
+        );
+        // Committed, not yet published: the tab closes here.
+        await committed.reached;
+        leaving.abort();
+        await new Promise((settle) => setTimeout(settle, 50));
+        committed.release();
+        // Mutation: let the handler be interrupted after its command → the
+        // publish never runs and the watcher never hears of the write.
+        await until(
+          () =>
+            revisionsOf(channel.events, sectionId).some(
+              (revision) => revision.revision.sequence > held.revision.sequence,
+            ),
+          'the committed submit to reach the watcher',
+        );
+        await submitting;
+      } finally {
+        await channel.stop();
+        await other.call(
+          callerOf(ADA),
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('keeps renewing a lock whose caller went away as it was taken', async () => {
+    const leases = holdingLeases();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      leases: leases.layer,
+    });
+    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
+    try {
+      const stage = await createOn(other, 'Taken by a closing tab');
+      const sectionId = stage.sectionId;
+      const taken = leases.next();
+      const leaving = new AbortController();
+      const acquiring = other.callExit(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId }),
+        { signal: leaving.signal },
+      );
+      await taken.reached;
+      leaving.abort();
+      await new Promise((settle) => setTimeout(settle, 50));
+      taken.release();
+      await acquiring;
+      // Mutation: let the handler be interrupted after its command → the
+      // lease is taken in the database and never handed to the keeper.
+      await until(
+        async () =>
+          (
+            await other.run(
+              Leases.use((keeper) => keeper.heldSections(draftId, owner)),
+            )
+          ).includes(sectionId),
+        'the keeper to hold the lease',
+      );
+      await other.call(
+        callerOf(ADA),
+        other.rpc('ReleaseLock', { protocolId, sectionId }),
+      );
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  /**
+   * Runs `effect` as Ada on `over` and goes away once its command has
+   * committed, while the publish of an entry `matches` names is held.
+   */
+  const leavingAfterCommit = async <A, E>(
+    over: ProtocolBuilderTestClient,
+    events: ReturnType<typeof holdingEvents>,
+    matches: (entry: LoggedProtocolEvent) => boolean,
+    effect: Effect.Effect<A, E>,
+  ) => {
+    const committed = events.next((entries) => entries.some(matches));
+    const leaving = new AbortController();
+    const running = over.callExit(callerOf(ADA), effect, {
+      signal: leaving.signal,
+    });
+    await committed.reached;
+    leaving.abort();
+    await new Promise((settle) => setTimeout(settle, 50));
+    committed.release();
+    return running;
+  };
+
+  it('publishes a committed create to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const order = await other.call(
+        callerOf(ADA),
+        other.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+      );
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) =>
+            entry.event.type === 'revision' &&
+            entry.event.sectionId === STAGE_ORDER,
+          other.rpc('Create', {
+            protocolId,
+            requestId: randomUUID(),
+            kind: 'stage',
+            document: {
+              type: 'Information',
+              label: 'Created as the tab closed',
+              title: 'Created as the tab closed',
+              items: [],
+            },
+          }),
+        );
+        // Mutation: let Create's handler be interrupted after its command →
+        // the watcher never hears of the new stage.
+        await until(
+          () =>
+            revisionsOf(channel.events, STAGE_ORDER).some(
+              (revision) =>
+                revision.revision.sequence > order.revision.sequence,
+            ),
+          'the committed create to reach the watcher',
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('publishes a committed delete to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const stage = await createOn(other, 'Deleted by a closing tab');
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) =>
+            entry.event.type === 'revision' &&
+            entry.event.sectionId === stage.sectionId,
+          other.rpc('Delete', { protocolId, sectionId: stage.sectionId }),
+        );
+        // Mutation: let Delete's handler be interrupted after its command →
+        // the watcher never hears the stage is gone.
+        await until(
+          () =>
+            revisionsOf(channel.events, stage.sectionId).some(
+              (revision) =>
+                revision.revision.sequence > stage.revision.sequence &&
+                revision.document === undefined,
+            ),
+          'the committed delete to reach the watcher',
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('publishes a committed release to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const stage = await createOn(other, 'Given back by a closing tab');
+      const sectionId = stage.sectionId;
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        const held = await other.call(
+          callerOf(ADA),
+          other.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        if (held.lock !== 'held') throw new Error('the section was taken');
+        const isLock = (event: ProtocolEvent) =>
+          event.type === 'lock' && event.sectionId === sectionId;
+        await until(
+          () => channel.events.some(isLock),
+          'the lock to reach the watcher',
+        );
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) => isLock(entry.event),
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+        // Mutation: let ReleaseLock's handler be interrupted after its
+        // command → the watcher is never told the section is free.
+        await until(() => {
+          const last = channel.events.findLast(isLock);
+          return (
+            last !== undefined && last.type === 'lock' && !('holder' in last)
+          );
+        }, 'the committed release to reach the watcher');
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('publishes a committed refactor to its watchers when the caller goes away', async () => {
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    const codebookSection = sid(`codebook:node:${reference.typeId}`);
+    const variableId = `interrupted_${randomUUID().replaceAll('-', '')}`;
+    try {
+      const held = await other.call(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId: codebookSection }),
+      );
+      if (held.lock !== 'held') throw new Error('the codebook was taken');
+      const added = await other.call(
+        callerOf(ADA),
+        other.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId: codebookSection,
+          document: {
+            ...held.document,
+            variables: {
+              ...(held.document.variables as Record<string, unknown>),
+              [variableId]: { name: variableId, type: 'text' },
+            },
+          },
+          revision: held.revision,
+        }),
+      );
+      await other.call(
+        callerOf(ADA),
+        other.rpc('ReleaseLock', { protocolId, sectionId: codebookSection }),
+      );
+      const channel = await watching(GRACE, protocolId, other);
+      try {
+        await leavingAfterCommit(
+          other,
+          events,
+          (entry) =>
+            entry.event.type === 'revision' &&
+            entry.event.sectionId === codebookSection,
+          other.rpc('RefactorDeleteVariable', {
+            protocolId,
+            subject: { entity: 'node', type: reference.typeId },
+            variableId,
+          }),
+        );
+        // Mutation: let the refactor's handler be interrupted after its
+        // command → the watcher never hears the variable is gone.
+        await until(
+          () =>
+            revisionsOf(channel.events, codebookSection).some(
+              (revision) =>
+                revision.revision.sequence > added.revision.sequence,
+            ),
+          'the committed refactor to reach the watcher',
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('stops renewing a stranded owner’s leases even when giving them back fails', async () => {
+    const stranded = makeShiftableClock();
+    let databaseDown = false;
+    const real = Context.get(services, Database);
+    // The database the handlers were built over, whose next transaction
+    // resolves no table once `databaseDown` is set.
+    const faulty: Database['Service'] = {
+      identity: real.identity,
+      sql: real.sql,
+      db: real.db,
+      get searchPath() {
+        return databaseDown ? 'pb_unreachable' : real.searchPath;
+      },
+    };
+    let renewals = 0;
+    const counting = Layer.effect(
+      Leases,
+      Effect.gen(function* () {
+        const keeper = yield* Leases;
+        return Leases.of({
+          ...keeper,
+          hold: (lease) =>
+            keeper.hold({
+              ...lease,
+              renew: Effect.suspend(() => {
+                renewals += 1;
+                return lease.renew;
+              }),
+            }),
+        });
+      }),
+    ).pipe(Layer.provide(Leases.layer));
+    const other = await createProtocolBuilderClient(
+      createStudio(resolveEnv({ NODE_ENV: 'test' }), {
+        auth: authServiceStub({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
+        pool: database.appPool,
+        services: Context.add(services, Database, faulty),
+      }),
+      { clock: stranded.clock, objectStore, leases: counting },
+    );
+    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
+    const heldHere = () =>
+      other.run(Leases.use((keeper) => keeper.heldSections(draftId, owner)));
+    const tick = async () => {
+      await until(
+        () => stranded.pending(RENEW_INTERVAL_MS) > 0,
+        'the lease keeper to be waiting',
+      );
+      stranded.advance(RENEW_INTERVAL_MS);
+    };
+    try {
+      const stage = await createOn(other, 'Held by a tab that never returns');
+      const channel = await watching(ADA, protocolId, other);
+      await other.call(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      expect(await heldHere()).toContain(stage.sectionId);
+      const staged = await other.call(
+        callerOf(ADA),
+        other.rpc('ResourcesStage', {
+          protocolId,
+          editId: EDIT,
+          requestId: randomUUID(),
+          request: { kind: 'secret', name: 'Stranded token', value: 'pk.gone' },
+        }),
+      );
+      if (staged.status !== 'ok') throw new Error('staging failed');
+      const stagedHere = async () => {
+        const listed = await other.call(
+          callerOf(ADA),
+          other.rpc('ResourcesList', {
+            protocolId,
+            editId: EDIT,
+            status: 'staged',
+          }),
+        );
+        if (listed.status !== 'ok') throw new Error('listing failed');
+        return listed.data.resources.map((resource) => resource.id);
+      };
+      expect(await stagedHere()).toContain(staged.data.descriptor.id);
+      await channel.stop();
+      await until(
+        () => stranded.pending(RECONNECT_GRACE_MS) > 0,
+        'the reconnect grace to start',
+      );
+
+      databaseDown = true;
+      stranded.advance(RECONNECT_GRACE_MS);
+      // Mutation: release before dropping from the keeper → the release dies
+      // first, and the keeper goes on renewing the departed tab's lease.
+      await until(
+        async () => !(await heldHere()).includes(stage.sectionId),
+        'the stranded lease to leave the keeper',
+      );
+      const before = renewals;
+      await tick();
+      await tick();
+      await until(
+        () => stranded.pending(RENEW_INTERVAL_MS) > 0,
+        'the lease keeper to finish its tick',
+      );
+      expect(renewals).toBe(before);
+      databaseDown = false;
+      // Mutation: keep the owner's staged imports in `endOwner` → the edit
+      // still lists what the departed tab staged.
+      expect(await stagedHere()).not.toContain(staged.data.descriptor.id);
+    } finally {
+      databaseDown = false;
+      await other.dispose();
+    }
   });
 });
-
-/**
- * An open channel, drained in the background.
- *
- * Resolves once the stream has published this watcher's own arrival, so
- * nothing after it can land in the gap before the handler subscribed.
- */
-async function watching(
-  client: {
-    protocolBuilder: {
-      watchProtocol: (
-        input: { protocolId: string },
-        options: { signal: AbortSignal },
-      ) => Promise<AsyncIterable<ProtocolEvent>>;
-    };
-  },
-  protocolId: string,
-): Promise<{ close: () => Promise<void> }> {
-  const controller = new AbortController();
-  const stream = await client.protocolBuilder.watchProtocol(
-    { protocolId },
-    { signal: controller.signal },
-  );
-  let attached = (): void => undefined;
-  const attach = new Promise<void>((resolve) => {
-    attached = resolve;
-  });
-  const draining = (async () => {
-    try {
-      for await (const event of stream) {
-        if (event.type === 'presence') attached();
-      }
-    } catch {
-      // The abort below is the only way this stream ends.
-    }
-  })();
-  await attach;
-  return {
-    close: async () => {
-      controller.abort();
-      await draining;
-    },
-  };
-}
-
-type WatchedEvent = { cursor: string | undefined; event: ProtocolEvent };
-
-/**
- * The replayable events a watcher is handed before it goes live.
- *
- * Presence is dropped: it carries no cursor by design, arrives from process
- * memory rather than the log, and would make a replay comparison depend on who
- * happened to be watching.
- */
-async function drain(
-  client: {
-    protocolBuilder: {
-      watchProtocol: (
-        input: { protocolId: string; since?: string },
-        options?: { lastEventId?: string },
-      ) => Promise<AsyncIterable<ProtocolEvent>>;
-    };
-  },
-  input: { protocolId: string; since?: string },
-  /** What a resumed iterator carries: the cursor this connection reached. */
-  lastEventId?: string,
-): Promise<WatchedEvent[]> {
-  const events: WatchedEvent[] = [];
-  const stream = await client.protocolBuilder.watchProtocol(
-    input,
-    lastEventId === undefined ? {} : { lastEventId },
-  );
-  for await (const event of stream) {
-    const cursor = getEventMeta(event)?.id;
-    if (cursor === undefined) break;
-    events.push({ cursor, event });
-  }
-  return events;
-}

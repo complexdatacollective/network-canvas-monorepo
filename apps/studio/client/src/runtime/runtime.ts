@@ -7,18 +7,27 @@ import {
   Schema,
   type Scope,
 } from 'effect';
-import {
-  FetchHttpClient,
-  type Headers,
-  HttpClient,
-  HttpClientError,
-  HttpClientRequest,
-  type HttpClientResponse,
-} from 'effect/unstable/http';
-import type { RpcClientError, RpcGroup } from 'effect/unstable/rpc';
-import { RpcClient, RpcSerialization } from 'effect/unstable/rpc';
+import * as FetchHttpClient from 'effect/unstable/http/FetchHttpClient';
+import type * as Headers from 'effect/unstable/http/Headers';
+import * as HttpClient from 'effect/unstable/http/HttpClient';
+import * as HttpClientError from 'effect/unstable/http/HttpClientError';
+import * as HttpClientRequest from 'effect/unstable/http/HttpClientRequest';
+import type * as HttpClientResponse from 'effect/unstable/http/HttpClientResponse';
+import * as RpcClient from 'effect/unstable/rpc/RpcClient';
+import type * as RpcClientError from 'effect/unstable/rpc/RpcClientError';
+import type * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
+import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
+import * as Socket from 'effect/unstable/socket/Socket';
 
-import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
+import {
+  ProtocolBuilderGroup,
+  type ProtocolBuilderClient,
+} from '@codaco/protocol-builder-core/contract';
+import {
+  CLIENT_SESSION_HEADER,
+  CLIENT_SESSION_PARAM,
+} from '@codaco/studio-contract/client-session';
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 import {
   Forbidden,
@@ -281,7 +290,13 @@ export class StudioClient extends Context.Service<
   ).pipe(Layer.provide(HttpProtocol));
 }
 
-/** No `HostClient` this stage: the editor keeps its own oRPC socket until stage 8. */
+/**
+ * Studio's rpc plane alone. The protocol builder's host is not merged in: its
+ * layer dials the socket as it is built, so a runtime holding both would open
+ * one for any Studio call a signed-out page makes, and it could not be ended at
+ * sign-out without ending this with it. `runtime/hostSession.ts` builds it in a
+ * runtime of its own per session.
+ */
 export const WebLayer: Layer.Layer<StudioClient> = StudioClient.layer;
 
 export type WebRuntime = ManagedRuntime.ManagedRuntime<StudioClient, never>;
@@ -312,44 +327,103 @@ export const setWebRuntime = (next: WebRuntime): void => {
 };
 
 /**
- * A runtime-shaped facade that delegates to whichever runtime is current.
+ * A runtime-shaped facade that delegates to whichever runtime `resolve` names
+ * at the moment of each use.
  *
- * `makeRpcAdapter` reads its `runtime` option once, when `runtime/rpc.ts` binds
- * the adapter at module load — so handing it `liveRuntime` would pin the six
- * exports to the browser transport and make `setWebRuntime` inert. Handing it
- * this instead means a screen imports `rpcQuery` once and never re-binds, while
- * a suite can still replace what is underneath it.
+ * `makeRpcAdapter` reads its `runtime` option once, when the adapter is bound
+ * at module load — so handing it one concrete runtime would pin the adapter to
+ * it for the life of the tab. Handing it this instead means a screen binds its
+ * adapter once and never re-binds, while what is underneath can still be
+ * replaced: by a suite, or by the next host session.
  */
-export const runtime: WebRuntime = {
+export const delegatingRuntime = <R>(
+  resolve: () => ManagedRuntime.ManagedRuntime<R, never>,
+): ManagedRuntime.ManagedRuntime<R, never> => ({
   get ['~effect/ManagedRuntime']() {
-    return current['~effect/ManagedRuntime'];
+    return resolve()['~effect/ManagedRuntime'];
   },
   get 'memoMap'() {
-    return current.memoMap;
+    return resolve().memoMap;
   },
   get 'contextEffect'() {
-    return current.contextEffect;
+    return resolve().contextEffect;
   },
   get 'scope'() {
-    return current.scope;
+    return resolve().scope;
   },
   get 'cachedContext'() {
-    return current.cachedContext;
+    return resolve().cachedContext;
   },
   set 'cachedContext'(context) {
-    current.cachedContext = context;
+    resolve().cachedContext = context;
   },
   get 'disposeEffect'() {
-    return current.disposeEffect;
+    return resolve().disposeEffect;
   },
-  'context': () => current.context(),
-  'runFork': (effect, options) => current.runFork(effect, options),
-  'runSync': (effect) => current.runSync(effect),
-  'runSyncExit': (effect) => current.runSyncExit(effect),
-  'runCallback': (effect, options) => current.runCallback(effect, options),
-  'runPromise': (effect, options) => current.runPromise(effect, options),
+  'context': () => resolve().context(),
+  'runFork': (effect, options) => resolve().runFork(effect, options),
+  'runSync': (effect) => resolve().runSync(effect),
+  'runSyncExit': (effect) => resolve().runSyncExit(effect),
+  'runCallback': (effect, options) => resolve().runCallback(effect, options),
+  'runPromise': (effect, options) => resolve().runPromise(effect, options),
   'runPromiseExit': (effect, options) =>
-    current.runPromiseExit(effect, options),
-  'dispose': () => current.dispose(),
-  [Symbol.asyncDispose]: () => current.dispose(),
-};
+    resolve().runPromiseExit(effect, options),
+  'dispose': () => resolve().dispose(),
+  [Symbol.asyncDispose]: () => resolve().dispose(),
+});
+
+/** Whichever web runtime is current; what `runtime/rpc.ts` binds the adapter to. */
+export const runtime: WebRuntime = delegatingRuntime(() => current);
+
+// ---------------------------------------------------------------------------
+// The protocol builder's host
+// ---------------------------------------------------------------------------
+
+/**
+ * The upgrade URL this tab's socket is opened at.
+ *
+ * The tab names itself on the query string because a browser cannot put a
+ * header on a WebSocket handshake, and the server derives the protocol
+ * builder's lock owner from it: a tab that reconnects has to still be the
+ * holder of the section it has open, and two tabs of one researcher have to be
+ * two editors (#1275). `CLIENT_SESSION_PARAM` is the name the server reads it
+ * under, so the two spellings cannot drift.
+ */
+function hostSocketUrl(): string {
+  const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = new URL(`${scheme}//${window.location.host}/ws`);
+  url.searchParams.set(CLIENT_SESSION_PARAM, clientSessionId());
+  return url.toString();
+}
+
+/**
+ * The protocol builder's host, over `/ws`.
+ *
+ * `retryTransientErrors` is off. With it on, a ping timeout — which the
+ * protocol classifies as a transient `SocketOpenError` — reconnects the socket
+ * underneath an in-flight call and an open stream without ever failing them,
+ * so both hang for good. Off, both fail with `RpcClientError`, and the
+ * package's channel ladder owns resuming the stream. The socket reconnects
+ * either way; nothing is replayed.
+ */
+export class HostClient extends Context.Service<
+  HostClient,
+  ProtocolBuilderClient
+>()('@studio/HostClient') {
+  static readonly layer: Layer.Layer<HostClient> = Layer.effect(HostClient)(
+    RpcClient.make(ProtocolBuilderGroup, { flatten: true }),
+  ).pipe(
+    Layer.provide(
+      RpcClient.layerProtocolSocket({ retryTransientErrors: false }),
+    ),
+    Layer.provide(Socket.layerWebSocket(Effect.sync(hostSocketUrl))),
+    Layer.provide(Socket.layerWebSocketConstructorGlobal),
+    // The default 16 MiB would refuse an asset the server stores, and a
+    // refused frame poisons the connection rather than closing it.
+    Layer.provide(
+      RpcSerialization.layerSchemaBinary({
+        maxFrameSize: MAX_SOCKET_FRAME_BYTES,
+      }),
+    ),
+  );
+}

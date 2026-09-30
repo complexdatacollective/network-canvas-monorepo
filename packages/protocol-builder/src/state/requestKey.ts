@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
  * the same one with what that attempt wrote. That is the whole of a retry, and
  * it only works if the client asks again with the SAME id: a transport that
  * drops after the host committed leaves this client unable to tell a write
- * that happened from one that did not, and an oRPC link rejects the calls that
+ * that happened from one that did not, and the rpc client fails the calls that
  * were in flight rather than resending them, so what the researcher does next
  * — pressing Save again, because that is what the refusal told them to do — is
  * the retry. A fresh id there is a second write: for a `create`, a second

@@ -6,7 +6,7 @@ import { Schema } from 'effect';
  * Copied from zod 4.5.4's default email pattern (`zod/v4/core/regexes.js`, the
  * `email` export), which is what `z.email()` installs when no pattern is
  * given. Reproduced rather than approximated so that the set of addresses this
- * contract accepts is exactly the set today's oRPC boundary accepts — there is
+ * contract accepts is exactly the set the oRPC boundary accepted — there is
  * no `Schema.Email` in Effect 4 to defer to, and a stricter or looser regex
  * would silently change who can be invited. The only departure is the two
  * redundant backslashes inside the character classes, which the formatter

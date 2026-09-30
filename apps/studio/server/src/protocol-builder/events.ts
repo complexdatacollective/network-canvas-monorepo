@@ -1,12 +1,11 @@
-// One ordered channel per open protocol: the durable log `watchProtocol`
-// replays from a cursor, and the in-process fan-out that carries the same
-// events live.
+// The durable half of the one ordered channel an open protocol has: the log
+// `WatchProtocol` replays from a cursor.
 //
-// Two halves because the two answer different questions. The log answers
-// "what did I miss while my socket was down", so it is written in the same
-// transaction as the change it describes and read back by cursor. The
-// publisher answers "what is happening now", so it is memory, per process,
-// and lossy under back-pressure — a dropped subscriber reconnects and replays.
+// It answers "what did I miss while my socket was down", so it is written in
+// the same transaction as the change it describes and read back by cursor.
+// "What is happening now" is the live fan-out's (`publisher.ts`): memory, per
+// process, and lossy under back-pressure — a dropped subscriber reconnects and
+// replays from here.
 import { and, asc, eq, gt, max } from 'drizzle-orm';
 import { Effect } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
@@ -219,79 +218,3 @@ export const readProtocolEvents: (
     for (const row of rows) events.push(yield* toLoggedEvent(row));
     return events;
   }, sqlErrorsOnly);
-
-const QUEUE_LIMIT = 1024;
-
-class EventQueue {
-  #pending: LoggedProtocolEvent[] = [];
-  #wake: (() => void) | undefined;
-  #closed = false;
-
-  push(entry: LoggedProtocolEvent): void {
-    if (this.#closed) return;
-    // Past the bound the subscriber is too far behind to catch up cheaply, so
-    // it is dropped to the replay path rather than buffered without limit.
-    if (this.#pending.length >= QUEUE_LIMIT) {
-      this.close();
-      return;
-    }
-    this.#pending.push(entry);
-    this.#wake?.();
-  }
-
-  close(): void {
-    this.#closed = true;
-    this.#wake?.();
-  }
-
-  async *drain(): AsyncGenerator<LoggedProtocolEvent> {
-    for (;;) {
-      while (this.#pending.length > 0) {
-        const next = this.#pending.shift();
-        if (next !== undefined) yield next;
-      }
-      if (this.#closed) return;
-      await new Promise<void>((resolve) => {
-        this.#wake = resolve;
-      });
-      this.#wake = undefined;
-    }
-  }
-}
-
-/**
- * Live fan-out, one process wide. Every commit, lock change and presence
- * change reaches the watchers this process is serving; the deployment
- * assumption is the ADR's single WebSocket-serving replica (#1247), and the
- * replay path is what makes a second one a scaling limit rather
- * than a correctness one.
- */
-export class ProtocolEventPublisher {
-  readonly #subscribers = new Map<string, Set<EventQueue>>();
-
-  publish(draftId: string, entries: readonly LoggedProtocolEvent[]): void {
-    const queues = this.#subscribers.get(draftId);
-    if (queues === undefined) return;
-    for (const queue of queues) {
-      for (const entry of entries) queue.push(entry);
-    }
-  }
-
-  subscribe(draftId: string): {
-    events: AsyncGenerator<LoggedProtocolEvent>;
-    close: () => void;
-  } {
-    const queue = new EventQueue();
-    const queues = this.#subscribers.get(draftId) ?? new Set<EventQueue>();
-    queues.add(queue);
-    this.#subscribers.set(draftId, queues);
-    return {
-      events: queue.drain(),
-      close: () => {
-        queue.close();
-        queues.delete(queue);
-        if (queues.size === 0) this.#subscribers.delete(draftId);
-      },
-    };
-  }
-}

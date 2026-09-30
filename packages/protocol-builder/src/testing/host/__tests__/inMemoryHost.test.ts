@@ -1,11 +1,16 @@
-import { getEventMeta, safe } from '@orpc/client';
+import { Exit, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { attempt } from '../../../state/attempt.ts';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import type { ResourcePromotion } from '../../../state/hooks.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -55,14 +60,17 @@ function host(): InMemoryHost {
 async function submitHeld(
   subject: InMemoryHost,
   section: ReturnType<typeof sectionId>,
-  promote?: Readonly<{ editId: string; resourceIds: string[] }>,
+  promote?: Readonly<{
+    editId: string;
+    resourceIds: readonly [string, ...string[]];
+  }>,
   requestId = nextRequestId(),
 ) {
-  const held = await subject.client.acquireLock({
+  const held = await subject.adapter.rpcCall('AcquireLock', {
     protocolId: subject.protocolId,
     sectionId: section,
   });
-  return subject.client.submit({
+  return subject.adapter.rpcCall('Submit', {
     protocolId: subject.protocolId,
     requestId,
     sectionId: section,
@@ -73,20 +81,57 @@ async function submitHeld(
 }
 
 /**
- * The cursors of the protocol's first `count` events, read from a watch that
- * is then closed. Two writes under one lock produce four: the lock, the
- * presence that follows it, and a revision each.
+ * Watches the protocol until `enough` says so, and closes the watch: the
+ * events delivered by then, in order.
+ */
+async function watchUntil(
+  adapter: ProtocolBuilderAdapter,
+  payload: Readonly<{ protocolId: string; since?: string }>,
+  enough: (events: readonly ProtocolEvent[]) => boolean,
+): Promise<ProtocolEvent[]> {
+  const controller = new AbortController();
+  const events: ProtocolEvent[] = [];
+  await adapter
+    .rpcStream(
+      'WatchProtocol',
+      payload,
+      (event) => {
+        if (controller.signal.aborted) return;
+        events.push(event);
+        if (enough(events)) controller.abort();
+      },
+      controller.signal,
+    )
+    .catch((error: unknown) => {
+      if (!controller.signal.aborted) throw error;
+    });
+  return events;
+}
+
+/** The cursors replayable events carry; presence is not replayed, so has none. */
+function cursorsOf(events: readonly ProtocolEvent[]): string[] {
+  return events.flatMap((event) =>
+    event.type !== 'presence' && event.cursor !== undefined
+      ? [event.cursor]
+      : [],
+  );
+}
+
+/**
+ * The cursors of the protocol's first `count` replayable events, read from a
+ * watch that is then closed. Two writes under one lock produce three: the
+ * lock, and a revision each.
  */
 async function watchCursors(
   subject: InMemoryHost,
   count: number,
 ): Promise<string[]> {
-  const held = await subject.client.acquireLock({
+  const held = await subject.adapter.rpcCall('AcquireLock', {
     protocolId: subject.protocolId,
     sectionId: INFORMATION,
   });
   for (const label of ['one', 'two']) {
-    await subject.client.submit({
+    await subject.adapter.rpcCall('Submit', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -94,20 +139,15 @@ async function watchCursors(
       revision: held.revision,
     });
   }
-  const events = await subject.client.watchProtocol({
-    protocolId: subject.protocolId,
-  });
-  const cursors: string[] = [];
-  for await (const event of events) {
-    cursors.push(String(getEventMeta(event)?.id));
-    if (cursors.length === count) break;
-  }
-  await events.return?.(undefined);
-  return cursors;
+  const events = await watchUntil(
+    subject.adapter,
+    { protocolId: subject.protocolId },
+    (seen) => cursorsOf(seen).length === count,
+  );
+  return cursorsOf(events);
 }
 
-const PORTRAIT_BYTES = () =>
-  new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+const PORTRAIT_BYTES = () => new Uint8Array([1, 2, 3]);
 
 /** A second edit, open beside the first in the same session. */
 const OTHER_EDIT = 'edit-2';
@@ -117,9 +157,9 @@ async function stagePortraitBytes(
   subject: InMemoryHost,
   editId: string,
   requestId: string,
-  bytes: Blob,
+  bytes: Uint8Array,
 ): Promise<string> {
-  const staged = await subject.client.resources.stage({
+  const staged = await subject.adapter.rpcCall('ResourcesStage', {
     protocolId: subject.protocolId,
     editId,
     requestId,
@@ -141,7 +181,7 @@ async function committedBytes(
   subject: InMemoryHost,
   resourceId: string,
 ): Promise<string> {
-  const preview = await subject.client.resources.preview({
+  const preview = await subject.adapter.rpcCall('ResourcesPreview', {
     protocolId: subject.protocolId,
     resourceId,
   });
@@ -149,8 +189,8 @@ async function committedBytes(
   return preview.data.url;
 }
 
-async function dataUrl(bytes: Blob): Promise<string> {
-  const encoded = Buffer.from(await bytes.arrayBuffer()).toString('base64');
+async function dataUrl(bytes: Uint8Array): Promise<string> {
+  const encoded = Buffer.from(bytes).toString('base64');
   return `data:image/png;base64,${encoded}`;
 }
 
@@ -166,7 +206,7 @@ function manifestSource(subject: InMemoryHost, resourceId: string): unknown {
 
 /** A staged image, as an edit that imported a file holds one. */
 async function stagePortrait(subject: InMemoryHost): Promise<string> {
-  const staged = await subject.client.resources.stage({
+  const staged = await subject.adapter.rpcCall('ResourcesStage', {
     protocolId: subject.protocolId,
     editId: EDIT,
     requestId: 'request-1',
@@ -176,7 +216,7 @@ async function stagePortrait(subject: InMemoryHost): Promise<string> {
       name: 'Portrait',
       source: 'portrait.png',
       contentType: 'image/png',
-      bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      bytes: new Uint8Array([1, 2, 3]),
     },
   });
   if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -190,7 +230,7 @@ async function stageRoster(
   contentType: string,
   text: string,
 ): Promise<string> {
-  const staged = await subject.client.resources.stage({
+  const staged = await subject.adapter.rpcCall('ResourcesStage', {
     protocolId: subject.protocolId,
     editId: EDIT,
     requestId: 'request-1',
@@ -200,7 +240,9 @@ async function stageRoster(
       name: 'Roster',
       source,
       contentType,
-      bytes: new Blob([text], { type: contentType }),
+      // Copied into this realm's `Uint8Array`: jsdom's `TextEncoder` answers
+      // with Node's, which the contract's `instanceof` check does not know.
+      bytes: new Uint8Array(new TextEncoder().encode(text)),
     },
   });
   if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -240,18 +282,16 @@ describe('the in-memory host', () => {
   it('refuses a submit from a caller that never took the lock', async () => {
     const subject = host();
     const before = subject.store.read(INFORMATION);
-    const { definedError, isSuccess } = await safe(
-      subject.client.submit({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: { ...before.document, label: 'Renamed by a non-holder' },
-        revision: before.revision,
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: { ...before.document, label: 'Renamed by a non-holder' },
+      revision: before.revision,
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
+    expect(refusal?._tag).toBe('NotLockHolder');
     expect(subject.store.read(INFORMATION).document.label).toBe(
       before.document.label,
     );
@@ -260,12 +300,12 @@ describe('the in-memory host', () => {
   it('refuses a submit while a collaborator holds the lock, and names them', async () => {
     const subject = host();
     const collaborator = subject.asCollaborator(COLLABORATOR);
-    await collaborator.acquireLock({
+    await collaborator.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
 
-    const readOnly = await subject.client.acquireLock({
+    const readOnly = await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
@@ -274,19 +314,17 @@ describe('the in-memory host', () => {
       'Grace',
     );
 
-    const { definedError, isSuccess } = await safe(
-      subject.client.submit({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: { ...readOnly.document, label: 'Renamed by a spectator' },
-        revision: readOnly.revision,
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: { ...readOnly.document, label: 'Renamed by a spectator' },
+      revision: readOnly.revision,
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('NotLockHolder');
+    expect(refusalData(refusal)).toMatchObject({
       sectionId: INFORMATION,
       holder: { displayName: 'Grace' },
     });
@@ -297,11 +335,11 @@ describe('the in-memory host', () => {
 
   it('writes the whole section for the lock holder', async () => {
     const subject = host();
-    const held = await subject.client.acquireLock({
+    const held = await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const { revision } = await subject.client.submit({
+    const { revision } = await subject.adapter.rpcCall('Submit', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -317,22 +355,20 @@ describe('the in-memory host', () => {
 
   it('refuses a submit whose document is not shaped like the section', async () => {
     const subject = host();
-    await subject.client.acquireLock({
+    await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const { definedError, isSuccess } = await safe(
-      subject.client.submit({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: { id: 'information-1', type: 'NotAnInterface' },
-        revision: subject.store.read(INFORMATION).revision,
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: { id: 'information-1', type: 'NotAnInterface' },
+      revision: subject.store.read(INFORMATION).revision,
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('INVALID_SHAPE');
+    expect(refusal?._tag).toBe('InvalidShape');
   });
 
   it('registers a created stage in the stage order in the same revision', async () => {
@@ -341,7 +377,7 @@ describe('the in-memory host', () => {
     const { id: _id, ...withoutId } = template;
     const before = stageOrder(subject);
 
-    const created = await subject.client.create({
+    const created = await subject.adapter.rpcCall('Create', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
@@ -376,7 +412,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await stagePortrait(subject);
 
-    const created = await subject.client.create({
+    const created = await subject.adapter.rpcCall('Create', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
@@ -391,7 +427,7 @@ describe('the in-memory host', () => {
     expect(assets.document[staged]).toMatchObject({
       name: 'Portrait',
       type: 'image',
-      source: await committedSource(PORTRAIT_BYTES(), 'portrait.png'),
+      source: committedSource(PORTRAIT_BYTES(), 'portrait.png'),
     });
     // The section, the pointer that holds it and the manifest are one
     // revision, which is what a watcher reading the stream in order sees.
@@ -409,20 +445,18 @@ describe('the in-memory host', () => {
     const before = stageOrder(subject);
     const assetsBefore = subject.store.read(sectionId({ kind: 'assets' }));
 
-    const { definedError, isSuccess } = await safe(
-      subject.client.create({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        kind: 'stage',
-        document: informationNaming(subject, 'never-staged'),
-        promote: { editId: EDIT, resourceIds: ['never-staged'] },
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: informationNaming(subject, 'never-staged'),
+      promote: { editId: EDIT, resourceIds: ['never-staged'] },
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    expect(refusal?._tag).toBe('PromotionFailed');
     // No section id: the host mints one only for a create it is going to make.
-    expect(definedError?.data).toEqual({
+    expect(refusalData(refusal)).toEqual({
       failure: {
         reason: 'not-found',
         message: 'no such staged resource',
@@ -443,7 +477,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await stagePortrait(subject);
     const create = () =>
-      subject.client.create({
+      subject.adapter.rpcCall('Create', {
         protocolId: subject.protocolId,
         // The same request id: one intent, asked again because its answer was
         // lost.
@@ -468,47 +502,47 @@ describe('the in-memory host', () => {
 
   it('refuses to create a section whose document is not shaped like one', async () => {
     const subject = host();
-    const { definedError, isSuccess } = await safe(
-      subject.client.create({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        kind: 'stage',
-        document: { type: 'NotAnInterface' },
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: { type: 'NotAnInterface' },
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('INVALID_SHAPE');
+    expect(refusal?._tag).toBe('InvalidShape');
     expect(stageOrder(host())).toEqual(stageOrder(subject));
   });
 
   it('takes every section a refactor writes, or names who holds one', async () => {
     const subject = host();
     const collaborator = subject.asCollaborator(COLLABORATOR);
-    await collaborator.acquireLock({
+    await collaborator.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: PERSON,
     });
 
-    const { definedError, isSuccess } = await safe(
-      subject.client.refactor.deleteVariable({
+    const { refusal, isSuccess } = await attempt(
+      subject.adapter,
+      'RefactorDeleteVariable',
+      {
         protocolId: subject.protocolId,
         subject: { entity: 'node', type: 'person' },
         variableId: 'relationship_to_ego',
-      }),
+      },
     );
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('SectionsLocked');
+    expect(refusalData(refusal)).toMatchObject({
       blocked: [{ sectionId: PERSON, holder: { displayName: 'Grace' } }],
     });
 
-    await collaborator.releaseLock({
+    await collaborator.rpcCall('ReleaseLock', {
       protocolId: subject.protocolId,
       sectionId: PERSON,
     });
-    const applied = await subject.client.refactor.deleteVariable({
+    const applied = await subject.adapter.rpcCall('RefactorDeleteVariable', {
       protocolId: subject.protocolId,
       subject: { entity: 'node', type: 'person' },
       variableId: 'relationship_to_ego',
@@ -527,7 +561,7 @@ describe('the in-memory host', () => {
     const before = fieldVariables(subject.store.read(ALTER_FORM).document);
     expect(before).toContain('relationship_to_ego');
 
-    const applied = await subject.client.refactor.deleteVariable({
+    const applied = await subject.adapter.rpcCall('RefactorDeleteVariable', {
       protocolId: subject.protocolId,
       subject: { entity: 'node', type: 'person' },
       variableId: 'relationship_to_ego',
@@ -546,12 +580,14 @@ describe('the in-memory host', () => {
 
   it('refuses a deletion whose references it cannot remove, and names them', async () => {
     const subject = host();
-    const { definedError, isSuccess } = await safe(
-      subject.client.refactor.deleteVariable({
+    const { refusal, isSuccess } = await attempt(
+      subject.adapter,
+      'RefactorDeleteVariable',
+      {
         protocolId: subject.protocolId,
         subject: { entity: 'node', type: 'person' },
         variableId: 'name',
-      }),
+      },
     );
 
     // `name` is the quick-add stage's whole reason to exist, and the name
@@ -559,8 +595,8 @@ describe('the in-memory host', () => {
     // can drop and leave a stage the researcher would recognise, so it says
     // so rather than leaving them naming a variable that is gone.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('REFERENCES_REMAIN');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(refusalData(refusal)).toMatchObject({
       remaining: expect.arrayContaining([
         { sectionId: QUICK_ADD, path: ['quickAdd'] },
         { sectionId: NAME_GENERATOR, path: ['form', 'fields', 0, 'variable'] },
@@ -576,17 +612,19 @@ describe('the in-memory host', () => {
 
   it('refuses to delete an entity type the stages are still about', async () => {
     const subject = host();
-    const { definedError, isSuccess } = await safe(
-      subject.client.refactor.deleteEntityType({
+    const { refusal, isSuccess } = await attempt(
+      subject.adapter,
+      'RefactorDeleteEntityType',
+      {
         protocolId: subject.protocolId,
         entity: 'node',
         typeId: 'person',
-      }),
+      },
     );
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('REFERENCES_REMAIN');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(refusalData(refusal)).toMatchObject({
       remaining: expect.arrayContaining([
         { sectionId: QUICK_ADD, path: ['subject', 'type'] },
       ]),
@@ -608,7 +646,7 @@ describe('the in-memory host', () => {
       },
     });
 
-    const applied = await subject.client.refactor.deleteEntityType({
+    const applied = await subject.adapter.rpcCall('RefactorDeleteEntityType', {
       protocolId: subject.protocolId,
       entity: 'node',
       typeId: 'spare',
@@ -620,7 +658,7 @@ describe('the in-memory host', () => {
 
   it('hands out a copy of a section document, not the one it stores', async () => {
     const subject = host();
-    const read = await subject.client.getSection({
+    const read = await subject.adapter.rpcCall('GetSection', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
@@ -637,73 +675,64 @@ describe('the in-memory host', () => {
     const subject = host();
     const elsewhere = 'protocol-2';
     const refusals = [
-      (await safe(subject.client.resources.list({ protocolId: elsewhere })))
-        .definedError?.code,
       (
-        await safe(
-          subject.client.resources.stage({
-            protocolId: elsewhere,
-            editId: EDIT,
-            requestId: 'request-1',
-            request: {
-              kind: 'content',
-              contentKind: 'image',
-              name: 'Portrait',
-              source: 'portrait.png',
-              contentType: 'image/png',
-              bytes: new Blob([new Uint8Array([1, 2, 3])], {
-                type: 'image/png',
-              }),
-            },
-          }),
-        )
-      ).definedError?.code,
+        await attempt(subject.adapter, 'ResourcesList', {
+          protocolId: elsewhere,
+        })
+      ).refusal?._tag,
       (
-        await safe(
-          subject.client.submit({
-            protocolId: elsewhere,
-            requestId: nextRequestId(),
-            sectionId: INFORMATION,
-            document: subject.store.read(INFORMATION).document,
-            revision: subject.store.read(INFORMATION).revision,
-            // Names a resource rather than nothing, because a promotion of
-            // nothing is refused by the contract before any handler sees it,
-            // and what this asks is what the handler does with the protocol.
-            promote: { editId: EDIT, resourceIds: ['whatever'] },
-          }),
-        )
-      ).definedError?.code,
+        await attempt(subject.adapter, 'ResourcesStage', {
+          protocolId: elsewhere,
+          editId: EDIT,
+          requestId: 'request-1',
+          request: {
+            kind: 'content',
+            contentKind: 'image',
+            name: 'Portrait',
+            source: 'portrait.png',
+            contentType: 'image/png',
+            bytes: new Uint8Array([1, 2, 3]),
+          },
+        })
+      ).refusal?._tag,
       (
-        await safe(
-          subject.client.resources.discard({
-            protocolId: elsewhere,
-            editId: EDIT,
-          }),
-        )
-      ).definedError?.code,
+        await attempt(subject.adapter, 'Submit', {
+          protocolId: elsewhere,
+          requestId: nextRequestId(),
+          sectionId: INFORMATION,
+          document: subject.store.read(INFORMATION).document,
+          revision: subject.store.read(INFORMATION).revision,
+          // Names a resource rather than nothing, because a promotion of
+          // nothing is refused by the contract before any handler sees it,
+          // and what this asks is what the handler does with the protocol.
+          promote: { editId: EDIT, resourceIds: ['whatever'] },
+        })
+      ).refusal?._tag,
       (
-        await safe(
-          subject.client.resources.inspect({
-            protocolId: elsewhere,
-            editId: EDIT,
-            resourceId: 'whatever',
-          }),
-        )
-      ).definedError?.code,
+        await attempt(subject.adapter, 'ResourcesDiscard', {
+          protocolId: elsewhere,
+          editId: EDIT,
+        })
+      ).refusal?._tag,
       (
-        await safe(
-          subject.client.resources.preview({
-            protocolId: elsewhere,
-            editId: EDIT,
-            resourceId: 'whatever',
-          }),
-        )
-      ).definedError?.code,
+        await attempt(subject.adapter, 'ResourcesInspect', {
+          protocolId: elsewhere,
+          editId: EDIT,
+          resourceId: 'whatever',
+        })
+      ).refusal?._tag,
+      (
+        await attempt(subject.adapter, 'ResourcesPreview', {
+          protocolId: elsewhere,
+          editId: EDIT,
+          resourceId: 'whatever',
+        })
+      ).refusal?._tag,
     ];
 
     // A resource procedure that answered one of these would be reading, and
     // `promote` writing, another protocol's assets through this host.
-    expect(refusals).toEqual(Array.from(refusals, () => 'PROTOCOL_NOT_FOUND'));
+    expect(refusals).toEqual(Array.from(refusals, () => 'ProtocolNotFound'));
     expect(
       subject.store.read(sectionId({ kind: 'assets' })).revision.sequence,
     ).toBe(0n);
@@ -717,7 +746,7 @@ describe('the in-memory host', () => {
    */
   it('writes a staged secret’s value into the manifest, and reads it back', async () => {
     const subject = host();
-    const staged = await subject.client.resources.stage({
+    const staged = await subject.adapter.rpcCall('ResourcesStage', {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -726,7 +755,7 @@ describe('the in-memory host', () => {
     if (staged.status !== 'ok') throw new Error('staging a secret failed');
     const resourceId = staged.data.descriptor.id;
 
-    const stagedInspection = await subject.client.resources.inspect({
+    const stagedInspection = await subject.adapter.rpcCall('ResourcesInspect', {
       protocolId: subject.protocolId,
       editId: EDIT,
       resourceId,
@@ -745,10 +774,13 @@ describe('the in-memory host', () => {
       subject.store.read(sectionId({ kind: 'assets' })).document[resourceId],
     ).toMatchObject({ type: 'apikey', value: 'pk.secret' });
 
-    const committedInspection = await subject.client.resources.inspect({
-      protocolId: subject.protocolId,
-      resourceId,
-    });
+    const committedInspection = await subject.adapter.rpcCall(
+      'ResourcesInspect',
+      {
+        protocolId: subject.protocolId,
+        resourceId,
+      },
+    );
     expect(
       committedInspection.status === 'ok' && committedInspection.data.value,
     ).toBe('pk.secret');
@@ -756,7 +788,7 @@ describe('the in-memory host', () => {
 
   it('answers a repeated promotion with the one it committed', async () => {
     const subject = host();
-    const staged = await subject.client.resources.stage({
+    const staged = await subject.adapter.rpcCall('ResourcesStage', {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -766,7 +798,7 @@ describe('the in-memory host', () => {
         name: 'Portrait',
         source: 'portrait.png',
         contentType: 'image/png',
-        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+        bytes: new Uint8Array([1, 2, 3]),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -793,7 +825,7 @@ describe('the in-memory host', () => {
     );
     expect(committed.document[staged.data.descriptor.id]).toMatchObject({
       name: 'Portrait',
-      source: await committedSource(PORTRAIT_BYTES(), 'portrait.png'),
+      source: committedSource(PORTRAIT_BYTES(), 'portrait.png'),
     });
   });
 
@@ -802,27 +834,25 @@ describe('the in-memory host', () => {
     const before = subject.store.read(INFORMATION);
     const assetsBefore = subject.store.read(sectionId({ kind: 'assets' }));
 
-    const held = await subject.client.acquireLock({
+    const held = await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const { definedError, isSuccess } = await safe(
-      subject.client.submit({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: { ...held.document, label: 'Renamed beside a bad promotion' },
-        revision: held.revision,
-        promote: { editId: EDIT, resourceIds: ['never-staged'] },
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Renamed beside a bad promotion' },
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: ['never-staged'] },
+    });
 
     // The section and the bytes it names are one revision or nothing: a
     // committed rename pointing at a resource this host does not hold is the
     // half-written state the two-call shape used to allow.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('PROMOTION_FAILED');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('PromotionFailed');
+    expect(refusalData(refusal)).toMatchObject({
       sectionId: INFORMATION,
       failure: { reason: 'not-found', resourceId: 'never-staged' },
     });
@@ -834,7 +864,7 @@ describe('the in-memory host', () => {
 
   it("promotes the bytes in the submitting section's own revision", async () => {
     const subject = host();
-    const staged = await subject.client.resources.stage({
+    const staged = await subject.adapter.rpcCall('ResourcesStage', {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -844,7 +874,7 @@ describe('the in-memory host', () => {
         name: 'Portrait',
         source: 'portrait.png',
         contentType: 'image/png',
-        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+        bytes: new Uint8Array([1, 2, 3]),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -867,9 +897,7 @@ describe('the in-memory host', () => {
   it('keeps two imports of one filename as two assets', async () => {
     const subject = host();
     const mine = PORTRAIT_BYTES();
-    const theirs = new Blob([new Uint8Array([4, 5, 6, 7])], {
-      type: 'image/png',
-    });
+    const theirs = new Uint8Array([4, 5, 6, 7]);
 
     const first = await stagePortraitBytes(subject, EDIT, 'request-1', mine);
     await submitHeld(subject, INFORMATION, {
@@ -882,7 +910,7 @@ describe('the in-memory host', () => {
       'request-2',
       theirs,
     );
-    await subject.client.create({
+    await subject.adapter.rpcCall('Create', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
@@ -904,7 +932,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const before = stageOrder(subject);
 
-    const deleted = await subject.client.delete({
+    const deleted = await subject.adapter.rpcCall('Delete', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
@@ -923,21 +951,19 @@ describe('the in-memory host', () => {
 
   it('refuses to delete a stage an editor holds, and names them', async () => {
     const subject = host();
-    await subject.asCollaborator(COLLABORATOR).acquireLock({
+    await subject.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      subject.client.delete({
-        protocolId: subject.protocolId,
-        sectionId: INFORMATION,
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('SectionsLocked');
+    expect(refusalData(refusal)).toMatchObject({
       blocked: [{ sectionId: INFORMATION, holder: { displayName: 'Grace' } }],
     });
     expect(subject.store.has(INFORMATION)).toBe(true);
@@ -946,21 +972,19 @@ describe('the in-memory host', () => {
 
   it('refuses to delete a stage while the stage order is held', async () => {
     const subject = host();
-    await subject.asCollaborator(COLLABORATOR).acquireLock({
+    await subject.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: STAGE_ORDER,
     });
 
-    const { definedError, isSuccess } = await safe(
-      subject.client.delete({
-        protocolId: subject.protocolId,
-        sectionId: INFORMATION,
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('SectionsLocked');
+    expect(refusalData(refusal)).toMatchObject({
       blocked: [{ sectionId: STAGE_ORDER, holder: { displayName: 'Grace' } }],
     });
     expect(subject.store.has(INFORMATION)).toBe(true);
@@ -970,7 +994,7 @@ describe('the in-memory host', () => {
     const subject = withoutEgo();
     expect(subject.store.has(EGO)).toBe(false);
 
-    const created = await subject.client.create({
+    const created = await subject.adapter.rpcCall('Create', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'codebookEgo',
@@ -994,18 +1018,16 @@ describe('the in-memory host', () => {
     const subject = host();
     const before = subject.store.read(EGO);
 
-    const { definedError, isSuccess } = await safe(
-      subject.client.create({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        kind: 'codebookEgo',
-        document: { variables: {} },
-      }),
-    );
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'codebookEgo',
+      document: { variables: {} },
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTION_EXISTS');
-    expect(definedError?.data).toMatchObject({ sectionId: EGO });
+    expect(refusal?._tag).toBe('SectionExists');
+    expect(refusalData(refusal)).toMatchObject({ sectionId: EGO });
     expect(subject.store.read(EGO)).toEqual(before);
   });
 
@@ -1014,26 +1036,28 @@ describe('the in-memory host', () => {
     // One tab, two editors: the stage editor and the codebook dialog issuing
     // the deletion are the same session, so the session is not what tells them
     // apart.
-    await subject.client.acquireLock({
+    await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: ALTER_FORM,
     });
     const before = fieldVariables(subject.store.read(ALTER_FORM).document);
 
-    const { definedError, isSuccess } = await safe(
-      subject.client.refactor.deleteVariable({
+    const { refusal, isSuccess } = await attempt(
+      subject.adapter,
+      'RefactorDeleteVariable',
+      {
         protocolId: subject.protocolId,
         subject: { entity: 'node', type: 'person' },
         variableId: 'relationship_to_ego',
-      }),
+      },
     );
 
     // The stage's draft lives in its form, not in the cache, so a sweep under
     // it is undone by that editor's next whole-section submit — which would
     // leave the protocol naming a variable that no longer exists.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('SectionsLocked');
+    expect(refusalData(refusal)).toMatchObject({
       blocked: [{ sectionId: ALTER_FORM, holder: { displayName: 'Ada' } }],
     });
     expect(fieldVariables(subject.store.read(ALTER_FORM).document)).toEqual(
@@ -1044,12 +1068,12 @@ describe('the in-memory host', () => {
 
   it('makes the change under the lock the caller holds on the codebook section', async () => {
     const subject = host();
-    await subject.client.acquireLock({
+    await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: PERSON,
     });
 
-    const applied = await subject.client.refactor.deleteVariable({
+    const applied = await subject.adapter.rpcCall('RefactorDeleteVariable', {
       protocolId: subject.protocolId,
       subject: { entity: 'node', type: 'person' },
       variableId: 'relationship_to_ego',
@@ -1063,20 +1087,20 @@ describe('the in-memory host', () => {
 
   it('keeps a lock when the stream that reported it ends', async () => {
     const subject = host();
-    const held = await subject.client.acquireLock({
+    const held = await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const events = await subject.client.watchProtocol({
-      protocolId: subject.protocolId,
-    });
-    await events.next();
+    // The stream ends after its first event, as a dropped socket ends it;
+    // the channel resumes on a new one, and the editor behind it never
+    // stopped holding its draft.
+    await watchUntil(
+      subject.adapter,
+      { protocolId: subject.protocolId },
+      () => true,
+    );
 
-    // The stream ends, as a dropped socket ends it; the channel resumes on a
-    // new one, and the editor behind it never stopped holding its draft.
-    await events.return(undefined);
-
-    const written = await subject.client.submit({
+    const written = await subject.adapter.rpcCall('Submit', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -1091,24 +1115,22 @@ describe('the in-memory host', () => {
 
   it('refuses a source name the asset manifest could not carry', async () => {
     const subject = host();
-    const { isSuccess } = await safe(
-      subject.client.resources.stage({
-        protocolId: subject.protocolId,
-        editId: EDIT,
-        requestId: 'request-1',
-        request: {
-          kind: 'content',
-          contentKind: 'image',
-          name: 'Portrait',
-          source: '../portrait.png',
-          contentType: 'image/png',
-          bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
-        },
-      }),
-    );
+    const { isSuccess } = await attempt(subject.adapter, 'ResourcesStage', {
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: '../portrait.png',
+        contentType: 'image/png',
+        bytes: new Uint8Array([1, 2, 3]),
+      },
+    });
 
     expect(isSuccess).toBe(false);
-    const staged = await subject.client.resources.list({
+    const staged = await subject.adapter.rpcCall('ResourcesList', {
       protocolId: subject.protocolId,
       editId: EDIT,
       status: 'staged',
@@ -1118,7 +1140,7 @@ describe('the in-memory host', () => {
 
   it('refuses to stage a file with nothing in it', async () => {
     const subject = host();
-    const staged = await subject.client.resources.stage({
+    const staged = await subject.adapter.rpcCall('ResourcesStage', {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -1128,7 +1150,7 @@ describe('the in-memory host', () => {
         name: 'Empty',
         source: 'empty.png',
         contentType: 'image/png',
-        bytes: new Blob([], { type: 'image/png' }),
+        bytes: new Uint8Array(),
       },
     });
 
@@ -1138,7 +1160,7 @@ describe('the in-memory host', () => {
       status: 'failed',
       failure: { reason: 'invalid-content' },
     });
-    const listed = await subject.client.resources.list({
+    const listed = await subject.adapter.rpcCall('ResourcesList', {
       protocolId: subject.protocolId,
       editId: EDIT,
       status: 'staged',
@@ -1153,7 +1175,7 @@ describe('the in-memory host', () => {
     // researcher closing the dialog they picked the file in. The discard
     // answers `ok`, so a file inserted behind it is one no edit can ever
     // discard again and no submit can ever promote.
-    const importing = subject.client.resources.stage({
+    const importing = subject.adapter.rpcCall('ResourcesStage', {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -1166,14 +1188,14 @@ describe('the in-memory host', () => {
         bytes: PORTRAIT_BYTES(),
       },
     });
-    const cancelled = await subject.client.resources.discard({
+    const cancelled = await subject.adapter.rpcCall('ResourcesDiscard', {
       protocolId: subject.protocolId,
       editId: EDIT,
     });
 
     expect(cancelled.status).toBe('ok');
     expect(await importing).toMatchObject({ status: 'failed' });
-    const listed = await subject.client.resources.list({
+    const listed = await subject.adapter.rpcCall('ResourcesList', {
       protocolId: subject.protocolId,
       editId: EDIT,
       status: 'staged',
@@ -1190,7 +1212,7 @@ describe('the in-memory host', () => {
       'name,age\nAda,36\nGrace,45\n',
     );
 
-    const inspected = await subject.client.resources.inspect({
+    const inspected = await subject.adapter.rpcCall('ResourcesInspect', {
       protocolId: subject.protocolId,
       editId: EDIT,
       resourceId: roster,
@@ -1217,7 +1239,7 @@ describe('the in-memory host', () => {
       'name,age\nAda,36,unexpected\n',
     );
 
-    const inspected = await subject.client.resources.inspect({
+    const inspected = await subject.adapter.rpcCall('ResourcesInspect', {
       protocolId: subject.protocolId,
       editId: EDIT,
       resourceId: roster,
@@ -1231,26 +1253,41 @@ describe('the in-memory host', () => {
     });
   });
 
-  it('refuses a promotion that names no resource', async () => {
-    const subject = host();
-    const assets = sectionId({ kind: 'assets' });
-    const before = subject.store.read(assets).revision;
+  // No host handles an empty promotion itself: the contract's payload decode,
+  // which every served procedure runs before its handler, refuses it.
+  it('never hands a host a promotion that names no resource', () => {
+    const payload = (resourceIds: readonly string[]) => ({
+      protocolId: 'protocol-1',
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: {},
+      revision: { sequence: 1n, contentHash: 'hash' },
+      promote: { editId: EDIT, resourceIds },
+    });
+    const submit = ProtocolBuilderGroup.requests.get('Submit');
+    const create = ProtocolBuilderGroup.requests.get('Create');
+    if (submit === undefined || create === undefined) {
+      throw new Error('the contract has no Submit or Create');
+    }
+    const decodeSubmit = Schema.decodeUnknownExit(submit.payloadSchema);
+    const decodeCreate = Schema.decodeUnknownExit(create.payloadSchema);
 
-    const refused = await safe(
-      submitHeld(subject, INFORMATION, { editId: EDIT, resourceIds: [] }),
-    );
-
-    // A promotion of nothing is not a promotion: it makes an ordinary save
-    // touch the asset manifest, so a collaborator holding that section is
-    // enough to refuse the save, and a save that is not refused publishes a
-    // manifest revision with nothing in it changed.
-    expect(refused.isSuccess).toBe(false);
-    expect(subject.store.read(assets).revision).toEqual(before);
+    expect(Exit.isSuccess(decodeSubmit(payload(['resource-1'])))).toBe(true);
+    expect(Exit.isFailure(decodeSubmit(payload([])))).toBe(true);
+    const created = (resourceIds: readonly string[]) => ({
+      protocolId: 'protocol-1',
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: {},
+      promote: { editId: EDIT, resourceIds },
+    });
+    expect(Exit.isSuccess(decodeCreate(created(['resource-1'])))).toBe(true);
+    expect(Exit.isFailure(decodeCreate(created([])))).toBe(true);
   });
 
   it('keeps a staged secret to the session that staged it', async () => {
     const subject = host();
-    const staged = await subject.client.resources.stage({
+    const staged = await subject.adapter.rpcCall('ResourcesStage', {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -1261,7 +1298,7 @@ describe('the in-memory host', () => {
     // A collaborator is not shown the resource id at all: staging belongs to
     // the edit that made it, in the session that made it.
     const collaborator = subject.asCollaborator(COLLABORATOR);
-    const listed = await collaborator.resources.list({
+    const listed = await collaborator.rpcCall('ResourcesList', {
       protocolId: subject.protocolId,
       editId: EDIT,
       status: 'staged',
@@ -1270,7 +1307,7 @@ describe('the in-memory host', () => {
     expect(listed.data.resources).toEqual([]);
 
     // The session that staged it still has it: this is scoping, not hiding.
-    const mine = await subject.client.resources.list({
+    const mine = await subject.adapter.rpcCall('ResourcesList', {
       protocolId: subject.protocolId,
       editId: EDIT,
       status: 'staged',
@@ -1280,23 +1317,21 @@ describe('the in-memory host', () => {
       staged.data.descriptor.id,
     ]);
 
-    const held = await collaborator.acquireLock({
+    const held = await collaborator.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const forged = await safe(
-      collaborator.submit({
-        protocolId: subject.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: held.document,
-        revision: held.revision,
-        // Naming the id is not enough: the staging is another session's.
-        promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
-      }),
-    );
+    const forged = await attempt(collaborator, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      // Naming the id is not enough: the staging is another session's.
+      promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
+    });
 
-    expect(forged.definedError?.code).toBe('PROMOTION_FAILED');
+    expect(forged.refusal?._tag).toBe('PromotionFailed');
     expect(
       subject.store.read(sectionId({ kind: 'assets' })).document[
         staged.data.descriptor.id
@@ -1306,7 +1341,7 @@ describe('the in-memory host', () => {
 
   it('answers a retried submit with the revision it already wrote', async () => {
     const subject = host();
-    const staged = await subject.client.resources.stage({
+    const staged = await subject.adapter.rpcCall('ResourcesStage', {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -1316,11 +1351,11 @@ describe('the in-memory host', () => {
         name: 'Portrait',
         source: 'portrait.png',
         contentType: 'image/png',
-        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+        bytes: new Uint8Array([1, 2, 3]),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const promotion = {
+    const promotion: ResourcePromotion = {
       editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
     };
@@ -1344,11 +1379,11 @@ describe('the in-memory host', () => {
     expect(again).toEqual(first);
     expect(subject.store.read(INFORMATION)).toEqual(committed);
 
-    await subject.client.releaseLock({
+    await subject.adapter.rpcCall('ReleaseLock', {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const afterRelease = await subject.client.submit({
+    const afterRelease = await subject.adapter.rpcCall('Submit', {
       protocolId: subject.protocolId,
       requestId: 'write-again',
       sectionId: INFORMATION,
@@ -1365,64 +1400,64 @@ describe('the in-memory host', () => {
 
   it('says which section a refactor cannot find', async () => {
     const subject = host();
-    const { definedError, isSuccess } = await safe(
-      subject.client.refactor.deleteEntityType({
+    const { refusal, isSuccess } = await attempt(
+      subject.adapter,
+      'RefactorDeleteEntityType',
+      {
         protocolId: subject.protocolId,
         entity: 'node',
         typeId: 'ghost',
-      }),
+      },
     );
 
     // A stale client deleting a type another editor has already removed gets
     // the refusal the contract declares, not an internal failure that reaches
     // a caller over a transport as nothing it can act on.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
-    expect(definedError?.data).toMatchObject({
+    expect(refusal?._tag).toBe('SectionNotFound');
+    expect(refusalData(refusal)).toMatchObject({
       sectionId: sectionId({ kind: 'codebookNode', typeId: 'ghost' }),
     });
   });
 
-  it('resumes from the cursor the transport says the client reached', async () => {
+  it('resumes from the cursor the client resumes at', async () => {
     const subject = host();
-    const cursors = await watchCursors(subject, 4);
+    const cursors = await watchCursors(subject, 3);
 
-    // A transport resuming a dropped socket re-invokes the handler with the
-    // same input and the id of the last event it delivered. Starting from the
-    // input would hand this connection everything between the two again, and
-    // the channel applies what it is given.
-    const resumed = await subject.client.watchProtocol(
-      { protocolId: subject.protocolId, since: cursors[0] },
-      { lastEventId: cursors[2] },
+    // A dropped stream is resumed by the client with the cursor of the last
+    // event it was given. Starting anywhere earlier would hand this
+    // connection what it already had, and the channel applies what it is
+    // given.
+    const resumed = await watchUntil(
+      subject.adapter,
+      { protocolId: subject.protocolId, since: cursors[1] },
+      (seen) => cursorsOf(seen).length === 1,
     );
-    const replayed: string[] = [];
-    for await (const event of resumed) {
-      replayed.push(String(getEventMeta(event)?.id));
-      break;
-    }
-    await resumed.return?.(undefined);
 
-    expect(replayed).toEqual([cursors[3]]);
+    expect(cursorsOf(resumed)).toEqual([cursors[2]]);
   });
 
   it('keeps a holder editing when its watch stream starts again', async () => {
     const subject = host();
-    await subject.client.acquireLock({
+    await subject.adapter.rpcCall('AcquireLock', {
       protocolId: subject.protocolId,
       sectionId: PERSON,
     });
-    const first = await subject.client.watchProtocol({
-      protocolId: subject.protocolId,
-    });
-    await first.next();
-    await first.return(undefined);
+    await watchUntil(
+      subject.adapter,
+      { protocolId: subject.protocolId },
+      () => true,
+    );
 
-    const second = await subject.client.watchProtocol({
-      protocolId: subject.protocolId,
-    });
-    await second.next();
-    const holder = subject.store.holderOf(PERSON);
-    await second.return(undefined);
+    let holder: ReturnType<typeof subject.store.holderOf>;
+    await watchUntil(
+      subject.adapter,
+      { protocolId: subject.protocolId },
+      () => {
+        holder = subject.store.holderOf(PERSON);
+        return true;
+      },
+    );
 
     // The lock survives the drop, so the editor behind it is still editing.
     // Rejoining as a viewer would tell every read-only editor of that section
@@ -1484,5 +1519,13 @@ function fieldVariables(document: Record<string, unknown>): string[] {
     typeof field === 'object' && field !== null && 'variable' in field
       ? String((field as { variable: unknown }).variable)
       : '',
+  );
+}
+
+/** A refusal's own fields, as the host sent them. */
+function refusalData(refusal: object | undefined): unknown {
+  if (refusal === undefined) return undefined;
+  return Object.fromEntries(
+    Object.entries(refusal).filter(([key]) => key !== '_tag'),
   );
 }

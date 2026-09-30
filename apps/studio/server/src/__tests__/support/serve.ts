@@ -1,9 +1,11 @@
 import { createServer } from 'node:http';
 
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
-import { Context, Effect, Exit, Layer, Scope } from 'effect';
+import { Clock, Context, Effect, Exit, Layer, Scope } from 'effect';
 import { HttpRouter, HttpServer } from 'effect/unstable/http';
 import * as NetAddress from 'effect/unstable/net/NetAddress';
+
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import type { Studio } from '../../app.ts';
 import { Environment, type StudioEnv } from '../../env.ts';
@@ -11,6 +13,7 @@ import type { HealthChecks } from '../../http/health.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { Routes } from '../../http/router.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
+import { UnaryBodyLimit } from '../../protocol-builder/rpc.ts';
 import { studioServices } from './services.ts';
 
 // The composed stack, for the suites that need more than the Hono residue:
@@ -34,12 +37,21 @@ export async function startStudioServer(
   studio: Studio,
   checks: HealthChecks = studio.checks,
   maintenance: Layer.Layer<MaintenanceTriggers> = MaintenanceTriggers.layerOpen,
+  options: {
+    /** The listener's WebSocket frame bound, for a case about exceeding it. */
+    readonly wsMaxPayload?: number;
+    /** `/rpc/protocol-builder`'s body bound, for a case about exceeding it. */
+    readonly unaryBodyLimit?: number;
+    /** The clock every route and service reads, for a case about time. */
+    readonly clock?: Clock.Clock;
+  } = {},
 ): Promise<{ origin: string; dispose: () => Promise<void> }> {
   const EnvironmentLive = Layer.succeed(Environment, env);
   const ServerLive = NodeHttpServer.layer(createServer, {
     port: 0,
     host: '127.0.0.1',
     gracefulShutdownTimeout: '10 seconds',
+    websocket: { maxPayload: options.wsMaxPayload ?? MAX_SOCKET_FRAME_BYTES },
   });
   const ServeLive = HttpRouter.serve(Routes(studio, checks), {
     disableLogger: true,
@@ -53,9 +65,19 @@ export async function startStudioServer(
     Layer.provide(EnvironmentLive),
     Layer.provide(studioServices(studio)),
   );
+  const bounded =
+    options.unaryBodyLimit === undefined
+      ? layer
+      : layer.pipe(
+          Layer.provide(Layer.succeed(UnaryBodyLimit)(options.unaryBodyLimit)),
+        );
+  const clocked =
+    options.clock === undefined
+      ? bounded
+      : bounded.pipe(Layer.provide(Layer.succeed(Clock.Clock)(options.clock)));
 
   const scope = Scope.makeUnsafe();
-  const context = await Effect.runPromise(Layer.buildWithScope(layer, scope));
+  const context = await Effect.runPromise(Layer.buildWithScope(clocked, scope));
   const address = Context.get(context, HttpServer.HttpServer).address;
   if (NetAddress.isUnixPathAddress(address)) {
     throw new Error('the test server did not bind a TCP port');

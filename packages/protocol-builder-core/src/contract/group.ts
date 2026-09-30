@@ -1,15 +1,20 @@
-import { eventIterator, oc, type RouterContractClient } from '@orpc/contract';
-import { z } from 'zod';
+import { Schema } from 'effect';
+import * as Rpc from 'effect/unstable/rpc/Rpc';
+import type * as RpcClient from 'effect/unstable/rpc/RpcClient';
+import type { RpcClientError } from 'effect/unstable/rpc/RpcClientError';
+import * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
 
 import {
-  existenceErrors,
-  lockErrors,
-  lockedSectionErrors,
-  promotionErrors,
-  protocolErrors,
-  refactorErrors,
-  referenceErrors,
-  shapeErrors,
+  InvalidShape,
+  ProtocolError,
+  ProtocolNotFound,
+  PromotionFailed,
+  RefactorError,
+  ReferencesRemain,
+  SectionExists,
+  SectionNotFound,
+  SectionsLocked,
+  WriteError,
 } from './errors.ts';
 import {
   AcquireLockInputSchema,
@@ -38,8 +43,7 @@ import {
   WatchProtocolInputSchema,
   resourceResult,
 } from './schemas.ts';
-
-const base = oc.errors(protocolErrors);
+import { HostSession } from './session.ts';
 
 /**
  * The host contract `@codaco/protocol-builder` is written against.
@@ -50,30 +54,41 @@ const base = oc.errors(protocolErrors);
  * Studio serves this over its transport, Architect serves it in-process, and
  * the in-memory host serves it for tests.
  */
-export const contract = {
+export class ProtocolBuilderGroup extends RpcGroup.make(
   /**
    * Takes the section for editing and returns it. `readOnly` names the holder
    * so the editor can say who has it; there is no renewal, takeover, or
    * re-acquire.
    */
-  acquireLock: base
-    .input(AcquireLockInputSchema)
-    .output(AcquireLockResultSchema),
+  Rpc.make('AcquireLock', {
+    payload: AcquireLockInputSchema,
+    success: AcquireLockResultSchema,
+    error: ProtocolError,
+  }),
 
-  releaseLock: base.input(AcquireLockInputSchema).output(z.void()),
+  Rpc.make('ReleaseLock', {
+    payload: AcquireLockInputSchema,
+    error: ProtocolError,
+  }),
 
-  getSection: base
-    .input(AcquireLockInputSchema)
-    .output(SectionAtRevisionSchema),
+  Rpc.make('GetSection', {
+    payload: AcquireLockInputSchema,
+    success: SectionAtRevisionSchema,
+    error: ProtocolError,
+  }),
 
   /**
    * Which sections the protocol has. A component that reads a family of them —
    * every node type, say — needs their ids before it can observe any of them,
-   * and the taxonomy has no index section to read them from. `watchProtocol`
+   * and the taxonomy has no index section to read them from. `WatchProtocol`
    * keeps the answer current: a revision for an unknown section adds it, and a
    * removal drops it.
    */
-  listSections: base.input(ProtocolScopedInputSchema).output(SectionListSchema),
+  Rpc.make('ListSections', {
+    payload: ProtocolScopedInputSchema,
+    success: SectionListSchema,
+    error: ProtocolError,
+  }),
 
   /**
    * Every section revision, lock change, and presence change for one open
@@ -83,9 +98,12 @@ export const contract = {
    * subscription leaves a gap between reading a section and its stream going
    * live, which every subscriber would then have to close by revision number.
    */
-  watchProtocol: base
-    .input(WatchProtocolInputSchema)
-    .output(eventIterator(ProtocolEventSchema)),
+  Rpc.make('WatchProtocol', {
+    payload: WatchProtocolInputSchema,
+    success: ProtocolEventSchema,
+    error: ProtocolError,
+    stream: true,
+  }),
 
   /**
    * Writes the whole section as one revision, with the staged resources it
@@ -104,13 +122,11 @@ export const contract = {
    * told what that attempt wrote — the revision and what it promoted — rather
    * than writing again.
    */
-  submit: base
-    .errors(lockErrors)
-    .errors(lockedSectionErrors)
-    .errors(shapeErrors)
-    .errors(promotionErrors)
-    .input(SubmitInputSchema)
-    .output(SubmitResultSchema),
+  Rpc.make('Submit', {
+    payload: SubmitInputSchema,
+    success: SubmitResultSchema,
+    error: WriteError,
+  }),
 
   /**
    * Creates a section and registers its pointer — a stage's place in the stage
@@ -120,7 +136,7 @@ export const contract = {
    * straight back out. A singleton the protocol already has — `codebookEgo` —
    * is refused rather than overwritten.
    *
-   * It takes `promote` on the same terms as `submit`, and for the reason a
+   * It takes `promote` on the same terms as `Submit`, and for the reason a
    * submit cannot cover: a stage being ADDED can carry a file the researcher
    * imported while composing it, and there is no earlier revision of that
    * stage to have promoted it with. The section, its pointer and the manifest
@@ -131,13 +147,18 @@ export const contract = {
    * anything: it mints an id, so a retry that was not recognised would leave
    * the protocol holding the stage twice and tell the client about only one.
    */
-  create: base
-    .errors(shapeErrors)
-    .errors(existenceErrors)
-    .errors(lockedSectionErrors)
-    .errors(promotionErrors)
-    .input(CreateInputSchema)
-    .output(CreateResultSchema),
+  Rpc.make('Create', {
+    payload: CreateInputSchema,
+    success: CreateResultSchema,
+    error: Schema.Union([
+      ProtocolNotFound,
+      SectionNotFound,
+      InvalidShape,
+      SectionExists,
+      SectionsLocked,
+      PromotionFailed,
+    ]),
+  }),
 
   /**
    * Removes a stage and its place in the stage order in one revision.
@@ -156,41 +177,47 @@ export const contract = {
    * not such a dependency — it is how the protocol holds the stage, and this
    * call rewrites it.
    */
-  delete: base
-    .errors(lockedSectionErrors)
-    .errors(referenceErrors)
-    .input(DeleteSectionInputSchema)
-    .output(SectionChangeResultSchema),
+  Rpc.make('Delete', {
+    payload: DeleteSectionInputSchema,
+    success: SectionChangeResultSchema,
+    error: Schema.Union([
+      ProtocolNotFound,
+      SectionNotFound,
+      SectionsLocked,
+      ReferencesRemain,
+    ]),
+  }),
 
   /**
-   * Changes that cannot be contained in one section, so they cannot be made
-   * under one lock. Each takes every section it writes or fails naming who
-   * holds what. Codebook dialogs issue these; no stage editor does.
+   * The two `Refactor…` procedures are changes that cannot be contained in one
+   * section, so they cannot be made under one lock. Each takes every section it
+   * writes or fails naming who holds what. Codebook dialogs issue these; no
+   * stage editor does.
+   *
+   * This one removes a codebook variable and the references to it the schema
+   * declares, or refuses naming the ones it cannot remove: a reference inside a
+   * list — a prompt, a form field, a filter rule — goes with the entry holding
+   * it, and one that is a property of a stage cannot be removed without
+   * inventing what the stage then means.
    */
-  refactor: {
-    /**
-     * Removes a codebook variable and the references to it the schema
-     * declares, or refuses naming the ones it cannot remove: a reference
-     * inside a list — a prompt, a form field, a filter rule — goes with the
-     * entry holding it, and one that is a property of a stage cannot be
-     * removed without inventing what the stage then means.
-     */
-    deleteVariable: base
-      .errors(refactorErrors)
-      .input(DeleteVariableInputSchema)
-      .output(SectionChangeResultSchema),
-    /** Removes an entity type and its section, on the same terms. */
-    deleteEntityType: base
-      .errors(refactorErrors)
-      .input(DeleteEntityTypeInputSchema)
-      .output(SectionChangeResultSchema),
-  },
+  Rpc.make('RefactorDeleteVariable', {
+    payload: DeleteVariableInputSchema,
+    success: SectionChangeResultSchema,
+    error: RefactorError,
+  }),
+
+  /** Removes an entity type and its section, on the same terms. */
+  Rpc.make('RefactorDeleteEntityType', {
+    payload: DeleteEntityTypeInputSchema,
+    success: SectionChangeResultSchema,
+    error: RefactorError,
+  }),
 
   /**
-   * Protocol resources: the asset manifest's entries and their bytes.
+   * The `Resources…` procedures: the asset manifest's entries and their bytes.
    *
    * An imported file is staged for the life of the stage edit, promoted by
-   * the stage's `submit`, and discarded with its cancel. There is no promotion
+   * the stage's `Submit`, and discarded with its cancel. There is no promotion
    * of its own: bytes committed without the section naming them, or a section
    * naming bytes that were never committed, are the two half-written states a
    * separate procedure would make reachable. Secret material never comes back
@@ -202,27 +229,43 @@ export const contract = {
    * is two edits, and either cancel would otherwise discard what the other was
    * about to submit.
    */
-  resources: {
-    list: base
-      .input(ResourceListInputSchema)
-      .output(resourceResult(ResourceListSchema)),
-    stage: base
-      .input(StageResourceInputSchema)
-      .output(resourceResult(StagedResourceSchema)),
-    discard: base
-      .input(ResourceDiscardInputSchema)
-      .output(ResourceDiscardResultSchema),
-    inspect: base
-      .input(ResourceScopedInputSchema)
-      .output(resourceResult(ResourceInspectionSchema)),
-    preview: base
-      .input(ResourceScopedInputSchema)
-      .output(resourceResult(ResourcePreviewSchema)),
-  },
-};
+  Rpc.make('ResourcesList', {
+    payload: ResourceListInputSchema,
+    success: resourceResult(ResourceListSchema),
+    error: ProtocolError,
+  }),
 
-export type ProtocolBuilderContract = typeof contract;
+  Rpc.make('ResourcesStage', {
+    payload: StageResourceInputSchema,
+    success: resourceResult(StagedResourceSchema),
+    error: ProtocolError,
+  }),
+
+  Rpc.make('ResourcesDiscard', {
+    payload: ResourceDiscardInputSchema,
+    success: ResourceDiscardResultSchema,
+    error: ProtocolError,
+  }),
+
+  Rpc.make('ResourcesInspect', {
+    payload: ResourceScopedInputSchema,
+    success: resourceResult(ResourceInspectionSchema),
+    error: ProtocolError,
+  }),
+
+  Rpc.make('ResourcesPreview', {
+    payload: ResourceScopedInputSchema,
+    success: resourceResult(ResourcePreviewSchema),
+    error: ProtocolError,
+  }),
+).middleware(HostSession) {}
+
+export type ProtocolBuilderRpcs = RpcGroup.Rpcs<typeof ProtocolBuilderGroup>;
+
+export type ProtocolBuilderTag = ProtocolBuilderRpcs['_tag'];
 
 /** What a host hands `<ProtocolBuilder>`, wire-backed or in-process. */
-export type ProtocolBuilderClient =
-  RouterContractClient<ProtocolBuilderContract>;
+export type ProtocolBuilderClient = RpcClient.RpcClient.Flat<
+  ProtocolBuilderRpcs,
+  RpcClientError
+>;

@@ -35,7 +35,7 @@ import {
   guardState,
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
-import { createArchitectClient } from '~/protocolBuilder/createArchitectRouter';
+import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 const messages = defineMessages({
   stageNotFound: {
@@ -149,10 +149,7 @@ const StageEditorPage = () => {
   // One client per store, because a new one re-opens the protocol channel
   // behind it. The name follows the researcher's language, which changes about
   // as often as the store does.
-  const client = useMemo(
-    () => createArchitectClient(reduxStore, otherTabName),
-    [otherTabName, reduxStore],
-  );
+  const client = useArchitectClient(reduxStore, otherTabName);
 
   const target = useMemo<StageEditTarget | undefined>(() => {
     if (stageId !== null) {
@@ -351,7 +348,10 @@ const StageEditorPage = () => {
               own stage title lands on `h2` and every section one below that.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
-              <ProtocolBuilder client={client} protocolId={activeProtocolId}>
+              <ProtocolBuilder
+                adapter={client.adapter}
+                protocolId={activeProtocolId}
+              >
                 <StageEditor
                   target={target}
                   formId={STAGE_FORM_ID}

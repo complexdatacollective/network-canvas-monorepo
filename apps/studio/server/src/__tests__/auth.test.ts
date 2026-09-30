@@ -439,13 +439,8 @@ describe('principal resolution', () => {
 
 // The same procedure over the websocket transport is not a case here, and
 // that is not an omission: `StudioRpcs` is mounted on `/rpc` alone
-// (`http/rpc-routes.ts`, the group's only `RpcServer` mount). `/ws` is the
-// protocol builder's oRPC bridge, which runs no rpc middleware and resolves its
-// principal from the upgrade through `auth/principal.ts`'s Hono gate. When
-// stage 8 moves that router onto this plane, a frame inherits the handshake's
-// headers and reaches `AuthenticatedLive` through `transportHeaders` exactly as
-// a fetch request does — and that is when the case can be written against a
-// real mount.
+// (`http/rpc-routes.ts`, the group's only `RpcServer` mount), and `/ws` serves
+// the protocol-builder group alone.
 
 /** The call the limiter admitted: nothing behind this Studio can serve it, so it dies there. */
 function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {

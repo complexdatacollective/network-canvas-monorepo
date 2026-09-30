@@ -1,19 +1,19 @@
-import { safe } from '@orpc/client';
 import { useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-import type {
-  Presence,
-  SectionReference,
-} from '@codaco/protocol-builder-core/contract/schemas';
+import type { ProtocolBuilderTag } from '@codaco/protocol-builder-core/contract';
+import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import { useProtocolBuilderContext } from '../state/context.ts';
+import { attempt, type Refusal } from '../state/attempt.ts';
+import {
+  useProtocolBuilderContext,
+  type ProtocolBuilderAdapter,
+} from '../state/context.ts';
 import { useKeptRequestId, type KeptRequestId } from '../state/requestKey.ts';
 import {
   codebookRefusalMessage,
@@ -77,9 +77,11 @@ const refused = (refusal: CodebookRefusal): CodebookWriteOutcome => ({
 });
 
 /** Every procedure can answer these two; anything else never reached a host. */
-const protocolRefusal = (code: string | undefined): CodebookRefusal => {
-  if (code === 'PROTOCOL_NOT_FOUND') return { kind: 'protocolGone' };
-  if (code === 'SECTION_NOT_FOUND') return { kind: 'sectionGone' };
+const protocolRefusal = (
+  refusal: Refusal<ProtocolBuilderTag> | undefined,
+): CodebookRefusal => {
+  if (refusal?._tag === 'ProtocolNotFound') return { kind: 'protocolGone' };
+  if (refusal?._tag === 'SectionNotFound') return { kind: 'sectionGone' };
   return { kind: 'unreachable' };
 };
 
@@ -89,7 +91,7 @@ const heldRefusal = (holder: Presence | undefined): CodebookRefusal =>
     : { kind: 'held', holders: [holder.displayName] };
 
 /**
- * Everyone a `SECTIONS_LOCKED` refusal names, once each and in the order the
+ * Everyone a `SectionsLocked` refusal names, once each and in the order the
  * host named them.
  *
  * A write that touches several sections can be held up by more than one
@@ -125,29 +127,20 @@ const blockedRefusal = (
  * problem while nothing offered a delete to reach them with.
  */
 const refactorRefusal = (
-  failure:
-    | Readonly<{
-        code: 'SECTIONS_LOCKED';
-        data: Readonly<{ blocked: readonly Readonly<{ holder?: Presence }>[] }>;
-      }>
-    | Readonly<{
-        code: 'REFERENCES_REMAIN';
-        data: Readonly<{ remaining: readonly SectionReference[] }>;
-      }>
-    | Readonly<{ code: 'PROTOCOL_NOT_FOUND' | 'SECTION_NOT_FOUND' }>
-    | null
+  refusal:
+    | Refusal<'RefactorDeleteVariable' | 'RefactorDeleteEntityType'>
     | undefined,
 ): CodebookRefusal => {
-  if (failure?.code === 'SECTIONS_LOCKED') {
-    return blockedRefusal(failure.data.blocked);
+  if (refusal?._tag === 'SectionsLocked') {
+    return blockedRefusal(refusal.blocked);
   }
-  if (failure?.code === 'REFERENCES_REMAIN') {
+  if (refusal?._tag === 'ReferencesRemain') {
     return {
       kind: 'referencesRemain',
-      references: failure.data.remaining.length,
+      references: refusal.remaining.length,
     };
   }
-  return protocolRefusal(failure?.code);
+  return protocolRefusal(refusal);
 };
 
 /**
@@ -180,7 +173,7 @@ export function useCodebookSectionWrite(): (
   subject: CodebookSubject,
   next: (authoritativeDocument: SectionDoc) => SectionDoc,
 ) => Promise<CodebookWriteOutcome> {
-  const { client, protocolId } = useProtocolBuilderContext();
+  const { adapter, protocolId } = useProtocolBuilderContext();
   // The participant's own section is CREATED by the first attribute, and a
   // create is the one write here a retry can be recognised as.
   const egoKey = useKeptRequestId();
@@ -188,9 +181,10 @@ export function useCodebookSectionWrite(): (
   return useCallback(
     async (subject, next) => {
       const id = sectionIdForCodebookSubject(subject);
-      const acquired = await safe(
-        client.acquireLock({ protocolId, sectionId: id }),
-      );
+      const acquired = await attempt(adapter, 'AcquireLock', {
+        protocolId,
+        sectionId: id,
+      });
       if (!acquired.isSuccess) {
         // The participant's own attributes are the one part of the codebook a
         // protocol need not have yet: a researcher who has asked the
@@ -200,20 +194,20 @@ export function useCodebookSectionWrite(): (
         // creates the section — there is no empty section to write first.
         if (
           subject.entity === 'ego' &&
-          acquired.definedError?.code === 'SECTION_NOT_FOUND'
+          acquired.refusal?._tag === 'SectionNotFound'
         ) {
-          return createEgoCodebook(client, protocolId, egoKey, next);
+          return createEgoCodebook(adapter, protocolId, egoKey, next);
         }
-        if (acquired.definedError === null) {
+        if (acquired.refusal === undefined) {
           // An acquire with no refusal on it never reached an answer: the
           // socket dropped, and the host may well have granted the lock before
           // it did. Studio's lease is renewed for as long as the tab is there,
           // so a lock nobody knows about is one the section's collaborators
           // wait out until the tab closes. Best effort, like every other
           // release: a host that will not take it leaves nothing to act on.
-          await safe(client.releaseLock({ protocolId, sectionId: id }));
+          await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
         }
-        return refused(protocolRefusal(acquired.definedError?.code));
+        return refused(protocolRefusal(acquired.refusal));
       }
       if (acquired.data.lock === 'readOnly') {
         return refused(heldRefusal(acquired.data.holder));
@@ -227,32 +221,30 @@ export function useCodebookSectionWrite(): (
           return builderRefusal(error);
         }
 
-        const submitted = await safe(
-          client.submit({
-            protocolId,
-            requestId: nextRequestId(),
-            sectionId: id,
-            document,
-            revision: acquired.data.revision,
-          }),
-        );
+        const submitted = await attempt(adapter, 'Submit', {
+          protocolId,
+          requestId: nextRequestId(),
+          sectionId: id,
+          document,
+          revision: acquired.data.revision,
+        });
         if (submitted.isSuccess) return { status: 'applied', sectionId: id };
-        const { definedError } = submitted;
-        if (definedError?.code === 'NOT_LOCK_HOLDER') {
-          return refused(heldRefusal(definedError.data.holder));
+        const { refusal } = submitted;
+        if (refusal?._tag === 'NotLockHolder') {
+          return refused(heldRefusal(refusal.holder));
         }
-        if (definedError?.code === 'SECTIONS_LOCKED') {
-          return refused(blockedRefusal(definedError.data.blocked));
+        if (refusal?._tag === 'SectionsLocked') {
+          return refused(blockedRefusal(refusal.blocked));
         }
-        if (definedError?.code === 'INVALID_SHAPE') {
+        if (refusal?._tag === 'InvalidShape') {
           return refused({ kind: 'invalidShape' });
         }
-        return refused(protocolRefusal(definedError?.code));
+        return refused(protocolRefusal(refusal));
       } finally {
-        await safe(client.releaseLock({ protocolId, sectionId: id }));
+        await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
       }
     },
-    [client, egoKey, protocolId],
+    [adapter, egoKey, protocolId],
   );
 }
 
@@ -263,11 +255,11 @@ export function useCodebookSectionWrite(): (
  * The draft is laid over an empty codebook rather than over a document the
  * host handed back, because there is none: `create` is atomic and takes no
  * lock, so between deciding to create and creating, a collaborator adding the
- * first attribute of their own is answered `SECTION_EXISTS` rather than
+ * first attribute of their own is answered `SectionExists` rather than
  * overwritten.
  */
 async function createEgoCodebook(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   egoKey: KeptRequestId,
   next: (authoritativeDocument: SectionDoc) => SectionDoc,
@@ -279,31 +271,29 @@ async function createEgoCodebook(
     return builderRefusal(error);
   }
   const requestId = egoKey.forAsk(contentHash(document));
-  const created = await safe(
-    client.create({
-      protocolId,
-      requestId,
-      kind: 'codebookEgo',
-      document,
-    }),
-  );
-  if (created.isSuccess || created.definedError !== null) {
+  const created = await attempt(adapter, 'Create', {
+    protocolId,
+    requestId,
+    kind: 'codebookEgo',
+    document,
+  });
+  if (created.isSuccess || created.refusal !== undefined) {
     egoKey.settled(requestId);
   }
   if (created.isSuccess) {
     return { status: 'applied', sectionId: created.data.sectionId };
   }
-  const { definedError } = created;
-  if (definedError?.code === 'INVALID_SHAPE') {
+  const { refusal } = created;
+  if (refusal?._tag === 'InvalidShape') {
     return refused({ kind: 'invalidShape' });
   }
-  if (definedError?.code === 'SECTIONS_LOCKED') {
-    return refused(blockedRefusal(definedError.data.blocked));
+  if (refusal?._tag === 'SectionsLocked') {
+    return refused(blockedRefusal(refusal.blocked));
   }
-  if (definedError?.code === 'SECTION_EXISTS') {
+  if (refusal?._tag === 'SectionExists') {
     return refused({ kind: 'sectionCreatedElsewhere' });
   }
-  return refused(protocolRefusal(definedError?.code));
+  return refused(protocolRefusal(refusal));
 }
 
 /**
@@ -316,7 +306,7 @@ export function useCreateCodebookEntity(): (
   entity: 'node' | 'edge',
   document: SectionDoc,
 ) => Promise<CodebookWriteOutcome> {
-  const { client, protocolId } = useProtocolBuilderContext();
+  const { adapter, protocolId } = useProtocolBuilderContext();
   const createKey = useKeptRequestId();
 
   return useCallback(
@@ -330,25 +320,28 @@ export function useCreateCodebookEntity(): (
       const requestId = createKey.forAsk(
         `${kind}\u0000${contentHash(document)}`,
       );
-      const created = await safe(
-        client.create({ protocolId, requestId, kind, document }),
-      );
-      if (created.isSuccess || created.definedError !== null) {
+      const created = await attempt(adapter, 'Create', {
+        protocolId,
+        requestId,
+        kind,
+        document,
+      });
+      if (created.isSuccess || created.refusal !== undefined) {
         createKey.settled(requestId);
       }
       if (created.isSuccess) {
         return { status: 'applied', sectionId: created.data.sectionId };
       }
-      const { definedError } = created;
-      if (definedError?.code === 'INVALID_SHAPE') {
+      const { refusal } = created;
+      if (refusal?._tag === 'InvalidShape') {
         return refused({ kind: 'invalidShape' });
       }
-      if (definedError?.code === 'SECTIONS_LOCKED') {
-        return refused(blockedRefusal(definedError.data.blocked));
+      if (refusal?._tag === 'SectionsLocked') {
+        return refused(blockedRefusal(refusal.blocked));
       }
-      return refused(protocolRefusal(definedError?.code));
+      return refused(protocolRefusal(refusal));
     },
-    [client, createKey, protocolId],
+    [adapter, createKey, protocolId],
   );
 }
 
@@ -363,22 +356,24 @@ export function useDeleteCodebookVariable(): (
   subject: CodebookSubject,
   variableId: string,
 ) => Promise<CodebookWriteOutcome> {
-  const { client, protocolId } = useProtocolBuilderContext();
+  const { adapter, protocolId } = useProtocolBuilderContext();
 
   return useCallback(
     async (subject, variableId) => {
-      const removed = await safe(
-        client.refactor.deleteVariable({ protocolId, subject, variableId }),
-      );
+      const removed = await attempt(adapter, 'RefactorDeleteVariable', {
+        protocolId,
+        subject,
+        variableId,
+      });
       if (removed.isSuccess) {
         return {
           status: 'applied',
           sectionId: sectionIdForCodebookSubject(subject),
         };
       }
-      return refused(refactorRefusal(removed.definedError));
+      return refused(refactorRefusal(removed.refusal));
     },
-    [client, protocolId],
+    [adapter, protocolId],
   );
 }
 
@@ -387,13 +382,15 @@ export function useDeleteCodebookEntity(): (
   entity: 'node' | 'edge',
   typeId: string,
 ) => Promise<CodebookWriteOutcome> {
-  const { client, protocolId } = useProtocolBuilderContext();
+  const { adapter, protocolId } = useProtocolBuilderContext();
 
   return useCallback(
     async (entity, typeId) => {
-      const removed = await safe(
-        client.refactor.deleteEntityType({ protocolId, entity, typeId }),
-      );
+      const removed = await attempt(adapter, 'RefactorDeleteEntityType', {
+        protocolId,
+        entity,
+        typeId,
+      });
       if (removed.isSuccess) {
         return {
           status: 'applied',
@@ -403,8 +400,8 @@ export function useDeleteCodebookEntity(): (
           }),
         };
       }
-      return refused(refactorRefusal(removed.definedError));
+      return refused(refactorRefusal(removed.refusal));
     },
-    [client, protocolId],
+    [adapter, protocolId],
   );
 }

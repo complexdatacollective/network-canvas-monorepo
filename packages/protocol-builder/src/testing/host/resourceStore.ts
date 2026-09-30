@@ -11,11 +11,20 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { readRosterFacts } from '../../resources/rosterFacts.ts';
 
-type Descriptor = z.output<typeof ResourceDescriptorSchema>;
-type Failure = z.output<typeof ResourceGatewayFailureSchema>;
-type Inspection = z.output<typeof ResourceInspectionSchema>;
-type Preview = z.output<typeof ResourcePreviewSchema>;
-type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
+type Descriptor = (typeof ResourceDescriptorSchema)['Type'];
+type Failure = (typeof ResourceGatewayFailureSchema)['Type'];
+type Inspection = (typeof ResourceInspectionSchema)['Type'];
+type Preview = (typeof ResourcePreviewSchema)['Type'];
+type ContractStageRequest =
+  (typeof StageResourceInputSchema)['Type']['request'];
+/** Imported content is held as a `Blob`, the way a browser holds a file. */
+type StageRequest =
+  | Exclude<ContractStageRequest, Readonly<{ kind: 'content' }>>
+  | (Omit<
+      Extract<ContractStageRequest, Readonly<{ kind: 'content' }>>,
+      'bytes'
+    > &
+      Readonly<{ bytes: Blob }>);
 
 export type ResourceOutcome<TData> =
   | Readonly<{ status: 'ok'; data: TData }>

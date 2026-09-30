@@ -69,7 +69,7 @@ function StageEditorHost({
 
   return (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <SeedProtocolCache store={host.store}>
           <ResourceClientProvider>
             <StageEditSession target={{ sectionId: STAGE_SECTION }}>

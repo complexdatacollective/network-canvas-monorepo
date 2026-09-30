@@ -1,17 +1,15 @@
-import { type createTanstackQueryUtils } from '@orpc/tanstack-query';
 import { createContext, useContext } from 'react';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { RpcAdapter } from '@codaco/effect-query/types';
+import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract';
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
-export type ProtocolQueryUtils = ReturnType<
-  typeof createTanstackQueryUtils<ProtocolBuilderClient>
->;
+/** The host's procedures, bound to TanStack Query once by the host. */
+export type ProtocolBuilderAdapter = RpcAdapter<ProtocolBuilderRpcs>;
 
 export type ProtocolBuilderContextValue = Readonly<{
-  client: ProtocolBuilderClient;
-  utils: ProtocolQueryUtils;
+  adapter: ProtocolBuilderAdapter;
   protocolId: string;
 }>;
 

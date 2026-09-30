@@ -4,8 +4,6 @@
 // protocol behind it either.
 import { randomUUID } from 'node:crypto';
 
-import { safe } from '@orpc/client';
-import { createRouterClient } from '@orpc/server';
 import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -16,13 +14,12 @@ import {
   StudyId,
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
-import { createProtocolBuilderRuntime } from '../protocol-builder/runtime.ts';
-import { createRpcRouter } from '../rpc.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -32,6 +29,11 @@ import {
   type TestDatabaseRuntime,
   testDb,
 } from './support/database.ts';
+import {
+  type Caller,
+  createProtocolBuilderClient,
+  type ProtocolBuilderTestClient,
+} from './support/protocol-builder.ts';
 import {
   createRpcClient,
   expectRpcFailure,
@@ -77,14 +79,10 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
   let database: TestDatabaseRuntime;
   let clients: Map<Researcher, RpcTestClient>;
   /**
-   * The same researchers on the protocol-builder host, which is still an oRPC
-   * router served over `/ws` until stage 8 — so it is driven in process here
-   * rather than through the rpc plane, which no longer carries it.
+   * The protocol-builder host, driven in process: it is not on the rpc plane
+   * this file's other clients call.
    */
-  let builderClients: Map<
-    Researcher,
-    ReturnType<typeof createRouterClient<ReturnType<typeof createRpcRouter>>>
-  >;
+  let builder: ProtocolBuilderTestClient;
   /** A study the Member holds a study-role grant on. */
   let granted: CreatedStudy;
   /** A study of the same team that nobody granted the Member. */
@@ -98,11 +96,11 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
     return client;
   };
 
-  const asBuilderClient = (who: Researcher) => {
-    const client = builderClients.get(who);
-    if (!client) throw new Error(`no client for ${who.principal.userId}`);
-    return client;
-  };
+  const asBuilderCaller = (who: Researcher): Caller => ({
+    principal: who.principal,
+    connection: `${who.memberId}-connection`,
+    tab: `${who.memberId}-tab`,
+  });
 
   const createStudy = async (name: string): Promise<CreatedStudy> => {
     const input = {
@@ -125,10 +123,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
     await database.run(insertTeam(TEAM_ID));
 
     clients = new Map();
-    builderClients = new Map();
-    // One runtime for both researchers: a lock one of them holds has to be
-    // visible to the other, which is what makes a refusal mean anything.
-    const protocolBuilder = createProtocolBuilderRuntime();
     for (const who of [ADMIN, MEMBER]) {
       await database.run(
         ownerAffected(
@@ -161,26 +155,24 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
         services: database.services,
       });
       clients.set(who, await createRpcClient(studio));
-      builderClients.set(
-        who,
-        createRouterClient(
-          createRpcRouter({
-            ...studio.rpc,
-            auth: studio.auth,
-            limiter: studio.limiter,
-            protocolBuilder,
-          }),
-          {
-            context: {
-              principal: who.principal,
-              requestId: randomUUID(),
-              connectionId: `${who.memberId}-connection`,
-              clientSessionId: `${who.memberId}-tab`,
-            },
-          },
-        ),
-      );
     }
+    // One host for both researchers: a lock one of them holds has to be
+    // visible to the other, which is what makes a refusal mean anything. Each
+    // call names its caller, so the memberships are answered per user.
+    builder = await createProtocolBuilderClient(
+      createStudio(readEnv(), {
+        auth: authServiceStub({
+          listMemberships: (userId) =>
+            Effect.succeed(
+              [ADMIN, MEMBER]
+                .filter((who) => who.principal.userId === userId)
+                .map((who) => ({ teamId: TEAM_ID, role: who.role })),
+            ),
+        }),
+        pool: database.appPool,
+        services: database.services,
+      }),
+    );
 
     granted = await createStudy('Granted study');
     ungranted = await createStudy('Ungranted study');
@@ -220,6 +212,7 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
 
   afterAll(async () => {
     for (const client of clients.values()) await client.dispose();
+    await builder.dispose();
     await database.dispose();
   });
 
@@ -282,23 +275,20 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
     // teamId — it derives the tenant from the caller's own memberships — so it
     // answers in its own words, and the words have to be the same for a line
     // this Member holds no grant on as for a protocol id nobody ever made.
-    const locks = await Promise.all([
-      safe(
-        asBuilderClient(MEMBER).protocolBuilder.acquireLock({
-          protocolId: ungranted.protocolId,
-          sectionId: 'settings',
-        }),
+    await Promise.all(
+      [ungranted.protocolId, randomUUID()].map((protocolId) =>
+        expectRpcFailure(
+          builder.callExit(
+            asBuilderCaller(MEMBER),
+            builder.rpc('AcquireLock', {
+              protocolId,
+              sectionId: sectionId({ kind: 'settings' }),
+            }),
+          ),
+          'ProtocolNotFound',
+        ),
       ),
-      safe(
-        asBuilderClient(MEMBER).protocolBuilder.acquireLock({
-          protocolId: randomUUID(),
-          sectionId: 'settings',
-        }),
-      ),
-    ]);
-    for (const { error } of locks) {
-      expect(error).toMatchObject({ code: 'PROTOCOL_NOT_FOUND' });
-    }
+    );
   });
 
   it('refuses a Member’s edit of an ungranted line and commits nothing', async () => {

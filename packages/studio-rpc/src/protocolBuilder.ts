@@ -1,12 +1,6 @@
-// The protocol-builder host contract, re-exported so Studio's own contract can
-// carry it. `@codaco/protocol-builder-core` owns it; nothing here adds,
-// removes, or reshapes a procedure — a Studio-side edit to this surface would
-// put the package and its hosts on different contracts.
-export {
-  contract as protocolBuilderContract,
-  type ProtocolBuilderClient,
-  type ProtocolBuilderContract,
-} from '@codaco/protocol-builder-core/contract';
+// Protocol-builder types, re-exported from `@codaco/protocol-builder-core`,
+// which owns the contract.
+export type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
 export type {
   Presence,

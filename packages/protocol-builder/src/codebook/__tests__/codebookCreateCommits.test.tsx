@@ -1,17 +1,20 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Effect, Stream } from 'effect';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import { HostUnauthorized } from '@codaco/protocol-builder-core/contract/session';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
+import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import { useEntityTypes } from '../../state/hooks.ts';
+import { beforeCall } from '../../testing/host/beforeCall.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -101,7 +104,7 @@ describe('a codebook type created from inside a stage editor', () => {
     const seededLabel = String(host.store.read(STAGE).document.label);
 
     render(
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <StageEditorWithACodebookDialog seededLabel={seededLabel} />
       </ProtocolBuilder>,
     );
@@ -152,7 +155,7 @@ describe('two codebook types added one after the other', () => {
     const seededLabel = String(host.store.read(STAGE).document.label);
 
     render(
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <StageEditorWithACodebookDialog seededLabel={seededLabel} />
       </ProtocolBuilder>,
     );
@@ -186,29 +189,23 @@ describe('two codebook types added one after the other', () => {
  * identical request again — a socket that drops between the host writing and
  * the client reading it, which is the one case a client cannot tell from a
  * write that never happened.
- *
- * Proxied rather than spread: a contract client's procedures are reached
- * through property access rather than held as own properties, so a spread copy
- * of one has no procedures on it at all.
  */
 function withTheFirstAnswerLost(
   host: InMemoryHost,
-): Readonly<{ client: ProtocolBuilderClient; resends: () => number }> {
+): Readonly<{ adapter: ProtocolBuilderAdapter; resends: () => number }> {
   let resends = 0;
   let lost = false;
-  const create: ProtocolBuilderClient['create'] = async (input, options) => {
-    const answer = await host.client.create(input, options);
-    if (lost) return answer;
-    lost = true;
-    resends += 1;
-    // The first answer never reaches the client, so the very same request
-    // goes out again.
-    return host.client.create(input, options);
-  };
   return {
-    client: new Proxy(host.client, {
-      get: (target, property) =>
-        property === 'create' ? create : Reflect.get(target, property),
+    adapter: host.adapterWith({
+      Create: (input) =>
+        Effect.flatMap(host.handle.Create(input), (answer) => {
+          if (lost) return Effect.succeed(answer);
+          lost = true;
+          resends += 1;
+          // The first answer never reaches the client, so the very same
+          // request goes out again.
+          return host.handle.Create(input);
+        }),
     }),
     resends: () => resends,
   };
@@ -224,7 +221,7 @@ describe('a codebook type whose answer is lost on the way back', () => {
     const seededLabel = String(host.store.read(STAGE).document.label);
 
     render(
-      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
         <StageEditorWithACodebookDialog seededLabel={seededLabel} />
       </ProtocolBuilder>,
     );
@@ -262,7 +259,7 @@ describe('a codebook type whose answer is lost on the way back', () => {
     const seededLabel = String(host.store.read(STAGE).document.label);
 
     render(
-      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
         <StageEditorWithACodebookDialog seededLabel={seededLabel} />
       </ProtocolBuilder>,
     );
@@ -308,39 +305,28 @@ describe('a codebook type whose answer is lost on the way back', () => {
  * for as long as it is: the socket that lost the answer is the socket the
  * revisions ride on, so nothing tells this client that the type is already
  * there. The researcher presses Save again, which is the retry.
- *
- * Proxied rather than spread, for the reason `withTheFirstAnswerLost` is.
  */
-function withTheAnswerSwallowed(
-  host: InMemoryHost,
-): Readonly<{ client: ProtocolBuilderClient; keys: () => readonly string[] }> {
+function withTheAnswerSwallowed(host: InMemoryHost): Readonly<{
+  adapter: ProtocolBuilderAdapter;
+  keys: () => readonly string[];
+}> {
   const keys: string[] = [];
   let swallowed = false;
-  const create: ProtocolBuilderClient['create'] = async (input, options) => {
-    keys.push(input.requestId);
-    const answer = await host.client.create(input, options);
-    if (swallowed) return answer;
-    swallowed = true;
-    throw new Error('the socket dropped before the answer arrived');
-  };
-  // A channel that never delivers anything, cast through `unknown` because
-  // the contract's event iterator is a procedure client rather than a plain
-  // function type: what matters here is only that nothing arrives on it.
-  const watchProtocol = (() =>
-    (async function* (): AsyncGenerator<never> {
-      await new Promise(() => undefined);
-      // Not reached: the promise above never settles. Written so this is a
-      // generator rather than a function that merely returns one.
-      yield undefined as never;
-    })()) as unknown as ProtocolBuilderClient['watchProtocol'];
   return {
     keys: () => keys,
-    client: new Proxy(host.client, {
-      get: (target, property) => {
-        if (property === 'create') return create;
-        if (property === 'watchProtocol') return watchProtocol;
-        return Reflect.get(target, property);
+    adapter: host.adapterWith({
+      Create: (input) => {
+        keys.push(input.requestId);
+        return Effect.flatMap(host.handle.Create(input), (answer) => {
+          if (swallowed) return Effect.succeed(answer);
+          swallowed = true;
+          return Effect.die(
+            new Error('the socket dropped before the answer arrived'),
+          );
+        });
       },
+      // A channel that never delivers anything.
+      WatchProtocol: () => Stream.never,
     }),
   };
 }
@@ -391,7 +377,7 @@ describe('a codebook write whose section a collaborator is holding', () => {
       sections: sectionsFromProtocol(FIXTURE),
     });
     const collaborator = host.asCollaborator(ANA);
-    const held = await collaborator.acquireLock({
+    const held = await collaborator.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: PERSON,
     });
@@ -400,7 +386,7 @@ describe('a codebook write whose section a collaborator is holding', () => {
     expect(before.length).toBeGreaterThan(0);
 
     render(
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <AttributeInventor />
       </ProtocolBuilder>,
     );
@@ -417,7 +403,7 @@ describe('a codebook write whose section a collaborator is holding', () => {
     );
     expect(personVariableNames(host)).toEqual(before);
 
-    await collaborator.releaseLock({
+    await collaborator.rpcCall('ReleaseLock', {
       protocolId: host.protocolId,
       sectionId: PERSON,
     });
@@ -429,7 +415,7 @@ describe('a codebook write whose section a collaborator is holding', () => {
     expect(personVariableNames(host)).toContain('shoeSize');
     // The lock the write took is given back, so the collaborator can take it
     // again rather than being locked out for the rest of the session.
-    const after = await collaborator.acquireLock({
+    const after = await collaborator.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: PERSON,
     });
@@ -445,23 +431,18 @@ describe('a codebook write whose section a collaborator is holding', () => {
  */
 function withTheAcquireAnswerSwallowed(
   host: InMemoryHost,
-): Readonly<{ client: ProtocolBuilderClient }> {
+): Readonly<{ adapter: ProtocolBuilderAdapter }> {
   let swallowed = false;
-  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
-    input,
-    options,
-  ) => {
-    const answer = await host.client.acquireLock(input, options);
-    if (swallowed) return answer;
-    swallowed = true;
-    throw new Error('the socket dropped before the answer arrived');
-  };
   return {
-    client: new Proxy(host.client, {
-      get: (target, property) =>
-        property === 'acquireLock'
-          ? acquireLock
-          : Reflect.get(target, property),
+    adapter: host.adapterWith({
+      AcquireLock: (input) =>
+        Effect.flatMap(host.handle.AcquireLock(input), (answer) => {
+          if (swallowed) return Effect.succeed(answer);
+          swallowed = true;
+          return Effect.die(
+            new Error('the socket dropped before the answer arrived'),
+          );
+        }),
     }),
   };
 }
@@ -477,7 +458,7 @@ describe('a codebook lock whose acquire answer is lost', () => {
     const before = personVariableNames(host);
 
     render(
-      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
         <AttributeInventor />
       </ProtocolBuilder>,
     );
@@ -496,10 +477,48 @@ describe('a codebook lock whose acquire answer is lost', () => {
     // And the section is free. Studio renews this tab's lease for as long as
     // the tab is there, so a lock left behind by an unanswered acquire is one
     // the collaborators of that section wait out until it closes.
-    const after = await collaborator.acquireLock({
+    const after = await collaborator.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: PERSON,
     });
     expect(after.lock).toBe('held');
+  });
+});
+
+describe('a codebook lock the session refuses', () => {
+  /**
+   * An acquire the session refuses reached no answer about the lock, so it is
+   * treated as one that was lost: the change is reported as not sent, and the
+   * lock is given back in case it was granted.
+   */
+  it('is reported as not sent, and given back', async () => {
+    const user = userEvent.setup();
+    const host = createInMemoryHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    let refused = false;
+    let releases = 0;
+    const adapter = beforeCall(host.adapter, (tag) => {
+      if (tag === 'ReleaseLock') releases += 1;
+      if (tag !== 'AcquireLock' || refused) return undefined;
+      refused = true;
+      return Promise.reject(new HostUnauthorized({}));
+    });
+    const before = personVariableNames(host);
+
+    render(
+      <ProtocolBuilder adapter={adapter} protocolId={host.protocolId}>
+        <AttributeInventor />
+      </ProtocolBuilder>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Invent an attribute' }),
+    );
+
+    const answer = screen.getByLabelText('What happened');
+    await waitFor(() => expect(answer).toHaveTextContent(/could not be sent/));
+    expect(personVariableNames(host)).toEqual(before);
+    expect(releases).toBe(1);
   });
 });

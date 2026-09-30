@@ -143,8 +143,8 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
 
       // The Effect services every data-layer caller on this process runs on,
       // captured as one context and handed down to the promise-shaped
-      // consumers that cannot take layers: the protocol builder's oRPC router
-      // and the Hono residue (`rpc/deps.ts`). better-auth's sign-in mail
+      // consumers that cannot take layers: the Hono residue (`rpc/deps.ts`).
+      // better-auth's sign-in mail
       // callback is not one of them any more: `AuthService.layer` builds it
       // over the services its own layer was given.
       //

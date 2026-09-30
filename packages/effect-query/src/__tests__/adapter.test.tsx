@@ -315,6 +315,67 @@ describe('makeRpcAdapter', () => {
     expect(onFailure).toHaveBeenCalledWith(result.current.error);
   });
 
+  it('runs a stream outside React and resolves once it ends', async () => {
+    const chunks: number[] = [];
+    await adapter.rpcStream('Countdown', { from: 3 }, (chunk) => {
+      chunks.push(chunk);
+    });
+
+    expect(chunks).toEqual([3, 2, 1]);
+    expect(released).toBe(true);
+    expect(onFailure).not.toHaveBeenCalled();
+  });
+
+  it('rejects a stream outside React with its typed failure after the chunks before it', async () => {
+    const chunks: number[] = [];
+    const rejection = await adapter
+      .rpcStream('Broken', { after: 2 }, (chunk) => {
+        chunks.push(chunk);
+      })
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    expect(chunks).toEqual([1, 2]);
+    expect(rejection).toBeInstanceOf(StreamBroke);
+    expect(onFailure).toHaveBeenCalledWith(rejection);
+  });
+
+  it('interrupts the server stream when the signal aborts, and rejects as an abort', async () => {
+    const chunks: number[] = [];
+    const controller = new AbortController();
+    const running = adapter
+      .rpcStream(
+        'Countdown',
+        { from: COUNTDOWN_FROM },
+        (chunk) => {
+          chunks.push(chunk);
+        },
+        controller.signal,
+      )
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    await waitFor(() => expect(chunks.length).toBeGreaterThanOrEqual(2));
+    controller.abort();
+    const rejection = await running;
+
+    const name =
+      Predicate.hasProperty(rejection, 'name') &&
+      Predicate.isString(rejection.name)
+        ? rejection.name
+        : undefined;
+    expect(name).toBe('AbortError');
+    await waitFor(() => expect(released).toBe(true), {
+      timeout: COUNTDOWN_INTERRUPT_BUDGET,
+    });
+    expect(chunks.length).toBeLessThan(COUNTDOWN_FROM / 2);
+    expect(onFailure).not.toHaveBeenCalled();
+  });
+
   it('runs nothing while a stream is disabled', async () => {
     const chunks: number[] = [];
     const { result } = renderHook(() =>

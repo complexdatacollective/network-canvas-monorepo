@@ -19,7 +19,7 @@ import { requireSameOrigin } from './middleware/origin.ts';
  *
  * ndjson rather than JSON because the framing is what lets a response be a
  * stream: a batch's results leave as they finish, and the streaming procedures
- * #1899 and stage 8 add need no second transport. One `RpcServer.layerHttp`
+ * #1899 adds need no second transport. One `RpcServer.layerHttp`
  * registers the POST route on the shell's own router, so the request goes
  * through the same global middlewares (problem JSON, request id, client
  * address) as every other route.

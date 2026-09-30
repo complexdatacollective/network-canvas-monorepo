@@ -106,12 +106,16 @@ request() {
 # The frame goes through a file because its trailing newline is what ndjson
 # framing means and command substitution strips one: a body without it leaves
 # the frame sitting in the decoder's buffer, and the request is never answered.
+#
+# `RPC_ROUTE` names the route when it is not `/rpc`: the protocol builder's
+# unary plane is `/rpc/protocol-builder`, the same rpc server and framing over
+# its own group.
 rpc() { # tag payload-json [extra curl args...]
   local tag="$1" payload="$2" frame_file="$WORK_DIR/.rpc-request" exit_frame
   shift 2
   printf '{"_tag":"Request","id":1,"tag":"%s","payload":%s,"headers":[]}\n' \
     "$tag" "$payload" > "$frame_file"
-  request -X POST "$URL/rpc" \
+  request -X POST "$URL${RPC_ROUTE:-/rpc}" \
     -H 'Content-Type: application/ndjson' \
     -H "Origin: $ORIGIN" \
     "$@" \
@@ -208,6 +212,20 @@ equals 'POST /rpc is served' 200 "$STATUS"
 contains 'POST /rpc answers ndjson' 'application/ndjson' "$CONTENT_TYPE"
 equals 'the rpc plane serves a public procedure' Success "$RPC_VERDICT"
 
+# The protocol builder's unary plane: its own route beside `/rpc`, which both
+# ingresses reach through their `/rpc` prefix. A caller with no session is
+# refused by the route before its body is read, as a 401 problem — `/rpc`
+# answers the same anonymous frame with a 200, so this cannot pass by `/rpc`
+# answering the path. The signed-in check below proves the handlers are behind
+# it.
+RPC_ROUTE=/rpc/protocol-builder
+rpc ListSections '{"protocolId":"00000000-0000-4000-8000-000000000000"}'
+RPC_ROUTE=
+equals 'POST /rpc/protocol-builder refuses a caller with no session' 401 "$STATUS"
+equals 'as a problem document' 'application/problem+json' "$CONTENT_TYPE"
+contains 'naming the refusal' '"status":401' "$BODY"
+equals 'before any procedure answered' '' "$RPC_VERDICT"
+
 request "$URL/readyz"
 equals '/readyz is served' 200 "$STATUS"
 contains '/readyz reports the database' '"db":"ok"' "$BODY"
@@ -267,6 +285,15 @@ contains 'setup signed the browser in' '"signedIn":true' "$RPC_EXIT"
 rpc me null -b "$COOKIE_JAR"
 equals "the owner's session is accepted by \`me\`" Success "$RPC_VERDICT"
 contains '`me` is the owner' "$OWNER_EMAIL" "$RPC_EXIT"
+
+# Signed in, the same plane reaches the handlers: a protocol the owner has none
+# of is the contract's own refusal, past the session gate.
+RPC_ROUTE=/rpc/protocol-builder
+rpc ListSections '{"protocolId":"00000000-0000-4000-8000-000000000000"}' \
+  -b "$COOKIE_JAR"
+RPC_ROUTE=
+equals 'the protocol-builder plane admits the owner' Failure "$RPC_VERDICT"
+equals 'and answers a missing protocol as not found' ProtocolNotFound "$RPC_ERROR"
 
 # Setup is closed once the instance has an owner, and the procedure says so as
 # a typed refusal rather than as a status — `NotFound`, which is what `/setup`

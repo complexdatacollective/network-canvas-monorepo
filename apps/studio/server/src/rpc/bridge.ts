@@ -23,7 +23,7 @@ import type { RpcDeps } from './deps.ts';
  * that skips the transport). That is the same fallback `app.ts` has always
  * applied.
  */
-const requestIdOrMint: Effect.Effect<string> = Effect.flatMap(
+export const requestIdOrMint: Effect.Effect<string> = Effect.flatMap(
   Effect.serviceOption(RequestId),
   Option.match({
     onNone: () => Effect.sync(() => randomUUID()),

@@ -93,7 +93,7 @@ function toReceipt(row: ReceiptRow): WriteReceipt {
  * decide, because every one of them now runs in the caller's. The distinction
  * survives where it always belonged, at the two call sites:
  *
- *   * the router asks in a scope of its own, before it plans a promotion, so
+ *   * the handler asks in a scope of its own, before it plans a promotion, so
  *     that a retried promoting write is answered rather than refused for
  *     staged resources the first attempt already consumed;
  *   * the host asks inside the write's own transaction, under the draft-head

@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';
 import {
@@ -86,7 +86,8 @@ const REFUSAL = {
   },
 };
 
-const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
+const bytesOf = (text: string): Uint8Array =>
+  new Uint8Array(new TextEncoder().encode(text));
 
 function imageField() {
   return (
@@ -172,11 +173,11 @@ function heldFile(
 
 function renderSecretControl(
   host: InMemoryHost,
-  client: ProtocolBuilderClient = host.client,
+  adapter: ProtocolBuilderAdapter = host.adapter,
 ) {
   const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
   renderInResourceContext(
-    client,
+    adapter,
     host.protocolId,
     <ResourceSecretControl onStaged={staged} />,
   );
@@ -189,11 +190,11 @@ async function pickerWithADiscardInFlight(
 ) {
   const held = deferred<void>();
   const { fieldValue } = renderResourceEditor({
-    client: (host) =>
-      withResourceProcedures(host.client, {
+    adapter: (host) =>
+      withResourceProcedures(host, {
         discard: async (input) => {
           await held.promise;
-          return host.client.resources.discard(input);
+          return host.adapter.rpcCall('ResourcesDiscard', input);
         },
       }),
     children: imageField(),
@@ -224,7 +225,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const user = userEvent.setup();
       const sources: string[] = [];
       const { fieldValue } = renderResourceEditor({
-        client: (host) => stagingsInto(host, sources),
+        adapter: (host) => stagingsInto(host, sources),
         children: imageField(),
       });
 
@@ -254,7 +255,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const user = userEvent.setup({ applyAccept: false });
       const sources: string[] = [];
       const { fieldValue } = renderResourceEditor({
-        client: (host) => stagingsInto(host, sources),
+        adapter: (host) => stagingsInto(host, sources),
         children: imageField(),
       });
 
@@ -347,10 +348,10 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const user = userEvent.setup({ applyAccept: false });
       let refuse = true;
       renderResourceEditor({
-        client: (host) =>
-          withResourceProcedures(host.client, {
+        adapter: (host) =>
+          withResourceProcedures(host, {
             stage: (input) => {
-              if (!refuse) return host.client.resources.stage(input);
+              if (!refuse) return host.adapter.rpcCall('ResourcesStage', input);
               refuse = false;
               return Promise.resolve(REFUSAL);
             },
@@ -392,13 +393,13 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const sources: string[] = [];
       let refuse = true;
       const { fieldValue } = renderResourceEditor({
-        client: (host) =>
-          withResourceProcedures(host.client, {
+        adapter: (host) =>
+          withResourceProcedures(host, {
             stage: (input) => {
               sources.push(
                 input.request.kind === 'content' ? input.request.source : '',
               );
-              if (!refuse) return host.client.resources.stage(input);
+              if (!refuse) return host.adapter.rpcCall('ResourcesStage', input);
               refuse = false;
               return Promise.resolve(REFUSAL);
             },
@@ -444,8 +445,8 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const user = userEvent.setup();
       const held = deferred<void>();
       renderResourceEditor({
-        client: (host) =>
-          withResourceProcedures(host.client, {
+        adapter: (host) =>
+          withResourceProcedures(host, {
             stage: async () => {
               await held.promise;
               return REFUSAL;
@@ -475,8 +476,8 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       // A host that will hold any bytes is not a host that can tell a roster
       // from a text file, and `inspect` is where it says so.
       const { fieldValue, staged } = renderResourceEditor({
-        client: (host) =>
-          withResourceProcedures(host.client, {
+        adapter: (host) =>
+          withResourceProcedures(host, {
             inspect: () =>
               Promise.resolve({
                 status: 'failed' as const,
@@ -519,11 +520,11 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       let calls = 0;
       const staged = renderSecretControl(
         host,
-        withResourceProcedures(host.client, {
+        withResourceProcedures(host, {
           stage: async (input) => {
             calls += 1;
             if (calls === 1) await held.promise;
-            return host.client.resources.stage(input);
+            return host.adapter.rpcCall('ResourcesStage', input);
           },
         }),
       );
@@ -558,10 +559,10 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       let calls = 0;
       renderSecretControl(
         host,
-        withResourceProcedures(host.client, {
+        withResourceProcedures(host, {
           stage: async (input) => {
             calls += 1;
-            if (calls > 1) return host.client.resources.stage(input);
+            if (calls > 1) return host.adapter.rpcCall('ResourcesStage', input);
             await held.promise;
             return {
               status: 'failed' as const,
@@ -631,7 +632,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const user = userEvent.setup();
       const sources: string[] = [];
       renderResourceEditor({
-        client: (host) => stagingsInto(host, sources),
+        adapter: (host) => stagingsInto(host, sources),
         children: imageField(),
       });
 
@@ -664,14 +665,14 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const staging = deferred<void>();
       const sources: string[] = [];
       const { fieldValue, staged } = renderResourceEditor({
-        client: (host) =>
-          withResourceProcedures(host.client, {
+        adapter: (host) =>
+          withResourceProcedures(host, {
             stage: async (input) => {
               sources.push(
                 input.request.kind === 'content' ? input.request.source : '',
               );
               await staging.promise;
-              return host.client.resources.stage(input);
+              return host.adapter.rpcCall('ResourcesStage', input);
             },
           }),
         children: imageField(),
@@ -709,7 +710,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const user = userEvent.setup();
       const sources: string[] = [];
       const { fieldValue, staged } = renderResourceEditor({
-        client: (host) => stagingsInto(host, sources),
+        adapter: (host) => stagingsInto(host, sources),
         children: imageField(),
       });
 
@@ -744,15 +745,15 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const user = userEvent.setup();
       const host = createResourceHost();
       const held = deferred<void>();
-      const client = withResourceProcedures(host.client, {
+      const adapter = withResourceProcedures(host, {
         stage: async (input) => {
           await held.promise;
-          return host.client.resources.stage(input);
+          return host.adapter.rpcCall('ResourcesStage', input);
         },
       });
       const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
       const { unmount } = renderInResourceContext(
-        client,
+        adapter,
         host.protocolId,
         <ResourceSecretControl onStaged={staged} />,
       );
@@ -768,7 +769,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       // abandoned bytes: nothing left knows it is there.
       await waitFor(async () =>
         expect(
-          await stagedResources(host.client, host.protocolId, TEST_EDIT_ID),
+          await stagedResources(host.adapter, host.protocolId, TEST_EDIT_ID),
         ).toEqual([]),
       );
       expect(staged).not.toHaveBeenCalled();
@@ -900,8 +901,8 @@ const INTERLEAVINGS: readonly Interleaving[] = [
         // Thrown synchronously, which is the shape a `.catch()` chained onto
         // the call itself cannot see: the throw happens before there is a
         // promise to chain onto.
-        client: (host) =>
-          withResourceProcedures(host.client, {
+        adapter: (host) =>
+          withResourceProcedures(host, {
             preview: () => {
               throw new Error('the host threw');
             },
@@ -937,7 +938,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the throw is told as a failure rather than left as empty space',
     check: async () => {
       const host = createResourceHost();
-      const staged = await host.client.resources.stage({
+      const staged = await host.adapter.rpcCall('ResourcesStage', {
         protocolId: host.protocolId,
         // The edit the preview below is mounted in; a file staged for another
         // one is not one it may resolve.
@@ -949,13 +950,13 @@ const INTERLEAVINGS: readonly Interleaving[] = [
           name: 'thrown.png',
           source: 'thrown.png',
           contentType: 'image/png',
-          bytes: new Blob(['png'], { type: 'image/png' }),
+          bytes: bytesOf('png'),
         },
       });
       if (staged.status !== 'ok') throw new Error('the image was not staged');
 
       renderInResourceContext(
-        withResourceProcedures(host.client, {
+        withResourceProcedures(host, {
           preview: () => {
             throw new Error('the host threw');
           },
@@ -977,13 +978,13 @@ const INTERLEAVINGS: readonly Interleaving[] = [
 function stagingsInto(
   host: InMemoryHost,
   sources: string[],
-): ProtocolBuilderClient {
-  return withResourceProcedures(host.client, {
+): ProtocolBuilderAdapter {
+  return withResourceProcedures(host, {
     stage: (input) => {
       sources.push(
         input.request.kind === 'content' ? input.request.source : '',
       );
-      return host.client.resources.stage(input);
+      return host.adapter.rpcCall('ResourcesStage', input);
     },
   });
 }
