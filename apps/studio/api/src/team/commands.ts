@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { Effect, Schema } from 'effect';
 import type { SqlError } from 'effect/unstable/sql';
-import { z } from 'zod';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import { TeamInvitationId } from '@codaco/studio-contract/schema/ids';
+import { Email } from '@codaco/studio-contract/schema/primitives';
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
 
 import { audited, auditable, changed, unchanged } from '../audit/audited.ts';
@@ -60,7 +60,7 @@ import * as store from './store.ts';
 // and leave nothing — an immutable log is the wrong place for "you asked for
 // something that was already true".
 
-const EmailSchema = z.email().max(320);
+const decodeEmail = Schema.decodeUnknownSync(Email);
 const INVITATION_LIMIT = 100;
 const MEMBERSHIP_LIMIT = 100;
 
@@ -285,10 +285,10 @@ export const createTeamInvitation: (
   input: { email: string; role: TeamRole },
 ) {
   // A malformed address is a contract violation rather than a refusal a caller
-  // could act on, and it reaches the transport as the fault it is — which is
-  // what the thrown `ZodError` did here before.
+  // could act on, so the decode throws inside `Effect.sync` and reaches the
+  // transport as the defect it is.
   const email = yield* Effect.sync(() =>
-    EmailSchema.parse(input.email.trim().toLowerCase()),
+    decodeEmail(input.email.trim().toLowerCase()),
   );
 
   return yield* reserved(

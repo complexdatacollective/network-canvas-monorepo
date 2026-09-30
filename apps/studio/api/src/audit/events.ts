@@ -1,191 +1,247 @@
-import { z } from 'zod';
+import { Schema, type SchemaAST } from 'effect';
 
-import { STUDY_PARTICIPATION_MODES } from '@codaco/studio-contract/schema/study';
-import { TEAM_ROLES } from '@codaco/studio-contract/schema/team';
+import { Email } from '@codaco/studio-contract/schema/primitives';
+import { StudyParticipationMode } from '@codaco/studio-contract/schema/study';
+import { TeamRole } from '@codaco/studio-contract/schema/team';
 
-const TeamRoleSchema = z.enum(TEAM_ROLES);
+/**
+ * Copied from zod 4.5.4's `uuid()` pattern with no version given
+ * (`zod/v4/core/regexes.js`, the `uuid` export), which is what `z.uuid()`
+ * installed here. `Schema.isUUID()` is not the same rule: its max-UUID
+ * alternative is `[fF]{8}-…`, so it also admits the upper-case max UUID that
+ * zod refused, and a request id the log refused before would be recorded.
+ */
+const UUID_PATTERN =
+  /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 
-const LabelSchema = z.string().min(1).max(320);
-const IdentifierSchema = z.string().min(1).max(255);
-const DecimalSequenceSchema = z
-  .string()
-  .regex(/^(0|[1-9]\d*)$/)
-  .max(20);
+/**
+ * zod 4.5.4's `datetime({ offset: true })` pattern (`zod/v4/core/regexes.js`,
+ * `datetime` with `local: false` and `precision: null`, the defaults
+ * `_isoDateTime` in `zod/v4/core/api.js` supplies), expanded: a calendar-valid
+ * date, seconds required, any fractional digits, and `Z` or a `±hh:mm`
+ * offset. Effect 4 has no ISO date-time string check to defer to.
+ */
+const OFFSET_DATETIME_PATTERN =
+  /^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
 
-const CommonUserEventSchema = z.strictObject({
-  teamId: IdentifierSchema,
-  teamLabel: LabelSchema,
-  actorKind: z.literal('user'),
-  actorId: IdentifierSchema,
-  actorLabel: LabelSchema,
-  requestId: z.uuid(),
+const Label = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(320),
+);
+const Identifier = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(255),
+);
+const DecimalSequence = Schema.String.check(
+  Schema.isPattern(/^(0|[1-9]\d*)$/),
+  Schema.isMaxLength(20),
+);
+const RequestId = Schema.String.check(Schema.isPattern(UUID_PATTERN));
+const OffsetDateTime = Schema.String.check(
+  Schema.isPattern(OFFSET_DATETIME_PATTERN),
+);
+const PositiveInt = (max: number) =>
+  Schema.Number.check(
+    Schema.isInt(),
+    Schema.isGreaterThan(0),
+    Schema.isLessThanOrEqualTo(max),
+  );
+const TeamRoles = Schema.Array(TeamRole).check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(3),
+);
+
+/**
+ * Every event schema below is a closed shape, `details` included: a field the
+ * registry never declared must be refused rather than recorded or dropped.
+ * `Schema.Struct` strips an undeclared key unless decoded with this option,
+ * which reaches every nested struct, so every decode in this module applies
+ * it — as `z.strictObject` did at each level before.
+ */
+export const AUDIT_EVENT_PARSE_OPTIONS = {
+  onExcessProperty: 'error',
+} as const satisfies SchemaAST.ParseOptions;
+
+const CommonUserEventSchema = Schema.Struct({
+  teamId: Identifier,
+  teamLabel: Label,
+  actorKind: Schema.Literal('user'),
+  actorId: Identifier,
+  actorLabel: Label,
+  requestId: RequestId,
 });
 
-const CommonTeamAccessV1EventSchema = CommonUserEventSchema.extend({
-  eventVersion: z.literal(1),
-  category: z.literal('team_access'),
-  resourceType: z.null(),
-  resourceId: z.null(),
-  resourceLabel: z.null(),
-}).strict();
+const CommonTeamAccessV1EventSchema = Schema.Struct({
+  ...CommonUserEventSchema.fields,
+  eventVersion: Schema.Literal(1),
+  category: Schema.Literal('team_access'),
+  resourceType: Schema.Null,
+  resourceId: Schema.Null,
+  resourceLabel: Schema.Null,
+});
 
-const CommonTeamAccessSucceededV1EventSchema =
-  CommonTeamAccessV1EventSchema.extend({
-    outcome: z.literal('succeeded'),
-  }).strict();
+const CommonTeamAccessSucceededV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessV1EventSchema.fields,
+  outcome: Schema.Literal('succeeded'),
+});
 
-const CommonTeamAccessSucceededV2EventSchema = CommonUserEventSchema.extend({
-  eventVersion: z.literal(2),
-  category: z.literal('team_access'),
-  outcome: z.literal('succeeded'),
-  resourceType: z.null(),
-  resourceId: z.null(),
-  resourceLabel: z.null(),
-}).strict();
+const CommonTeamAccessSucceededV2EventSchema = Schema.Struct({
+  ...CommonUserEventSchema.fields,
+  eventVersion: Schema.Literal(2),
+  category: Schema.Literal('team_access'),
+  outcome: Schema.Literal('succeeded'),
+  resourceType: Schema.Null,
+  resourceId: Schema.Null,
+  resourceLabel: Schema.Null,
+});
 
-const CommonTeamAccessDeniedV1EventSchema =
-  CommonTeamAccessV1EventSchema.extend({
-    outcome: z.literal('denied'),
-  }).strict();
+const CommonTeamAccessDeniedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessV1EventSchema.fields,
+  outcome: Schema.Literal('denied'),
+});
 
-const CommonTeamAccessFailedV1EventSchema =
-  CommonTeamAccessV1EventSchema.extend({
-    outcome: z.literal('failed'),
-  }).strict();
+const CommonTeamAccessFailedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessV1EventSchema.fields,
+  outcome: Schema.Literal('failed'),
+});
 
-const TeamMemberRoleChangedV1EventSchema =
-  CommonTeamAccessSucceededV1EventSchema.extend({
-    eventType: z.literal('team.member.role_changed'),
-    subjectType: z.literal('team_member'),
-    subjectId: IdentifierSchema,
-    subjectLabel: LabelSchema,
-    details: z.strictObject({
-      previousRoles: z.array(TeamRoleSchema).min(1).max(3),
-      newRoles: z.array(TeamRoleSchema).min(1).max(3),
-    }),
-  }).strict();
+const TeamMemberRoleChangedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessSucceededV1EventSchema.fields,
+  eventType: Schema.Literal('team.member.role_changed'),
+  subjectType: Schema.Literal('team_member'),
+  subjectId: Identifier,
+  subjectLabel: Label,
+  details: Schema.Struct({
+    previousRoles: TeamRoles,
+    newRoles: TeamRoles,
+  }),
+});
 
-const TeamInvitationCreatedV1EventSchema =
-  CommonTeamAccessSucceededV1EventSchema.extend({
-    eventType: z.literal('team.invitation.created'),
-    subjectType: z.literal('team_invitation'),
-    subjectId: IdentifierSchema,
-    subjectLabel: z.email().max(320),
-    details: z.strictObject({ role: TeamRoleSchema }),
-  }).strict();
+const TeamInvitationCreatedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessSucceededV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.created'),
+  subjectType: Schema.Literal('team_invitation'),
+  subjectId: Identifier,
+  subjectLabel: Email,
+  details: Schema.Struct({ role: TeamRole }),
+});
 
-const TeamInvitationCreationDeniedV1EventSchema =
-  CommonTeamAccessDeniedV1EventSchema.extend({
-    eventType: z.literal('team.invitation.creation_denied'),
-    subjectType: z.null(),
-    subjectId: z.null(),
-    subjectLabel: z.null(),
-    details: z.strictObject({
-      requestedRole: TeamRoleSchema,
-      reason: z.enum(['insufficient_permission', 'owner_role_requires_owner']),
-    }),
-  }).strict();
+const TeamInvitationCreationDeniedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessDeniedV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.creation_denied'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+  details: Schema.Struct({
+    requestedRole: TeamRole,
+    reason: Schema.Literals([
+      'insufficient_permission',
+      'owner_role_requires_owner',
+    ]),
+  }),
+});
 
-const TeamInvitationCancelledV1EventSchema =
-  CommonTeamAccessSucceededV1EventSchema.extend({
-    eventType: z.literal('team.invitation.cancelled'),
-    subjectType: z.literal('team_invitation'),
-    subjectId: IdentifierSchema,
-    subjectLabel: z.email().max(320),
-    details: z.strictObject({ role: TeamRoleSchema }),
-  }).strict();
+const TeamInvitationCancelledV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessSucceededV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.cancelled'),
+  subjectType: Schema.Literal('team_invitation'),
+  subjectId: Identifier,
+  subjectLabel: Email,
+  details: Schema.Struct({ role: TeamRole }),
+});
 
-const TeamInvitationCancelledV2EventSchema =
-  CommonTeamAccessSucceededV2EventSchema.extend({
-    eventType: z.literal('team.invitation.cancelled'),
-    subjectType: z.literal('team_invitation'),
-    subjectId: IdentifierSchema,
-    subjectLabel: z.email().max(320),
-    details: z.strictObject({
-      roles: z.array(TeamRoleSchema).min(1).max(3),
-    }),
-  }).strict();
+const TeamInvitationCancelledV2EventSchema = Schema.Struct({
+  ...CommonTeamAccessSucceededV2EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.cancelled'),
+  subjectType: Schema.Literal('team_invitation'),
+  subjectId: Identifier,
+  subjectLabel: Email,
+  details: Schema.Struct({ roles: TeamRoles }),
+});
 
-const TeamInvitationCancellationDeniedV1EventSchema =
-  CommonTeamAccessDeniedV1EventSchema.extend({
-    eventType: z.literal('team.invitation.cancellation_denied'),
-    subjectType: z.null(),
-    subjectId: z.null(),
-    subjectLabel: z.null(),
-    details: z.strictObject({
-      reason: z.literal('insufficient_permission'),
-    }),
-  }).strict();
+const TeamInvitationCancellationDeniedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessDeniedV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.cancellation_denied'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+  details: Schema.Struct({
+    reason: Schema.Literal('insufficient_permission'),
+  }),
+});
 
-const TeamInvitationCancellationFailedV1EventSchema =
-  CommonTeamAccessFailedV1EventSchema.extend({
-    eventType: z.literal('team.invitation.cancellation_failed'),
-    subjectType: z.literal('team_invitation'),
-    subjectId: IdentifierSchema,
-    subjectLabel: z.email().max(320),
-    details: z.strictObject({
-      failureCode: z.literal('delivery_in_progress'),
-    }),
-  }).strict();
+const TeamInvitationCancellationFailedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessFailedV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.cancellation_failed'),
+  subjectType: Schema.Literal('team_invitation'),
+  subjectId: Identifier,
+  subjectLabel: Email,
+  details: Schema.Struct({
+    failureCode: Schema.Literal('delivery_in_progress'),
+  }),
+});
 
-const TeamInvitationAcceptedV1EventSchema =
-  CommonTeamAccessSucceededV1EventSchema.extend({
-    eventType: z.literal('team.invitation.accepted'),
-    subjectType: z.literal('team_invitation'),
-    subjectId: IdentifierSchema,
-    subjectLabel: z.email().max(320),
-    details: z.strictObject({
-      role: TeamRoleSchema,
-      memberId: IdentifierSchema,
-    }),
-  }).strict();
+const TeamInvitationAcceptedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessSucceededV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.accepted'),
+  subjectType: Schema.Literal('team_invitation'),
+  subjectId: Identifier,
+  subjectLabel: Email,
+  details: Schema.Struct({
+    role: TeamRole,
+    memberId: Identifier,
+  }),
+});
 
-const TeamInvitationAcceptanceDeniedV1EventSchema =
-  CommonTeamAccessDeniedV1EventSchema.extend({
-    eventType: z.literal('team.invitation.acceptance_denied'),
-    subjectType: z.literal('team_invitation'),
-    subjectId: IdentifierSchema,
-    subjectLabel: z.email().max(320),
-    details: z.strictObject({
-      reason: z.enum([
-        'email_mismatch',
-        'email_unverified',
-        'invitation_unavailable',
-      ]),
-    }),
-  }).strict();
+const TeamInvitationAcceptanceDeniedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessDeniedV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.acceptance_denied'),
+  subjectType: Schema.Literal('team_invitation'),
+  subjectId: Identifier,
+  subjectLabel: Email,
+  details: Schema.Struct({
+    reason: Schema.Literals([
+      'email_mismatch',
+      'email_unverified',
+      'invitation_unavailable',
+    ]),
+  }),
+});
 
-const TeamInvitationAcceptanceFailedV1EventSchema =
-  CommonTeamAccessFailedV1EventSchema.extend({
-    eventType: z.literal('team.invitation.acceptance_failed'),
-    subjectType: z.null(),
-    subjectId: z.null(),
-    subjectLabel: z.null(),
-    details: z.strictObject({
-      failureCode: z.enum(['invalid_role', 'conflict']),
-    }),
-  }).strict();
+const TeamInvitationAcceptanceFailedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessFailedV1EventSchema.fields,
+  eventType: Schema.Literal('team.invitation.acceptance_failed'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+  details: Schema.Struct({
+    failureCode: Schema.Literals(['invalid_role', 'conflict']),
+  }),
+});
 
-const TeamMemberRoleChangeDeniedV1EventSchema =
-  CommonTeamAccessDeniedV1EventSchema.extend({
-    eventType: z.literal('team.member.role_change_denied'),
-    subjectType: z.literal('team_member'),
-    subjectId: IdentifierSchema,
-    subjectLabel: LabelSchema,
-    details: z.strictObject({
-      requestedRoles: z.array(TeamRoleSchema).min(1).max(3),
-      reason: z.enum(['insufficient_permission', 'owner_role_requires_owner']),
-    }),
-  }).strict();
+const TeamMemberRoleChangeDeniedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessDeniedV1EventSchema.fields,
+  eventType: Schema.Literal('team.member.role_change_denied'),
+  subjectType: Schema.Literal('team_member'),
+  subjectId: Identifier,
+  subjectLabel: Label,
+  details: Schema.Struct({
+    requestedRoles: TeamRoles,
+    reason: Schema.Literals([
+      'insufficient_permission',
+      'owner_role_requires_owner',
+    ]),
+  }),
+});
 
-const TeamMemberRoleChangeFailedV1EventSchema =
-  CommonTeamAccessFailedV1EventSchema.extend({
-    eventType: z.literal('team.member.role_change_failed'),
-    subjectType: z.null(),
-    subjectId: z.null(),
-    subjectLabel: z.null(),
-    details: z.strictObject({ failureCode: z.literal('last_owner') }),
-  }).strict();
+const TeamMemberRoleChangeFailedV1EventSchema = Schema.Struct({
+  ...CommonTeamAccessFailedV1EventSchema.fields,
+  eventType: Schema.Literal('team.member.role_change_failed'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+  details: Schema.Struct({ failureCode: Schema.Literal('last_owner') }),
+});
 
 export const DENIED_AUDIT_OPERATIONS = [
   'audit.read',
@@ -197,43 +253,49 @@ export const DENIED_AUDIT_OPERATIONS = [
 ] as const;
 export type DeniedAuditOperation = (typeof DENIED_AUDIT_OPERATIONS)[number];
 
-const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
-  eventVersion: z.literal(1),
-  eventType: z.literal('audit.read_denied'),
-  category: z.literal('audit'),
-  outcome: z.literal('denied'),
-  subjectType: z.null(),
-  subjectId: z.null(),
-  subjectLabel: z.null(),
-  resourceType: z.null(),
-  resourceId: z.null(),
-  resourceLabel: z.null(),
-  details: z.strictObject({
-    procedure: z.enum(['audit.list', 'audit.get', 'audit.filterOptions']),
-    reason: z.literal('insufficient_permission'),
+const AuditReadDeniedV1EventSchema = Schema.Struct({
+  ...CommonUserEventSchema.fields,
+  eventVersion: Schema.Literal(1),
+  eventType: Schema.Literal('audit.read_denied'),
+  category: Schema.Literal('audit'),
+  outcome: Schema.Literal('denied'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+  resourceType: Schema.Null,
+  resourceId: Schema.Null,
+  resourceLabel: Schema.Null,
+  details: Schema.Struct({
+    procedure: Schema.Literals([
+      'audit.list',
+      'audit.get',
+      'audit.filterOptions',
+    ]),
+    reason: Schema.Literal('insufficient_permission'),
   }),
-}).strict();
+});
 
-const DeniedAttemptsRateLimitedV1EventSchema = CommonUserEventSchema.extend({
-  eventVersion: z.literal(1),
-  eventType: z.literal('security.denied_attempts.rate_limited'),
-  category: z.literal('security'),
-  outcome: z.literal('denied'),
-  subjectType: z.null(),
-  subjectId: z.null(),
-  subjectLabel: z.null(),
-  resourceType: z.null(),
-  resourceId: z.null(),
-  resourceLabel: z.null(),
-  details: z.strictObject({
-    operation: z.enum(DENIED_AUDIT_OPERATIONS),
-    suppressedCount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-    firstSuppressedAt: z.iso.datetime({ offset: true }),
-    lastSuppressedAt: z.iso.datetime({ offset: true }),
+const DeniedAttemptsRateLimitedV1EventSchema = Schema.Struct({
+  ...CommonUserEventSchema.fields,
+  eventVersion: Schema.Literal(1),
+  eventType: Schema.Literal('security.denied_attempts.rate_limited'),
+  category: Schema.Literal('security'),
+  outcome: Schema.Literal('denied'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+  resourceType: Schema.Null,
+  resourceId: Schema.Null,
+  resourceLabel: Schema.Null,
+  details: Schema.Struct({
+    operation: Schema.Literals(DENIED_AUDIT_OPERATIONS),
+    suppressedCount: PositiveInt(Number.MAX_SAFE_INTEGER),
+    firstSuppressedAt: OffsetDateTime,
+    lastSuppressedAt: OffsetDateTime,
   }),
-}).strict();
+});
 
-const ProtocolOperationTypeSchema = z.enum([
+const ProtocolOperationType = Schema.Literals([
   'set',
   'unset',
   'insertItem',
@@ -243,78 +305,88 @@ const ProtocolOperationTypeSchema = z.enum([
   'moveStage',
 ]);
 
-const CommonProtocolSucceededV1EventSchema = CommonUserEventSchema.extend({
-  eventVersion: z.literal(1),
-  category: z.literal('protocol'),
-  outcome: z.literal('succeeded'),
-  subjectType: z.null(),
-  subjectId: z.null(),
-  subjectLabel: z.null(),
-  resourceType: z.literal('protocol'),
-  resourceId: IdentifierSchema,
-  resourceLabel: LabelSchema,
-}).strict();
+const CommonProtocolSucceededV1EventSchema = Schema.Struct({
+  ...CommonUserEventSchema.fields,
+  eventVersion: Schema.Literal(1),
+  category: Schema.Literal('protocol'),
+  outcome: Schema.Literal('succeeded'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+  resourceType: Schema.Literal('protocol'),
+  resourceId: Identifier,
+  resourceLabel: Label,
+});
 
-const ProtocolCreatedV1EventSchema =
-  CommonProtocolSucceededV1EventSchema.extend({
-    eventType: z.literal('protocol.created'),
-    details: z.strictObject({ draftId: IdentifierSchema }),
-  }).strict();
+const ProtocolCreatedV1EventSchema = Schema.Struct({
+  ...CommonProtocolSucceededV1EventSchema.fields,
+  eventType: Schema.Literal('protocol.created'),
+  details: Schema.Struct({ draftId: Identifier }),
+});
 
-const ProtocolDraftCommittedV1EventSchema =
-  CommonProtocolSucceededV1EventSchema.extend({
-    eventType: z.literal('protocol.draft.committed'),
-    details: z.strictObject({
-      draftId: IdentifierSchema,
-      revision: DecimalSequenceSchema,
-      affectedSectionIds: z.array(IdentifierSchema).min(1).max(128),
-      operationTypes: z.array(ProtocolOperationTypeSchema).min(1).max(7),
-      operationCount: z.number().int().positive().max(1_000),
-    }),
-  }).strict();
+const ProtocolDraftCommittedV1EventSchema = Schema.Struct({
+  ...CommonProtocolSucceededV1EventSchema.fields,
+  eventType: Schema.Literal('protocol.draft.committed'),
+  details: Schema.Struct({
+    draftId: Identifier,
+    revision: DecimalSequence,
+    affectedSectionIds: Schema.Array(Identifier).check(
+      Schema.isMinLength(1),
+      Schema.isMaxLength(128),
+    ),
+    operationTypes: Schema.Array(ProtocolOperationType).check(
+      Schema.isMinLength(1),
+      Schema.isMaxLength(7),
+    ),
+    operationCount: PositiveInt(1_000),
+  }),
+});
 
 // The study tier (#1262). Creating a study is a role-gated action (#1257), so
 // both outcomes are recorded: the creation itself, and a refusal, which is
 // what tells a team Admin that somebody without the role tried.
-const CommonStudyV1EventSchema = CommonUserEventSchema.extend({
-  eventVersion: z.literal(1),
-  category: z.literal('study'),
-  subjectType: z.null(),
-  subjectId: z.null(),
-  subjectLabel: z.null(),
-}).strict();
+const CommonStudyV1EventSchema = Schema.Struct({
+  ...CommonUserEventSchema.fields,
+  eventVersion: Schema.Literal(1),
+  category: Schema.Literal('study'),
+  subjectType: Schema.Null,
+  subjectId: Schema.Null,
+  subjectLabel: Schema.Null,
+});
 
-const StudyCreatedV1EventSchema = CommonStudyV1EventSchema.extend({
-  eventType: z.literal('study.created'),
-  outcome: z.literal('succeeded'),
-  resourceType: z.literal('study'),
-  resourceId: IdentifierSchema,
-  resourceLabel: LabelSchema,
-  details: z.strictObject({
-    protocolId: IdentifierSchema,
-    draftId: IdentifierSchema,
-    participationMode: z.enum(STUDY_PARTICIPATION_MODES),
+const StudyCreatedV1EventSchema = Schema.Struct({
+  ...CommonStudyV1EventSchema.fields,
+  eventType: Schema.Literal('study.created'),
+  outcome: Schema.Literal('succeeded'),
+  resourceType: Schema.Literal('study'),
+  resourceId: Identifier,
+  resourceLabel: Label,
+  details: Schema.Struct({
+    protocolId: Identifier,
+    draftId: Identifier,
+    participationMode: StudyParticipationMode,
     // The grant the creator receives with the study, named so the role
     // history in this log is complete without reading the grants table.
-    creatorRole: z.literal('manager'),
+    creatorRole: Schema.Literal('manager'),
   }),
-}).strict();
+});
 
-const StudyCreationDeniedV1EventSchema = CommonStudyV1EventSchema.extend({
-  eventType: z.literal('study.creation_denied'),
-  outcome: z.literal('denied'),
+const StudyCreationDeniedV1EventSchema = Schema.Struct({
+  ...CommonStudyV1EventSchema.fields,
+  eventType: Schema.Literal('study.creation_denied'),
+  outcome: Schema.Literal('denied'),
   // No resource: the study was never created, so there is nothing to name.
-  resourceType: z.null(),
-  resourceId: z.null(),
-  resourceLabel: z.null(),
-  details: z.strictObject({
-    reason: z.literal('insufficient_permission'),
+  resourceType: Schema.Null,
+  resourceId: Schema.Null,
+  resourceLabel: Schema.Null,
+  details: Schema.Struct({
+    reason: Schema.Literal('insufficient_permission'),
   }),
-}).strict();
+});
 
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
-export const AuditEventInputSchema = z.union([
+export const AuditEventInputSchema = Schema.Union([
   AuditReadDeniedV1EventSchema,
   TeamMemberRoleChangedV1EventSchema,
   TeamMemberRoleChangeDeniedV1EventSchema,
@@ -335,7 +407,7 @@ export const AuditEventInputSchema = z.union([
   StudyCreationDeniedV1EventSchema,
 ]);
 
-export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
+export type AuditEventInput = typeof AuditEventInputSchema.Type;
 type AuditEventKeyFor<Event extends AuditEventInput> =
   Event extends AuditEventInput
     ? `${Event['eventType']}@${Event['eventVersion']}`
@@ -343,7 +415,7 @@ type AuditEventKeyFor<Event extends AuditEventInput> =
 export type AuditEventKey = AuditEventKeyFor<AuditEventInput>;
 
 type AuditEventDefinition = {
-  inputSchema: z.ZodType<AuditEventInput>;
+  inputSchema: Schema.Codec<AuditEventInput, unknown>;
   title: string;
   detailFields: readonly string[];
   sensitiveFields: readonly string[];
@@ -736,13 +808,17 @@ export function auditEventDefinition(
   return AUDIT_EVENT_REGISTRY[auditEventKey(event)];
 }
 
+// Not strict: it reads the two keys that route to a definition, and the
+// definition's own schema is what refuses everything else.
+const decodeAuditEventIdentity = Schema.decodeUnknownSync(
+  Schema.Struct({
+    eventType: Schema.String,
+    eventVersion: Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)),
+  }),
+);
+
 export function parseAuditEventInput(input: unknown): AuditEventInput {
-  const identity = z
-    .object({
-      eventType: z.string(),
-      eventVersion: z.number().int().positive(),
-    })
-    .parse(input);
+  const identity = decodeAuditEventIdentity(input);
   const key = `${identity.eventType}@${identity.eventVersion}`;
   const definition = (
     AUDIT_EVENT_REGISTRY as Record<string, AuditEventDefinition>
@@ -750,5 +826,8 @@ export function parseAuditEventInput(input: unknown): AuditEventInput {
   if (!definition) {
     throw new Error(`unregistered audit event definition: ${key}`);
   }
-  return definition.inputSchema.parse(input);
+  return Schema.decodeUnknownSync(
+    definition.inputSchema,
+    AUDIT_EVENT_PARSE_OPTIONS,
+  )(input);
 }

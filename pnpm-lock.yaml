@@ -1946,9 +1946,6 @@ importers:
       pg-connection-string:
         specifier: ^2.14.0
         version: 2.14.0
-      zod:
-        specifier: ^4.5.4
-        version: 4.5.4
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:^

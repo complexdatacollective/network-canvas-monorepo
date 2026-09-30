@@ -209,6 +209,17 @@ describe('every entry', () => {
       );
     }
   });
+  it('imports no zod from its own modules', () => {
+    // zod still arrives through @codaco/protocol-validation and
+    // @codaco/studio-sync/section-validation, whose zod schemas are
+    // protocol-validation's; what this refuses is a schema of Studio's own.
+    //
+    // Mutation: import `zod` in src/audit/events.ts.
+    const zod = (name: string) => /^zod(?:\/|$)/.test(name);
+    for (const entry of Object.keys(ENTRIES)) {
+      expect([...moduleGraph(entry).packages].filter(zod), entry).toEqual([]);
+    }
+  });
 });
 
 describe('the worker process', () => {

@@ -52,8 +52,7 @@
     "ioredis": "6.0.0",
     "nodemailer": "10.0.9",
     "pg": "^8.23.0",
-    "pg-connection-string": "^2.14.0",
-    "zod": "catalog:"
+    "pg-connection-string": "^2.14.0"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",

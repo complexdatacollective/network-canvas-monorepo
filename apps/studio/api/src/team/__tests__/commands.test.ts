@@ -1751,6 +1751,48 @@ describe.skipIf(!testDb)('audited team commands', () => {
     );
 
     suite.effect(
+      'bounds an invitation address at 320 characters, refusing longer as a defect',
+      () =>
+        Effect.gen(function* () {
+          const teamId = yield* seedTeam('command-invitation-email-bound');
+          const owner = identity(teamId, 'owner', 'owner');
+          yield* seedIdentity(teamId, owner);
+          const address = (length: number) =>
+            `${'a'.repeat(length - '@example.com'.length)}@example.com`;
+
+          const longest = yield* asActor(
+            owner,
+            createTeamInvitation(access(teamId), {
+              email: address(320),
+              role: 'member',
+            }),
+          );
+          assert.strictEqual(longest.email, address(320));
+
+          // Mutation: drop `isMaxLength(320)` from the address schema — the
+          // 321-character address then reaches the insert and fails there, on
+          // the delivery table's length constraint, as a typed SQL failure.
+          const exit = yield* Effect.exit(
+            asActor(
+              owner,
+              createTeamInvitation(access(teamId), {
+                email: address(321),
+                role: 'member',
+              }),
+            ),
+          );
+          assert.isTrue(Exit.isFailure(exit));
+          const cause = Exit.isFailure(exit) ? exit.cause : Cause.empty;
+          assert.isTrue(Cause.hasDies(cause));
+          assert.isFalse(Cause.hasFails(cause));
+          const error = Cause.squash(cause);
+          assert.isTrue(Schema.isSchemaError(error));
+          assert.lengthOf(yield* auditRows(teamId), 1);
+        }),
+      { timeout: 30_000 },
+    );
+
+    suite.effect(
       'cancels and completely audits a legacy multi-role invitation',
       () =>
         Effect.gen(function* () {
