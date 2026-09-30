@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 ---
 
 Sign-in now runs on Studio's own database client. Signing up, and linking a

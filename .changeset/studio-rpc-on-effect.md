@@ -1,6 +1,6 @@
 ---
-'@codaco/studio-client': minor
-'@codaco/studio-server': minor
+'@codaco/studio-web': minor
+'@codaco/studio-api': minor
 ---
 
 Studio's own API now runs on Effect's RPC transport. The server serves the

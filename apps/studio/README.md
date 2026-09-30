@@ -20,11 +20,11 @@ There is deliberately **no client↔server dependency edge**: the halves share
 only the boundary package, so changesets and release CI re-gate a half only
 when its boundary moved.
 
-- `client/` — `@codaco/studio-client`: Vite + React SPA (TanStack Router,
+- `web/` — `@codaco/studio-web`: Vite + React SPA (TanStack Router,
   TanStack Query, `@codaco/fresco-ui`). Builds to static assets; talks to the
   server through typed Effect rpc procedures, importing the boundary contract
   type-only.
-- `server/` — `@codaco/studio-server`: Hono app on `@hono/node-server`
+- `api/` — `@codaco/studio-api`: Hono app on `@hono/node-server`
   (Node 24 baseline), one persistent process serving every surface below. It
   serves no client assets in any topology — nginx does, from the `studio-web`
   image (#1909). A second process built from the same source runs background
@@ -32,7 +32,7 @@ when its boundary moved.
   third creates the schema and exits. It owns the database:
   `src/db` holds the pool and the schema, and `src/protocol` is the sectioned,
   content-addressed protocol store (#1276) built on top of it.
-- `packages/studio-rpc` — `@codaco/studio-rpc`: the internal RPC boundary
+- `packages/studio-contract` — `@codaco/studio-contract`: the internal RPC boundary
   (Zod vocabulary the halves still share); the `/rpc` and `/ws` contracts
   live in `packages/studio-contract`.
 - `packages/studio-sync` — `@codaco/studio-sync`: the sync protocol core
@@ -93,7 +93,7 @@ per address; the public API per address (an `Authorization` header is not a
 subject until a token is validated, #1899), and its reference page per address
 again; and WebSocket upgrades per user.
 
-Every limit is a constant in `server/src/rate-limit/scopes.ts` — the count, the
+Every limit is a constant in `api/src/rate-limit/scopes.ts` — the count, the
 window, and why that number — and none of them is configurable. They are
 security defaults rather than capacity settings, and a limit a deployer can
 raise is a limit an attacker meets only where nobody raised it. `REDIS_URL` is
@@ -117,7 +117,7 @@ guarantee; refusing traffic because the defence is broken would turn an abuse
 control into an outage.
 
 The suites that exercise any of this — the limiter's own, and the three cases
-in `server/src/team/__tests__/commands.test.ts` that assert where the audit
+in `api/src/team/__tests__/commands.test.ts` that assert where the audit
 denial window's cap falls — need the development lane's Valkey running and
 skip without it, because a limiter that fails open cannot be observed
 enforcing anything; on CI they throw instead, where the store is part of the
@@ -138,7 +138,7 @@ and nothing else.
 ## Development
 
 ```bash
-pnpm --filter @codaco/studio-server dev
+pnpm --filter @codaco/studio-api dev
 ```
 
 One command. It brings up the backing services in Docker, bootstraps the
@@ -183,7 +183,7 @@ development stack at a time. If `pnpm dev` finds a container from the scripts
 this replaced (`studio-dev-pg-*`, `studio-dev-minio-*`) still holding one of
 them, it stops that container and says so.
 
-Nothing is set by hand. The committed `server/.env.development` carries every
+Nothing is set by hand. The committed `api/.env.development` carries every
 value the server needs, and `scripts/dev.ts` hands the same values to Compose —
 both from the `DEV` constants in `src/env/development.ts`, so the containers and
 the server's configuration cannot drift apart. It also writes
@@ -209,8 +209,8 @@ need a protocol draft or other manual change to persist across restarts, keep
 the session running rather than cycling `pnpm dev`.
 
 ```bash
-pnpm --filter @codaco/studio-server dev:down              # stop the services
-pnpm --filter @codaco/studio-server dev:down -- --volumes # and wipe their data
+pnpm --filter @codaco/studio-api dev:down              # stop the services
+pnpm --filter @codaco/studio-api dev:down -- --volumes # and wipe their data
 ```
 
 `dev:down` is `docker compose -p studio-dev … down`; `--volumes` adds `-v`,
@@ -242,7 +242,7 @@ is reachable.
 
 In production the connection comes from `DATABASE_URL`; when it is unset the
 server still boots and database-backed surfaces refuse, mirroring the S3
-degradation contract. Locally, put an override in a gitignored `server/.env`,
+degradation contract. Locally, put an override in a gitignored `api/.env`,
 which is loaded after `.env.development` and so wins:
 
 ```
@@ -292,7 +292,7 @@ every variable is catalogued under [Environment](#environment) below.
 ### Running the whole stack locally
 
 ```bash
-pnpm --filter @codaco/studio-server dev:stack
+pnpm --filter @codaco/studio-api dev:stack
 ```
 
 The other lane. Where `dev` runs the backing services in containers and the
@@ -319,8 +319,8 @@ deployed schema, the first-run screen, and an upgrade — before any of them
 reach someone else's host.
 
 ```bash
-pnpm --filter @codaco/studio-server dev:stack:down              # stop it
-pnpm --filter @codaco/studio-server dev:stack:down -- --volumes # and wipe its data
+pnpm --filter @codaco/studio-api dev:stack:down              # stop it
+pnpm --filter @codaco/studio-api dev:stack:down -- --volumes # and wipe its data
 ```
 
 Wiping the volumes is how you get a fresh first-run setup: the next `dev:stack`
@@ -379,42 +379,42 @@ keeping.
 Studio has one schema, defined as Drizzle tables in seventeen modules that live
 with their owners, plus the queue declarations beside them:
 
-- better-auth's tables — `server/src/db/auth-schema.ts`
+- better-auth's tables — `api/src/db/auth-schema.ts`
 - the sync engine's drafts, sections, manifests, leases and command log —
   `packages/studio-sync/src/schema.ts`
 - the protocol store's versioning tables, and the sealed API keys of its
-  `apikey` assets — `server/src/protocol/schema.ts`
-- protocol asset metadata — `server/src/asset/schema.ts`
+  `apikey` assets — `api/src/protocol/schema.ts`
+- protocol asset metadata — `api/src/asset/schema.ts`
 - the study spine: studies, waves, participants and their plain contact
   columns, interview sessions and interview links —
-  `server/src/study/schema.ts`; study roles —
-  `server/src/study/roles-schema.ts`
+  `api/src/study/schema.ts`; study roles —
+  `api/src/study/roles-schema.ts`
 - the collected network: snapshots, nodes, edges and the per-session rollups —
-  `server/src/network/schema.ts`
-- consent documents and records — `server/src/consent/schema.ts`
+  `api/src/network/schema.ts`
+- consent documents and records — `api/src/consent/schema.ts`
 - schedules, prompts, message templates, deliveries and opt-outs —
-  `server/src/schedule/schema.ts`
-- team-owned API tokens — `server/src/token/schema.ts`
-- templates and the gallery — `server/src/template/schema.ts`
-- webhooks — `server/src/webhook/schema.ts`
-- experiments — `server/src/experiment/schema.ts`
-- feedback reports — `server/src/feedback/schema.ts`
-- monitoring rollups — `server/src/monitoring/schema.ts`
+  `api/src/schedule/schema.ts`
+- team-owned API tokens — `api/src/token/schema.ts`
+- templates and the gallery — `api/src/template/schema.ts`
+- webhooks — `api/src/webhook/schema.ts`
+- experiments — `api/src/experiment/schema.ts`
+- feedback reports — `api/src/feedback/schema.ts`
+- monitoring rollups — `api/src/monitoring/schema.ts`
 - immutable audit history, its staged exports and its alert outbox —
-  `server/src/audit/schema.ts`
-- durable invitation delivery — `server/src/team/invitation-delivery-schema.ts`
+  `api/src/audit/schema.ts`
+- durable invitation delivery — `api/src/team/invitation-delivery-schema.ts`
 - the background queues — `packages/studio-sync/src/jobs.ts`: every queue
   Studio declares and how each one retries and expires, the cron schedules the
   worker registers, and what a job on each queue may carry. Declarations rather
   than Drizzle tables — the queue's own two tables are raw SQL in
-  `server/src/jobs/schema.ts` (see [Background work](#background-work))
+  `api/src/jobs/schema.ts` (see [Background work](#background-work))
 
 The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
 ride in raw-SQL sidecar exports beside their tables — as do the parts of
 row-level security that drizzle-kit does not manage: the roles, `FORCE ROW
 LEVEL SECURITY`, and the grants (see [Tenancy](#tenancy)).
-`server/src/db/schema.ts` collects all of it into the `SCHEMA` and `SIDECARS`
-exports that `server/scripts/apply.ts` applies. Sidecar order carries a rule
+`api/src/db/schema.ts` collects all of it into the `SCHEMA` and `SIDECARS`
+exports that `api/scripts/apply.ts` applies. Sidecar order carries a rule
 the test suite pins: the broad grant over every table runs first, right after
 the roles are created, and every narrower revocation (the outboxes, the audit
 log) runs after it, because a revocation placed before the broad grant is
@@ -441,7 +441,7 @@ DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 #### Generated entity-relationship diagram
 
-<!-- Generated by `pnpm --filter @codaco/studio-server sync-fingerprint` from the assembled Drizzle schema and raw-SQL sidecars. Do not edit by hand. -->
+<!-- Generated by `pnpm --filter @codaco/studio-api sync-fingerprint` from the assembled Drizzle schema and raw-SQL sidecars. Do not edit by hand. -->
 
 [![Network Canvas Studio entity-relationship diagram](./schema-erd.svg)](./schema-erd.svg)
 
@@ -517,12 +517,12 @@ The server never applies schema — it only verifies. Application is
 a repo checkout: it introspects the live database, applies whatever delta
 brings it to the definitions, re-runs the sidecars, and stamps a fingerprint —
 the hash of the DDL that describes this build. Boot compares that stamp
-against the fingerprint committed in `server/src/db/fingerprint.generated.ts`.
+against the fingerprint committed in `api/src/db/fingerprint.generated.ts`.
 Both database commands resync the fingerprint and generated schema docs before
 touching the database. To resync without connecting to a database, run:
 
 ```bash
-pnpm --filter @codaco/studio-server sync-fingerprint
+pnpm --filter @codaco/studio-api sync-fingerprint
 ```
 
 That command also regenerates the ERD, its sidecar summary, and the README
@@ -531,7 +531,7 @@ needs refreshing. CI re-runs the generator and rejects either committed
 artifact once it has drifted, which you can do yourself with:
 
 ```bash
-pnpm --filter @codaco/studio-server check:schema-docs
+pnpm --filter @codaco/studio-api check:schema-docs
 ```
 
 It is a check of its own rather than a test case because rendering the diagram
@@ -543,7 +543,7 @@ A mismatch stops the server with the remedies: `apply-schema` reconciles the
 database in place, or
 
 ```bash
-pnpm --filter @codaco/studio-server db:reset
+pnpm --filter @codaco/studio-api db:reset
 ```
 
 drops the schema, rebuilds it, and seeds. It refuses to touch a non-loopback
@@ -579,7 +579,7 @@ version is a _manifest_ — an ordered map of section id to section hash
 sections are shared, reordering stages touches only the manifest, and
 structural diff falls out of comparing two manifests.
 
-`server/src/protocol` implements this over the same pool everything else uses.
+`api/src/protocol` implements this over the same pool everything else uses.
 Assembly (`getDraftDocument`, `getVersionDocument`) is the contract: outside
 the storage layer,
 Studio consumes the schema-conformant protocol document exactly as
@@ -598,12 +598,12 @@ same study as its siblings), and section
 documents deduplicate **per team**: identical content in two teams is two rows,
 because a shared row would leak content across the boundary. The data layer
 reaches a team's rows only inside a `TenantScope` transaction
-(`server/src/db/tenant.ts`), which stamps `app.team_id` as a transaction-local
+(`api/src/db/tenant.ts`), which stamps `app.team_id` as a transaction-local
 GUC before any statement in its body runs; every statement also carries an
 explicit team predicate. `TenantScope.open` takes a `TeamAccess` — a branded
 token (`@codaco/studio-sync/tenant`) minted only by the few modules that have
 just checked a membership — never a bare team id. A team's id enters a request
-explicitly — `openTeam` in `server/src/rpc/team-scope.ts` resolves the
+explicitly — `openTeam` in `api/src/rpc/team-scope.ts` resolves the
 procedure input's `teamId` against the caller's membership and yields the
 `TeamAccess`; the session's active team is never the authorization input.
 
@@ -654,7 +654,7 @@ Two consequences are worth knowing. `COPY FROM` is refused for any role
 subject to row-level security, so a bulk import must batch `INSERT`s or run as
 maintenance. And the test suites run the store and the sync engine as
 `studio_app`, so every existing case also proves the policies admit what they
-should; `server/src/db/__tests__/rls.test.ts` proves what they refuse.
+should; `api/src/db/__tests__/rls.test.ts` proves what they refuse.
 
 Better-auth's organization plugin backs these tables, and its own optional
 `teams` feature — a subdivision _inside_ an organization — stays disabled, so
@@ -666,7 +666,7 @@ refuses: creation, structural add and remove, publishing, versions, diff,
 platform migration, and garbage collection.
 
 Its database-backed tests run against the dev Postgres and skip without one, so
-on a machine with no container `pnpm --filter @codaco/studio-server test`
+on a machine with no container `pnpm --filter @codaco/studio-api test`
 passes having verified far less than it appears to. Read the reporter, not the
 exit code.
 
@@ -675,7 +675,7 @@ exist to prove the tenancy spine end to end, and no screen renders them yet —
 so
 
 ```bash
-pnpm --filter @codaco/studio-server protocol-demo
+pnpm --filter @codaco/studio-api protocol-demo
 ```
 
 remains the way to look at one. It sectionizes a protocol (the sample one, or
@@ -683,7 +683,7 @@ remains the way to look at one. It sectionizes a protocol (the sample one, or
 every row), assembles it back, publishes it, edits one prompt and publishes
 again to show how much of the second version is structurally shared with the
 first, and renders the structural diff as sentences. It asserts nothing — the
-suites in `server/src/protocol/__tests__` own that — and it should be deleted
+suites in `api/src/protocol/__tests__` own that — and it should be deleted
 once the client can show the same things. The rows it writes stay behind for
 inspection; published versions cannot be deleted, so `db:reset` is how you clear
 them.
@@ -758,7 +758,7 @@ neither the HTTP app nor the RPC router, which a source test holds it to.
 `pnpm dev` runs both.
 
 The queue is Studio's own, written on Effect over two Postgres tables
-(`server/src/jobs/`, whose README is its reference). It replaced
+(`api/src/jobs/`, whose README is its reference). It replaced
 pg-boss on 16 September 2026 (#1957) and keeps pg-boss's semantics where they
 were worth keeping — the retry ladder and its backoff, per-queue singletons,
 dead-letter copies, retention and deletion — with the differences, and the
@@ -768,9 +768,9 @@ A job is created inside the transaction that caused it. `Jobs.enqueue` requires
 the caller's `Transaction`, so the job is inserted on that connection, inside
 that transaction, alongside the domain row and its audit event: a command that
 rolls back leaves no job, and a command that commits always leaves exactly one.
-Nothing enqueues after a commit. `server/src/jobs/insert.ts` renders the one
-statement that creates a job and `server/src/jobs/worker.ts` is the only other
-module that inserts one (cron); `server/src/jobs/__tests__/source-policy.test.ts`
+Nothing enqueues after a commit. `api/src/jobs/insert.ts` renders the one
+statement that creates a job and `api/src/jobs/worker.ts` is the only other
+module that inserts one (cron); `api/src/jobs/__tests__/source-policy.test.ts`
 holds the codebase to that, because an enqueue on its own connection reopens
 both windows this closes.
 
@@ -817,7 +817,7 @@ job priorities. A delivery state researchers can see, and a manual re-send, is
 
 ## Environment
 
-`apps/studio/server/src/env.ts` is the only module in the server that reads
+`apps/studio/api/src/env.ts` is the only module in the server that reads
 `process.env`, and everything else takes a resolved `StudioEnv`. It validates
 in two layers: `src/env/schema.ts` is one Effect `Schema.Struct` declaring
 every variable, and `src/env/resolve.ts` applies the rules that span several at
@@ -828,7 +828,7 @@ the process that sends mail — the worker (see
 the web process cannot construct a transport even where a deployment defines
 them, and a half-configured pair is the worker's to refuse.
 
-Two oxlint rules, scoped to `apps/studio/server/src/**` in the repository's
+Two oxlint rules, scoped to `apps/studio/api/src/**` in the repository's
 `.oxlintrc.json`, are what keep that true: `node/no-process-env`, and a ban on
 importing `node:process` — the linter only sees `process.env` reached through
 the global, so a file that imported `process` could read the environment with
@@ -845,7 +845,7 @@ each carrying a comment saying why:
   environment to a child process, because that is what makes the child a
   deployment-shaped run of an entrypoint rather than an in-process test.
 
-`apps/studio/server/scripts/**` is outside the rule: a script that hands its
+`apps/studio/api/scripts/**` is outside the rule: a script that hands its
 whole environment to a child process has nothing to validate, and every script
 that reads Studio's own configuration calls `readEnv()` like everything else.
 
@@ -863,14 +863,14 @@ anything else that runs under Effect.
 Three files carry values, and the dev script loads them in this order, so a
 later one wins:
 
-| File                      | Committed          | Loaded by                   |
-| ------------------------- | ------------------ | --------------------------- |
-| `server/.env.development` | yes — deliberately | `pnpm dev` only             |
-| `server/.env`             | no, gitignored     | `pnpm dev` and `pnpm start` |
-| `server/.env.example`     | yes, as a template | nothing; copy it to `.env`  |
+| File                   | Committed          | Loaded by                   |
+| ---------------------- | ------------------ | --------------------------- |
+| `api/.env.development` | yes — deliberately | `pnpm dev` only             |
+| `api/.env`             | no, gitignored     | `pnpm dev` and `pnpm start` |
+| `api/.env.example`     | yes, as a template | nothing; copy it to `.env`  |
 
 **Development needs no setup.** `.env.development` is committed, so a fresh
-clone runs `pnpm --filter @codaco/studio-server dev` and gets a working stack
+clone runs `pnpm --filter @codaco/studio-api dev` and gets a working stack
 — its credentials are intentional test values pointing at the Docker
 containers the dev script provisions. Put personal overrides (real SMTP
 credentials, say) in a gitignored `.env` beside it.
@@ -903,7 +903,7 @@ Because the schema carries no defaults, no development credential is compiled
 into the server bundle.
 
 The table below, `.env.development`, and `.env.example` are all written by
-`pnpm --filter @codaco/studio-server generate:env-docs` from two inputs:
+`pnpm --filter @codaco/studio-api generate:env-docs` from two inputs:
 
 - `src/env/schema.ts` — which variables exist, and, out of each field's
   annotations, its group, summary, deployment behaviour and example. So what a
@@ -928,7 +928,7 @@ generating a half-documented entry.
 
 <!-- generated:env start -->
 
-<!-- Generated by `pnpm --filter @codaco/studio-server generate:env-docs` from src/env/schema.ts. Do not edit by hand. -->
+<!-- Generated by `pnpm --filter @codaco/studio-api generate:env-docs` from src/env/schema.ts. Do not edit by hand. -->
 
 ### Process
 
@@ -1026,21 +1026,21 @@ docker run --rm --env-file .env studio-api worker
 ```
 
 `studio-web` is nginx serving the built client and the maintenance page
-(`apps/studio/client/nginx.conf`). It proxies nothing: Traefik routes the API's
+(`apps/studio/web/nginx.conf`). It proxies nothing: Traefik routes the API's
 paths to `studio-api` and everything else to it, so the browser sees one
 origin. Since #1909 the server holds no client assets at all — it serves no
 page path in any topology, and the topology gate that used to live beside the
-static mount is now the client's alone (`client/src/lib/deployment.ts`).
+static mount is now the client's alone (`web/src/lib/deployment.ts`).
 
 Both halves also run straight from a checkout, which is what the suites and a
 local smoke test use:
 
 ```bash
-pnpm --filter @codaco/studio-client build        # client/dist — static assets
-pnpm --filter @codaco/studio-server build        # server/dist — Node bundle
-pnpm --filter @codaco/studio-server start        # the web process
-pnpm --filter @codaco/studio-server start:worker # the background worker
-pnpm --filter @codaco/studio-server start:migrate # the schema one-shot
+pnpm --filter @codaco/studio-web build        # web/dist — static assets
+pnpm --filter @codaco/studio-api build        # api/dist — Node bundle
+pnpm --filter @codaco/studio-api start        # the web process
+pnpm --filter @codaco/studio-api start:worker # the background worker
+pnpm --filter @codaco/studio-api start:migrate # the schema one-shot
 ```
 
 ### Health checks
@@ -1083,7 +1083,7 @@ so it needs the same `DATABASE_URL` and keyring the processes do:
 
 ```bash
 docker run --rm --env-file .env studio-api rotate-secrets   # a deployment
-pnpm --filter @codaco/studio-server rotate-secrets          # a checkout
+pnpm --filter @codaco/studio-api rotate-secrets          # a checkout
 ```
 
 In the reference stack that is `docker compose run --rm --no-deps api
@@ -1112,8 +1112,8 @@ which is why these are commands rather than boot work. A deployment runs
 
 ```bash
 docker run --rm --env-file .env studio-api migrate   # a deployment
-pnpm --filter @codaco/studio-server apply-schema     # a checkout
-pnpm --filter @codaco/studio-server seed
+pnpm --filter @codaco/studio-api apply-schema     # a checkout
+pnpm --filter @codaco/studio-api seed
 ```
 
 All of them are idempotent, and `seed` refuses against a database whose
@@ -1249,7 +1249,7 @@ instance configuration. `/` is served in both: a self-hoster's origin root is
 the URL they hand their researchers, and refusing it would make the instance
 dead at the address people type.
 
-The classification is one list, in `@codaco/studio-rpc`'s `surfaces` module —
+The classification is one list, in `@codaco/studio-contract`'s `surfaces` module —
 the only code both deployables import. The server reports the mode over the
 `status` procedure and the client's route tree reads the same list, so the two
 cannot drift. Unset means `self-hosted`, the fail-closed value: a managed
@@ -1293,9 +1293,9 @@ service runs: there is no single-tenant code path.
 Backend deploys drop live WebSocket sessions by design, so the server drains
 on SIGTERM (close 1001, stop the listener, bounded timeout) and the sync
 protocol's reconnect-and-resume path makes the interruption routine (#1247).
-Managed backend deploys trigger on `@codaco/studio-server` version changes —
+Managed backend deploys trigger on `@codaco/studio-api` version changes —
 never on image rebuilds — so client-only releases cannot bounce the backend.
 While the API container is being replaced, the ingress serves the static
-maintenance page from `studio-web` (`client/public/maintenance.html`) for every
+maintenance page from `studio-web` (`web/public/maintenance.html`) for every
 path except `/healthz` and `/readyz`, which pass through untouched so the
 deploy and the container runtime always read the real status.

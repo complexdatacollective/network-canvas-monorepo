@@ -53,7 +53,7 @@ Taken 2026-09-01 in specification review:
 5. **Routing**: the root is the marketing site. The application lives under
    fixed first segments — `/study/$studyId`, `/team/$teamId`.
 6. **Shell chrome is shared**: the reusable parts land in `@codaco/fresco-ui`,
-   not in `apps/studio/client`.
+   not in `apps/studio/web`.
 
 Alternatives considered and rejected are recorded in §5.6.
 
@@ -860,7 +860,7 @@ translated label added to `SiteNavigation.messages.ts` alongside the existing
 navigation copy. This is the shared-package change that also fixes
 networkcanvas.com and the documentation site, neither of which has a skip link
 today — the repo's only "Skip to main content" is in
-`apps/studio/client/src/routes/AppLayout.tsx`. The cost that comes with it:
+`apps/studio/web/src/routes/AppLayout.tsx`. The cost that comes with it:
 `id="main-content"` must be added to the existing `<main>` elements in
 `apps/networkcanvas.com/app/[locale]/page.tsx`, `publications/page.tsx` and
 `get-started/page.tsx` — and `summer-2026-update/page.tsx`, which has no
@@ -953,7 +953,7 @@ the site and sign-up funnel. Regenerate the three documentation artifacts or
 `env/__tests__/docs.test.ts` fails.
 
 **The classification is total and two-directional**, and lives in
-`@codaco/studio-rpc` (a new `./surfaces` subpath) — the only code shared by both
+`@codaco/studio-contract` (a new `./surfaces` subpath) — the only code shared by both
 deployables — so the server gate and the client's route classification cannot
 drift, and no client→server import is created:
 
@@ -1118,22 +1118,22 @@ remains open on #1244.
 
 | File                                                                                | Change                                                                                                                     |
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `client/src/router.tsx`                                                             | Four shell branches, the component-less `studyRoute`, four area layouts, context, preload policy                           |
-| `client/src/routes/AppLayout.tsx`                                                   | Becomes the app shell: header + `AppFrame`; hosts the §6.6 reconciler; gains the §6.5 generation token                     |
-| `client/src/routes/Home.tsx`                                                        | Removed; replaced by the landing resolution                                                                                |
-| `client/src/routes/TeamWorkspace.tsx`                                               | Split into header switcher, `/team/$teamId`, `/team/$teamId/members`                                                       |
-| `client/src/routes/Editor.tsx`                                                      | Re-parented; its outline becomes `editorLayoutRoute`'s sidebar                                                             |
-| `client/src/routes/AcceptInvitation.tsx`                                            | Success control navigates to the §6.4 destination; `setActive` and the `activationFailed` alert removed; `main` gains `id` |
-| `client/src/routes/SignIn.tsx`                                                      | `main` gains `id="main-content"`; signed-in redirect target becomes the §6.4 resolution                                    |
-| `client/src/routes/NoTeam.tsx`                                                      | New focused route                                                                                                          |
+| `web/src/router.tsx`                                                                | Four shell branches, the component-less `studyRoute`, four area layouts, context, preload policy                           |
+| `web/src/routes/AppLayout.tsx`                                                      | Becomes the app shell: header + `AppFrame`; hosts the §6.6 reconciler; gains the §6.5 generation token                     |
+| `web/src/routes/Home.tsx`                                                           | Removed; replaced by the landing resolution                                                                                |
+| `web/src/routes/TeamWorkspace.tsx`                                                  | Split into header switcher, `/team/$teamId`, `/team/$teamId/members`                                                       |
+| `web/src/routes/Editor.tsx`                                                         | Re-parented; its outline becomes `editorLayoutRoute`'s sidebar                                                             |
+| `web/src/routes/AcceptInvitation.tsx`                                               | Success control navigates to the §6.4 destination; `setActive` and the `activationFailed` alert removed; `main` gains `id` |
+| `web/src/routes/SignIn.tsx`                                                         | `main` gains `id="main-content"`; signed-in redirect target becomes the §6.4 resolution                                    |
+| `web/src/routes/NoTeam.tsx`                                                         | New focused route                                                                                                          |
 | `apps/architect/src/components/RouteFocus.tsx`                                      | Replaced by the fresco-ui component; call sites converted                                                                  |
-| `server/src/client-assets.ts`                                                       | New: `mountClient(app, env)`, extracted from `index.ts`, carrying the deployment-mode 404 gate                             |
-| `server/src/index.ts`                                                               | Calls `mountClient`; the two `serveStatic` mounts move out                                                                 |
-| `server/src/rpc.ts`                                                                 | `requireStudy` middleware; `status` receives the deployment mode                                                           |
-| `server/src/env/{variables,catalogue,resolve}.ts`                                   | `STUDIO_DEPLOYMENT_MODE` and `deploymentMode` on `StudioEnv`                                                               |
+| `api/src/client-assets.ts`                                                          | New: `mountClient(app, env)`, extracted from `index.ts`, carrying the deployment-mode 404 gate                             |
+| `api/src/index.ts`                                                                  | Calls `mountClient`; the two `serveStatic` mounts move out                                                                 |
+| `api/src/rpc.ts`                                                                    | `requireStudy` middleware; `status` receives the deployment mode                                                           |
+| `api/src/env/{variables,catalogue,resolve}.ts`                                      | `STUDIO_DEPLOYMENT_MODE` and `deploymentMode` on `StudioEnv`                                                               |
 | `apps/studio/netlify.toml`                                                          | Header comment: the site variable is set on the site, not in `[build.environment]`; this lane is managed-only              |
-| `packages/studio-rpc/src/surfaces.ts` + `package.json` exports                      | New `./surfaces` subpath: the managed-only / self-host-only / both path lists                                              |
-| `packages/studio-rpc/src/{contract,schemas}.ts`                                     | `study.shell`; `StatusSchema` gains `deployment`                                                                           |
+| `packages/studio-contract/src/surfaces.ts` + `package.json` exports                 | New `./surfaces` subpath: the managed-only / self-host-only / both path lists                                              |
+| `packages/studio-contract/src/{contract,schemas}.ts`                                | `study.shell`; `StatusSchema` gains `deployment`                                                                           |
 | `packages/fresco-ui/src/navigation/SiteNavigation.tsx` + `.messages.ts`             | Skip link and its translated label                                                                                         |
 | `apps/networkcanvas.com/app/[locale]/*`, `apps/documentation/components/Layout.tsx` | `id="main-content"` on existing `<main>` elements                                                                          |
 | `packages/site-navigation-element`                                                  | `skipToId` documented as an element attribute; README note that the host owns the target                                   |
@@ -1147,7 +1147,7 @@ studies client work in #1262 and should land before it.
 | --- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Frame and route tree**    | fresco-ui `AppFrame`, `AppArea`, `NavList`, `NavItem`, `NavDrawer`, `RouteFocus` with stories and tests; Architect converted to the shared `RouteFocus`; the `SiteNavigation` skip link and `id="main-content"` in networkcanvas.com and documentation; the four shell branches; the session query (§6.2)                                                                          |
 | 2   | **App shell and migration** | Header with switchers; `/team/$teamId` and `/study/$studyId` area layouts; `TeamWorkspace` split; editor re-parented; landing resolution, `/no-team` and the `appLayoutRoute` zero-team redirect; `study.shell` and `requireStudy`; the §6.6 active-team reconciler; the §6.5 switcher sequence and the `AppLayout` generation-token fix; `AcceptInvitation`'s `setActive` removed |
-| 3   | **Deployment mode**         | `STUDIO_DEPLOYMENT_MODE`, status exposure, `packages/studio-rpc/src/surfaces.ts`, `mountClient` and the HTTP 404 gate with its status-code tests, the two-directional procedure refusals, and the route exhaustiveness test                                                                                                                                                        |
+| 3   | **Deployment mode**         | `STUDIO_DEPLOYMENT_MODE`, status exposure, `packages/studio-contract/src/surfaces.ts`, `mountClient` and the HTTP 404 gate with its status-code tests, the two-directional procedure refusals, and the route exhaustiveness test                                                                                                                                                   |
 | 4   | **Site shell**              | `SiteNavigation`/`SiteFooter` adoption, marketing home, pricing, legal                                                                                                                                                                                                                                                                                                             |
 | 5   | **Sign-up funnel**          | Focused-shell funnel, team creation, first study, invited path                                                                                                                                                                                                                                                                                                                     |
 

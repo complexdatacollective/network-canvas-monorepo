@@ -195,7 +195,7 @@ overrides:
   # externals (better-auth, better-call, @codaco/network-exporters, knip) still
   # ask for 4.4.x, which splits drizzle-orm into two peer-resolved copies; the
   # one pnpm hoists for drizzle-kit's own types is then not the one
-  # apps/studio/server resolves, and `pushSchema` stops accepting the database
+  # apps/studio/api resolves, and `pushSchema` stops accepting the database
   # handle it is handed (TS2345).
   zod: 'catalog:'
   '@types/react-dom': 'catalog:'
@@ -239,7 +239,7 @@ packageExtensions:
   # `peerDependencyRules.ignoreMissing` names it (that rule only silences the
   # warning), and it would ship a second Redis client beside ioredis into the
   # studio-api image. Making the peer optional is what keeps it out;
-  # apps/studio/server's process-separation suite asserts that it stays out.
+  # apps/studio/api's process-separation suite asserts that it stays out.
   '@effect/platform-node':
     peerDependenciesMeta:
       redis:

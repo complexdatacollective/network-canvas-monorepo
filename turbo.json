@@ -128,7 +128,7 @@
       ],
       "outputs": ["dist/**"]
     },
-    "@codaco/studio-client#build": {
+    "@codaco/studio-web#build": {
       "dependsOn": ["^topo"],
       "inputs": [
         "index.html",
@@ -148,7 +148,7 @@
     // `studio-api migrate` executes, from `scripts/apply.ts`. Without these a
     // change to the rendering would replay a cached bundle carrying the old
     // statements.
-    "@codaco/studio-server#build": {
+    "@codaco/studio-api#build": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
@@ -554,7 +554,7 @@
     // The Vite configs compiled by the apps' node tsconfigs import the shared
     // plugin sources under scripts/ (and apps/studio/scripts/), so those files
     // must be typecheck inputs or a cached result can hide an error in them.
-    "@codaco/studio-client#typecheck": {
+    "@codaco/studio-web#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
@@ -567,7 +567,7 @@
       "env": ["NODE_ENV"],
       "outputs": []
     },
-    "@codaco/studio-server#typecheck": {
+    "@codaco/studio-api#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
@@ -660,7 +660,7 @@
       ],
       "outputs": []
     },
-    "@codaco/studio-server#test": {
+    "@codaco/studio-api#test": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",

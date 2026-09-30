@@ -15,7 +15,7 @@ released package or app:
 - A released app or product: `@codaco/architect`,
   `@codaco/background-creator`, `fresco`, `@codaco/interviewer`,
   `@codaco/documentation`, `networkcanvas.com`, or a Studio package
-  (`@codaco/studio-client`, `@codaco/studio-server`, `@codaco/studio-rpc`,
+  (`@codaco/studio-web`, `@codaco/studio-api`, `@codaco/studio-contract`,
   `@codaco/studio-sync`).
 
 Skip it for repository-docs-only, test-only, CI/tooling-only, internal
@@ -118,7 +118,7 @@ and non-ignored packages in one file. If one feature affects multiple lanes,
 run `pnpm changeset` once per lane.
 
 The Studio lane spans all four Studio workspace packages —
-`@codaco/studio-client`, `@codaco/studio-server`, `@codaco/studio-rpc`, and
+`@codaco/studio-web`, `@codaco/studio-api`, `@codaco/studio-contract`, and
 `@codaco/studio-sync` — so one Studio changeset may name any combination of
 them.
 

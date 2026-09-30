@@ -10,7 +10,7 @@ import type { SqlClient } from 'effect/unstable/sql';
 // The Effect tenancy seam (#1927 §9, §10).
 //
 // `Transaction` and `TeamAccess` are defined **here**, in the package the
-// server depends on, rather than in `apps/studio/server/src/db/tenant.ts`
+// server depends on, rather than in `apps/studio/api/src/db/tenant.ts`
 // where the scopes that provide them live. They have to be: `SyncServer`
 // (server.ts) writes inside a caller's transaction, so it must be able to
 // require the service — and this package cannot import from the app that
@@ -61,7 +61,7 @@ export type TeamAccess = {
 
 /**
  * Mints a `TeamAccess`. **Not** a general constructor: a source-policy test
- * (`apps/studio/server/src/db/__tests__/team-access-policy.test.ts`) pins its
+ * (`apps/studio/api/src/db/__tests__/team-access-policy.test.ts`) pins its
  * production call sites, each with what it proved first — a membership, the
  * locked invitation an invitee accepts, or, for the worker's maintenance
  * access, nothing, which is why the web process cannot reach that one.

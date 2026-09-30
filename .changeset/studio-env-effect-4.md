@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': patch
+'@codaco/studio-api': patch
 ---
 
 The environment declaration moves to Effect Schema v4.

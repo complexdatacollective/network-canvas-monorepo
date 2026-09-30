@@ -4,7 +4,7 @@
 # Sourced, never executed. Every caller sets `set -euo pipefail` itself, so a
 # failure inside a function here stops the script that called it.
 #
-# The invocation is in one place for the reason server/scripts/compose.ts gives
+# The invocation is in one place for the reason api/scripts/compose.ts gives
 # for the same thing: a second copy of the `-p`, the `-f` chain and the
 # `--env-file` is how two scripts drift into disagreeing about which files are
 # applied and which project a `down` tears apart.

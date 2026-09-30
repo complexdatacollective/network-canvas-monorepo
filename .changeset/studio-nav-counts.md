@@ -1,7 +1,7 @@
 ---
-'@codaco/studio-client': minor
-'@codaco/studio-server': minor
-'@codaco/studio-rpc': minor
+'@codaco/studio-web': minor
+'@codaco/studio-api': minor
+'@codaco/studio-contract': minor
 ---
 
 Put real numbers on the study sidebar's countable destinations, so a researcher

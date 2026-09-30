@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': patch
+'@codaco/studio-api': patch
 ---
 
 The stored-secret check and `rotate-secrets` run as Effects over the process's
