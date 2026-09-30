@@ -59,19 +59,19 @@ export function workspaceManifests(root = REPO_ROOT) {
 export const GATED_PRODUCT_PACKAGES = [
   '@codaco/documentation',
   'networkcanvas.com',
-  '@codaco/studio-client',
-  '@codaco/studio-rpc',
-  '@codaco/studio-server',
+  '@codaco/studio-api',
+  '@codaco/studio-contract',
   '@codaco/studio-sync',
+  '@codaco/studio-web',
 ];
 
 export const GATED_PRODUCT_DIRS = {
   '@codaco/documentation': 'apps/documentation',
   'networkcanvas.com': 'apps/networkcanvas.com',
-  '@codaco/studio-client': 'apps/studio/client',
-  '@codaco/studio-rpc': 'packages/studio-rpc',
-  '@codaco/studio-server': 'apps/studio/server',
+  '@codaco/studio-api': 'apps/studio/api',
+  '@codaco/studio-contract': 'packages/studio-contract',
   '@codaco/studio-sync': 'packages/studio-sync',
+  '@codaco/studio-web': 'apps/studio/web',
 };
 
 // Documentation, Website, and Studio keep separately generated release PRs
@@ -84,10 +84,10 @@ export const GATED_PRODUCT_RELEASE_LANES = {
   documentation: ['@codaco/documentation'],
   website: ['networkcanvas.com'],
   studio: [
-    '@codaco/studio-client',
-    '@codaco/studio-rpc',
-    '@codaco/studio-server',
+    '@codaco/studio-api',
+    '@codaco/studio-contract',
     '@codaco/studio-sync',
+    '@codaco/studio-web',
   ],
 };
 

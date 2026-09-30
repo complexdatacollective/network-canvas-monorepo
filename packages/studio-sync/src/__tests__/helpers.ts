@@ -36,7 +36,7 @@ export type TestIsolation = 'repeatable read' | 'serializable';
 
 /**
  * Runs an effect inside ONE team-stamped transaction — the studio-sync half of
- * what `TenantScope.open` does in `apps/studio/server`, which this package
+ * what `TenantScope.open` does in `apps/studio/api`, which this package
  * cannot import because that app depends on it. Same order for the same
  * reason: the role first, then the team, so no statement in the body runs
  * unpinned or unstamped.

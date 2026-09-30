@@ -1,6 +1,6 @@
 ---
 '@codaco/studio-sync': patch
-'@codaco/studio-server': patch
+'@codaco/studio-api': patch
 ---
 
 Job payloads are declared once, on Effect Schema. `@codaco/studio-sync/jobs`

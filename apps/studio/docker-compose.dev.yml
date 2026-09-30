@@ -2,7 +2,7 @@
 #
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml ...
 #
-# `pnpm --filter @codaco/studio-server dev` applies it for you and starts only
+# `pnpm --filter @codaco/studio-api dev` applies it for you and starts only
 # the four services below; `traefik`, `web`, `api` and `worker` stay stopped,
 # because in development those run from source with watch and HMR.
 #

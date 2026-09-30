@@ -24,7 +24,7 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
   every queue and how it retries, expires and dead-letters, the cron schedules
   the worker registers, and the payload schema and payload policy per queue.
   Declarations only (plain data, and Effect Schema for the payloads): the server's own queue
-  (`apps/studio/server/src/jobs/queues.ts`) resolves each one against
+  (`apps/studio/api/src/jobs/queues.ts`) resolves each one against
   its defaults and freezes the result onto the job row at enqueue. They live
   here rather than in the server because this package is compiled into contexts
   that never run a job and still need the payload shapes and the policy table.
@@ -46,13 +46,13 @@ transcripts, and a randomized interleaving property — need a reachable
 Postgres and skip with a notice otherwise:
 
 ```bash
-pnpm --filter @codaco/studio-server dev
+pnpm --filter @codaco/studio-api dev
 ```
 
 That starts the Studio development stack, whose Postgres answers on
 `127.0.0.1:54318` with the password `spike` — the port and credentials these
 suites expect, so one container serves both. Stop it again with
-`pnpm --filter @codaco/studio-server dev:down`. For the database alone,
+`pnpm --filter @codaco/studio-api dev:down`. For the database alone,
 without the rest of the stack:
 
 ```bash

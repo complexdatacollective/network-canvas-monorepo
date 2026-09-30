@@ -4,7 +4,7 @@
 //
 // Declarations only — plain data for the queues and schedules, Effect Schema
 // for the payloads. The queue that reads them is the server's
-// own (`apps/studio/server/src/jobs/queues.ts`), which resolves each one
+// own (`apps/studio/api/src/jobs/queues.ts`), which resolves each one
 // against its defaults and freezes the result onto a job row at enqueue, so a
 // job already in flight keeps the retry and expiry it was created under. They
 // live here rather than in the server because this package is compiled into

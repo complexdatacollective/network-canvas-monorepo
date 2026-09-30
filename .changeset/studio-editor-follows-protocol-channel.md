@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': patch
+'@codaco/studio-web': patch
 ---
 
 The protocol editor now keeps up with everyone else editing the protocol. A

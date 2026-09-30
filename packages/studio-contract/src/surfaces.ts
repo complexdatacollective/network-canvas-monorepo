@@ -4,7 +4,7 @@
 // where first-run setup lives and none of the commercial surfaces do.
 //
 // The classification lives here — in the one package both deployables import —
-// so the client's topology guard (apps/studio/client/src/lib/deployment.ts),
+// so the client's topology guard (apps/studio/web/src/lib/deployment.ts),
 // its route tree and the server's `status` procedure cannot drift, and no
 // client→server import is created to share it.
 //
@@ -41,7 +41,7 @@ export const SELF_HOST_ONLY_PATHS = ['/setup'] as const;
  *
  * The list is exhaustive over the route table rather than implicit, so a route
  * added later is classified deliberately instead of defaulting to "both".
- * `apps/studio/client/src/routes/__tests__/routeTable.test.tsx` is what
+ * `apps/studio/web/src/routes/__tests__/routeTable.test.tsx` is what
  * enforces that, by passing every path in the built router to
  * `unclassifiedSurfacePaths`; entries here for routes that do not exist yet
  * are the design's route table, declared ahead of them.
@@ -157,7 +157,7 @@ export function gatedSurfacePaths(mode: DeploymentMode): readonly string[] {
  * The check it exists for cannot be written in this package: the route table
  * is built by the client, which imports this module, so only a consumer can
  * feed it one. That consumer is
- * `apps/studio/client/src/routes/__tests__/routeTable.test.tsx` — it passes
+ * `apps/studio/web/src/routes/__tests__/routeTable.test.tsx` — it passes
  * every path in the built router and requires an empty result, so a route
  * added without a topology decision fails there instead of silently becoming
  * "both".

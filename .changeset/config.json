@@ -17,10 +17,13 @@
     "@codaco/interviewer-classic",
     "@codaco/documentation",
     "networkcanvas.com",
+    "@codaco/studio-api",
     "@codaco/studio-client",
+    "@codaco/studio-contract",
     "@codaco/studio-rpc",
     "@codaco/studio-server",
-    "@codaco/studio-sync"
+    "@codaco/studio-sync",
+    "@codaco/studio-web"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

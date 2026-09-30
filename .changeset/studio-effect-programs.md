@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 ---
 
 The API process, the worker, `migrate` and `rotate-secrets` are now Effect

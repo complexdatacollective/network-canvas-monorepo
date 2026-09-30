@@ -49,7 +49,7 @@ RUN npm install --global pnpm@11.20.0
 FROM base AS pruner
 WORKDIR /repo
 COPY . .
-RUN pnpm dlx turbo@2.10.4 prune @codaco/studio-server @codaco/studio-client --docker
+RUN pnpm dlx turbo@2.10.4 prune @codaco/studio-api @codaco/studio-web --docker
 
 # Install with the pruned lockfile, then build both halves and assemble a
 # production-only deployment of the server (package.json + prod node_modules).
@@ -60,8 +60,8 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
-RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
-RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
+RUN pnpm --filter @codaco/studio-web build && pnpm --filter @codaco/studio-api build
+RUN pnpm --filter @codaco/studio-api deploy --prod --legacy /deploy
 
 FROM node:24-slim AS studio-api
 ENV NODE_ENV=production
@@ -70,14 +70,14 @@ COPY --from=builder /deploy .
 # dist/ carries the five entries and dist/schema-ddl.json beside them: the
 # statements `migrate` executes, rendered at build time because drizzle-kit is
 # a development dependency and `pnpm deploy --prod` installs none.
-COPY --from=builder /repo/apps/studio/server/dist ./dist
-COPY apps/studio/server/bin/studio-api /usr/local/bin/studio-api
+COPY --from=builder /repo/apps/studio/api/dist ./dist
+COPY apps/studio/api/bin/studio-api /usr/local/bin/studio-api
 USER node
 EXPOSE 3000
 ENTRYPOINT ["studio-api"]
 CMD ["serve"]
 
 FROM nginx:1.29-alpine AS studio-web
-COPY --from=builder /repo/apps/studio/client/dist /usr/share/nginx/html
-COPY apps/studio/client/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /repo/apps/studio/web/dist /usr/share/nginx/html
+COPY apps/studio/web/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

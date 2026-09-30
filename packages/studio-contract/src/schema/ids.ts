@@ -7,8 +7,8 @@ import { Schema } from 'effect';
 // it buys is that a `TeamId` cannot be passed where a `StudyId` is expected,
 // which is the mistake these all being `string` today makes easy.
 //
-// The bounds are the ones today's zod boundary already enforces
-// (`packages/studio-rpc/src/schemas.ts`), so the accepted set is unchanged.
+// The bounds are the ones the zod boundary enforced before these schemas
+// replaced it, so the accepted set is unchanged.
 
 /**
  * Better Auth mints organization ids, so the only bound that holds is the

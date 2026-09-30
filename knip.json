@@ -227,12 +227,12 @@
         "@utils/*": ["./src/utils/*"]
       }
     },
-    "apps/studio/client": {
+    "apps/studio/web": {
       "entry": ["index.html!"],
       "vite": true,
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "apps/studio/server": {
+    "apps/studio/api": {
       // The image's one-shot entries (#1909, #1901). src/index.ts and
       // src/worker.ts are found through the `dev` script, which runs both from
       // source, and src/rotate-secrets.ts through its own script; migrate and

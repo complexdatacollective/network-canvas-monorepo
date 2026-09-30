@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 ---
 
 The public data API at `/api/v1` is served from its Effect `HttpApi` contract.

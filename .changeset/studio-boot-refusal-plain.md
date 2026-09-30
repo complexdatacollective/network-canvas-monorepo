@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': patch
+'@codaco/studio-api': patch
 ---
 
 The web process and the worker print a refusal to start as the one sentence to

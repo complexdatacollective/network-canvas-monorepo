@@ -1,7 +1,7 @@
 ---
-'@codaco/studio-client': patch
-'@codaco/studio-rpc': patch
-'@codaco/studio-server': patch
+'@codaco/studio-web': patch
+'@codaco/studio-contract': patch
+'@codaco/studio-api': patch
 ---
 
 Take the protocol-authoring contract from `@codaco/protocol-builder-core`

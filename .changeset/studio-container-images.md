@@ -1,6 +1,6 @@
 ---
-'@codaco/studio-server': minor
-'@codaco/studio-client': minor
+'@codaco/studio-api': minor
+'@codaco/studio-web': minor
 ---
 
 Studio now ships as two container images instead of one. `studio-api` carries

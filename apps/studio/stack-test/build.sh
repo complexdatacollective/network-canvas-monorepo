@@ -4,7 +4,7 @@
 #
 #   apps/studio/stack-test/build.sh
 #
-# Same two `docker build` invocations `dev:stack` runs (server/scripts/
+# Same two `docker build` invocations `dev:stack` runs (api/scripts/
 # dev-stack.ts), with `:ci` tags rather than `:local` so a developer running
 # this beside `dev:stack` does not overwrite that lane's images.
 #

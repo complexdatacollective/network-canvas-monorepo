@@ -142,6 +142,13 @@ container_id() {
     --filter "label=com.docker.compose.service=$1"
 }
 
+# Where the API's container is on the stack's own network.
+api_address() {
+  docker inspect -f \
+    "{{(index .NetworkSettings.Networks \"${PROJECT}_default\").IPAddress}}" \
+    "$(container_id api)"
+}
+
 section() {
   echo ''
   echo "[$VARIANT] $1"
@@ -387,13 +394,14 @@ fi
 
 # ── The maintenance window ────────────────────────────────────────────────
 #
-# `stop`, not `down`: the same container is started again afterwards and gets
-# its address back, which is what lets the nginx variant recover without a
-# reload — the guide's block resolves its upstreams once, when nginx loads its
-# configuration, so a REPLACED container would leave it pointing at an address
-# that is no longer anybody's. That is an upgrade rather than a maintenance
-# window, and it is the upgrade guide's to cover.
+# `stop`, not `down`: the same container is started again afterwards. It
+# usually gets its address back, but Docker does not promise that, and the
+# guide's nginx block resolves its upstreams once, when nginx loads its
+# configuration. So where the address moved, the nginx variant takes the same
+# documented reload the upgrade window below asserts, before recovery is
+# judged; on every other run it recovers with no reload at all.
 section 'the maintenance window'
+stopped_at="$(api_address)"
 compose stop api >/dev/null 2>&1
 
 # `/rpc`, which is the whole of the rpc plane's surface now. What this asked
@@ -426,6 +434,21 @@ request "$URL/"
 equals '/ still serves the client' 200 "$STATUS"
 
 compose start api >/dev/null 2>&1
+if [ "$VARIANT" = "own-proxy" ]; then
+  started_health=''
+  for _ in $(seq 1 90); do
+    started_health="$(docker inspect -f '{{.State.Health.Status}}' \
+      "$(container_id api)" 2>/dev/null || true)"
+    [ "$started_health" = 'healthy' ] && break
+    sleep 1
+  done
+  started_at="$(api_address)"
+  if [ "$stopped_at" != "$started_at" ]; then
+    compose exec -T own-proxy nginx -s reload >/dev/null 2>&1
+    pass 'the restarted API moved, so the ingress was reloaded' \
+      "$stopped_at -> $started_at"
+  fi
+fi
 for _ in $(seq 1 90); do
   restored="$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$URL/readyz" || true)"
   [ "$restored" = "200" ] && break
@@ -435,8 +458,8 @@ equals '/readyz recovers once the API is back' 200 "${restored:-none}"
 
 # ── own-proxy: the upgrade window, and the forwarded headers ──────────────
 #
-# The maintenance window above stops and starts one container, which keeps its
-# address. An UPGRADE replaces it — `docker compose up -d web api worker`, step
+# The maintenance window above stops and starts one container, which usually
+# keeps its address. An UPGRADE replaces it — `docker compose up -d web api worker`, step
 # 4 of docs/self-host/upgrade.md — and the replacement usually has a new one.
 # nginx resolved the name in its `upstream` block once, when it loaded, so it
 # goes on addressing the container that is gone and answers 502 until it is
@@ -450,11 +473,6 @@ equals '/readyz recovers once the API is back' 200 "${restored:-none}"
 # them. Then the forwarded headers, against the reloaded ingress.
 if [ "$VARIANT" = "own-proxy" ]; then
   section 'the upgrade window'
-  api_address() {
-    docker inspect -f \
-      "{{(index .NetworkSettings.Networks \"${PROJECT}_default\").IPAddress}}" \
-      "$(container_id api)"
-  }
   before="$(api_address)"
   compose up -d --force-recreate web api worker >/dev/null 2>&1
 
