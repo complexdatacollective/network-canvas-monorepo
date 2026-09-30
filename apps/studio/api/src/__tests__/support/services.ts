@@ -10,7 +10,7 @@ import { JOB_SCHEMA } from '../../jobs/queues.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
 import type { RpcServices, StudioServices } from '../../rpc/deps.ts';
-import { SecretsCipherAbsent } from '../../secrets/services.ts';
+import { SecretsCipher } from '../../secrets/services.ts';
 import { ObjectStore } from '../../storage/object-store.ts';
 import { limiterWithoutStore } from './valkey.ts';
 
@@ -30,7 +30,7 @@ const dataServices = (studio: Studio): Layer.Layer<StudioServices> =>
   studio.rpc.services === undefined
     ? Layer.mergeAll(
         DatabaseAbsent,
-        SecretsCipherAbsent,
+        SecretsCipher.layerAbsent,
         AuditSignal.layer,
         Jobs.layer({ schema: JOB_SCHEMA }),
         DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),

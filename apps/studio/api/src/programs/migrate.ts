@@ -8,7 +8,7 @@ import { OwnerScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
-import { SecretsLive } from '../secrets/services.ts';
+import { SecretsCipher } from '../secrets/services.ts';
 import { verifyKeyring } from '../secrets/verify.ts';
 import {
   issueBootstrapToken,
@@ -111,7 +111,7 @@ const migrate = Effect.gen(function* () {
   // container start. `Environment` already refused to run without a keyring
   // at all. Before the bootstrap token, so a refused database never prints a
   // token nobody should use.
-  yield* verifyKeyring.pipe(Effect.provide(SecretsLive));
+  yield* verifyKeyring.pipe(Effect.provide(SecretsCipher.layerFromEnvironment));
   yield* Console.log(
     'Stored secrets are readable with the configured keyring.',
   );

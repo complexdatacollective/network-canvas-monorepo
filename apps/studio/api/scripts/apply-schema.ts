@@ -4,7 +4,7 @@ import { OwnerDatabase } from '../src/db/client.ts';
 import { createOwnerPool } from '../src/db/pool.ts';
 import { OwnerScope } from '../src/db/tenant.ts';
 import { Environment, readEnv } from '../src/env.ts';
-import { SecretsLive } from '../src/secrets/services.ts';
+import { SecretsCipher } from '../src/secrets/services.ts';
 import { verifyKeyring } from '../src/secrets/verify.ts';
 import {
   issueBootstrapToken,
@@ -51,7 +51,7 @@ try {
   // to do; a defect is caught too, so it is never an unhandled rejection.
   const verified = await Effect.runPromiseExit(
     verifyKeyring.pipe(
-      Effect.provide(SecretsLive),
+      Effect.provide(SecretsCipher.layerFromEnvironment),
       Effect.provideService(Environment)(env),
     ),
   );

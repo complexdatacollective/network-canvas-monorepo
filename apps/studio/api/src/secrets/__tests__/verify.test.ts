@@ -19,12 +19,7 @@ import { MaintenanceDatabase } from '../../db/client.ts';
 import { Environment, readEnv } from '../../env.ts';
 import { createSecretsCipher } from '../cipher.ts';
 import type { KeyringApi } from '../keyring.ts';
-import {
-  Keyring,
-  KeyringMissing,
-  SecretsCipherLive,
-  SecretsLive,
-} from '../services.ts';
+import { Keyring, KeyringMissing, SecretsCipher } from '../services.ts';
 import {
   KeyringVerified,
   SecretKeyMissing,
@@ -38,7 +33,7 @@ const USER = 'user-keyring-gate';
 const MISSING = 'gone';
 
 const secretsFor = (keyring: KeyringApi) =>
-  SecretsCipherLive.pipe(Layer.provideMerge(Layer.succeed(Keyring, keyring)));
+  SecretsCipher.layer.pipe(Layer.provideMerge(Layer.succeed(Keyring, keyring)));
 
 const reset = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
@@ -227,7 +222,7 @@ describe.skipIf(!testDb)('the keyring gate', () => {
             const exit = yield* buildBeneath(
               Beneath(built, 'studio-test-gate-unreached').pipe(
                 Layer.provide(KeyringVerified),
-                Layer.provide(SecretsLive),
+                Layer.provide(SecretsCipher.layerFromEnvironment),
                 Layer.provide(Layer.succeed(Environment)(env)),
               ),
             );

@@ -26,7 +26,7 @@ import {
 } from '../../__tests__/support/secrets.ts';
 import { type KeyringApi, parseKeyring } from '../keyring.ts';
 import { rotateSecrets } from '../rotate.ts';
-import { Keyring, SecretsCipherLive } from '../services.ts';
+import { Keyring, SecretsCipher } from '../services.ts';
 
 // The acceptance criterion of #1900, asked of the database rather than of the
 // code that writes it: a dump of a seeded Studio contains no webhook signing
@@ -136,7 +136,9 @@ const underKeyring = <A, E, R>(
 ) =>
   Effect.provide(
     body,
-    SecretsCipherLive.pipe(Layer.provideMerge(Layer.succeed(Keyring, keyring))),
+    SecretsCipher.layer.pipe(
+      Layer.provideMerge(Layer.succeed(Keyring, keyring)),
+    ),
   );
 
 describe('the needles the dump is searched for', () => {

@@ -29,7 +29,7 @@ import { MaintenanceScope } from '../../db/tenant.ts';
 import { createSecretsCipher } from '../cipher.ts';
 import { type KeyringApi, parseKeyring } from '../keyring.ts';
 import { RotationIncomplete, rotateSecrets } from '../rotate.ts';
-import { Keyring, type SecretsCipher, SecretsCipherLive } from '../services.ts';
+import { Keyring, SecretsCipher } from '../services.ts';
 import {
   SecretKeyIdMalformed,
   SecretKeyMaterial,
@@ -72,7 +72,7 @@ const TOKEN_COLUMNS = [
  * The rotation reads its keyring and its cipher from the services, so no call
  * site can hand it a cipher over some other key material. A case that rotates
  * under a given keyring provides both from that one keyring, which is what
- * `SecretsCipherLive` over it is.
+ * `SecretsCipher.layer` over it is.
  */
 const underKeyring = <A, E, R>(
   keyring: KeyringApi,
@@ -80,7 +80,9 @@ const underKeyring = <A, E, R>(
 ): Effect.Effect<A, E, Exclude<R, Keyring | SecretsCipher>> =>
   Effect.provide(
     body,
-    SecretsCipherLive.pipe(Layer.provideMerge(Layer.succeed(Keyring, keyring))),
+    SecretsCipher.layer.pipe(
+      Layer.provideMerge(Layer.succeed(Keyring, keyring)),
+    ),
   );
 
 /** The boot check under one keyring, reading it the way the gate does. */

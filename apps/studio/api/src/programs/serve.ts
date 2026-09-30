@@ -26,7 +26,7 @@ import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
-import { SecretsCipherAbsent, SecretsLive } from '../secrets/services.ts';
+import { SecretsCipher } from '../secrets/services.ts';
 import { KeyringVerified, verifyKeyring } from '../secrets/verify.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
@@ -204,7 +204,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     // once, at boot, rather than per enqueue — the correction the
     // node-postgres enqueue this replaced got for free by writing `now()` into
     // the statement.
-    Layer.provide(SecretsLive),
+    Layer.provide(SecretsCipher.layerFromEnvironment),
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(JobClock.layerApplication()),
     Layer.provide(AuditSignal.layer),
@@ -242,7 +242,7 @@ function withoutDatabase(env: StudioEnv) {
     // transaction refuses before a client is asked for, and the two that stay
     // reachable answer from the absent pool. The stand-ins throw rather than
     // degrade, which is what makes "nothing reaches it" checkable.
-    Layer.provide(SecretsCipherAbsent),
+    Layer.provide(SecretsCipher.layerAbsent),
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(AuditSignal.layer),
     Layer.provide(DatabaseAbsent),

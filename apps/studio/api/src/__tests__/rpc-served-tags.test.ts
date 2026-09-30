@@ -23,7 +23,7 @@ import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
 import { StudioRpcHandlers } from '../rpc/handlers.ts';
-import { SecretsCipherAbsent } from '../secrets/services.ts';
+import { SecretsCipher } from '../secrets/services.ts';
 import { AuthServiceStub } from './support/auth.ts';
 
 /**
@@ -110,7 +110,7 @@ const handlerContext = await Effect.runPromise(
         Layer.provide(
           Layer.mergeAll(
             DatabaseAbsent,
-            SecretsCipherAbsent,
+            SecretsCipher.layerAbsent,
             AuditSignal.layer,
             Jobs.layer({ schema: JOB_SCHEMA }),
             DeniedAttempts.layer.pipe(

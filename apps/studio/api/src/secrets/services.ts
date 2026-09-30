@@ -38,17 +38,17 @@ export class KeyringMissing extends Schema.TaggedError<KeyringMissing>()(
  */
 export class Keyring extends Context.Service<Keyring, KeyringApi>()(
   '@studio/secrets/Keyring',
-) {}
-
-const KeyringLive: Layer.Layer<Keyring, KeyringMissing, Environment> =
-  Layer.effect(
-    Keyring,
-    Effect.flatMap(Environment, (env) =>
-      env.secrets === undefined
-        ? Effect.fail(new KeyringMissing())
-        : Effect.succeed(env.secrets),
-    ),
-  );
+) {
+  static readonly layer: Layer.Layer<Keyring, KeyringMissing, Environment> =
+    Layer.effect(
+      Keyring,
+      Effect.flatMap(Environment, (env) =>
+        env.secrets === undefined
+          ? Effect.fail(new KeyringMissing())
+          : Effect.succeed(env.secrets),
+      ),
+    );
+}
 
 /**
  * The one cipher for the process: every seal and every open in the program
@@ -64,32 +64,32 @@ const KeyringLive: Layer.Layer<Keyring, KeyringMissing, Environment> =
 export class SecretsCipher extends Context.Service<
   SecretsCipher,
   SecretsCipherApi
->()('@studio/secrets/SecretsCipher') {}
+>()('@studio/secrets/SecretsCipher') {
+  static readonly layer: Layer.Layer<SecretsCipher, never, Keyring> =
+    Layer.effect(SecretsCipher, Effect.map(Keyring, createSecretsCipher));
 
-export const SecretsCipherLive: Layer.Layer<SecretsCipher, never, Keyring> =
-  Layer.effect(SecretsCipher, Effect.map(Keyring, createSecretsCipher));
+  /**
+   * The cipher a process with **no keyring** has, which the environment layer
+   * allows only where there is no database either — and every surface that would
+   * seal or open a secret needs one of those. Reaching it is a programming error
+   * rather than a deployment state, for the reason `DatabaseAbsent` gives.
+   */
+  static readonly layerAbsent: Layer.Layer<SecretsCipher> = Layer.succeed(
+    SecretsCipher,
+  )(
+    new Proxy({} as SecretsCipherApi, {
+      get: (_target, property) => {
+        throw new Error(
+          `this process has no secrets keyring: nothing may read SecretsCipher.${String(property)}`,
+        );
+      },
+    }),
+  );
 
-/**
- * The cipher a process with **no keyring** has, which the environment layer
- * allows only where there is no database either — and every surface that would
- * seal or open a secret needs one of those. Reaching it is a programming error
- * rather than a deployment state, for the reason `DatabaseAbsent` gives.
- */
-export const SecretsCipherAbsent: Layer.Layer<SecretsCipher> = Layer.succeed(
-  SecretsCipher,
-)(
-  new Proxy({} as SecretsCipherApi, {
-    get: (_target, property) => {
-      throw new Error(
-        `this process has no secrets keyring: nothing may read SecretsCipher.${String(property)}`,
-      );
-    },
-  }),
-);
-
-/** The keyring and the cipher over it, which is how every consumer wants both. */
-export const SecretsLive: Layer.Layer<
-  Keyring | SecretsCipher,
-  KeyringMissing,
-  Environment
-> = SecretsCipherLive.pipe(Layer.provideMerge(KeyringLive));
+  /** The keyring and the cipher over it, which is how every consumer wants both. */
+  static readonly layerFromEnvironment: Layer.Layer<
+    Keyring | SecretsCipher,
+    KeyringMissing,
+    Environment
+  > = SecretsCipher.layer.pipe(Layer.provideMerge(Keyring.layer));
+}

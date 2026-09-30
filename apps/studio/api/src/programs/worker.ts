@@ -28,7 +28,7 @@ import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
-import { SecretsLive } from '../secrets/services.ts';
+import { SecretsCipher } from '../secrets/services.ts';
 import { KeyringVerified } from '../secrets/verify.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -151,7 +151,7 @@ function workerWith(db: DbEnv) {
       // built for the gate alone.
       const SecretsVerified = KeyringVerified.pipe(
         Layer.provide(SchemaCurrent),
-        Layer.provide(SecretsLive),
+        Layer.provide(SecretsCipher.layerFromEnvironment),
       );
 
       // The maintenance client the queue runs on, and the only client the

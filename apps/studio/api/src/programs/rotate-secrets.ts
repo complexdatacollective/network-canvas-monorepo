@@ -5,7 +5,7 @@ import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { rotateSecrets as rotate } from '../secrets/rotate.ts';
-import { Keyring, SecretsLive } from '../secrets/services.ts';
+import { Keyring, SecretsCipher } from '../secrets/services.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -78,7 +78,9 @@ const rotateSecrets = Effect.gen(function* () {
       currentKeyId: keyring.currentId,
     };
   }).pipe(
-    Effect.provide(Layer.mergeAll(Maintenance, SecretsLive)),
+    Effect.provide(
+      Layer.mergeAll(Maintenance, SecretsCipher.layerFromEnvironment),
+    ),
     // Every way the rotation can end badly is one sentence for whoever typed
     // the command: no keyring, an incomplete one, a rotation that could not
     // prove itself finished, or a statement that failed.
