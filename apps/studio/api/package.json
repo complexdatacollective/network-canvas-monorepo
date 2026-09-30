@@ -49,7 +49,6 @@
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
-    "hono": "^4.13.5",
     "ioredis": "6.0.0",
     "nodemailer": "10.0.9",
     "pg": "^8.23.0",

@@ -12,7 +12,7 @@ import { Environment } from '../env.ts';
 
 // The listeners the two long-running processes bind. Studio's own
 // `node:http` server rather than a framework's: everything above it — the
-// router, the Hono residue, the WebSocket upgrade — is Effect's, and the only
+// router and the WebSocket upgrade — is Effect's, and the only
 // thing this decides is the address and how long a stop waits.
 //
 // Neither layer logs: the programs print their own boot line, which names the

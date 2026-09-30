@@ -6,7 +6,6 @@ import { ProtocolBuilderRoutes } from '../protocol-builder/rpc.ts';
 import { ApiV1Routes } from './api-v1.ts';
 import { AuthMount } from './auth-mount.ts';
 import { type HealthChecks, HealthRoutes } from './health.ts';
-import { HonoBridge } from './hono-bridge.ts';
 import { ClientAddressLive } from './middleware/client-address.ts';
 import { MaintenanceGate } from './middleware/maintenance.ts';
 import { ProblemJson } from './middleware/problem-json.ts';
@@ -36,13 +35,12 @@ import { StorageRoutes } from './storage.ts';
  * them.
  *
  * The routes follow in design §8's order: health, the better-auth mount, the
- * public API, `/storage`, `/rpc`, the protocol builder's two mounts (`/ws`
- * and `/rpc/protocol-builder`), and last the Hono
- * bridge — outermost, built last — because it is a catch-all: everything the
- * Effect shell owns has to be registered before the route that matches
- * everything else. Each route layer carries its own route middlewares (the
- * origin gates, the principal, the HTTP-level limits), so the order among the
- * routes is registration order and nothing more.
+ * public API, `/storage`, `/rpc`, and the protocol builder's two mounts (`/ws`
+ * and `/rpc/protocol-builder`). Nothing else is served: a path none of them
+ * matches is the router's own 404, which the problem-JSON rewrite fills in.
+ * Each route layer carries its own route middlewares (the origin gates, the
+ * principal, the HTTP-level limits), so the order among the routes is
+ * registration order and nothing more.
  *
  * The environment is read here rather than passed in, because the only thing
  * the routes want from it is the browser-facing origin the `/rpc` CSRF gate
@@ -66,9 +64,6 @@ export const Routes = (studio: Studio, checks: HealthChecks) =>
       const apiV1 = ApiV1Routes(studio.rpc).pipe(Layer.provideMerge(auth));
       const storage = StorageRoutes.pipe(Layer.provideMerge(apiV1));
       const rpc = RpcRoutes(studio.rpc, env).pipe(Layer.provideMerge(storage));
-      const protocolBuilder = ProtocolBuilderRoutes(env).pipe(
-        Layer.provideMerge(rpc),
-      );
-      return HonoBridge(studio.app).pipe(Layer.provideMerge(protocolBuilder));
+      return ProtocolBuilderRoutes(env).pipe(Layer.provideMerge(rpc));
     }),
   );

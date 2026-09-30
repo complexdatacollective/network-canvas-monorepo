@@ -40,7 +40,7 @@ export type RpcDeps = {
    * process's cipher and the audit denial window.
    *
    * It is a `Context` rather than a set of layers because one of its
-   * consumers is a promise — the Hono residue's installation read — and the
+   * consumers is a promise — the installation read `status` answers from — and the
    * program that owns the layers is the only thing that can supply it. Absent wherever there is no database, where
    * every procedure that would need one refuses beside the missing pool.
    */

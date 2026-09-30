@@ -28,9 +28,8 @@ export const tooManyRequests = (retryAfterSeconds: number) =>
 
 /**
  * The address the global middleware resolved for this request. A route the
- * middleware did not reach — none, in the composed router, but the fallback
- * is what the Hono residue always read — shares the one bucket every
- * unidentifiable caller shares, which is the safe direction.
+ * middleware did not reach — none, in the composed router — shares the one
+ * bucket every unidentifiable caller shares, which is the safe direction.
  */
 export const clientAddress: Effect.Effect<string> = Effect.map(
   Effect.serviceOption(ClientAddress),

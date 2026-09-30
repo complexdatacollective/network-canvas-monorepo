@@ -32,9 +32,8 @@ import {
 // is what the gate does with an answer; the probes themselves are
 // `db/__tests__/readiness.test.ts`'s.
 //
-// Behind the gate is a catch-all that counts every request it serves — the
-// shape of the Hono residue, which answers everything nothing else claimed —
-// so "and runs nothing" is a number rather than an absence.
+// Behind the gate is a catch-all that counts every request it serves, so
+// "and runs nothing" is a number rather than an absence.
 
 /** The paths a closed instance must refuse: every surface, and near misses of the two it must not. */
 const REFUSED = [

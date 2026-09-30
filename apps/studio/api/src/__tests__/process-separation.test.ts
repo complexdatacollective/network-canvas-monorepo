@@ -194,6 +194,21 @@ describe('every entry', () => {
       expect(packages.has('redis'), entry).toBe(false);
     }
   });
+  it('reaches no Hono, no oRPC and no WebSocket library of its own', () => {
+    // Every surface is the Effect router's (#1927 stage 9): the Hono residue
+    // and its bridge are gone, oRPC left with stage 8, and the one WebSocket
+    // server is the one @effect/platform-node brings. By package prefix, so a
+    // subpath import cannot pass for the package's absence.
+    //
+    // Mutation: import `hono` in src/http/router.ts.
+    const foreign = (name: string) =>
+      /^(?:hono|ws)(?:\/|$)/.test(name) || /^@(?:hono|orpc)\//.test(name);
+    for (const entry of Object.keys(ENTRIES)) {
+      expect([...moduleGraph(entry).packages].filter(foreign), entry).toEqual(
+        [],
+      );
+    }
+  });
 });
 
 describe('the worker process', () => {
@@ -203,14 +218,13 @@ describe('the worker process', () => {
     // It does serve HTTP — the loopback health listener a container
     // healthcheck polls (#1897) — so "binds no port" is not the reading. What
     // stays true is that it holds none of Studio's surfaces: loading the
-    // router, the Hono residue or the RPC router would not make it answer a
+    // router or the RPC router would not make it answer a
     // request by itself, but it is how one arrives a refactor later, and the
     // import is the observable half of "this process serves no user".
     expect(
       reached(graph, [
         'src/app.ts',
         'src/http/router.ts',
-        'src/http/hono-bridge.ts',
         'src/protocol-builder/rpc.ts',
         'src/protocol-builder/handlers.ts',
         'src/http/api-v1.ts',
@@ -552,13 +566,11 @@ describe('the migrate process', () => {
 describe('the web process', () => {
   const graph = moduleGraph('src/index.ts');
 
-  it('serves through the Effect router over the Hono residue', () => {
-    // The positive half of the shell: the process is the Effect server, with
-    // today's Hono app mounted behind it until stage 9 removes it.
+  it('serves through the Effect router', () => {
+    // The positive half of the shell: the process is the Effect server.
     expect(
       reached(graph, [
         'src/http/router.ts',
-        'src/http/hono-bridge.ts',
         'src/protocol-builder/rpc.ts',
         'src/http/api-v1.ts',
         'src/api/status.ts',
@@ -567,7 +579,6 @@ describe('the web process', () => {
       ]),
     ).toEqual([
       'src/http/router.ts',
-      'src/http/hono-bridge.ts',
       'src/protocol-builder/rpc.ts',
       'src/http/api-v1.ts',
       'src/api/status.ts',

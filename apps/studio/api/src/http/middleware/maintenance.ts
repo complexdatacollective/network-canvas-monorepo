@@ -17,8 +17,8 @@ import type { CheckVerdict, HealthCheck } from '../health.ts';
 
 // Maintenance mode on the web process (#1901): while it is on, every request
 // but the two health routes is answered `503` with `Retry-After` and runs
-// nothing — no procedure, no upgrade, no storage read, nothing the Hono residue
-// would have done. The client shell renders its maintenance state from that
+// nothing — no procedure, no upgrade, no storage read. The client shell
+// renders its maintenance state from that
 // 503, and readiness fails naming `maintenance`, so a deployment stops routing
 // here for the whole window. The gate sees requests, and a socket upgraded
 // before the window is no longer one: `protocol-builder/rpc.ts` watches the same

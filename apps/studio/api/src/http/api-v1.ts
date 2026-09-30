@@ -23,9 +23,9 @@ const Mounted = Layer.effect(
 
 /**
  * Every method on every path under `/api/v1` that is no route — the bare
- * prefix included — answers here rather than falling through to the Hono
- * residue, so that it is charged against the same limit as a real one. The
- * empty 404 becomes problem JSON in `ProblemJson`.
+ * prefix included — answers here rather than falling through to the
+ * router's own 404, so that it is charged against the same limit as a real
+ * one. The empty 404 becomes problem JSON in `ProblemJson`.
  *
  * `HEAD` is one of those methods: the router's fallback from `HEAD` to a `GET`
  * route only runs when nothing matches `HEAD` at all, and this does.

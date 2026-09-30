@@ -12,14 +12,13 @@ import {
 //
 // The Effect router answers an unmatched route, an unhandled defect, a client
 // abort or a shutdown with a response that carries a status and *no body at
-// all*. A caller reading one of those learns nothing, and the Hono app behind
-// this bridge has always answered problem JSON — so the empty ones are filled
-// in here rather than left as the only refusals on the server with nothing to
-// read.
+// all*. A caller reading one of those learns nothing, and every refusal a
+// handler writes is problem JSON — so the empty ones are filled in here rather
+// than left as the only refusals on the server with nothing to read.
 //
 // Only empty bodies are rewritten, and only the body: the status, the headers
 // and the cookies the response carried stay on it. Anything a handler chose
-// is already an answer: the Hono app's own problem JSON, better-auth's
+// is already an answer: a handler's own problem JSON, better-auth's
 // `{ message }` errors, an asset's bytes. Replacing those would throw away a
 // considered response, and in better-auth's case would break a client that
 // reads its shape.

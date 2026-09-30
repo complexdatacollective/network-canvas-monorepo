@@ -220,8 +220,8 @@ describe.skipIf(!testDb)('setup.complete', () => {
   });
 
   it('refuses a call that cannot show it came from our own origin', async () => {
-    // The cookie plane's CSRF gate, now a route middleware on `/rpc` rather
-    // than a Hono one (#1248). `setup.complete` is the procedure a forged
+    // The cookie plane's CSRF gate, a route middleware on `/rpc` (#1248).
+    // `setup.complete` is the procedure a forged
     // cross-origin POST would most like to reach, since it takes no session.
     const forged = await composed.request('/rpc', {
       method: 'POST',

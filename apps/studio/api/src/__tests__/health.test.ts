@@ -162,7 +162,7 @@ describe('the web process routes', () => {
     );
     try {
       expect(response.status).toBe(200);
-      // Byte-identical to what the Hono route answered, because a container
+      // Byte-identical to what the route has always answered, because a container
       // healthcheck may be a literal string comparison.
       expect(await response.text()).toBe('{"status":"ok"}');
     } finally {

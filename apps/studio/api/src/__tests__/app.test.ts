@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { openApiDocument } from '@codaco/studio-contract/api/v1';
 
-import { createApp, createStudio } from '../app.ts';
+import { createStudio } from '../app.ts';
 import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
 import type { AuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
@@ -27,8 +27,8 @@ function authMountWith(handler: AuthService['Service']['handler']) {
 
 describe('studio server', () => {
   it('reports healthy on /healthz', async () => {
-    // Through the composed stack: liveness is an Effect route now
-    // (src/http/health.ts), not one of the Hono app's.
+    // Through the composed stack: liveness is an Effect route
+    // (src/http/health.ts).
     const env = readEnv();
     const stack = composeStudio(env, createStudio(env));
     try {
@@ -120,15 +120,21 @@ describe('studio server', () => {
   });
 
   it('does not serve unknown RPC paths', async () => {
-    const app = createApp();
-    const res = await app.request('/rpc/nope', {
-      method: 'POST',
-      headers: { 'sec-fetch-site': 'same-origin' },
-    });
-    expect(res.status).toBe(404);
-    expect(res.headers.get('Content-Type')).toContain(
-      'application/problem+json',
-    );
+    const env = readEnv();
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      const res = await stack.request('/rpc/nope', {
+        method: 'POST',
+        headers: { 'sec-fetch-site': 'same-origin' },
+      });
+      expect(res.status).toBe(404);
+      expect(res.headers.get('Content-Type')).toContain(
+        'application/problem+json',
+      );
+      expect(await res.json()).toEqual({ title: 'Not Found', status: 404 });
+    } finally {
+      await stack.dispose();
+    }
   });
 
   it('refuses audited team writes before Better Auth can mutate them', async () => {
@@ -229,16 +235,33 @@ describe('studio server', () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it('does not serve unmatched storage paths', async () => {
-    const app = createApp();
-    // An asset caller must never be handed the SPA shell with a 200 to
-    // cache: unmatched storage paths belong to the machine surface.
-    for (const path of ['/storage/', '/storage/deadbeef/extra']) {
-      const res = await app.request(path);
-      expect(res.status).toBe(404);
-      expect(res.headers.get('Content-Type')).toContain(
-        'application/problem+json',
-      );
+  it('does not serve unmatched machine-surface paths', async () => {
+    const env = readEnv();
+    const stack = composeStudio(env, createStudio(env));
+    try {
+      // An API, RPC or asset caller must never be handed a 200 to cache: a
+      // path no route claims under a machine prefix is the router's 404, as
+      // problem JSON.
+      for (const path of [
+        '/api',
+        '/api/nope',
+        '/rpc/',
+        '/storage',
+        '/storage/',
+        '/storage/deadbeef/extra',
+      ]) {
+        const res = await stack.request(path);
+        expect(res.status, path).toBe(404);
+        expect(res.headers.get('Content-Type'), path).toContain(
+          'application/problem+json',
+        );
+        expect(await res.json(), path).toEqual({
+          title: 'Not Found',
+          status: 404,
+        });
+      }
+    } finally {
+      await stack.dispose();
     }
   });
 });

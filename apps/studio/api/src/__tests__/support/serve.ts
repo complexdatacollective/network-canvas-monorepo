@@ -16,10 +16,10 @@ import { WebSocketDrain } from '../../platform/ws-drain.ts';
 import { UnaryBodyLimit } from '../../protocol-builder/rpc.ts';
 import { studioServices } from './services.ts';
 
-// The composed stack, for the suites that need more than the Hono residue:
-// the health routes, the problem-JSON rewrite and the WebSocket upgrade all
-// belong to the Effect shell now, so a suite reaching any of them composes
-// the same layers the programs do rather than a second arrangement of them.
+// The composed stack: every surface — the health routes, the problem-JSON
+// rewrite and the WebSocket upgrade included — belongs to the Effect shell, so
+// a suite reaching any of them composes the same layers the programs do rather
+// than a second arrangement of them.
 // The maintenance gate is open unless a suite hands in the triggers it is
 // about: every other suite's subject is what happens when the instance serves.
 
@@ -88,11 +88,7 @@ export async function startStudioServer(
   };
 }
 
-/**
- * The same stack in process, with no socket at all, for a suite that used to
- * drive `createApp(...).request(...)` and now needs what the Effect shell adds
- * around it.
- */
+/** The same stack in process, with no socket at all. */
 export function composeStudio(
   env: StudioEnv,
   studio: Studio,

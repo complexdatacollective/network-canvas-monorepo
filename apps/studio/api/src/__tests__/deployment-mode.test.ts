@@ -20,8 +20,8 @@ import { composeStudio } from './support/serve.ts';
 // is the whole input to that guard — so a server that reported the wrong mode,
 // or stopped reporting one, would disable the guard everywhere at once.
 //
-// No database: this drives the app and the composed stack against an env with
-// no DATABASE_URL, so it runs in every lane.
+// No database: this drives the rpc plane and the composed stack against an env
+// with no DATABASE_URL, so it runs in every lane.
 
 function studioFor(deploymentMode: DeploymentMode) {
   return createStudio(
@@ -29,8 +29,18 @@ function studioFor(deploymentMode: DeploymentMode) {
   );
 }
 
-function appFor(deploymentMode: DeploymentMode) {
-  return studioFor(deploymentMode).app;
+/** The composed stack for one topology, disposed after the request. */
+async function requestAs(deploymentMode: DeploymentMode, path: string) {
+  const env = resolve({
+    NODE_ENV: 'test',
+    STUDIO_DEPLOYMENT_MODE: deploymentMode,
+  });
+  const stack = composeStudio(env, createStudio(env));
+  try {
+    return await stack.request(path);
+  } finally {
+    await stack.dispose();
+  }
 }
 
 /** The instance descriptor over the rpc plane, harness disposed either way. */
@@ -82,12 +92,10 @@ describe('the deployment mode over RPC', () => {
 });
 
 describe('the machine surfaces', () => {
-  const app = appFor('self-hosted');
-
   it.each(['/api/v1/nope', '/rpc/nope', '/storage/deadbeef/extra'])(
     'refuses %s as problem JSON',
     async (path) => {
-      const response = await app.request(path);
+      const response = await requestAs('self-hosted', path);
       expect(response.status).toBe(404);
       expect(response.headers.get('Content-Type')).toContain(
         'application/problem+json',
@@ -104,7 +112,7 @@ describe('the machine surfaces', () => {
         expect({
           mode,
           path,
-          status: (await appFor(mode).request(path)).status,
+          status: (await requestAs(mode, path)).status,
         }).toEqual({ mode, path, status: 404 });
       }
     }

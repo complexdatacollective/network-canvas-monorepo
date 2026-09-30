@@ -1,5 +1,4 @@
 import { Cause, Effect, type Context as ServiceContext } from 'effect';
-import { type Context, Hono } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-contract/schema/status';
@@ -23,11 +22,11 @@ import type { RpcDeps, StudioServices } from './rpc/deps.ts';
 import { readInstallation } from './setup/bootstrap.ts';
 import type { ObjectStore } from './storage/object-store.ts';
 
-type CreateAppDeps = {
+type CreateStudioDeps = {
   /**
    * The process's auth provider: `AuthService.layerFromEnvironment`'s, built
-   * by the program (`programs/serve.ts`) and handed down so the Hono residue
-   * asks the same instance the rpc plane does. Absent means auth is off, which
+   * by the program (`programs/serve.ts`) and handed down so the auth mount
+   * and the rpc plane ask the same instance. Absent means auth is off, which
    * is also what a suite that is not about auth gets.
    */
   auth?: AuthService['Service'];
@@ -58,22 +57,7 @@ type CreateAppDeps = {
   objectStore?: ObjectStore['Service'];
 };
 
-/**
- * What the Effect shell resolved for this request and hands the Hono app as
- * its adapter bindings (src/http/hono-bridge.ts). Both are optional because
- * the suites still call `app.request(path)` with no bindings at all, and a
- * surface that reads one has to behave then as it did when it resolved the
- * value itself: one shared rate-limit bucket, and a request id of its own.
- */
-export type StudioBindings = {
-  readonly requestId?: string;
-  readonly clientAddress?: string;
-};
-
-export type StudioHonoEnv = { Bindings: StudioBindings };
-
 export type Studio = {
-  readonly app: Hono<StudioHonoEnv>;
   /**
    * The auth provider and the limiter this app was built over. The Effect
    * shell's `/rpc` route asks for both as services; the programs provide them
@@ -104,26 +88,14 @@ export type Studio = {
 
 export function createStudio(
   env: StudioEnv = readEnv(),
-  deps: CreateAppDeps = {},
+  deps: CreateStudioDeps = {},
 ): Studio {
-  const app = new Hono<StudioHonoEnv>();
-
   // Every limit this process enforces, counted in the shared store (#1909).
   // The HTTP-level limits are the Effect router's route middleware now, and
   // the rpc planes charge theirs through the `RateLimiter` service; what is
   // left here is readiness.
   const limiter = deps.limiter;
 
-  // Unexpected failures on the machine surfaces (e.g. the database down
-  // during a session lookup) must still leave as problem JSON, not Hono's
-  // text/plain default.
-  app.onError((error, c) => {
-    // oxlint-disable-next-line no-console -- server-side failure diagnostics
-    console.error(error);
-    return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
-      'Content-Type': 'application/problem+json',
-    });
-  });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
   const auth = deps.auth ?? AuthService.disabled;
   const enabled = Boolean(env.db && env.auth);
@@ -216,11 +188,9 @@ export function createStudio(
   };
 
   // What the `/rpc` handlers are wired from, resolved once and handed to the
-  // Effect shell as `studio.rpc` (src/http/rpc-routes.ts). `/rpc` is not a
-  // Hono route any more: the SPA's twenty procedures are Effect rpc handlers
-  // served on the shell's own router, behind their own same-origin gate, and
-  // the principal is resolved by the `Authenticated` middleware rather than by
-  // a Hono middleware on this app.
+  // Effect shell as `studio.rpc` (src/http/rpc-routes.ts), which serves the
+  // SPA's procedures behind their own same-origin gate, with the principal
+  // resolved by the `Authenticated` middleware.
   const rpcDeps: RpcDeps = {
     capabilities: authCaps,
     deployment,
@@ -228,41 +198,11 @@ export function createStudio(
     pool,
     services: deps.services,
   };
-  // Unknown machine-surface paths must 404 as JSON (RFC 9457 problem shape,
-  // per the API ADR #1248) — never fall through to the SPA fallback, which
-  // would answer an API, RPC, or asset request with 200 and the app shell's
-  // HTML for a caller to cache. The Effect router owns `/api/auth`,
-  // `/api/v1`, `/rpc` and `/storage` now, so through it these answer only what
-  // it leaves unregistered — a method `/api/auth` does not take, an `/api`
-  // path that is neither — and the app on its own still answers all three.
-  const notFound = (c: Context) =>
-    c.json({ title: 'Not Found', status: 404 }, 404, {
-      'Content-Type': 'application/problem+json',
-    });
-  for (const prefix of ['/api', '/rpc', '/storage']) {
-    app.all(prefix, notFound);
-    app.all(`${prefix}/*`, notFound);
-  }
-
   return {
-    app,
     auth,
     limiter,
     objectStore,
     rpc: rpcDeps,
     checks,
   };
-}
-
-/**
- * The Hono half on its own, which is what every suite driving a request in
- * process still takes. The socket and the health routes are not reachable
- * through it — both belong to the Effect shell now — so a suite that needs
- * either composes the whole stack instead (src/__tests__/support/serve.ts).
- */
-export function createApp(
-  env: StudioEnv = readEnv(),
-  deps: CreateAppDeps = {},
-): Hono<StudioHonoEnv> {
-  return createStudio(env, deps).app;
 }

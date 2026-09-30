@@ -5,10 +5,10 @@ import { HttpRouter, HttpServerResponse } from 'effect/unstable/http';
 import { ProblemJson } from '../middleware/problem-json.ts';
 import { RequestIdLive } from '../middleware/request-id.ts';
 
-// What a caller reads when this server refuses (#1248). The Hono app has
-// always answered problem JSON; the Effect router answers an unmatched route
-// or an unhandled defect with a status and an empty body, so the two halves of
-// one surface would otherwise disagree about what a refusal looks like.
+// What a caller reads when this server refuses (#1248). A refusal a handler
+// writes is problem JSON; the Effect router answers an unmatched route or an
+// unhandled defect with a status and an empty body, so the two would otherwise
+// disagree about what a refusal looks like.
 
 const Routes = HttpRouter.use((router) =>
   Effect.gen(function* () {
