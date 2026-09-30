@@ -1,12 +1,11 @@
 import { ORPCError } from '@orpc/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert } from '@codaco/fresco-ui/Alert';
-import { Button } from '@codaco/fresco-ui/Button';
+import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
@@ -16,309 +15,274 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { CompleteSetupInputSchema } from '@codaco/studio-rpc';
 
-import { orpc, rpcClient } from '../lib/api.ts';
+import { rpcClient } from '../lib/api.ts';
+import { invalidateInstanceStatus } from '../lib/deployment.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
-import ScreenMain from '../shell/ScreenMain.tsx';
+import { sessionQueryOptions } from '../lib/session.ts';
+
+// First-run setup (#1909). The one screen an instance nobody owns can serve:
+// the operator brings the token the schema step printed, names the instance,
+// and creates the account that owns it. The procedure signs them in as it
+// completes, so this screen's success path is a navigation rather than a
+// second trip through `/sign-in`.
+//
+// Its guard (src/router.tsx) 404s the route the moment an owner exists, which
+// is why nothing here defends against being opened on a live instance beyond
+// reporting what the server says if it is.
 
 const messages = defineMessages({
   heading: {
     id: 'studio.setup.heading',
     defaultMessage: 'First-run setup',
-    description: 'Heading of the self-hosted first-run setup screen.',
+    description: 'Heading of the first-run setup screen at /setup.',
   },
-  introduction: {
-    id: 'studio.setup.introduction',
+  intro: {
+    id: 'studio.setup.intro',
     defaultMessage:
-      'Name this Studio instance and create its first owner account. Your first team will use the same name.',
-    description: 'Explains what completing setup creates.',
+      'Nobody owns this instance yet. Enter the setup token printed when its database was created, then create the account that will own it.',
+    description: 'Introduction on the first-run setup screen.',
   },
-  loading: {
-    id: 'studio.setup.loading',
-    defaultMessage: 'Checking setup availability…',
-    description: 'Status while the first-run state loads.',
-  },
-  loadFailed: {
-    id: 'studio.setup.loadFailed',
-    defaultMessage: 'Setup availability could not be checked. Try again.',
-    description: 'Error when the setup state request fails.',
-  },
-  retry: {
-    id: 'studio.setup.retry',
-    defaultMessage: 'Try again',
-    description: 'Retries loading the setup state.',
-  },
-  unavailable: {
-    id: 'studio.setup.unavailable',
-    defaultMessage:
-      'First-run setup is unavailable. If you already have an account, sign in. Otherwise, contact the person configuring this server.',
-    description:
-      'Shown when the server has existing accounts or is not configured for first-run setup.',
-  },
-  signIn: {
-    id: 'studio.setup.signIn',
-    defaultMessage: 'Sign in',
-    description: 'Link from setup to the sign-in screen.',
-  },
-  instanceName: {
-    id: 'studio.setup.instanceName',
-    defaultMessage: 'Instance name',
-    description: 'Label for the installation and initial team name.',
-  },
-  ownerName: {
-    id: 'studio.setup.ownerName',
-    defaultMessage: 'Your name',
-    description: 'Label for the first owner display name.',
-  },
-  nameHint: {
-    id: 'studio.setup.nameHint',
-    defaultMessage: 'Use 1–120 characters.',
-    description: 'Hint for the instance and owner names.',
-  },
-  nameInvalid: {
-    id: 'studio.setup.nameInvalid',
-    defaultMessage: 'Enter a name.',
-    description: 'Validation for a name containing only whitespace.',
-  },
-  email: {
-    id: 'studio.setup.email',
-    defaultMessage: 'Email address',
-    description: 'Label for the first owner email address.',
-  },
-  emailHint: {
-    id: 'studio.setup.emailHint',
-    defaultMessage: 'The address you will use to sign in.',
-    description: 'Hint for the first owner email address.',
-  },
-  password: {
-    id: 'studio.setup.password',
-    defaultMessage: 'Password',
-    description: 'Label for the first owner password.',
-  },
-  passwordHint: {
-    id: 'studio.setup.passwordHint',
-    defaultMessage: 'Use 12–128 characters.',
-    description: 'Password length hint.',
-  },
-  token: {
-    id: 'studio.setup.token',
+  tokenLabel: {
+    id: 'studio.setup.tokenLabel',
     defaultMessage: 'Setup token',
-    description: 'Label for the secret token that authorizes initial setup.',
+    description: 'Label of the setup token field.',
   },
   tokenHint: {
     id: 'studio.setup.tokenHint',
     defaultMessage:
-      'Enter the token provided by the person configuring this server.',
-    description: 'Explains where to obtain the setup token.',
+      'Printed once, by the command that created this instance’s database.',
+    description: 'Hint under the setup token field.',
   },
-  tokenInvalid: {
-    id: 'studio.setup.tokenInvalid',
-    defaultMessage: 'That setup token is not valid. Check it and try again.',
-    description: 'Field error when the server refuses the setup token.',
+  instanceNameLabel: {
+    id: 'studio.setup.instanceNameLabel',
+    defaultMessage: 'Name of this instance',
+    description: 'Label of the instance name field.',
+  },
+  instanceNameHint: {
+    id: 'studio.setup.instanceNameHint',
+    defaultMessage:
+      'What everyone who uses this instance will see it called, such as your department or project.',
+    description: 'Hint under the instance name field.',
+  },
+  ownerNameLabel: {
+    id: 'studio.setup.ownerNameLabel',
+    defaultMessage: 'Your name',
+    description: "Label of the owner's name field.",
+  },
+  emailLabel: {
+    id: 'studio.setup.emailLabel',
+    defaultMessage: 'Your email address',
+    description: "Label of the owner's email field.",
+  },
+  emailHint: {
+    id: 'studio.setup.emailHint',
+    defaultMessage: 'The address you will sign in with.',
+    description:
+      "Hint under the owner's email field when the value is not a valid address.",
+  },
+  passwordLabel: {
+    id: 'studio.setup.passwordLabel',
+    defaultMessage: 'Choose a password',
+    description: "Label of the owner's password field.",
   },
   submit: {
     id: 'studio.setup.submit',
-    defaultMessage: 'Create instance',
-    description: 'Completes the first-run setup form.',
+    defaultMessage: 'Set up this instance',
+    description: 'Submit button of the first-run setup form.',
+  },
+  wrongToken: {
+    id: 'studio.setup.wrongToken',
+    defaultMessage:
+      'That setup token is not valid. Run the database command again to print a new one.',
+    description: 'Form error when the setup token was refused.',
+  },
+  alreadySetUp: {
+    id: 'studio.setup.alreadySetUp',
+    defaultMessage:
+      'This instance has already been set up. Sign in with the owner’s account.',
+    description:
+      'Form error when setup was completed by somebody else while this screen was open.',
+  },
+  emailTaken: {
+    id: 'studio.setup.emailTaken',
+    defaultMessage:
+      'That email address already has an account here. Enter its password, or use a different address.',
+    description:
+      'Form error when the chosen email address already belongs to an account.',
   },
   failed: {
     id: 'studio.setup.failed',
+    defaultMessage: 'Setup did not complete. Wait a moment and try again.',
+    description: 'Form error when first-run setup failed for another reason.',
+  },
+  closedHeading: {
+    id: 'studio.setup.closedHeading',
+    defaultMessage: 'Setup is complete',
+    description:
+      'Heading shown at /setup on an instance that already has an owner.',
+  },
+  closedBody: {
+    id: 'studio.setup.closedBody',
     defaultMessage:
-      'Setup could not be completed. Check the details and try again.',
-    description: 'Safe form error when the setup request fails.',
+      'This instance has already been set up, so there is nothing to do here.',
+    description:
+      'Explanation shown at /setup on an instance that already has an owner.',
   },
-  notFound: {
-    id: 'studio.setup.notFound',
-    defaultMessage: 'Page not found',
-    description: 'Heading when setup is visited on a managed deployment.',
-  },
-  notFoundDescription: {
-    id: 'studio.setup.notFoundDescription',
-    defaultMessage: 'This page is not available on this server.',
-    description: 'Explanation when setup is visited on a managed deployment.',
+  closedSignIn: {
+    id: 'studio.setup.closedSignIn',
+    defaultMessage: 'Go to sign in',
+    description:
+      'Link from the closed first-run setup screen to the sign-in screen.',
   },
 });
 
-export function SetupNotFound() {
-  const intl = useAppIntl();
-  return (
-    <ScreenMain>
-      <Surface maxWidth="xl" spacing="lg">
-        <Heading level="h1" {...routeFocusTargetProps}>
-          {intl.formatMessage(messages.notFound)}
-        </Heading>
-        <Paragraph>
-          {intl.formatMessage(messages.notFoundDescription)}
-        </Paragraph>
-      </Surface>
-    </ScreenMain>
-  );
+// Every bound below mirrors `CompleteSetupInputSchema` in `@codaco/studio-rpc`
+// exactly — 256, 120, 320, 320, and 8 to 128, better-auth's own password
+// window. The contract refuses anything outside them, so a field that did not
+// would send a submission the server was always going to reject and report it
+// as the generic failure rather than on the field that is wrong.
+
+/** The value of a field the form hands back, which is typed as unknown. */
+function text(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 export default function Setup() {
   const intl = useAppIntl();
   const queryClient = useQueryClient();
-  const status = useQuery(orpc.setup.status.queryOptions({ retry: false }));
   const navigate = useNavigate();
-  const [submitted, setSubmitted] = useState(false);
-  const complete = status.data?.state === 'complete';
-  useEffect(() => {
-    if (submitted) void navigate({ to: '/sign-in', replace: true });
-  }, [submitted, navigate]);
-  const recordComplete = () => {
-    setSubmitted(true);
-    queryClient.setQueryData(orpc.setup.status.queryOptions().queryKey, {
-      state: 'complete',
-    });
-  };
-  const namePattern = {
-    regex: '\\S',
-    hint: intl.formatMessage(messages.nameHint),
-    errorMessage: intl.formatMessage(messages.nameInvalid),
-  };
-
-  if (complete && !submitted) return <SetupNotFound />;
-  if (submitted) return null;
 
   return (
+    // Every route in §5.2 renders exactly one `<main id="main-content">`
+    // (§11.2), and a focused screen has no area layout to own that landmark.
     <main
       id="main-content"
-      className="flex min-h-full justify-center p-4 sm:p-8"
+      className="flex h-full items-center justify-center p-4"
     >
       <Surface maxWidth="xl" spacing="lg">
         <Heading level="h1" {...routeFocusTargetProps}>
           {intl.formatMessage(messages.heading)}
         </Heading>
-        {status.isPending && (
-          <Paragraph role="status">
-            {intl.formatMessage(messages.loading)}
-          </Paragraph>
-        )}
-        {status.isError && (
-          <>
-            <Alert variant="destructive">
-              {intl.formatMessage(messages.loadFailed)}
-            </Alert>
-            <Button onClick={() => void status.refetch()}>
-              {intl.formatMessage(messages.retry)}
-            </Button>
-          </>
-        )}
-        {status.data?.state === 'unavailable' && (
-          <Paragraph role="status">
-            {intl.formatMessage(messages.unavailable)}
-          </Paragraph>
-        )}
-        {status.data?.state === 'unavailable' && (
-          <Link
-            to="/sign-in"
-            className="focusable text-primary underline underline-offset-4"
-          >
-            {intl.formatMessage(messages.signIn)}
-          </Link>
-        )}
-        {status.data?.state === 'ready' && (
-          <>
-            <Paragraph>{intl.formatMessage(messages.introduction)}</Paragraph>
-            <Form
-              onSubmit={async (values) => {
-                const parsed = CompleteSetupInputSchema.safeParse(values);
-                const failed = {
-                  success: false as const,
-                  formErrors: [intl.formatMessage(messages.failed)],
-                };
-                const invalidToken = {
-                  success: false as const,
-                  fieldErrors: {
-                    token: [intl.formatMessage(messages.tokenInvalid)],
-                  },
-                };
-                if (!parsed.success)
-                  return parsed.error.issues.some(
-                    (issue) => issue.path[0] === 'token',
-                  )
-                    ? invalidToken
-                    : failed;
-                try {
-                  await rpcClient.setup.complete(parsed.data);
-                  recordComplete();
-                  return { success: true };
-                } catch (error) {
-                  if (error instanceof ORPCError && error.code === 'CONFLICT') {
-                    // A second operator completed setup, or a successful response
-                    // was lost. The durable server state wins over this old form.
-                    recordComplete();
-                    return { success: true };
-                  }
-                  if (
-                    error instanceof ORPCError &&
-                    error.code === 'FORBIDDEN'
-                  ) {
-                    return invalidToken;
-                  }
-                  return failed;
+        <Paragraph>{intl.formatMessage(messages.intro)}</Paragraph>
+        <Form
+          onSubmit={async (values) => {
+            const failure = (message: MessageDescriptor) => ({
+              success: false as const,
+              formErrors: [intl.formatMessage(message)],
+            });
+            try {
+              await rpcClient.setup.complete({
+                token: text(values.token),
+                instanceName: text(values.instanceName),
+                owner: {
+                  name: text(values.ownerName),
+                  email: text(values.email),
+                  password: text(values.password),
+                },
+              });
+            } catch (error) {
+              if (error instanceof ORPCError) {
+                if (error.code === 'UNAUTHORIZED') {
+                  return failure(messages.wrongToken);
                 }
-              }}
-            >
-              <Field
-                name="instanceName"
-                label={intl.formatMessage(messages.instanceName)}
-                component={InputField}
-                required
-                minLength={1}
-                maxLength={120}
-                pattern={namePattern}
-                autoComplete="organization"
-              />
-              <Field
-                name="ownerName"
-                label={intl.formatMessage(messages.ownerName)}
-                component={InputField}
-                required
-                minLength={1}
-                maxLength={120}
-                pattern={namePattern}
-                autoComplete="name"
-              />
-              <Field
-                name="ownerEmail"
-                label={intl.formatMessage(messages.email)}
-                component={InputField}
-                type="email"
-                required
-                maxLength={254}
-                pattern={studioEmailPattern(
-                  intl,
-                  intl.formatMessage(messages.emailHint),
-                )}
-                autoComplete="email"
-              />
-              <Field
-                name="ownerPassword"
-                label={intl.formatMessage(messages.password)}
-                component={PasswordField}
-                required
-                minLength={12}
-                maxLength={128}
-                hint={intl.formatMessage(messages.passwordHint)}
-                autoComplete="new-password"
-              />
-              <Field
-                name="token"
-                label={intl.formatMessage(messages.token)}
-                component={InputField}
-                type="password"
-                required
-                minLength={43}
-                maxLength={43}
-                hint={intl.formatMessage(messages.tokenHint)}
-                autoComplete="off"
-              />
-              <SubmitButton>{intl.formatMessage(messages.submit)}</SubmitButton>
-            </Form>
-          </>
-        )}
+                if (error.code === 'NOT_FOUND') {
+                  return failure(messages.alreadySetUp);
+                }
+                if (error.code === 'CONFLICT') {
+                  return failure(messages.emailTaken);
+                }
+              }
+              return failure(messages.failed);
+            }
+
+            // The procedure's response carried the session cookie, so this is
+            // established fact rather than a guess — recorded rather than
+            // invalidated, for the reason `sessionQueryOptions` gives.
+            queryClient.setQueryData(sessionQueryOptions.queryKey, 'signedIn');
+            // Status is the other thing that has just changed: the instance
+            // has a name and an owner, so setup is closed and this route is
+            // about to become a not-found.
+            await invalidateInstanceStatus(queryClient);
+            await navigate({ to: '/' });
+            return { success: true };
+          }}
+        >
+          <Field
+            name="token"
+            label={intl.formatMessage(messages.tokenLabel)}
+            hint={intl.formatMessage(messages.tokenHint)}
+            component={InputField}
+            required
+            maxLength={256}
+            autoComplete="off"
+          />
+          <Field
+            name="instanceName"
+            label={intl.formatMessage(messages.instanceNameLabel)}
+            hint={intl.formatMessage(messages.instanceNameHint)}
+            component={InputField}
+            required
+            maxLength={120}
+          />
+          <Field
+            name="ownerName"
+            label={intl.formatMessage(messages.ownerNameLabel)}
+            component={InputField}
+            required
+            maxLength={320}
+            autoComplete="name"
+          />
+          <Field
+            name="email"
+            label={intl.formatMessage(messages.emailLabel)}
+            component={InputField}
+            type="email"
+            required
+            maxLength={320}
+            pattern={studioEmailPattern(
+              intl,
+              intl.formatMessage(messages.emailHint),
+            )}
+            autoComplete="email"
+          />
+          <Field
+            name="password"
+            label={intl.formatMessage(messages.passwordLabel)}
+            component={PasswordField}
+            required
+            minLength={8}
+            maxLength={128}
+            autoComplete="new-password"
+          />
+          <SubmitButton>{intl.formatMessage(messages.submit)}</SubmitButton>
+        </Form>
+      </Surface>
+    </main>
+  );
+}
+
+/**
+ * What `/setup` is once somebody owns the instance: the route's guard throws
+ * `notFound()` and this renders in its place. The client has no global
+ * not-found screen, and an address that answers with nothing at all would read
+ * as a broken instance to the one person most likely to try it.
+ */
+export function SetupClosed() {
+  const intl = useAppIntl();
+  return (
+    <main
+      id="main-content"
+      className="flex h-full items-center justify-center p-4"
+    >
+      <Surface maxWidth="xl" spacing="lg">
+        <Heading level="h1" {...routeFocusTargetProps}>
+          {intl.formatMessage(messages.closedHeading)}
+        </Heading>
+        <Paragraph>{intl.formatMessage(messages.closedBody)}</Paragraph>
+        <Button asChild>
+          <Link to="/sign-in">{intl.formatMessage(messages.closedSignIn)}</Link>
+        </Button>
       </Surface>
     </main>
   );

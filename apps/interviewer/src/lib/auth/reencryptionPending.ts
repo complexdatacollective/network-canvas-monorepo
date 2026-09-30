@@ -19,6 +19,7 @@ export function setReencryptionPending(pending: boolean): void {
     // Surface rather than swallow: if even this write fails, the retry signal is
     // lost and the next unlock won't re-sweep. There is no more-durable medium to
     // fall back to, so the console error is the last resort.
+    // oxlint-disable-next-line no-console -- the documented last resort: no more-durable medium exists to report this failure
     console.error('Persisting the re-encryption-pending flag failed', error);
   }
 }

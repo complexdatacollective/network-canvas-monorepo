@@ -89,13 +89,13 @@ git commit -m "refactor: move app directories and rename packages"
 
 **Files:**
 
-- Modify: `turbo.json`, `.changeset/config.json`, `knip.json`, `scripts/changeset-app-utils.mjs`, `scripts/mirror-app.mjs`, `scripts/release-notes.mjs`, `scripts/interview-release-version.mjs`.
-- Test: `scripts/changeset-app-utils.test.mjs`, `scripts/check-changeset-app-isolation.test.mjs`, `scripts/version-beta-apps.test.mjs`.
+- Modify: `turbo.json`, `.changeset/config.json`, `knip.json`, `scripts/release/changeset-app-utils.mjs`, `scripts/release/mirror-app.mjs`, `scripts/release/release-notes.mjs`, `scripts/interview-release-version.mjs`.
+- Test: `scripts/release/changeset-app-utils.test.mjs`, `scripts/release/check-changeset-app-isolation.test.mjs`, `scripts/version-beta-apps.test.mjs`.
 
 **Interfaces:**
 
 - Consumes: new package names/dirs from Task 1.
-- Produces: `APP_PACKAGES = ['@codaco/architect', '@codaco/interviewer']` and dir map `{ '@codaco/architect': 'apps/architect', '@codaco/interviewer': 'apps/interviewer' }` in `scripts/changeset-app-utils.mjs`, relied on by the CI release jobs (Task 4).
+- Produces: `APP_PACKAGES = ['@codaco/architect', '@codaco/interviewer']` and dir map `{ '@codaco/architect': 'apps/architect', '@codaco/interviewer': 'apps/interviewer' }` in `scripts/release/changeset-app-utils.mjs`, relied on by the CI release jobs (Task 4).
 
 - [ ] **Step 1: `turbo.json` — rewrite the four package-scoped task keys**
 
@@ -116,18 +116,18 @@ Open the file and edit each exact key (they are distinct strings): `"apps/archit
 
 - [ ] **Step 4: `scripts/*.mjs` — rewrite the release machinery**
 
-- `scripts/changeset-app-utils.mjs`: `APP_PACKAGES = ['@codaco/architect-web', '@codaco/interviewer-v8']` → `['@codaco/architect', '@codaco/interviewer']`; `'@codaco/architect-web': 'apps/architect-web'` → `'@codaco/architect': 'apps/architect'`; `'@codaco/interviewer-v8': 'apps/interviewer-v8'` → `'@codaco/interviewer': 'apps/interviewer'`.
-- `scripts/mirror-app.mjs`: `if (appName === 'network-canvas-architect')` → `if (appName === '@codaco/architect-classic')`. **Re-read the whole file** and give the same treatment to any `network-canvas-interviewer`, `apps/architect`, or `apps/interviewer` occurrences (classic mirror logic), applying the classic→`-classic` map.
-- `scripts/release-notes.mjs`: comment `'network-canvas-architect': patch` → `'@codaco/architect-classic': patch`.
+- `scripts/release/changeset-app-utils.mjs`: `APP_PACKAGES = ['@codaco/architect-web', '@codaco/interviewer-v8']` → `['@codaco/architect', '@codaco/interviewer']`; `'@codaco/architect-web': 'apps/architect-web'` → `'@codaco/architect': 'apps/architect'`; `'@codaco/interviewer-v8': 'apps/interviewer-v8'` → `'@codaco/interviewer': 'apps/interviewer'`.
+- `scripts/release/mirror-app.mjs`: `if (appName === 'network-canvas-architect')` → `if (appName === '@codaco/architect-classic')`. **Re-read the whole file** and give the same treatment to any `network-canvas-interviewer`, `apps/architect`, or `apps/interviewer` occurrences (classic mirror logic), applying the classic→`-classic` map.
+- `scripts/release/release-notes.mjs`: comment `'network-canvas-architect': patch` → `'@codaco/architect-classic': patch`.
 - `scripts/interview-release-version.mjs`: comment `substring of @codaco/interviewer-v8` → `substring of @codaco/interviewer`.
 
 - [ ] **Step 5: Update the three script test fixtures to the new names**
 
-In `scripts/changeset-app-utils.test.mjs`, `scripts/check-changeset-app-isolation.test.mjs`, and `scripts/version-beta-apps.test.mjs`: replace every `@codaco/architect-web`→`@codaco/architect`, `@codaco/interviewer-v8`→`@codaco/interviewer`, `apps/architect-web`→`apps/architect`, `apps/interviewer-v8`→`apps/interviewer`. (`check-changeset-app-isolation.test.mjs` keeps its `@codaco/interview` line — that's the library, unchanged.)
+In `scripts/release/changeset-app-utils.test.mjs`, `scripts/release/check-changeset-app-isolation.test.mjs`, and `scripts/version-beta-apps.test.mjs`: replace every `@codaco/architect-web`→`@codaco/architect`, `@codaco/interviewer-v8`→`@codaco/interviewer`, `apps/architect-web`→`apps/architect`, `apps/interviewer-v8`→`apps/interviewer`. (`check-changeset-app-isolation.test.mjs` keeps its `@codaco/interview` line — that's the library, unchanged.)
 
 - [ ] **Step 6: Run the script tests**
 
-Run: `node --test scripts/changeset-app-utils.test.mjs scripts/check-changeset-app-isolation.test.mjs scripts/version-beta-apps.test.mjs`
+Run: `node --test scripts/release/changeset-app-utils.test.mjs scripts/release/check-changeset-app-isolation.test.mjs scripts/version-beta-apps.test.mjs`
 Expected: all pass.
 
 - [ ] **Step 7: Run knip**
@@ -401,4 +401,4 @@ git commit -m "chore: changesets for architect/interviewer app renames"
 
 - **Spec coverage:** every spec section maps to a task — dirs/packages→T1; root config/scripts→T2; CI/GitHub→T3; new display + interviewer runtime keys→T4; classic display→T5; docs/skills→T6; verification + changeset + external follow-ups→T7. Carve-outs and hazards are in Global Constraints and repeated at point-of-use.
 - **Ordering/substring hazards** are stated globally and re-flagged in T2 Step 3, T3 Step 2 (classic `apps/architect` vs new), and the delimiter rule.
-- **No placeholders:** every edit lists the exact old→new string. Two files (`scripts/mirror-app.mjs`, `README.md` app table) instruct a re-read because their full occurrence set may exceed what the inventory captured — flagged explicitly rather than left vague.
+- **No placeholders:** every edit lists the exact old→new string. Two files (`scripts/release/mirror-app.mjs`, `README.md` app table) instruct a re-read because their full occurrence set may exceed what the inventory captured — flagged explicitly rather than left vague.

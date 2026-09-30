@@ -1,7 +1,7 @@
 'use client';
 import { type Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
 import { SuperJSON } from 'superjson';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -68,11 +68,17 @@ export default function RecruitmentTestSection({
 
   const router = useRouter();
 
-  useEffect(() => {
+  // Turning anonymous recruitment on drops any participant already chosen.
+  // Adjusting during render rather than in an effect avoids the extra pass
+  // that would briefly show the stale selection.
+  const [lastAllowAnonymousRecruitment, setLastAllowAnonymousRecruitment] =
+    useState(allowAnonymousRecruitment);
+  if (lastAllowAnonymousRecruitment !== allowAnonymousRecruitment) {
+    setLastAllowAnonymousRecruitment(allowAnonymousRecruitment);
     if (allowAnonymousRecruitment) {
       setSelectedParticipant(undefined);
     }
-  }, [allowAnonymousRecruitment]);
+  }
 
   const buttonDisabled =
     !selectedProtocol || (!allowAnonymousRecruitment && !selectedParticipant);
@@ -103,6 +109,7 @@ export default function RecruitmentTestSection({
           }}
           value={selectedProtocol?.id}
           placeholder={intl.formatMessage(messages.selectAProtocol)}
+          className="min-w-auto"
         />
         <SelectField
           aria-label={intl.formatMessage(messages.selectAParticipant)}
@@ -120,6 +127,7 @@ export default function RecruitmentTestSection({
           }}
           value={selectedParticipant?.id}
           placeholder={intl.formatMessage(messages.selectAParticipant)}
+          className="min-w-auto"
         />
       </div>
       <div className="tablet-landscape:flex-row mt-4 flex flex-col gap-2">

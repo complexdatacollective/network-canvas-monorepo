@@ -10,6 +10,7 @@ import {
   CurrentProtocolSchema,
   extractProtocol,
   hashProtocol,
+  missingAssetsError,
 } from '@codaco/protocol-validation';
 
 import type {
@@ -38,8 +39,19 @@ const slug =
 
 async function main(): Promise<void> {
   const fileBuffer = await fs.readFile(protocolPath);
-  const { protocol: protocolJson, assets: extractedAssets } =
-    await extractProtocol(fileBuffer);
+  const {
+    protocol: protocolJson,
+    assets: extractedAssets,
+    missingAssets,
+  } = await extractProtocol(fileBuffer);
+
+  // Same rule as the Playwright fixture: a bootstrapped host must not serve
+  // asset URLs for files that were never written. Extraction reports the gap
+  // instead of refusing so an authoring tool can offer a repair; nothing here
+  // can.
+  if (missingAssets.length > 0) {
+    throw missingAssetsError(missingAssets);
+  }
 
   const protocolId = uuid();
   const protocolAssetDir = path.join(ASSET_DIR, slug);

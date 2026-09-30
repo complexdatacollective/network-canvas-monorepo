@@ -11,7 +11,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@codaco/fresco-ui/Popover';
-import { LanguageMenu } from '~/i18n/LanguageMenu';
 import { APP_VERSION } from '~/lib/appVersion';
 import type { AuthMode } from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -132,6 +131,12 @@ const compactLabelClassName =
 const statusTriggerClassName =
   'focusable inline-flex cursor-help items-center gap-1.5 rounded-sm';
 const statusIconClassName = 'tablet-landscape:size-3.5 size-4';
+
+// Rich-text chunk formatter for the two count messages, at module scope so it
+// keeps one identity across renders.
+const renderCountStrong = (chunks: React.ReactNode[]) => (
+  <strong className="text-text font-bold">{chunks}</strong>
+);
 
 // The chips' explanations used to be Tooltips, which only open on hover and
 // keyboard focus — on a tablet (the primary field platform) no gesture could
@@ -305,23 +310,18 @@ export function StatusRowView({
       >
         <span>
           {intl.formatMessage(messages.strongProtocolCountStrongProtocols, {
-            strong: (chunks) => (
-              <strong className="text-text font-bold">{chunks}</strong>
-            ),
+            strong: renderCountStrong,
             protocolCount: protocolCount,
           })}
         </span>
         <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-current" />
         <span>
           {intl.formatMessage(messages.strongInterviewCountStrongInterviews, {
-            strong: (chunks) => (
-              <strong className="text-text font-bold">{chunks}</strong>
-            ),
+            strong: renderCountStrong,
             interviewCount: interviewCount,
           })}
         </span>
       </Link>
-      <LanguageMenu />
       <div className="flex items-center gap-6">
         {/* Two orthogonal facts, stated separately so neither can be read as
             the other: encryption comes from the enrolled vault mode; storage

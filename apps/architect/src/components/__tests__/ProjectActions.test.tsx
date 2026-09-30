@@ -120,12 +120,6 @@ const createTestStore = ({
       // ProjectActions now reads draft undo/redo state via useProtocolUndoRedo.
       // On the '/protocol' route the draft scope is inactive, but the hook
       // still reads these selectors unconditionally, so the slice must exist.
-      stageEditorDraft: (
-        state = {
-          history: { past: [], present: null, timeline: [], future: [] },
-          ui: { restoring: false, initialValues: null },
-        },
-      ) => state,
     },
   });
 

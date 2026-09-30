@@ -4,7 +4,7 @@ name = "network-canvas"
 
 [setup]
 script = '''
-bash "$CODEX_WORKTREE_PATH/scripts/setup-worktree.sh" "$CODEX_WORKTREE_PATH"'''
+bash "$CODEX_WORKTREE_PATH/scripts/dev/setup-worktree.sh" "$CODEX_WORKTREE_PATH"'''
 
 [cleanup]
 script = '''

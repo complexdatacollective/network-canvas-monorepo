@@ -94,6 +94,20 @@ describe('the catalog transform', () => {
     );
   });
 
+  it('leaves the translation-provenance sidecars alone', () => {
+    // These sit beside the catalogs and hold the English each translation was
+    // made from. Compiling one would parse English prose as ICU; bundling one
+    // would ship every English sentence a second time, in every locale. A
+    // locale tag cannot contain a dot, which is what keeps them out.
+    const sources = JSON.stringify({ 'app.plain': 'Save' });
+    expect(catalogTransform()(sources, '/app/src/locales/es.source.json')).toBe(
+      undefined,
+    );
+    expect(
+      catalogTransform()(sources, '/app/src/locales/en-GB.source.json'),
+    ).toBe(undefined);
+  });
+
   it('ignores JSON that is not a catalog', () => {
     expect(catalogTransform()('{}', '/app/package.json')).toBe(undefined);
     expect(catalogTransform()('{}', 'C:\\app\\src\\data\\fixtures.json')).toBe(

@@ -5,7 +5,7 @@ import {
   FormSchema,
   NodeStageSubjectSchema,
   nameGeneratorPromptSchema,
-  panelSchema,
+  panelsSchema,
 } from '../common/index.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -36,22 +36,7 @@ export const nameGeneratorStage = baseStageSchema.extend({
   type: z.literal('NameGenerator'),
   form: FormSchema,
   subject: NodeStageSubjectSchema,
-  panels: z
-    .array(panelSchema)
-    .optional()
-    .superRefine((panels, ctx) => {
-      if (panels) {
-        // Check for duplicate panel IDs
-        const duplicatePanelId = findDuplicateId(panels);
-        if (duplicatePanelId) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Panels contain duplicate ID "${duplicatePanelId}"`,
-            path: [],
-          });
-        }
-      }
-    }),
+  panels: panelsSchema,
   prompts: z
     .array(nameGeneratorPromptSchema)
     .min(1)

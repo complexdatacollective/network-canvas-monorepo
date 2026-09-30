@@ -174,7 +174,10 @@
           "tie_type_other": {
             "name": "tie_type_other",
             "type": "text",
-            "component": "Text"
+            "component": "Text",
+            "validation": {
+              "required": true
+            }
           },
           "has_condition": {
             "name": "has_condition",

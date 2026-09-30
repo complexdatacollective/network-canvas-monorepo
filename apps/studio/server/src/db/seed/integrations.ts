@@ -4,15 +4,10 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
-import type { EncryptionKeys } from '../../pii/keys.ts';
-import {
-  createDataProtection,
-  ProtectedDataError,
-} from '../../pii/protection.ts';
+import type { SecretsCipher } from '../../secrets/cipher.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededSession } from './network.ts';
 import {
-  seedBytes,
   seedHex,
   seedTime,
   seedUuid,
@@ -219,9 +214,13 @@ type WebhookDisablement = {
  * once its data is written).
  *
  * The signing secret is stored as ciphertext because Standard Webhooks
- * requires the server to reproduce it on every send. The seed has no key
- * management of its own; its caller supplies the registered deployment keys
- * (or the explicit public development key for synthetic fixtures).
+ * requires the server to reproduce it on every send. Since #1900 the seed
+ * seals a real `whsec_` secret through the deployment's own cipher rather than
+ * writing opaque bytes under a placeholder key id: a seeded instance is then a
+ * working one — the worker can sign a delivery — and the boot check, which
+ * refuses to serve while a stored key id is one the keyring cannot produce,
+ * has real rows to read. The plaintexts are returned so the dump-and-search
+ * test knows what to look for.
  */
 export async function seedWebhooks(
   client: pg.PoolClient,
@@ -229,19 +228,12 @@ export async function seedWebhooks(
   studies: SeedStudy[],
   sessions: SeededSession[],
   withdrawals: SeedWithdrawal[],
-  encryptionKeys: EncryptionKeys,
-): Promise<void> {
-  const protection = createDataProtection(encryptionKeys, {
-    participant: async () => {
-      throw new ProtectedDataError();
-    },
-    integration: async () => {
-      throw new ProtectedDataError();
-    },
-  });
+  cipher: SecretsCipher,
+): Promise<string[]> {
   const subscriptionRows: SeedRowValue[][] = [];
   const deliveryRows: SeedRowValue[][] = [];
   const disablements: WebhookDisablement[] = [];
+  const plaintextSecrets: string[] = [];
   const createdAt = seedTime(-250 + team.index);
   const resources = webhookResources(studies, sessions, withdrawals);
 
@@ -265,6 +257,15 @@ export async function seedWebhooks(
       ),
       { min: 1, max: 4 },
     );
+    // Sealed against this row's own identity, so the seeded corpus exercises
+    // the AAD binding as a real subscription does: the ciphertext opens only
+    // as (this team, this subscription).
+    const secret = `whsec_${seedHex(24)}`;
+    plaintextSecrets.push(secret);
+    const sealed = cipher.sealWebhookSecret(
+      { teamId: team.id, subscriptionId: id },
+      secret,
+    );
     subscriptionRows.push([
       id,
       team.id,
@@ -274,17 +275,8 @@ export async function seedWebhooks(
         ? 'Retired endpoint, kept for the failure history'
         : faker.lorem.sentence(),
       eventTypes,
-      protection.encryptIntegration(
-        {
-          kind: 'webhook',
-          teamId: team.id,
-          subscriptionId: id,
-          column: 'secret_ciphertext',
-        },
-        seedBytes(48),
-      ).envelope,
-      encryptionKeys.currentId('integration-enc'),
-      'aes-256-gcm.v1',
+      sealed.ciphertext,
+      sealed.keyId,
       'active',
       0,
       null,
@@ -327,9 +319,6 @@ export async function seedWebhooks(
           sequence: delivery + 1,
         }),
         pending ? 0 : faker.number.int({ min: 1, max: 4 }),
-        enqueuedAt,
-        null,
-        null,
         pending || failed ? null : shiftMinutes(enqueuedAt, 2),
         failed ? shiftMinutes(enqueuedAt, 30) : null,
         pending ? null : failed ? 502 : 200,
@@ -362,7 +351,6 @@ export async function seedWebhooks(
       'event_types',
       'secret_ciphertext',
       'secret_key_id',
-      'secret_algorithm',
       'state',
       'consecutive_failures',
       'last_failure_at',
@@ -384,9 +372,6 @@ export async function seedWebhooks(
       'event_type',
       'payload',
       'attempt_count',
-      'available_at',
-      'lease_owner',
-      'lease_expires_at',
       'delivered_at',
       'failed_at',
       'last_status_code',
@@ -411,6 +396,8 @@ export async function seedWebhooks(
       ],
     );
   }
+
+  return plaintextSecrets;
 }
 
 /** Two experiments per team: one still running, one already stopped. */

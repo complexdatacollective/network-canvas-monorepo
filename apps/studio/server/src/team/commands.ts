@@ -19,8 +19,8 @@ import {
   type DeniedAuditReservation,
   reserveDeniedAuditAttempt,
 } from '../audit/denial-rate-limit.ts';
-import { createDeniedAuditSummaryWriter } from '../audit/denial-summary.ts';
 import type { AuditEventInput, DeniedAuditOperation } from '../audit/events.ts';
+import { isLockUnavailableError } from '../db/lock.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
 import { isTeamAdministrator, tryParseRoles } from './roles.ts';
 import { TeamStore, type LockedMember } from './store.ts';
@@ -36,8 +36,7 @@ export type TeamCommandErrorCode =
   | 'NO_CHANGE'
   | 'LAST_OWNER'
   | 'INVALID_ROLE'
-  | 'DELIVERY_IN_PROGRESS'
-  | 'OVERLOADED';
+  | 'DELIVERY_IN_PROGRESS';
 
 export class TeamCommandError extends Error {
   readonly code: TeamCommandErrorCode;
@@ -78,19 +77,15 @@ async function reserveDeniedTeamCommand(
   context: AuditedCommandContext,
   operation: DeniedAuditOperation,
 ): Promise<AdmittedDeniedAuditReservation> {
-  const reservation = await reserveDeniedAuditAttempt(
-    {
-      actorId: context.principal.userId,
-      teamId: context.tenantDb.teamId,
-      operation,
-    },
-    createDeniedAuditSummaryWriter(context, operation),
-  );
-  if (!reservation.admitted) {
-    throw new TeamCommandError(
-      reservation.reason === 'overloaded' ? 'OVERLOADED' : 'FORBIDDEN',
-    );
-  }
+  const reservation = await reserveDeniedAuditAttempt({
+    actorId: context.principal.userId,
+    teamId: context.tenantDb.teamId,
+    operation,
+  });
+  // The caller is refused either way; FORBIDDEN is what the command would have
+  // answered, and answering differently once the window is spent would make
+  // the audit log's own suppression observable from outside.
+  if (!reservation.admitted) throw new TeamCommandError('FORBIDDEN');
   return reservation;
 }
 
@@ -202,10 +197,10 @@ export async function updateTeamMemberRole(
         );
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',
@@ -294,7 +289,7 @@ export async function createTeamInvitation(
           role: input.role,
           inviterId: context.principal.userId,
         });
-        await enqueueInvitationDelivery(client, {
+        const delivery = await enqueueInvitationDelivery(client, {
           invitationId: invitation.id,
           teamId: context.tenantDb.teamId,
           email: invitation.email,
@@ -302,6 +297,19 @@ export async function createTeamInvitation(
           teamLabel: auditContext.teamLabel,
           inviterLabel: auditActorEventContext(auditContext).actorLabel,
           expiresAt: invitation.expiresAt,
+        });
+        // Required rather than optional here: every entrypoint that has a
+        // database has a job client, so an absent one is a wiring fault, and
+        // skipping the enqueue would commit an invitation nothing will ever
+        // send. The RPC layer answers the refusal with a 500, which is what a
+        // server misconfiguration is.
+        if (!context.jobs) {
+          throw new Error('invitation delivery needs a job client');
+        }
+        // In the command's own transaction (#1895), so a rollback takes the
+        // job with it and a commit can never leave the invitation without one.
+        await context.jobs.enqueue(client, 'invitation-delivery', {
+          deliveryId: delivery.deliveryId,
         });
         const event = {
           ...auditEventContext(auditContext),
@@ -324,10 +332,10 @@ export async function createTeamInvitation(
         };
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',
@@ -374,66 +382,82 @@ export async function cancelTeamInvitation(
             events: [event] as const,
           };
         }
-        const invitation = await store.lockInvitation(
+        // Read before contending for the row: the refusal below names the
+        // invitation it could not cancel, and a lock this command never got
+        // leaves nothing locked to read that label from. Unlocked is enough
+        // for a label — the decision itself is made under the lock.
+        const label = await store.readInvitationLabel(
           client,
           context.tenantDb.teamId,
           input.invitationId,
         );
-        if (!invitation) throw new TeamCommandError('NOT_FOUND');
-        if (invitation.status !== 'pending') {
-          throw new TeamCommandError('NO_CHANGE');
-        }
-        if (!invitation.role) throw new TeamCommandError('INVALID_ROLE');
-        const roles = parseRoles(invitation.role);
-        // Better Auth historically stored role arrays as comma-separated values.
-        // Cancellation stays available for those rows, while acceptance below
-        // deliberately remains limited to one role for one new membership.
-        if (
-          await store.lockInvitationDeliveryInFlight(
-            client,
-            context.tenantDb.teamId,
-            invitation.id,
-          )
-        ) {
-          const event = {
-            ...failedAuditEventContext(auditContext),
-            eventType: 'team.invitation.cancellation_failed',
-            subjectType: 'team_invitation',
-            subjectId: invitation.id,
-            subjectLabel: invitation.email,
-            details: { failureCode: 'delivery_in_progress' },
-          } satisfies AuditEventInput;
-          return {
-            status: 'failed' as const,
-            error: new TeamCommandError('DELIVERY_IN_PROGRESS'),
-            events: [event] as const,
-          };
-        }
-        await store.cancelInvitation(
+        if (label === null) throw new TeamCommandError('NOT_FOUND');
+        return runAuditedCommandWork(
           client,
-          context.tenantDb.teamId,
-          invitation.id,
+          async () => {
+            // The delivery handler holds this same row for the length of its
+            // send (#1895). Waiting for it would hold the team's audit lock
+            // behind an SMTP call, so this asks not to wait and refuses.
+            const invitation = await store.lockInvitation(
+              client,
+              context.tenantDb.teamId,
+              input.invitationId,
+              { nowait: true },
+            );
+            if (!invitation) throw new TeamCommandError('NOT_FOUND');
+            if (invitation.status !== 'pending') {
+              throw new TeamCommandError('NO_CHANGE');
+            }
+            if (!invitation.role) throw new TeamCommandError('INVALID_ROLE');
+            const roles = parseRoles(invitation.role);
+            // Better Auth historically stored role arrays as comma-separated
+            // values. Cancellation stays available for those rows, while
+            // acceptance below deliberately remains limited to one role for
+            // one new membership.
+            await store.cancelInvitation(
+              client,
+              context.tenantDb.teamId,
+              invitation.id,
+            );
+            const event = {
+              ...auditEventContext(auditContext),
+              eventVersion: 2,
+              eventType: 'team.invitation.cancelled',
+              subjectType: 'team_invitation',
+              subjectId: invitation.id,
+              subjectLabel: invitation.email,
+              details: { roles },
+            } satisfies AuditEventInput;
+            return {
+              result: {
+                invitationId: invitation.id,
+                status: 'canceled' as const,
+              },
+              events: [event],
+            };
+          },
+          (error) => {
+            if (!isLockUnavailableError(error)) return null;
+            const event = {
+              ...failedAuditEventContext(auditContext),
+              eventType: 'team.invitation.cancellation_failed',
+              subjectType: 'team_invitation',
+              subjectId: input.invitationId,
+              subjectLabel: label,
+              details: { failureCode: 'delivery_in_progress' },
+            } satisfies AuditEventInput;
+            return {
+              error: new TeamCommandError('DELIVERY_IN_PROGRESS'),
+              events: [event],
+            };
+          },
         );
-        const event = {
-          ...auditEventContext(auditContext),
-          eventVersion: 2,
-          eventType: 'team.invitation.cancelled',
-          subjectType: 'team_invitation',
-          subjectId: invitation.id,
-          subjectLabel: invitation.email,
-          details: { roles },
-        } satisfies AuditEventInput;
-        return {
-          status: 'succeeded' as const,
-          result: { invitationId: invitation.id, status: 'canceled' as const },
-          events: [event] as const,
-        };
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',
@@ -621,10 +645,10 @@ export async function acceptTeamInvitation(
         );
       },
     );
-    reservation.complete('other');
+    await reservation.complete('other');
     return result;
   } catch (error) {
-    reservation.complete(
+    await reservation.complete(
       error instanceof TeamCommandError && error.code === 'FORBIDDEN'
         ? 'denied'
         : 'other',

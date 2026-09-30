@@ -12,10 +12,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import {
-  teamIsolationPolicies,
-  tenantTablesSql,
-} from '@codaco/studio-sync/rls';
+import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 
 import { STUDY_TABLES } from '../study/schema.ts';
 
@@ -109,7 +106,7 @@ const apiTokens = pgTable(
           AND char_length(${table.custodianUserId}) BETWEEN 1 AND 255
           AND (${table.revokedByUserId} IS NULL OR char_length(${table.revokedByUserId}) BETWEEN 1 AND 255)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

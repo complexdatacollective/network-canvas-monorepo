@@ -106,3 +106,42 @@ via `/signin` in the new tab.
 - A `POST .../setup?step=3` or export POST marked `ERR_ABORTED` in the network
   log with a 200 status usually still succeeded server-side — verify state,
   not the request log.
+
+## Driving Fresco with Playwright (the script-driven lanes)
+
+The lanes under `scripts/` drive the app with the repository's own Playwright
+rather than the in-app browser, so most of the constraints above do not apply
+to them: the real file input can be used for imports, real downloads arrive as
+`download` events, and the accessibility snapshot is readable. The facts below
+are the ones that cost a run to discover, and every one of them fails silently
+rather than loudly.
+
+- **posthog-js will not capture for a browser it takes for a bot, and says
+  nothing.** Masking `navigator.webdriver` is not enough: Chromium also reports
+  `HeadlessChrome` in `navigator.userAgentData.brands`, which posthog-js reads.
+  A lane that misses this records initialisation traffic, no events at all, and
+  every "nothing sensitive was sent" assertion passes over an empty file.
+  `fresco-driver.mjs` masks both and sets a plain desktop user agent.
+- **The viewport has to clear 1280px with room to spare.** `laptop` is
+  1280px, and the interview's small-screen overlay is `laptop:hidden` — so at
+  exactly 1280 a page that happens to scroll loses 15px to the scrollbar and
+  the overlay covers the stage. It looks exactly like an interview that failed
+  to render, intermittently. The driver uses 1440×1000.
+- **The first render of `/interview/<id>` on a freshly started container can
+  come back as the app's error screen.** The next attempt serves the interview.
+  Both lanes that open one retry, bounded and counted, and report the count.
+- **A stage that is leaving stays mounted while it animates out**, so for part
+  of a second there are two `[data-stage-step]` elements. Read them all and
+  wait for one, rather than asking for "the" stage.
+- **A drag into a bin has to pause over the target before releasing.** Arriving
+  and letting go in the same frame drops the node nowhere, silently. The
+  sociogram needs only the 8px jiggle that clears the drag threshold; the bins
+  need the jiggle, a pause on arrival, and a small move before the release.
+- **A field filled before hydration is discarded.** Fill every field of a form
+  and then read them all back together: a field verified on its own can be
+  emptied by a Suspense boundary streaming in behind it, which surfaces as
+  "Username cannot be empty" on a form you watched being filled.
+- **The setup wizard's last button is what marks the installation
+  configured.** A lane that stops before it leaves an instance that redirects
+  every later request back to `/setup`, and whatever it was testing is never
+  reached.

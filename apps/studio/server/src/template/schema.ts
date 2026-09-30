@@ -24,10 +24,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import {
-  teamIsolationPolicies,
-  tenantTablesSql,
-} from '@codaco/studio-sync/rls';
+import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
 import { sections } from '@codaco/studio-sync/schema';
 
 const templates = pgTable(
@@ -86,7 +83,7 @@ const templates = pgTable(
           AND (${table.summary} IS NULL OR char_length(${table.summary}) BETWEEN 1 AND 2000)
           AND (${table.authorUserId} IS NULL OR char_length(${table.authorUserId}) BETWEEN 1 AND 255)`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -127,7 +124,7 @@ const templateVersions = pgTable(
       'template_versions_manifest_object_check',
       sql`jsonb_typeof(${table.manifest}) = 'object'`,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -157,7 +154,7 @@ const templateVersionSections = pgTable(
       table.teamId,
       table.sectionHash,
     ),
-    ...teamIsolationPolicies(),
+    teamIsolationPolicy(),
   ],
 );
 

@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useResourceGateway } from '../context.tsx';
+import { useResourceClient } from '../client.tsx';
 import {
   resourceOk,
   type ResourceDescriptor,
   type ResourceKind,
   type ResourceResult,
-} from '../gateway.ts';
-import { callGateway } from '../gatewayCall.ts';
+} from '../types.ts';
 import {
   useResourceAttempt,
   type ResourceAttempt,
@@ -25,31 +24,31 @@ export type ResourceLibrary = Readonly<{
   /**
    * The library as of now, answered rather than rendered.
    *
-   * {@link resources} is what was there when this hook last read the gateway,
+   * {@link resources} is what was there when this hook last asked the host,
    * which is what a list on screen has to be. A decision made against the
    * library — whether a name is already taken — cannot be made against that:
    * it has to be true at the moment it is acted on, and anything else in the
-   * session may have added a resource since. What comes back is rendered too,
-   * so the list the researcher is looking at catches up with what they were
-   * just told about it.
+   * edit may have added a resource since. What comes back is rendered too, so
+   * the list the researcher is looking at catches up with what they were just
+   * told about it.
    */
   read: () => Promise<ResourceResult<readonly ResourceDescriptor[]>>;
 }>;
 
 /**
- * The resources a picker may offer, read from the gateway and nowhere else.
+ * The resources a picker may offer, read from the host and nowhere else.
  *
  * Staged resources are listed beside committed ones because a researcher who
  * has just imported a file is entitled to see it in the library they are
- * choosing from — the gateway is what knows the difference, and says so on
- * each descriptor.
+ * choosing from — the host is what knows the difference, and says so on each
+ * descriptor.
  */
 export function useResourceLibrary(
   kinds: readonly ResourceKind[],
 ): ResourceLibrary {
-  const gateway = useResourceGateway();
+  const resources = useResourceClient();
   const { busy, failure, retry, run } = useResourceAttempt();
-  const [resources, setResources] =
+  const [offered, setOffered] =
     useState<readonly ResourceDescriptor[]>(NO_RESOURCES);
 
   // The kinds themselves are the dependency, not the array carrying them: a
@@ -64,17 +63,17 @@ export function useResourceLibrary(
   // to refuse. One seam, so every caller — the list on screen and the name
   // check beside it — sees the same library.
   const list = useCallback(async () => {
-    const listed = await gateway.list({ kinds: latestKinds.current });
+    const listed = await resources.list({ kinds: latestKinds.current });
     if (listed.status !== 'ok') return listed;
     const accepted = new Set<ResourceKind>(latestKinds.current);
-    const offered = listed.data.filter((descriptor) =>
+    const allowed = listed.data.filter((descriptor) =>
       accepted.has(descriptor.kind),
     );
-    return offered.length === listed.data.length ? listed : resourceOk(offered);
-  }, [gateway, key]);
+    return allowed.length === listed.data.length ? listed : resourceOk(allowed);
+  }, [key, resources]);
 
   const reload = useCallback(() => {
-    run(list, setResources);
+    run(list, setOffered);
   }, [list, run]);
 
   const read = useCallback(async () => {
@@ -82,8 +81,8 @@ export function useResourceLibrary(
     // asked for it, and the caller shows its own progress and its own
     // failure. Taking `busy` here would disable the list's own retry while a
     // form beside it was submitting.
-    const result = await callGateway(list);
-    if (result.status === 'ok') setResources(result.data);
+    const result = await list();
+    if (result.status === 'ok') setOffered(result.data);
     return result;
   }, [list]);
 
@@ -92,7 +91,7 @@ export function useResourceLibrary(
   }, [reload]);
 
   return {
-    resources,
+    resources: offered,
     busy,
     ...(failure === undefined ? {} : { failure }),
     ...(retry === undefined ? {} : { retry }),

@@ -35,7 +35,7 @@ release carries never reaches anyone. A changeset naming `@codaco/interview`
 must therefore also name all three of those apps (usually with the same bump
 type). CI enforces this: `pnpm check:changesets` rejects a changeset that
 releases the runtime without every bundling app, using the
-`BUNDLED_RUNTIME_DEPENDENTS` map in `scripts/changeset-app-utils.mjs` (a test
+`BUNDLED_RUNTIME_DEPENDENTS` map in `scripts/release/changeset-app-utils.mjs` (a test
 keeps that map in sync with the apps' real dependency lists).
 
 ## Before writing one for a fix: was the bug ever released?

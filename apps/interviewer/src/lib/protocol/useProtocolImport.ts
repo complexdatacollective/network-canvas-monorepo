@@ -128,7 +128,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
         try {
           fileBuffer = new Uint8Array(await request.file.arrayBuffer());
         } catch (error) {
-          console.error('The selected protocol file could not be read', error);
+          analytics.captureException(error, { feature: 'protocol-import' });
           toast.add({
             title: createElement(AppMessage, {
               message: messages.importFailed,
@@ -256,7 +256,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
 
       window.setTimeout(() => {
         void run().catch((error: unknown) => {
-          console.error('Protocol import failed', error);
+          analytics.captureException(error, { feature: 'protocol-import' });
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
           toast.add({
             title: createElement(AppMessage, {

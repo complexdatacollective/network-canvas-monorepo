@@ -17,7 +17,17 @@ export const meta = {
     },
     {
       title: 'Fresh lane',
-      detail: 'setup wizard end-to-end on the pending image',
+      detail:
+        'setup wizard end-to-end on the pending image, then the scripted interview, health and localization checks',
+    },
+    {
+      title: 'Analytics lane',
+      detail:
+        'a deployment with analytics ENABLED, against a payload-recording sink: what is actually sent, and how damaged protocol files are reported',
+    },
+    {
+      title: 'Two-factor lane',
+      detail: 'a deployment that requires two-factor authentication',
     },
     {
       title: 'Audit',
@@ -64,6 +74,12 @@ const SYNTHETIC_COUNT = 5;
 const REQUIRED_API_PATHS = ['/api/v1/protocols-meta', '/api/v1/interview'];
 const UPGRADE_URL = 'http://localhost:3210';
 const FRESH_URL = 'http://localhost:3211';
+// The script-driven lanes. Each is a deterministic driver under
+// release-test/scripts that prints one JSON line of checks; the agent that
+// runs one is told to return its fields verbatim and to interpret nothing.
+// Their check ids are listed below and enforced in code, so a driver that
+// stops performing a check fails the run rather than reporting a shorter list.
+const SCRIPTS = `${HARNESS}/scripts`;
 const DEFAULT_RELEASED_IMAGE = 'ghcr.io/complexdatacollective/fresco:latest';
 const PENDING_IMAGE = 'fresco-release-test:pending';
 
@@ -186,8 +202,7 @@ const bareDigest = (value) => {
   return clean ? clean.replace(/^sha256:/i, '').toLowerCase() : null;
 };
 
-// A version as the health endpoint reports it ("v4.1.2") compared with a
-// version as package manifests carry it ("4.1.2").
+// A version as a build stamp or manifest may carry it ("v4.1.2" or "4.1.2").
 const stripV = (value) => {
   const clean = shaped(value, VERSION, 64);
   return clean ? clean.replace(/^v/i, '') : null;
@@ -335,13 +350,53 @@ const RELAY_SINK_SCHEMA = {
   required: ['ok'],
 };
 
+// What every script-driven lane returns. `ok` says the driver completed, not
+// that its checks passed — a driver that reported ok:false because a check
+// failed would hide a candidate failure behind a harness one, and the
+// workflow reads the checks itself.
+const SCRIPT_LANE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ok: { type: 'boolean' },
+    checks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          id: { type: 'string' },
+          status: { type: 'string', enum: ['pass', 'fail'] },
+          detail: { type: 'string' },
+        },
+        required: ['id', 'status'],
+      },
+    },
+    error: { type: 'string' },
+  },
+  required: ['ok', 'checks'],
+};
+
 const STACK_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
     ok: { type: 'boolean' },
     baseUrl: { type: 'string' },
-    version: { type: 'string' },
+    imageId: {
+      type: 'string',
+      description: "The .Image id up.sh read from the lane's Fresco container",
+    },
+    analytics: {
+      type: 'boolean',
+      description:
+        'Whether up.sh started this lane with analytics ENABLED (its "analytics" field, verbatim)',
+    },
+    requireTwoFactor: {
+      type: 'boolean',
+      description:
+        'Whether up.sh started this lane with REQUIRE_TWO_FACTOR set (its "requireTwoFactor" field, verbatim)',
+    },
     error: {
       type: 'string',
       description: 'Only on failure: the decisive log/output lines',
@@ -507,6 +562,10 @@ const AUDIT_SCHEMA = {
       description:
         'The RepoDigest docker currently reports for the baseline tag',
     },
+    releasedImageId: {
+      type: 'string',
+      description: 'The .Id docker currently reports for the baseline tag',
+    },
     upgradeContainerImage: {
       type: 'string',
       description: "The upgrade lane Fresco container's .Image id",
@@ -539,6 +598,20 @@ const AUDIT_SCHEMA = {
       type: 'array',
       items: { type: 'string' },
       description: 'Base names of .changeset/*.md, without the extension',
+    },
+    changesetPackages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          changeset: { type: 'string' },
+          packages: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['changeset', 'packages'],
+      },
+      description:
+        'For every changeset, the package names in its front matter, verbatim',
     },
     error: { type: 'string' },
   },
@@ -575,12 +648,12 @@ const REPORT_SCHEMA = {
           },
           status: {
             type: 'string',
-            enum: ['covered', 'untested', 'unrelated'],
+            enum: ['covered', 'untested', 'unrelated', 'presentation-only'],
           },
           note: {
             type: 'string',
             description:
-              'covered: which check exercised it. untested: what nothing exercised. unrelated: why it cannot reach Fresco',
+              'covered: which check exercised it. untested: what nothing exercised. unrelated: why it cannot reach Fresco. presentation-only: which components it changes',
           },
         },
         required: ['changeset', 'status', 'note'],
@@ -597,6 +670,72 @@ const REPORT_SCHEMA = {
 // maps bind the returned report to that numbering, so a truncated, reordered
 // or quietly skipped report cannot read as coverage.
 // ---------------------------------------------------------------------------
+
+// Every check each script-driven lane must report, by id. Listed here rather
+// than counted, because these lanes are not agents reading a numbered prompt:
+// the driver names its own checks, so what binds the report to this workflow
+// is the set of names. A missing id is a check that silently stopped running;
+// an unknown one is a report this workflow cannot account for. Both fail.
+const expectedScriptChecks = {
+  interview: [
+    'interview-protocol-imported',
+    'interview-opens',
+    'interview-information-selectable',
+    'interview-video-descriptions',
+    'interview-ego-form-answered',
+    'interview-nodes-created',
+    'interview-sociogram-placed-and-connected',
+    'interview-ordinal-bin-labels',
+    'interview-ordinal-bin-placement',
+    'interview-categorical-bin-labels',
+    'interview-categorical-bin-placement',
+    'interview-finished',
+    'interview-export-carries-the-answers',
+  ],
+  health: [
+    'health-answers-anonymously',
+    'health-hides-deployment-details',
+    'health-version-still-shown-to-researchers',
+  ],
+  localization: [
+    'localization-preference-applies',
+    'localization-reaches-validation-and-dialogs',
+    'localization-reaches-activity-details',
+    'localization-follows-the-account',
+    'localization-seeds-interview-controls',
+  ],
+  analytics: [
+    'analytics-interview-conducted',
+    'analytics-damaged-missing-resource-named',
+    'analytics-damaged-archive-described',
+    'analytics-inflation-limit-enforced',
+    'analytics-fractional-count-refused',
+    'analytics-fractional-value-accepted',
+    'analytics-sink-listening',
+    'analytics-payloads-readable',
+    'analytics-initialised',
+    'analytics-events-captured',
+    'analytics-both-surfaces-captured',
+    'analytics-server-events-captured',
+    'analytics-entity-ids-reported',
+    'analytics-no-session-replay',
+    'analytics-no-heatmaps',
+    'analytics-no-autocapture',
+    'analytics-no-element-data',
+    'analytics-no-deployment-identifiers',
+    'analytics-pseudonymous-distinct-id',
+    'analytics-damaged-file-not-an-error',
+  ],
+  twoFactor: [
+    'two-factor-forced-after-setup',
+    'two-factor-blocks-signed-in-requests',
+    'two-factor-forced-after-sign-in',
+    'two-factor-enrolment-admits-the-account',
+    'two-factor-admits-requests-once-enrolled',
+    'two-factor-requirement-reported-and-read-only',
+    'two-factor-cannot-be-turned-off',
+  ],
+};
 
 const expectedChecks = {
   seed: 9,
@@ -716,6 +855,22 @@ const [build, released] = await parallel(
   skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks,
 );
 
+// The protocol fixtures every script-driven lane imports: the one an interview
+// is conducted with, and the damaged ones. Built rather than committed — a
+// repository is the wrong place for a deliberately corrupt archive and an
+// entry that inflates to more than a gigabyte — and built here so a failure to
+// produce them is reported before any lane depends on them.
+const fixtures = await agent(
+  `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Run exactly this, once: node ${SCRIPTS}/make-fixtures.mjs
+It prints ONE line of JSON naming the files it wrote. Return ok:true if it exited 0, or ok:false with the decisive error lines in "error". Change nothing else.`,
+  {
+    label: 'make-fixtures',
+    phase: 'Build',
+    schema: BUILD_SCHEMA,
+    ...MECHANICAL,
+  },
+);
+
 if (!build?.ok || !released?.ok) {
   // Same result shape as every other exit, in the same vocabulary: a consumer
   // that renders the documented contract must not need a second code path for
@@ -759,12 +914,15 @@ if (!build?.ok || !released?.ok) {
     ].filter(Boolean),
     warnings: [],
     untestedShippedChanges: [],
+    presentationOnlyChanges: [],
     expectedVersion,
     testedVersion: null,
     pendingImage: build ? { ...build } : null,
     releasedImage: released?.image ?? releasedImage,
     upgradeLane: null,
     freshLane: null,
+    analyticsLane: null,
+    twoFactorLane: null,
     audit: null,
     artifacts: ARTIFACTS,
     teardown: 'no stack was started',
@@ -797,6 +955,18 @@ const relaySinkPrompt = (lane) =>
 node ${HARNESS}/scripts/relay-sink-check.mjs --lane ${lane}
 It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, sinkRunning, sinkPorts, probeSent, probeConnections, analyticsConnections. On a non-zero exit it prints {"ok":false,"error":"..."} instead — return ok:false with that error and OMIT the counts rather than supplying numbers of your own. Do not interpret what the numbers mean, do not investigate anything they suggest, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
 
+// Every script-driven lane is run the same way, and the agent is given nothing
+// to decide: the driver prints one line of JSON and the workflow reads it. An
+// agent asked to interpret a lane's checks could report a pass it did not
+// witness, and could not be held to the check ids this workflow expects.
+const scriptPrompt = (
+  script,
+  args,
+  what,
+) => `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once (Bash timeout 1800000 — it drives a browser through ${what}):
+node ${SCRIPTS}/${script} ${args}
+It prints ONE line of JSON on stdout and nothing else. Return its "ok" and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as printed, none added, none dropped, none reworded. On a non-zero exit it still prints that line; return it. Do not interpret what the checks mean, do not investigate a failure, do not re-run the script, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
+
 // ---------------------------------------------------------------------------
 
 const runUpgradeLane = async () => {
@@ -804,7 +974,7 @@ const runUpgradeLane = async () => {
 
   const upReleased = await agent(
     `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: rm -rf ${ARTIFACTS}/exports && bash ${HARNESS}/up.sh --lane upgrade --image ${releasedImage}
-(The rm clears any previous run's export captures so the diff can never mix runs — required because skipBuild bypasses the build step's artifact cleanup. Bash timeout 480000 — first boot runs migrations.) The last stdout line is JSON with baseUrl and the health response. Return ok:true with baseUrl and the health "version" field verbatim, or ok:false with the decisive error lines in "error".`,
+(The rm clears any previous run's export captures so the diff can never mix runs — required because skipBuild bypasses the build step's artifact cleanup. Bash timeout 480000 — first boot runs migrations.) The last stdout line is JSON with baseUrl, imageId and the health response. Return ok:true with baseUrl and the "imageId" field verbatim, or ok:false with the decisive error lines in "error".`,
     {
       label: 'up-released',
       phase: 'Upgrade lane',
@@ -815,9 +985,9 @@ const runUpgradeLane = async () => {
   lane.upReleased = upReleased;
   if (!upReleased?.ok) return lane;
 
-  const releasedVersion = stripV(upReleased.version);
+  lane.releasedImageId = bareDigest(upReleased.imageId);
   const seed = await agent(
-    `You are seeding a fresh Fresco instance (the CURRENTLY RELEASED version, ${releasedVersion ?? 'unknown'}) at ${UPGRADE_URL} so an upgrade can be tested against real data. Stay in your working directory — it is already the correct repository checkout; do NOT cd to another checkout.
+    `You are seeding a fresh Fresco instance (the CURRENTLY RELEASED image, ${releasedImage}) at ${UPGRADE_URL} so an upgrade can be tested against real data. Stay in your working directory — it is already the correct repository checkout; do NOT cd to another checkout.
 ${BROWSER_HOWTO}
 
 Do, in order, recording one check per numbered item:
@@ -876,7 +1046,7 @@ Set area="seed" and pass=true only if every item passed or was legitimately skip
 Run: bash ${HARNESS}/up.sh --lane upgrade --image ${pendingImage} --keep-data
 (Bash timeout 480000.) Then run: FRESCO_IMAGE=${pendingImage} docker compose -p fresco-release-test-upgrade -f ${HARNESS}/docker-compose.yml logs --tail 200 fresco
 (The FRESCO_IMAGE prefix is required: the compose file refuses interpolation without it, and up.sh's export does not survive into your shell.)
-Inspect the logs for the migration/startup sequence (prisma migrate deploy, protocol/data migrations, server start). Return ok:true with the health "version" field verbatim, or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
+Inspect the logs for the migration/startup sequence (prisma migrate deploy, protocol/data migrations, server start). Return ok:true with the "imageId" field of up.sh's last stdout line verbatim, or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
     {
       label: 'upgrade-swap',
       phase: 'Upgrade lane',
@@ -885,8 +1055,7 @@ Inspect the logs for the migration/startup sequence (prisma migrate deploy, prot
     },
   );
   lane.swap = swap;
-  lane.releasedVersion = releasedVersion;
-  lane.swappedVersion = stripV(swap?.version);
+  lane.swappedImageId = bareDigest(swap?.imageId);
   if (!swap?.ok) return lane;
 
   // Strictly serialized, twice over: capture and integrity must observe the
@@ -1001,7 +1170,7 @@ const runFreshLane = async () => {
 
   const up = await agent(
     `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: bash ${HARNESS}/up.sh --lane fresh --image ${pendingImage}
-(Bash timeout 480000.) The last stdout line is JSON with baseUrl and health. Return ok:true with baseUrl and the health "version" field verbatim, or ok:false with the decisive error lines in "error".`,
+(Bash timeout 480000.) The last stdout line is JSON with baseUrl, imageId and health. Return ok:true with baseUrl and the "imageId" field verbatim, or ok:false with the decisive error lines in "error".`,
     {
       label: 'up-fresh',
       phase: 'Fresh lane',
@@ -1010,7 +1179,7 @@ const runFreshLane = async () => {
     },
   );
   lane.up = up;
-  lane.version = stripV(up?.version);
+  lane.imageId = bareDigest(up?.imageId);
   if (!up?.ok) return lane;
 
   lane.setup = await agent(
@@ -1039,6 +1208,50 @@ Set area="freshSetup".`,
       ...UI,
     },
   );
+  // The scripted checks run on this lane's instance, after the agent has
+  // finished with it: it is a configured deployment of the pending image, and
+  // standing up another stack to conduct one interview would cost a container
+  // for nothing. They are strictly serialized for the same reason the upgrade
+  // lane's agents are — one browser at a time.
+  lane.interview = await agent(
+    scriptPrompt(
+      'interview-lane.mjs',
+      '--lane fresh --signed-in',
+      'a whole interview, from the first stage to the finish screen, and out through an export',
+    ),
+    {
+      label: 'interview-lane',
+      phase: 'Fresh lane',
+      schema: SCRIPT_LANE_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  lane.health = await agent(
+    scriptPrompt(
+      'health-lane.mjs',
+      `--lane fresh${expectedVersion ? ` --expect-version ${expectedVersion}` : ''}`,
+      'the health endpoint and the dashboard',
+    ),
+    {
+      label: 'health-lane',
+      phase: 'Fresh lane',
+      schema: SCRIPT_LANE_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  lane.localization = await agent(
+    scriptPrompt(
+      'localization-lane.mjs',
+      '--lane fresh',
+      'the researcher interface in English and then in Spanish',
+    ),
+    {
+      label: 'localization-lane',
+      phase: 'Fresh lane',
+      schema: SCRIPT_LANE_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
   lane.relaySink = await agent(relaySinkPrompt('fresh'), {
     label: 'relay-sink-fresh',
     phase: 'Fresh lane',
@@ -1048,8 +1261,60 @@ Set area="freshSetup".`,
   return lane;
 };
 
+// ---------------------------------------------------------------------------
+// The two deployments the run configures differently. Each is its own compose
+// project on its own ports, started and torn down around its own checks, so a
+// run holds four stacks only as long as it has to.
+// ---------------------------------------------------------------------------
+
+const runConfiguredLane = async ({
+  name,
+  phase: phaseName,
+  script,
+  args,
+  what,
+  label,
+}) => {
+  const lane = { name };
+  lane.up = await agent(
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run: bash ${HARNESS}/up.sh --lane ${name} --image ${pendingImage}
+(Bash timeout 480000.) The last stdout line is JSON. Return ok:true with its "baseUrl", "imageId", "analytics" and "requireTwoFactor" fields VERBATIM — the last two are booleans describing the deployment this lane was started as, and the workflow refuses the lane without them — or ok:false with the decisive error lines in "error".`,
+    {
+      label: `up-${name}`,
+      phase: phaseName,
+      schema: STACK_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  lane.imageId = bareDigest(lane.up?.imageId);
+  if (lane.up?.ok !== true) return lane;
+
+  lane.report = await agent(scriptPrompt(script, args, what), {
+    label,
+    phase: phaseName,
+    schema: SCRIPT_LANE_SCHEMA,
+    ...MECHANICAL,
+  });
+
+  // Down as soon as its checks are in: nothing later reads this stack, and a
+  // machine running four Fresco deployments at once is a slower machine.
+  lane.down = await agent(
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else. Run: bash ${HARNESS}/down.sh --lane ${name}
+Return ok:true, or ok:false with what remained in "error". Change nothing else.`,
+    {
+      label: `down-${name}`,
+      phase: phaseName,
+      schema: STACK_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+  return lane;
+};
+
 let upgradeLane;
 let freshLane;
+let analyticsLane;
+let twoFactorLane;
 let auditResult;
 let report;
 let teardown;
@@ -1059,6 +1324,26 @@ try {
   // lanes trade reliability (and token-burning tab recovery) for wall-clock.
   upgradeLane = await runUpgradeLane();
   freshLane = await runFreshLane();
+
+  phase('Analytics lane');
+  analyticsLane = await runConfiguredLane({
+    name: 'analytics',
+    phase: 'Analytics lane',
+    script: 'analytics-lane.mjs',
+    args: '--lane analytics',
+    what: 'a deployment with analytics enabled, and the damaged protocol fixtures',
+    label: 'analytics-lane',
+  });
+
+  phase('Two-factor lane');
+  twoFactorLane = await runConfiguredLane({
+    name: 'twofactor',
+    phase: 'Two-factor lane',
+    script: 'two-factor-lane.mjs',
+    args: '--lane twofactor',
+    what: 'a deployment that requires two-factor authentication',
+    label: 'two-factor-lane',
+  });
 
   phase('Audit');
 
@@ -1115,13 +1400,14 @@ Report, exactly:
 - stampExists: whether ${STAMP} exists. If it does, also report its contents verbatim: stampVersion, stampCommit, stampImageId and stampDirty (the "version", "commit", "imageId" and "dirty" keys of that JSON file). Report the flag as the file states it — do NOT recompute or second-guess it.
 - pendingImageId: the output of docker image inspect --format '{{.Id}}' ${pendingImage} (omit the field if the image does not exist).
 - headCommit: the output of git rev-parse --short HEAD. worktreeDirty: true if git status --porcelain prints anything, false if it prints nothing. Report what these commands say about the checkout you are in — do not read them from any file.
-- releasedImageDigest: the output of docker image inspect --format '{{index .RepoDigests 0}}' ${releasedImage} (omit the field if that image is not present locally).
+- releasedImageDigest: the output of docker image inspect --format '{{index .RepoDigests 0}}' ${releasedImage} (omit the field if that image is not present locally). releasedImageId: the output of docker image inspect --format '{{.Id}}' ${releasedImage} (omit likewise).
 - upgradeContainerImage and freshContainerImage: the image each lane's Fresco container is ACTUALLY running, from docker inspect --format '{{.Image}}' fresco-release-test-upgrade-fresco-1 and docker inspect --format '{{.Image}}' fresco-release-test-fresh-fresco-1. Omit a field if that container does not exist. Report what docker says about the container, never what a tag resolves to.
 - baselineSnapshotIds: the <id> part of every file matching ${BASELINE_DIR}/api-interview-<id>.json (empty array if the directory is missing). upgradedSnapshotIds: the same for ${UPGRADED_DIR}.
 - suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
 - diffSummaryExists: whether ${DIFF_SUMMARY} exists (you are not reading its contents, only noting that the capture produced it).
 - changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
+- changesetPackages: for each of those files, the package names its front matter bumps — the quoted names between the two "---" lines at the top, verbatim and without the release type. Report them as they are written; the workflow compares them against a list of its own and a normalised or guessed name would defeat that.
 Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
     {
       label: 'audit-artifacts',
@@ -1140,6 +1426,7 @@ Also read EVERY pending changeset (.changeset/*.md in your working directory, ex
 - "covered": EVERY Fresco-facing behaviour the changeset describes was exercised by a check above. Say which check covered which behaviour. A changeset often describes several changes in several bullets; if any one of them went unexercised the entry is "untested", not "covered" — partial coverage is not coverage.
 - "untested": it ships behaviour that reaches Fresco and some or all of that behaviour went unexercised. Say what went unexercised.
 - "unrelated": it cannot reach Fresco at all — another app, or a package this image does not contain.
+- "presentation-only": everything it ships that could reach Fresco is @codaco/fresco-ui component behaviour — how a field, a dialog, a picker or a piece of typography looks and behaves in isolation. That is verified by the component's own Storybook interaction tests, which run on every change to it; a release test that drives whole deployments is the wrong instrument for it and would only ever reach a handful of those components by accident. Use it ONLY when the changeset bumps no package whose behaviour this test exercises — the workflow checks that against the packages the changeset actually names and fails the run if you use it for anything else. A changeset that also bumps "fresco", "@codaco/interview", "@codaco/protocol-validation", "@codaco/network-exporters", "@codaco/shared-consts" or "@codaco/app-i18n" is "covered" or "untested", never this.
 Judge "reaches Fresco" by what the image contains, NOT by whether the package is a library. This release test packs the pending @codaco/* packages that are in Fresco's own dependency closure into the image as tarballs (bundle-pending-packages.mjs vendors exactly those; anything outside that closure is not in the image at all). So a library changeset for a package Fresco depends on — @codaco/interview above all, the interview runtime Fresco hosts — ships inside the build under test and is Fresco-facing, and treating library changesets as out of scope wholesale would exclude most of what this test exists to cover. A library Fresco does not depend on is "unrelated"; say that it is outside the closure.
 Verdict rules: "blocked" if a stack or the build never came up (nothing meaningful was tested); "no-go" if any check failed, any migration error appeared, the export diff has unanticipated differences, or the pending image was built from a dirty tree (build.dirty) without allowDirty=${allowDirty} — a dirty build is not reproducible from any commit; otherwise "go". List every failure verbatim from the results — do not soften or re-litigate them. Your verdict is advisory: the workflow computes the release verdict itself from these same results and your judgment can only make it stricter, so err towards reporting what you see.`,
     {
@@ -1278,6 +1565,111 @@ for (const [area, result] of Object.entries(areaResults)) {
     );
 }
 
+// --- the script-driven lanes ------------------------------------------------
+//
+// Same accounting as the checklists above, in the vocabulary these lanes use:
+// a driver names its own checks, so the binding is the SET of ids rather than
+// a count and an ordering. Every id this workflow expects has to be there,
+// nothing else may be, and every one has to have passed. A lane that did not
+// run at all is unaccounted — it proves nothing either way — while a check
+// that ran and failed is the candidate's failure.
+const scriptLanes = {
+  interview: {
+    result: freshLane?.interview,
+    what: 'the interview conducted end to end',
+  },
+  health: {
+    result: freshLane?.health,
+    what: 'what /api/health tells an anonymous caller',
+  },
+  localization: {
+    result: freshLane?.localization,
+    what: 'the researcher interface in another language',
+  },
+  analytics: {
+    result: analyticsLane?.report,
+    what: 'what a deployment with analytics ENABLED sends',
+  },
+  twoFactor: {
+    result: twoFactorLane?.report,
+    what: 'a deployment that requires two-factor authentication',
+  },
+};
+
+for (const [area, { result, what }] of Object.entries(scriptLanes)) {
+  const expected = expectedScriptChecks[area];
+  if (!result) {
+    unaccounted.push(
+      `${area}: the lane returned no result, so ${what} was never checked`,
+    );
+    continue;
+  }
+  if (result.ok !== true)
+    unaccounted.push(
+      `${area}: the driver did not complete (${result.error ?? 'no error reported'}), so its checks describe a partial run`,
+    );
+
+  const reported = Array.isArray(result.checks) ? result.checks : [];
+  const ids = reported.map((entry) =>
+    typeof entry?.id === 'string' ? entry.id.trim() : '',
+  );
+  const seen = new Set(ids.filter(Boolean));
+  const missing = expected.filter((id) => !seen.has(id));
+  const unknown = [...seen].filter((id) => !expected.includes(id));
+  if (missing.length)
+    unaccounted.push(
+      `${area}: the lane did not report ${missing.join(', ')} — a check that stops running is not a check that passed`,
+    );
+  if (unknown.length)
+    unaccounted.push(
+      `${area}: the lane reported check(s) this workflow does not expect (${unknown.join(', ')}), so its report cannot be bound to what was asked of it`,
+    );
+  if (seen.size !== ids.filter(Boolean).length)
+    unaccounted.push(
+      `${area}: the lane reported the same check more than once`,
+    );
+
+  for (const entry of reported) {
+    const id = typeof entry?.id === 'string' ? entry.id.trim() : '(unnamed)';
+    if (entry?.status === 'pass') continue;
+    if (entry?.status === 'fail') {
+      failures.push(`${area} ${id}: ${entry.detail ?? 'failed'}`);
+      continue;
+    }
+    unaccounted.push(
+      `${area}: check ${id} reported status "${entry?.status}", which is neither pass nor fail`,
+    );
+  }
+}
+
+// A lane is only evidence about the deployment it claims to be. up.sh reports
+// the configuration it started each one in, and these two lanes exist
+// precisely because of theirs: an analytics lane that came up with analytics
+// DISABLED would send nothing, and every payload assertion in it would pass
+// over an empty file.
+for (const [lane, up, field, wanted, why] of [
+  [
+    'analytics lane',
+    analyticsLane?.up,
+    'analytics',
+    true,
+    'its checks are about what an ENABLED deployment sends, and a disabled one sends nothing at all',
+  ],
+  [
+    'two-factor lane',
+    twoFactorLane?.up,
+    'requireTwoFactor',
+    true,
+    'its checks are about a deployment that requires two-factor authentication',
+  ],
+]) {
+  if (up?.ok !== true) continue;
+  if (up[field] !== wanted)
+    unaccounted.push(
+      `${lane}: up.sh reported ${field}=${JSON.stringify(up[field])}, but ${why}`,
+    );
+}
+
 for (const { left, right, why } of skipPairs) {
   const leftRan = Boolean(areaResults[left.area]);
   const rightRan = Boolean(areaResults[right.area]);
@@ -1353,61 +1745,81 @@ const anyAreaRan = Object.values(areaResults).some(Boolean);
 
 // --- provenance: the containers must be running the image we built ----------
 
-// Health versions come from the app; container images come from docker. A
-// container left running from another build that reports the same version
-// would satisfy every version check, so each lane is also bound to the image
-// the stamp describes.
-for (const [lane, ran, field] of [
-  ['upgrade', upgradeLane?.swap?.ok === true, 'upgradeContainerImage'],
-  ['fresh', freshLane?.up?.ok === true, 'freshContainerImage'],
+// Nothing the app reports identifies a build: /api/health names no version,
+// on purpose. Image ids come from docker — up.sh reads each lane's Fresco
+// container as it comes up, and the audit re-reads the containers that still
+// exist at the end — so each lane is bound to the image the stamp describes by
+// what docker says ran, corroborated by a second reader.
+const stampedImageId = bareDigest(audit?.stampImageId);
+for (const [lane, ran, cameUpAs, field] of [
+  [
+    'upgrade',
+    upgradeLane?.swap?.ok === true,
+    upgradeLane?.swappedImageId,
+    'upgradeContainerImage',
+  ],
+  [
+    'fresh',
+    freshLane?.up?.ok === true,
+    freshLane?.imageId,
+    'freshContainerImage',
+  ],
+  // Torn down before the audit reads the containers, so there is no field for
+  // it to corroborate; the id up.sh read as the lane came up is what binds it.
+  ['analytics', analyticsLane?.up?.ok === true, analyticsLane?.imageId, null],
+  ['twofactor', twoFactorLane?.up?.ok === true, twoFactorLane?.imageId, null],
 ]) {
-  if (!ran || !audit) continue;
+  if (!ran) continue;
+  if (!cameUpAs)
+    unaccounted.push(
+      `${lane} lane: up.sh reported no image id for its Fresco container, so nothing proves it ran the pending build`,
+    );
+  else if (stampedImageId && cameUpAs !== stampedImageId)
+    failures.push(
+      `${lane} lane: its Fresco container came up running image ${cameUpAs}, but the pending build is ${audit.stampImageId} — the lane did not run the image under test`,
+    );
+  if (!audit || !field) continue;
   const running = bareDigest(audit[field]);
-  const stamped = bareDigest(audit.stampImageId);
   if (!running)
     unaccounted.push(
-      `${lane} lane: the artifact audit could not read the image its Fresco container is running, so nothing but a version string says it ran the pending build`,
+      `${lane} lane: the artifact audit could not read the image its Fresco container is running, so the image id up.sh reported is uncorroborated`,
     );
-  else if (stamped && running !== stamped)
+  else if (stampedImageId && running !== stampedImageId)
     unaccounted.push(
       `${lane} lane: its Fresco container is running image ${audit[field]}, but the pending build is ${audit.stampImageId} — that lane exercised a different image`,
     );
 }
 
-if (upgradeLane?.swap?.ok === true) {
-  if (!upgradeLane.swappedVersion)
-    unaccounted.push(
-      'upgrade lane: the swapped stack reported no usable version, so nothing proves it is running the pending image',
-    );
-  else if (buildVersion && upgradeLane.swappedVersion !== buildVersion)
-    failures.push(
-      `upgrade lane: after the swap the stack reports version ${upgradeLane.swappedVersion}, but the pending image is ${buildVersion} — the swap did not run the image under test`,
-    );
-  // Required as strictly as the swapped and fresh versions are: it is the only
-  // evidence distinguishing a real upgrade from running one build twice, and a
-  // missing field must not be able to skip the comparison.
-  if (!upgradeLane.releasedVersion)
-    unaccounted.push(
-      'upgrade lane: the released baseline reported no usable version, so nothing distinguishes this run from upgrading a build to itself',
-    );
-  if (
-    upgradeLane.releasedVersion &&
-    upgradeLane.swappedVersion &&
-    upgradeLane.releasedVersion === upgradeLane.swappedVersion
-  ) {
-    const message = `upgrade lane: the released and pending stacks both report version ${upgradeLane.swappedVersion} — no version change means no upgrade path was exercised`;
-    if (expectedVersion) failures.push(message);
-    else warnings.push(message);
+// The fixtures every script-driven lane imports. Without them those lanes
+// could not have exercised anything they claim to.
+if (fixtures?.ok !== true)
+  unaccounted.push(
+    `the protocol fixtures could not be built (${fixtures?.error ?? 'the fixture agent returned no result'}), so the lanes that import them exercised nothing`,
+  );
+
+// A lane that never came up is not evidence about the build — the same reading
+// the upgrade lane's baseline gets — but the pending image failing to start is.
+for (const [name, lane] of [
+  ['analytics lane', analyticsLane],
+  ['two-factor lane', twoFactorLane],
+]) {
+  if (!lane) {
+    unaccounted.push(`${name}: it never ran`);
+    continue;
   }
-}
-if (freshLane?.up?.ok === true) {
-  if (!freshLane.version)
-    unaccounted.push(
-      'fresh lane: the stack reported no usable version, so nothing proves it is running the pending image',
-    );
-  else if (buildVersion && freshLane.version !== buildVersion)
+  if (lane.up?.ok === false)
     failures.push(
-      `fresh lane: the stack reports version ${freshLane.version}, but the pending image is ${buildVersion} — the lane tested a different build`,
+      `${name}: the pending image would not start in this configuration (${lane.up.error ?? 'no error reported'})`,
+    );
+  else if (!lane.up)
+    unaccounted.push(`${name}: the stack agent returned no result`);
+  if (lane.up?.ok === true && !lane.imageId)
+    unaccounted.push(
+      `${name}: up.sh reported no image id for its Fresco container, so nothing proves it ran the pending build`,
+    );
+  if (!keepStack && lane.up?.ok === true && lane.down?.ok !== true)
+    warnings.push(
+      `${name}: its stack did not tear down cleanly (${lane.down?.error ?? 'no teardown result'}) — run bash ${HARNESS}/down.sh`,
     );
 }
 
@@ -1759,8 +2171,8 @@ if (upgradeLane?.seed?.pass) {
 // current release is the digest the pull resolved, so a run that never
 // recorded one has no baseline identity — and the audit re-reads the tag's
 // digest so a pull agent that reported success without pulling is caught.
-// This binds the image the tag pointed at; it cannot retro-inspect the
-// baseline container, which the swap has already replaced by audit time.
+// This binds the image the tag pointed at; the baseline container itself is
+// covered below, from the image id up.sh read as it came up.
 const pulledDigest = shaped(released?.image, DIGEST_REF, 256);
 if (upgradeLane?.upReleased?.ok === true) {
   if (!pulledDigest)
@@ -1777,6 +2189,36 @@ if (upgradeLane?.upReleased?.ok === true) {
       unaccounted.push(
         `the pull reported baseline digest ${pulledDigest} but ${releasedImage} now resolves to ${auditedDigest} — the lane may not have started from the image the pull claims`,
       );
+  }
+
+  // The swap replaced the baseline container before the audit ran, so the
+  // image id up.sh read from it as it came up is the only record of what the
+  // upgrade started from. Required as strictly as the swapped and fresh ids:
+  // it is the only evidence distinguishing a real upgrade from running one
+  // build twice, and a missing field must not be able to skip the comparison.
+  const baselineImageId = upgradeLane.releasedImageId;
+  if (!baselineImageId)
+    unaccounted.push(
+      'upgrade lane: up.sh reported no image id for the released baseline, so nothing distinguishes this run from upgrading a build to itself',
+    );
+  else {
+    if (audit) {
+      const auditedBaselineId = bareDigest(audit.releasedImageId);
+      if (!auditedBaselineId)
+        unaccounted.push(
+          `the artifact audit could not read an image id for ${releasedImage}, so the baseline up.sh reported is uncorroborated`,
+        );
+      else if (auditedBaselineId !== baselineImageId)
+        unaccounted.push(
+          `the upgrade lane's baseline container ran image ${baselineImageId}, but ${releasedImage} is image ${auditedBaselineId} — the lane may not have started from the released image`,
+        );
+    }
+    if (stampedImageId && baselineImageId === stampedImageId) {
+      const message =
+        'upgrade lane: the released baseline and the pending build are the same image — no upgrade path was exercised';
+      if (expectedVersion) failures.push(message);
+      else warnings.push(message);
+    }
   }
 }
 
@@ -1990,7 +2432,44 @@ if (
 // chose to mention. The release bundles the pending @codaco/* packages into
 // the image, so a library changeset ships inside the build under test — an
 // unclassified one is behaviour nobody said was exercised.
+// Packages whose behaviour a deployment-level test cannot meaningfully reach:
+// component libraries and design tokens, verified by the component's own
+// Storybook interaction tests, plus the other applications, which this image
+// does not contain. A changeset may be classified "presentation-only" only if
+// every package it bumps is one of these AND at least one is a component
+// library — so a changeset that also ships app or runtime behaviour cannot be
+// set aside, and a package nobody has listed here fails closed rather than
+// being assumed harmless.
+const COMPONENT_PACKAGES = [
+  '@codaco/fresco-ui',
+  '@codaco/tailwind-config',
+  '@codaco/art',
+];
+const OTHER_APPLICATIONS = [
+  '@codaco/architect',
+  '@codaco/interviewer',
+  '@codaco/studio-client',
+  '@codaco/studio-server',
+  '@codaco/studio-rpc',
+  '@codaco/studio-sync',
+  'posthog-proxy-worker',
+];
+const packagesOf = new Map(
+  (audit?.changesetPackages ?? [])
+    .filter(
+      (entry) =>
+        entry &&
+        typeof entry.changeset === 'string' &&
+        Array.isArray(entry.packages),
+    )
+    .map((entry) => [
+      entry.changeset,
+      entry.packages.filter((name) => typeof name === 'string'),
+    ]),
+);
+
 const untestedShippedChanges = [];
+const presentationOnlyChanges = [];
 const classified = new Map();
 for (const entry of report?.changesetCoverage ?? []) {
   const name = shaped(entry?.changeset, CHANGESET_NAME, 200);
@@ -2027,6 +2506,32 @@ for (const entry of report?.changesetCoverage ?? []) {
     );
     continue;
   }
+  // A claim that a changeset is beyond this test's reach is the one
+  // classification that removes something from the coverage tally without a
+  // check having run, so it is the one the workflow checks for itself.
+  if (entry.status === 'presentation-only') {
+    const packages = packagesOf.get(name);
+    if (!packages)
+      unaccounted.push(
+        `the release critic set changeset "${name}" aside as presentation-only, but the artifact audit did not report which packages it bumps, so the claim cannot be checked`,
+      );
+    else {
+      const beyond = packages.filter(
+        (pkg) =>
+          !COMPONENT_PACKAGES.includes(pkg) &&
+          !OTHER_APPLICATIONS.includes(pkg),
+      );
+      const components = packages.filter((pkg) =>
+        COMPONENT_PACKAGES.includes(pkg),
+      );
+      if (beyond.length || !components.length)
+        unaccounted.push(
+          `the release critic set changeset "${name}" aside as presentation-only, but it bumps ${beyond.length ? beyond.join(', ') : 'no component library at all'} — that is behaviour this run either exercised or did not`,
+        );
+      else presentationOnlyChanges.push(`${name}: ${note}`);
+    }
+  }
+
   classified.set(name, entry.status);
   if (entry.status === 'untested')
     untestedShippedChanges.push(`${name}: ${note || 'no reason given'}`);
@@ -2110,12 +2615,15 @@ return {
   unaccounted,
   warnings,
   untestedShippedChanges,
+  presentationOnlyChanges,
   expectedVersion,
   testedVersion: buildVersion,
   pendingImage: { ...build },
   releasedImage: pulledDigest ?? releasedImage,
   upgradeLane,
   freshLane,
+  analyticsLane,
+  twoFactorLane,
   audit: auditResult,
   artifacts: ARTIFACTS,
   teardown: keepStack ? 'stacks deliberately kept' : teardown,

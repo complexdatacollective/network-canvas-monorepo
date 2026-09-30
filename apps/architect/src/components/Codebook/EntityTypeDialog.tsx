@@ -186,7 +186,7 @@ const EntityTypeDialog = ({
    * Identifying the session by what is being edited is not enough. `type` is
    * undefined for a creation, so `new-${entity}` was the SAME key for two
    * consecutive creations of the same entity — and this dialog is mounted for
-   * the lifetime of its owner (`NewTypeDialog` keeps it rendered and only
+   * the lifetime of its owner (`CodebookPage` keeps it rendered and only
    * toggles `show`), so nothing else separates them. What normally hides that
    * is `Modal`'s exit animation: it unmounts the form, whose `useForm` cleanup
    * resets the store. A close followed by another open before that exit

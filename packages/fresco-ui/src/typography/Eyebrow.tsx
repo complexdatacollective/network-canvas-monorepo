@@ -10,6 +10,7 @@ export const eyebrowVariants = cva({
       default: 'text-current',
       muted: 'text-current/60',
       primary: 'text-primary',
+      subtle: 'font-normal text-current/60',
     },
   },
   defaultVariants: {
@@ -26,6 +27,8 @@ type EyebrowProps = {
  * A short uppercase label set above or beside something else: a category
  * marker, a field label in a fact list, a "featured" flag. Bold monospace at
  * the smallest size, with tight leading so it never reads as a line of copy.
+ * `tone="subtle"` keeps the muted color but drops the bold face, for a
+ * classifier that sits beside its subject rather than above it.
  *
  * Renders a `<p>` by default; use `render` to substitute `<span>`, `<dt>` or
  * another element that fits the surrounding semantics.

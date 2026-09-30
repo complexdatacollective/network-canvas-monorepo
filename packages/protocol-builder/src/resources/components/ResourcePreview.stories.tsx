@@ -2,14 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, within } from 'storybook/test';
 
-import { ResourceGatewayProvider } from '../context.tsx';
-import { InMemoryResourceGateway } from '../InMemoryResourceGateway.ts';
+import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../client.tsx';
 import type { PreviewableResourceKind } from './resourceKinds.ts';
 import ResourcePreview from './ResourcePreview.tsx';
 import {
   AUDIO_RESOURCE,
+  createStoryHost,
   IMAGE_RESOURCE,
-  PROTOCOL_RESOURCES,
   VIDEO_RESOURCE,
 } from './storyFixtures.ts';
 
@@ -29,20 +29,22 @@ function ResourcePreviewHost({
   name,
   hostCanResolve = true,
 }: ResourcePreviewHostProps) {
-  const [gateway] = useState(() => {
-    const host = new InMemoryResourceGateway({
-      committed: [...PROTOCOL_RESOURCES],
-    });
-    if (!hostCanResolve) host.failNext('resolvePreview');
-    return host;
-  });
+  const [host] = useState(() =>
+    createStoryHost(
+      hostCanResolve
+        ? {}
+        : { refuses: { procedure: 'preview', forever: true } },
+    ),
+  );
 
   return (
-    <ResourceGatewayProvider gateway={gateway}>
-      <main className="mx-auto max-w-2xl p-6">
-        <ResourcePreview resourceId={resourceId} kind={kind} name={name} />
-      </main>
-    </ResourceGatewayProvider>
+    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ResourceClientProvider>
+        <main className="mx-auto max-w-2xl p-6">
+          <ResourcePreview resourceId={resourceId} kind={kind} name={name} />
+        </main>
+      </ResourceClientProvider>
+    </ProtocolBuilder>
   );
 }
 
@@ -54,7 +56,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Renders a resource’s content from a URL the host resolved. The URL is a lease rather than a fact — the host may be holding an object URL, a signed link or a cache entry open for as long as this is on screen — so a lease that says when it ends is renewed shortly before it does, alongside the lease it replaces rather than in place of it. The in-memory host these stories run over issues data URLs that never expire, so nothing here is renewed.',
+          'Renders a resource’s content from a URL the host resolved. The URL is a lease rather than a fact — a host may answer with a signed link that stops resolving, and it says when by putting an expiry on its answer — so one that says so is renewed shortly before it does, alongside the URL it replaces rather than in place of it. The in-memory host these stories run over issues data URLs that never expire, so nothing here is renewed.',
       },
     },
   },

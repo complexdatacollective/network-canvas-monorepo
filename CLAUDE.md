@@ -61,6 +61,15 @@ gates come from the main checkout's `.husky/` scripts, so they apply once
 
 ## Workspace mechanics
 
+### Development VM
+
+`dev-vm/` holds a Lima configuration for a Linux VM that carries the
+repository, the toolchain and every spawned process, so that a managed Mac's
+endpoint-security agents (which tax every process launch and file open on the
+host) never see them. `dev-vm/README.md` documents setup, daily use, and
+running Claude Code inside it. The rule that makes it work: nothing is mounted
+from the host; the repo is a clone on the VM's own data disk.
+
 ### Source-first workspace packages
 
 Internal consumption of workspace packages is **source-first**: every
@@ -81,7 +90,7 @@ Rules that keep this working:
 - **Publishing** — each published package keeps its live `exports` on `src/` and
   carries a dist-pointing override in `publishConfig`; `changeset publish`
   delegates to `pnpm publish`, which applies the swap at pack time.
-  `scripts/verify-publish-exports.mjs` (run in the release job, or manually
+  `scripts/release/verify-publish-exports.mjs` (run in the release job, or manually
   after `pnpm build`) asserts every packed tarball resolves into `dist/`.
   fresco-ui's 140-entry map pair is generated: after adding/removing a subpath
   in `exports`, run `pnpm --filter @codaco/fresco-ui sync-exports`; a vitest
@@ -96,12 +105,12 @@ Rules that keep this working:
   Packages PR then fails the npm version guard. Instead, from a clean checkout
   of the merged commit, with an npm token that may create packages in the
   scope, run
-  `pnpm --filter <pkg> build && node scripts/verify-publish-exports.mjs <pkg> && pnpm --filter <pkg> publish --access public`,
+  `pnpm --filter <pkg> build && node scripts/release/verify-publish-exports.mjs <pkg> && pnpm --filter <pkg> publish --access public`,
   push the `<pkg>@<version>` tag the lane would have created, and add the
   package's trusted publisher on npmjs.com (package Settings → Trusted
   publishing: repository `complexdatacollective/network-canvas-monorepo`,
   workflow `ci-and-release.yml`, environment `npm-publish`).
-  `scripts/check-first-publications.mjs` refuses the Version Packages merge
+  `scripts/release/check-first-publications.mjs` refuses the Version Packages merge
   and the release job's publish path until npm knows every lane package.
 - **No `~/` path aliases in package source.** Consumers typecheck package
   source inside their own TS program, where the consumer's `paths` win — an
@@ -167,29 +176,55 @@ edge.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
 
-#### Hotfix releases for Architect and Interviewer
+#### Hotfix releases for Architect, Interviewer and Fresco
 
-Both apps' production jobs build `main`, so the normal lane cannot ship a patch
+The apps' production jobs build `main`, so the normal lane cannot ship a patch
 without everything else merged since the last release. When `main` holds work
 that must not go out yet, cut `hotfix/<app>-<version>` from the released tag,
 cherry-pick the fix, bump `package.json` + `CHANGELOG.md`, and run the
 **Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) from
 `main`, naming that branch in `source_ref`. The lane only ships the newest
-line — one production site per app means a `--prod` deploy always replaces what
-is live. Afterwards, merge the hotfix branch into `main` (dropping only that
-app's entry from the changeset it consumed). Both release lanes refuse to
-deploy a tree that does not contain the newest released commit, and the
-tag-driven guard skips a version whose tag already exists — so until that merge
-lands, `main` cannot release the app at all. Cherry-picking does not count: the
-guard checks commit ancestry. Full procedure in each app's `RELEASING.md`.
+line — one production target per app means a deploy always replaces what is
+live. Fresco's image installs the published `@codaco/*` packages rather than
+workspace source, so its hotfix mirrors the branch with every workspace package
+changed since the release tag (and its dependents) vendored as tarballs, and
+publishes nothing to npm. Afterwards, merge the hotfix branch into `main`
+(dropping only that app's entry from the changeset it consumed). Both release
+lanes refuse to deploy a tree that does not contain the newest released
+commit, and the tag-driven guard skips a version whose tag already exists — so
+until that merge lands, `main` cannot release the app at all. Cherry-picking
+does not count: the guard checks commit ancestry. Full procedure in
+`apps/architect/RELEASING.md`, `apps/interviewer/RELEASING.md` and
+`apps/fresco/CLAUDE.md`.
+
+#### Architect version archive
+
+Released Architect versions stay reachable at a per-major host —
+`@codaco/architect@8.2.5` → `https://v8.architect.networkcanvas.com` — so
+researchers on an older protocol schema keep a working Architect. Keyed by major
+version because majors track schema versions, so a later release replaces an
+earlier one on the same line. Run the **Architect Archive Release** workflow
+(`.github/workflows/architect-archive-release.yml`) with the released tag; it is
+deliberately not wired into the release lane yet, and it never touches
+production, tags, or GitHub releases.
+
+The archive is a Cloudflare Worker serving static assets, not Netlify: Netlify
+overrides `Cache-Control` on `/sw.js` and `/manifest.webmanifest` for any
+non-production deploy. Cloudflare instead **appends** `_headers` rules where
+Netlify replaces them, and rejects Netlify's SPA `_redirects` outright, so the
+deploy-time transform in
+`apps/architect/scripts/write-cloudflare-archive-config.mjs` reshapes a copy.
+Never "fix" `apps/architect/public/_headers` for Cloudflare — its Netlify shape
+is asserted in CI by `scripts/buildtime/assert-pwa-cache-headers.mjs`. Details in
+`apps/architect/RELEASING.md`.
 
 #### Apps that release by mirroring
 
 Fresco and the two classic apps are developed here but ship from their own
-GitHub repositories. `scripts/mirror-app.mjs` replaces the external repo's
+GitHub repositories. `scripts/release/mirror-app.mjs` replaces the external repo's
 default branch with the app's source as a single linear-append commit, resolving
 every `workspace:`/`catalog:` specifier to a registry version
-(`scripts/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
+(`scripts/release/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
 external repository is a mirror, never a source of truth — changes made there
 are overwritten by the next release.
 
@@ -260,3 +295,13 @@ Before adding code for any feature, fix, or refactor, search for the existing pa
 Which E2E suites CI selects and why, the two-job pixel/native split, release-branch
 verdict reuse, Storybook interaction-test determinism, Chromatic/TurboSnap wiring, and
 the visual snapshot baseline workflow all live in the `ci-and-e2e-policy` skill.
+
+# Learning more about Effect
+
+This repository uses the Effect Typescript library.
+
+Before writing any Effect code, first read `node_modules/effect/AGENTS.md`
+**completely**, and follow the links in the file when required.
+
+If you need to learn more about particular Effect apis and concepts that the
+guide doesn't cover, search through the source code in `node_modules/effect/src`.

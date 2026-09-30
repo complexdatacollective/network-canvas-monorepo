@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { ResourceGatewayFailure, ResourceResult } from '../gateway.ts';
-import { callGateway } from '../gatewayCall.ts';
+import { createMessageError } from '@codaco/app-i18n/messages';
+
+import { resourceFailureMessages } from '../resourceMessages.ts';
+import {
+  resourceFailure,
+  type ResourceGatewayFailure,
+  type ResourceResult,
+} from '../types.ts';
+
+const UNREACHABLE_MESSAGE = createMessageError(
+  resourceFailureMessages.unreachable,
+);
 
 /**
  * A place in the order of calls, taken before the work that leads to one
@@ -9,9 +19,9 @@ import { callGateway } from '../gatewayCall.ts';
  *
  * Some calls are preceded by work of their own — reading a file the researcher
  * chose, for one — and that work can take longer for an earlier choice than
- * for a later one. Ordering by when the gateway call is made would let the
- * slower, older choice arrive last and win; ordering by when the researcher
- * chose is what this claims.
+ * for a later one. Ordering by when the host is called would let the slower,
+ * older choice arrive last and win; ordering by when the researcher chose is
+ * what this claims.
  */
 export type ResourceAttemptClaim = Readonly<{
   /**
@@ -45,7 +55,7 @@ export type ResourceAttempt = Readonly<{
    */
   retry?: () => void;
   /**
-   * Runs one gateway call.
+   * Runs one host call.
    *
    * `onAbandoned` receives what a *successful* call produced when nobody is
    * left to receive it — the researcher has since asked for something else, or
@@ -75,7 +85,7 @@ type AttemptState = Readonly<{
 const IDLE: AttemptState = Object.freeze({ busy: false });
 
 /**
- * One gateway call, its failure, and the retry that repeats it.
+ * One host call, its failure, and the retry that repeats it.
  *
  * Retry is held as the operation itself rather than as a description of it, so
  * "try again" is the same call with the same request id rather than a new
@@ -105,12 +115,19 @@ export function useResourceAttempt(): ResourceAttempt {
       setState({ busy: true });
 
       const settle = async () => {
-        // The call is made inside the helper rather than here: a gateway that
+        // The call happens INSIDE the `try`, not before it: an operation that
         // throws synchronously throws before there is a promise to attach a
         // `catch` to, and the exception would escape into a settling nothing
         // observes — leaving the control busy, with no failure and no retry,
         // for as long as the editor is open.
-        const result = await callGateway(operation);
+        let result: ResourceResult<T>;
+        try {
+          result = await operation();
+        } catch {
+          result = resourceFailure<T>('unavailable', UNREACHABLE_MESSAGE, {
+            retryable: true,
+          });
+        }
         // A result for a superseded call, or for a component that has since
         // gone away, decides nothing — but a successful one may have left
         // something at the host, and this is the last place that knows it

@@ -3,21 +3,37 @@
 import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
 /**
- * Fractional line boxes make integer scroll metrics lie a little: each line
- * set on a non-integer line-height (the ladder floor's `leading-[1.15]` is
- * 13.8px) can round scrollHeight up ~1px against clientHeight, so a clamp of
- * four fully visible lines can measure several pixels "over". A genuinely
- * hidden line contributes at least a full line box (≥12px at the smallest
- * rung), so anything under half of that is rounding, not clipping. Width has
- * no such slack: a single hidden pixel is the upright stroke of a final
- * letter ("Mohammad" clipped to "Mohammac"), so any measured width excess
- * must step the ladder down.
+ * `scrollHeight` and `clientHeight` are each one rounding of a fractional
+ * height, so a line that fits exactly can still measure a pixel or two "over".
+ * Beyond that, the only height a clipped line can lose without losing a glyph
+ * is the half-leading under it — which is a property of the gap between the
+ * font size and the line box, not a fraction of either. A budget taken from the
+ * line box alone is far too generous on tight leading: at `line-height: 1.15`
+ * the half-leading is about 6.5% of the line box, so 15% of it would accept
+ * more than twice the space that is actually empty.
+ *
+ * Width has no such slack — a single hidden pixel is the upright stroke of a
+ * final letter ("Mohammad" clipped to "Mohammac").
  */
-const HEIGHT_TOLERANCE = 6;
+const ROUNDING_SLACK = 2;
+const NO_LINE_HEIGHT_SLACK = 6;
+
+const overflowsHeight = (element: HTMLElement) => {
+  const excess = element.scrollHeight - element.clientHeight;
+  if (excess <= 0) return false;
+  const { lineHeight, fontSize } = getComputedStyle(element);
+  const lineBox = Number.parseFloat(lineHeight);
+  const glyphs = Number.parseFloat(fontSize);
+  // `normal`, or no layout at all, leaves nothing to measure the leading with.
+  if (!Number.isFinite(lineBox) || !Number.isFinite(glyphs) || lineBox <= 0) {
+    return excess > NO_LINE_HEIGHT_SLACK;
+  }
+  const halfLeading = Math.max(0, (lineBox - glyphs) / 2);
+  return excess > Math.max(ROUNDING_SLACK, halfLeading);
+};
 
 const overflows = (element: HTMLElement) =>
-  element.scrollHeight - element.clientHeight > HEIGHT_TOLERANCE ||
-  element.scrollWidth > element.clientWidth;
+  overflowsHeight(element) || element.scrollWidth > element.clientWidth;
 
 type Fitter = {
   element: HTMLElement;

@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-vite';
-import { fn } from 'storybook/test';
+import { useState } from 'react';
+import { expect, fn, screen, userEvent, waitFor } from 'storybook/test';
 
 import Button from '../Button';
 import Paragraph from '../typography/Paragraph';
@@ -142,4 +143,74 @@ export const Info: Story = {
     accent: 'info',
   },
   render: (args) => <DialogTemplate {...args} />,
+};
+
+function DialogWithinADialogExample() {
+  const [inner, setInner] = useState(false);
+
+  return (
+    <Dialog
+      open
+      title="Edit this prompt"
+      description="Opening a second dialog from in here dims this one the same way this one dims the page."
+      size="editor"
+    >
+      <Paragraph margin="none">
+        The attribute this prompt asks about is chosen in its own dialog.
+      </Paragraph>
+      <Button color="primary" onClick={() => setInner(true)}>
+        Change attribute
+      </Button>
+      <Dialog
+        open={inner}
+        title="Choose an attribute"
+        description="Written inside the dialog above, rather than beside it."
+        closeDialog={() => setInner(false)}
+        footer={<Button onClick={() => setInner(false)}>Cancel</Button>}
+      >
+        <Paragraph margin="none">
+          Pretend there is a list of attributes here.
+        </Paragraph>
+      </Dialog>
+    </Dialog>
+  );
+}
+
+/**
+ * A dialog written inside another dialog's children, rather than opened
+ * beside it through `useDialog`.
+ *
+ * Each open layer dims and blurs what is behind it, so the page recedes
+ * further the deeper the stack goes. Base UI's own default is the opposite —
+ * it suppresses the backdrop of any dialog nested inside an open one, and
+ * nesting is React context, so a portalled overlay opened from inside a dialog
+ * counts — which would leave this inner dialog floating over an undimmed
+ * parent. `Modal` overrides it for every modal surface in the system.
+ */
+export const DialogWithinADialog: Story = {
+  render: () => <DialogWithinADialogExample />,
+  play: async () => {
+    const backdrops = () =>
+      document.querySelectorAll('[data-modal-backdrop]').length;
+
+    await expect(
+      await screen.findByRole('dialog', { name: 'Edit this prompt' }),
+    ).toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(backdrops()).toBe(1);
+    });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Change attribute' }),
+    );
+
+    await expect(
+      await screen.findByRole('dialog', { name: 'Choose an attribute' }),
+    ).toBeInTheDocument();
+    // The inner dialog's own dimmed layer, on top of the outer one's. Left
+    // open: the stacked dim is what this story is a picture of.
+    await waitFor(async () => {
+      await expect(backdrops()).toBe(2);
+    });
+  },
 };

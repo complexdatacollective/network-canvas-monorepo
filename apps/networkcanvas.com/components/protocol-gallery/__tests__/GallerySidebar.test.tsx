@@ -77,12 +77,18 @@ describe('GallerySidebar', () => {
     );
   });
 
-  it('changes the sort through a radio group', () => {
+  it('changes the sort through a select', () => {
     const onSortChange = vi.fn();
     renderSidebar({ onSortChange });
 
-    expect(screen.getByRole('radio', { name: 'Most recent' })).toBeChecked();
-    fireEvent.click(screen.getByRole('radio', { name: 'Title A–Z' }));
+    const sort = screen.getByRole('combobox', { name: 'Sort by' });
+    expect(sort).toHaveTextContent('Most recent');
+
+    fireEvent.click(sort);
+    const option = screen.getByRole('option', { name: 'Title A–Z' });
+    fireEvent.pointerDown(option);
+    fireEvent.pointerUp(option);
+    fireEvent.click(option);
     expect(onSortChange).toHaveBeenCalledWith('titleAsc');
   });
 });

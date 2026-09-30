@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import ResponsiveContainer from '@codaco/fresco-ui/layout/ResponsiveContainer';
@@ -21,6 +23,10 @@ const messages = defineMessages({
   },
 });
 
+const renderSettingsLinkChunks = (chunks: ReactNode[]) => (
+  <Link href="/dashboard/settings">{chunks}</Link>
+);
+
 export default async function AnonymousRecruitmentWarning() {
   const intl = await getServerIntl();
 
@@ -38,9 +44,7 @@ export default async function AnonymousRecruitmentWarning() {
           {intl.formatMessage(
             messages.anonymousRecruitmentIsEnabledThisMeansThat,
             {
-              tag1: (chunks) => (
-                <Link href="/dashboard/settings">{chunks}</Link>
-              ),
+              tag1: renderSettingsLinkChunks,
             },
           )}
         </AlertDescription>

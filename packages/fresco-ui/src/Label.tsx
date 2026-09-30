@@ -45,7 +45,7 @@ const Label = React.forwardRef<
     >
       {children}
       {required && (
-        <span className="text-destructive" aria-hidden="true">
+        <span className="text-destructive-ink" aria-hidden="true">
           {' '}
           *
         </span>

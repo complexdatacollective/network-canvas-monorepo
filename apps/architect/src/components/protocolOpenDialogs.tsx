@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   AppErrorMessage,
   AppMessage,
@@ -23,6 +23,17 @@ import Markdown from '~/components/Markdown';
 import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
 import { documentationLinks } from '~/utils/documentationLinks';
 const additionalMessages = defineMessages({
+  resourcesMissingTitle: {
+    id: 'architect.additional.protocolOpenDialogs.resourcesMissingTitle',
+    defaultMessage: 'Some resources are missing',
+    description: 'The title text in components / protocolOpenDialogs.',
+  },
+  resourcesMissingDescription: {
+    id: 'architect.additional.protocolOpenDialogs.resourcesMissingDescription',
+    defaultMessage:
+      'This protocol refers to files that were not included in it: {assetList}. Everything else opened normally. Add the files again in Resources — until you do, the protocol cannot be downloaded.',
+    description: 'The description text in components / protocolOpenDialogs.',
+  },
   upgradeToContinue: {
     id: 'architect.additional.protocolOpenDialogs.upgradeToContinue',
     defaultMessage: 'Upgrade to continue',
@@ -143,7 +154,35 @@ export const showProtocolOpenResultDialog = async ({
   openDialog,
   onApproveMigration,
 }: ShowProtocolOpenResultDialogArgs): Promise<void> => {
-  if (!result || result.status === 'opened') {
+  if (!result) {
+    return;
+  }
+  if (result.status === 'opened') {
+    // The protocol is already open behind this dialog — it says what is
+    // missing and what to do, not that anything failed.
+    if (result.unresolvedAssetNames?.length) {
+      await openDialog({
+        type: 'acknowledge',
+        intent: 'warning',
+        title: createElement(AppMessage, {
+          message: additionalMessages.resourcesMissingTitle,
+        }),
+        description: createElement(AppErrorMessage, {
+          error: createMessageError(
+            additionalMessages.resourcesMissingDescription,
+            { assetList: { list: result.unresolvedAssetNames } },
+          ),
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, {
+              message: additionalMessages.oK,
+            }),
+            value: true,
+          },
+        },
+      });
+    }
     return;
   }
   if (result.status === 'migration-required') {

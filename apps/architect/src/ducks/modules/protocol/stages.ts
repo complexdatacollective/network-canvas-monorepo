@@ -5,7 +5,7 @@ import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
 
-import { commitStageEditorDraft } from './commitStageEditorDraft';
+import { commitStage } from './commitStage';
 import { deleteStage } from './deleteStage';
 
 type StagesState = Stage[];
@@ -183,12 +183,10 @@ const stagesSlice = createSlice({
 
         return state.filter((stage) => stage.id !== stageId);
       })
-      // The stage half of the stage editor's atomic commit; `codebook` handles
-      // the other half of the very same action. This is the ONLY way a stage is
-      // created, and it always saves the whole stage (overwrite, not merge),
-      // because a key the form no longer carries has been removed rather than
-      // left untouched.
-      .addCase(commitStageEditorDraft, (state, action) => {
+      // The ONLY way a stage is created or edited. It always saves the whole
+      // stage (overwrite, not merge), because a key the form no longer carries
+      // has been removed rather than left untouched.
+      .addCase(commitStage, (state, action) => {
         const { stageId, stage, index } = action.payload;
 
         if (!stageId) {
@@ -210,12 +208,10 @@ const stagesSlice = createSlice({
 
 // Export action creators (thunks)
 //
-// Writing a stage is NOT here: `commitStageEditorDraft` is the only way a stage
-// is created or edited, because a stage write and the codebook write that goes
-// with it have to land as one action (see the extra reducer above). The
-// merge-in-place `updateStage` and `deletePrompt` reducers this slice used to
-// carry were left with no callers by that change and have been deleted, so
-// there is no second, non-transactional way back in.
+// Writing a stage is NOT here: `commitStage` is the only way a stage is created
+// or edited (see the extra reducer above). The merge-in-place `updateStage` and
+// `deletePrompt` reducers this slice used to carry were left with no callers by
+// that change and have been deleted, so there is no second way back in.
 export const actionCreators = {
   deleteStage: deleteStageAsync,
   moveStage: (oldIndex: number, newIndex: number) =>

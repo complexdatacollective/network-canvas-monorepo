@@ -4,14 +4,12 @@
 export type ThemeColorStyle = {
   color: string;
   contrast: string;
-  label?: string;
 };
 
 export const paletteColorStyles = {
   'white': {
     color: 'var(--color-white)',
     contrast: 'var(--text)',
-    label: 'var(--text)',
   },
   'black': {
     color: 'var(--color-black)',
@@ -60,12 +58,10 @@ export const paletteColorStyles = {
   'mustard': {
     color: 'var(--color-mustard)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'mustard-dark': {
     color: 'var(--color-mustard-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'rich-black': {
     color: 'var(--color-rich-black)',
@@ -86,22 +82,18 @@ export const paletteColorStyles = {
   'platinum': {
     color: 'var(--color-platinum)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'platinum-dark': {
     color: 'var(--color-platinum-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'sea-serpent': {
     color: 'var(--color-sea-serpent)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'sea-serpent-dark': {
     color: 'var(--color-sea-serpent-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'purple-pizazz': {
     color: 'var(--color-purple-pizazz)',
@@ -130,22 +122,18 @@ export const paletteColorStyles = {
   'kiwi': {
     color: 'var(--color-kiwi)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'kiwi-dark': {
     color: 'var(--color-kiwi-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'neon-carrot': {
     color: 'var(--color-neon-carrot)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'neon-carrot-dark': {
     color: 'var(--color-neon-carrot-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'barbie-pink': {
     color: 'var(--color-barbie-pink)',

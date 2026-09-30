@@ -17,7 +17,6 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
@@ -28,8 +27,8 @@ import {
 } from '../useProtocolNavGuard';
 
 // Intercepts the fresco dialog request so the test can read the config shown to
-// the user and auto-confirm it. Records every dispatched action (resetDraft is a
-// thunk, i.e. a function, so we can detect it by type).
+// the user and auto-confirm it. Records every dispatched action; the download
+// thunk is the only function among them, so it is detected by type.
 const setup = (
   dialogAction:
     | 'leave'
@@ -77,7 +76,7 @@ describe('promptLeaveEditor', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses a separate discard dialog and resets a dirty stage draft when returning to the start screen', async () => {
+  it('uses a separate discard dialog for a dirty stage draft when returning to the start screen', async () => {
     const { dispatch, dispatched, openDialog, getCaptured } =
       setup('discard-and-leave');
     const performLeave = vi.fn();
@@ -111,15 +110,11 @@ describe('promptLeaveEditor', () => {
     });
     expect(captured.actions.secondary).toBeUndefined();
 
-    // resetDraft is a thunk, so a function is dispatched to clear the draft.
-    expect(dispatched.some((action) => typeof action === 'function')).toBe(
-      true,
-    );
     expect(dispatched).toContainEqual(clearActiveProtocol());
     expect(performLeave).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the reassuring copy and does NOT reset the draft when the editor is pristine', async () => {
+  it('keeps the reassuring copy when the editor is pristine', async () => {
     const { dispatch, dispatched, openDialog, getCaptured } = setup();
     const performLeave = vi.fn();
 
@@ -138,7 +133,7 @@ describe('promptLeaveEditor', () => {
     );
     expect(renderQueuedMessage(captured.description)).not.toMatch(/browser/i);
 
-    // No draft-reset thunk for a pristine editor.
+    // Nothing is downloaded, so no thunk is dispatched.
     expect(dispatched.some((action) => typeof action === 'function')).toBe(
       false,
     );
@@ -284,7 +279,6 @@ describe('getLeavePersistence', () => {
         app,
         protocols,
         protocolValidation,
-        stageEditorDraft,
         activeProtocol: createTimeline(activeProtocol),
       }),
     });

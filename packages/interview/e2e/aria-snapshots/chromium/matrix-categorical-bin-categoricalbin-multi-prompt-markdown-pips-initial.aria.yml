@@ -4,7 +4,7 @@
       - text: ""
       - strong: these
       - text: ""
-  - button "Category **Family**, 0 items":
+  - button "Category Family, 0 items":
     - heading "Family" [level=4]:
       - strong: Family
   - button "Category Work, 0 items":

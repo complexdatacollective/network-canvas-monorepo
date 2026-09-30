@@ -9,6 +9,7 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
 import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -57,7 +58,13 @@ describe('the Studio client message catalogs', () => {
     const overrides = JSON.parse(
       readFileSync(join(srcDir, 'locales/en-GB.json'), 'utf8'),
     ) as Record<string, string>;
-    expect(checkOverrideLocale(committedEn, overrides)).toEqual([]);
+    expect(
+      checkOverrideLocale(
+        committedEn,
+        overrides,
+        readTranslationSources(join(srcDir, 'locales'), 'en-GB'),
+      ),
+    ).toEqual([]);
   });
 
   it('keeps en-GB an override rather than a full translation', () => {
@@ -120,9 +127,9 @@ describe('the merged catalog a locale actually renders through', () => {
     // simply the same string twice.
     expect(
       enGb.formatMessage({
-        id: 'protocolBuilder.codebookEntity.colorLabel',
-        defaultMessage: 'Protocol color',
+        id: 'protocolBuilder.codebookEntity.colorSectionTitle',
+        defaultMessage: 'Type color',
       }),
-    ).toBe('Protocol colour');
+    ).toBe('Type colour');
   });
 });

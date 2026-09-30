@@ -4,18 +4,24 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MotionConfig } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { commonCatalogs } from '@codaco/app-i18n/common';
+import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
 import Surface from '../../../layout/Surface';
+import { frescoUiCatalogs } from '../../../locales/catalogs';
 import ArrayField, {
   ArrayFieldDragHandle,
+  stripManagedProperties,
   type ArrayFieldEditorProps,
   type ArrayFieldProps,
   type ArrayFieldItemProps,
@@ -93,6 +99,32 @@ function TestEditor({
       <button
         type="button"
         onClick={() => onSave?.({ id: item.id, label: item.label })}
+      >
+        Save editor
+      </button>
+      <button type="button" onClick={onCancel}>
+        Cancel editor
+      </button>
+    </dialog>
+  );
+}
+
+/** An editor that shows the item it was opened on, template and all. */
+function TemplateReportingEditor({
+  item,
+  onSave,
+  onCancel,
+}: ArrayFieldEditorProps<Item>) {
+  if (!item) return null;
+
+  return (
+    <dialog open>
+      <span data-testid="new-item">
+        {JSON.stringify(stripManagedProperties<Item>(item))}
+      </span>
+      <button
+        type="button"
+        onClick={() => onSave?.(stripManagedProperties<Item>(item))}
       >
         Save editor
       </button>
@@ -723,5 +755,224 @@ describe('ArrayField', () => {
     await user.click(screen.getByRole('button', { name: 'Add Item' }));
 
     expect(onChange).toHaveBeenCalledWith([{ label: 'immediate' }]);
+  });
+
+  describe('without an itemTemplate', () => {
+    // Written out rather than through `renderField`, which passes a template:
+    // the prop being omissible at all is half of what these pin.
+    const renderTemplateless = (
+      props: Partial<ArrayFieldProps<Item>> & {
+        onChange: (v?: Item[]) => void;
+      },
+    ) =>
+      render(
+        <DialogProvider>
+          <ArrayField<Item>
+            value={[]}
+            itemComponent={TestItem}
+            confirmDelete={false}
+            {...props}
+          />
+        </DialogProvider>,
+      );
+
+    it('opens the editor on an item with nothing in it', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderTemplateless({
+        onChange,
+        editorComponent: TemplateReportingEditor,
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Add Item' }));
+
+      // Every field of the new row is answered in the editor, so the row it
+      // opens on carries nothing the list invented for it.
+      expect(screen.getByTestId('new-item')).toHaveTextContent('{}');
+
+      await user.click(screen.getByRole('button', { name: 'Save editor' }));
+
+      expect(onChange).toHaveBeenCalledWith([{}]);
+    });
+
+    it('appends an item with nothing in it when there is no editor', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderTemplateless({ onChange, immediateAdd: true });
+
+      await user.click(screen.getByRole('button', { name: 'Add Item' }));
+
+      expect(onChange).toHaveBeenCalledWith([{}]);
+    });
+  });
+
+  describe('the delete confirmation', () => {
+    const promptLabel = {
+      id: 'test.arrayField.prompt',
+      defaultMessage: 'prompt',
+    };
+
+    const renderDeletableRow = (props: Partial<ArrayFieldProps<Item>> = {}) =>
+      renderField({
+        value: [{ id: 'one', label: 'one' }],
+        getId: (item) => item.id,
+        confirmDelete: true,
+        ...props,
+      });
+
+    it('names the row when the list has a word for its rows', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderDeletableRow({ itemLabel: promptLabel, onChange });
+
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+      expect(
+        await screen.findByText('Delete this prompt?'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('This prompt will be removed from the list.'),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Delete prompt' }));
+
+      expect(onChange).toHaveBeenCalledWith([]);
+    });
+
+    /**
+     * A row that names its own affordances in the list's word for a row, and
+     * registers the control that opens the removal so focus can find its way
+     * back into the list afterwards. What every row of a dialog-edited list
+     * looks like.
+     */
+    function NamedRow({
+      item,
+      itemLabel,
+      onDelete,
+      deleteTriggerRef,
+    }: ArrayFieldItemProps<Item>) {
+      const intl = useAppIntl();
+      const noun = itemLabel ? intl.formatMessage(itemLabel) : 'item';
+
+      return (
+        <div>
+          <span>{item.label}</span>
+          <button
+            type="button"
+            ref={deleteTriggerRef}
+            onClick={onDelete}
+            aria-label={`Remove ${noun} ${item.label ?? ''}`}
+          >
+            Remove
+          </button>
+        </div>
+      );
+    }
+
+    const renderNamedRows = (labels: string[]) =>
+      render(
+        <DialogProvider>
+          <ArrayField<Item>
+            value={labels.map((label) => ({ id: label, label }))}
+            getId={(item) => item.id}
+            onChange={() => undefined}
+            itemComponent={NamedRow}
+            itemLabel={promptLabel}
+            confirmDelete
+          />
+        </DialogProvider>,
+      );
+
+    /**
+     * The row's own controls are named for the researcher, and a stage editor
+     * mounts several of these lists at once — so a row that could not reach
+     * the list's noun would leave every one of them a row of buttons called
+     * "Remove" to anyone navigating by them (#1391). The list already declares
+     * that noun for the confirmation; this is the same declaration reaching
+     * the row.
+     */
+    it('tells each row the word the list uses for its rows', () => {
+      renderNamedRows(['one']);
+
+      expect(
+        screen.getByRole('button', { name: 'Remove prompt one' }),
+      ).toBeInTheDocument();
+    });
+
+    it('follows a locale change while the confirmation is up', async () => {
+      const user = userEvent.setup();
+      // The noun is a descriptor so that it is translated like the sentence
+      // around it; this stands in for the catalog entry a real list ships.
+      const view = (locale: string) => (
+        <AppI18nProvider
+          locale={locale}
+          locales={ecosystemLocales}
+          messages={mergeCatalogs(
+            commonCatalogs[locale] ?? {},
+            frescoUiCatalogs[locale] ?? {},
+            locale === 'es' ? { [promptLabel.id]: 'pregunta' } : {},
+          )}
+        >
+          <DialogProvider>
+            <ArrayField<Item>
+              value={[{ id: 'one', label: 'one' }]}
+              getId={(item) => item.id}
+              onChange={() => undefined}
+              itemComponent={TestItem}
+              itemLabel={promptLabel}
+              confirmDelete
+            />
+          </DialogProvider>
+        </AppI18nProvider>
+      );
+
+      const { rerender } = render(view('en'));
+
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(
+        await screen.findByRole('dialog', { name: 'Delete this prompt?' }),
+      ).toBeInTheDocument();
+
+      // The dialog outlives the click that raised it, and the rest of it —
+      // Cancel, and the copy `confirm` supplies itself — is already following
+      // the reader's language, so its named copy has to as well.
+      rerender(view('es'));
+
+      const translated = screen.getByRole('dialog', {
+        name: '¿Eliminar pregunta?',
+      });
+      expect(
+        within(translated).getByText(
+          'Se eliminará de la lista esta entrada (pregunta).',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(translated).getByRole('button', { name: 'Eliminar pregunta' }),
+      ).toBeInTheDocument();
+      expect(
+        within(translated).getByRole('button', { name: 'Cancelar' }),
+      ).toBeInTheDocument();
+    });
+
+    it('keeps the generic wording when the list has no word for its rows', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderDeletableRow({ onChange });
+
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+      expect(await screen.findByText('Are you sure?')).toBeInTheDocument();
+      expect(
+        screen.getByText('This action cannot be undone.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/prompt/)).toBeNull();
+
+      // `Delete` is the row's own control as well as the confirm button, so
+      // the confirm is the one inside the dialog.
+      const dialog = screen.getByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+      expect(onChange).toHaveBeenCalledWith([]);
+    });
   });
 });

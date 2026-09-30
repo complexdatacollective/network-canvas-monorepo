@@ -18,6 +18,7 @@ import {
   SYNC_COMMAND,
   WAVES_COLUMN,
 } from '~/lib/protocolGalleryColumns';
+import { protocolGalleryPathPrefix } from '~/lib/protocolGalleryHosting';
 import type { ProtocolStage } from '~/lib/protocolStages';
 import { summarizeStages } from '~/lib/stageTypes';
 
@@ -30,12 +31,6 @@ export type ProtocolDownload = {
   codebookFilename: string;
   codebookPath: string;
   stages: ProtocolStage[];
-};
-
-export type ProtocolSupplementaryMaterial = {
-  filename: string;
-  path: string;
-  label: string;
 };
 
 export type GalleryProtocol = {
@@ -56,19 +51,25 @@ export type GalleryProtocol = {
   usesRosters: boolean;
   summary: string;
   description: string;
-  sandboxUrl: string | undefined;
   featured: boolean;
   dateAdded: string;
   searchText: string;
   downloads: ProtocolDownload[];
-  supplementaryMaterials: ProtocolSupplementaryMaterial[];
 };
 
 const requiredText = z.string().trim().min(1);
+const listText = requiredText.refine(
+  (value) => splitList(value).length > 0,
+  'must list at least one value',
+);
 const slug = z
   .string()
   .trim()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL-safe slug');
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL-safe slug')
+  .refine(
+    (value) => `/${value}` !== protocolGalleryPathPrefix,
+    'must not be the reserved gallery path',
+  );
 const httpsUrl = z
   .string()
   .trim()
@@ -93,8 +94,6 @@ const codebookFilename = filename.refine(
 );
 const optionalProtocolFilename = z.union([protocolFilename, z.literal('')]);
 const optionalCodebookFilename = z.union([codebookFilename, z.literal('')]);
-const optionalText = z.string().trim().optional().default('');
-const optionalHttpsUrl = z.union([httpsUrl, z.literal('')]);
 const yesNo = z.enum(['yes', 'no']);
 const integer = z.string().trim().regex(/^\d+$/, 'must be a whole number');
 const optionalInteger = z.union([integer, z.literal('')]);
@@ -112,9 +111,9 @@ const authoredRowShape = {
   'Publication URL': httpsUrl,
   'Grant Number': requiredText,
   'Clinical Trials Registration': requiredText,
-  'Field(s)': requiredText,
+  'Field(s)': listText,
   'Population': requiredText,
-  'Edge Generation Methodology': requiredText,
+  'Edge Generation Methodology': listText,
   'Uses Rosters': yesNo,
   'Qualitative Summary': requiredText,
   'Descriptive Sentence': requiredText,
@@ -122,12 +121,7 @@ const authoredRowShape = {
   'Codebook Summary (original)': requiredText,
   'Protocol File (asset)': protocolFilename,
   'Codebook Summary (asset)': codebookFilename,
-  'Fresco': optionalHttpsUrl,
   'Featured': yesNo,
-  'Supplementary Material Label': optionalText,
-  'Supplementary Material (asset)': optionalCodebookFilename
-    .optional()
-    .default(''),
   'Date Added': requiredText,
 };
 
@@ -338,28 +332,6 @@ function buildDownloads(
   return downloads;
 }
 
-function buildSupplementaryMaterials(
-  row: ProtocolRow,
-): ProtocolSupplementaryMaterial[] {
-  const label = row['Supplementary Material Label'];
-  const materialFilename = row['Supplementary Material (asset)'];
-
-  if (!label && !materialFilename) return [];
-  if (!label || !materialFilename) {
-    throw new Error(
-      'Supplementary material: label and filename must be paired',
-    );
-  }
-
-  return [
-    {
-      filename: materialFilename,
-      path: assetPath(materialFilename),
-      label,
-    },
-  ];
-}
-
 async function assertAssetsExist(
   assetFilenames: string[],
   assetDirectory: string,
@@ -460,79 +432,68 @@ async function readProtocolGallery(
       if (seenSlugs.has(row.Slug)) throw new Error('Slug: duplicate slug');
       seenSlugs.add(row.Slug);
 
-      return {
-        row,
-        downloads: buildDownloads(row, waves),
-        supplementaryMaterials: buildSupplementaryMaterials(row),
-      };
+      return { row, downloads: buildDownloads(row, waves) };
     } catch (error) {
       throw rowError(index, error);
     }
   });
 
   await assertAssetsExist(
-    pendingRows.flatMap(({ downloads, supplementaryMaterials }) => [
-      ...downloads.flatMap((download) => [
+    pendingRows.flatMap(({ downloads }) =>
+      downloads.flatMap((download) => [
         download.protocolFilename,
         download.codebookFilename,
       ]),
-      ...supplementaryMaterials.map(
-        ({ filename: materialFilename }) => materialFilename,
-      ),
-    ]),
+    ),
     assetDirectory,
   );
 
-  return pendingRows.map<GalleryProtocol>(
-    ({ row, downloads, supplementaryMaterials }) => {
-      const title = normalizeText(row['Study Title']);
-      const shortName = protocolShortName(
-        row['Protocol Title [StudyAcronym_DatePublishedtoPG]'],
-      );
-      const authors = normalizeText(row['Protocol Authors']);
-      const fields = splitList(row['Field(s)']);
-      const population = normalizeText(row.Population);
-      const edgeGeneration = splitList(row['Edge Generation Methodology']);
-      const description = normalizeText(row['Descriptive Sentence']);
+  return pendingRows.map<GalleryProtocol>(({ row, downloads }) => {
+    const title = normalizeText(row['Study Title']);
+    const shortName = protocolShortName(
+      row['Protocol Title [StudyAcronym_DatePublishedtoPG]'],
+    );
+    const authors = normalizeText(row['Protocol Authors']);
+    const fields = splitList(row['Field(s)']);
+    const population = normalizeText(row.Population);
+    const edgeGeneration = splitList(row['Edge Generation Methodology']);
+    const description = normalizeText(row['Descriptive Sentence']);
 
-      return {
-        slug: row.Slug,
-        title,
+    return {
+      slug: row.Slug,
+      title,
+      shortName,
+      authors,
+      studyPi: normalizeText(row['Study PI']),
+      contact: normalizeText(row['Protocol Contact']),
+      citation: row['Cite Publication'].trim(),
+      publicationUrl: row['Publication URL'],
+      grantNumber: normalizeText(row['Grant Number']),
+      clinicalTrialsRegistration: normalizeText(
+        row['Clinical Trials Registration'],
+      ),
+      fields,
+      population,
+      edgeGeneration,
+      usesRosters: row['Uses Rosters'] === 'yes',
+      summary: normalizeText(row['Qualitative Summary']),
+      description,
+      featured: row.Featured === 'yes',
+      dateAdded: parseDateAdded(row['Date Added']),
+      searchText: [
         shortName,
+        title,
         authors,
-        studyPi: normalizeText(row['Study PI']),
-        contact: normalizeText(row['Protocol Contact']),
-        citation: row['Cite Publication'].trim(),
-        publicationUrl: row['Publication URL'],
-        grantNumber: normalizeText(row['Grant Number']),
-        clinicalTrialsRegistration: normalizeText(
-          row['Clinical Trials Registration'],
-        ),
-        fields,
+        ...fields,
         population,
-        edgeGeneration,
-        usesRosters: row['Uses Rosters'] === 'yes',
-        summary: normalizeText(row['Qualitative Summary']),
+        ...edgeGeneration,
         description,
-        sandboxUrl: row.Fresco || undefined,
-        featured: row.Featured === 'yes',
-        dateAdded: parseDateAdded(row['Date Added']),
-        searchText: [
-          shortName,
-          title,
-          authors,
-          ...fields,
-          population,
-          ...edgeGeneration,
-          description,
-        ]
-          .join(' ')
-          .toLocaleLowerCase('en'),
-        downloads,
-        supplementaryMaterials,
-      };
-    },
-  );
+      ]
+        .join(' ')
+        .toLocaleLowerCase('en'),
+      downloads,
+    };
+  });
 }
 
 export async function getProtocolBySlug(

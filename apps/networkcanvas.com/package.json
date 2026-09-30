@@ -1,6 +1,6 @@
 {
   "name": "networkcanvas.com",
-  "version": "0.4.4",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,13 +9,15 @@
     "build": "next build",
     "optimize-images": "node ./scripts/optimize-images.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/art": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
+    "@codaco/interview": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",

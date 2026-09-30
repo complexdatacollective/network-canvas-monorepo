@@ -5,14 +5,7 @@ import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
-import {
-  acknowledgeAuditAlert,
-  AuditAlertError,
-  listAuditAlerts,
-  markAuditAlertRead,
-  readAuditAlertSettings,
-  updateAuditAlertSettings,
-} from './audit/alerts.ts';
+import type { AssetStore } from './assets.ts';
 import {
   appendAuditedEvent,
   auditActorEventContext,
@@ -23,8 +16,6 @@ import {
   type DeniedAuditReservation,
   reserveDeniedAuditAttempt,
 } from './audit/denial-rate-limit.ts';
-import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
-import type { AuditEventInput } from './audit/events.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -41,25 +32,22 @@ import {
   type AuthCapabilities,
   type DeploymentStatus,
   getInstanceStatus,
+  type InstallationReader,
 } from './domain.ts';
-import {
-  completeSetup,
-  getSetupStatus,
-  SetupError,
-} from './instance/bootstrap.ts';
-import {
-  correlateAuthorizedTeam,
-  logOperational,
-} from './observability/logger.ts';
+import type { JobClient } from './jobs/client.ts';
+import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
+import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
   addAuditedInformationStage,
-  commitAuditedProtocolSection,
   createAuditedProtocol,
   moveAuditedProtocolStage,
   ProtocolCommandAuthorizationError,
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
-import { createProtocolSyncServer } from './protocol/sync.ts';
+import type { RateLimiter } from './rate-limit.ts';
+import { enforceRateLimit } from './rate-limit/enforce.ts';
+import type { SecretsCipher } from './secrets/cipher.ts';
+import { completeSetup, SetupCommandError } from './setup/commands.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
 import { StudyStore } from './study/store.ts';
@@ -79,9 +67,43 @@ import { roleGrantsTeamAdministration } from './team/roles.ts';
 export type RpcContext = {
   principal: Principal | null;
   requestId: string;
+  /**
+   * The WebSocket this call arrived on, when it arrived on one. This is the
+   * protocol-builder host's presence identity: a colleague's cursor belongs to
+   * a connection and goes when the connection does.
+   */
+  connectionId?: string;
+  /**
+   * The browser tab behind this call, when it named one — see
+   * `@codaco/studio-rpc/client-session`. A protocol-builder lock belongs to
+   * this rather than to the connection, so two tabs of one researcher are two
+   * lock owners and one tab's reconnection is not a third.
+   */
+  clientSessionId?: string;
+  /**
+   * Response headers for this call, where the transport has any: oRPC's
+   * `ResponseHeadersPlugin` injects them on the fetch handler (src/app.ts).
+   * Two things write to them — `setup.complete`, because signing the new owner
+   * in means carrying better-auth's `set-cookie` out of a procedure, and a
+   * call the rate limiter refuses, which sets `Retry-After` (#1909).
+   *
+   * Absent for a call that arrived over the WebSocket, which has no response
+   * headers at all; a refusal there carries its retry-after in the error data
+   * alone.
+   */
+  resHeaders?: Headers;
 };
 
 const os = implement(contract).$context<RpcContext>();
+
+/**
+ * Refuses a call whose scope has spent its window (#1909).
+ *
+ * `Retry-After` goes on the response through the plugin's `resHeaders`, and
+ * the same number goes in the error's data — which is what a caller over the
+ * WebSocket has, because a frame carries no headers. The client reads one or
+ * the other without having to know which transport it is on.
+ */
 
 const auditStore = new AuditStore();
 
@@ -92,10 +114,7 @@ type TeamRpcContext = {
   tenantDb: TenantDb;
 };
 
-type AuditReadProcedure = Extract<
-  AuditEventInput,
-  { eventType: 'audit.read_denied' }
->['details']['procedure'];
+type AuditReadProcedure = 'audit.list' | 'audit.get' | 'audit.filterOptions';
 
 /**
  * Thrown from inside the read transaction when the caller's locked membership
@@ -132,19 +151,15 @@ function auditedContextFor(context: TeamRpcContext): AuditedCommandContext {
 async function admitAuditReadDenial(
   context: TeamRpcContext,
 ): Promise<AdmittedDeniedAuditReservation> {
-  const reservation = await reserveDeniedAuditAttempt(
-    {
-      actorId: context.principal.userId,
-      teamId: context.team.id,
-      operation: 'audit.read',
-    },
-    createDeniedAuditSummaryWriter(auditedContextFor(context), 'audit.read'),
-  );
-  if (!reservation.admitted) {
-    throw new ORPCError(
-      reservation.reason === 'overloaded' ? 'TOO_MANY_REQUESTS' : 'FORBIDDEN',
-    );
-  }
+  const reservation = await reserveDeniedAuditAttempt({
+    actorId: context.principal.userId,
+    teamId: context.team.id,
+    operation: 'audit.read',
+  });
+  // Still FORBIDDEN, not TOO_MANY_REQUESTS: the caller is being refused the
+  // read either way, and telling them which refusals were recorded would make
+  // the audit log's own suppression observable from outside.
+  if (!reservation.admitted) throw new ORPCError('FORBIDDEN');
   return reservation;
 }
 
@@ -159,13 +174,28 @@ async function admitAuditReadDenial(
  */
 function warnAuditReadDenialLost(
   context: TeamRpcContext,
-  _procedure: AuditReadProcedure,
-  _error: unknown,
+  procedure: AuditReadProcedure,
+  error: unknown,
 ): void {
-  logOperational('STUDIO_AUDIT_DENIAL_EVENT_LOST', {
-    teamId: context.team.id,
-    requestId: context.requestId,
-  });
+  const cause =
+    error instanceof Error
+      ? { causeName: error.name, causeMessage: error.message }
+      : { causeName: typeof error, causeMessage: String(error) };
+  process.emitWarning(
+    'Required audit.read_denied event was not recorded; the read stayed denied.',
+    {
+      type: 'StudioAuditError',
+      code: 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+      detail: JSON.stringify({
+        eventType: 'audit.read_denied',
+        procedure,
+        teamId: context.team.id,
+        actorId: context.principal.userId,
+        requestId: context.requestId,
+        ...cause,
+      }),
+    },
+  );
 }
 
 /**
@@ -194,12 +224,12 @@ async function denyAuditRead(
       resourceLabel: null,
       details: { procedure, reason: 'insufficient_permission' },
     }));
-    reservation.complete('denied');
+    await reservation.complete('denied');
   } catch (error) {
     warnAuditReadDenialLost(context, procedure, error);
     // Not 'denied': no denial event was committed, so this attempt must not
     // consume the window's allowance. The request stays denied either way.
-    reservation.complete('other');
+    await reservation.complete('other');
   }
   throw new ORPCError('FORBIDDEN');
 }
@@ -240,17 +270,13 @@ async function guardAuditRead<T>(
     // Reached with a reservation held only when the committed role turned out
     // to grant the read after all; that is not a denial, so it releases the
     // slot without spending the allowance.
-    reservation?.complete('other');
+    await reservation?.complete('other');
     return result;
   } catch (error) {
-    if (
-      error instanceof AuditReadDeniedError ||
-      (error instanceof AuditAlertError && error.code === 'FORBIDDEN')
-    ) {
+    if (error instanceof AuditReadDeniedError) {
       return denyAuditRead(context, procedure, reservation);
     }
-    reservation?.complete('other');
-    if (error instanceof AuditAlertError) throw new ORPCError(error.code);
+    await reservation?.complete('other');
     throw error;
   }
 }
@@ -269,11 +295,26 @@ async function assertAuditReadAuthorized(
   throw new AuditReadDeniedError();
 }
 
-const requireUser = os.middleware(({ context, next }) => {
-  const { principal, requestId } = context;
-  if (!principal) throw new ORPCError('UNAUTHORIZED');
-  return next({ context: { principal, requestId } });
-});
+/**
+ * Per-user and per-team RPC limits are enforced inside the three middlewares
+ * that resolve an identity rather than added to each procedure's own chain:
+ * that way a procedure cannot be written without one, and the subject is
+ * already resolved where the check happens. `status` is the only procedure
+ * outside them, and it is the unauthenticated instance descriptor.
+ */
+function createRequireUser(limiter: RateLimiter | undefined) {
+  return os.middleware(async ({ context, next }) => {
+    const { principal, requestId } = context;
+    if (!principal) throw new ORPCError('UNAUTHORIZED');
+    await enforceRateLimit(
+      limiter,
+      'rpc_user',
+      principal.userId,
+      context.resHeaders,
+    );
+    return next({ context: { principal, requestId } });
+  });
+}
 
 async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
   try {
@@ -283,9 +324,6 @@ async function handleTeamCommand<T>(work: () => Promise<T>): Promise<T> {
       throw new ORPCError('NOT_FOUND');
     }
     if (!(error instanceof TeamCommandError)) throw error;
-    if (error.code === 'OVERLOADED') {
-      throw new ORPCError('TOO_MANY_REQUESTS');
-    }
     if (error.code === 'FORBIDDEN') throw new ORPCError('FORBIDDEN');
     if (error.code === 'NOT_FOUND') throw new ORPCError('NOT_FOUND');
     if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
@@ -322,9 +360,26 @@ async function handleAuditedStudyCommand<T>(
       throw new ORPCError('NOT_FOUND');
     }
     if (!(error instanceof StudyCommandError)) throw error;
-    if (error.code === 'OVERLOADED') throw new ORPCError('TOO_MANY_REQUESTS');
     if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
     throw new ORPCError('FORBIDDEN');
+  }
+}
+
+/**
+ * What a refused first-run setup leaves as. A wrong token and no token are
+ * both UNAUTHORIZED and say nothing more: the only caller who can tell them
+ * apart is one who already holds the right one. An owned instance is
+ * NOT_FOUND, which is the same answer the route itself gives once setup is
+ * closed. Anything else is a fault and leaves untouched.
+ */
+async function handleSetupCommand<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof SetupCommandError)) throw error;
+    if (error.reason === 'unauthorized') throw new ORPCError('UNAUTHORIZED');
+    if (error.reason === 'emailTaken') throw new ORPCError('CONFLICT');
+    throw new ORPCError('NOT_FOUND');
   }
 }
 
@@ -333,19 +388,34 @@ export function createRpcRouter(
   deps: {
     auth: AuthService;
     deployment: DeploymentStatus;
-    telemetry: boolean;
-    invitationDeliveryAvailable: boolean;
-    bootstrapToken?: string;
+    /** The installation row behind `status.setup` and the instance's name. */
+    readInstallation: InstallationReader;
+    /** How a command queues the work it causes (#1895); see CreateAppDeps. */
+    jobs?: JobClient;
     pool?: pg.Pool;
+    protocolBuilder: ProtocolBuilderRuntime;
+    assetStore?: AssetStore;
+    /**
+     * Seals and opens the API-key protocol assets (#1900). Absent only where
+     * there is no database, since the env layer requires a keyring wherever
+     * DATABASE_URL is set; the procedures that need one refuse without it,
+     * exactly as they refuse without a pool.
+     */
+    cipher?: SecretsCipher;
+    /** Where per-user and per-team call limits are counted (#1909). */
+    limiter?: RateLimiter;
   },
 ) {
-  const {
-    auth,
-    deployment,
-    invitationDeliveryAvailable,
-    bootstrapToken,
-    pool,
-  } = deps;
+  const { auth, deployment, jobs, limiter, pool, readInstallation } = deps;
+  const requireUser = createRequireUser(limiter);
+
+  // A protocol store can seal, so it always takes the cipher. A router wired
+  // without one is a deployment bug rather than an authorization refusal —
+  // the same reading the pool gets above.
+  const requireCipher = (): SecretsCipher => {
+    if (!deps.cipher) throw new ORPCError('INTERNAL_SERVER_ERROR');
+    return deps.cipher;
+  };
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -360,10 +430,23 @@ export function createRpcRouter(
   ): Promise<TeamRpcContext> => {
     const { principal } = context;
     if (!principal) throw new ORPCError('UNAUTHORIZED');
+    // The caller's own budget first, before the database is touched at all:
+    // that is the one a runaway client spends, and refusing after a membership
+    // lookup would have spent the work the limit exists to stop.
+    await enforceRateLimit(
+      limiter,
+      'rpc_user',
+      principal.userId,
+      context.resHeaders,
+    );
     if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
     const membership = await auth.getMembership(principal.userId, teamId);
     if (!membership) throw new ORPCError('FORBIDDEN');
-    correlateAuthorizedTeam(teamId);
+    // The team's ceiling is charged only once this caller is known to be in
+    // the team. Charging it first would let any signed-in stranger who can
+    // guess a team id exhaust that team's quota with calls that are all
+    // refused — a denial of service built entirely out of forbidden requests.
+    await enforceRateLimit(limiter, 'rpc_team', teamId, context.resHeaders);
     return {
       principal,
       requestId: context.requestId,
@@ -414,6 +497,7 @@ export function createRpcRouter(
       const team = await openTeam(context, input.teamId);
       const reachable = await new ProtocolStore(
         team.tenantDb,
+        requireCipher(),
       ).isReachableByCaller(input.protocolId, {
         actorUserId: team.principal.userId,
         seesEveryStudy: seesEveryTeamStudy(team.team.role),
@@ -433,6 +517,14 @@ export function createRpcRouter(
     async ({ context, next }, input: { studyId: string }) => {
       const { principal } = context;
       if (!principal) throw new ORPCError('UNAUTHORIZED');
+      // A study URL names no team, so the team limit cannot be taken before
+      // the tenant is resolved; the caller's own is taken before any query.
+      await enforceRateLimit(
+        limiter,
+        'rpc_user',
+        principal.userId,
+        context.resHeaders,
+      );
       if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
       const resolved = await resolveStudy(pool, {
         studyId: input.studyId,
@@ -440,7 +532,12 @@ export function createRpcRouter(
         memberships: await auth.listMemberships(principal.userId),
       });
       if (!resolved) throw new ORPCError('FORBIDDEN');
-      correlateAuthorizedTeam(resolved.teamId);
+      await enforceRateLimit(
+        limiter,
+        'rpc_team',
+        resolved.teamId,
+        context.resHeaders,
+      );
       return next({
         context: {
           principal,
@@ -454,30 +551,28 @@ export function createRpcRouter(
   );
 
   return {
-    status: os.status.handler(() =>
-      getInstanceStatus(caps, deployment, deps.telemetry),
+    status: os.status.handler(async () =>
+      getInstanceStatus(caps, deployment, await readInstallation()),
     ),
     setup: {
-      status: os.setup.status.handler(() => {
-        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
-        return getSetupStatus(pool, caps.enabled ? bootstrapToken : undefined);
-      }),
-      complete: os.setup.complete.handler(async ({ input, context }) => {
-        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
-        if (!caps.enabled || !pool) throw new ORPCError('SERVICE_UNAVAILABLE');
-        try {
-          return await completeSetup(
-            pool,
-            bootstrapToken,
-            input,
-            context.requestId,
-          );
-        } catch (error) {
-          if (!(error instanceof SetupError)) throw error;
-          throw new ORPCError(
-            error.code === 'UNAVAILABLE' ? 'SERVICE_UNAVAILABLE' : error.code,
-          );
+      /**
+       * First-run bootstrap (#1909). No session and no middleware: this runs
+       * on an instance where no account exists, and the bootstrap token is the
+       * authorization. The new owner's session leaves through `resHeaders`,
+       * which oRPC's ResponseHeadersPlugin puts on the context (src/app.ts) —
+       * absent over the WebSocket transport, which no signed-out caller can
+       * open, and absent in a direct `call`, where there is no response to
+       * carry a cookie.
+       */
+      complete: os.setup.complete.handler(async ({ context, input }) => {
+        if (!pool) throw new ORPCError('NOT_FOUND');
+        const session = await handleSetupCommand(() =>
+          completeSetup({ auth, pool }, input),
+        );
+        for (const cookie of session.headers.getSetCookie()) {
+          context.resHeaders?.append('set-cookie', cookie);
         }
+        return { instanceName: input.instanceName };
       }),
     },
     me: os.me.use(requireUser).handler(async ({ context }) => ({
@@ -517,8 +612,21 @@ export function createRpcRouter(
       acceptInvitation: os.team.acceptInvitation
         .use(requireUser)
         .handler(async ({ context, input }) => {
+          // Per invitation token, and here rather than on better-auth's
+          // `/organization/accept-invitation` (#1909): Studio blocks that
+          // route outright (audit/better-auth-policy.ts) so that acceptance
+          // and its audit event share one transaction, which makes this
+          // procedure the only path a token is ever guessed through.
+          //
+          // Before the lookup, so a guessed token costs nothing to refuse.
+          await enforceRateLimit(
+            limiter,
+            'invitation_accept',
+            input.invitationId,
+            context.resHeaders,
+          );
           if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
-          const accepted = await handleTeamCommand(() =>
+          return handleTeamCommand(() =>
             acceptTeamInvitation(
               {
                 pool,
@@ -528,8 +636,6 @@ export function createRpcRouter(
               input,
             ),
           );
-          correlateAuthorizedTeam(accepted.teamId);
-          return accepted;
         }),
       updateMemberRole: os.team.updateMemberRole
         .use(requireTeam)
@@ -545,23 +651,25 @@ export function createRpcRouter(
             ),
           ),
         ),
+      // No refusal when nothing can send it: an invitation is queued and goes
+      // out when a worker with mail configured returns (#1895, ruling of
+      // 2026-09-14). Where there is no queue at all — a process with no
+      // database — the auth gate has already refused this call.
       createInvitation: os.team.createInvitation
         .use(requireTeam)
-        .handler(({ context, input }) => {
-          if (!invitationDeliveryAvailable) {
-            throw new ORPCError('SERVICE_UNAVAILABLE');
-          }
-          return handleTeamCommand(() =>
+        .handler(({ context, input }) =>
+          handleTeamCommand(() =>
             createTeamInvitation(
               {
                 tenantDb: context.tenantDb,
                 principal: context.principal,
                 requestId: context.requestId,
+                jobs,
               },
               { email: input.email, role: input.role },
             ),
-          );
-        }),
+          ),
+        ),
       cancelInvitation: os.team.cancelInvitation
         .use(requireTeam)
         .handler(({ context, input }) =>
@@ -616,6 +724,7 @@ export function createRpcRouter(
               requestId: context.requestId,
             },
             input,
+            requireCipher(),
           ),
         ),
       ),
@@ -625,6 +734,14 @@ export function createRpcRouter(
     // exactly as `studies.get` refuses the study in front of them. Creating a
     // line answers to the same rule from the other side — a line no study owns
     // is reachable only by an Admin or Owner, so only they may make one.
+    protocolBuilder: createProtocolBuilderRouter({
+      auth,
+      limiter,
+      runtime: deps.protocolBuilder,
+      ...(pool === undefined ? {} : { pool }),
+      ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),
+      ...(deps.cipher === undefined ? {} : { cipher: deps.cipher }),
+    }),
     protocols: {
       create: os.protocols.create
         .use(requireTeamAdministration)
@@ -637,6 +754,7 @@ export function createRpcRouter(
                 requestId: context.requestId,
               },
               input,
+              requireCipher(),
             ),
           ),
         ),
@@ -644,7 +762,7 @@ export function createRpcRouter(
       // rather than as a refusal: a Member is shown the lines behind the
       // studies they hold a grant on, and an Admin or Owner every line.
       list: os.protocols.list.use(requireTeam).handler(({ context }) =>
-        new ProtocolStore(context.tenantDb).listProtocols({
+        new ProtocolStore(context.tenantDb, requireCipher()).listProtocols({
           actorUserId: context.principal.userId,
           seesEveryStudy: seesEveryTeamStudy(context.team.role),
         }),
@@ -654,6 +772,7 @@ export function createRpcRouter(
         .handler(async ({ context, input }) => {
           const { protocol, draft } = await new ProtocolStore(
             context.tenantDb,
+            requireCipher(),
           ).getProtocolDraft(input.protocolId, input.draftId);
           return {
             protocol,
@@ -663,91 +782,6 @@ export function createRpcRouter(
             },
             sections: draft.sections,
           };
-        }),
-      acquireSection: os.protocols.acquireSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const syncServer = createProtocolSyncServer(context.tenantDb);
-          const owner = `${context.principal.userId}:${input.clientId}`;
-          const lease = await syncServer.acquire(
-            input.draftId,
-            input.sectionId,
-            owner,
-          );
-          if (!lease) return { mode: 'readOnly' as const };
-
-          let resume: Awaited<ReturnType<typeof syncServer.resume>>;
-          try {
-            resume = await syncServer.resume(input.draftId, owner);
-          } catch (error) {
-            // Acquisition and resume are separate transactions. If the
-            // sequence lookup fails after the lease commits, expire the exact
-            // epoch so a client that never received it cannot block editors.
-            await syncServer
-              .release(input.draftId, input.sectionId, owner, lease.epoch)
-              .catch(() => undefined);
-            throw error;
-          }
-          const lastApplied = resume.lastApplied[input.sectionId];
-          const nextClientSequence =
-            lastApplied?.epoch === lease.epoch
-              ? lastApplied.clientSeq + 1n
-              : 1n;
-          return {
-            mode: 'editable' as const,
-            leaseEpoch: String(lease.epoch),
-            nextClientSequence: String(nextClientSequence),
-          };
-        }),
-      commitSection: os.protocols.commitSection
-        .use(requireProtocol)
-        .handler(({ context, input }) =>
-          handleAuditedProtocolCommand(() =>
-            commitAuditedProtocolSection(
-              {
-                tenantDb: context.tenantDb,
-                principal: context.principal,
-                requestId: context.requestId,
-              },
-              input,
-            ),
-          ),
-        ),
-      renewSection: os.protocols.renewSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          return {
-            renewed: Boolean(
-              await createProtocolSyncServer(context.tenantDb).renew(
-                input.draftId,
-                input.sectionId,
-                `${context.principal.userId}:${input.clientId}`,
-                BigInt(input.leaseEpoch),
-              ),
-            ),
-          };
-        }),
-      releaseSection: os.protocols.releaseSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          await createProtocolSyncServer(context.tenantDb).release(
-            input.draftId,
-            input.sectionId,
-            `${context.principal.userId}:${input.clientId}`,
-            BigInt(input.leaseEpoch),
-          );
         }),
       addInformationStage: os.protocols.addInformationStage
         .use(requireProtocol)
@@ -779,53 +813,6 @@ export function createRpcRouter(
         ),
     },
     audit: {
-      alerts: {
-        settings: os.audit.alerts.settings
-          .use(requireTeam)
-          .handler(({ context }) =>
-            guardAuditRead(context, 'audit.alerts.settings', () =>
-              readAuditAlertSettings(
-                auditedContextFor(context),
-                invitationDeliveryAvailable,
-              ),
-            ),
-          ),
-        updateSettings: os.audit.alerts.updateSettings
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.updateSettings', () =>
-              updateAuditAlertSettings(
-                auditedContextFor(context),
-                input,
-                invitationDeliveryAvailable,
-              ),
-            ),
-          ),
-        list: os.audit.alerts.list
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.list', () =>
-              listAuditAlerts(auditedContextFor(context), input.cursor),
-            ),
-          ),
-        markRead: os.audit.alerts.markRead
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.markRead', () =>
-              markAuditAlertRead(auditedContextFor(context), input.alertId),
-            ),
-          ),
-        acknowledge: os.audit.alerts.acknowledge
-          .use(requireTeam)
-          .handler(({ context, input }) =>
-            guardAuditRead(context, 'audit.alerts.acknowledge', () =>
-              acknowledgeAuditAlert(
-                auditedContextFor(context),
-                input.deliveryId,
-              ),
-            ),
-          ),
-      },
       list: os.audit.list
         .use(requireTeam)
         .handler(async ({ context, input }) => {

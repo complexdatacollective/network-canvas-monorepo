@@ -6,7 +6,7 @@ import {
   Upload,
   Users,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -21,6 +21,7 @@ import type {
 } from '@codaco/protocol-validation';
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
+import NavLink from '~/components/ProjectNav/NavLink';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
@@ -42,6 +43,7 @@ import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { documentationLinks } from '~/utils/documentationLinks';
 import {
   describeImportFailure,
+  getImportFailureKind,
   TEMPLATE_OPEN_FAILURE_MESSAGE,
 } from '~/utils/protocolImportErrors';
 import { reportError } from '~/utils/reportError';
@@ -50,6 +52,17 @@ import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderActionSpan = (chunks: ReactNode[]) => (
+  <span className="text-action">{chunks}</span>
+);
+
+const renderCode = (chunks: ReactNode[]) => (
+  <code className="code">{chunks}</code>
+);
+
 const configMessages = defineMessages({
   docs: {
     id: 'architect.home.home.config.docs',
@@ -253,7 +266,12 @@ const Home = () => {
             ).unwrap();
           });
         } catch (error) {
-          reportError(error);
+          // Only report what Architect cannot describe. A storage failure is
+          // reachable here and is a fact about the researcher's device, not a
+          // defect; sending it to exception tracking buries the ones that are.
+          if (getImportFailureKind(error) === null) {
+            reportError(error);
+          }
           // This branch is the template's own asset loading and the thunk's
           // rejection — never an archive — so the default talks about the
           // template. `describeImportFailure` still runs first because a
@@ -317,25 +335,20 @@ const Home = () => {
         )}
 
         <NavShell
-          trailing={
-            <>
-              {formatConfig(NAV_LINKS, intl).map(({ href, label, Icon }) => (
-                <a
-                  key={href}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-action relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors"
-                >
-                  <span className="relative inline-flex items-center gap-2">
-                    <Icon className="size-4 shrink-0" aria-hidden />
-                    {label}
-                  </span>
-                </a>
-              ))}
-              <AppUpdatePill />
-            </>
-          }
+          items={formatConfig(NAV_LINKS, intl).map(({ href, label, Icon }) => (
+            <NavLink
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="relative inline-flex items-center gap-2">
+                <Icon className="size-4 shrink-0" aria-hidden />
+                {label}
+              </span>
+            </NavLink>
+          ))}
+          end={<AppUpdatePill />}
         />
 
         {/* Hero section */}
@@ -363,9 +376,7 @@ const Home = () => {
                     {...routeFocusTargetProps}
                   >
                     {intl.formatMessage(messages.welcomeToArchitect, {
-                      span: (chunks) => (
-                        <span className="text-action">{chunks}</span>
-                      ),
+                      span: renderActionSpan,
                     })}
                   </Heading>
                   <Paragraph
@@ -403,7 +414,7 @@ const Home = () => {
                 <Paragraph className="hint my-0 hidden items-center gap-1.5 [@container_(height>760px)]:flex">
                   <Upload className="h-3.5 w-3.5" />
                   {intl.formatMessage(messages.orDropANetcanvasFileAnywhere, {
-                    code: (chunks) => <code className="code">{chunks}</code>,
+                    code: renderCode,
                   })}
                 </Paragraph>
               </div>

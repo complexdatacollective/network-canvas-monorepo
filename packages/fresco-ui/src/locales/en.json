@@ -91,6 +91,22 @@
     "defaultMessage": "Added item at position {position, number} of {count, number}.",
     "description": "Screen-reader announcement after a new list item is added."
   },
+  "frescoUi.arrayField.confirmDeleteAction": {
+    "defaultMessage": "Delete {itemLabel}",
+    "description": "Confirm button of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
+  "frescoUi.arrayField.confirmDeleteDescription": {
+    "defaultMessage": "This {itemLabel} will be removed from the list.",
+    "description": "Body of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
+  "frescoUi.arrayField.confirmDeleteTitle": {
+    "defaultMessage": "Delete this {itemLabel}?",
+    "description": "Title of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
+  "frescoUi.arrayField.deleteUnavailable": {
+    "defaultMessage": "This list stopped accepting changes while you were confirming, so nothing was removed. Try again once the list can be edited.",
+    "description": "Shown inside a delete confirmation when the list it was opened on stopped accepting changes while the reader was still deciding, so nothing was deleted."
+  },
   "frescoUi.arrayField.emptyState": {
     "defaultMessage": "No items added yet. Click \"Add Item\" to get started.",
     "description": "Default empty state of the list field; mention the add button by its default label."
@@ -166,6 +182,58 @@
   "frescoUi.collectionSortSelect.toggleDirection": {
     "defaultMessage": "{direction, select, asc {Sort ascending, click to toggle} other {Sort descending, click to toggle}}",
     "description": "Accessible name of the sort-direction toggle button; announces the current direction."
+  },
+  "frescoUi.colorPicker.barbiePink": {
+    "defaultMessage": "Barbie Pink",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A vivid pink."
+  },
+  "frescoUi.colorPicker.ceruleanBlue": {
+    "defaultMessage": "Cerulean Blue",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A deep sky blue."
+  },
+  "frescoUi.colorPicker.emptyPalette": {
+    "defaultMessage": "No colors are available to choose from.",
+    "description": "Shown in place of the swatches when the palette handed to the color picker is empty."
+  },
+  "frescoUi.colorPicker.kiwi": {
+    "defaultMessage": "Kiwi",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A yellow-green."
+  },
+  "frescoUi.colorPicker.mustard": {
+    "defaultMessage": "Mustard",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A dark yellow."
+  },
+  "frescoUi.colorPicker.neonCarrot": {
+    "defaultMessage": "Neon Carrot",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A bright orange."
+  },
+  "frescoUi.colorPicker.neonCoral": {
+    "defaultMessage": "Neon Coral",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A warm red-pink."
+  },
+  "frescoUi.colorPicker.paradisePink": {
+    "defaultMessage": "Paradise Pink",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A warm pink."
+  },
+  "frescoUi.colorPicker.purplePizazz": {
+    "defaultMessage": "Purple Pizazz",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A bright purple."
+  },
+  "frescoUi.colorPicker.seaGreen": {
+    "defaultMessage": "Sea Green",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A green."
+  },
+  "frescoUi.colorPicker.seaSerpent": {
+    "defaultMessage": "Sea Serpent",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A blue-green."
+  },
+  "frescoUi.colorPicker.slateBlue": {
+    "defaultMessage": "Slate Blue",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A muted violet-blue."
+  },
+  "frescoUi.colorPicker.tomato": {
+    "defaultMessage": "Tomato",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A red."
   },
   "frescoUi.columnHeader.applyFilter": {
     "defaultMessage": "Apply",
@@ -531,6 +599,22 @@
     "defaultMessage": "Warning",
     "description": "Accessible name (SVG title) of the warning icon."
   },
+  "frescoUi.iconPicker.noIconsFound": {
+    "defaultMessage": "No icons found",
+    "description": "Shown in place of the icon list when the search matches no icon name."
+  },
+  "frescoUi.iconPicker.searchIcons": {
+    "defaultMessage": "Search icons…",
+    "description": "Placeholder of the search box inside the icon picker, which filters the icons by name."
+  },
+  "frescoUi.iconPicker.selectAnIcon": {
+    "defaultMessage": "Select an icon…",
+    "description": "Placeholder shown on the icon picker trigger while no icon has been chosen."
+  },
+  "frescoUi.iconPicker.showingSome": {
+    "defaultMessage": "Showing {count, number} of {total, number} icons — search to narrow them down.",
+    "description": "Told to the researcher when there are more icons than the picker lists at once, whether or not they have searched yet."
+  },
   "frescoUi.inputField.decrease": {
     "defaultMessage": "Decrease value",
     "description": "Accessible name of a number field’s decrement stepper, when the caller supplied none."
@@ -546,6 +630,42 @@
   "frescoUi.likertScale.sliderLabel": {
     "defaultMessage": "Select value on scale",
     "description": "Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control."
+  },
+  "frescoUi.localeSwitcher.automaticCurrent": {
+    "defaultMessage": "Automatic ({language})",
+    "description": "The automatic entry and the switcher button’s accessible name while it is chosen; {language} is the own name of the language the browser resolves to."
+  },
+  "frescoUi.localeSwitcher.heading": {
+    "defaultMessage": "Interface language",
+    "description": "Heading of the popover where the user chooses the language the application speaks."
+  },
+  "frescoUi.localeSwitcher.noResults": {
+    "defaultMessage": "No languages match your search.",
+    "description": "Shown in the language list when the search box filters out every language."
+  },
+  "frescoUi.localeSwitcher.saveFailed": {
+    "defaultMessage": "Couldn’t save. The language applies for now.",
+    "description": "Footer status when storing the chosen language failed; the language is still in use for this visit, and a retry button follows."
+  },
+  "frescoUi.localeSwitcher.savedOnAccount": {
+    "defaultMessage": "Saved to your account.",
+    "description": "Footer status after the chosen language was stored on the user’s account, beside a check mark."
+  },
+  "frescoUi.localeSwitcher.savedOnDevice": {
+    "defaultMessage": "Saved on this device.",
+    "description": "Footer status after the chosen language was stored in this browser, beside a check mark."
+  },
+  "frescoUi.localeSwitcher.saving": {
+    "defaultMessage": "Saving…",
+    "description": "Footer status while the chosen language is being stored, beside a spinner."
+  },
+  "frescoUi.localeSwitcher.searchPlaceholder": {
+    "defaultMessage": "Search languages",
+    "description": "Placeholder of the search box that filters the list of interface languages."
+  },
+  "frescoUi.localeSwitcher.triggerName": {
+    "defaultMessage": "Interface language: {current}",
+    "description": "Accessible name of the switcher button; {current} is the chosen language’s name or the automatic wording."
   },
   "frescoUi.node.defaultLabel": {
     "defaultMessage": "Node",

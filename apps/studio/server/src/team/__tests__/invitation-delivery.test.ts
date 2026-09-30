@@ -1,161 +1,91 @@
-import { spawn } from 'node:child_process';
+// Invitation delivery, now that the queue owns when an attempt runs (#1895).
+// The delivery row is still the record — what was sent, to whom, and how it
+// ended — so every case here is about what the handler writes to it and what
+// it refuses to write twice. The cases that were about the hand-written
+// lease (reclaiming an expired one, failing a final one, keeping ownership
+// across a slow send) are gone: pg-boss owns that, and what they were really
+// protecting — one send per invitation — is proven by the two-worker, the
+// in-flight and the bounded-attempt cases below.
 import { randomUUID } from 'node:crypto';
-import { once } from 'node:events';
-import type { IncomingMessage, RequestOptions } from 'node:http';
-import { setTimeout as delay } from 'node:timers/promises';
-import { fileURLToPath } from 'node:url';
 
-import { escapeIdentifier, type Pool } from 'pg';
+import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
-  postmarkFixture,
-  type PostmarkReply,
-} from '../../../../../../packages/studio-sync/src/__tests__/postmark-fixture.ts';
-import {
-  smtpFixture,
-  type SmtpBehavior,
-} from '../../../../../../packages/studio-sync/src/__tests__/smtp-fixture.ts';
-import {
-  createScratchDatabase,
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
+  type ScratchSchema,
 } from '../../__tests__/support/postgres.ts';
-import { createMailer, type InvitationMailer } from '../../auth/email.ts';
-import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
-import { migrateDatabase } from '../../db/migrations/migrate.ts';
-import { createPool } from '../../db/pool.ts';
-import { DEV } from '../../env/catalogue.ts';
-import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
-import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
-import { cancelTeamInvitation } from '../commands.ts';
+import type { InvitationMailer } from '../../auth/email.ts';
+import type { SessionPrincipal } from '../../auth/service.ts';
+import type { JobClient } from '../../jobs/client.ts';
 import {
-  InvitationDeliveryDispatcher,
-  InvitationDeliveryRoleError,
-  startInvitationDeliveryWorker,
-} from '../invitation-delivery-dispatcher.ts';
+  createInvitationDeliveryHandler,
+  registerInvitationDelivery,
+} from '../../jobs/handlers/invitation-delivery.ts';
+import type { HandledJob } from '../../jobs/handlers/job.ts';
+import { cancelTeamInvitation, createTeamInvitation } from '../commands.ts';
 import { enqueueInvitationDelivery } from '../invitation-delivery-store.ts';
-
-const postmarkRouting = vi.hoisted(() => ({ url: '' }));
-vi.mock('node:https', async () => {
-  const http = await import('node:http');
-  return {
-    request: (
-      _url: string,
-      options: RequestOptions,
-      callback: (response: IncomingMessage) => void,
-    ) => {
-      if (!postmarkRouting.url) throw new Error('No local Postmark receiver');
-      const outgoing = http.request(postmarkRouting.url, options, callback);
-      outgoing.once('socket', (socket) => {
-        socket.once('connect', () => socket.emit('secureConnect'));
-      });
-      return outgoing;
-    },
-  };
-});
 
 const db = await reachableDb();
 
 const TEAM_ID = 'invitation-delivery-team';
 const INVITER_ID = 'invitation-delivery-inviter';
 const INVITER_MEMBER_ID = 'invitation-delivery-inviter-member';
+const PUBLIC_BASE_URL = 'https://studio.example.test';
 
-type ScratchSchema = Awaited<ReturnType<typeof createScratchSchema>>;
+/** What the `invitation-delivery` queue declares: eight attempts in all. */
+const RETRY_LIMIT = 7;
 
-async function seededScratch() {
-  if (!db) throw new Error('unreachable');
-  const scratch = await createScratchSchema(db);
-  await provisionScratchSchema(scratch.pool);
-  await seedInviter(scratch.pool);
-  return scratch;
-}
+/** A worked queue can take a moment; a hung one must not take the file down. */
+const WORKED_JOB_TIMEOUT_MS = 20_000;
 
-async function seedInviter(pool: Pool) {
-  await pool.query(
-    `INSERT INTO "user" (
-         id, name, email, "emailVerified", "createdAt", "updatedAt"
-       ) VALUES ($1, 'Inviting Researcher', 'inviter@example.com', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-    [INVITER_ID],
-  );
-  await pool.query(
-    `INSERT INTO teams (id, name, slug) VALUES ($1, 'Invitation Delivery Team', $1)`,
-    [TEAM_ID],
-  );
-  await pool.query(
-    `INSERT INTO team_members (id, team_id, user_id, role)
-       VALUES ($1, $2, $3, 'owner')`,
-    [INVITER_MEMBER_ID, TEAM_ID, INVITER_ID],
-  );
-}
+/**
+ * What the handler refuses an attempt with when it cannot take the invitation.
+ * One message for both holders, because from here they are the same finding:
+ * an earlier attempt still inside its SMTP call, or an acceptance, which takes
+ * the same row and waits for it.
+ */
+const LOCKED_BY_SOMEONE_ELSE =
+  'invitation row is locked by an earlier attempt or another command; retrying later';
 
-async function seedInvitation(
-  scratch: Pick<ScratchSchema, 'pool'>,
-  input: {
-    invitationId?: string;
-    email?: string;
-    status?: string;
-    expiresAt?: Date;
-  } = {},
-) {
-  const invitationId = input.invitationId ?? randomUUID();
-  const email = input.email ?? `${invitationId}@example.com`;
-  const expiresAt =
-    input.expiresAt ?? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-  await scratch.pool.query(
-    `INSERT INTO team_invitations (
-       id, team_id, email, role, status, expires_at, inviter_id
-     ) VALUES ($1, $2, $3, 'member', $4, $5, $6)`,
-    [
-      invitationId,
-      TEAM_ID,
-      email,
-      input.status ?? 'pending',
-      expiresAt,
-      INVITER_ID,
-    ],
-  );
-  return { invitationId, email, expiresAt };
-}
+/**
+ * What the last attempt fails with when it is refused the invitation. A
+ * different message because it is a different finding: nothing runs behind
+ * it, and the row is left to whoever has it.
+ */
+const LOCK_HELD_ON_LAST_ATTEMPT =
+  'invitation row is locked by an earlier attempt or another command on the last attempt; how this delivery ended is for the holder to record';
 
-async function enqueue(
-  scratch: Pick<ScratchSchema, 'app'>,
-  invitation: Awaited<ReturnType<typeof seedInvitation>>,
-) {
-  const tenant = createTenantDb(scratch.app, TEAM_ID);
-  await tenant.transaction((client) =>
-    enqueueInvitationDelivery(client, {
-      invitationId: invitation.invitationId,
-      teamId: TEAM_ID,
-      email: invitation.email,
-      role: 'member',
-      teamLabel: 'Invitation Delivery Team',
-      inviterLabel: 'Inviting Researcher',
-      expiresAt: invitation.expiresAt,
-    }),
-  );
-}
+const PRINCIPAL: SessionPrincipal = {
+  kind: 'user',
+  userId: INVITER_ID,
+  email: 'inviter@example.com',
+  emailVerified: true,
+  name: 'Inviting Researcher',
+  locale: null,
+  sessionId: 'invitation-delivery-session',
+};
 
-function dispatcher(
-  pool: Pool,
-  mailer: InvitationMailer,
-  overrides: Partial<
-    ConstructorParameters<typeof InvitationDeliveryDispatcher>[0]
-  > = {},
-) {
-  return new InvitationDeliveryDispatcher({
-    pool,
-    mailer,
-    publicBaseUrl: 'https://studio.example.test',
-    retryBaseMs: 0,
-    retryMaxMs: 0,
-    ...overrides,
-  });
-}
+type SeededInvitation = {
+  invitationId: string;
+  email: string;
+  expiresAt: Date;
+};
+
+type DeliveryRow = {
+  attempt_count: number;
+  failed_at: Date | null;
+  last_error: string | null;
+  sent_at: Date | null;
+  suppressed_at: Date | null;
+  uncertain_at: Date | null;
+};
+
+type JobRow = { id: string; name: string; state: string; data: unknown };
 
 function deferred() {
   let resolve!: () => void;
@@ -165,46 +95,296 @@ function deferred() {
   return { promise, resolve };
 }
 
-describe.skipIf(!db)('invitation delivery outbox', () => {
+function mailerThat(
+  sendTeamInvitation: InvitationMailer['sendTeamInvitation'],
+): InvitationMailer {
+  return { sendTeamInvitation };
+}
+
+describe.skipIf(!db)('invitation delivery on the queue', () => {
   let scratch: ScratchSchema;
+  let jobs: JobClient;
 
   beforeAll(async () => {
-    scratch = await seededScratch();
+    if (!db) throw new Error('unreachable');
+    scratch = await createScratchSchema(db);
+    await provisionScratchSchema(scratch.pool);
+    jobs = await scratch.createJobClient();
+    await scratch.pool.query(
+      `INSERT INTO "user" (
+         id, name, email, "emailVerified", "createdAt", "updatedAt"
+       ) VALUES ($1, 'Inviting Researcher', 'inviter@example.com', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [INVITER_ID],
+    );
+    await scratch.pool.query(
+      `INSERT INTO teams (id, name, slug) VALUES ($1, 'Invitation Delivery Team', $1)`,
+      [TEAM_ID],
+    );
+    await scratch.pool.query(
+      `INSERT INTO team_members (id, team_id, user_id, role)
+       VALUES ($1, $2, $3, 'owner')`,
+      [INVITER_MEMBER_ID, TEAM_ID, INVITER_ID],
+    );
   });
 
   afterAll(async () => {
     await scratch?.dispose();
   });
 
-  it('persists the invitation payload only when its surrounding transaction commits', async () => {
-    const invitation = await seedInvitation(scratch);
-    const tenant = createTenantDb(scratch.app, TEAM_ID);
+  async function seedInvitation(
+    input: {
+      invitationId?: string;
+      email?: string;
+      status?: string;
+      expiresAt?: Date;
+    } = {},
+  ): Promise<SeededInvitation> {
+    const invitationId = input.invitationId ?? randomUUID();
+    const email = input.email ?? `${invitationId}@example.com`;
+    const expiresAt =
+      input.expiresAt ?? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    await scratch.pool.query(
+      `INSERT INTO team_invitations (
+         id, team_id, email, role, status, expires_at, inviter_id
+       ) VALUES ($1, $2, $3, 'member', $4, $5, $6)`,
+      [
+        invitationId,
+        TEAM_ID,
+        email,
+        input.status ?? 'pending',
+        expiresAt,
+        INVITER_ID,
+      ],
+    );
+    return { invitationId, email, expiresAt };
+  }
 
+  /** The delivery row alone, for the cases that drive the handler directly. */
+  async function seedDelivery(invitation: SeededInvitation): Promise<string> {
+    const tenant = createTenantDb(scratch.app, TEAM_ID);
+    const delivery = await tenant.transaction((client) =>
+      enqueueInvitationDelivery(client, {
+        invitationId: invitation.invitationId,
+        teamId: TEAM_ID,
+        email: invitation.email,
+        role: 'member',
+        teamLabel: 'Invitation Delivery Team',
+        inviterLabel: 'Inviting Researcher',
+        expiresAt: invitation.expiresAt,
+      }),
+    );
+    return delivery.deliveryId;
+  }
+
+  /** The delivery row and its job, the way the command creates both. */
+  async function seedQueuedDelivery(
+    invitation: SeededInvitation,
+  ): Promise<{ deliveryId: string; jobId: string }> {
+    const tenant = createTenantDb(scratch.app, TEAM_ID);
+    return tenant.transaction(async (client) => {
+      const delivery = await enqueueInvitationDelivery(client, {
+        invitationId: invitation.invitationId,
+        teamId: TEAM_ID,
+        email: invitation.email,
+        role: 'member',
+        teamLabel: 'Invitation Delivery Team',
+        inviterLabel: 'Inviting Researcher',
+        expiresAt: invitation.expiresAt,
+      });
+      const jobId = await jobs.enqueue(client, 'invitation-delivery', {
+        deliveryId: delivery.deliveryId,
+      });
+      return { deliveryId: delivery.deliveryId, jobId };
+    });
+  }
+
+  function handlerWith(mailer: InvitationMailer) {
+    return createInvitationDeliveryHandler({
+      maintenancePool: scratch.maintenance,
+      mailer,
+      publicBaseUrl: PUBLIC_BASE_URL,
+    });
+  }
+
+  /**
+   * Holds the invitation the way an earlier attempt inside its SMTP call does,
+   * and hands back the means to let go. The lock is taken on the maintenance
+   * pool because that is the role the holder would be — a delivery attempt —
+   * and because the same transaction settles the delivery row in one case,
+   * which no other role may do.
+   */
+  async function holdInvitation(invitationId: string): Promise<{
+    client: pg.PoolClient;
+    release: () => Promise<void>;
+  }> {
+    const client = await scratch.maintenance.connect();
+    await client.query('BEGIN');
+    await client.query(
+      `SELECT id FROM team_invitations WHERE id = $1 FOR UPDATE`,
+      [invitationId],
+    );
+    return {
+      client,
+      release: async () => {
+        await client.query('COMMIT').catch(() => undefined);
+        client.release();
+      },
+    };
+  }
+
+  function jobFor(
+    deliveryId: string,
+    retryCount = 0,
+    retryLimit = RETRY_LIMIT,
+  ): HandledJob {
+    return { id: randomUUID(), data: { deliveryId }, retryCount, retryLimit };
+  }
+
+  async function deliveryState(deliveryId: string): Promise<DeliveryRow> {
+    const rows = await scratch.pool.query<DeliveryRow>(
+      `SELECT attempt_count, failed_at, last_error, sent_at, suppressed_at,
+              uncertain_at
+       FROM team_invitation_deliveries WHERE id = $1`,
+      [deliveryId],
+    );
+    const row = rows.rows[0];
+    if (!row) throw new Error(`no delivery row for ${deliveryId}`);
+    return row;
+  }
+
+  /** Read as the owner: neither application nor maintenance role is meant to. */
+  async function queuedJobs(deliveryId: string): Promise<JobRow[]> {
+    const rows = await scratch.pool.query<JobRow>(
+      `select id, name, state, data from ${scratch.jobSchema}.job_common
+        where data->>'deliveryId' = $1
+        order by name`,
+      [deliveryId],
+    );
+    return rows.rows;
+  }
+
+  /**
+   * A worker's case starts from an empty queue. The cases above leave jobs
+   * nothing ever works — proving the job exists is their whole point — and
+   * pg-boss fetches the oldest first, so a worker would otherwise spend its
+   * window on another case's invitation instead of its own.
+   */
+  async function drainQueue(): Promise<void> {
+    await scratch.pool.query(`delete from ${scratch.jobSchema}.job`);
+  }
+
+  async function jobState(jobId: string): Promise<string | undefined> {
+    const rows = await scratch.pool.query<{ state: string }>(
+      `select state from ${scratch.jobSchema}.job_common where id = $1`,
+      [jobId],
+    );
+    return rows.rows[0]?.state;
+  }
+
+  it('creates the delivery and its job only when the transaction commits', async () => {
+    const abandoned = await seedInvitation();
+    let abandonedDeliveryId = '';
     await expect(
-      tenant.transaction(async (client) => {
-        await enqueueInvitationDelivery(client, {
-          invitationId: invitation.invitationId,
+      createTenantDb(scratch.app, TEAM_ID).transaction(async (client) => {
+        const delivery = await enqueueInvitationDelivery(client, {
+          invitationId: abandoned.invitationId,
           teamId: TEAM_ID,
-          email: invitation.email,
+          email: abandoned.email,
           role: 'member',
           teamLabel: 'Invitation Delivery Team',
           inviterLabel: 'Inviting Researcher',
-          expiresAt: invitation.expiresAt,
+          expiresAt: abandoned.expiresAt,
+        });
+        abandonedDeliveryId = delivery.deliveryId;
+        await jobs.enqueue(client, 'invitation-delivery', {
+          deliveryId: delivery.deliveryId,
         });
         throw new Error('roll back command');
       }),
     ).rejects.toThrow('roll back command');
 
-    const deliveries = await scratch.pool.query(
-      `SELECT id FROM team_invitation_deliveries WHERE invitation_id = $1`,
-      [invitation.invitationId],
-    );
-    expect(deliveries.rowCount).toBe(0);
+    expect(
+      await scratch.pool.query(
+        `SELECT id FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [abandoned.invitationId],
+      ),
+    ).toHaveProperty('rowCount', 0);
+    // The job was created on the command's own client, so the rollback took
+    // it too. A job that survived would send mail for an invitation that does
+    // not exist.
+    expect(await queuedJobs(abandonedDeliveryId)).toEqual([]);
+
+    const committed = await seedInvitation();
+    const { deliveryId, jobId } = await seedQueuedDelivery(committed);
+    expect(await queuedJobs(deliveryId)).toEqual([
+      {
+        id: jobId,
+        name: 'invitation-delivery',
+        state: 'created',
+        data: { deliveryId },
+      },
+    ]);
   });
 
-  it('persists a failed attempt and a fresh dispatcher retries it after restart', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
+  it('carries the delivery id and nothing else in the payload', async () => {
+    const invitation = await seedInvitation();
+    const { deliveryId } = await seedQueuedDelivery(invitation);
+
+    const [queued] = await queuedJobs(deliveryId);
+    // Identifiers only (#1895): the job table is one table for every team, so
+    // the address, the labels and the invitation stay in the tenant row the
+    // handler loads under the maintenance role.
+    expect(queued?.data).toEqual({ deliveryId });
+  });
+
+  it('creates the invitation, the delivery and one job in one command', async () => {
+    const email = `${randomUUID()}@example.com`;
+    const created = await createTeamInvitation(
+      {
+        tenantDb: createTenantDb(scratch.app, TEAM_ID),
+        principal: PRINCIPAL,
+        requestId: randomUUID(),
+        jobs,
+      },
+      { email, role: 'member' },
+    );
+
+    const delivery = await scratch.pool.query<{ id: string }>(
+      `SELECT id FROM team_invitation_deliveries WHERE invitation_id = $1`,
+      [created.invitationId],
+    );
+    const deliveryId = delivery.rows[0]?.id;
+    expect(deliveryId).toBeTypeOf('string');
+    expect(await queuedJobs(deliveryId!)).toMatchObject([
+      { name: 'invitation-delivery', state: 'created' },
+    ]);
+  });
+
+  it('refuses to create an invitation it cannot queue', async () => {
+    const email = `${randomUUID()}@example.com`;
+    // No job client at all is a wiring fault, and committing the invitation
+    // anyway would leave a researcher waiting on mail nothing will send.
+    await expect(
+      createTeamInvitation(
+        {
+          tenantDb: createTenantDb(scratch.app, TEAM_ID),
+          principal: PRINCIPAL,
+          requestId: randomUUID(),
+        },
+        { email, role: 'member' },
+      ),
+    ).rejects.toThrow('invitation delivery needs a job client');
+    expect(
+      await scratch.pool.query(
+        `SELECT id FROM team_invitations WHERE team_id = $1 AND email = $2`,
+        [TEAM_ID, email],
+      ),
+    ).toHaveProperty('rowCount', 0);
+  });
+
+  it('records a failed attempt and sends the snapshot on the next one', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
     await scratch.pool.query(
       `UPDATE teams SET name = 'Renamed Team' WHERE id = $1`,
       [TEAM_ID],
@@ -217,55 +397,44 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
       .fn<InvitationMailer['sendTeamInvitation']>()
       .mockRejectedValueOnce(new Error('SMTP temporarily unavailable'))
       .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
 
-    const firstRun = await dispatcher(scratch.maintenance, {
-      sendTeamInvitation,
-    }).runOnce();
-    expect(firstRun).toEqual({ claimed: 1, sent: 0, failed: 1, suppressed: 0 });
-
-    const afterFailure = await scratch.pool.query<{
-      attempt_count: number;
-      last_error: string;
-      sent_at: Date | null;
-    }>(
-      `SELECT attempt_count, last_error, sent_at
-       FROM team_invitation_deliveries WHERE invitation_id = $1`,
-      [invitation.invitationId],
+    await expect(handler([jobFor(deliveryId, 0)])).rejects.toThrow(
+      'SMTP temporarily unavailable',
     );
-    expect(afterFailure.rows).toEqual([
-      {
-        attempt_count: 1,
-        last_error: 'SMTP temporarily unavailable',
-        sent_at: null,
-      },
-    ]);
-
-    const secondRun = await dispatcher(scratch.maintenance, {
-      sendTeamInvitation,
-    }).runOnce();
-    expect(secondRun).toEqual({
-      claimed: 1,
-      sent: 1,
-      failed: 0,
-      suppressed: 0,
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: 1,
+      failed_at: null,
+      last_error: 'SMTP temporarily unavailable',
+      sent_at: null,
     });
+
+    await expect(handler([jobFor(deliveryId, 1)])).resolves.toBeUndefined();
+    // The labels are the ones the command snapshotted, not the renamed team
+    // and inviter: the invitation says what it said when it was sent.
     expect(sendTeamInvitation).toHaveBeenLastCalledWith({
       email: invitation.email,
       expiresAt: invitation.expiresAt,
-      invitationUrl: `https://studio.example.test/invitations/${invitation.invitationId}`,
+      invitationUrl: `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
       inviterLabel: 'Inviting Researcher',
       messageId: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
       role: 'member',
       teamLabel: 'Invitation Delivery Team',
     });
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: 2,
+      last_error: null,
+      sent_at: expect.any(Date),
+    });
   });
 
-  it('does not retry after SMTP accepts mail but sent finalization is interrupted', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
+  it('does not retry after SMTP accepts mail but the sent marker cannot commit', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
     const sendTeamInvitation = vi
       .fn<InvitationMailer['sendTeamInvitation']>()
       .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
     await scratch.pool.query(`
       CREATE FUNCTION interrupt_invitation_sent_finalization() RETURNS trigger AS $$
       BEGIN
@@ -279,290 +448,363 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
         EXECUTE FUNCTION interrupt_invitation_sent_finalization();
     `);
 
-    const firstResult = await dispatcher(scratch.maintenance, {
-      sendTeamInvitation,
-    })
-      .runOnce()
-      .finally(async () => {
+    // Resolves rather than throws: a job that failed here would be retried,
+    // and the mail has already gone (#1305, #1307).
+    await expect(
+      handler([jobFor(deliveryId, 0)]).finally(async () => {
         await scratch.pool.query(`
           DROP TRIGGER interrupt_invitation_sent_finalization
             ON team_invitation_deliveries;
           DROP FUNCTION interrupt_invitation_sent_finalization();
         `);
-      });
-    const afterInterruption = await scratch.pool.query<{
-      attempt_count: number;
-      failed_at: Date | null;
-      last_error: string;
-      lease_owner: string | null;
-      uncertain_at: Date | null;
-    }>(
-      `SELECT attempt_count, failed_at, last_error, lease_owner, uncertain_at
-       FROM team_invitation_deliveries
-       WHERE invitation_id = $1`,
-      [invitation.invitationId],
-    );
-    const secondResult = await dispatcher(scratch.maintenance, {
-      sendTeamInvitation,
-    }).runOnce();
+      }),
+    ).resolves.toBeUndefined();
+    expect(await deliveryState(deliveryId)).toEqual({
+      attempt_count: 1,
+      failed_at: null,
+      last_error: 'sent finalization interrupted',
+      sent_at: null,
+      suppressed_at: null,
+      uncertain_at: expect.any(Date),
+    });
 
-    expect(firstResult).toEqual({
-      claimed: 1,
-      sent: 0,
-      failed: 0,
-      suppressed: 0,
-    });
-    expect(afterInterruption.rows).toEqual([
-      {
-        attempt_count: 1,
-        failed_at: null,
-        last_error: 'sent finalization interrupted',
-        lease_owner: null,
-        uncertain_at: expect.any(Date),
-      },
-    ]);
-    expect(secondResult).toEqual({
-      claimed: 0,
-      sent: 0,
-      failed: 0,
-      suppressed: 0,
-    });
+    await expect(handler([jobFor(deliveryId, 1)])).resolves.toBeUndefined();
     expect(sendTeamInvitation).toHaveBeenCalledOnce();
+    // Not even the attempt counter moves: an uncertain delivery is finished.
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: 1,
+      uncertain_at: expect.any(Date),
+    });
   });
 
-  it('stops retrying after the bounded attempt limit', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
+  it('records the delivery failed on the attempt the queue will not retry', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
     const sendTeamInvitation = vi
       .fn<InvitationMailer['sendTeamInvitation']>()
       .mockRejectedValue(new Error('permanent SMTP failure'));
-    const delivery = dispatcher(
-      scratch.maintenance,
-      { sendTeamInvitation },
-      { maxAttempts: 2 },
-    );
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
 
-    await expect(delivery.runOnce()).resolves.toMatchObject({ failed: 1 });
-    await expect(delivery.runOnce()).resolves.toMatchObject({ failed: 1 });
-    await expect(delivery.runOnce()).resolves.toMatchObject({ claimed: 0 });
-    expect(sendTeamInvitation).toHaveBeenCalledTimes(2);
-
-    const failed = await scratch.pool.query<{
-      attempt_count: number;
-      failed_at: Date | null;
-    }>(
-      `SELECT attempt_count, failed_at
-       FROM team_invitation_deliveries WHERE invitation_id = $1`,
-      [invitation.invitationId],
-    );
-    expect(failed.rows[0]?.attempt_count).toBe(2);
-    expect(failed.rows[0]?.failed_at).toBeInstanceOf(Date);
-  });
-
-  it('reclaims an expired lease left behind when a worker stops', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
-    await scratch.pool.query(
-      `UPDATE team_invitation_deliveries
-       SET attempt_count = 1,
-           lease_owner = $2,
-           lease_expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second'
-       WHERE invitation_id = $1`,
-      [invitation.invitationId, randomUUID()],
-    );
-    const sendTeamInvitation = vi
-      .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockResolvedValue(undefined);
-
+    // The last attempt pg-boss will make: it fails the job after this one, so
+    // the row has to record the end here or disagree with the dead letter.
     await expect(
-      dispatcher(
-        scratch.maintenance,
-        { sendTeamInvitation },
-        { maxAttempts: 2 },
-      ).runOnce(),
-    ).resolves.toMatchObject({ claimed: 1, sent: 1 });
-    expect(sendTeamInvitation).toHaveBeenCalledOnce();
-  });
-
-  it('marks a final expired lease failed instead of stranding the delivery', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
-    await scratch.pool.query(
-      `UPDATE team_invitation_deliveries
-       SET attempt_count = 2,
-           lease_owner = $2,
-           lease_expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second'
-       WHERE invitation_id = $1`,
-      [invitation.invitationId, randomUUID()],
-    );
-    const sendTeamInvitation = vi
-      .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockResolvedValue(undefined);
-
-    await expect(
-      dispatcher(
-        scratch.maintenance,
-        { sendTeamInvitation },
-        { maxAttempts: 2 },
-      ).runOnce(),
-    ).resolves.toEqual({
-      claimed: 0,
-      sent: 0,
-      failed: 1,
-      suppressed: 0,
+      handler([jobFor(deliveryId, RETRY_LIMIT, RETRY_LIMIT)]),
+    ).rejects.toThrow('permanent SMTP failure');
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: RETRY_LIMIT + 1,
+      failed_at: expect.any(Date),
+      last_error: 'permanent SMTP failure',
+      sent_at: null,
     });
-    expect(sendTeamInvitation).not.toHaveBeenCalled();
-    const failed = await scratch.pool.query<{ failed_at: Date | null }>(
-      `SELECT failed_at FROM team_invitation_deliveries WHERE invitation_id = $1`,
-      [invitation.invitationId],
-    );
-    expect(failed.rows[0]?.failed_at).toBeInstanceOf(Date);
   });
 
-  it('allows only one concurrent worker to claim a delivery', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
-    let releaseSend: (() => void) | undefined;
-    const sending = new Promise<void>((resolve) => {
-      releaseSend = resolve;
+  it('stamps a failed send before it lets go of the invitation', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    let failSend!: (error: Error) => void;
+    const sending = new Promise<void>((_, reject) => {
+      failSend = reject;
     });
     const sendTeamInvitation = vi
       .fn<InvitationMailer['sendTeamInvitation']>()
       .mockReturnValue(sending);
-    const first = dispatcher(scratch.maintenance, { sendTeamInvitation });
-    const second = dispatcher(scratch.maintenance, { sendTeamInvitation });
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
 
-    const firstRun = first.runOnce();
+    const attempt = handler([jobFor(deliveryId, RETRY_LIMIT, RETRY_LIMIT)]);
     await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
-    const secondResult = await second.runOnce();
-    expect(secondResult.claimed).toBe(0);
-    releaseSend?.();
-    await expect(firstRun).resolves.toMatchObject({ claimed: 1, sent: 1 });
-    expect(sendTeamInvitation).toHaveBeenCalledOnce();
-  });
 
-  it('keeps a slow send claimed so a second worker cannot deliver it', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
-    const slowSend = deferred();
-    const sendTeamInvitation = vi
-      .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockReturnValueOnce(slowSend.promise)
-      .mockResolvedValue(undefined);
-    const first = dispatcher(
-      scratch.maintenance,
-      { sendTeamInvitation },
-      { leaseMs: 150 },
+    // Whoever is next in line for the invitation, as one statement: taking the
+    // lock and settling the row cannot be interleaved from here, so what this
+    // finds the instant the invitation is released is exactly what the handler
+    // had written before letting go. A `failed_at` written after the release
+    // would arrive second and be refused, leaving the row suppressed.
+    const contender = scratch.maintenance.query(
+      `/* lock-contender */
+       WITH taken AS (
+         SELECT i.id
+           FROM team_invitations i
+           JOIN team_invitation_deliveries d
+             ON d.invitation_id = i.id AND d.team_id = i.team_id
+          WHERE d.id = $1
+            FOR UPDATE OF i
+       )
+       UPDATE team_invitation_deliveries
+          SET suppressed_at = clock_timestamp(),
+              last_error = 'cancelled while the attempt was failing'
+        WHERE id = $1
+          AND (SELECT count(*) FROM taken) = 1
+          AND sent_at IS NULL AND failed_at IS NULL
+          AND suppressed_at IS NULL AND uncertain_at IS NULL`,
+      [deliveryId],
     );
-    const second = dispatcher(
-      scratch.maintenance,
-      { sendTeamInvitation },
-      { leaseMs: 150 },
-    );
-
-    const firstRun = first.runOnce();
-    await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
-    // PostgreSQL's clock advances past the original lease while Node remains
-    // free to run the ownership-checked heartbeat.
-    await scratch.maintenance.query(`SELECT pg_sleep(0.45)`);
-    const secondResult = await second.runOnce();
-    slowSend.resolve();
-    const firstResult = await firstRun;
-
-    expect(secondResult.claimed).toBe(0);
-    expect(firstResult).toMatchObject({ claimed: 1, sent: 1 });
-    expect(sendTeamInvitation).toHaveBeenCalledOnce();
-  });
-
-  it('does not report or persist sent after losing delivery ownership', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
-    const slowSend = deferred();
-    const sendTeamInvitation = vi
-      .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockReturnValue(slowSend.promise);
-    const delivery = dispatcher(
-      scratch.maintenance,
-      { sendTeamInvitation },
-      { leaseMs: 5_000 },
-    );
-
-    const deliveryRun = delivery.runOnce();
-    await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
-    const replacementOwner = randomUUID();
-    await scratch.maintenance.query(
-      `UPDATE team_invitation_deliveries
-       SET lease_owner = $2,
-           lease_expires_at = clock_timestamp() + INTERVAL '5 seconds'
-       WHERE invitation_id = $1`,
-      [invitation.invitationId, replacementOwner],
-    );
-    slowSend.resolve();
-
-    await expect(deliveryRun).resolves.toMatchObject({ claimed: 1, sent: 0 });
-    expect(
-      await scratch.pool.query(
-        `SELECT lease_owner, sent_at
-         FROM team_invitation_deliveries WHERE invitation_id = $1`,
-        [invitation.invitationId],
-      ),
-    ).toHaveProperty('rows', [
-      { lease_owner: replacementOwner, sent_at: null },
-    ]);
-  });
-
-  it('lets cancellation win its invitation lock before a worker can claim', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
-    const sendTeamInvitation = vi
-      .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockResolvedValue(undefined);
-    const delivery = dispatcher(scratch.maintenance, { sendTeamInvitation });
-    const tenant = createTenantDb(scratch.app, TEAM_ID);
-
-    await tenant.transaction(async (client) => {
-      await client.query(
-        `SELECT id FROM team_invitations
-         WHERE team_id = $1 AND id = $2
-         FOR UPDATE`,
-        [TEAM_ID, invitation.invitationId],
+    // It has to be waiting on the lock before the send fails, or it would
+    // simply arrive after the handler and prove nothing.
+    await vi.waitFor(async () => {
+      const blocked = await scratch.pool.query(
+        `select 1 from pg_stat_activity
+          where datname = current_database()
+            and wait_event_type = 'Lock'
+            and query like '%lock-contender%'`,
       );
-      await expect(delivery.runOnce()).resolves.toMatchObject({ claimed: 0 });
-      await client.query(
-        `UPDATE team_invitations SET status = 'canceled'
-         WHERE team_id = $1 AND id = $2`,
-        [TEAM_ID, invitation.invitationId],
-      );
+      expect(blocked.rowCount).toBe(1);
     });
 
-    await expect(delivery.runOnce()).resolves.toMatchObject({ suppressed: 1 });
-    expect(sendTeamInvitation).not.toHaveBeenCalled();
+    failSend(new Error('permanent SMTP failure'));
+    await expect(attempt).rejects.toThrow('permanent SMTP failure');
+
+    expect((await contender).rowCount).toBe(0);
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: RETRY_LIMIT + 1,
+      failed_at: expect.any(Date),
+      last_error: 'permanent SMTP failure',
+      suppressed_at: null,
+    });
   });
 
-  it('rejects and audits cancellation after delivery has begun', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
-    const slowSend = deferred();
+  it('dead-letters a delivery whose attempts are exhausted', async () => {
     const sendTeamInvitation = vi
       .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockReturnValue(slowSend.promise);
-    const delivery = dispatcher(scratch.maintenance, { sendTeamInvitation });
+      .mockRejectedValue(new Error('permanent SMTP failure'));
+    await drainQueue();
+    const worker = scratch.createJobWorker();
+    await worker.start();
+    try {
+      // One attempt rather than eight, so the case observes the end of the
+      // retry ladder without waiting out its backoff. The job copies the
+      // queue's limit when it is created, so this has to happen first.
+      await worker.boss.updateQueue('invitation-delivery', { retryLimit: 0 });
+      await registerInvitationDelivery(worker.boss, {
+        maintenancePool: scratch.maintenance,
+        mailer: mailerThat(sendTeamInvitation),
+        publicBaseUrl: PUBLIC_BASE_URL,
+      });
 
-    const deliveryRun = delivery.runOnce();
+      const invitation = await seedInvitation();
+      const { deliveryId, jobId } = await seedQueuedDelivery(invitation);
+      await vi.waitFor(
+        async () => expect(await jobState(jobId)).toBe('failed'),
+        { timeout: WORKED_JOB_TIMEOUT_MS, interval: 100 },
+      );
+
+      expect(await queuedJobs(deliveryId)).toMatchObject([
+        { name: 'invitation-delivery', state: 'failed' },
+        // The copy #1307's manual re-send will work from, naming the same
+        // delivery as the job that failed.
+        { name: 'invitation-delivery-dead-letter', state: 'created' },
+      ]);
+      expect(await deliveryState(deliveryId)).toMatchObject({
+        failed_at: expect.any(Date),
+        last_error: 'permanent SMTP failure',
+      });
+    } finally {
+      await worker.boss
+        .updateQueue('invitation-delivery', { retryLimit: RETRY_LIMIT })
+        .catch(() => undefined);
+      await worker.stop();
+    }
+  });
+
+  it('suppresses deliveries whose invitations are cancelled or expired', async () => {
+    const cancelled = await seedInvitation();
+    const expired = await seedInvitation();
+    const cancelledDelivery = await seedDelivery(cancelled);
+    const expiredDelivery = await seedDelivery(expired);
+    await scratch.pool.query(
+      `UPDATE team_invitations
+       SET status = CASE WHEN id = $1 THEN 'canceled' ELSE status END,
+           expires_at = CASE WHEN id = $2 THEN CURRENT_TIMESTAMP - INTERVAL '1 minute' ELSE expires_at END
+       WHERE id IN ($1, $2)`,
+      [cancelled.invitationId, expired.invitationId],
+    );
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    await expect(handler([jobFor(cancelledDelivery)])).resolves.toBeUndefined();
+    await expect(handler([jobFor(expiredDelivery)])).resolves.toBeUndefined();
+
+    expect(sendTeamInvitation).not.toHaveBeenCalled();
+    expect(await deliveryState(cancelledDelivery)).toMatchObject({
+      last_error: 'invitation is no longer pending',
+      suppressed_at: expect.any(Date),
+    });
+    expect(await deliveryState(expiredDelivery)).toMatchObject({
+      last_error: 'invitation expired',
+      suppressed_at: expect.any(Date),
+    });
+  });
+
+  it('sends once when two workers hold the same queue', async () => {
+    const sending = deferred();
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockReturnValue(sending.promise);
+    const deps = {
+      maintenancePool: scratch.maintenance,
+      mailer: mailerThat(sendTeamInvitation),
+      publicBaseUrl: PUBLIC_BASE_URL,
+    };
+    await drainQueue();
+    const workers = [scratch.createJobWorker(), scratch.createJobWorker()];
+    try {
+      // Both are listening before the job exists, so the insert's notification
+      // wakes them together and they race for it — which is the state a second
+      // replica is in when a deployment scales out.
+      for (const worker of workers) {
+        await worker.start();
+        await registerInvitationDelivery(worker.boss, deps);
+      }
+
+      const invitation = await seedInvitation();
+      const { deliveryId } = await seedQueuedDelivery(invitation);
+      await vi.waitFor(
+        () => expect(sendTeamInvitation).toHaveBeenCalledOnce(),
+        { timeout: WORKED_JOB_TIMEOUT_MS, interval: 25 },
+      );
+      // The winner holds the job active and the invitation locked; this is the
+      // window in which the loser would send a second copy.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      expect(sendTeamInvitation).toHaveBeenCalledOnce();
+
+      sending.resolve();
+      await vi.waitFor(
+        async () =>
+          expect(await deliveryState(deliveryId)).toMatchObject({
+            sent_at: expect.any(Date),
+          }),
+        { timeout: WORKED_JOB_TIMEOUT_MS, interval: 50 },
+      );
+      expect(sendTeamInvitation).toHaveBeenCalledOnce();
+    } finally {
+      sending.resolve();
+      await Promise.all(workers.map((worker) => worker.stop()));
+    }
+  });
+
+  it('refuses a second attempt while the first still holds the invitation', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    const sending = deferred();
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockReturnValueOnce(sending.promise)
+      .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    const first = handler([jobFor(deliveryId, 0)]);
+    await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
+
+    // The expiry of the first attempt would make pg-boss hand the job to a
+    // second worker while the first is still inside its SMTP call.
+    await expect(handler([jobFor(deliveryId, 1)])).rejects.toThrow(
+      LOCKED_BY_SOMEONE_ELSE,
+    );
+    expect(sendTeamInvitation).toHaveBeenCalledOnce();
+    // The refusal counted nothing. An attempt that never got the lock did no
+    // work, and a send that outlives the job's expiry would otherwise have
+    // every retry behind it stamp a number and give up — spending the whole
+    // ladder on refusals while the row's `last_error` stayed empty.
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: 1,
+      last_error: null,
+    });
+
+    sending.resolve();
+    await expect(first).resolves.toBeUndefined();
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      attempt_count: 1,
+      sent_at: expect.any(Date),
+    });
+  });
+
+  it('leaves the row to its holder when the last attempt is refused the invitation', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    const holder = await holdInvitation(invitation.invitationId);
+    try {
+      // The last attempt pg-boss will make, refused like any other — and
+      // refused writing nothing: the holder may be mid-send, and a
+      // `failed_at` here would contradict the `sent_at` it is about to write.
+      await expect(
+        handler([jobFor(deliveryId, RETRY_LIMIT, RETRY_LIMIT)]),
+      ).rejects.toThrow(LOCK_HELD_ON_LAST_ATTEMPT);
+    } finally {
+      await holder.release();
+    }
+
+    expect(sendTeamInvitation).not.toHaveBeenCalled();
+    // Every column, not a subset: the whole point is that this attempt wrote
+    // nothing at all.
+    expect(await deliveryState(deliveryId)).toEqual({
+      attempt_count: 0,
+      failed_at: null,
+      last_error: null,
+      sent_at: null,
+      suppressed_at: null,
+      uncertain_at: null,
+    });
+  });
+
+  it('refuses a job whose payload is not one this queue declares', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    // Nothing this server enqueues looks like either of these — `enqueueJob`
+    // validates on the way in — so what they stand for is a row written by an
+    // older release or by hand. The second carries a real delivery id beside a
+    // field the schema does not declare, which is the one that proves the
+    // parse happens before the handler touches a row rather than after.
+    await expect(
+      handler([{ id: randomUUID(), data: {}, retryCount: 0, retryLimit: 7 }]),
+    ).rejects.toThrow(/deliveryId/);
+    await expect(
+      handler([
+        {
+          id: randomUUID(),
+          data: { deliveryId, teamId: TEAM_ID },
+          retryCount: 0,
+          retryLimit: 7,
+        },
+      ]),
+    ).rejects.toThrow(/teamId/);
+
+    expect(sendTeamInvitation).not.toHaveBeenCalled();
+    expect(await deliveryState(deliveryId)).toEqual({
+      attempt_count: 0,
+      failed_at: null,
+      last_error: null,
+      sent_at: null,
+      suppressed_at: null,
+      uncertain_at: null,
+    });
+  });
+
+  it('refuses and audits cancellation after delivery has begun', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
+    const sending = deferred();
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockReturnValue(sending.promise);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
+
+    const delivering = handler([jobFor(deliveryId, 0)]);
     await vi.waitFor(() => expect(sendTeamInvitation).toHaveBeenCalledOnce());
     await expect(
       cancelTeamInvitation(
         {
           tenantDb: createTenantDb(scratch.app, TEAM_ID),
-          principal: {
-            kind: 'user',
-            userId: INVITER_ID,
-            email: 'inviter@example.com',
-            emailVerified: true,
-            name: 'Inviting Researcher',
-            locale: null,
-            sessionId: 'invitation-delivery-session',
-          },
+          principal: PRINCIPAL,
           requestId: randomUUID(),
         },
         { invitationId: invitation.invitationId },
@@ -575,9 +817,11 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
         [invitation.invitationId],
       ),
     ).toHaveProperty('rows', [{ status: 'pending' }]);
+    // The refusal is a decision the team can see, so it is audited like any
+    // other — and committed even though the command changed nothing.
     expect(
       await scratch.pool.query(
-        `SELECT event_type, outcome, subject_id, details
+        `SELECT event_type, outcome, subject_id, subject_label, details
          FROM audit_events
          WHERE team_id = $1 AND subject_id = $2`,
         [TEAM_ID, invitation.invitationId],
@@ -587,66 +831,60 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
         event_type: 'team.invitation.cancellation_failed',
         outcome: 'failed',
         subject_id: invitation.invitationId,
+        subject_label: invitation.email,
         details: { failureCode: 'delivery_in_progress' },
       },
     ]);
 
-    slowSend.resolve();
-    await expect(deliveryRun).resolves.toMatchObject({ sent: 1 });
+    sending.resolve();
+    await expect(delivering).resolves.toBeUndefined();
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      sent_at: expect.any(Date),
+    });
   });
 
-  it('suppresses pending deliveries after their invitations are canceled or expire', async () => {
-    const canceled = await seedInvitation(scratch);
-    const expired = await seedInvitation(scratch);
-    await enqueue(scratch, canceled);
-    await enqueue(scratch, expired);
-    await scratch.pool.query(
-      `UPDATE team_invitations
-       SET status = CASE WHEN id = $1 THEN 'canceled' ELSE status END,
-           expires_at = CASE WHEN id = $2 THEN CURRENT_TIMESTAMP - INTERVAL '1 minute' ELSE expires_at END
-       WHERE id IN ($1, $2)`,
-      [canceled.invitationId, expired.invitationId],
-    );
+  it('lets cancellation win the invitation lock and suppresses what follows', async () => {
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
     const sendTeamInvitation = vi
       .fn<InvitationMailer['sendTeamInvitation']>()
       .mockResolvedValue(undefined);
+    const handler = handlerWith(mailerThat(sendTeamInvitation));
 
-    const result = await dispatcher(scratch.maintenance, {
-      sendTeamInvitation,
-    }).runOnce();
+    await createTenantDb(scratch.app, TEAM_ID).transaction(async (client) => {
+      await client.query(
+        `SELECT id FROM team_invitations
+         WHERE team_id = $1 AND id = $2
+         FOR UPDATE`,
+        [TEAM_ID, invitation.invitationId],
+      );
+      // A cancellation holding the row is indistinguishable from another
+      // attempt holding it: the handler gives up rather than sending mail for
+      // an invitation someone is in the middle of withdrawing.
+      await expect(handler([jobFor(deliveryId, 0)])).rejects.toThrow(
+        LOCKED_BY_SOMEONE_ELSE,
+      );
+      await client.query(
+        `UPDATE team_invitations SET status = 'canceled'
+         WHERE team_id = $1 AND id = $2`,
+        [TEAM_ID, invitation.invitationId],
+      );
+    });
 
-    expect(result).toEqual({ claimed: 0, sent: 0, failed: 0, suppressed: 2 });
+    await expect(handler([jobFor(deliveryId, 1)])).resolves.toBeUndefined();
     expect(sendTeamInvitation).not.toHaveBeenCalled();
-    const suppressed = await scratch.pool.query<{
-      invitation_id: string;
-      suppressed_at: Date | null;
-    }>(
-      `SELECT invitation_id, suppressed_at
-       FROM team_invitation_deliveries
-       WHERE invitation_id IN ($1, $2)
-       ORDER BY invitation_id`,
-      [canceled.invitationId, expired.invitationId],
-    );
-    expect(suppressed.rows).toHaveLength(2);
-    expect(
-      suppressed.rows.every((row) => row.suppressed_at instanceof Date),
-    ).toBe(true);
-  });
-
-  it('refuses to dispatch from an application-role pool', async () => {
-    const sendTeamInvitation = vi
-      .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockResolvedValue(undefined);
-    await expect(
-      dispatcher(scratch.app, { sendTeamInvitation }).runOnce(),
-    ).rejects.toBeInstanceOf(InvitationDeliveryRoleError);
-    expect(sendTeamInvitation).not.toHaveBeenCalled();
+    expect(await deliveryState(deliveryId)).toMatchObject({
+      suppressed_at: expect.any(Date),
+    });
   });
 
   it('allows application commands to enqueue but not alter delivery state', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
+    const invitation = await seedInvitation();
+    await seedDelivery(invitation);
 
+    // The job half of the same rule — that the application role can create a
+    // job and neither read nor alter one — is proven in
+    // src/jobs/__tests__/grants.test.ts.
     await expect(
       scratch.app.query(
         `UPDATE team_invitation_deliveries SET sent_at = CURRENT_TIMESTAMP`,
@@ -655,29 +893,29 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
   });
 
   it('lets maintenance advance delivery state without rewriting its payload', async () => {
-    const invitation = await seedInvitation(scratch);
-    await enqueue(scratch, invitation);
+    const invitation = await seedInvitation();
+    const deliveryId = await seedDelivery(invitation);
 
     await expect(
       scratch.maintenance.query(
         `UPDATE team_invitation_deliveries
-         SET available_at = CURRENT_TIMESTAMP
-         WHERE invitation_id = $1`,
-        [invitation.invitationId],
+         SET attempt_count = attempt_count + 1
+         WHERE id = $1`,
+        [deliveryId],
       ),
     ).resolves.toHaveProperty('rowCount', 1);
     await expect(
       scratch.maintenance.query(
         `UPDATE team_invitation_deliveries
          SET email = 'rewritten@example.com'
-         WHERE invitation_id = $1`,
-        [invitation.invitationId],
+         WHERE id = $1`,
+        [deliveryId],
       ),
     ).rejects.toThrow('invitation delivery payload is immutable');
   });
 
   it('structurally rejects an outbox row assigned to another team', async () => {
-    const invitation = await seedInvitation(scratch);
+    const invitation = await seedInvitation();
 
     await expect(
       scratch.pool.query(
@@ -694,729 +932,51 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
     ).rejects.toMatchObject({ code: '23503' });
   });
 
-  it('reports persisted invitation outcomes without exposing delivery contents', async () => {
-    const invitation = await seedInvitation(scratch, {
-      email: 'private-invitation-recipient@example.com',
-    });
-    await enqueue(scratch, invitation);
-    // Other cases intentionally leave reclaimable rows behind. Give this
-    // invitation the earliest ready time so this assertion observes its send.
-    await scratch.maintenance.query(
-      `UPDATE team_invitation_deliveries SET available_at = '2000-01-01'
-       WHERE invitation_id = $1`,
-      [invitation.invitationId],
-    );
-    const providerError = new Error('private-provider-response');
+  it('sends a queued invitation end to end', async () => {
     const sendTeamInvitation = vi
       .fn<InvitationMailer['sendTeamInvitation']>()
-      .mockRejectedValue(providerError);
-    const events: OutboxLifecycleEvent[] = [];
-
-    await expect(
-      dispatcher(
-        scratch.maintenance,
-        { sendTeamInvitation },
-        {
-          retryBaseMs: 60_000,
-          retryMaxMs: 60_000,
-          observer: (event) => {
-            events.push(event);
-          },
-        },
-      ).runOnce(),
-    ).resolves.toEqual({ claimed: 1, sent: 0, failed: 1, suppressed: 0 });
-
-    expect(sendTeamInvitation).toHaveBeenCalledOnce();
-    expect(sendTeamInvitation).toHaveBeenCalledWith(
-      expect.objectContaining({ email: invitation.email }),
-    );
-    expect(events).toEqual([
-      {
-        queue: 'team_invitation_deliveries',
-        kind: 'dispatch',
-        durationMs: expect.any(Number),
-        claimed: 1,
-        completed: 0,
-        retried: 1,
-        failed: 0,
-        suppressed: 0,
-        uncertain: 0,
-        leaseLost: 0,
-      },
-    ]);
-    const stored = await scratch.pool.query<{
-      attempt_count: number;
-      delayed: boolean;
-      failed_at: Date | null;
-      lease_owner: string | null;
-    }>(
-      `SELECT attempt_count, available_at > clock_timestamp() AS delayed,
-              failed_at, lease_owner
-       FROM team_invitation_deliveries WHERE invitation_id = $1`,
-      [invitation.invitationId],
-    );
-    expect(stored.rows).toEqual([
-      { attempt_count: 1, delayed: true, failed_at: null, lease_owner: null },
-    ]);
-    expect(JSON.stringify(events)).not.toContain(invitation.email);
-    expect(JSON.stringify(events)).not.toContain(invitation.invitationId);
-    expect(JSON.stringify(events)).not.toContain(providerError.message);
-  });
-});
-
-describe('Postmark magic-link presentation', () => {
-  it('uses the same plaintext mail boundary without exposing links to logs', async () => {
-    const peer = await postmarkFixture();
-    postmarkRouting.url = peer.url;
-    const log = vi.spyOn(console, 'log');
+      .mockResolvedValue(undefined);
+    await drainQueue();
+    const worker = scratch.createJobWorker();
+    await worker.start();
     try {
-      const mailer = createMailer({
-        kind: 'postmark',
-        serverToken: 'postmark-token-canary',
-        messageStream: 'outbound',
-        from: 'Studio <sender@example.test>',
+      await registerInvitationDelivery(worker.boss, {
+        maintenancePool: scratch.maintenance,
+        mailer: mailerThat(sendTeamInvitation),
+        publicBaseUrl: PUBLIC_BASE_URL,
       });
-      await mailer.sendMagicLink({
-        email: 'private-recipient@example.test',
-        url: 'https://studio.example.test/secret-magic-link-canary',
-      });
-      expect(peer.messages).toHaveLength(1);
-      expect(peer.messages[0]?.body).toMatchObject({
-        To: 'private-recipient@example.test',
-        Subject: 'Sign in to Network Canvas Studio',
-        TextBody: expect.stringContaining(
-          'https://studio.example.test/secret-magic-link-canary',
-        ),
-        TrackLinks: 'None',
-        TrackOpens: false,
-      });
-      expect(log).not.toHaveBeenCalled();
-    } finally {
-      log.mockRestore();
-      postmarkRouting.url = '';
-      await peer.close();
-    }
-  });
-});
 
-describe.skipIf(!db)('Postmark invitation delivery outcomes', () => {
-  it.each([
-    [{}, 'sent', null],
-    [{ behavior: 'disconnect' }, 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
-    [{ behavior: 'silent' }, 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
-    [
-      {
-        status: 500,
-        body: { ErrorCode: 101, Message: 'private-provider-canary' },
-      },
-      'uncertain',
-      'EMAIL_DELIVERY_UNCERTAIN',
-    ],
-    [
-      {
-        status: 422,
-        body: { ErrorCode: 406, Message: 'private-provider-canary' },
-      },
-      'failed',
-      'EMAIL_DELIVERY_PERMANENT',
-    ],
-    [
-      { status: 429, body: { Message: 'private-provider-canary' } },
-      'retryable',
-      'EMAIL_DELIVERY_RETRYABLE',
-    ],
-    [
-      {
-        status: 503,
-        body: { ErrorCode: 100, Message: 'private-provider-canary' },
-      },
-      'retryable',
-      'EMAIL_DELIVERY_RETRYABLE',
-    ],
-  ] satisfies [PostmarkReply, string, string | null][])(
-    'persists actual Postmark outcome %# without repeating terminal sends',
-    async (reply: PostmarkReply, terminal, lastError) => {
-      const scratch = await seededScratch();
-      const peer = await postmarkFixture(reply);
-      postmarkRouting.url = peer.url;
-      try {
-        const invitation = await seedInvitation(scratch, {
-          email: 'private-recipient@example.test',
-        });
-        await enqueue(scratch, invitation);
-        const mailer = createMailer({
-          kind: 'postmark',
-          serverToken: 'postmark-token-canary',
-          messageStream: 'outbound',
-          from: 'Studio <sender@example.test>',
-        });
-        const events: OutboxLifecycleEvent[] = [];
-        const heartbeatRenewed = deferred();
-        const worker = dispatcher(scratch.maintenance, mailer, {
-          observer: (event) => {
-            events.push(event);
-            if (event.kind === 'heartbeat' && event.outcome === 'renewed')
-              heartbeatRenewed.resolve();
-          },
-        });
-        if (reply.behavior === 'silent')
-          vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-        const running = worker.runOnce();
-        if (reply.behavior === 'silent') {
-          await peer.received();
-          await vi.advanceTimersByTimeAsync(20_001);
-          await heartbeatRenewed.promise;
-          await vi.advanceTimersByTimeAsync(10_000);
-        }
-        await running;
-        const stored = await scratch.pool.query<{
-          attempts: number;
-          sent: boolean;
-          failed: boolean;
-          uncertain: boolean;
-          last_error: string | null;
-        }>(
-          `SELECT attempt_count AS attempts, sent_at IS NOT NULL AS sent,
-          failed_at IS NOT NULL AS failed, uncertain_at IS NOT NULL AS uncertain, last_error
-          FROM team_invitation_deliveries WHERE invitation_id = $1`,
-          [invitation.invitationId],
-        );
-        expect(stored.rows).toEqual([
-          {
-            attempts: 1,
-            sent: terminal === 'sent',
-            failed: terminal === 'failed',
-            uncertain: terminal === 'uncertain',
-            last_error: lastError,
-          },
-        ]);
-        expect(peer.messages).toHaveLength(1);
-        expect(peer.messages[0]?.body).toMatchObject({
-          TextBody: expect.stringContaining(
-            `https://studio.example.test/invitations/${invitation.invitationId}`,
-          ),
-          Headers: [
-            {
-              Name: 'Message-ID',
-              Value: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
-            },
-          ],
-        });
-        expect(events).toContainEqual(
-          expect.objectContaining({
-            claimed: 1,
-            retried: terminal === 'retryable' ? 1 : 0,
-            uncertain: terminal === 'uncertain' ? 1 : 0,
-          }),
-        );
-        for (const canary of [
-          invitation.email,
-          invitation.invitationId,
-          'postmark-token-canary',
-          'private-provider-canary',
-        ]) {
-          expect(
-            JSON.stringify(stored.rows) + JSON.stringify(events),
-          ).not.toContain(canary);
-        }
-        const repeated = await dispatcher(
-          scratch.maintenance,
-          mailer,
-        ).runOnce();
-        expect(repeated.claimed).toBe(terminal === 'retryable' ? 1 : 0);
-        expect(peer.messages).toHaveLength(terminal === 'retryable' ? 2 : 1);
-      } finally {
-        vi.useRealTimers();
-        postmarkRouting.url = '';
-        await peer.close();
-        await scratch.dispose();
-      }
-    },
-  );
-});
-
-describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
-  it('the actual Node SIGTERM drain persists a held SMTP outcome before exiting', async () => {
-    if (!db) throw new Error('Database required for process drain test.');
-    const versioned = await createScratchDatabase(db);
-    const scratch = { ...versioned, app: createPool(versioned.db) };
-    const peer = await smtpFixture('silent_data');
-    const runtimeSuffix = randomUUID().replaceAll('-', '');
-    const appRuntimeLogin = `smtp_app_${runtimeSuffix}`;
-    const maintenanceRuntimeLogin = `smtp_maintenance_${runtimeSuffix}`;
-    const runtimePassword = 'smtp-runtime-synthetic-only';
-    let runtimeCreated = false;
-    let child: ReturnType<typeof spawn> | undefined;
-    let exited: Promise<unknown[]> | undefined;
-    try {
-      const identity = (
-        await scratch.pool.query<{ database: string; login: string }>(
-          'SELECT current_database() AS database, session_user AS login',
-        )
-      ).rows[0]!;
-      await scratch.pool.query(`
-        REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM PUBLIC;
-        GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(identity.login)};
-      `);
-      const migrations = await readMigrations(
-        fileURLToPath(new URL('../../../migrations', import.meta.url)),
-      );
-      expect(migrations.length).toBeGreaterThan(0);
-      expect(
-        await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT, [
-          identity.login,
-        ]),
-      ).toEqual(migrations.map(({ manifest }) => manifest.id));
-      await scratch.pool.query(
-        `CREATE ROLE ${escapeIdentifier(appRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
-         CREATE ROLE ${escapeIdentifier(maintenanceRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
-         GRANT studio_app TO ${escapeIdentifier(appRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
-         GRANT studio_maintenance TO ${escapeIdentifier(maintenanceRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
-         GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
-      );
-      runtimeCreated = true;
-      await seedInviter(scratch.pool);
-      const invitation = await seedInvitation(scratch);
-      await enqueue(scratch, invitation);
-      const runtimeUrl = new URL(scratch.db.url);
-      runtimeUrl.username = appRuntimeLogin;
-      runtimeUrl.password = runtimePassword;
-      const maintenanceUrl = new URL(scratch.db.url);
-      maintenanceUrl.username = maintenanceRuntimeLogin;
-      maintenanceUrl.password = runtimePassword;
-      const databaseUrl = runtimeUrl.href;
-      if (typeof databaseUrl !== 'string')
-        throw new Error('Missing fixture URL');
-      child = spawn(
-        process.execPath,
-        [fileURLToPath(new URL('../../index.ts', import.meta.url))],
+      const email = `${randomUUID()}@example.com`;
+      const created = await createTeamInvitation(
         {
-          env: {
-            NODE_ENV: 'production',
-            HOST: '127.0.0.1',
-            PORT: '0',
-            DATABASE_URL: databaseUrl,
-            ...encryptionEnvironment(),
-            STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl.href,
-            STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
-              identity.login,
-              appRuntimeLogin,
-              maintenanceRuntimeLogin,
-            ]),
-            BETTER_AUTH_SECRET:
-              'smtp-process-only-authentication-secret-32-characters',
-            PUBLIC_URL: 'https://studio.example.test',
-            SMTP_URL: peer.url,
-            EMAIL_FROM: 'Studio <sender@example.test>',
-          },
-          stdio: ['ignore', 'pipe', 'pipe'],
+          tenantDb: createTenantDb(scratch.app, TEAM_ID),
+          principal: PRINCIPAL,
+          requestId: randomUUID(),
+          jobs,
         },
+        { email, role: 'member' },
       );
-      exited = once(child, 'exit');
-      let output = '';
-      let stderr = '';
-      const started = deferred();
-      child.stdout?.on('data', (chunk: Buffer) => {
-        output += chunk.toString();
-        if (output.includes('STUDIO_SERVER_STARTED')) started.resolve();
-      });
-      child.stderr?.on('data', (chunk: Buffer) => {
-        stderr += chunk.toString();
-      });
-      expect(
-        await Promise.race([
-          Promise.all([started.promise, peer.dataReceived]).then(() => true),
-          exited.then(() => false),
-          delay(8_000, false, { ref: false }),
-        ]),
-        `process must start and send fixture DATA: ${output} ${stderr}`,
-      ).toBe(true);
-      child.kill('SIGTERM');
-      expect(
-        await Promise.race([exited, delay(8_000, 'deadline', { ref: false })]),
-        'SIGTERM must settle SMTP and its durable outcome before the ten-second backstop',
-      ).toEqual([0, null]);
-      const stored = await scratch.pool.query(
-        `SELECT uncertain_at IS NOT NULL AS uncertain, lease_owner, attempt_count, last_error
-         FROM team_invitation_deliveries WHERE invitation_id = $1`,
-        [invitation.invitationId],
-      );
-      expect(stored.rows).toEqual([
-        {
-          uncertain: true,
-          lease_owner: null,
-          attempt_count: 1,
-          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
-        },
-      ]);
-      expect(peer.messages).toHaveLength(1);
-      expect(stderr).toBe('');
-      expect(output).not.toContain('STUDIO_SHUTDOWN_FAILED');
-    } finally {
-      if (child && child.exitCode === null && child.signalCode === null)
-        child.kill('SIGKILL');
-      await exited;
-      await peer.close();
-      await scratch.app.end();
-      if (runtimeCreated)
-        await scratch.pool.query(
-          `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(scratch.db.url).pathname.slice(1))} FROM ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
-           DROP ROLE ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
-        );
-      await scratch.dispose();
-    }
-  }, 25_000);
 
-  it('cancels a held SMTP send and persists uncertainty within the shutdown budget', async () => {
-    const scratch = await seededScratch();
-    const peer = await smtpFixture('silent_data');
-    let stopping: Promise<void> | undefined;
-    try {
-      const invitation = await seedInvitation(scratch);
-      await enqueue(scratch, invitation);
-      const mailer = createMailer({
-        kind: 'smtp',
-        url: peer.url,
-        from: 'Studio <sender@example.test>',
-      });
-      const worker = startInvitationDeliveryWorker({
-        pool: scratch.maintenance,
-        mailer,
-        publicBaseUrl: 'https://studio.example.test',
-        pollIntervalMs: 60_000,
-      });
-      await peer.dataReceived;
-      stopping = worker.stop();
-      // The real process exits after ten seconds. A held SMTP peer produces no
-      // event until cancellation, so an eight-second deadline is the oracle.
-      const finished = await Promise.race([
-        stopping.then(() => true),
-        delay(8_000, false, { ref: false }),
-      ]);
-      expect(
-        finished,
-        'shutdown must finalize ambiguity before the process backstop',
-      ).toBe(true);
-      const stored = await scratch.pool.query(
-        `SELECT uncertain_at IS NOT NULL AS uncertain, lease_owner, attempt_count, last_error
-         FROM team_invitation_deliveries WHERE invitation_id = $1`,
-        [invitation.invitationId],
+      await vi.waitFor(
+        async () => {
+          const sent = await scratch.pool.query<{ sent_at: Date | null }>(
+            `SELECT sent_at FROM team_invitation_deliveries
+             WHERE invitation_id = $1`,
+            [created.invitationId],
+          );
+          expect(sent.rows[0]?.sent_at).toBeInstanceOf(Date);
+        },
+        { timeout: WORKED_JOB_TIMEOUT_MS, interval: 100 },
       );
-      expect(stored.rows).toEqual([
-        {
-          uncertain: true,
-          lease_owner: null,
-          attempt_count: 1,
-          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
-        },
-      ]);
-      const replacement = createMailer({
-        kind: 'smtp',
-        url: peer.url,
-        from: 'Studio <sender@example.test>',
-      });
-      expect(
-        (await dispatcher(scratch.maintenance, replacement).runOnce()).claimed,
-      ).toBe(0);
-      expect(peer.messages).toHaveLength(1);
-    } finally {
-      await peer.close();
-      await stopping;
-      await scratch.dispose();
-    }
-  });
-
-  it('delivers Mailpit magic links with the documented development sender', async () => {
-    const peer = await smtpFixture();
-    try {
-      const mailer = createMailer({
-        kind: 'smtp',
-        url: peer.url,
-        from: DEV.emailFrom,
-      });
-      await mailer.sendMagicLink({
-        email: 'developer@example.test',
-        url: 'http://localhost:5173/test-sign-in',
-      });
-      expect(peer.messages).toHaveLength(1);
-      expect(peer.commands).toContain(`MAIL FROM:<${DEV.emailFrom}>`);
-      expect(peer.messages[0]).toContain('http://localhost:5173/test-sign-in');
-    } finally {
-      await peer.close();
-    }
-  });
-
-  it('persists post-DATA uncertainty after a transient heartbeat failure and does not send again', async () => {
-    const scratch = await seededScratch();
-    const peer = await smtpFixture('silent_data');
-    try {
-      const invitation = await seedInvitation(scratch);
-      await enqueue(scratch, invitation);
-      await scratch.pool
-        .query(`CREATE FUNCTION fail_smtp_heartbeat() RETURNS trigger LANGUAGE plpgsql AS $body$
-        BEGIN
-          IF NEW.lease_owner = OLD.lease_owner
-            AND NEW.lease_owner IS NOT NULL
-            AND NEW.lease_expires_at IS DISTINCT FROM OLD.lease_expires_at THEN
-            RAISE EXCEPTION 'transient heartbeat failure';
-          END IF;
-          RETURN NEW;
-        END $body$;
-        CREATE TRIGGER fail_smtp_heartbeat BEFORE UPDATE ON team_invitation_deliveries
-        FOR EACH ROW EXECUTE FUNCTION fail_smtp_heartbeat()`);
-      const mailer = createMailer({
-        kind: 'smtp',
-        url: peer.url,
-        from: 'Studio <sender@example.test>',
-      });
-      const heartbeatFailed = deferred();
-      const events: OutboxLifecycleEvent[] = [];
-      const worker = dispatcher(scratch.maintenance, mailer, {
-        observer: (event) => {
-          events.push(event);
-          if (event.kind === 'heartbeat' && event.outcome === 'error')
-            heartbeatFailed.resolve();
-        },
-      });
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-      const running = worker.runOnce();
-      await peer.dataReceived;
-      await vi.advanceTimersByTimeAsync(20_001);
-      await heartbeatFailed.promise;
-      await vi.advanceTimersByTimeAsync(20_000);
-      await running;
-      const stored = await scratch.pool.query<{
-        uncertain: boolean;
-        attempts: number;
-        lease_owner: string | null;
-        last_error: string | null;
-      }>(
-        `SELECT uncertain_at IS NOT NULL AS uncertain, attempt_count AS attempts, lease_owner, last_error
-        FROM team_invitation_deliveries WHERE invitation_id = $1`,
-        [invitation.invitationId],
-      );
-      expect(stored.rows).toEqual([
-        {
-          uncertain: true,
-          attempts: 1,
-          lease_owner: null,
-          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
-        },
-      ]);
-      expect(events).toContainEqual(
+      expect(sendTeamInvitation).toHaveBeenCalledWith(
         expect.objectContaining({
-          kind: 'dispatch',
-          uncertain: 1,
-          retried: 0,
-          leaseLost: 0,
+          email,
+          invitationUrl: `${PUBLIC_BASE_URL}/invitations/${created.invitationId}`,
+          role: 'member',
         }),
       );
-      // Force immediate re-eligibility if the uncertainty marker is missing;
-      // this is a real SQL lease-clock boundary, independent of fake JS time.
-      await scratch.pool.query(
-        'DROP TRIGGER fail_smtp_heartbeat ON team_invitation_deliveries',
-      );
-      await scratch.pool.query(
-        `UPDATE team_invitation_deliveries SET lease_expires_at = clock_timestamp() - interval '1 second'
-        WHERE invitation_id = $1 AND lease_owner IS NOT NULL`,
-        [invitation.invitationId],
-      );
-      expect(
-        (await dispatcher(scratch.maintenance, mailer).runOnce()).claimed,
-      ).toBe(0);
-      expect(peer.messages).toHaveLength(1);
     } finally {
-      vi.useRealTimers();
-      await peer.close();
-      await scratch.dispose();
+      await worker.stop();
     }
   });
-
-  it('persists successful acceptance after a transient heartbeat failure and does not send again', async () => {
-    const scratch = await seededScratch();
-    const peer = await smtpFixture('silent_data');
-    try {
-      const invitation = await seedInvitation(scratch);
-      await enqueue(scratch, invitation);
-      await scratch.pool
-        .query(`CREATE FUNCTION fail_smtp_heartbeat() RETURNS trigger LANGUAGE plpgsql AS $body$
-        BEGIN
-          IF NEW.lease_owner = OLD.lease_owner
-            AND NEW.lease_owner IS NOT NULL
-            AND NEW.lease_expires_at IS DISTINCT FROM OLD.lease_expires_at THEN
-            RAISE EXCEPTION 'transient heartbeat failure';
-          END IF;
-          RETURN NEW;
-        END $body$;
-        CREATE TRIGGER fail_smtp_heartbeat BEFORE UPDATE ON team_invitation_deliveries
-        FOR EACH ROW EXECUTE FUNCTION fail_smtp_heartbeat()`);
-      const mailer = createMailer({
-        kind: 'smtp',
-        url: peer.url,
-        from: 'Studio <sender@example.test>',
-      });
-      const heartbeatFailed = deferred();
-      const events: OutboxLifecycleEvent[] = [];
-      const worker = dispatcher(scratch.maintenance, mailer, {
-        leaseMs: 30_000,
-        observer: (event) => {
-          events.push(event);
-          if (event.kind === 'heartbeat' && event.outcome === 'error')
-            heartbeatFailed.resolve();
-        },
-      });
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-      const running = worker.runOnce();
-      await peer.dataReceived;
-      await vi.advanceTimersByTimeAsync(10_001);
-      await heartbeatFailed.promise;
-      peer.acceptPending();
-      await running;
-      const stored = await scratch.pool.query<{
-        delivered: boolean;
-        attempts: number;
-        lease_owner: string | null;
-        last_error: string | null;
-      }>(
-        `SELECT sent_at IS NOT NULL AS delivered, attempt_count AS attempts, lease_owner, last_error
-        FROM team_invitation_deliveries WHERE invitation_id = $1`,
-        [invitation.invitationId],
-      );
-      expect(stored.rows).toEqual([
-        {
-          delivered: true,
-          attempts: 1,
-          lease_owner: null,
-          last_error: null,
-        },
-      ]);
-      expect(events).toContainEqual(
-        expect.objectContaining({
-          kind: 'dispatch',
-          completed: 1,
-          retried: 0,
-          leaseLost: 0,
-        }),
-      );
-      // Force immediate re-eligibility if the delivered marker is missing;
-      // this is a real SQL lease-clock boundary, independent of fake JS time.
-      await scratch.pool.query(
-        'DROP TRIGGER fail_smtp_heartbeat ON team_invitation_deliveries',
-      );
-      await scratch.pool.query(
-        `UPDATE team_invitation_deliveries SET lease_expires_at = clock_timestamp() - interval '1 second'
-        WHERE invitation_id = $1 AND lease_owner IS NOT NULL`,
-        [invitation.invitationId],
-      );
-      expect(
-        (await dispatcher(scratch.maintenance, mailer).runOnce()).claimed,
-      ).toBe(0);
-      expect(peer.messages).toHaveLength(1);
-    } finally {
-      vi.useRealTimers();
-      await peer.close();
-      await scratch.dispose();
-    }
-  });
-
-  it.each([
-    ['disconnect_data', 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
-    ['silent_data', 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
-    ['reject_data_permanent', 'failed', 'EMAIL_DELIVERY_PERMANENT'],
-    ['accept', 'sent', null],
-  ] as const)(
-    'records %s through the actual mailer and never automatically repeats a terminal send',
-    async (behavior, terminal, lastError) => {
-      const scratch = await seededScratch();
-      const peer = await smtpFixture(behavior satisfies SmtpBehavior);
-      try {
-        const invitation = await seedInvitation(scratch, {
-          email: 'private-recipient@example.test',
-        });
-        await enqueue(scratch, invitation);
-        const mailer = createMailer({
-          kind: 'smtp',
-          url: peer.url,
-          from: 'Studio <sender@example.test>',
-        });
-        const events: OutboxLifecycleEvent[] = [];
-        const heartbeatRenewed = deferred();
-        const worker = dispatcher(scratch.maintenance, mailer, {
-          observer: (event) => {
-            events.push(event);
-            if (event.kind === 'heartbeat' && event.outcome === 'renewed')
-              heartbeatRenewed.resolve();
-          },
-        });
-        if (behavior === 'silent_data')
-          vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-        const running = worker.runOnce();
-        if (behavior === 'silent_data') {
-          await peer.dataReceived;
-          await vi.advanceTimersByTimeAsync(20_001);
-          await heartbeatRenewed.promise;
-          await vi.advanceTimersByTimeAsync(19_999);
-        }
-        await running;
-        const stored = await scratch.pool.query<{
-          attempts: number;
-          sent: boolean;
-          failed: boolean;
-          uncertain: boolean;
-          last_error: string | null;
-        }>(
-          `SELECT attempt_count AS attempts, sent_at IS NOT NULL AS sent,
-          failed_at IS NOT NULL AS failed, uncertain_at IS NOT NULL AS uncertain, last_error
-         FROM team_invitation_deliveries WHERE invitation_id = $1`,
-          [invitation.invitationId],
-        );
-        expect(stored.rows).toEqual([
-          {
-            attempts: 1,
-            sent: terminal === 'sent',
-            failed: terminal === 'failed',
-            uncertain: terminal === 'uncertain',
-            last_error: lastError,
-          },
-        ]);
-        expect(peer.messages).toHaveLength(1);
-        const rawMessage = peer.messages[0]!;
-        const boundary = rawMessage.indexOf('\r\n\r\n');
-        expect(boundary).toBeGreaterThan(0);
-        const headers = rawMessage
-          .slice(0, boundary)
-          .replace(/\r\n[ \t]+/g, ' ');
-        expect(headers).toContain(
-          `Message-ID: <studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
-        );
-        expect(headers).toContain(
-          'Content-Transfer-Encoding: quoted-printable',
-        );
-        // RFC 2045 soft line breaks do not change this ASCII invitation URL.
-        const body = rawMessage.slice(boundary + 4).replace(/=\r\n/g, '');
-        expect(body).toContain(
-          `https://studio.example.test/invitations/${invitation.invitationId}`,
-        );
-        expect(events).toContainEqual(
-          expect.objectContaining({
-            claimed: 1,
-            retried: 0,
-            uncertain: terminal === 'uncertain' ? 1 : 0,
-          }),
-        );
-        expect(JSON.stringify(stored.rows)).not.toContain(invitation.email);
-        expect(JSON.stringify(events)).not.toContain(invitation.email);
-        const repeated = await dispatcher(
-          scratch.maintenance,
-          mailer,
-        ).runOnce();
-        expect(repeated.claimed).toBe(0);
-        expect(peer.messages).toHaveLength(1);
-      } finally {
-        vi.useRealTimers();
-        await peer.close();
-        await scratch.dispose();
-      }
-    },
-  );
 });

@@ -414,10 +414,32 @@ test('lands keyboard focus on the destination heading of a Used In link', async 
   expect(focused.isRouteTarget).toBe(true);
   expect(focused.text).toBe(destination?.trim());
 
+  // …and the next Tab continues INTO the editor rather than restarting at the
+  // app header: the first thing after the heading is the editor's own section
+  // outline, which is what a reader arriving here is offered first.
   await architectPage.keyboard.press('Tab');
   await expect(
-    architectPage.getByRole('textbox', { name: 'Stage name' }),
+    architectPage
+      .getByRole('navigation', { name: 'Stage sections' })
+      .getByRole('button')
+      .first(),
   ).toBeFocused();
+
+  // And the whole list comes before the editor, asserted as document order
+  // rather than by counting Tab presses — which would be a claim about how
+  // many controls the list happens to hold.
+  expect(
+    await architectPage.evaluate(() => {
+      const list = document.querySelector('nav[aria-label="Stage sections"]');
+      const name = document.querySelector('[data-field-name="label"]');
+      if (list === null || name === null) return 'one of them is missing';
+      return (list.compareDocumentPosition(name) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0
+        ? 'list first'
+        : 'title first';
+    }),
+  ).toBe('list first');
 });
 
 // #1392: a valid but very long variable name broke the delete confirmation.
@@ -496,3 +518,39 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
     stored.codebook.node?.person?.variables?.['long-name-variable'],
   ).toBeUndefined();
 });
+
+for (const attributeType of ['Categorical', 'Ordinal']) {
+  test(`brings a new ${attributeType.toLowerCase()} attribute's values into view below its type`, async ({
+    architectPage,
+    seed,
+  }) => {
+    const { protocol, assets } = loadAllInterfacesFixture();
+    await seed(protocol, { name: 'All Interfaces', assets });
+    await architectPage.goto('/protocol/codebook');
+
+    await architectPage
+      .getByRole('button', { name: 'Add attribute' })
+      .first()
+      .click();
+    const dialog = architectPage.getByRole('dialog', {
+      name: 'Create New Attribute',
+    });
+    await dialog
+      .getByRole('textbox', { name: 'Attribute name' })
+      .fill('closeness');
+    const type = dialog.getByRole('combobox', { name: 'Attribute type' });
+    await type.click();
+    await architectPage
+      .getByRole('option', { name: attributeType, exact: true })
+      .click();
+
+    await expect(
+      dialog.getByRole('heading', { name: 'Allowed values' }),
+    ).toBeInViewport();
+    await expect(
+      dialog.getByRole('button', { name: 'Create new option' }),
+    ).toBeInViewport();
+    await expect(type).toBeInViewport();
+    await expect(type).toBeFocused();
+  });
+}

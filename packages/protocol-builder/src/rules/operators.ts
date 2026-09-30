@@ -129,9 +129,9 @@ const OPERATOR_LABELS = defineMessages({
  * The formatter used when a caller has none of its own.
  *
  * Every display surface threads the reader's own `intl` in. This is the
- * fallback for the pure readers a host reaches without an editing session —
- * the printable protocol summary and this package's own module tests — which
- * have a rule and a codebook and nothing else.
+ * fallback for the pure readers a host reaches outside a stage editor — the
+ * printable protocol summary and this package's own module tests — which have
+ * a rule and a codebook and nothing else.
  */
 const englishIntl = createAppIntl({ locale: 'en' });
 
@@ -773,7 +773,7 @@ const offeredOperators = (
   variableType: VariableType,
 ): ReadonlySet<FilterOperator> => {
   const allowed = OperatorsByVariableType[variableType];
-  if (allowed === undefined) return new Set();
+  if (allowed === undefined) return new Set<FilterOperator>();
   return new Set(
     AllOperators.options.filter(
       (operator) =>
@@ -798,7 +798,7 @@ const OFFERED_OPERATORS: ReadonlyMap<
   ['exists', PRESENCE_OPERATORS],
 ]);
 
-const NO_OPERATORS: ReadonlySet<FilterOperator> = new Set();
+const NO_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>();
 
 export const operatorsForSubject = (
   subject: RuleOperatorSubject,

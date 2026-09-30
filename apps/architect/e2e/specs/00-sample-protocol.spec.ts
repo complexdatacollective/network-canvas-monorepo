@@ -13,15 +13,10 @@ import { installMapboxMocks } from '../fixtures/mapbox-mocks.js';
 import { emptyProtocol, seedProtocol } from '../fixtures/seed.js';
 import {
   assertBuiltProtocolInvariants,
-  dropForcedRequiredValidation,
   normalizeProtocol,
 } from '../helpers/normalize-protocol.js';
 import { readProtocolJson, readStageJson } from '../helpers/read-store.js';
 import { assignBooleanAttribute } from '../pageobjects/editor-sections/additional-attributes.js';
-import {
-  openResourceBrowser,
-  uploadIntoResourceBrowser,
-} from '../pageobjects/editor-sections/asset-upload.js';
 import {
   setConcentricCirclesBackground,
   setImageBackground,
@@ -31,10 +26,8 @@ import {
   addAssetItem,
   addTextItem,
 } from '../pageobjects/editor-sections/content-grid.js';
-import {
-  selectOrCreateEdgeType,
-  selectOrCreateNodeType,
-} from '../pageobjects/editor-sections/entity-types.js';
+import { importResource } from '../pageobjects/editor-sections/data-source.js';
+import { selectOrCreateNodeType } from '../pageobjects/editor-sections/entity-types.js';
 import { configureStageFilter } from '../pageobjects/editor-sections/filter.js';
 import { addConfiguredFormField } from '../pageobjects/editor-sections/form-field-controls.js';
 import { fillIntroductionPanel } from '../pageobjects/editor-sections/introduction-panel.js';
@@ -44,7 +37,7 @@ import {
 } from '../pageobjects/editor-sections/narrative-presets.js';
 import { addExistingNetworkPanel } from '../pageobjects/editor-sections/panels.js';
 import { addPrompt } from '../pageobjects/editor-sections/prompts.js';
-import { createQuickAddVariable } from '../pageobjects/editor-sections/quick-add.js';
+import { selectOrCreateQuickAddVariable } from '../pageobjects/editor-sections/quick-add.js';
 import {
   addCardDisplayProperties,
   configureSearchOptions,
@@ -53,8 +46,8 @@ import {
 import { configureSkipLogic } from '../pageobjects/editor-sections/skip-logic.js';
 import { addSociogramPrompt } from '../pageobjects/editor-sections/sociogram-prompts.js';
 import {
-  createVariableViaSpotlight,
-  createVariableWithOptions,
+  authorOptions,
+  createAttribute,
   type OptionRow,
 } from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
@@ -63,14 +56,17 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
 // (packages/protocols/sample/protocol.json — 30 stages, 4 node types, 2 edge
 // types, 24 codebook variables, 10 assets) from scratch through the real
 // Architect editors, then compare the persisted protocol structurally against
-// the canonical file. This is the regression oracle for the redux-form
-// migration: it exercises every editor surface the sample protocol touches
-// and pins the exact JSON the current implementation writes.
+// the canonical file. This is the regression oracle for the move to the
+// shared `@codaco/protocol-builder` editors: it exercises every editor surface
+// the sample protocol touches and pins the exact JSON the current
+// implementation writes.
 //
-// One serial block sharing one page: the protocol accretes stage by stage
-// (later stages reference variables/edge types created by earlier ones —
-// verified: zero forward references in protocol order), so tests cannot run
-// independently, but per-test grouping still isolates which build step broke.
+// One serial block sharing one page: the protocol accretes stage by stage, so
+// tests cannot run independently, but per-test grouping still isolates which
+// build step broke. Almost everything a later stage names is created by an
+// earlier one, in protocol order. The exception is the two edge types: the
+// stage that first draws them cannot invent one, so they are created on the
+// codebook screen just before it — see `createEdgeTypeInCodebook`.
 // Playwright's "Consider running tests from slow files in parallel" hint is
 // intentionally wrong for this harness. Do not parallelise or shard it: every
 // test consumes the IndexedDB protocol authored by the preceding tests, and
@@ -123,9 +119,11 @@ function s(...segments: (string | number)[]): string {
   return value;
 }
 
-// Canonical codebook option lists as raw Options-editor rows. Numeric values
-// become the strings the Value input receives; parseOptionValue coerces them
-// back to numbers on write, so the round trip preserves 5 / -1 exactly.
+// Canonical codebook option lists as rows for the attribute editor that
+// authors them. Numeric values become the strings its "Option N value" box
+// receives; `VariableEditor`'s own `parseOptionValue` coerces an integer
+// string back to a number on write, so the round trip preserves 5 / -1
+// exactly.
 function optionRows(...segments: (string | number)[]): OptionRow[] {
   const value = at(...segments);
   if (!Array.isArray(value)) {
@@ -232,6 +230,71 @@ test.describe.serial('sample protocol built from scratch', () => {
     return stage;
   }
 
+  /**
+   * Creates an edge type on Architect's own codebook screen.
+   *
+   * Not from the stage that first names one, because no stage in this protocol
+   * can. A sociogram's subject is a node, and its prompt's connection picker
+   * (`EntityTypePickerField`) only chooses among the edge types the codebook
+   * already holds. Every type picker now offers "Create new edge type" of its
+   * own, but the stage that would invent `conflict` comes after the sociogram
+   * which first draws `know`, and nothing in this protocol ever asks for
+   * `conflict` in a stage that could create it. So the codebook screen, where
+   * Architect offers this independently of any stage, is the route a
+   * researcher building this protocol in order actually has.
+   *
+   * The colour is deliberately left alone: `getNewTypeTemplate` seeds the next
+   * unused swatch in sequence, which is exactly what
+   * `assertBuiltProtocolInvariants` requires of the built protocol. (Codebook
+   * entity colours are normalised out of the canonical comparison, because the
+   * canonical file has gaps left by types deleted during its original
+   * authoring.)
+   *
+   * No boot wait: this navigates the whole app, and the first locator's own
+   * actionability wait covers the reload — the same thing `StageEditor.createNew`
+   * does explicitly.
+   */
+  async function createEdgeTypeInCodebook(name: string): Promise<void> {
+    await page.goto('/protocol/codebook');
+    await page
+      .getByRole('button', { name: 'Create edge type', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', {
+      name: 'Create Edge Type',
+      exact: true,
+    });
+    await dialog
+      .getByRole('textbox', { name: 'Edge type name', exact: true })
+      .fill(name);
+    await dialog
+      .getByRole('button', { name: 'Save and Close', exact: true })
+      .click();
+    await dialog.waitFor({ state: 'detached' });
+  }
+
+  /**
+   * Invents the attribute a bin prompt sorts by, from the picker's own create
+   * row.
+   *
+   * `BinAttributeField` offers a picker over the attributes the node type
+   * already has — restricted to the one kind the bin sorts by — and nothing
+   * beside it: creating is the window's create row, taken on the name typed
+   * into its search box. A bin attribute IS its list of values, which a name
+   * cannot finish, so the row escalates to the codebook's own editor. That
+   * editor opens locked to the one kind, so its "Attribute type" is never
+   * touched, and already holding the typed name — which `createAttribute`
+   * reads back rather than retyping.
+   */
+  async function createBinAttribute(
+    name: string,
+    options: readonly OptionRow[],
+  ): Promise<void> {
+    await createAttribute(editor.field('variable'), name, {
+      title: 'Create a new attribute',
+      author: authorOptions(options),
+    });
+  }
+
   test('01 sets the description and builds the welcome information stages', async () => {
     // Protocol description: ProtocolInfoCard commits on blur; the accepted
     // commit lands in IndexedDB asynchronously behind validation.
@@ -245,9 +308,9 @@ test.describe.serial('sample protocol built from scratch', () => {
       (protocol) => protocol.description === s('description'),
     );
 
-    // Stage 0 — Welcome (Information): two text items + the png at SMALL,
-    // uploading the image at first use through the item dialog's Resource
-    // Browser.
+    // Stage 0 — Welcome (Information): two text blocks + the png at SMALL,
+    // importing the image at first use through the resource browser the
+    // block's own picker opens.
     await editor.createNew('Information', 0);
     await editor.setStageName(s('stages', 0, 'label'));
     await editor
@@ -291,7 +354,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await saveStage(2, 'Information');
   });
 
-  test('02 builds the consent form (EgoForm + BooleanChoice)', async () => {
+  test('02 builds the consent form (EgoForm + a yes/no field)', async () => {
     await editor.createNew('EgoForm', 3);
     await editor.setStageName(s('stages', 3, 'label'));
     await fillIntroductionPanel(
@@ -302,7 +365,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(editor.section('Form configuration'), {
       variableName: 'participant_consent',
       promptText: s('stages', 3, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'BooleanChoice',
+      inputControl: 'Boolean Choice',
       booleanOptions: {
         // Canonical: both options carry explicit `negative` booleans.
         positive: {
@@ -350,7 +413,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'dob',
       promptText: prompt(2),
-      inputControl: 'DatePicker',
+      inputControl: 'Date Picker',
     });
     await addConfiguredFormField(form, {
       variableName: 'languages_spoken',
@@ -367,13 +430,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'research_support',
       promptText: prompt(5),
-      inputControl: 'LikertScale',
+      inputControl: 'Likert Scale',
       options: optionRows(...EGO, V_RESEARCH_SUPPORT, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'operation_pain',
       promptText: prompt(6),
-      inputControl: 'VisualAnalogScale',
+      inputControl: 'Visual Analog Scale',
       scalarParameters: {
         minLabel: s(...EGO, V_OPERATION_PAIN, 'parameters', 'minLabel'),
         maxLabel: s(...EGO, V_OPERATION_PAIN, 'parameters', 'maxLabel'),
@@ -427,11 +490,10 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('NameGeneratorQuickAdd', 6);
     await editor.setStageName(s('stages', 6, 'label'));
     await selectOrCreateNodeType(page, 'Person');
-    // The QuickAdd picker hard-codes required validation onto the variable
-    // it creates; the canonical `name` variable has none, so clear it.
-    await createQuickAddVariable(editor, page, 'name', {
-      clearRequiredValidation: true,
-    });
+    // Person has no text attribute yet, so this creates `name` through the
+    // quick-add picker's own name box. An attribute created there is born
+    // `{ required: true }`, matching canonical Person `name`.
+    await selectOrCreateQuickAddVariable(editor, 'name');
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
@@ -461,9 +523,10 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('NameGeneratorQuickAdd', 8);
     await editor.setStageName(s('stages', 8, 'label'));
     await selectOrCreateNodeType(page, 'Person');
-    // Selecting the EXISTING `name` variable (exact match → Enter-select in
-    // the spotlight) — no creation, so no validation to clear.
-    await createQuickAddVariable(editor, page, 'name');
+    // Person already has `name` (stage 6 created it), so the picker offers it
+    // and this only chooses — asking the codebook for the same name again is
+    // refused as a duplicate.
+    await selectOrCreateQuickAddVariable(editor, 'name');
     await addExistingNetworkPanel(editor, s('stages', 8, 'panels', 0, 'title'));
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
@@ -517,7 +580,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'last_visit',
       promptText: s('stages', 10, 'form', 'fields', 1, 'prompt').trim(),
-      inputControl: 'DatePicker',
+      inputControl: 'Date Picker',
       dateMin: s(
         'codebook',
         'node',
@@ -557,11 +620,15 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('NameGeneratorRoster', 12);
     await editor.setStageName(s('stages', 12, 'label'));
     await selectOrCreateNodeType(page, 'Classmate');
-    // Data source: upload the trimmed roster CSV at first use. Configure
-    // card/sort options only AFTER the data source (changing it resets all
-    // three option areas).
-    await openResourceBrowser(editor.field('dataSource'));
-    await uploadIntoResourceBrowser(page, fixture('class roster.csv'));
+    // Roster source: import the trimmed roster CSV at first use. Configure the
+    // card/order/search sections only AFTER it — each is `resetOn` the data
+    // file, so a later change clears all three without asking.
+    await importResource(
+      page,
+      editor.field('dataSource'),
+      'network',
+      fixture('class roster.csv'),
+    );
     await addCardDisplayProperties(editor, [
       { variable: 'first_name', label: 'First Name' },
       { variable: 'last_name', label: 'Last Name' },
@@ -588,15 +655,21 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.createNew('NameGeneratorRoster', 13);
     await editor.setStageName(s('stages', 13, 'label'));
     await selectOrCreateNodeType(page, 'University', { icon: 'add-a-place' });
-    await openResourceBrowser(editor.field('dataSource'));
-    await uploadIntoResourceBrowser(page, fixture('world-universities.csv'));
+    await importResource(
+      page,
+      editor.field('dataSource'),
+      'network',
+      fixture('world-universities.csv'),
+    );
     await addCardDisplayProperties(editor, [
       { variable: 'website', label: 'Website' },
       { variable: 'country', label: 'Country Code' },
     ]);
     await configureSearchOptions(editor, page, {
       matchProperties: ['website', 'country', 'name'],
-      accuracy: 'High accuracy',
+      // The canonical stage holds `fuzziness: 0.25`, which the scale offers as
+      // its second setting.
+      tolerance: 'High accuracy',
     });
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
@@ -618,7 +691,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'visited',
       promptText: s('stages', 14, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'BooleanChoice',
+      inputControl: 'Boolean Choice',
       booleanOptions: {
         // Canonical: option one has NO negative key; option two carries an
         // explicit `negative: false`.
@@ -653,7 +726,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'overall_review',
       promptText: s('stages', 14, 'form', 'fields', 1, 'prompt').trim(),
-      inputControl: 'LikertScale',
+      inputControl: 'Likert Scale',
       options: optionRows(
         'codebook',
         'node',
@@ -687,7 +760,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.setStageName(s('stages', 16, 'label'));
     await selectOrCreateNodeType(page, 'Person');
     await setConcentricCirclesBackground(editor, { circles: 3, skewed: true });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 16, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
     });
@@ -699,7 +772,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await setImageBackground(editor, page, {
       upload: fixture('responsive-political-compass.svg'),
     });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 17, 'prompts', 0, 'text'),
       layoutVariable: 'box_layout',
     });
@@ -723,27 +796,25 @@ test.describe.serial('sample protocol built from scratch', () => {
     });
     await saveStage(18, 'Information');
 
+    // Both connection types, before the stage that draws them: see
+    // `createEdgeTypeInCodebook`. Created in canonical order, so each takes
+    // the palette position the canonical file's own first two edge types have.
+    await createEdgeTypeInCodebook('know');
+    await createEdgeTypeInCodebook('conflict');
+
     await editor.createNew('Sociogram', 19);
     await editor.setStageName(s('stages', 19, 'label'));
     await selectOrCreateNodeType(page, 'Person');
     await setConcentricCirclesBackground(editor, { circles: 3, skewed: true });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 19, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
-      interaction: {
-        kind: 'createEdge',
-        edgeName: 'know',
-        createNewEdgeType: true,
-      },
+      interaction: { kind: 'createEdge', edgeName: 'know' },
     });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 19, 'prompts', 1, 'text'),
       layoutVariable: 'sociogram_layout',
-      interaction: {
-        kind: 'createEdge',
-        edgeName: 'conflict',
-        createNewEdgeType: true,
-      },
+      interaction: { kind: 'createEdge', edgeName: 'conflict' },
     });
     const stage = await saveStage(19, 'Sociogram');
     if (stage.type !== 'Sociogram') throw new Error('narrowed');
@@ -765,7 +836,18 @@ test.describe.serial('sample protocol built from scratch', () => {
         'Prompt text',
         s('stages', 20, 'prompts', 0, 'text'),
       );
-      await selectOrCreateEdgeType(page, 'know');
+      // The connection an answer records is the PROMPT's, not the stage's
+      // (`createEdge`; the stage's own subject is the node type it pairs up).
+      // `know` already exists, so this only chooses it — the picker's own
+      // "Create new edge type" button is what invents one, and is not needed
+      // here.
+      await editor
+        .field('createEdge')
+        .getByRole('radio', { name: 'know', exact: true })
+        // The chip's own label: the radio inside it is `sr-only`, which is not
+        // something a researcher can click.
+        .locator('xpath=ancestor::label[1]')
+        .click();
     });
     await configureSkipLogic(editor, page, {
       action: 'Skip this stage',
@@ -820,13 +902,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.setStageName(s('stages', 23, 'label'));
     await selectOrCreateNodeType(page, 'Person');
     await setConcentricCirclesBackground(editor, { circles: 3, skewed: true });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 23, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
       interaction: { kind: 'highlight', variableName: 'provides_advice' },
       displayEdges: ['know', 'conflict'],
     });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 23, 'prompts', 1, 'text'),
       layoutVariable: 'sociogram_layout',
       interaction: {
@@ -849,15 +931,9 @@ test.describe.serial('sample protocol built from scratch', () => {
         'Prompt text',
         s('stages', 24, 'prompts', 0, 'text'),
       );
-      await createVariableViaSpotlight(page, {
-        variableName: 'communication_freq',
-        // The locked-type picker opens NewVariableWindow on create — the
-        // required outcome for the helper's swallowed-click retry.
-        until: page.getByRole('textbox', { name: 'Attribute name' }),
-      });
-      await createVariableWithOptions(page, {
-        variableName: 'communication_freq',
-        options: optionRows(
+      await createBinAttribute(
+        'communication_freq',
+        optionRows(
           'codebook',
           'node',
           PERSON,
@@ -865,8 +941,7 @@ test.describe.serial('sample protocol built from scratch', () => {
           V_COMM_FREQ,
           'options',
         ),
-        type: 'ordinal',
-      });
+      );
     });
     const stage = await saveStage(24, 'OrdinalBin');
     if (stage.type !== 'OrdinalBin') throw new Error('narrowed');
@@ -882,28 +957,15 @@ test.describe.serial('sample protocol built from scratch', () => {
         'Prompt text',
         s('stages', 25, 'prompts', 0, 'text'),
       );
-      await createVariableViaSpotlight(page, {
-        variableName: 'group',
-        // The locked-type picker opens NewVariableWindow on create — the
-        // required outcome for the helper's swallowed-click retry.
-        until: page.getByRole('textbox', { name: 'Attribute name' }),
-      });
-      await createVariableWithOptions(page, {
-        variableName: 'group',
-        options: optionRows(
-          'codebook',
-          'node',
-          PERSON,
-          'variables',
-          V_GROUP,
-          'options',
-        ),
-        type: 'categorical',
-      });
-      await enableOtherOption(editor, page, {
+      await createBinAttribute(
+        'group',
+        optionRows('codebook', 'node', PERSON, 'variables', V_GROUP, 'options'),
+      );
+      await enableOtherOption(editor, {
         variableName: 'group_other',
         optionLabel: s('stages', 25, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 25, 'prompts', 0, 'otherVariablePrompt'),
+        required: true,
       });
     });
     const stage = await saveStage(25, 'CategoricalBin');
@@ -935,15 +997,9 @@ test.describe.serial('sample protocol built from scratch', () => {
         'Prompt text',
         s('stages', 27, 'prompts', 0, 'text'),
       );
-      await createVariableViaSpotlight(page, {
-        variableName: 'social_networks_research_relationship',
-        // The locked-type picker opens NewVariableWindow on create — the
-        // required outcome for the helper's swallowed-click retry.
-        until: page.getByRole('textbox', { name: 'Attribute name' }),
-      });
-      await createVariableWithOptions(page, {
-        variableName: 'social_networks_research_relationship',
-        options: optionRows(
+      await createBinAttribute(
+        'social_networks_research_relationship',
+        optionRows(
           'codebook',
           'node',
           PERSON,
@@ -951,12 +1007,12 @@ test.describe.serial('sample protocol built from scratch', () => {
           V_SNR_RELATIONSHIP,
           'options',
         ),
-        type: 'categorical',
-      });
-      await enableOtherOption(editor, page, {
+      );
+      await enableOtherOption(editor, {
         variableName: 'social_network_research_relationship_other',
         optionLabel: s('stages', 27, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 27, 'prompts', 0, 'otherVariablePrompt'),
+        required: true,
       });
     });
     await configureStageFilter(editor, {
@@ -1043,8 +1099,6 @@ test.describe.serial('sample protocol built from scratch', () => {
 
     const normalizedBuilt = normalizeProtocol(built);
     const normalizedCanonical = normalizeProtocol(canonicalRaw);
-    expect(
-      dropForcedRequiredValidation(normalizedBuilt, normalizedCanonical),
-    ).toEqual(normalizedCanonical);
+    expect(normalizedBuilt).toEqual(normalizedCanonical);
   });
 });

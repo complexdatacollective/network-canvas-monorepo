@@ -57,7 +57,14 @@ const OrdinalBin = (_props: OrdinalBinStageProps) => {
           {prompt && activePromptVariable && (
             <motion.div
               key={prompt.id}
-              className="grid h-full auto-cols-fr grid-flow-col grid-rows-[auto_1fr] gap-x-2 portrait:grid-flow-row portrait:auto-rows-fr portrait:grid-cols-[auto_1fr] portrait:grid-rows-none portrait:gap-x-0 portrait:gap-y-2"
+              // The header track still sizes to its labels, so a short label
+              // keeps a band that hugs it. What it must not do is change size
+              // for any other reason: `minmax(0,...)` on the node track drops
+              // the automatic content minimum that otherwise squeezes the
+              // header as people arrive in a bin, and `fit-content` caps a
+              // sentence-length label before it takes the whole bin. Both keep
+              // the box BinLabel fits to from moving under it mid-fit.
+              className="grid h-full auto-cols-fr grid-flow-col grid-rows-[fit-content(45%)_minmax(0,1fr)] gap-x-2 portrait:grid-flow-row portrait:auto-rows-fr portrait:grid-cols-[fit-content(40%)_minmax(0,1fr)] portrait:grid-rows-none portrait:gap-x-0 portrait:gap-y-2"
               variants={binsContainerVariants}
               initial="initial"
               animate="animate"

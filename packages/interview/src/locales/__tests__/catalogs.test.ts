@@ -10,6 +10,7 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  readTranslationSources,
   type ExtractedCatalog,
 } from '@codaco/app-i18n/catalog-guards';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
@@ -21,6 +22,8 @@ const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const committedEn = JSON.parse(
   readFileSync(join(localesDir, 'en.json'), 'utf8'),
 ) as ExtractedCatalog;
+const esSources = readTranslationSources(localesDir, 'es');
+const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the interview package built-in message catalogs', () => {
   it('keeps the English extraction fresh, with unique explicit IDs and translator descriptions', async () => {
@@ -55,14 +58,14 @@ describe('the interview package built-in message catalogs', () => {
     const es = JSON.parse(
       readFileSync(join(localesDir, 'es.json'), 'utf8'),
     ) as Record<string, string>;
-    expect(checkFullLocale(committedEn, es)).toEqual([]);
+    expect(checkFullLocale(committedEn, es, esSources)).toEqual([]);
   });
 
   it('keeps British English a valid sparse override', () => {
     const enGb = JSON.parse(
       readFileSync(join(localesDir, 'en-GB.json'), 'utf8'),
     ) as Record<string, string>;
-    expect(checkOverrideLocale(committedEn, enGb)).toEqual([]);
+    expect(checkOverrideLocale(committedEn, enGb, enGbSources)).toEqual([]);
     expect(Object.keys(enGb).length).toBeLessThan(
       Object.keys(committedEn).length,
     );

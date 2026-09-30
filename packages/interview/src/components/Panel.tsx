@@ -17,6 +17,15 @@ type PanelProps = React.HTMLAttributes<HTMLDivElement> & {
   testId?: string;
 };
 
+const panelHeadingOwnVariants = cva({
+  base: 'border-background flex shrink-0 grow-0 flex-col justify-center border-b-3 text-center',
+});
+
+const headingClassNames = compose(
+  surfaceSpacingVariants,
+  panelHeadingOwnVariants,
+);
+
 /**
  * Renders a side panel, with a title and `props.children`.
  */
@@ -61,20 +70,9 @@ const Panel = ({
     className,
   );
 
-  const panelContentClasses = compose(
-    cva({
-      base: cx(
-        'flex min-h-0 grow basis-auto flex-col overflow-hidden',
-        collapsed && !minimize && 'h-0',
-      ),
-    }),
-  );
-
-  const headingClassNames = compose(
-    surfaceSpacingVariants,
-    cva({
-      base: 'border-background flex shrink-0 grow-0 flex-col justify-center border-b-3 text-center',
-    }),
+  const panelContentClasses = cx(
+    'flex min-h-0 grow basis-auto flex-col overflow-hidden',
+    collapsed && !minimize && 'h-0',
   );
 
   return (
@@ -94,7 +92,7 @@ const Panel = ({
           {title}
         </Heading>
       </button>
-      <div className={panelContentClasses()}>{children}</div>
+      <div className={panelContentClasses}>{children}</div>
     </Surface>
   );
 };

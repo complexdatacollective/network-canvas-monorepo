@@ -12,11 +12,6 @@
     "getStartedTitle": "Comenzar",
     "getStartedDescription": "Elija la aplicación de Network Canvas adecuada para diseñar un protocolo o recopilar datos de redes."
   },
-  "LanguageSelector": {
-    "label": "Idioma",
-    "searchPlaceholder": "Buscar idiomas...",
-    "emptyMessage": "No se encontraron idiomas."
-  },
   "Hero": {
     "headline": "Simplificando la recopilación de datos de redes complejas.",
     "description": "Network Canvas ofrece software <strong>gratuito y de código abierto</strong> para recopilar datos de redes, diseñado en función de las necesidades tanto de quienes investigan como de quienes participan.",
@@ -93,9 +88,8 @@
   "Publications": {
     "heading": "Publicaciones recientes que utilizan Network Canvas",
     "carouselLabel": "Carrusel de publicaciones recientes",
-    "introduction": "Estas son las ocho publicaciones más recientes que utilizan Network Canvas. Consulte la <all>lista completa de publicaciones</all> o nuestro <article>artículo de documentación</article> para obtener orientación sobre cómo citar Network Canvas.",
+    "introduction": "Estas son las 16 publicaciones más recientes que utilizan Network Canvas. Consulte la <all>lista completa de publicaciones</all>.",
     "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad.",
-    "article": "artículo de documentación",
     "thread": "hilo"
   },
   "PublicationsPage": {
@@ -164,7 +158,7 @@
     },
     "intro": {
       "heading": "Galería de protocolos",
-      "introduction": "Explore los protocolos compartidos por personas investigadoras que utilizan Network Canvas. Revise el diseño de cada estudio, descargue su libro de códigos y protocolo, o ábralo en Fresco.",
+      "introduction": "Explore los protocolos compartidos por investigadores que usan Network Canvas. Revise cómo se diseñó cada estudio, descargue su libro de códigos y su protocolo, o previsualice la entrevista en su navegador.",
       "featured": "Protocolo destacado"
     },
     "collection": {
@@ -249,9 +243,28 @@
       "dateAdded": "Fecha de incorporación",
       "viewPublication": "Ver publicación",
       "wave": "Oleada {wave}",
-      "openSandbox": "Previsualizar en Fresco",
+      "preview": "Previsualizar protocolo",
       "downloadProtocol": "Descargar protocolo",
       "viewCodebook": "Resumen del libro de códigos"
+    },
+    "preview": {
+      "metadata": {
+        "title": "Previsualización: {name}"
+      },
+      "loading": "Preparando la previsualización…",
+      "finishConfirmation": "Esto es una previsualización, así que no se guarda nada. Finalizar termina esta ejecución del protocolo, y después puede volver a iniciarla.",
+      "finishedHeading": "Previsualización finalizada",
+      "finishedDescription": "La entrevista finalizó tal como lo haría para un participante. No se guardó nada.",
+      "restart": "Iniciar la previsualización de nuevo",
+      "backToProtocol": "Volver al protocolo",
+      "errorHeading": "Este protocolo no se puede previsualizar",
+      "errors": {
+        "unavailable": "No se pudo descargar el archivo del protocolo. Compruebe su conexión e inténtelo de nuevo.",
+        "unreadable": "No se pudo abrir el archivo del protocolo. Puede estar dañado.",
+        "unsupported-version": "Este protocolo usa una versión del esquema que el motor de entrevistas no puede ejecutar.",
+        "invalid": "El protocolo no superó la validación, por lo que el motor de entrevistas no puede ejecutarlo."
+      },
+      "retry": "Intentar de nuevo"
     },
     "submit": {
       "heading": "Envíe su protocolo",

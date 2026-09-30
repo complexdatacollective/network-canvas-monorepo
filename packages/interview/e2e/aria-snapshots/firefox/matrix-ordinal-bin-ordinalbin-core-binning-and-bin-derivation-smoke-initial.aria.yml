@@ -11,7 +11,7 @@
   - heading "Very close" [level=4]:
     - strong: Very
     - text: ""
-  - listbox "Container for the value '**Very** close'"
+  - listbox "Container for the value 'Very close'"
   - button "Collapse drawer" [expanded]: 3 unplaced
   - button "Alice"
   - button "Bob"

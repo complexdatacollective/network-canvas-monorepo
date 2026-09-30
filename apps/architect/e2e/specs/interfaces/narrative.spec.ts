@@ -4,15 +4,15 @@ import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
+import { setImageBackground } from '../../pageobjects/editor-sections/background.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
-import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
-import { createVariableViaSpotlight } from '../../pageobjects/editor-sections/variables.js';
+import { addNarrativePreset } from '../../pageobjects/editor-sections/narrative-presets.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 // Only the background image asset is seeded: the Background section's picker
-// selects from resources the protocol already has, and driving a real upload
-// through the file-chooser is resources.spec.ts's job. Everything else this
-// stage needs (node type, layout variable, preset) is authored live through
+// selects from resources the protocol already has, and driving a real import
+// through the file input is resources.spec.ts's job. Everything else this
+// stage needs (node type, position attribute, preset) is authored live through
 // the editor UI below.
 function protocolWithBackgroundAsset(): CurrentProtocol {
   return {
@@ -51,75 +51,30 @@ test('creates a valid Narrative stage from scratch', async ({
   await editor.createNew('Narrative');
   await editor.setStageName('Explore Your Network');
 
-  // StageEditor/Interfaces.tsx: `Narrative.sections = [FilteredNodeType,
-  // Background, NarrativePresets, NarrativeBehaviours, SkipLogic,
-  // InterviewScript]`. FilteredNodeType renders the same radio-pill/"Create
-  // new node type" structure as the plain `NodeType` (entity-types.ts: "Both
-  // node ... sections are structurally identical"), so
-  // `selectOrCreateNodeType` creates "person" from the empty codebook here,
-  // exactly as sociogram.spec.ts does.
+  // `narrativeStageEditor` is [stage heading, subject picker, presets,
+  // background, node layout, canvas interaction, skip logic, interviewer
+  // guidance]. The subject picker is the shared one, so `selectOrCreateNodeType`
+  // creates "person" from the empty codebook here exactly as it does on a
+  // sociogram.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // Narrative uses the shared canvas Background section, including the same
-  // image-or-concentric-circles choice as Sociogram and NetworkComposer. Pick
-  // the seeded image from the real Resource Browser so the saved stage shape
-  // proves Architect authors `background.image` for Narrative.
-  await editor
-    .section('Background')
-    .getByRole('option', { name: /^Image/ })
-    .click();
-  await expect(
-    editor.section('Background').getByRole('link', {
-      name: 'Learn how to create a responsive SVG background',
-    }),
-  ).toHaveAttribute(
-    'href',
-    'https://documentation.networkcanvas.com/en/design-protocols/key-concepts/responsive-svg-backgrounds/',
-  );
-  await editor
-    .field('background.image')
-    .getByRole('button', { name: 'Select resource' })
-    .click();
-  await architectPage
-    .getByRole('dialog', { name: 'Resource Browser' })
-    .getByRole('listbox', { name: 'Resource library' })
-    .getByRole('heading', {
-      level: 4,
-      name: 'Narrative Background',
-      exact: true,
-    })
-    .click();
+  // Narrative uses the same shared Background section as Sociogram and
+  // NetworkComposer, including the same choice between concentric circles and
+  // an image. Pick the seeded image out of the real resource browser so the
+  // saved stage proves Architect authors `background.image` for Narrative.
+  await setImageBackground(editor, architectPage, {
+    select: 'Narrative Background',
+  });
 
-  // NarrativePresets.tsx exposes `presets` through the same DialogArrayField
-  // shape as every other prompts/presets array in this suite, with the add
-  // button named for what it adds ("Create new preset" opens the dialog,
-  // "Add" submits a new item).
-  // PresetFields.tsx renders the visible "Preset label" field first, followed
-  // by "Layout attribute". "Node grouping"/"Displayed edges"/"Node
-  // highlighting" are all toggleable and collapsed by default, so the layout
-  // `VariablePicker` is the only "Select attribute" button
-  // visible — no `scope` needed, unlike NetworkComposer's NodeConfiguration.
-  //
-  // The fresh codebook has no variables yet, so typing a name renders the
-  // spotlight's "Create new variable called…" row and this exercises real
-  // creation through the picker's `onCreateOption`:
-  // NarrativePresets/withPresetProps.tsx's `handleCreateLayoutVariable`
-  // delegates to withCreateVariableHandler's `handleCreateVariable(name,
-  // 'layout', 'layoutVariable')` — the same simple creation path as
-  // Sociogram's prompt "Node layout" section, with the type pre-supplied by the
-  // call site (no NewVariableWindow opens).
-  await addPrompt(
-    editor.field('presets'),
-    async () => {
-      await architectPage
-        .getByPlaceholder('Enter a label for the preset...')
-        .fill('Default view');
-      await createVariableViaSpotlight(architectPage, {
-        variableName: 'layout',
-      });
-    },
-    { addButtonLabel: 'Create new preset' },
-  );
+  // The presets list is the section "Visualization presets", disabled until a
+  // node type is chosen because every preset describes that type's own
+  // attributes. Its dialog holds the preset's name and the position attribute
+  // it arranges nodes by, which is created from inside the dialog through the
+  // codebook's own attribute editor — the empty codebook offers none.
+  await addNarrativePreset(editor, architectPage, {
+    label: 'Default view',
+    layoutVariable: 'layout',
+  });
 
   await editor.expectNoIssues();
   await editor.save();

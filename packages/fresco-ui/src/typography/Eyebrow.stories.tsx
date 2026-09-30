@@ -27,7 +27,7 @@ import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 \`\`\`
 
 Props:
-- \`tone\` — \`muted\` (default), \`default\` (inherits the current colour), or \`primary\`.
+- \`tone\` — \`muted\` (default), \`default\` (inherits the current colour), \`primary\`, or \`subtle\`, which keeps the muted colour at normal weight for a classifier set beside its subject rather than above it.
 - \`render\` — substitute the rendered element (\`<span />\`, \`<dt />\`, \`<legend />\`); defaults to \`<p>\`.
 - Any other HTML attributes are passed through.
         `,
@@ -38,7 +38,7 @@ Props:
   argTypes: {
     tone: {
       control: 'select',
-      options: ['default', 'muted', 'primary'],
+      options: ['default', 'muted', 'primary', 'subtle'],
       description: 'Colour treatment of the label',
     },
   },
@@ -67,6 +67,10 @@ export const Tones: Story = {
       <div>
         <div className="mb-2 text-xs">primary</div>
         <Eyebrow tone="primary">Featured protocol</Eyebrow>
+      </div>
+      <div>
+        <div className="mb-2 text-xs">subtle</div>
+        <Eyebrow tone="subtle">Categorical bin</Eyebrow>
       </div>
     </div>
   ),

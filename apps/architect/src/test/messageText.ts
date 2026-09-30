@@ -19,26 +19,3 @@ export function messageFields(errors: unknown): unknown {
     Object.entries(errors).map(([field, error]) => [field, messageText(error)]),
   );
 }
-
-/** Decode only the error containers of a submission result, preserving its other values. */
-export function messageSubmissionResult(result: unknown): unknown {
-  if (typeof result !== 'object' || result === null || Array.isArray(result))
-    return result;
-  const resolved = { ...result };
-  if ('formErrors' in resolved && Array.isArray(resolved.formErrors)) {
-    resolved.formErrors = resolved.formErrors.map(messageText);
-  }
-  if (
-    'fieldErrors' in resolved &&
-    typeof resolved.fieldErrors === 'object' &&
-    resolved.fieldErrors !== null
-  ) {
-    resolved.fieldErrors = Object.fromEntries(
-      Object.entries(resolved.fieldErrors).map(([field, errors]) => [
-        field,
-        Array.isArray(errors) ? errors.map(messageText) : messageText(errors),
-      ]),
-    );
-  }
-  return resolved;
-}

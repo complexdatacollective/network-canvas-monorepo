@@ -283,16 +283,24 @@ test('inserts a new Information stage at the clicked index', async ({
     ),
   );
 
+  // An ordinary route arrival: `RouteFocus` lands on the route's own heading,
+  // and nothing on the page takes it from there. The stage arrives already
+  // named, so there is nothing for a researcher to be dropped into — and a
+  // control that claimed focus would move a screen reader's cursor past the
+  // heading, which is the one thing that says which stage this is.
+  await expect(architectPage.getByRole('heading', { level: 1 })).toBeFocused();
+  await expect(
+    architectPage.getByRole('textbox', { name: 'Stage name' }),
+  ).not.toBeFocused();
+
   // StageHeading.tsx's stage-name textarea is named "Stage name".
   await architectPage
     .getByRole('textbox', { name: 'Stage name' })
     .fill('Inserted Info Stage');
 
-  // Information's Title section (Title.tsx) requires a non-empty `title`
-  // (UI-level `validation={{ required: true }}`, stricter than the schema's
-  // `title: z.string().optional()`) and ContentGrid.tsx's `notEmpty`
-  // validator requires a non-empty `items` array — both are validated on
-  // submit, so a save that actually commits needs both filled.
+  // The page's heading is required by the editor (stricter than the schema's
+  // `title: z.string().optional()`) and a page with no blocks shows the
+  // participant nothing, so a save that actually commits needs both filled.
   await architectPage
     .getByRole('textbox', { name: 'Page heading' })
     .fill('Inserted stage heading');

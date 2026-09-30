@@ -65,9 +65,8 @@ export const hasRouteFocusTarget = (ownerDocument: Document = document) =>
  *
  * Deliberately narrow: focus only moves when the view change LOST focus. Any
  * other owner — a dialog that navigated and then returned focus to its opener,
- * an autofocused name input in a create flow, a persistent nav control — is
- * left alone, so this cannot fight `focusFirstError`, a modal's focus trap, or
- * a `finalFocus` target.
+ * a persistent nav control — is left alone, so this cannot fight
+ * `focusFirstError`, a modal's focus trap, or a `finalFocus` target.
  *
  * Exported for the case where a route's content is replaced without the
  * location changing: Architect's `ProtocolRouteGuard` swaps the read-only view
@@ -150,6 +149,10 @@ const RouteFocus = ({ location, ownerDocument }: RouteFocusProps) => {
   const lastLocation = useRef<string | null>(null);
   const [announcements, setAnnouncements] = useState<Announcements>(SILENT);
 
+  // Everything below reads and moves the live DOM — the committed route's
+  // landing point, and where focus currently is — and what it announces is
+  // decided by the live regions' text changing. Neither is available during
+  // render, so the announcements cannot be derived from the location.
   useEffect(() => {
     const previous = lastLocation.current;
     lastLocation.current = location;

@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useContext, type ContextType, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+import { colorSequenceHueName } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { COLOR_PALETTES } from '~/config';
@@ -171,6 +173,40 @@ describe('ColorPicker', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(
       COLOR_PALETTES['node-color-seq'],
     );
-    expect(screen.queryByRole('radio', { name: 'Color 10' })).toBeNull();
+    expect(
+      screen.queryByRole('radio', { name: 'node-color-seq-10' }),
+    ).toBeNull();
+  });
+
+  /**
+   * The names are `@codaco/fresco-ui`'s, not Architect's: this picker and the
+   * shared one draw on the same list, so a researcher hears the same hue for
+   * the same token wherever a colour is chosen. Asserted against the shared
+   * lookup rather than against strings written out here, which is what a
+   * second copy of the names would be.
+   */
+  it('announces each swatch by the name fresco-ui gives that token', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Palette"
+        component={ColorPicker}
+        palette="cat-color-seq"
+        paletteRange={COLOR_PALETTES['cat-color-seq']}
+      />,
+    );
+
+    const intl = createAppIntl({ locale: 'en' });
+    const expected = Array.from(
+      { length: COLOR_PALETTES['cat-color-seq'] },
+      (_, index) => colorSequenceHueName(`cat-color-seq-${index + 1}`, intl),
+    );
+    expect(expected).not.toContain(undefined);
+
+    expect(
+      screen
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label')),
+    ).toEqual(expected);
   });
 });

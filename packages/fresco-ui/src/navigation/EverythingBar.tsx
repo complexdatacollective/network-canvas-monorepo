@@ -340,6 +340,11 @@ export default function EverythingBar({
   const listId = `${baseId}-results`;
 
   // One announcement per settled query, not one per arriving provider.
+  //
+  // The external system here is the screen reader: what it says is decided by
+  // the live region's text CHANGING, so this cannot be derived during render.
+  // Deriving it would empty the region on every unsettled frame and announce
+  // the same count twice; the effect is what keeps one query to one utterance.
   useEffect(() => {
     if (!open) {
       announcedGenerationRef.current = null;

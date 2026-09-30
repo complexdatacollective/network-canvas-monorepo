@@ -2,28 +2,40 @@ import { type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
-import { createVariableViaSpotlight } from './variables.js';
+import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 
-// NarrativePresets + NarrativeBehaviours sections. Facts verified against
-// source (sections/NarrativePresets/*, sections/NarrativeBehaviours.tsx):
-// - The preset dialog ('Edit Preset') exposes a visible "Preset label" field,
-//   layoutVariable (VariablePicker; typing an existing variable's exact name
-//   Enter-selects it), and three toggleable nested sections — Node grouping
-//   (disallowCreation picker), Displayed edges and Node highlighting (checkbox
-//   groups whose accessible names are the codebook entity/variable names;
-//   arrays fill in click order).
-// - normalizePreset drops groupVariable/edges/highlight when empty, so only
-//   configured keys persist.
-// - Behaviour switches are named by their field LABEL ('Free-draw',
-//   'Automatic layout', 'Allow repositioning'); the sentence beneath each one
-//   ('Allow drawing on the canvas', …) is the field's `hint`, exposed as the
-//   switch's accessible DESCRIPTION via `aria-describedby`, not its name.
-//   (Pre-migration the sentence was the redux-form Field's `label` and so
-//   became the accessible name, while the short label was a bare `<Heading>`
-//   associated with nothing — the migrated markup names and describes the
-//   control properly, so these selectors follow the label.) The Narrative
-//   template seeds automaticLayout:true/allowRepositioning:true and the
-//   Toggle mount effect adds freeDraw:false.
+// A narrative stage's presets and the permissions beneath them, as
+// `@codaco/protocol-builder` renders them.
+//
+// `NarrativePresetsSection` is the section "Visualization presets", whose list
+// adds through "Create new preset" and whose row dialog is titled "Create
+// preset" (submitted with "Add", like every other row dialog in the package).
+// `NarrativePresetFields` fills that dialog with five always-open groups —
+// there are no capability switches inside it any more, so nothing has to be
+// turned on before it can be filled in:
+// - "Preset identity" holds "Preset label" (`label`).
+// - "Node layout" holds the picker "Layout attribute" (`layoutVariable`),
+//   whose create row writes the `layout` attribute itself — a position is
+//   finished by its name, so no editor opens.
+// - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`),
+//   which offers no creation at all: a preset groups by a categorical
+//   attribute the protocol already collects, so a fresh one would draw a
+//   single hull holding everybody. Its window has no create row, and its
+//   search box says "Find an attribute…" rather than "Find or create".
+// - "Displayed edges" holds the tick list "Edge types" (`edges.display`), and
+//   "Node highlighting" the tick list "Highlight attributes" (`highlight`).
+//   Both name codebook entries, and both drop the key entirely when nothing is
+//   ticked.
+//
+// The behaviours are one section again, as released Architect had them:
+// `CanvasPermissionsSection` ("Narrative behaviors") holds three switches, in
+// Architect's order — "Automatic layout" at `behaviours.automaticLayout`,
+// "Free-draw" at `behaviours.freeDraw` and "Allow repositioning" at
+// `behaviours.allowRepositioning`. There is no "Layout mode" list on a
+// narrative stage: the shared `NodeLayoutSection` is the sociogram's. The
+// Narrative template seeds automaticLayout and allowRepositioning true, so the
+// automatic-layout switch opens ON and turning it off is a click.
+
 export async function addNarrativePreset(
   editor: StageEditor,
   page: Page,
@@ -39,60 +51,35 @@ export async function addNarrativePreset(
     editor.field('presets'),
     async () => {
       await page
-        .getByPlaceholder('Enter a label for the preset...')
+        .getByRole('textbox', { name: 'Preset label', exact: true })
         .fill(spec.label);
-      await createVariableViaSpotlight(page, {
-        variableName: spec.layoutVariable,
-        scope: editor.field('layoutVariable'),
-        until: editor
-          .field('layoutVariable')
-          .getByRole('button', { name: 'Change attribute' }),
-      });
+      await chooseOrCreateAttribute(
+        editor.field('layoutVariable'),
+        spec.layoutVariable,
+      );
       if (spec.groupVariable) {
-        await editor
-          .section('Node grouping')
-          .getByRole('switch', { name: 'Node grouping', exact: true })
-          .click();
-        await createVariableViaSpotlight(page, {
-          variableName: spec.groupVariable,
-          scope: editor.field('groupVariable'),
-          until: editor
-            .field('groupVariable')
-            .getByRole('button', { name: 'Change attribute' }),
-        });
+        // Chosen and never created: this picker has no create row, so a
+        // grouping attribute the codebook does not hold fails on the row that
+        // is not there rather than being invented behind the spec's back.
+        await chooseAttribute(
+          editor.field('groupVariable'),
+          spec.groupVariable,
+        );
       }
-      if (spec.displayEdges) {
+      for (const edgeName of spec.displayEdges ?? []) {
         await editor
-          .section('Displayed edges')
-          .getByRole('switch', { name: 'Displayed edges', exact: true })
-          .click();
-        for (const edgeName of spec.displayEdges) {
-          await editor
-            .field('edges.display')
-            .getByRole('checkbox', { name: edgeName, exact: true })
-            .check();
-        }
+          .field('edges.display')
+          .getByRole('checkbox', { name: edgeName, exact: true })
+          .check();
       }
-      if (spec.highlight) {
+      for (const variableName of spec.highlight ?? []) {
         await editor
-          .section('Node highlighting')
-          .getByRole('switch', { name: 'Node highlighting', exact: true })
-          .click();
-        for (const variableName of spec.highlight) {
-          await editor
-            .field('highlight')
-            .getByRole('checkbox', { name: variableName, exact: true })
-            .check();
-        }
+          .field('highlight')
+          .getByRole('checkbox', { name: variableName, exact: true })
+          .check();
       }
     },
-    {
-      addButtonLabel: 'Create new preset',
-      freshSign: (candidate) =>
-        candidate
-          .locator('[data-field-name="layoutVariable"]')
-          .getByRole('button', { name: 'Select attribute' }),
-    },
+    { addButtonLabel: 'Create new preset' },
   );
 }
 
@@ -100,13 +87,16 @@ export async function setNarrativeBehaviours(
   editor: StageEditor,
   opts: { freeDraw?: boolean; automaticLayout?: boolean },
 ): Promise<void> {
-  const section = editor.section('Narrative behaviors');
-  // Template defaults: automaticLayout true, allowRepositioning true,
-  // freeDraw false (mount effect) — only click switches that must change.
   if (opts.freeDraw) {
-    await section.getByRole('switch', { name: 'Free-draw' }).click();
+    await editor
+      .field('behaviours.freeDraw')
+      .getByRole('switch', { name: 'Free-draw', exact: true })
+      .click();
   }
   if (opts.automaticLayout === false) {
-    await section.getByRole('switch', { name: 'Automatic layout' }).click();
+    await editor
+      .field('behaviours.automaticLayout')
+      .getByRole('switch', { name: 'Automatic layout', exact: true })
+      .click();
   }
 }

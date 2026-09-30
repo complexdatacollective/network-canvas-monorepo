@@ -2,14 +2,14 @@ export type PasswordStrength = {
   score: 0 | 1 | 2 | 3 | 4;
   label: 'Weak' | 'Fair' | 'Good' | 'Strong' | null;
   percent: number;
-  colorClass: 'text-destructive' | 'text-warning' | 'text-success' | null;
+  colorClass: 'text-destructive-ink' | 'text-warning' | 'text-success' | null;
 };
 
 const SCORE_MAP: Record<
   1 | 2 | 3 | 4,
   Pick<PasswordStrength, 'label' | 'colorClass'>
 > = {
-  1: { label: 'Weak', colorClass: 'text-destructive' },
+  1: { label: 'Weak', colorClass: 'text-destructive-ink' },
   2: { label: 'Fair', colorClass: 'text-warning' },
   3: { label: 'Good', colorClass: 'text-success' },
   4: { label: 'Strong', colorClass: 'text-success' },

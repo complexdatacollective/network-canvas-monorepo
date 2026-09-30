@@ -1,4 +1,4 @@
-import { Effect, Fiber, Layer, Queue, Ref } from 'effect';
+import { type Cause, Effect, Fiber, Layer, Queue, Ref, Result } from 'effect';
 import { after } from 'next/server';
 
 import { type ExportEvent } from '@codaco/network-exporters/events';
@@ -67,12 +67,12 @@ export async function POST(request: Request) {
   );
 
   const program = Effect.gen(function* () {
-    const queue = yield* Queue.unbounded<ExportEvent>();
+    const queue = yield* Queue.unbounded<ExportEvent, Cause.Done>();
 
     // Coalesce progress to one frame per integer percent (a large batch emits
     // one per file); always forward stage events.
     const lastPct = yield* Ref.make(-1);
-    const progressFiber = yield* Effect.fork(
+    const progressFiber = yield* Effect.forkChild(
       Effect.forever(
         Queue.take(queue).pipe(
           Effect.flatMap((event) => {
@@ -102,9 +102,11 @@ export async function POST(request: Request) {
     const result = yield* exportPipeline(interviewIds, exportOptions, queue);
 
     yield* Fiber.interrupt(progressFiber);
-    const remaining = yield* Queue.takeAll(queue);
-    yield* Effect.forEach(remaining, (event) =>
-      Effect.promise(() => writer.write(encodeExportEvent(event))),
+    yield* Queue.end(queue);
+    const remaining = yield* Effect.result(Queue.takeAll(queue));
+    yield* Effect.forEach(
+      Result.isSuccess(remaining) ? remaining.success : [],
+      (event) => Effect.promise(() => writer.write(encodeExportEvent(event))),
     );
 
     return result;
@@ -132,7 +134,7 @@ export async function POST(request: Request) {
         await flushPostHog();
       }),
     ),
-    Effect.catchAll(() => Effect.void),
+    Effect.catch(() => Effect.void),
     Effect.provide(exportLayer),
   );
 

@@ -13,6 +13,7 @@ import { Link } from 'wouter';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
@@ -243,6 +244,12 @@ const ProtocolInfoCard = () => {
    */
   const selfCommittedName = useRef<string | null>(null);
 
+  // This stays an effect, and not because syncing a prop into state usually
+  // should. It SPENDS the token above, exactly once per arriving `name`, and
+  // effects are the only place that can promise that: React may call a
+  // component's body twice for one render, and a second pass would find the
+  // token already spent and read its own commit as somebody else's — clearing
+  // the refusal notice the token exists to protect.
   useEffect(() => {
     setLocalName(name ?? '');
     // An external rename (undo, autosave round-trip, another surface) is not
@@ -392,10 +399,14 @@ const ProtocolInfoCard = () => {
             requires-internet pill, mirroring interviewer's DeckCard. */}
         <div className="flex min-h-14 items-start justify-end">
           {requiresInternet && (
-            <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs uppercase backdrop-blur-sm">
-              <Globe className="size-4" />
+            <Badge
+              tone="warning"
+              uppercase
+              icon={<Globe className="size-4" />}
+              className="whitespace-nowrap"
+            >
               {intl.formatMessage(messages.requiresInternet)}
-            </span>
+            </Badge>
           )}
         </div>
 

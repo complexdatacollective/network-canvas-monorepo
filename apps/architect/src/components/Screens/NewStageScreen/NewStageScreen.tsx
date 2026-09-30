@@ -186,9 +186,25 @@ const NewStageScreen = ({
     }
   }, [mouseMoved]);
 
-  const handleUpdateQuery = useCallback((value: string | undefined) => {
-    setQuery(value ?? '');
-  }, []);
+  const handleUpdateQuery = useCallback(
+    (value: string | undefined) => {
+      const nextQuery = value ?? '';
+      // Once we get a search string, show the cursor at index 0. Typing is the
+      // event that causes it, and only the first character of a search does:
+      // moving along the results afterwards must not be undone by every
+      // further keystroke.
+      const startedSearching = query === '' && nextQuery !== '';
+
+      setQuery(nextQuery);
+
+      if (startedSearching) {
+        setCursor(0);
+        setCursorActive(true);
+        setMouseMoved(false);
+      }
+    },
+    [query],
+  );
 
   const handleSelectInterface = useCallback(
     (interfaceType: string) => {
@@ -271,16 +287,6 @@ const NewStageScreen = ({
 
   const hasQuery = query !== '';
 
-  // Once we get a search string, show the cursor at index 0
-  useEffect(() => {
-    if (!hasQuery) {
-      return;
-    }
-    setCursor(0);
-    setCursorActive(true);
-    setMouseMoved(false);
-  }, [hasQuery]);
-
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
 
@@ -326,7 +332,7 @@ const NewStageScreen = ({
               }
             />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Heading
               level="h4"
               margin="none"
@@ -335,7 +341,7 @@ const NewStageScreen = ({
               {intl.formatMessage(messages.filterByCapabilities)}
             </Heading>
             <div
-              className="flex flex-wrap gap-1"
+              className="flex min-w-0 flex-wrap gap-1"
               role="group"
               aria-label={intl.formatMessage(
                 messages.interfaceCapabilityFilters,

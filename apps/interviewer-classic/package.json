@@ -48,7 +48,7 @@
     "archiver": "^7.0.1",
     "d3-force": "~3.0.0",
     "decompress": "^4.2.1",
-    "effect": "catalog:",
+    "effect": "^3.22.1",
     "electron-log": "^5.4.4",
     "fs-extra": "^11.3.4",
     "localforage": "^1.10.0",

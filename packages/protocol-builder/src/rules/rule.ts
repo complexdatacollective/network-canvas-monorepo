@@ -6,8 +6,9 @@ import { operatorNeedsOperand } from './operators.ts';
  * The schema's `FilterRule` describes a rule a protocol may contain: it has an
  * id, a known target and a legal operator. A rule being authored has none of
  * those until the researcher supplies them, and typing a half-built rule as a
- * valid one is exactly the cast the package's session contract forbids. So the
- * draft is its own shape, and `isCompleteRule` is the gate between them.
+ * valid one would promise every reader downstream something the draft cannot
+ * keep. So the draft is its own shape, and `isCompleteRule` is the gate between
+ * them.
  *
  * The index signature keeps a draft assignable to fresco-ui's `ArrayField`,
  * whose rows are records; the list's own bookkeeping keys are stripped before

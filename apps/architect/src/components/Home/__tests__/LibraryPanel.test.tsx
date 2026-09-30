@@ -12,12 +12,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 import type { StoredProtocolRow } from '~/utils/assetDB';
+import { UnresolvedAssetsError } from '~/utils/bundleProtocol';
 
 import LibraryPanel from '../LibraryPanel';
 
 const downloadProtocolAsNetcanvasMock = vi.fn();
 
-vi.mock('~/utils/bundleProtocol', () => ({
+vi.mock('~/utils/bundleProtocol', async (importOriginal) => ({
+  // The real error class: the panel narrows on `instanceof`, so a look-alike
+  // would silently take the generic-failure branch instead.
+  ...(await importOriginal<typeof import('~/utils/bundleProtocol')>()),
   downloadProtocolAsNetcanvas: (...args: unknown[]) =>
     downloadProtocolAsNetcanvasMock(...args),
 }));
@@ -102,10 +106,10 @@ describe('<LibraryPanel /> download', () => {
     });
   });
 
-  it('warns the author when downloaded .netcanvas silently omits skipped assets', async () => {
-    downloadProtocolAsNetcanvasMock.mockResolvedValueOnce([
-      { id: 'asset-1', name: 'missing-image.png' },
-    ]);
+  it('names the resources it could not read when the download is refused', async () => {
+    downloadProtocolAsNetcanvasMock.mockRejectedValueOnce(
+      new UnresolvedAssetsError(['missing-image.png']),
+    );
 
     renderPanel();
     await openDownloadFromRow();
@@ -114,21 +118,24 @@ describe('<LibraryPanel /> download', () => {
       expect(openDialogMock).toHaveBeenCalled();
     });
 
-    const warningCall = openDialogMock.mock.calls.find(
+    // Destructive, not a warning: nothing was written. Writing the file
+    // without the resource would drop its manifest entry while the stages
+    // referencing it keep the id, and that file opens nowhere.
+    const refusalCall = openDialogMock.mock.calls.find(
       ([config]) =>
         (config as { type?: string; intent?: string }).type === 'acknowledge' &&
-        (config as { type?: string; intent?: string }).intent === 'warning',
+        (config as { type?: string; intent?: string }).intent === 'destructive',
     );
-    expect(warningCall).toBeDefined();
+    expect(refusalCall).toBeDefined();
     expect(
       renderQueuedMessage(
-        (warningCall![0] as { description: ReactNode }).description,
+        (refusalCall![0] as { description: ReactNode }).description,
       ),
     ).toContain('missing-image.png');
   });
 
   it('does not warn when every asset was included', async () => {
-    downloadProtocolAsNetcanvasMock.mockResolvedValueOnce([]);
+    downloadProtocolAsNetcanvasMock.mockResolvedValueOnce(undefined);
 
     renderPanel();
     await openDownloadFromRow();

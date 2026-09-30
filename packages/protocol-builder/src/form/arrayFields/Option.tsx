@@ -4,7 +4,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ComponentType,
@@ -17,47 +16,41 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import {
   ArrayFieldDragHandle,
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 
+import OptionLabelField from '../../fields/OptionLabelField.tsx';
 import {
-  markdownToRichTextContent,
-  richTextContentToMarkdown,
-  type RichTextContent,
-} from '../../markdown/markdownAdapter.ts';
+  cellIssues,
+  invalidVariableName,
+  isDuplicatedInColumn,
+  optionLabelIssues,
+  requiredCell,
+  variableNameSubjects,
+} from './cellRules.ts';
 import {
   isOptionComplete,
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from './optionCompleteness.ts';
-import RowField from './RowField.tsx';
-import {
-  allowedVariableNameRow,
-  requiredRow,
-  uniqueRowAttribute,
-  variableNameSubjects,
-} from './rowValidators.ts';
-import {
-  rowRemovalControlProps,
-  useConfirmRowRemoval,
-} from './useConfirmRowRemoval.ts';
+import { useEditedCells } from './useEditedCells.ts';
 
 export type OptionValue = VariableOptions[number];
 
 /**
  * The word this list uses for one of its rows, handed to everything that says
- * something ABOUT a row — a refused removal, a refused write — as a descriptor
- * rather than as a word, so the sentence and the noun in it are settled in the
- * same language at the same moment. See `arrayMessages`.
+ * something ABOUT a row — the removal confirmation, a refused write — as a
+ * descriptor rather than as a word, so the sentence and the noun in it are
+ * settled in the same language at the same moment. See `arrayMessages`.
  */
-const optionNoun = defineMessage({
+export const optionNoun = defineMessage({
   id: 'protocolBuilder.option.optionNoun',
   defaultMessage: 'option',
   description:
@@ -65,29 +58,11 @@ const optionNoun = defineMessage({
 });
 
 const messages = defineMessages({
-  duplicateLabelRow: {
-    id: 'protocolBuilder.option.duplicateLabelRow',
-    defaultMessage: 'Labels must be unique',
-    description:
-      'Shown under one option’s label cell when another option in the same list already reads the same way. Terse because it sits inside a row.',
-  },
   duplicateValueRow: {
     id: 'protocolBuilder.option.duplicateValueRow',
     defaultMessage: 'Values must be unique',
     description:
       'Shown under one option’s value cell when another option in the same list is stored as the same answer. Terse because it sits inside a row.',
-  },
-  removeOption: {
-    id: 'protocolBuilder.option.removeOption',
-    defaultMessage: 'Remove option',
-    description:
-      'Action that deletes one option from the list. Used as the title of the confirmation it raises and as that confirmation’s own confirm button.',
-  },
-  removeOptionDescription: {
-    id: 'protocolBuilder.option.removeOptionDescription',
-    defaultMessage: 'Are you sure you want to remove this option?',
-    description:
-      'Body of the confirmation raised when a researcher deletes one option from the list.',
   },
   reorderOption: {
     id: 'protocolBuilder.option.reorderOption',
@@ -152,24 +127,19 @@ const messages = defineMessages({
 });
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+const OptionLabelControl = OptionLabelField as ComponentType<
   Record<string, unknown>
 >;
 
-const LABEL_VALIDATORS = [
-  requiredRow(),
-  uniqueRowAttribute(createMessageError(messages.duplicateLabelRow)),
-] as const;
-/**
- * What an option's VALUE cell runs, exported so a spec exercising that cell
- * runs the rules — and the wording — the cell really has rather than a
- * plausible copy of them.
- */
-export const VALUE_VALIDATORS = [
-  requiredRow(),
-  uniqueRowAttribute(createMessageError(messages.duplicateValueRow)),
-  allowedVariableNameRow(variableNameSubjects.optionValue),
-] as const;
+/** What an option's VALUE cell complains about. */
+const valueIssues = (value: unknown, rows: readonly OptionValue[]) =>
+  cellIssues(
+    requiredCell(value),
+    isDuplicatedInColumn(rows, 'value', value)
+      ? createMessageError(messages.duplicateValueRow)
+      : undefined,
+    invalidVariableName(value, variableNameSubjects.optionValue),
+  );
 
 const isNumberLike = (value: string) =>
   Number.parseInt(value, 10).toString() === value;
@@ -191,8 +161,8 @@ const ROW_CLASSES =
 export type OptionsContextValue = {
   /** Resolved name of the array field these rows belong to. */
   arrayName: string;
-  /** The whole array, for cross-row validators. */
-  allValues: Record<string, unknown>;
+  /** Every row, so a cell can see the ones it must not read the same as. */
+  rows: readonly OptionValue[];
   /** The array field itself is reporting an error (minTwoOptions et al). */
   showArrayError: boolean;
 };
@@ -205,14 +175,6 @@ const useOptionsContext = () => {
     throw new Error('Option rows must be rendered inside Options.');
   }
   return context;
-};
-
-const RICH_TEXT_TOOLBAR = {
-  headings: false,
-  history: true,
-  links: false,
-  lists: false,
-  thematicBreak: false,
 };
 
 /**
@@ -236,17 +198,11 @@ export default function Option({
   isBeingEdited,
   disabled,
   readOnly,
-  getAddTrigger,
+  deleteTriggerRef,
 }: ArrayFieldItemProps<OptionValue>) {
   const intl = useAppIntl();
-  const { arrayName, allValues, showArrayError } = useOptionsContext();
-  const { rowRef, confirmRemoval } = useConfirmRowRemoval({
-    item,
-    itemLabel: optionNoun,
-    index,
-    onDelete,
-    getAddTrigger,
-  });
+  const { arrayName, rows, showArrayError } = useOptionsContext();
+  const { hasEdited, markEdited } = useEditedCells();
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
 
@@ -267,14 +223,15 @@ export default function Option({
     onEdit?.();
   }, [isBeingEdited, item.label, item.value, onEdit]);
 
-  const labelContent = useMemo(
-    () =>
-      markdownToRichTextContent(
-        typeof item.label === 'string' ? item.label : '',
-        true,
-      ),
-    [item.label],
-  );
+  // A cell complains once the researcher has edited it, or once the row has
+  // been asked to finish — which is the only way a blank row hears about
+  // itself, since nothing in it has been touched.
+  const labelErrors = optionLabelIssues(item.label, rows);
+  const valueErrors = valueIssues(item.value, rows);
+  const showLabelErrors =
+    (hasEdited('label') || forceShowErrors) && labelErrors.length > 0;
+  const showValueErrors =
+    (hasEdited('value') || forceShowErrors) && valueErrors.length > 0;
 
   const handleFinishEditing = () => {
     if (!isOptionComplete(item)) {
@@ -285,21 +242,12 @@ export default function Option({
     onCancel();
   };
 
-  const handleDelete = () => {
-    confirmRemoval({
-      title: messages.removeOption,
-      description: messages.removeOptionDescription,
-      confirmLabel: messages.removeOption,
-    });
-  };
-
   if (!isBeingEdited) {
     const hasLabel = !isOptionLabelEmpty(item.label);
     const hasValue = !isOptionValueEmpty(item.value);
 
     return (
       <div
-        ref={rowRef}
         className={cx(
           'flex items-center gap-3',
           ROW_CLASSES,
@@ -349,14 +297,14 @@ export default function Option({
             onClick={onEdit}
           />
           <IconButton
-            {...rowRemovalControlProps}
+            ref={deleteTriggerRef}
             icon={<Trash2 />}
             aria-label={intl.formatMessage(messages.removeOptionAt, {
               position: String(index + 1),
             })}
             color="destructive"
             disabled={interactionDisabled}
-            onClick={handleDelete}
+            onClick={onDelete}
           />
         </div>
       </div>
@@ -365,7 +313,6 @@ export default function Option({
 
   return (
     <div
-      ref={rowRef}
       className={cx(
         'flex flex-col gap-4',
         ROW_CLASSES,
@@ -381,70 +328,58 @@ export default function Option({
         <IconButton
           icon={<Check />}
           aria-label={intl.formatMessage(messages.finishEditing)}
-          size="lg"
           color="primary"
           disabled={interactionDisabled}
           onClick={handleFinishEditing}
         />
         <IconButton
-          {...rowRemovalControlProps}
+          ref={deleteTriggerRef}
           icon={<Trash2 />}
           aria-label={intl.formatMessage(messages.removeOptionAt, {
             position: String(index + 1),
           })}
           color="destructive"
           disabled={interactionDisabled}
-          onClick={handleDelete}
+          onClick={onDelete}
         />
       </div>
-      <RowField
+      <UnconnectedField
         name={`${rowFieldName}.label`}
         label={intl.formatMessage(messages.labelLabel)}
-        component={FrescoRichTextEditorField}
+        component={OptionLabelControl}
         placeholder={intl.formatMessage(messages.labelPlaceholder)}
-        changeMode="input"
-        toolbarOptions={RICH_TEXT_TOOLBAR}
-        value={labelContent}
+        value={typeof item.label === 'string' ? item.label : ''}
         onChange={(value: unknown) => {
-          // Stored canonically so two labels that read identically are also
-          // identical bytes on export — see shared-consts' `canonical-text`.
-          const label = toCanonicalText(
-            richTextContentToMarkdown(
-              value as RichTextContent | undefined,
-              true,
-            ),
-          );
-          // The editor emits a change as it mounts; committing that would
-          // rewrite the whole array — dirtying the stage and adding a draft
-          // timeline entry — merely by opening a row. The comparison is
-          // canonical too, so opening a row whose stored label predates this
-          // normalization is not mistaken for an edit.
-          if (label === toCanonicalText(item.label ?? '')) return;
+          // Canonical, escaped and single-line already: `OptionLabelField`
+          // owns all three, and withholds the change the editor emits as it
+          // mounts — so anything arriving here is an edit the researcher made.
+          const label = typeof value === 'string' ? value : '';
+          markEdited('label', label, item.label ?? '');
           onUpdate?.({ label } as Partial<OptionValue>);
         }}
-        validators={LABEL_VALIDATORS}
-        allValues={allValues}
-        forceShowErrors={forceShowErrors}
+        errors={labelErrors}
+        showErrors={showLabelErrors}
+        aria-invalid={showLabelErrors}
         disabled={interactionDisabled}
       />
-      <RowField
+      <UnconnectedField
         name={`${rowFieldName}.value`}
         label={intl.formatMessage(messages.valueLabel)}
         component={FrescoInputField}
         placeholder={intl.formatMessage(messages.valuePlaceholder)}
         value={item.value}
-        onChange={(value: unknown) =>
-          onUpdate?.({
-            value: parseOptionValue(
-              typeof value === 'string' || typeof value === 'number'
-                ? String(value)
-                : '',
-            ),
-          } as Partial<OptionValue>)
-        }
-        validators={VALUE_VALIDATORS}
-        allValues={allValues}
-        forceShowErrors={forceShowErrors}
+        onChange={(value: unknown) => {
+          const next = parseOptionValue(
+            typeof value === 'string' || typeof value === 'number'
+              ? String(value)
+              : '',
+          );
+          markEdited('value', next, item.value);
+          onUpdate?.({ value: next } as Partial<OptionValue>);
+        }}
+        errors={valueErrors}
+        showErrors={showValueErrors}
+        aria-invalid={showValueErrors}
         disabled={interactionDisabled}
       />
     </div>

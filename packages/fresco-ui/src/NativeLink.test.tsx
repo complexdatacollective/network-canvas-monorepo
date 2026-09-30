@@ -35,8 +35,8 @@ describe('NativeLink', () => {
     );
     expect(link).not.toHaveClass('group');
     expect(label).toHaveClass(
-      'group-hover/link:bg-[length:100%_2px]',
-      'group-focus-visible/link:bg-[length:100%_2px]',
+      'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+      'group-focus-visible/link:bg-[length:var(--link-underline-active,100%_2px)]',
     );
     expect(label).not.toHaveClass('group-hover:bg-[length:100%_2px]');
   });
@@ -75,7 +75,9 @@ describe('NativeLink', () => {
     render(
       <NativeLink
         ref={ref}
+        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- probe asserting render-prop className merges
         render={<RouterLink to="/docs" className="router-class" />}
+        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- probe asserting consumer className merges
         className="consumer-class"
       >
         Documentation

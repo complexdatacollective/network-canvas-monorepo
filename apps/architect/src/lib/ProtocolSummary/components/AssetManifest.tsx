@@ -35,6 +35,7 @@ const AssetManifest = () => {
     return null;
   }
   return (
+    // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
     <div className="page-break-marker flex break-before-page flex-col gap-6 [&_h2]:capitalize">
       <Heading level="h1">
         {intl.formatMessage(messages.resourceLibrary)}

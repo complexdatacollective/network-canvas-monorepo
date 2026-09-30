@@ -12,19 +12,24 @@ import {
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
-import { DeniedAuditRateLimiter } from '../denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from '../denial-summary.ts';
+
+// What a suppressed window becomes in the log. Who calls this changed with
+// #1909 — it is the worker's summary job now, not the web process at shutdown
+// (src/jobs/__tests__/denied-attempts-summary.test.ts covers that end to end)
+// — but what it writes did not, and the row it writes is immutable, which is
+// the property this file exists for.
 
 const db = await reachableDb();
 
-describe.skipIf(!db)('denied audit summary', () => {
+describe.skipIf(!db)('a denied-attempts summary', () => {
   let pool: pg.Pool;
-  let app: pg.Pool;
+  let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable: probe guaranteed a database');
-    ({ pool, app, dispose } = await createScratchSchema(db));
+    if (!db) throw new Error('unreachable: the probe guaranteed a database');
+    ({ pool, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
   });
 
@@ -32,74 +37,36 @@ describe.skipIf(!db)('denied audit summary', () => {
     await dispose();
   });
 
-  it('flushes one immutable pending summary before shutdown', async () => {
-    const teamId = 'denied-summary-team';
+  it('is one immutable event naming how many attempts were suppressed', async () => {
+    const teamId = `denied-summary-${randomUUID().slice(0, 8)}`;
     await seedTeam(pool, teamId);
     const principal: SessionPrincipal = {
       kind: 'user',
-      userId: 'denied-summary-actor',
+      userId: `actor-${randomUUID().slice(0, 8)}`,
       email: 'denied-summary@example.com',
       emailVerified: true,
       name: 'Denied Summary Actor',
       locale: null,
-      sessionId: 'denied-summary-session',
+      sessionId: '',
     };
-    let now = Date.parse('2026-08-31T10:00:00.000Z');
-    let scheduled: (() => void) | undefined;
-    let summaryTimerCancelled = false;
-    let summaryTransactionCount = 0;
-    const tenantDb = createTenantDb(app, teamId);
-    const summaryWritten = Promise.withResolvers<void>();
-    const writer = createDeniedAuditSummaryWriter(
+
+    // The maintenance pool, because a summary is written into a team no
+    // request pinned — the attempts it describes are minutes old and the
+    // sessions that made them are gone.
+    const write = createDeniedAuditSummaryWriter(
       {
-        tenantDb: {
-          ...tenantDb,
-          transaction: async (work, options) => {
-            summaryTransactionCount += 1;
-            return tenantDb.transaction(work, options);
-          },
-        },
+        tenantDb: createTenantDb(maintenance, teamId),
         principal,
         requestId: randomUUID(),
       },
       'team.updateMemberRole',
     );
-    const limiter = new DeniedAuditRateLimiter({
-      limit: 1,
-      windowMs: 60_000,
-      now: () => now,
-      schedule: (task) => {
-        scheduled = task;
-        return () => {
-          summaryTimerCancelled = true;
-        };
-      },
-      onSummaryError: summaryWritten.reject,
-    });
-    const first = await limiter.reserve('actor/team/operation');
-    if (!first.admitted) throw new Error('expected admitted reservation');
-    first.complete('denied');
-
-    now += 10_000;
-    expect(
-      await limiter.reserve('actor/team/operation', async (summary) => {
-        await writer(summary);
-        summaryWritten.resolve();
-      }),
-    ).toEqual({ admitted: false, reason: 'rate_limited' });
-    now += 20_000;
-    expect(await limiter.reserve('actor/team/operation')).toEqual({
-      admitted: false,
-      reason: 'rate_limited',
+    await write({
+      suppressedCount: 2,
+      firstSuppressedAt: Date.parse('2026-08-31T10:00:10.000Z'),
+      lastSuppressedAt: Date.parse('2026-08-31T10:00:30.000Z'),
     });
 
-    expect(summaryTransactionCount).toBe(0);
-    if (!scheduled) throw new Error('expected a scheduled summary');
-    await expect(limiter.flush()).resolves.toBe(true);
-    await summaryWritten.promise;
-
-    expect(summaryTimerCancelled).toBe(true);
-    expect(summaryTransactionCount).toBe(1);
     const events = await pool.query<{
       id: string;
       event_type: string;
@@ -127,6 +94,7 @@ describe.skipIf(!db)('denied audit summary', () => {
         },
       },
     ]);
+
     await expect(
       pool.query(`UPDATE audit_events SET outcome = 'failed' WHERE id = $1`, [
         events.rows[0]!.id,

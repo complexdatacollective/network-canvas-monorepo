@@ -5,9 +5,15 @@
 # deployments enter the S3 endpoint/public URL in the setup wizard, and the
 # release test verifies that path.
 #
-# Driven by up.sh / down.sh with a compose project name per lane, so the
-# upgrade lane and the fresh-deployment lane run side by side. Interpolated
-# variables: FRESCO_IMAGE, FRESCO_PORT, POSTGRES_PORT, MINIO_PORT.
+# Driven by up.sh / down.sh with a compose project name per lane, so every
+# lane runs side by side. Interpolated variables: FRESCO_IMAGE, FRESCO_PORT,
+# POSTGRES_PORT, MINIO_PORT, SINK_HTTPS_PORT, SINK_HTTP_PORT, and the
+# per-lane deployment switches below — FRESCO_DISABLE_ANALYTICS,
+# FRESCO_REQUIRE_TWO_FACTOR, FRESCO_NODE_TLS_REJECT_UNAUTHORIZED,
+# RELAY_SINK_SCRIPT. up.sh sets all of them; the defaults here are the
+# disabled-analytics, no-two-factor deployment the first two lanes test, so a
+# compose invocation that forgets one is the safe configuration rather than a
+# quietly weakened one.
 #
 # Named volumes let the upgrade lane swap the fresco image against live data
 # (the swap runs the new image's migrate-and-start.sh); `down -v` removes them
@@ -40,10 +46,23 @@ services:
       PUBLIC_URL: http://localhost:${FRESCO_PORT:-3210}
       # Stops server-side capture, and stops the browser reaching off-box at
       # all: posthog-js is loaded only once the server has confirmed analytics
-      # are on, so a stack that sets this contacts nothing but localhost. Both
-      # lanes report the hosts their tab reached and the workflow fails the run
-      # on any that is not this deployment.
-      DISABLE_ANALYTICS: 'true'
+      # are on, so a stack that sets this contacts nothing but localhost. The
+      # lanes that set it report the hosts their tab reached and the workflow
+      # fails the run on any that is not this deployment. Default 'true'. The analytics lane is the one deployment that sets
+      # this to false: its whole purpose is to read what an ENABLED deployment
+      # sends, which no disabled stack can show.
+      DISABLE_ANALYTICS: ${FRESCO_DISABLE_ANALYTICS:-true}
+      # Default unset (the variable is optional in env.js). The two-factor lane
+      # sets it to true to test mandatory enrolment.
+      REQUIRE_TWO_FACTOR: ${FRESCO_REQUIRE_TWO_FACTOR:-false}
+      # Default 1 — certificate validation on, as it ships. The analytics lane
+      # sets 0, and ONLY that lane: its sink terminates TLS with a certificate
+      # minted for this run, so the container would otherwise refuse to talk to
+      # it and the payloads the lane exists to inspect would never be sent.
+      # It changes whether the container VERIFIES the relay, never what it
+      # sends — which is what that lane asserts on — and no lane that asserts
+      # silence sets it.
+      NODE_TLS_REJECT_UNAUTHORIZED: ${FRESCO_NODE_TLS_REJECT_UNAUTHORIZED:-1}
       COOKIE_SECURE: 'false'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
       # which would make the 127.0.0.1 healthcheck below unreachable.
@@ -115,11 +134,33 @@ services:
   # No restart policy on purpose: a sink that died mid-run must stay dead, so
   # the closing probe fails and the run reports that it observed nothing —
   # rather than coming back up and reporting a silence it did not witness.
+  # Which sink runs is the lane's choice (up.sh sets RELAY_SINK_SCRIPT).
+  # relay-sink.mjs records connection attempts and never terminates TLS, which
+  # is all a lane asserting SILENCE needs. relay-payload-sink.mjs terminates
+  # TLS with the certificate up.sh mints for the run and records every request
+  # body, which is what a lane asserting on what an ENABLED deployment sends
+  # needs. They share READY_FILE and the port list, so the healthcheck and the
+  # alias below cover both.
   relay-sink:
     image: node:lts-alpine
-    command: ['node', '/opt/release-test/relay-sink.mjs']
+    command: ['node', '/opt/release-test/${RELAY_SINK_SCRIPT:-relay-sink.mjs}']
+    environment:
+      # Where the payload sink writes; ignored by the connection sink.
+      RELAY_CAPTURE_DIR: /opt/relay-capture
+      RELAY_TLS_DIR: /opt/relay-tls
+      # Names the capture file, so one lane's traffic can never be read as
+      # another's even though every lane shares the bind mount.
+      RELAY_LANE: ${LANE:-unknown}
+    # Published so a browser on the HOST resolves the relay's name to this
+    # sink too (the analytics lane maps it there with Chromium's host resolver
+    # rules). A lane whose browser sends nothing simply never dials them.
+    ports:
+      - '${SINK_HTTPS_PORT:-9440}:443'
+      - '${SINK_HTTP_PORT:-9450}:80'
     volumes:
       - ./scripts:/opt/release-test:ro
+      - ./artifacts/relay-capture:/opt/relay-capture
+      - ./artifacts/relay-tls:/opt/relay-tls:ro
     healthcheck:
       # The sink's own readiness file, not a connection to its ports: a
       # healthcheck that dialled 443 would be recorded as egress on every

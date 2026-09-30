@@ -1,20 +1,20 @@
 {
-  "label": "Do They Know Each Other?",
   "id": "id-1",
-  "type": "DyadCensus",
-  "subject": {
-    "entity": "node",
-    "type": "id-2"
-  },
   "introductionPanel": {
-    "title": "Do They Know Each Other?",
-    "text": "We would like to ask you about the people you know."
+    "text": "We would like to ask you about the people you know.",
+    "title": "Do They Know Each Other?"
   },
+  "label": "Do They Know Each Other?",
   "prompts": [
     {
+      "createEdge": "id-2",
       "id": "id-3",
-      "text": "Do they know each other?",
-      "createEdge": "id-4"
+      "text": "Do they know each other?"
     }
-  ]
+  ],
+  "subject": {
+    "entity": "node",
+    "type": "id-4"
+  },
+  "type": "DyadCensus"
 }

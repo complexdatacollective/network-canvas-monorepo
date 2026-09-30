@@ -12,7 +12,12 @@ import {
   VARIABLE_TYPE_VALIDATIONS,
   type ValidationContradiction,
   type ValidationName,
+  type VariableType,
 } from '@codaco/protocol-validation';
+import {
+  validationContradictionMessages,
+  validationRuleMessages,
+} from '@codaco/protocol-validation/messages';
 
 import type { CodebookSubject } from '../protocol-context.ts';
 import {
@@ -50,98 +55,15 @@ const NUMBER_RULES = new Set<string>([
 const VALUELESS_RULES = new Set<string>(['required', 'unique']);
 
 /**
- * What each validation rule is called, keyed by the schema's own name for it
- * so a rule the schema adds is named here or nowhere.
+ * What each validation rule is called.
  *
- * These are the words on the checkbox a researcher ticks, and the words quoted
- * back at them when the rule they ticked has no value yet.
+ * Re-exported from `@codaco/protocol-validation`, which owns the rules
+ * themselves: one rule named two things in two places is the defect this
+ * replaces (a rule offered here as "Minimum length" and reported by the
+ * validator as "Minimum text length" reads as two different rules), and the
+ * shared catalogue is the one a protocol's own validation errors already use.
  */
-const VALIDATION_LABELS = defineMessages({
-  required: {
-    id: 'protocolBuilder.variableValidation.requiredLabel',
-    defaultMessage: 'Required',
-    description:
-      'Name of the validation rule that refuses an answer left blank. Shown as the label of the checkbox that turns the rule on.',
-  },
-  unique: {
-    id: 'protocolBuilder.variableValidation.uniqueLabel',
-    defaultMessage: 'Must be unique',
-    description:
-      'Name of the validation rule that refuses an answer another network member has already given for this attribute.',
-  },
-  minLength: {
-    id: 'protocolBuilder.variableValidation.minLengthLabel',
-    defaultMessage: 'Minimum length',
-    description:
-      'Name of the validation rule setting the fewest characters an answer may have.',
-  },
-  maxLength: {
-    id: 'protocolBuilder.variableValidation.maxLengthLabel',
-    defaultMessage: 'Maximum length',
-    description:
-      'Name of the validation rule setting the most characters an answer may have.',
-  },
-  minValue: {
-    id: 'protocolBuilder.variableValidation.minValueLabel',
-    defaultMessage: 'Minimum value',
-    description:
-      'Name of the validation rule setting the smallest number an answer may be.',
-  },
-  maxValue: {
-    id: 'protocolBuilder.variableValidation.maxValueLabel',
-    defaultMessage: 'Maximum value',
-    description:
-      'Name of the validation rule setting the largest number an answer may be.',
-  },
-  minSelected: {
-    id: 'protocolBuilder.variableValidation.minSelectedLabel',
-    defaultMessage: 'Minimum selected',
-    description:
-      'Name of the validation rule setting the fewest options a participant must choose.',
-  },
-  maxSelected: {
-    id: 'protocolBuilder.variableValidation.maxSelectedLabel',
-    defaultMessage: 'Maximum selected',
-    description:
-      'Name of the validation rule setting the most options a participant may choose.',
-  },
-  differentFrom: {
-    id: 'protocolBuilder.variableValidation.differentFromLabel',
-    defaultMessage: 'Different from',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to differ from another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  sameAs: {
-    id: 'protocolBuilder.variableValidation.sameAsLabel',
-    defaultMessage: 'Same as',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to match another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  lessThanVariable: {
-    id: 'protocolBuilder.variableValidation.lessThanVariableLabel',
-    defaultMessage: 'Less than',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be smaller than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  greaterThanVariable: {
-    id: 'protocolBuilder.variableValidation.greaterThanVariableLabel',
-    defaultMessage: 'Greater than',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be larger than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  lessThanOrEqualToVariable: {
-    id: 'protocolBuilder.variableValidation.lessThanOrEqualToVariableLabel',
-    defaultMessage: 'Less than or equal to',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be no larger than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  greaterThanOrEqualToVariable: {
-    id: 'protocolBuilder.variableValidation.greaterThanOrEqualToVariableLabel',
-    defaultMessage: 'Greater than or equal to',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be no smaller than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-}) satisfies Partial<Record<ValidationName, MessageDescriptor>>;
+const VALIDATION_LABELS = validationRuleMessages;
 
 const messages = defineMessages({
   requirementsHeading: {
@@ -187,6 +109,13 @@ const messages = defineMessages({
     description:
       'Refusal shown when a counting rule was given a number below what it allows. rule is the schema’s own name for the rule, such as maxSelected, and is not translated; floor is the smallest number it accepts.',
   },
+  codebookRenderingContradiction: {
+    id: 'protocolBuilder.variableValidation.codebookRenderingContradiction',
+    defaultMessage:
+      'These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. {contradiction}',
+    description:
+      'Refusal shown in a stage’s rules editor when a comparison the form’s own input controls would allow cannot be saved, because the rules are stored on the codebook attribute and the controls the codebook gives those attributes cannot satisfy the comparison. contradiction is the sentence the protocol’s own validation writes about it, already translated.',
+  },
   validatedElsewhere: {
     id: 'protocolBuilder.variableValidation.validatedElsewhere',
     defaultMessage:
@@ -207,6 +136,12 @@ const messages = defineMessages({
       '"{variableName}" is collected by this stage\'s form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)',
     description:
       'The same refusal as validatedElsewhere, when the form doing the collecting belongs to the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads.',
+  },
+  thisAttribute: {
+    id: 'protocolBuilder.variableValidation.thisAttribute',
+    defaultMessage: 'this attribute',
+    description:
+      'Stands in for an attribute’s name inside a refusal about it, while the attribute is still being drafted and has not been named. Spliced mid-sentence into the repair guidance for a contradiction between rules, so it is lower case.',
   },
   draftUnvalidatedElsewhere: {
     id: 'protocolBuilder.variableValidation.draftUnvalidatedElsewhere',
@@ -386,6 +321,51 @@ export const formatCommitted = (value: unknown): string => {
 
 export const isValidationMap = (value: unknown): value is ValidationMap =>
   isRecord(value);
+
+/**
+ * The rules that survive a change of kind of answer, and the ones that do not.
+ *
+ * One rule for every surface where the kind moves under rules that are already
+ * written, because there is more than one: the codebook editor's own type
+ * control (`draftForType`), a form-field row holding rules for an attribute it
+ * has not created yet, and the validation section beside a picker, where the
+ * kind moves because a COLLABORATOR changed it. Each kind's
+ * `VARIABLE_TYPE_VALIDATIONS` entry is the record its variable schema picks
+ * its `validation` shape from, so a rule outside it is one the write would be
+ * refused for — and a rules editor opened on the new kind lists only that
+ * entry, so it is not a rule the researcher could switch off either.
+ *
+ * Comparison rules go whatever the new kind accepts: each names another
+ * attribute that was comparable with the old kind, and a rule comparing two
+ * attributes that no longer hold the same sort of answer has to be written
+ * again against a target that is.
+ *
+ * The kind is a bare string because one caller reads it off the codebook's
+ * variable union rather than from a control that offers the schema's kinds. A
+ * kind the schema does not know keeps nothing: there is no entry saying which
+ * rules its writes accept, so every rule held is one that cannot be written.
+ */
+export const rulesSurvivingTypeChange = <TValue>(
+  validation: Readonly<Record<string, TValue>>,
+  nextType: VariableType | string,
+): Readonly<{ kept: Record<string, TValue>; dropped: string[] }> => {
+  const accepted: Readonly<Record<string, unknown>> = Object.hasOwn(
+    VARIABLE_TYPE_VALIDATIONS,
+    nextType,
+  )
+    ? VARIABLE_TYPE_VALIDATIONS[nextType as VariableType]
+    : {};
+  const kept: Record<string, TValue> = {};
+  const dropped: string[] = [];
+  for (const [rule, value] of Object.entries(validation)) {
+    if (Object.hasOwn(accepted, rule) && !isValidationWithListValue(rule)) {
+      kept[rule] = value;
+    } else {
+      dropped.push(rule);
+    }
+  }
+  return { kept, dropped };
+};
 
 export const isRuleValueComplete = (
   ruleKey: string,
@@ -580,6 +560,60 @@ const baselineContradictions = (
     byMode.set(stageEffectiveComponents, contradictions);
   }
   return contradictions;
+};
+
+/**
+ * What a contradiction between rules says to the researcher who caused it.
+ *
+ * A `ValidationContradiction` carries two different things: `class`, which is
+ * what went wrong, and `message`, which `@codaco/protocol-validation` writes
+ * for a developer reading a validation report — `Attribute "age": minValue
+ * (10) is greater than maxValue (2)`, in English, naming the schema's own rule
+ * keys. The researcher-facing half is the catalog keyed by that class
+ * (`validationContradictionMessages`), which says what to do about it and is
+ * translated. This picks the second and fills in the attribute names, which
+ * are the researcher's own words and are never translated.
+ *
+ * Encoded rather than formatted: every issue in this module travels as a
+ * string through contracts that have no `intl`, and is decoded wherever it is
+ * finally rendered — so the reader's language is the one they are reading in,
+ * not the one that was active when the rule was typed.
+ */
+const describeDraftContradiction = (
+  contradiction: ValidationContradiction,
+  draft: ProspectiveDraft,
+): string => {
+  // The attribute being drafted is not in `allVariables` under any name the
+  // researcher would recognise: it is seeded into the analyser under a
+  // synthesized id, and only the draft knows what has been typed into the name
+  // field so far. Everything else is named from the codebook.
+  const draftId =
+    draft.currentVariableId || draftVariableId(draft.allVariables);
+  // `MessageErrorValues` allows more shapes than a LIST item does, so the
+  // name is typed as what the list takes: the researcher's own word, or a
+  // reference to a descriptor the reader's own locale resolves.
+  type NameValue = string | Readonly<{ messageError: string }>;
+  const unnamed = (): NameValue => ({
+    messageError: createMessageError(messages.thisAttribute),
+  });
+  const nameOf = (id: string): NameValue => {
+    if (id === draftId && !Object.hasOwn(draft.allVariables, draftId)) {
+      const authored = draft.draftVariableName;
+      return typeof authored === 'string' && authored.trim() !== ''
+        ? authored
+        : unnamed();
+    }
+    const variable = draft.allVariables[id];
+    return isRecord(variable) &&
+      typeof variable.name === 'string' &&
+      variable.name !== ''
+      ? variable.name
+      : unnamed();
+  };
+  return createMessageError(
+    validationContradictionMessages[contradiction.class],
+    { variables: { list: contradiction.variableIds.map(nameOf) } },
+  );
 };
 
 export const findDraftContradictions = (
@@ -939,7 +973,7 @@ export const ruleMapIssue = (
   if (!isValidationMap(value)) return undefined;
   const { issue, complete } = ruleMapPrecheck(value);
   if (issue !== undefined || context.variableType === '') return issue;
-  return findDraftContradictions({
+  const draft: ProspectiveDraft = {
     allVariables: context.allVariables,
     currentVariableId: context.currentVariableId,
     variableType: context.variableType,
@@ -949,7 +983,11 @@ export const ruleMapIssue = (
     parameters: context.parameters,
     draftVariableName: context.draftVariableName,
     stageEffectiveComponents: context.stageEffectiveComponents,
-  })[0]?.message;
+  };
+  const contradiction = findDraftContradictions(draft)[0];
+  return contradiction === undefined
+    ? undefined
+    : describeDraftContradiction(contradiction, draft);
 };
 
 export type VariableOverlay = Record<
@@ -979,6 +1017,176 @@ const withOverlay = (
     });
   }
   return Object.fromEntries(entries);
+};
+
+const NO_UNKNOWN_RENDERINGS: ReadonlySet<string> = new Set();
+
+/**
+ * What a STAGE decides about how the attributes it renders are asked for,
+ * where the codebook does not decide it.
+ *
+ * A network composer's form field keeps its own `component` and `parameters`,
+ * and the analyser reads both: a date window is the picker's own
+ * `before`/`after`, and a boolean's domain is the control's options. The field
+ * being edited hands its own pair; `overlay` is every OTHER field of the same
+ * form, keyed by the attribute it renders, because a rule comparing two
+ * answers is satisfiable or not in the renderings BOTH of them arrive with.
+ */
+export type StageRendering = Readonly<{
+  component?: unknown;
+  parameters?: unknown;
+  overlay?: VariableOverlay;
+  /**
+   * Attributes whose rendering THIS form does not decide and some other form
+   * does — a composer form elsewhere in the protocol overriding the same
+   * attribute's control.
+   *
+   * Left in, they would be judged at a codebook control nothing renders them
+   * with: a boolean the codebook declares as a choice of one value, rendered
+   * as a toggle by the form that actually asks for it, would pin a comparison
+   * this form can never see. Dropped from the judged set instead, which is
+   * what protocol validation does with them (`schema.ts`'s
+   * `unknownRenderingFor`) and for the same reason — an accept-direction gap
+   * is preferred to a refusal of something satisfiable.
+   */
+  unknownRenderings?: ReadonlySet<string>;
+}>;
+
+/**
+ * The part of a rule check the stage's own renderings decide, for an editor to
+ * spread over the rest of its context.
+ *
+ * One helper for `ruleMapIssue` and `findLegalReferenceTargets` alike, so the
+ * rules a surface OFFERS and the verdict it gives are read from one view. The
+ * view is resolved rather than guessed — every attribute this form renders
+ * carries the form's own pair — which is what earns
+ * `stageEffectiveComponents`: the analyser reads a `Boolean` control's
+ * `options` as the participant-facing domain only from a caller that has
+ * settled each variable's rendering, and it is exactly the reading protocol
+ * validation makes of the saved form (`schema.ts`'s composer overlay). Absent
+ * where the codebook's own control is what the interview renders, which is
+ * every other caller.
+ *
+ * Never the only reading, though: a validation rule is written to the CODEBOOK
+ * attribute, so `bothRenderingViews` pairs this one with the codebook's own —
+ * see there.
+ */
+const stageRenderingContext = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): Readonly<{
+  allVariables: UnknownRecord;
+  component?: unknown;
+  parameters?: unknown;
+  stageEffectiveComponents?: boolean;
+}> =>
+  stageRendering === undefined
+    ? { allVariables }
+    : {
+        allVariables: withOverlay(
+          withoutUnknownRenderings(
+            allVariables,
+            stageRendering.unknownRenderings ?? NO_UNKNOWN_RENDERINGS,
+            NO_UNKNOWN_RENDERINGS,
+          ),
+          stageRendering.overlay,
+        ),
+        component: stageRendering.component,
+        parameters: stageRendering.parameters,
+        stageEffectiveComponents: true,
+      };
+
+/**
+ * The two readings a rule set on a composer field has to pass.
+ *
+ * A validation rule is authored on a stage, but it is SAVED on the codebook
+ * attribute, and each of those is judged by something different. Protocol
+ * validation reads the saved stage through the form's own controls
+ * (`stageRenderingContext`), and reads the codebook record through the
+ * attribute's own — `rejectValidationContradictions` in
+ * `protocol-validation`'s `variables/variable.ts`, over the entity's variables
+ * with no stage overlay at all. A rule the form makes satisfiable is still
+ * refused by the write when the codebook's own controls cannot hold it, which
+ * is why the form's reading may only ever take a target away, never add one.
+ *
+ * So both readings are run and a target is offered, and a rule accepted, only
+ * where both accept. `undefined` in the second slot for a caller whose surface
+ * IS the codebook: there is one reading there, and running it twice would say
+ * the same thing twice.
+ */
+const bothRenderingViews = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): readonly [
+  ReturnType<typeof stageRenderingContext>,
+  ReturnType<typeof stageRenderingContext> | undefined,
+] =>
+  stageRendering === undefined
+    ? [stageRenderingContext(allVariables, undefined), undefined]
+    : [
+        stageRenderingContext(allVariables, stageRendering),
+        stageRenderingContext(allVariables, undefined),
+      ];
+
+/** What a caller brings to a rule check, less what the renderings decide. */
+type RenderingFree<T> = Omit<
+  T,
+  'allVariables' | 'component' | 'parameters' | 'stageEffectiveComponents'
+> &
+  Readonly<{ allVariables: UnknownRecord }>;
+
+/**
+ * The comparison targets a surface may offer: legal in BOTH readings.
+ *
+ * The codebook run is given the targets the form's reading already accepted
+ * rather than the whole list, so what comes back is the intersection and the
+ * second analyser pass costs only what the first left standing.
+ */
+export const findOfferableReferenceTargets = (
+  input: RenderingFree<ReferenceTargetLegalityInput>,
+  stageRendering: StageRendering | undefined,
+): Set<string> => {
+  const [stageView, codebookView] = bothRenderingViews(
+    input.allVariables,
+    stageRendering,
+  );
+  const legal = findLegalReferenceTargets({ ...input, ...stageView });
+  if (codebookView === undefined || legal.size === 0) return legal;
+  return findLegalReferenceTargets({
+    ...input,
+    ...codebookView,
+    candidateIds: [...legal],
+  });
+};
+
+/**
+ * What stands in the way of WRITING this rule map, in the reader's own terms.
+ *
+ * The form's own reading first, because a contradiction between the controls
+ * the researcher is looking at is the one they can act on where they are
+ * standing. A rule those controls make satisfiable but the codebook record
+ * cannot hold is reported too — it is the save that would fail otherwise, with
+ * nothing said about why — and it says which of the two refused it, because
+ * "these dates cannot overlap" in front of two fields that plainly do overlap
+ * reads as the application being wrong.
+ */
+export const ruleMapIssueForWrite = (
+  value: unknown,
+  context: RenderingFree<RuleMapContext>,
+  stageRendering: StageRendering | undefined,
+): string | undefined => {
+  const [stageView, codebookView] = bothRenderingViews(
+    context.allVariables,
+    stageRendering,
+  );
+  const stageIssue = ruleMapIssue(value, { ...context, ...stageView });
+  if (stageIssue !== undefined || codebookView === undefined) return stageIssue;
+  const codebookIssue = ruleMapIssue(value, { ...context, ...codebookView });
+  return codebookIssue === undefined
+    ? undefined
+    : createMessageError(messages.codebookRenderingContradiction, {
+        contradiction: { messageError: codebookIssue },
+      });
 };
 
 const withoutUnknownRenderings = (
@@ -1024,10 +1232,38 @@ const findResolvedViewDraftContradictions = (
   );
 };
 
-const variableTypeForComponent = (component: string): string | undefined => {
-  for (const [variableType, components] of Object.entries(
-    VARIABLE_TYPE_COMPONENTS,
-  )) {
+/**
+ * The kind of answer an input control collects — the inverse of
+ * `VARIABLE_TYPE_COMPONENTS`, and so of `controlsForType` in
+ * `sections/collectableTypes.ts`, which reads the same table forwards.
+ *
+ * Total and unambiguous: every control in the table appears under exactly ONE
+ * type, because the variable schemas are split on `component` and a control
+ * offered for two kinds of answer would make a saved field mean two things. So
+ * a surface that knows which control the participant answers with already
+ * knows what the attribute holds — which is what lets this module's save gate
+ * read the rules of an attribute that does not exist yet, and what lets a
+ * field preview render a control chosen before the attribute it collects into
+ * exists.
+ *
+ * Exported for that preview, and for the network composer's row — which asks
+ * it for the kind of answer to CREATE an attribute with — as well as for the
+ * gate below: one lookup, so no two of them can answer the same control
+ * differently.
+ */
+export const variableTypeForComponent = (
+  component: string,
+): VariableType | undefined => {
+  // The table is declared `satisfies Record<VariableType, …>`, so its keys are
+  // exactly the kinds of answer; `Object.entries` widens them to `string` for
+  // want of a type, not for want of the fact. Said here so a caller that has
+  // to name a kind — creating an attribute from the control alone — does not
+  // have to re-ask whether the answer is one.
+  const table = Object.entries(VARIABLE_TYPE_COMPONENTS) as readonly (readonly [
+    VariableType,
+    readonly string[],
+  ])[];
+  for (const [variableType, components] of table) {
     if (components.some((candidate) => candidate === component)) {
       return variableType;
     }
@@ -1120,7 +1356,7 @@ export const makeFieldEditorValidate = (
               ([id]) => !unknownRendering.includes(id),
             ),
           );
-    const first = findDraftContradictions({
+    const visibleDraft: ProspectiveDraft = {
       allVariables: visibleVariables,
       currentVariableId,
       variableType,
@@ -1130,8 +1366,11 @@ export const makeFieldEditorValidate = (
       parameters: values.parameters,
       draftVariableName: values._createNewVariable,
       stageEffectiveComponents: overlay !== undefined,
-    })[0];
-    if (first !== undefined) return { validation: first.message };
+    };
+    const first = findDraftContradictions(visibleDraft)[0];
+    if (first !== undefined) {
+      return { validation: describeDraftContradiction(first, visibleDraft) };
+    }
 
     if (resolvedViews.length > 0) {
       const allResolvedRenderedVariableIds = new Set(
@@ -1191,7 +1430,9 @@ export const makeFieldEditorValidate = (
           resolvedViewDraftRendering,
         )[0];
         if (contradiction !== undefined) {
-          return { validation: contradiction.message };
+          return {
+            validation: describeDraftContradiction(contradiction, draft),
+          };
         }
       }
     }

@@ -1,6 +1,10 @@
 {
   "extends": "@codaco/tsconfig/base.json",
   "compilerOptions": {
+    // The protocol-builder contract this package re-exports types a staged
+    // file as a `Blob`, which both halves of Studio have and neither the base
+    // lib nor a bare Node types entry declares.
+    "lib": ["dom", "ES2024"],
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
   "include": ["src"],

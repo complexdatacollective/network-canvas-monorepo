@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - **Node** 24.11.1 (`.nvmrc`); scripts are ESM `.mjs`. Use the built-in `node --test` runner — do **not** add vitest at the root.
-- **No new runtime/dev dependencies** — the changeset format is hand-parsed (as `scripts/release-notes.mjs` already does). `@changesets/read` is _not_ resolvable from the repo root; do not import it.
+- **No new runtime/dev dependencies** — the changeset format is hand-parsed (as `scripts/release/release-notes.mjs` already does). `@changesets/read` is _not_ resolvable from the repo root; do not import it.
 - **App packages / dirs (exact):** `@codaco/architect-web` → `apps/architect-web`; `@codaco/interviewer-v8` → `apps/interviewer-v8`.
 - **Both apps must stay** `"private": true` and remain in `.changeset/config.json` `ignore`. This is the load-bearing config — do not remove them.
 - **Start versions:** both apps `8.0.0-beta.0`. Base `8.0.0` is human-controlled; tooling only increments `-beta.N`.
@@ -27,8 +27,8 @@
 
 **Files:**
 
-- Create: `scripts/changeset-app-utils.mjs`
-- Test: `scripts/changeset-app-utils.test.mjs`
+- Create: `scripts/release/changeset-app-utils.mjs`
+- Test: `scripts/release/changeset-app-utils.test.mjs`
 - Modify: `package.json` (root — add `test:scripts` script)
 
 **Interfaces:**
@@ -45,7 +45,7 @@
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `scripts/changeset-app-utils.test.mjs`:
+Create `scripts/release/changeset-app-utils.test.mjs`:
 
 ```js
 import assert from 'node:assert/strict';
@@ -157,12 +157,12 @@ test('renderChangelogSection groups entries by bump type', () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `node --test scripts/changeset-app-utils.test.mjs`
+Run: `node --test scripts/release/changeset-app-utils.test.mjs`
 Expected: FAIL — `Cannot find module './changeset-app-utils.mjs'`.
 
 - [ ] **Step 3: Write the implementation**
 
-Create `scripts/changeset-app-utils.mjs`:
+Create `scripts/release/changeset-app-utils.mjs`:
 
 ```js
 // Helpers for the app (beta) release lane. The two PWA apps are kept in the
@@ -253,7 +253,7 @@ export function renderChangelogSection(version, entries) {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `node --test scripts/changeset-app-utils.test.mjs`
+Run: `node --test scripts/release/changeset-app-utils.test.mjs`
 Expected: PASS — all tests pass.
 
 - [ ] **Step 5: Add the root `test:scripts` script**
@@ -272,7 +272,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add scripts/changeset-app-utils.mjs scripts/changeset-app-utils.test.mjs package.json
+git add scripts/release/changeset-app-utils.mjs scripts/release/changeset-app-utils.test.mjs package.json
 git commit -m "feat(release): add changeset-app utilities for the beta app lane"
 ```
 
@@ -282,8 +282,8 @@ git commit -m "feat(release): add changeset-app utilities for the beta app lane"
 
 **Files:**
 
-- Create: `scripts/check-changeset-app-isolation.mjs`
-- Test: `scripts/check-changeset-app-isolation.test.mjs`
+- Create: `scripts/release/check-changeset-app-isolation.mjs`
+- Test: `scripts/release/check-changeset-app-isolation.test.mjs`
 - Modify: `package.json` (root — add `check:changesets` script)
 
 **Interfaces:**
@@ -293,7 +293,7 @@ git commit -m "feat(release): add changeset-app utilities for the beta app lane"
 
 - [ ] **Step 1: Write the failing test**
 
-Create `scripts/check-changeset-app-isolation.test.mjs`:
+Create `scripts/release/check-changeset-app-isolation.test.mjs`:
 
 ```js
 import assert from 'node:assert/strict';
@@ -341,12 +341,12 @@ test('fails and names the file when a changeset mixes an app and a library', () 
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `node --test scripts/check-changeset-app-isolation.test.mjs`
+Run: `node --test scripts/release/check-changeset-app-isolation.test.mjs`
 Expected: FAIL — guard script does not exist.
 
 - [ ] **Step 3: Write the implementation**
 
-Create `scripts/check-changeset-app-isolation.mjs`:
+Create `scripts/release/check-changeset-app-isolation.mjs`:
 
 ```js
 #!/usr/bin/env node
@@ -385,7 +385,7 @@ process.exit(1);
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `node --test scripts/check-changeset-app-isolation.test.mjs`
+Run: `node --test scripts/release/check-changeset-app-isolation.test.mjs`
 Expected: PASS.
 
 - [ ] **Step 5: Add the root script and run against the real repo**
@@ -393,7 +393,7 @@ Expected: PASS.
 In `package.json` (root) `scripts`, add:
 
 ```json
-"check:changesets": "node scripts/check-changeset-app-isolation.mjs",
+"check:changesets": "node scripts/release/check-changeset-app-isolation.mjs",
 ```
 
 Run: `pnpm check:changesets; echo "exit: $?"`
@@ -402,7 +402,7 @@ Expected: `exit: 0` (the repo currently has no mixed changesets).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/check-changeset-app-isolation.mjs scripts/check-changeset-app-isolation.test.mjs package.json
+git add scripts/release/check-changeset-app-isolation.mjs scripts/release/check-changeset-app-isolation.test.mjs package.json
 git commit -m "feat(release): add mixed-changeset isolation guard"
 ```
 
@@ -810,7 +810,7 @@ git commit -m "ci: retire every-push prod deploy for architect-web & interviewer
 
 **Interfaces:**
 
-- Consumes: `scripts/check-changeset-app-isolation.mjs` (Task 2), `scripts/version-beta-apps.mjs` (Task 3).
+- Consumes: `scripts/release/check-changeset-app-isolation.mjs` (Task 2), `scripts/version-beta-apps.mjs` (Task 3).
 - Produces: a maintained PR from branch `changeset-release/apps` → `main`.
 
 - [ ] **Step 1: Add the job**
@@ -885,7 +885,7 @@ git commit -m "ci: add Release apps PR bot"
 
 **Interfaces:**
 
-- Consumes: `scripts/release-notes.mjs` (existing — notes from the app's `CHANGELOG.md` `## <version>` section), the build/deploy commands from the (removed) prod jobs.
+- Consumes: `scripts/release/release-notes.mjs` (existing — notes from the app's `CHANGELOG.md` `## <version>` section), the build/deploy commands from the (removed) prod jobs.
 
 - [ ] **Step 1: Write the detect script**
 
@@ -1004,7 +1004,7 @@ apps-release:
     - if: needs.apps-release-detect.outputs.architect_released == 'true'
       name: architect-web release notes
       run: >-
-        node scripts/release-notes.mjs
+        node scripts/release/release-notes.mjs
         --app apps/architect-web
         --pkg @codaco/architect-web
         --version ${{ needs.apps-release-detect.outputs.architect_version }}
@@ -1030,7 +1030,7 @@ apps-release:
     - if: needs.apps-release-detect.outputs.interviewer_released == 'true'
       name: interviewer-v8 release notes
       run: >-
-        node scripts/release-notes.mjs
+        node scripts/release/release-notes.mjs
         --app apps/interviewer-v8
         --pkg @codaco/interviewer-v8
         --version ${{ needs.apps-release-detect.outputs.interviewer_version }}
@@ -1052,7 +1052,7 @@ Run:
 ```bash
 chmod +x .github/scripts/detect-app-release.sh
 npx --yes js-yaml .github/workflows/ci-and-release.yml >/dev/null && echo "yaml OK"
-node scripts/release-notes.mjs --app apps/architect-web --pkg @codaco/architect-web --version 8.0.0-beta.0
+node scripts/release/release-notes.mjs --app apps/architect-web --pkg @codaco/architect-web --version 8.0.0-beta.0
 ```
 
 Expected: `yaml OK`; the release-notes command prints `- Start of the changeset-driven beta release line.` (read from the seeded CHANGELOG).
@@ -1294,7 +1294,7 @@ git commit -m "docs: document the changeset-driven beta app release model"
 - Part G (skill) → Task 9.
 - Risks: mixed-changeset guard (Tasks 2/5); `changesets/action` co-existence (unaffected — separate branch/packages); multi-app changeset (covered by `planAppReleases` consuming a changeset once across apps — Task 3); GITHUB_TOKEN CI-retrigger caveat (documented in spec; the bot PR is mechanical); Netlify `NETLIFY_SITE_ID_INTERVIEWER` prerequisite (Task 8 + docs).
 
-**Type consistency:** `readChangesets`/`parseChangeset`/`classifyChangeset`/`isMixedChangeset`/`nextBetaVersion`/`renderChangelogSection` defined in Task 1 are consumed with the same signatures in Tasks 2–3. `planAppReleases`/`applyAppReleases`/`renderPrBody` defined and consumed within Task 3 and used by the Task 7 CLI. Release-notes CLI flags (`--app/--pkg/--version/--out`) match the existing `scripts/release-notes.mjs`.
+**Type consistency:** `readChangesets`/`parseChangeset`/`classifyChangeset`/`isMixedChangeset`/`nextBetaVersion`/`renderChangelogSection` defined in Task 1 are consumed with the same signatures in Tasks 2–3. `planAppReleases`/`applyAppReleases`/`renderPrBody` defined and consumed within Task 3 and used by the Task 7 CLI. Release-notes CLI flags (`--app/--pkg/--version/--out`) match the existing `scripts/release/release-notes.mjs`.
 
 **Placeholder scan:** none — every code/YAML/doc step contains complete content.
 

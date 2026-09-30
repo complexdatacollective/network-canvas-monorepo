@@ -1,8 +1,0 @@
-.terraform/
-*.tfstate
-*.tfstate.*
-crash.log
-cost-input.json
-terraform.tfvars
-*.auto.tfvars
-*.auto.tfvars.json

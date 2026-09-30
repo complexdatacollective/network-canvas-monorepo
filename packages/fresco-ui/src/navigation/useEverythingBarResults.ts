@@ -361,11 +361,16 @@ export function useEverythingBarResults({
   // Only the remote half is debounced. Local inventories filter synchronously
   // on every keystroke, so narrowing what the component already holds never
   // waits on the network.
+  //
+  // With no debounce there is nothing to wait for, so the query is committed
+  // during render: waiting a commit to do it would search the previous query
+  // first and leave a frame of its results on screen.
+  if (debounceMs <= 0 && committedQuery !== query) {
+    setCommittedQuery(query);
+  }
+
   useEffect(() => {
-    if (debounceMs <= 0) {
-      setCommittedQuery(query);
-      return undefined;
-    }
+    if (debounceMs <= 0) return undefined;
 
     const timer = setTimeout(() => setCommittedQuery(query), debounceMs);
     return () => clearTimeout(timer);

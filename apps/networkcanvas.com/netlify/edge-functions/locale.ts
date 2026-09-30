@@ -1,8 +1,6 @@
-import { match } from '@formatjs/intl-localematcher';
 import type { Config, Context } from '@netlify/edge-functions';
 
 import {
-  defaultSiteLocale,
   isSiteLocale,
   siteLocales,
   type SiteLocale,
@@ -10,6 +8,7 @@ import {
 
 import { CLASSIC_DOWNLOAD_PATH_PREFIX } from '../../lib/classicDownloads.ts';
 import { localeCookie } from '../../lib/i18n/locales.ts';
+import { negotiateLocale } from '../../lib/i18n/negotiate.ts';
 import {
   protocolGalleryHost,
   protocolGalleryPathPrefix,
@@ -56,14 +55,6 @@ const sharedRootPathPrefixes = [
   `${CLASSIC_DOWNLOAD_PATH_PREFIX}/`,
 ];
 
-function canonicalizeLocale(value: string) {
-  try {
-    return Intl.getCanonicalLocales(value)[0];
-  } catch {
-    return undefined;
-  }
-}
-
 function parseQuality(parameters: string[]) {
   const qualityParameter = parameters.find((parameter) =>
     parameter.trim().toLowerCase().startsWith('q='),
@@ -79,7 +70,7 @@ function getRequestedLocales(header: string) {
     .split(',')
     .map<RequestedLocale | undefined>((entry, order) => {
       const [language, ...parameters] = entry.split(';');
-      const locale = canonicalizeLocale(language?.trim() ?? '');
+      const locale = language?.trim() ?? '';
       const quality = parseQuality(parameters);
 
       return locale && quality > 0 ? { locale, quality, order } : undefined;
@@ -134,19 +125,9 @@ export function detectLocale(
 ): SiteLocale {
   if (savedLocale && isSiteLocale(savedLocale)) return savedLocale;
 
-  const requestedLocales = getRequestedLocales(
-    request.headers.get('accept-language') ?? '',
+  return negotiateLocale(
+    getRequestedLocales(request.headers.get('accept-language') ?? ''),
   );
-  const matchedLocale = match(
-    requestedLocales,
-    siteLocales,
-    defaultSiteLocale,
-    {
-      algorithm: 'best fit',
-    },
-  );
-
-  return isSiteLocale(matchedLocale) ? matchedLocale : defaultSiteLocale;
 }
 
 export function getLocaleRedirect(request: Request, savedLocale?: string) {
@@ -246,6 +227,10 @@ export function getGalleryCanonicalRedirect(url: URL) {
  * because the mapping is a plain prefix insertion it maps the per-directory RSC
  * payloads the client router fetches just as well as the HTML — which is why it
  * cannot reuse `shouldBypass`, whose extension test skips every `.txt`.
+ *
+ * The target is lowercase because Netlify answers a mixed-case page path with a
+ * visible redirect to its lowercase form. That redirect would expose the
+ * exported route, which `getGalleryCanonicalRedirect` sends straight back here.
  */
 export function getGalleryRewrite(url: URL) {
   if (
@@ -258,7 +243,8 @@ export function getGalleryRewrite(url: URL) {
   if (!pathLocale) return undefined;
 
   const rewrite = new URL(url);
-  rewrite.pathname = `/${pathLocale.locale}${protocolGalleryPathPrefix}${pathLocale.unlocalizedPath}`;
+  rewrite.pathname =
+    `/${pathLocale.locale}${protocolGalleryPathPrefix}${pathLocale.unlocalizedPath}`.toLowerCase();
   return rewrite;
 }
 

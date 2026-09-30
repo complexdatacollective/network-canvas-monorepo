@@ -6,7 +6,6 @@ import { useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { Stage } from '@codaco/protocol-validation';
 import {
   hasOpenNestedEditor,
   useNestedEditorOpen,
@@ -16,14 +15,12 @@ import {
   getProtocolLockState,
   getProtocolReclaimChoiceRequest,
 } from '~/ducks/modules/app';
-import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
-import { getLiveStageValues } from '~/selectors/stageEditorDraft';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
-import { flushStageLiveValues } from './StageFormBridge';
+import { readStageDraft } from './stageDraftBeacon';
 const messages = defineMessages({
   downloadACopy: {
     id: 'architect.stageEditor.stageDraftConflictDialog.downloadACopy',
@@ -49,10 +46,10 @@ const messages = defineMessages({
  * Asks the researcher what to do when the tab holding this protocol closes
  * while an unsaved stage draft is open here.
  *
- * The two versions cannot be combined. Committing the draft would promote a
- * codebook snapshotted when this editor opened, wiping every codebook edit the
- * other tab saved; loading the saved version closes the draft's transaction and
- * takes the draft with it (#1382). Architect resolves neither on its own — the
+ * The two versions cannot be combined. Saving the stage from here would write
+ * it over a protocol this tab last read before the other tab saved; loading
+ * the saved version replaces the editing buffer and takes the unsaved stage
+ * with it. Architect resolves neither on its own — the
  * researcher is offered a way to keep the work and a way to give it up, and
  * until one is chosen nothing is written, reloaded or discarded. Dismissing the
  * dialog leaves the tab exactly as it was, with ProtocolLockBanner still
@@ -72,7 +69,7 @@ const PENDING_DESCRIPTION = defineMessages({
   message: {
     id: 'architect.constants.components.stageeditor.stagedraftconflictdialog.pendingDescription',
     defaultMessage:
-      'The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your changes to this stage, along with any attributes you added or edited while it was open.',
+      'The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your unsaved changes to this stage.',
     description:
       'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
   },
@@ -82,7 +79,7 @@ const DOWNLOADED_DESCRIPTION = defineMessages({
   message: {
     id: 'architect.constants.components.stageeditor.stagedraftconflictdialog.downloadedDescription',
     defaultMessage:
-      'Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your changes to this stage, along with any attributes you added or edited while it was open.',
+      'Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your unsaved changes to this stage.',
     description:
       'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
   },
@@ -93,18 +90,11 @@ type StageDraftConflictDialogProps = {
   stageId: string | null;
   /** Insert position for a stage being created. */
   insertAtIndex?: number;
-  /**
-   * Merges the identity keys no field owns back onto the form's values. The
-   * downloaded copy has to be a protocol the researcher can actually open, and
-   * a stage without its `type` matches no member of the schema's union.
-   */
-  withStageIdentity: (values: Stage) => Stage;
 };
 
 const StageDraftConflictDialog = ({
   stageId,
   insertAtIndex,
-  withStageIdentity,
 }: StageDraftConflictDialogProps) => {
   const dispatch = useAppDispatch();
   const reduxStore = useStore<RootState>();
@@ -142,7 +132,6 @@ const StageDraftConflictDialog = ({
     reduxStore,
     setLocation,
     stageId,
-    withStageIdentity,
   });
   latest.current = {
     closeDialog,
@@ -152,7 +141,6 @@ const StageDraftConflictDialog = ({
     reduxStore,
     setLocation,
     stageId,
-    withStageIdentity,
   };
 
   const openDialogId = useRef<string | null>(null);
@@ -170,27 +158,27 @@ const StageDraftConflictDialog = ({
     let cancelled = false;
 
     // The protocol as it stands in this tab, with the draft applied: the
-    // canonical buffer, the editor's working codebook (already overlaid by
-    // `getProtocol`), and the stage exactly as the form holds it. The same
-    // shape Preview launches, so what the researcher gets is what they see.
+    // canonical buffer — codebook edits made while the editor was open are
+    // already committed into it — and the stage exactly as the form holds it.
+    // The same shape Preview launches, so what the researcher gets is what
+    // they see.
     const downloadWithDraft = async (): Promise<boolean> => {
       const {
         dispatch: run,
         openDialog: ask,
         reduxStore: store,
       } = latest.current;
-      // The mirror is debounced; without a flush the copy would be missing the
-      // last few seconds of typing — in the one download offered to save it.
-      flushStageLiveValues();
-      const state = store.getState();
-      const protocol = getProtocol(state);
+      const protocol = getProtocol(store.getState());
       if (!protocol) return false;
 
-      const liveValues = getLiveStageValues(state);
-      const withDraft = liveValues
+      // Read at the moment the copy is built, from the editor's own form, so
+      // the one download offered to save this work is not missing the last few
+      // seconds of typing.
+      const stage = readStageDraft().stage;
+      const withDraft = stage
         ? buildProtocolWithStage(
             protocol,
-            latest.current.withStageIdentity(liveValues),
+            stage,
             latest.current.stageId,
             latest.current.insertAtIndex,
           )
@@ -254,12 +242,10 @@ const StageDraftConflictDialog = ({
         }
 
         if (choice === 'discard') {
-          // Clearing the draft is also what releases the blocked reclaim:
-          // `useProtocolTabLock` then re-reads the saved copy and hands editing
-          // back. Leaving the editor too, exactly as the banner's discard does
-          // — a form left mounted over a closed transaction reports itself
-          // unchanged and can never be saved again.
-          latest.current.dispatch(resetDraft(null));
+          // Leaving the editor IS discarding the draft — it lives in that
+          // form and nowhere else — and it is also what releases the blocked
+          // reclaim: `useProtocolTabLock` sees the beacon close, re-reads the
+          // saved copy, and hands editing back.
           latest.current.setLocation('/protocol');
         }
 

@@ -1,5 +1,72 @@
 # networkcanvas.com
 
+## 0.5.2
+
+### Patch Changes
+
+- Add a newly published Network Canvas study on sexual partner typologies among Latino men in Miami.
+- The protocol gallery facet chips, the Get Started path and app-status labels
+  and the Summer Update compatibility chips all use the shared `Badge`, so they
+  share one size, weight and theme-aware colour treatment instead of hand-rolled
+  approximations. The news ticker's label, which only borrowed a chip for its
+  layout, is a plain label again.
+
+## 0.5.1
+
+### Patch Changes
+
+- Fix the US and UK English pages of the protocol gallery at protocolgallery.networkcanvas.com, which redirected back and forth between two addresses instead of loading.
+
+## 0.5.0
+
+### Minor Changes
+
+- Add a searchable, filterable protocol gallery with localized static study pages and repository-hosted protocol and codebook downloads, served from protocolgallery.networkcanvas.com.
+
+  Each protocol's stage sequence is read from its `.netcanvas` file at build time: gallery cards show a colour-coded stage bar with stage and edge-generation counts, and study pages list every stage with its interface type. The gallery can be filtered by field of study and edge-generation method, sorted, and searched.
+
+  Every protocol can be previewed in the browser without deploying it anywhere: the study page's "Preview in browser" action opens a popup that downloads the `.netcanvas`, migrates it to the current schema in memory, and runs it in the interview engine. Nothing entered in a preview is saved.
+
+- The language control in the footer is now the same switcher the rest of Network
+  Canvas uses. It names the language you are reading in, and opens a list of every
+  language the site speaks, each written in itself.
+
+  The list now starts with Automatic, which follows the languages your browser
+  asks for and says which one that currently is. Choosing it forgets a language
+  you picked earlier, so the site goes back to matching your browser — previously
+  a choice could only be replaced, never undone. Choosing any language still keeps
+  you on the page you were reading.
+
+  The switcher's own wording is translated, so the list, its heading and the
+  button's description are in the language of the page you are on.
+
+### Patch Changes
+
+- Cache fonts and other build assets in the browser, and start the fonts downloading sooner.
+
+  The site's stylesheets, scripts and fonts were served with `Cache-Control: public, max-age=0, must-revalidate`, so every page load re-checked each of them with the server even though their filenames already change whenever their contents do. They are now cached for a year, and a repeat visit or an onward navigation loads them from disk instead of the network.
+
+  The two fonts the site starts with are also preloaded, so they begin downloading alongside the stylesheet rather than only once it has been parsed. Together this removes the delay before text settles into its final typeface.
+
+## 0.4.7
+
+### Patch Changes
+
+- The homepage's Recent Publications section now shows two rows of publication cards instead of one. The list keeps advancing as you scroll the page, and can also be scrolled by hand at any time. Also trimmed the introductory text down to the publication count and the link to the full list.
+
+## 0.4.6
+
+### Patch Changes
+
+- Add two newly identified publications that used Network Canvas for network data collection.
+- The hero video now plays immediately when you arrive on the homepage from another page on the site, instead of showing its still image for a moment first.
+
+## 0.4.5
+
+### Patch Changes
+
+- Add a newly published Network Canvas study to the website publications list.
+
 ## 0.4.4
 
 ### Patch Changes

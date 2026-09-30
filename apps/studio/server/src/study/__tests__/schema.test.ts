@@ -20,7 +20,6 @@ import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
-  seedTestEncryptionKeyVerifications,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 import { ERASURE_GUC, MAX_WAVES_PER_STUDY } from '../schema.ts';
@@ -260,10 +259,6 @@ describe.skipIf(!db)('study spine schema', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
-    await seedTestEncryptionKeyVerifications(pool, [
-      { purpose: 'pii-enc', keyId: 'key-1' },
-      { purpose: 'pii-index', keyId: 'index-1' },
-    ]);
     for (const teamId of [TEAM_A, TEAM_B]) {
       await seedTeam(pool, teamId);
       const protocolId = randomUUID();
@@ -871,18 +866,20 @@ describe.skipIf(!db)('study spine schema', () => {
       const participantId = await newParticipant(studyId);
 
       const row = await pool.query<Row>(
-        `SELECT timezone, enrolled_at, pii_key_id, pii_algorithm,
-                email_ciphertext, email_index
+        `SELECT timezone, enrolled_at, email, phone, name, attributes
          FROM participants WHERE id = $1`,
         [participantId],
       );
       expect(row.rows[0]).toEqual({
         timezone: 'UTC',
         enrolled_at: null,
-        pii_key_id: null,
-        pii_algorithm: null,
-        email_ciphertext: null,
-        email_index: null,
+        // A managed study need not hold a contact detail, so every one of them
+        // is nullable; the attribute bag is not, because a reader indexes into
+        // it and an absent bag and an empty one are the same thing.
+        email: null,
+        phone: null,
+        name: null,
+        attributes: {},
       });
     });
 
@@ -936,74 +933,111 @@ describe.skipIf(!db)('study spine schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
+    // The contact columns are plain since #1900, and what the database still
+    // holds is the shape every reader depends on: one normalised spelling of
+    // an address, so an equality lookup finds the row it should.
     it.each([
       [
-        'an email ciphertext with no blind index',
-        { email_ciphertext: randomBytes(48) },
+        'an email that is not lower-cased',
+        { email: 'Someone@Example.org' },
+        'participants_email_check',
       ],
       [
-        'an email blind index with no ciphertext',
-        { email_index: randomBytes(32) },
+        'an email with surrounding whitespace',
+        { email: ' someone@example.org ' },
+        'participants_email_check',
       ],
       [
-        'a phone ciphertext with no blind index',
-        { phone_ciphertext: randomBytes(48) },
+        'an email too short to be one',
+        { email: 'a@' },
+        'participants_email_check',
       ],
       [
-        'a phone blind index with no ciphertext',
-        { phone_index: randomBytes(32) },
+        'an email past 320 characters',
+        { email: `${'a'.repeat(315)}@e.org` },
+        'participants_email_check',
       ],
-    ])('rejects %s', async (_label, overrides) => {
-      const studyId = await newStudy();
-      await expect(
-        insert(
-          'participants',
-          participantRow(studyId, {
-            ...overrides,
-            pii_key_id: 'key-1',
-            pii_algorithm: 'aes-256-gcm',
-          }),
-        ),
-      ).rejects.toMatchObject({
-        constraint: 'participants_blind_index_pairing_check',
-      });
-    });
-
-    it.each([
-      ['a key id with no algorithm', { pii_key_id: 'key-1' }],
-      ['an algorithm with no key id', { pii_algorithm: 'aes-256-gcm' }],
-      ['ciphertext with neither', { name_ciphertext: randomBytes(48) }],
-    ])('rejects %s', async (_label, overrides) => {
+      [
+        'a phone that is not E.164',
+        { phone: '(555) 015 0100' },
+        'participants_phone_check',
+      ],
+      [
+        'a phone with no country code',
+        { phone: '5550150100' },
+        'participants_phone_check',
+      ],
+      [
+        'a phone whose country code starts with a zero',
+        { phone: '+05550150100' },
+        'participants_phone_check',
+      ],
+      ['a blank name', { name: ' \t ' }, 'participants_name_check'],
+      [
+        'a name past 320 characters',
+        { name: 'n'.repeat(321) },
+        'participants_name_check',
+      ],
+      [
+        'scalar attributes',
+        { attributes: JSON.stringify(1) },
+        'participants_attributes_check',
+      ],
+      [
+        'array attributes',
+        { attributes: JSON.stringify([]) },
+        'participants_attributes_check',
+      ],
+    ])('rejects %s', async (_label, overrides, constraint) => {
       const studyId = await newStudy();
       await expect(
         insert('participants', participantRow(studyId, overrides)),
-      ).rejects.toMatchObject({ constraint: 'participants_pii_key_check' });
+      ).rejects.toMatchObject({ constraint });
     });
 
-    it('accepts a fully paired encrypted tier and round-trips the bytes', async () => {
+    it('accepts a full contact record and round-trips it', async () => {
       const studyId = await newStudy();
-      const emailCiphertext = randomBytes(48);
-      const emailIndex = randomBytes(32);
       const row = participantRow(studyId, {
-        email_ciphertext: emailCiphertext,
-        email_index: emailIndex,
-        blind_index_key_id: 'index-1',
-        pii_key_id: 'key-1',
-        pii_algorithm: 'aes-256-gcm',
+        email: 'someone@example.org',
+        phone: '+15550150100',
+        name: 'Someone Else',
+        attributes: JSON.stringify({ cohort: 'spring', referral: 'clinic' }),
       });
       await insert('participants', row);
 
       const stored = await pool.query<{
-        email_ciphertext: Buffer;
-        email_index: Buffer;
+        email: string;
+        phone: string;
+        name: string;
+        attributes: Record<string, unknown>;
       }>(
-        `SELECT email_ciphertext, email_index FROM participants WHERE id = $1`,
+        `SELECT email, phone, name, attributes FROM participants WHERE id = $1`,
         [row.id],
       );
-      expect(stored.rows[0]?.email_ciphertext.equals(emailCiphertext)).toBe(
-        true,
+      expect(stored.rows[0]).toEqual({
+        email: 'someone@example.org',
+        phone: '+15550150100',
+        name: 'Someone Else',
+        attributes: { cohort: 'spring', referral: 'clinic' },
+      });
+    });
+
+    // Partial, so the anonymous studies that hold no participants and the
+    // managed ones that hold no address cost nothing to carry.
+    it.each([
+      ['participants_team_id_study_id_email_idx', 'email'],
+      ['participants_team_id_study_id_phone_idx', 'phone'],
+    ])('indexes %s on the rows that have one', async (name, column) => {
+      const indexes = await pool.query<{ indexdef: string }>(
+        `SELECT indexdef FROM pg_indexes
+         WHERE schemaname = current_schema()
+           AND tablename = 'participants' AND indexname = $1`,
+        [name],
       );
-      expect(stored.rows[0]?.email_index.equals(emailIndex)).toBe(true);
+      expect(indexes.rows).toHaveLength(1);
+      expect(indexes.rows[0]?.indexdef).toContain(
+        `WHERE (${column} IS NOT NULL)`,
+      );
     });
 
     it('refuses a participant whose team disagrees with its study', async () => {

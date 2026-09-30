@@ -240,10 +240,10 @@ describe('locale routing', () => {
     it('inserts the exported route prefix after the locale segment', () => {
       expect(
         getGalleryRewrite(new URL(`${galleryOrigin}/en-US/`))?.toString(),
-      ).toBe(`${galleryOrigin}/en-US/protocol-gallery/`);
+      ).toBe(`${galleryOrigin}/en-us/protocol-gallery/`);
       expect(
         getGalleryRewrite(new URL(`${galleryOrigin}/en-US`))?.toString(),
-      ).toBe(`${galleryOrigin}/en-US/protocol-gallery/`);
+      ).toBe(`${galleryOrigin}/en-us/protocol-gallery/`);
       expect(
         getGalleryRewrite(new URL(`${galleryOrigin}/es/gate/`))?.toString(),
       ).toBe(`${galleryOrigin}/es/protocol-gallery/gate/`);
@@ -260,7 +260,7 @@ describe('locale routing', () => {
           getGalleryRewrite(
             new URL(`${galleryOrigin}/en-US/gate/${payload}`),
           )?.toString(),
-        ).toBe(`${galleryOrigin}/en-US/protocol-gallery/gate/${payload}`);
+        ).toBe(`${galleryOrigin}/en-us/protocol-gallery/gate/${payload}`);
       }
     });
 
@@ -405,9 +405,54 @@ describe('edge handler', () => {
     expect(response).toBeInstanceOf(Response);
     expect(rewrite).toHaveBeenCalledTimes(1);
     expect(String(rewrite.mock.calls[0]?.[0])).toBe(
-      `${galleryOrigin}/en-US/protocol-gallery/gate/`,
+      `${galleryOrigin}/en-us/protocol-gallery/gate/`,
     );
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it('settles on the short URL when Netlify redirects mixed-case page paths to lowercase', async () => {
+    const netlifyServe = (target: string | URL) => {
+      const { pathname } = new URL(target);
+      const isPage = !/\.[^/]+$/.test(pathname);
+      if (isPage && pathname !== pathname.toLowerCase()) {
+        return Promise.resolve(
+          new Response(null, {
+            status: 301,
+            headers: { location: pathname.toLowerCase() },
+          }),
+        );
+      }
+      return Promise.resolve(new Response('served', { status: 200 }));
+    };
+    const context = {
+      cookies: { get: () => undefined },
+      next: () => Promise.resolve(new Response('next', { status: 200 })),
+      rewrite: netlifyServe,
+    };
+
+    for (const locale of locales) {
+      for (const path of ['/', '/gate/', '/gate/index.txt']) {
+        const start = `${galleryOrigin}/${locale}${path}`;
+        let url = start;
+        let response: Response | undefined;
+
+        for (let hop = 0; hop < 5; hop += 1) {
+          response = await localeRedirect(
+            new Request(url),
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            context as unknown as Context,
+          );
+          const location = response.headers.get('location');
+          if (response.status < 300 || response.status >= 400 || !location) {
+            break;
+          }
+          url = new URL(location, url).toString();
+        }
+
+        expect(response?.status, start).toBe(200);
+        expect(url, start).toBe(start);
+      }
+    }
   });
 
   it('continues normally off the gallery host', async () => {

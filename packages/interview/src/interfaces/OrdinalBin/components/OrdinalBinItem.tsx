@@ -1,15 +1,15 @@
 'use client';
 import { motion } from 'motion/react';
-import { memo, useRef } from 'react';
+import { memo, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { SortOrder, Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { useTrack } from '../../../analytics/useTrack';
+import BinLabel from '../../../components/BinLabel';
 import NodeList from '../../../components/NodeList';
 import { usePrompts } from '../../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
@@ -88,6 +88,13 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const isPortrait = useMediaQuery('(orientation: portrait)');
   const track = useTrack();
   const lastBinIndexRef = useRef<Map<string, number>>(new Map());
+  const headerRef = useRef<HTMLDivElement>(null);
+  // The label's text, not its markdown source: a screen reader should not read
+  // the asterisks around an emphasised word.
+  const spokenLabel = useMemo(
+    () => getMarkdownLabelText(bin.label),
+    [bin.label],
+  );
 
   const missingValue = isMissingValue(bin.value);
   const blendPercent = Math.round((1 / totalBins) * index * 100);
@@ -148,8 +155,12 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
       'rounded-tr rounded-br portrait:rounded-tr-none portrait:rounded-bl',
   );
 
+  // `overflow-hidden` keeps the header inside the row the grid gave it: in
+  // portrait the panel's implicit row otherwise grows to the tallest thing in
+  // the bin, and a header centred in a row taller than the panel is pushed out
+  // through the panel's clipped edge. It is also the box BinLabel fits to.
   const accentClasses = cx(
-    'flex min-h-14 items-center justify-center px-2 text-center',
+    'flex min-h-14 items-center justify-center overflow-hidden px-2 py-1 text-center',
     promptColorClass,
     missingValue
       ? 'bg-surface-2'
@@ -172,10 +183,8 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         } as React.CSSProperties
       }
     >
-      <div className={accentClasses}>
-        <Heading level="h4" variant="default" margin="none">
-          <RenderMarkdown>{bin.label}</RenderMarkdown>
-        </Heading>
+      <div ref={headerRef} className={accentClasses}>
+        <BinLabel label={bin.label} variant="header" containerRef={headerRef} />
       </div>
       <NodeList
         id={listId}
@@ -184,7 +193,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         orientation={isPortrait ? 'horizontal' : 'vertical'}
         className={bodyClasses}
         announcedName={intl.formatMessage(interfaceMessages.ordinalContainer, {
-          label: bin.label,
+          label: spokenLabel,
         })}
         onDrop={handleDrop}
         accepts={['NODE']}

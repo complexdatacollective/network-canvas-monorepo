@@ -1,118 +1,105 @@
-import { type Locator, type Page } from '@playwright/test';
-
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
-import { createVariableViaSpotlight } from './variables.js';
+import { chooseOrCreateAttribute } from './variables.js';
 
-// SociogramPrompts prompt dialog (sections/SociogramPrompts/*). Facts
-// verified against source:
-// - The layout picker (data-field-name="layout.layoutVariable") creates
-//   layout-typed variables through the simple spotlight path.
-// - 'Node interaction' is toggleable and collapsed for a fresh prompt.
-//   Closing it discards its descendant fields, so a layout-only prompt leaves
-//   `highlight` absent.
-// - The interaction-type rich select exposes its choices as options with
-//   their label and description in the accessible name. 'Edge
-//   Creation' writes `highlight: { allowHighlighting: false }` as a side
-//   effect; selecting a create-edge auto-unions it into `edges.display`
-//   (PromptFieldsEdges mount effect), which also auto-expands the Display
-//   Edges section — its switch state must be guarded, never blind-clicked.
-// - 'Attribute Toggling' writes `highlight.allowHighlighting: true` and
-//   reveals the boolean picker (data-field-name="highlight.variable"),
-//   which creates boolean variables.
+// One sociogram prompt, as `@codaco/protocol-builder`'s `SociogramPromptFields`
+// renders it inside the shared prompt row dialog ("Create prompt", submitted
+// with "Add"). Four groups; only "Node interaction" carries a switch, because
+// a prompt that does nothing when a node is tapped is how a sociogram says so
+// — the rest are questions the researcher answers rather than ones they turn
+// on:
+// - "Participant prompt" holds the rich-text field "Prompt text" (`text`).
+// - "Node layout" holds the picker "Layout attribute"
+//   (`layout.layoutVariable`). There is no create control beside it: the slot
+//   binds a `layout` attribute, which a name finishes, so the picker's own
+//   create row writes it straight to the codebook and no editor opens.
+// - "Node interaction" is toggleable, and switched off is how a prompt says
+//   tapping does nothing. Switched on it holds one choice, "Interaction type",
+//   between "Edge creation" and "Attribute toggling" — mutually exclusive,
+//   because the stage schema refuses a prompt that both draws edges and
+//   toggles an attribute. Choosing "Edge creation" reveals the edge-type
+//   radiogroup "Created edge type" (`edges.create`); choosing "Attribute
+//   toggling" reveals the picker "Boolean attribute" (`highlight.variable`),
+//   whose create row writes a `boolean` attribute the same way, and writes
+//   `highlight.allowHighlighting: true` for itself.
+// - "Displayed edges" holds the tick list "Edge types"
+//   (`edges.display`). Choosing a connection type to CREATE here ticks that
+//   type and locks its box, so a displayed-edges list that names it is
+//   already satisfied — hence the guarded check rather than a blind one.
 export type SociogramPromptSpec = {
   text: string;
   layoutVariable: string;
   interaction?:
     | { kind: 'createEdge'; edgeName: string; createNewEdgeType?: boolean }
-    | { kind: 'highlight'; variableName: string; create?: boolean };
+    | { kind: 'highlight'; variableName: string };
   displayEdges?: string[];
 };
 
 export async function addSociogramPrompt(
   editor: StageEditor,
-  page: Page,
   spec: SociogramPromptSpec,
 ): Promise<void> {
-  const fresh = (candidate: Page): Locator =>
-    candidate
-      .locator('[data-field-name="layout.layoutVariable"]')
-      .getByRole('button', { name: 'Select attribute' });
-  await addPrompt(
-    editor.field('prompts'),
-    async () => {
-      await editor.fillRichTextMarkdown('Prompt text', spec.text);
-      await createVariableViaSpotlight(page, {
-        variableName: spec.layoutVariable,
-        scope: editor.field('layout.layoutVariable'),
-        until: editor
-          .field('layout.layoutVariable')
-          .getByRole('button', { name: 'Change attribute' }),
-      });
+  await addPrompt(editor.field('prompts'), async () => {
+    await editor.fillRichTextMarkdown('Prompt text', spec.text);
+    // A position attribute is finished by its name, so the create row writes
+    // it and binds it with no editor in between.
+    await chooseOrCreateAttribute(
+      editor.field('layout.layoutVariable'),
+      spec.layoutVariable,
+    );
 
-      const interaction = spec.interaction;
-      if (interaction) {
-        const section = editor.section('Node interaction');
-        const toggle = section.getByRole('switch', {
-          name: 'Node interaction',
-          exact: true,
-        });
-        await toggle.click();
-        if (interaction.kind === 'createEdge') {
-          await section.getByRole('option', { name: /Edge creation/ }).click();
-          if (interaction.createNewEdgeType) {
-            await editor
-              .field('edges.create')
-              .getByRole('button', { name: 'Create new edge type' })
-              .click();
-            await page
-              .getByRole('textbox', { name: 'Edge type name' })
-              .fill(interaction.edgeName);
-            await page.getByRole('button', { name: 'Save and Close' }).click();
-          } else {
-            await editor
-              .field('edges.create')
-              .getByRole('radio', {
-                name: `Select edge ${interaction.edgeName}`,
-                exact: true,
-              })
-              .click();
-          }
-        } else {
-          await section
-            .getByRole('option', { name: /Attribute toggling/ })
-            .click();
-          await createVariableViaSpotlight(page, {
-            variableName: interaction.variableName,
-            scope: editor.field('highlight.variable'),
-            until: editor
-              .field('highlight.variable')
-              .getByRole('button', { name: 'Change attribute' }),
-          });
+    const interaction = spec.interaction;
+    if (interaction) {
+      const tapping = editor.section('Node interaction');
+      // Switched off is "tapping does nothing", so the choice is only on
+      // screen once the section is on.
+      await tapping
+        .getByRole('switch', { name: 'Node interaction', exact: true })
+        .click();
+      const behaviour = editor
+        .field('tap-behaviour')
+        .getByRole('listbox', { name: 'Interaction type', exact: true });
+      if (interaction.kind === 'createEdge') {
+        if (interaction.createNewEdgeType) {
+          // The prompt dialog's "Created edge type" control is
+          // `EntityTypePickerField`, which chooses among the edge types the
+          // codebook already has and offers no way to add one — the "Create a
+          // new edge type" button belongs to the stage's own subject section,
+          // and a sociogram's subject is a node. An edge type this prompt is
+          // to draw has to exist before the prompt is written.
+          throw new Error(
+            `Cannot create the edge type "${interaction.edgeName}" from a sociogram prompt: the prompt's connection-type picker only chooses existing types. Create it first (a stage whose subject is an edge, or the codebook screen).`,
+          );
+        }
+        await behaviour.getByRole('option', { name: /^Edge creation/ }).click();
+        await editor
+          .field('edges.create')
+          .getByRole('radio', { name: interaction.edgeName, exact: true })
+          // The chip's own label: the radio inside it is `sr-only`, which is
+          // not something a researcher can click.
+          .locator('xpath=ancestor::label[1]')
+          .click();
+      } else {
+        await behaviour
+          .getByRole('option', { name: /^Attribute toggling/ })
+          .click();
+        // Boolean, so this create row writes the attribute too.
+        await chooseOrCreateAttribute(
+          editor.field('highlight.variable'),
+          interaction.variableName,
+        );
+      }
+    }
+
+    if (spec.displayEdges) {
+      for (const edgeName of spec.displayEdges) {
+        const checkbox = editor
+          .field('edges.display')
+          .getByRole('checkbox', { name: edgeName, exact: true });
+        if (!(await checkbox.isChecked())) {
+          await checkbox.check();
         }
       }
-
-      if (spec.displayEdges) {
-        const displaySection = editor.section('Displayed edges');
-        const displayToggle = displaySection.getByRole('switch', {
-          name: 'Displayed edges',
-          exact: true,
-        });
-        // The section auto-expands when edges.create is set (mount-effect
-        // union) — guard instead of blind-clicking.
-        if ((await displayToggle.getAttribute('aria-checked')) !== 'true') {
-          await displayToggle.click();
-        }
-        for (const edgeName of spec.displayEdges) {
-          const checkbox = editor
-            .field('edges.display')
-            .getByRole('checkbox', { name: edgeName, exact: true });
-          if (!(await checkbox.isChecked())) {
-            await checkbox.check();
-          }
-        }
-      }
-    },
-    { freshSign: fresh },
-  );
+    }
+  });
 }

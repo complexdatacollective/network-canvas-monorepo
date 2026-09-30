@@ -28,13 +28,20 @@ const es = createAppIntl({
   locale: 'es',
   messages: protocolValidationCatalogs.es,
 });
-const malformedReasons: MalformedNetcanvasReason[] = [
-  'not-an-archive',
-  'missing-protocol',
-  'unreadable-protocol-json',
-  'missing-asset',
-  'invalid-asset-definition',
-];
+// Keyed rather than listed, so `satisfies` makes a new union member a compile
+// error here instead of a silently uncovered reason: the table below claims to
+// describe every one of them.
+const malformedReasons = Object.keys({
+  'not-an-archive': true,
+  'missing-protocol': true,
+  'unreadable-protocol-json': true,
+  'unreadable-entry': true,
+  'missing-asset': true,
+  'invalid-asset-definition': true,
+} satisfies Record<
+  MalformedNetcanvasReason,
+  true
+>) as MalformedNetcanvasReason[];
 const errors = [
   ...malformedReasons.map(
     (reason) =>

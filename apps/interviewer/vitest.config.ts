@@ -9,6 +9,7 @@ import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
+import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
 import { arrayBufferAssetPlugin } from './vite.renderer.config';
@@ -113,8 +114,10 @@ export default defineConfig({
             '@codaco/art > blobs/v2/animate',
             '@codaco/fresco-ui > @faker-js/faker',
             '@codaco/fresco-ui > @radix-ui/react-slot',
+            '@codaco/fresco-ui > clsx',
             '@codaco/fresco-ui > comlink',
             '@codaco/fresco-ui > cva',
+            '@codaco/fresco-ui > cva/config',
             '@codaco/fresco-ui > es-toolkit',
             '@codaco/fresco-ui > es-toolkit/compat',
             '@codaco/fresco-ui > fuse.js',
@@ -156,6 +159,7 @@ export default defineConfig({
             enabled: true,
             instances: [{ browser: 'chromium' }],
             headless: true,
+            viewport: BROWSER_VIEWPORT,
           },
           exclude: ['**/*.test.{ts,tsx}'],
         },

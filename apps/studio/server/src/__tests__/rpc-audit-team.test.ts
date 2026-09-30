@@ -2,17 +2,20 @@ import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
-import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+
+const TEAM_ID = uniqueTeamId('rpc-audit-team');
 
 const db = await reachableDb();
 
@@ -28,6 +31,7 @@ const PRINCIPAL: SessionPrincipal = {
 
 describe.skipIf(!db)('audited team RPC', () => {
   let pool: pg.Pool;
+  let jobSchema: string;
   let dispose: () => Promise<void>;
   let membershipRole: string;
   let client: ReturnType<typeof createRpcClient>;
@@ -36,9 +40,10 @@ describe.skipIf(!db)('audited team RPC', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
     pool = scratch.pool;
+    jobSchema = scratch.jobSchema;
     dispose = scratch.dispose;
     await provisionScratchSchema(pool);
-    await seedTeam(pool, 'rpc-audit-team');
+    await seedTeam(pool, TEAM_ID);
     await pool.query(
       `INSERT INTO "user" (id, name, email, "emailVerified") VALUES
          ($1, $2, $3, true),
@@ -47,23 +52,23 @@ describe.skipIf(!db)('audited team RPC', () => {
     );
     await pool.query(
       `INSERT INTO team_members (id, team_id, user_id, role) VALUES
-         ('rpc-audit-owner-member', 'rpc-audit-team', $1, 'owner'),
-         ('rpc-audit-target-member', 'rpc-audit-team', 'rpc-audit-member-user', 'member')`,
+         ('rpc-audit-owner-member', '${TEAM_ID}', $1, 'owner'),
+         ('rpc-audit-target-member', '${TEAM_ID}', 'rpc-audit-member-user', 'member')`,
       [PRINCIPAL.userId],
     );
     membershipRole = 'owner';
     const auth = stubAuthService({
       getSession: () => Promise.resolve(PRINCIPAL),
       getMembership: (_userId, teamId) =>
-        Promise.resolve(
-          teamId === 'rpc-audit-team' ? { role: membershipRole } : null,
-        ),
+        Promise.resolve(teamId === TEAM_ID ? { role: membershipRole } : null),
     });
     client = createRpcClient(
       createApp(readEnv(), {
         auth,
-        invitationDeliveryAvailable: true,
         pool: scratch.app,
+        // What the web process hands the router: creating an invitation queues
+        // its delivery in the same transaction (#1895).
+        jobs: await scratch.createJobClient(),
       }),
     );
   });
@@ -75,7 +80,7 @@ describe.skipIf(!db)('audited team RPC', () => {
   it('routes role and invitation mutations through typed audited commands', async () => {
     await expect(
       client.team.updateMemberRole({
-        teamId: 'rpc-audit-team',
+        teamId: TEAM_ID,
         memberId: 'rpc-audit-target-member',
         role: 'admin',
       }),
@@ -84,7 +89,7 @@ describe.skipIf(!db)('audited team RPC', () => {
       role: 'admin',
     });
     const invitation = await client.team.createInvitation({
-      teamId: 'rpc-audit-team',
+      teamId: TEAM_ID,
       email: 'rpc-invitee@example.com',
       role: 'member',
     });
@@ -95,7 +100,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     });
     await expect(
       client.team.cancelInvitation({
-        teamId: 'rpc-audit-team',
+        teamId: TEAM_ID,
         invitationId: invitation.invitationId,
       }),
     ).resolves.toEqual({
@@ -103,12 +108,25 @@ describe.skipIf(!db)('audited team RPC', () => {
       status: 'canceled',
     });
 
+    const queued = await pool.query<{ name: string; data: unknown }>(
+      `select job.name, job.data
+       from ${jobSchema}.job_common job
+       join team_invitation_deliveries delivery
+         on delivery.id = (job.data->>'deliveryId')::uuid
+       where delivery.invitation_id = $1`,
+      [invitation.invitationId],
+    );
+    // Exactly one, carrying the delivery id alone: the command's transaction
+    // creates the invitation, its delivery row and its job together.
+    expect(queued.rows).toHaveLength(1);
+    expect(queued.rows[0]?.name).toBe('invitation-delivery');
+
     const events = await pool.query<{
       event_type: string;
       request_id: string;
     }>(
       `SELECT event_type, request_id::text
-       FROM audit_events WHERE team_id = 'rpc-audit-team' ORDER BY sequence`,
+       FROM audit_events WHERE team_id = '${TEAM_ID}' ORDER BY sequence`,
     );
     expect(events.rows.map(({ event_type }) => event_type)).toEqual([
       'team.member.role_changed',
@@ -136,67 +154,6 @@ describe.skipIf(!db)('audited team RPC', () => {
     expect(error).toMatchObject({ code: 'FORBIDDEN' });
   });
 
-  it('refuses to create invitations when this instance cannot deliver email', async () => {
-    const env = readEnv();
-    if (!env.auth) throw new Error('test auth environment is unavailable');
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
-      getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
-    });
-    const unavailableClient = createRpcClient(
-      createApp(
-        { ...env, auth: { ...env.auth, mailer: { kind: 'refuse' } } },
-        { auth, invitationDeliveryAvailable: true, pool },
-      ),
-    );
-
-    const { error } = await safe(
-      unavailableClient.team.createInvitation({
-        teamId: 'rpc-audit-team',
-        email: 'cannot-deliver@example.com',
-        role: 'member',
-      }),
-    );
-
-    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-    expect(
-      await pool.query(
-        `SELECT id FROM team_invitations WHERE email = 'cannot-deliver@example.com'`,
-      ),
-    ).toHaveProperty('rowCount', 0);
-  });
-
-  it('refuses to queue an invitation when the runtime has no dispatcher', async () => {
-    const auth = stubAuthService({
-      getSession: () => Promise.resolve(PRINCIPAL),
-      getMembership: (_userId, teamId) =>
-        Promise.resolve(teamId === 'rpc-audit-team' ? { role: 'owner' } : null),
-    });
-    const serverlessClient = createRpcClient(
-      createApp(readEnv(), {
-        auth,
-        invitationDeliveryAvailable: false,
-        pool,
-      }),
-    );
-
-    const { error } = await safe(
-      serverlessClient.team.createInvitation({
-        teamId: 'rpc-audit-team',
-        email: 'undrainable@example.com',
-        role: 'member',
-      }),
-    );
-
-    expect(error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
-    expect(
-      await pool.query(
-        `SELECT id FROM team_invitations WHERE email = 'undrainable@example.com'`,
-      ),
-    ).toHaveProperty('rowCount', 0);
-  });
-
   it('lets the authenticated invitee accept without an existing membership', async () => {
     const invitationId = 'rpc-audit-accept-invitation';
     const invitee: SessionPrincipal = {
@@ -216,7 +173,7 @@ describe.skipIf(!db)('audited team RPC', () => {
     await pool.query(
       `INSERT INTO team_invitations (
          id, team_id, email, role, status, expires_at, inviter_id
-       ) VALUES ($1, 'rpc-audit-team', $2, 'admin', 'pending',
+       ) VALUES ($1, '${TEAM_ID}', $2, 'admin', 'pending',
                  CURRENT_TIMESTAMP + INTERVAL '1 day', $3)`,
       [invitationId, invitee.email, PRINCIPAL.userId],
     );
@@ -232,13 +189,13 @@ describe.skipIf(!db)('audited team RPC', () => {
       inviteeClient.team.acceptInvitation({ invitationId }),
     ).resolves.toMatchObject({
       invitationId,
-      teamId: 'rpc-audit-team',
+      teamId: TEAM_ID,
       role: 'admin',
       status: 'accepted',
     });
     const membership = await pool.query<{ role: string }>(
       `SELECT role FROM team_members
-       WHERE team_id = 'rpc-audit-team' AND user_id = $1`,
+       WHERE team_id = '${TEAM_ID}' AND user_id = $1`,
       [invitee.userId],
     );
     expect(membership.rows).toEqual([{ role: 'admin' }]);

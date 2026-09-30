@@ -102,11 +102,10 @@ Schema 8 adds an `encrypted` flag to variables, which marks a variable's values 
 
 When creating a field on a [form](/en/design-protocols/key-concepts/forms):
 
-1. Click **Create new** or select an existing variable
-2. Choose or enter a variable name (use descriptive names: `close_friend`, `contact_frequency`)
-3. Select an [input control](/en/design-protocols/key-concepts/input-controls)—this sets the variable type
-4. Configure any control-specific options
-5. Set [validation rules](/en/design-protocols/key-concepts/field-validation) if needed
+1. <AppOnly app="current">Click **Select attribute**, then choose an existing attribute or type a new name (use descriptive names: `close_friend`, `contact_frequency`) and choose **Create new attribute called “…”.**</AppOnly><AppOnly app="classic">Click **Create new** or select an existing variable, then enter a variable name (use descriptive names: `close_friend`, `contact_frequency`)</AppOnly>
+2. Select an [input control](/en/design-protocols/key-concepts/input-controls)—this sets the variable type
+3. Configure any control-specific options
+4. Set [validation rules](/en/design-protocols/key-concepts/field-validation) if needed
 
 ### In categorical/ordinal bins
 
@@ -115,6 +114,12 @@ When configuring bins:
 1. Name the variable (e.g., `relationship_strength`)
 2. Define the categories or order levels
 3. The variable type is automatically set to categorical or ordinal
+
+<AppOnly app="current">
+
+In Architect, the answer options of a categorical or ordinal attribute are edited directly under the attribute you chose, wherever you choose one: a bin prompt, a form field, a tie-strength prompt or a Network Composer row. They are saved by the same button that saves the rest of the prompt or field. A boolean attribute's two labels are edited the same way. Option labels accept **bold** and _italic_ text, which participants see as emphasis, and nothing else — a label can't contain headings, links or lists. An attribute whose options belong to an interface is shown read-only, with a note saying why.
+
+</AppOnly>
 
 ### Automatic variables
 
@@ -192,9 +197,25 @@ Use the [Codebook](/en/design-protocols/key-concepts/codebook) in Architect:
 
 ### Modifying variables
 
+<AppOnly app="current">
+
+You can change the input control (if compatible with variable type), validation rules, options for categorical variables, and the attribute's name. You cannot change the variable type, which is set when first created with an input control.
+
+To rename an attribute, click the pill of the attribute a section has selected — the one shown under **Change attribute** in a prompt, form field, or other attribute picker — or focus it and press Enter or Space. (Pills shown elsewhere, such as in the attribute search results or in a rule's summary, are labels rather than controls; in the Codebook, use the edit control on the attribute's own row instead.) A box opens holding the current name; type the new name and click **Save Changes**. The new name must not be empty, must not already be used by another attribute of the same node type, edge type or ego (however it is capitalised), and may use only letters, numbers and the symbols `._-:`. Cancelling, pressing Escape, or clicking away keeps the old name. Stages that use the attribute keep using it under its new name, but remember that the name becomes the column name in exported data.
+
+Changes you make to the codebook while a stage is open — creating an attribute, renaming it, or editing its options or validation rules — are written to the codebook straight away. They are kept even if you then cancel your edits to the stage, because an attribute belongs to every stage that uses it rather than to the stage you are editing.
+
+To change the variable type, create a new variable with the desired settings, replace the old variable with the new one on all stages, and delete the old variable from the codebook.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 You can change the input control (if compatible with variable type), validation rules, and options for categorical variables. You cannot change the variable type (which is set when first created with an input control) or the variable name (which would break references).
 
 To change immutable properties, create a new variable with the desired settings, replace the old variable with the new one on all stages, and delete the old variable from the codebook.
+
+</AppOnly>
 
 ### Deleting variables
 
@@ -293,6 +314,14 @@ support_frequency: Ordinal (Radio Button Group)
 
 **Cause:** Variable type is set when first created
 **Solution:** Create new variable with desired type, replace old one
+
+<AppOnly app="current">
+
+### Need to rename a variable
+
+**Solution:** Click the attribute's pill and type the new name. See [Modifying variables](#modifying-variables).
+
+</AppOnly>
 
 ### Variable shows "not in use" but can't delete
 

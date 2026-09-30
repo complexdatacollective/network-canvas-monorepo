@@ -17,17 +17,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { contract } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { seed } from '../db/seed.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
-import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
+import { testKeyring } from './support/secrets.ts';
 
 const db = await reachableDb();
 
@@ -77,7 +78,7 @@ describe.skipIf(!db)('studies.counts', () => {
     ownerPool = scratch.pool;
     appPool = scratch.app;
     await provisionScratchSchema(scratch.pool);
-    await seed(scratch.pool);
+    await seed(scratch.pool, { secrets: testKeyring() });
 
     // The managed study with the most collected sessions, so every count under
     // test is non-zero: an assertion that 0 equals 0 would hold however wrong

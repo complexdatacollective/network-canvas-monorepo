@@ -6,6 +6,7 @@ import Codebook from '~/components/Codebook/Codebook';
 import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
 import UnusedVariablesAlert from '~/components/Codebook/UnusedVariablesAlert';
 import PageHeading from '~/components/ProjectNav/PageHeading';
+import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 const messages = defineMessages({
   codebook: {
     id: 'architect.pages.codebookPage.codebook',
@@ -45,7 +46,7 @@ const CodebookPage = () => {
 
   return (
     <>
-      <div className="phone-landscape:px-7 tablet-landscape:px-29 px-5">
+      <div className={pageInsetClasses}>
         <PageHeading
           title={intl.formatMessage(messages.codebook)}
           description={intl.formatMessage(messages.overviewOfTheEgoNodeAnd)}

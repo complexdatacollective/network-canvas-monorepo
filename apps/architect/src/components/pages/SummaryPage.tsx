@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import PageHeading from '~/components/ProjectNav/PageHeading';
+import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
 import Codebook from '~/lib/ProtocolSummary/components/Codebook';
 import Contents from '~/lib/ProtocolSummary/components/Contents';
@@ -12,6 +13,7 @@ import Stages from '~/lib/ProtocolSummary/components/Stages';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import { getCodebookIndex } from '~/lib/ProtocolSummary/helpers';
 import { getProtocol, getProtocolName } from '~/selectors/protocol';
+import { cx } from '~/utils/cva';
 const messages = defineMessages({
   protocolSummary: {
     id: 'architect.pages.summaryPage.protocolSummary',
@@ -58,7 +60,7 @@ const SummaryPage = () => {
       }}
     >
       <div className="w-full">
-        <div className="w-full print:hidden">
+        <div className={cx(pageInsetClasses, 'w-full print:hidden')}>
           <PageHeading
             title={intl.formatMessage(messages.protocolSummary)}
             description={intl.formatMessage(
@@ -70,10 +72,12 @@ const SummaryPage = () => {
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}
+          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook */}
           <div className="page-break-marker flex flex-col gap-6">
             <Cover />
           </div>
 
+          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- see above. */}
           <div className="page-break-marker flex break-before-page flex-col gap-6">
             <Contents />
           </div>

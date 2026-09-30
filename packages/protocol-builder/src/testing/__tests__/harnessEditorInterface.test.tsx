@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import StageNameSection from '../../sections/StageNameSection.tsx';
 import type {
   StageEditorComponent,
   StageEditorProps,
@@ -21,7 +20,7 @@ const InformationEditor: StageEditorComponent<'Information'> = ({
 
 /**
  * A named editor is written for ONE interface, and the harness hands it the
- * stage type the session opened — as a runtime string, cast to the type
+ * stage type the edit opened on — as a runtime string, cast to the type
  * parameter the call resolved.
  *
  * When that parameter came from the editor alone, the cast was a relabelling:
@@ -81,7 +80,7 @@ describe('the interface a named editor is opened over', () => {
 
     const harness = renderStageEditor({
       stageId: computed,
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     expect(harness.seeded.type).toBe('Geospatial');

@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { esIntl, readMessage } from '../../testing/i18n.ts';
-import {
-  resourceProblemMessage,
-  schemaProblemSentence,
-} from '../schemaProblems.ts';
+import { schemaProblemSentence } from '../schemaProblems.ts';
 
 /**
  * What the outline says about a refused stage, read in Spanish.
@@ -61,16 +58,5 @@ describe('schema refusals, read in Spanish', () => {
         esIntl,
       ),
     ).toBe('An ego rule must reference an attribute.');
-  });
-
-  it('names the resource inside the translated sentence', () => {
-    expect(
-      esIntl.formatMessage(
-        resourceProblemMessage({ code: 'invalid_type', absent: false }),
-        { resourceId: 'map-layers' },
-      ),
-    ).toBe(
-      'Esta etapa apunta a un recurso («map-layers») que el protocolo no puede leer: parte de su entrada contiene un valor de un tipo equivocado.',
-    );
   });
 });

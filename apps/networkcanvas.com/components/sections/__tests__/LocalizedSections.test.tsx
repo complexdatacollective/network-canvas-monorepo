@@ -161,9 +161,6 @@ describe('localized home sections', () => {
       'data-scroll-direction',
       'zoom',
     );
-    expect(
-      screen.getByRole('link', { name: 'artículo de documentación' }),
-    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'anterior' })).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Visitar el sitio de documentación' }),
@@ -194,7 +191,12 @@ describe('localized home sections', () => {
       'data-publication-rail-mode',
       'scrollable',
     );
-    expect(publicationTrack).toHaveClass('flex', 'w-max', 'items-stretch');
+    expect(publicationTrack).toHaveClass(
+      'grid',
+      'w-max',
+      'grid-flow-col',
+      'grid-rows-2',
+    );
     expect(publicationTrack).toContainElement(publicationCard);
     expect(publicationTrack).not.toContainElement(publicationHeading);
     expect(

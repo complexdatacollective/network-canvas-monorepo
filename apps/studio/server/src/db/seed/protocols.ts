@@ -21,7 +21,8 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { addStage, removeStage } from '../../protocol/draft-structure.ts';
 import { ProtocolStore } from '../../protocol/store.ts';
-import { seedTime, seedUuid } from './rng.ts';
+import type { SecretsCipher } from '../../secrets/cipher.ts';
+import { seedHex, seedTime, seedUuid } from './rng.ts';
 
 /** The structural half of an assembled protocol document `generateNetwork` reads. */
 export type SeededVersion = {
@@ -43,6 +44,12 @@ export type SeededProtocolLine = {
   name: string;
   /** Exactly two, oldest first. */
   versions: [SeededVersion, SeededVersion];
+  /**
+   * The plaintext of the API-key asset added below. Returned for the same
+   * reason the webhook secrets are: the dump-and-search test has to know what
+   * to look for, and nothing else reads it.
+   */
+  plaintextAssetKey: string;
 };
 
 let sampleProtocol: CurrentProtocol | undefined;
@@ -151,10 +158,31 @@ async function readVersion(
 export async function seedProtocolLine(
   client: pg.PoolClient,
   teamId: string,
+  /** Seals the protocol's API-key asset (#1900). */
+  cipher: SecretsCipher,
 ): Promise<SeededProtocolLine> {
   const scope = seedTenantScope(client, teamId);
-  const store = new ProtocolStore(scope);
+  const store = new ProtocolStore(scope, cipher);
   const protocol = loadSampleProtocol();
+
+  // The sample protocol carries images and rosters but no API key, and an
+  // instance with no `protocol_asset_keys` row would leave the third secret
+  // store untested by everything that reads a seeded database — the
+  // dump-and-search test most of all. Added to the manifest rather than
+  // written to the table directly, so `createProtocol` seals it through the
+  // real write boundary and the stored document is redacted by the same code
+  // a researcher's own key goes through.
+  const assetKeyId = seedUuid();
+  const plaintextAssetKey = `sk.seed-${seedHex(16)}`;
+  protocol.assetManifest = {
+    ...protocol.assetManifest,
+    [assetKeyId]: {
+      id: assetKeyId,
+      name: 'Map token',
+      type: 'apikey',
+      value: plaintextAssetKey,
+    },
+  };
 
   // Dated so the line and both versions exist before any study is created
   // (about 320 days before the anchor) and long before the sessions that pin
@@ -220,6 +248,7 @@ export async function seedProtocolLine(
     protocolId,
     draftId,
     name: protocol.name,
+    plaintextAssetKey,
     versions: [
       await readVersion(
         store,

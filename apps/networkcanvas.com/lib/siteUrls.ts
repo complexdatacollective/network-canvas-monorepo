@@ -76,6 +76,19 @@ export function protocolGalleryHref(locale: string, slug?: string) {
 }
 
 /**
+ * Same-origin path to a protocol's in-browser preview. The preview page
+ * exists per slug; a wave other than the first is selected by query.
+ */
+export function protocolGalleryPreviewHref(
+  locale: string,
+  slug: string,
+  wave = 1,
+) {
+  const query = wave === 1 ? '' : `?wave=${wave}`;
+  return `${protocolGalleryHref(locale, slug)}preview/${query}`;
+}
+
+/**
  * Absolute URL of a gallery page, for canonicals and alternates.
  */
 export function protocolGalleryUrl(locale: string, slug?: string) {

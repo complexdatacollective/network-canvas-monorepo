@@ -68,7 +68,6 @@ const buildState = (overrides?: Record<string, unknown>): RootState =>
       present: { ...protocol, ...overrides },
     },
     // No stage editor open, so nothing is in use by an unsaved draft.
-    stageEditorDraft: { ui: { liveValues: null } },
   }) as unknown as RootState;
 
 describe('issues selectors', () => {

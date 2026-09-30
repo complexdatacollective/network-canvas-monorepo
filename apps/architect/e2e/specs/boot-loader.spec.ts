@@ -35,6 +35,6 @@ test('exposes the static loading status while the application module is still do
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await expect(page.locator('#boot-loader')).toBeHidden();
   await expect(
-    page.getByRole('button', { name: 'Ajustes de idioma' }),
+    page.getByRole('combobox', { name: /^Idioma de la interfaz:/ }),
   ).toBeVisible();
 });

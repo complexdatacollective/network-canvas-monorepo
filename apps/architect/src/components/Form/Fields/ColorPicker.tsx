@@ -6,11 +6,11 @@ import { RadioGroup } from '@base-ui/react/radio-group';
 import { range } from 'es-toolkit';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import { colorSequenceHueName } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import {
   type ColorReference,
   ColorReferenceSchema,
 } from '@codaco/protocol-validation';
-import { getColorSwatchName } from '~/config';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -34,12 +34,21 @@ type ColorPickerProps = CreateFormFieldProps<
   }
 >;
 
+/**
+ * A swatch and what it is called.
+ *
+ * The name comes from `@codaco/fresco-ui`, which owns the theme's colour
+ * sequences and names every position in them, so this picker and the shared
+ * one announce the same hue for the same token. A value outside those
+ * sequences has no name there and is announced as itself — unreachable here,
+ * since every value is parsed as a `ColorReference` first.
+ */
 const asColorOption = (
   name: string,
   intl: IntlShape = defaultIntl,
 ): ColorOption => {
   const value = ColorReferenceSchema.parse(name);
-  return { label: getColorSwatchName(value, intl), value };
+  return { label: colorSequenceHueName(value, intl) ?? value, value };
 };
 
 /**

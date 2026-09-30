@@ -65,6 +65,18 @@ const messages = defineMessages({
   },
 });
 
+const downloadToastMessages = {
+  loading: {
+    description: <AppMessage message={messages.copyDownloadingProtocol} />,
+  },
+  success: {
+    description: <AppMessage message={messages.copyProtocolDownloaded} />,
+  },
+  error: {
+    description: <AppMessage message={messages.failedToDownloadProtocol} />,
+  },
+};
+
 export const ActionsDropdown = ({
   row,
 }: {
@@ -126,27 +138,7 @@ export const ActionsDropdown = ({
             {row.original.originalFileUrl && (
               <DropdownMenuItem
                 onClick={() =>
-                  void promise(handleDownload(), {
-                    loading: {
-                      description: (
-                        <AppMessage
-                          message={messages.copyDownloadingProtocol}
-                        />
-                      ),
-                    },
-                    success: {
-                      description: (
-                        <AppMessage message={messages.copyProtocolDownloaded} />
-                      ),
-                    },
-                    error: {
-                      description: (
-                        <AppMessage
-                          message={messages.failedToDownloadProtocol}
-                        />
-                      ),
-                    },
-                  })
+                  void promise(handleDownload(), downloadToastMessages)
                 }
                 icon={<Download />}
               >

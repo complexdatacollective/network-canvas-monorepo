@@ -30,8 +30,8 @@ export const variableDisplayName = (
  * `variableId` for this subject; callers pass the role-map-backed check that
  * matches their own class. Escapes when the pick equals `originalVariableId`,
  * the field's PRE-EDIT committed value: re-saving an unchanged pick must never
- * be blocked by a conflict this edit did not introduce — one arising from a
- * stale draft, or already present in an imported protocol.
+ * be blocked by a conflict this edit did not introduce — one an imported
+ * protocol already carried.
  */
 export const crossClassPickIssue = ({
   variableId,

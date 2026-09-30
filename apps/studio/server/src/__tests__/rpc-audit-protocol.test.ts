@@ -4,20 +4,21 @@ import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { createApp } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { stubAuthService } from './support/auth.ts';
-import { createHttpTestApp as createApp } from './support/http-app.ts';
 import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
   seedTeam,
+  uniqueTeamId,
 } from './support/postgres.ts';
 import { createRpcClient } from './support/rpc.ts';
 
 const db = await reachableDb();
-const TEAM_ID = 'rpc-audit-protocol-team';
+const TEAM_ID = uniqueTeamId('rpc-audit-protocol-team');
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -57,6 +58,11 @@ describe.skipIf(!db)('audited protocol RPC', () => {
       getSession: () => Promise.resolve(PRINCIPAL),
       getMembership: (_userId, teamId) =>
         Promise.resolve(teamId === TEAM_ID ? { role: 'owner' } : null),
+      // The protocol-builder host takes no teamId: it derives the tenant from
+      // the caller's own memberships, so a stub that lists none would refuse
+      // every write here for a reason this file is not about.
+      listMemberships: () =>
+        Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
     });
     client = createRpcClient(createApp(readEnv(), { auth, pool: appPool }));
   });
@@ -119,24 +125,23 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     );
     expect(staleMove.error).not.toBeNull();
 
-    const clientId = randomUUID();
     const sectionId = `stage:${stageA}`;
-    const lease = await client.protocols.acquireSection({
-      ...scope,
+    const held = await client.protocolBuilder.acquireLock({
+      protocolId,
       sectionId,
-      clientId,
     });
-    if (lease.mode !== 'editable') throw new Error('expected editable lease');
-    const commitInput = {
-      ...scope,
+    if (held.lock !== 'held') throw new Error('expected to hold the section');
+    const submitInput = {
+      protocolId,
+      requestId: randomUUID(),
       sectionId,
-      clientId,
-      leaseEpoch: lease.leaseEpoch,
-      clientSequence: '1',
-      commands: [{ op: 'set' as const, key: 'label', value: 'Secret value' }],
+      document: { ...held.document, label: 'Secret value' },
+      revision: held.revision,
     };
-    const committed = await client.protocols.commitSection(commitInput);
-    await expect(client.protocols.commitSection(commitInput)).resolves.toEqual(
+    const committed = await client.protocolBuilder.submit(submitInput);
+    // The same request id: a client whose answer was lost. It must be answered
+    // with what the first attempt wrote, and add no second event.
+    await expect(client.protocolBuilder.submit(submitInput)).resolves.toEqual(
       committed,
     );
 
@@ -214,7 +219,7 @@ describe.skipIf(!db)('audited protocol RPC', () => {
         request_id: expect.any(String),
         details: {
           draftId,
-          revision: committed.sequence,
+          revision: String(committed.revision.sequence),
           affectedSectionIds: [sectionId],
           operationTypes: ['set'],
           operationCount: 1,
@@ -235,14 +240,12 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     await client.protocols.create({ ...scope, name: 'Rollback protocol' });
     await client.protocols.addInformationStage({ ...scope, stageId });
     const before = await client.protocols.draft(scope);
-    const clientId = randomUUID();
     const sectionId = `stage:${stageId}`;
-    const lease = await client.protocols.acquireSection({
-      ...scope,
+    const held = await client.protocolBuilder.acquireLock({
+      protocolId,
       sectionId,
-      clientId,
     });
-    if (lease.mode !== 'editable') throw new Error('expected editable lease');
+    if (held.lock !== 'held') throw new Error('expected to hold the section');
 
     await pool.query(`
       CREATE FUNCTION reject_protocol_audit_insert() RETURNS trigger AS $$
@@ -254,16 +257,15 @@ describe.skipIf(!db)('audited protocol RPC', () => {
         BEFORE INSERT ON audit_events
         FOR EACH ROW EXECUTE FUNCTION reject_protocol_audit_insert();
     `);
-    const commitInput = {
-      ...scope,
+    const submitInput = {
+      protocolId,
+      requestId: randomUUID(),
       sectionId,
-      clientId,
-      leaseEpoch: lease.leaseEpoch,
-      clientSequence: '1',
-      commands: [{ op: 'set' as const, key: 'label', value: 'Must roll back' }],
+      document: { ...held.document, label: 'Must roll back' },
+      revision: held.revision,
     };
     try {
-      const { error } = await safe(client.protocols.commitSection(commitInput));
+      const { error } = await safe(client.protocolBuilder.submit(submitInput));
       expect(error).not.toBeNull();
     } finally {
       await pool.query(`
@@ -284,11 +286,14 @@ describe.skipIf(!db)('audited protocol RPC', () => {
     );
     expect(eventCount.rows).toEqual([{ count: 2 }]);
 
-    // The command-log insert rolled back too, so this is a real first commit,
-    // not a deduplicated replay that could hide the missing audit event.
-    await expect(client.protocols.commitSection(commitInput)).resolves.toEqual({
-      sequence: String(BigInt(before.revision.sequence) + 1n),
-      hash: expect.any(String),
+    // The write receipt rolled back too, so a retry carrying the same request
+    // id is a real first write rather than a replay of one that never
+    // happened — which is what would otherwise hide the missing audit event.
+    await expect(client.protocolBuilder.submit(submitInput)).resolves.toEqual({
+      revision: {
+        sequence: BigInt(before.revision.sequence) + 1n,
+        contentHash: expect.any(String),
+      },
     });
     expect(
       await pool.query(

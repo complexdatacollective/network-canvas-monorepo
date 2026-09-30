@@ -52,8 +52,10 @@ const nextConfig: NextConfig = {
   turbopack: { root: join(import.meta.dirname, '..', '..') },
   // Ships untranspiled TSX from workspace source.
   transpilePackages: [
+    '@codaco/app-i18n',
     '@codaco/fresco-ui',
     '@codaco/interface-images',
+    '@codaco/interview',
     '@codaco/protocol-validation',
   ],
   images: {

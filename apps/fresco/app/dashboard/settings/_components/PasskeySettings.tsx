@@ -20,6 +20,7 @@ import {
   verifyRegistration,
 } from '~/actions/webauthn';
 import SettingsField from '~/components/settings/SettingsField';
+import { describePasskeyCeremonyError } from '~/i18n/passkeyCeremony';
 import { formatPasskeyName } from '~/i18n/passkeyNames';
 
 const messages = defineMessages({
@@ -192,10 +193,13 @@ export default function PasskeySettings({
         ]);
       }
     } catch (e) {
-      if (e instanceof Error && e.name === 'NotAllowedError') {
-        return;
-      }
-      setError(createMessageError(messages.copyPasskeyRegistrationFailed));
+      setError(
+        describePasskeyCeremonyError(
+          e,
+          'registration',
+          messages.copyPasskeyRegistrationFailed,
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -264,7 +268,7 @@ export default function PasskeySettings({
                     <span className="font-medium wrap-break-word">
                       {formatPasskeyName(intl, passkey)}
                     </span>
-                    <Badge variant="outline">
+                    <Badge appearance="outline" tone="info">
                       {passkey.deviceType === 'multiDevice'
                         ? intl.formatMessage(messages.copySynced)
                         : intl.formatMessage(messages.copyDeviceBound)}

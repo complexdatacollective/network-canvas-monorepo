@@ -1,22 +1,22 @@
 {
-  "label": "About Each Person",
-  "id": "id-1",
-  "type": "AlterForm",
-  "subject": {
-    "entity": "node",
-    "type": "id-2"
-  },
-  "introductionPanel": {
-    "title": "About Each Person",
-    "text": "Tell us a bit about each person you know."
-  },
   "form": {
     "fields": [
       {
-        "variable": "id-3",
-        "id": "id-4",
-        "prompt": "What is your name?"
+        "id": "id-1",
+        "prompt": "What is your name?",
+        "variable": "id-2"
       }
     ]
-  }
+  },
+  "id": "id-3",
+  "introductionPanel": {
+    "text": "Tell us a bit about each person you know.",
+    "title": "About Each Person"
+  },
+  "label": "About Each Person",
+  "subject": {
+    "entity": "node",
+    "type": "id-4"
+  },
+  "type": "AlterForm"
 }

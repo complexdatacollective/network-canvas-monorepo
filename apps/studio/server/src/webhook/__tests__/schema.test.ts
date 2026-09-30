@@ -19,7 +19,6 @@ import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
-  seedTestEncryptionKeyVerifications,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 
@@ -61,7 +60,6 @@ describe.skipIf(!db)('webhook schema', () => {
     event_types: ['interview.completed'],
     secret_ciphertext: randomBytes(48),
     secret_key_id: 'integration-key-1',
-    secret_algorithm: 'aes-256-gcm.v1',
     created_by_user_id: 'user-1',
     ...overrides,
   });
@@ -95,9 +93,6 @@ describe.skipIf(!db)('webhook schema', () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
     await provisionScratchSchema(pool);
-    await seedTestEncryptionKeyVerifications(pool, [
-      { purpose: 'integration-enc', keyId: 'integration-key-1' },
-    ]);
     for (const teamId of [TEAM_A, TEAM_B]) {
       await seedTeam(pool, teamId);
       const studyId = randomUUID();
@@ -207,6 +202,16 @@ describe.skipIf(!db)('webhook schema', () => {
         'webhook_subscriptions_lengths_check',
       ],
       [
+        'a key id past 64 characters',
+        { secret_key_id: 'k'.repeat(65) },
+        'webhook_subscriptions_lengths_check',
+      ],
+      [
+        'an empty key id',
+        { secret_key_id: '' },
+        'webhook_subscriptions_lengths_check',
+      ],
+      [
         'an empty description',
         { description: '' },
         'webhook_subscriptions_lengths_check',
@@ -225,22 +230,6 @@ describe.skipIf(!db)('webhook schema', () => {
       await expect(
         insert('webhook_subscriptions', subscriptionRow(overrides)),
       ).rejects.toMatchObject({ constraint });
-    });
-
-    // The verified-reference trigger runs before table CHECK constraints.
-    // Invalid key identifiers therefore fail closed as unverified references;
-    // the other cases above still exercise every branch of the shared length
-    // constraint through values that can reach it.
-    it.each([
-      ['a key id past 64 characters', 'k'.repeat(65)],
-      ['an empty key id', ''],
-    ])('rejects %s', async (_label, secretKeyId) => {
-      await expect(
-        insert(
-          'webhook_subscriptions',
-          subscriptionRow({ secret_key_id: secretKeyId }),
-        ),
-      ).rejects.toThrow('encrypted data may reference only a verified key');
     });
 
     it('accepts the filter bounds the check exists to admit', async () => {
@@ -357,8 +346,8 @@ describe.skipIf(!db)('webhook schema', () => {
       await expect(
         tenantA.query(
           `INSERT INTO webhook_subscriptions
-             (id, team_id, url, event_types, secret_ciphertext, secret_key_id, secret_algorithm, created_by_user_id)
-           VALUES ($1, $2, 'https://hooks.example.org/x', ARRAY['interview.completed'], $3, 'integration-key-1', 'aes-256-gcm.v1', 'u')`,
+             (id, team_id, url, event_types, secret_ciphertext, secret_key_id, created_by_user_id)
+           VALUES ($1, $2, 'https://hooks.example.org/x', ARRAY['interview.completed'], $3, 'k', 'u')`,
           [randomUUID(), TEAM_B, randomBytes(32)],
         ),
       ).rejects.toMatchObject({ code: '42501' });
@@ -370,15 +359,13 @@ describe.skipIf(!db)('webhook schema', () => {
       const id = await newDelivery(subscriptionOf[TEAM_A] as string);
 
       const row = await pool.query<Row>(
-        `SELECT attempt_count, lease_owner, lease_expires_at, delivered_at,
-                failed_at, last_status_code, last_error
+        `SELECT attempt_count, delivered_at, failed_at, last_status_code,
+                last_error
          FROM webhook_deliveries WHERE id = $1`,
         [id],
       );
       expect(row.rows[0]).toEqual({
         attempt_count: 0,
-        lease_owner: null,
-        lease_expires_at: null,
         delivered_at: null,
         failed_at: null,
         last_status_code: null,
@@ -438,27 +425,8 @@ describe.skipIf(!db)('webhook schema', () => {
         'webhook_deliveries_lengths_check',
       ],
       [
-        'a lease owner with no expiry',
-        { lease_owner: randomUUID() },
-        'webhook_deliveries_lease_check',
-      ],
-      [
-        'a lease expiry with no owner',
-        { lease_expires_at: new Date() },
-        'webhook_deliveries_lease_check',
-      ],
-      [
         'both terminal timestamps at once',
         { delivered_at: new Date(), failed_at: new Date() },
-        'webhook_deliveries_terminal_state_check',
-      ],
-      [
-        'a terminal row still holding a lease',
-        {
-          delivered_at: new Date(),
-          lease_owner: randomUUID(),
-          lease_expires_at: new Date(),
-        },
         'webhook_deliveries_terminal_state_check',
       ],
     ])('rejects %s', async (_label, overrides, constraint) => {
@@ -527,35 +495,30 @@ describe.skipIf(!db)('webhook schema', () => {
       ).rejects.toThrow('webhook delivery payload is immutable');
     });
 
-    it('leaves the dispatcher free to advance delivery state', async () => {
+    it('leaves the worker free to advance delivery state', async () => {
       const id = await newDelivery(subscriptionOf[TEAM_A] as string);
 
-      const owner = randomUUID();
       await expect(
         pool.query(
           `UPDATE webhook_deliveries
            SET attempt_count = attempt_count + 1,
-               lease_owner = $2,
-               lease_expires_at = now() + interval '1 minute',
-               available_at = now() + interval '30 seconds',
                last_status_code = 503,
                last_error = 'upstream unavailable'
            WHERE id = $1`,
-          [id, owner],
+          [id],
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
       await expect(
         pool.query(
           `UPDATE webhook_deliveries
-           SET delivered_at = now(), lease_owner = NULL, lease_expires_at = NULL,
-               last_status_code = 200, last_error = NULL
+           SET delivered_at = now(), last_status_code = 200, last_error = NULL
            WHERE id = $1`,
           [id],
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
-    it('lets the maintenance dispatcher claim work without team context', async () => {
+    it('lets the maintenance worker advance a delivery without team context', async () => {
       const teamBDelivery = randomUUID();
       await insert(
         'webhook_deliveries',

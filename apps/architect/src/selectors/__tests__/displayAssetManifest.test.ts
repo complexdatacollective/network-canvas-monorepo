@@ -23,7 +23,6 @@ const stateWith = (assetManifest: Record<string, unknown>): RootState =>
         assetManifest,
       },
     },
-    stageEditorDraft: { ui: { liveValues: null } },
   }) as unknown as RootState;
 
 describe('getDisplayAssetManifest', () => {

@@ -18,9 +18,9 @@ type QualifierResolvers = {
 };
 
 /**
- * Only the data source distinguishes the panel qualifiers, so the caller can
- * pass panels assembled from just that leaf — which is what
- * `usePanelsForAutoName` does, rather than reading the whole `panels` value.
+ * Only the data source distinguishes the panel qualifiers, so a caller may
+ * pass panels carrying nothing else — and `proposeStageLabel`, the only caller,
+ * does: its own `StageLabelPanel` is this same slice of the schema's `Panel`.
  */
 type PanelQualifierInput = Pick<Panel, 'dataSource'>;
 
@@ -35,7 +35,7 @@ type QualifierStageFields = {
  * The English fragments below are English on purpose, and stay English.
  *
  * Every one of them is a part of the SEEDED stage label `generateStageLabel`
- * assembles and `useAutoStageName` writes into the protocol's stored
+ * assembles and `useStageName` writes into the protocol's stored
  * `stage.label` — not copy anybody reads on its own. That is the case
  * `INTERFACE_NAMES` in `interfaces/interfaceNames.ts` is the precedent for:
  * names are localized where they are DISPLAYED, and left English where they

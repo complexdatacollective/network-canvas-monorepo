@@ -8,13 +8,15 @@
 // has one. Two consequences follow, and both are load-bearing for the
 // determinism test:
 //
-//   - `audit_events.id` comes from `randomUUID()` inside the writer, which
-//     is not reachable from the seed's PRNG, so that column is the only
-//     value in the whole seed that differs between two runs. `occurred_at`
-//     is passed in: each event is dated to the operation it records, so the
-//     log agrees with the rows — a protocol created before the versions
-//     that were published from it, a draft edit before the version it
-//     produced, a colleague invited before they were promoted.
+//   - `audit_events.id` comes from `randomUUID()` inside the writer, which is
+//     not reachable from the seed's PRNG. It is one of the two columns the
+//     determinism case in `seed.test.ts` therefore leaves out of its dumps
+//     (the other is better-auth's password hash, in `seed/teams.ts`);
+//     everything else the seed writes is byte-identical between two runs.
+//     `occurred_at` is passed in: each event is dated to the operation it
+//     records, so the log agrees with the rows — a protocol created before
+//     the versions that were published from it, a draft edit before the
+//     version it produced, a colleague invited before they were promoted.
 //   - `audit_export_jobs` and `audit_alert_outbox` are left empty. They have
 //     no production writer yet — only tests insert into them — so seeding them
 //     would mean inventing rows that bypass invariants no code has stated.

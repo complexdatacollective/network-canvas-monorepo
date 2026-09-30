@@ -159,6 +159,27 @@ globalThis.Worker ??= WorkerStub;
 Element.prototype.scrollTo ??= () => undefined;
 Element.prototype.scrollIntoView ??= () => undefined;
 
+/**
+ * Where a range is on screen, which jsdom does not answer for a `Range` at
+ * all, and what is under a point, which it cannot know either.
+ *
+ * The rich-text editor an option label is authored in asks both after every
+ * document change, to keep the caret in view and to decide whether a pointer
+ * gesture landed inside it. Without an answer the question throws out of the
+ * editor's own transaction, so a test that types a label watches the
+ * keystrokes land in the DOM and the field's value never change — a failure
+ * that looks like the field being broken rather than like a missing shim.
+ *
+ * Answered by borrowing the element measurement jsdom does implement, which
+ * reports zeros because jsdom lays nothing out. Nothing here reads the
+ * numbers; what matters is that asking succeeds. The same shims, for the same
+ * reason, as `@codaco/protocol-builder`'s own test setup.
+ */
+Range.prototype.getClientRects ??= () => document.body.getClientRects();
+Range.prototype.getBoundingClientRect ??= () =>
+  document.body.getBoundingClientRect();
+document.elementFromPoint ??= () => null;
+
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => dialogMocks,
 }));

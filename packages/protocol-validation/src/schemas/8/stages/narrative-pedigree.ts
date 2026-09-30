@@ -6,6 +6,7 @@ import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
+import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -75,7 +76,7 @@ export const duplicateDiseaseRows = (
 const narrativePedigreeStageShape = baseStageSchema.extend({
   type: z.literal('NarrativePedigree'),
 
-  sourceStageId: z.string(),
+  sourceStageId: stageReference('sourceStageId'),
 
   showAtRiskStatuses: z.boolean().default(false),
 

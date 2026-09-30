@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import type { StageType } from '@codaco/protocol-validation';
 import { getInterfaceTypes } from '~/components/Screens/NewStageScreen/interfaceOptions';
-import { getInterface } from '~/components/StageEditor/Interfaces';
 
 const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
 
@@ -33,26 +32,11 @@ describe('INTERFACE_NAMES in Architect', () => {
   });
 
   /**
-   * The stage editor's registry used to derive its own name with
-   * `startCase(type)`, which disagreed with the list the researcher picked the
-   * interface FROM for six of them — `OneToManyDyadCensus`,
-   * `TieStrengthCensus`, `AlterForm`, `AlterEdgeForm`, `Geospatial` and
-   * `Anonymisation` — so the same interface was called two different things
-   * depending on which part of Architect was speaking. `InterfaceConfig` no
-   * longer has a `name` field to override it with; this is what catches a
-   * derivation being reintroduced in its place.
-   */
-  it('is the only source of the stage editor registry names', () => {
-    for (const stageType of stageTypes) {
-      expect(getInterface(stageType).name).toBe(INTERFACE_NAMES[stageType]);
-    }
-  });
-
-  /**
-   * Every surface that names an interface, agreeing on one string per type —
-   * asserted together rather than pairwise, because the defect was never one
-   * surface being wrong, it was two of them each being internally consistent
-   * and different from each other.
+   * Every Architect surface that names an interface, agreeing on one string
+   * per type — asserted together rather than pairwise, because the defect was
+   * never one surface being wrong, it was two of them each being internally
+   * consistent and different from each other. The editor's own name for an
+   * interface is the package's now, and reads the same map.
    */
   it('is one name per interface across every surface that shows one', () => {
     const optionTitles = new Map(
@@ -62,7 +46,6 @@ describe('INTERFACE_NAMES in Architect', () => {
     for (const stageType of stageTypes) {
       const namesShown = new Set([
         INTERFACE_NAMES[stageType],
-        getInterface(stageType).name,
         optionTitles.get(stageType),
       ]);
 

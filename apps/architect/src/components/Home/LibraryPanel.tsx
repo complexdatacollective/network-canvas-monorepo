@@ -8,7 +8,14 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { createElement, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  createElement,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import {
@@ -56,9 +63,35 @@ import type { BundledTemplate } from '~/templates';
 import { sampleProtocol } from '~/templates/sample-protocol';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
-import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import {
+  downloadProtocolAsNetcanvas,
+  UnresolvedAssetsError,
+} from '~/utils/bundleProtocol';
 import { documentationLinks } from '~/utils/documentationLinks';
 import { reportError } from '~/utils/reportError';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderCode = (chunks: ReactNode[]) => <code>{chunks}</code>;
+
+const renderProtocolGallerySiteLink = (chunks: ReactNode[]) => (
+  <ExternalLink href="https://protocolgallery.networkcanvas.com/">
+    {chunks}
+  </ExternalLink>
+);
+
+const renderSavingAndBackingUpLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.savingAndBackingUp}>
+    {chunks}
+  </ExternalLink>
+);
+
+const renderProtocolGalleryLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.protocolGallery}>
+    {chunks}
+  </ExternalLink>
+);
+
 const chromeMessages = defineMessages({
   templateCount: {
     id: 'architect.home.libraryPanel.templateCount',
@@ -158,13 +191,13 @@ const messages = defineMessages({
   },
   someAssetsCouldNotBeIncluded: {
     id: 'architect.home.libraryPanel.someAssetsCouldNotBeIncluded',
-    defaultMessage: 'Some assets could not be included',
+    defaultMessage: 'Some resources could not be read',
     description: 'The title text in components / Home / LibraryPanel.',
   },
   wasDownloadedButThese: {
     id: 'architect.home.libraryPanel.wasDownloadedButThese',
     defaultMessage:
-      '"{value1}" was downloaded, but these assets could not be included and are missing from the file: {assetList}.',
+      'These resources could not be read, so "{value1}" was not downloaded: {assetList}. Open the protocol and add the files again in Resources, then download it.',
     description: 'The description text in components / Home / LibraryPanel.',
   },
   oK: {
@@ -471,7 +504,6 @@ const PanelRow = ({
       void Promise.resolve()
         .then(() => action(resolveFocus))
         .catch((error: unknown) => {
-          console.error('LibraryPanel action failed', error);
           reportError(error);
         });
     };
@@ -635,11 +667,7 @@ const GalleryCard = () => {
           {intl.formatMessage(
             additionalMessages.moreExamplesOfNetworkCanvasProtocols,
             {
-              ExternalLink: (chunks) => (
-                <ExternalLink href="https://protocolgallery.networkcanvas.com/">
-                  {chunks}
-                </ExternalLink>
-              ),
+              ExternalLink: renderProtocolGallerySiteLink,
             },
           )}
         </Paragraph>
@@ -729,25 +757,27 @@ const LibraryPanel = ({
     async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
       setDownloadingIds((prev) => new Set(prev).add(protocol.id));
       try {
-        const skippedAssets = await downloadProtocolAsNetcanvas(
+        await downloadProtocolAsNetcanvas(
           protocol.protocol,
           protocol.name,
           protocol.id,
         );
-        // Export is best-effort: unresolvable assets are omitted rather than
-        // aborting the whole download, but the author must be told which ones
-        // so a silently incomplete .netcanvas isn't shipped.
-        if (skippedAssets.length > 0) {
+      } catch (error) {
+        // A protocol whose resources cannot all be read is not written at all:
+        // omitting them would produce a file whose stages reference resources
+        // the manifest no longer lists, which no version of Architect can
+        // open. Named so the researcher knows what to restore.
+        if (error instanceof UnresolvedAssetsError) {
           void openDialog({
             type: 'acknowledge',
-            intent: 'warning',
+            intent: 'destructive',
             title: createElement(AppMessage, {
               message: messages.someAssetsCouldNotBeIncluded,
             }),
             description: createElement(AppErrorMessage, {
               error: createMessageError(messages.wasDownloadedButThese, {
                 value1: protocol.name,
-                assetList: { list: skippedAssets.map((asset) => asset.name) },
+                assetList: { list: error.assetNames },
               }),
             }),
             actions: {
@@ -758,8 +788,8 @@ const LibraryPanel = ({
             },
             finalFocus: resolveFocus,
           });
+          return;
         }
-      } catch (error) {
         // Surface bundling/download failures instead of letting the promise
         // reject unhandled with no feedback. Not awaited so the spinner clears
         // immediately rather than waiting for the user to dismiss the dialog.
@@ -944,12 +974,8 @@ const LibraryPanel = ({
             {createElement(AppMessage, {
               message: additionalMessages.becauseYourWorkIsStoredLocally,
               values: {
-                code: (chunks) => <code>{chunks}</code>,
-                ExternalLink: (chunks) => (
-                  <ExternalLink href={documentationLinks.savingAndBackingUp}>
-                    {chunks}
-                  </ExternalLink>
-                ),
+                code: renderCode,
+                ExternalLink: renderSavingAndBackingUpLink,
               },
             })}
           </Paragraph>
@@ -958,11 +984,7 @@ const LibraryPanel = ({
               message:
                 additionalMessages.lookingForInspirationBrowseExampleResearch,
               values: {
-                ExternalLink: (chunks) => (
-                  <ExternalLink href={documentationLinks.protocolGallery}>
-                    {chunks}
-                  </ExternalLink>
-                ),
+                ExternalLink: renderProtocolGalleryLink,
               },
             })}
           </Paragraph>
@@ -1147,9 +1169,7 @@ const LibraryPanel = ({
       </div>
     ) : activeTab === 'templates' ? (
       <div className="flex min-w-max items-center justify-end">
-        <Badge color="platinum" className="shadow-none">
-          {templateLabel}
-        </Badge>
+        <Badge color="platinum">{templateLabel}</Badge>
       </div>
     ) : null;
   return (

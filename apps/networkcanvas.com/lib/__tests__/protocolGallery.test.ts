@@ -57,16 +57,9 @@ describe('loadProtocolGallery', () => {
     ).toEqual([1, 2, 3]);
     expect(protocols.find(({ slug }) => slug === 'snaaps')).toMatchObject({
       dateAdded: '2026-06-12',
-      sandboxUrl: undefined,
       usesRosters: true,
       fields: ['Social work', 'Aging'],
-      edgeGeneration: ['sociogram'],
-      supplementaryMaterials: [
-        {
-          filename: 'SNAAPS_v1.0 Sample Interview Screenshots.pdf',
-          label: 'Sample interview screenshots',
-        },
-      ],
+      edgeGeneration: ['Sociogram'],
     });
 
     for (const protocol of protocols) {
@@ -82,11 +75,6 @@ describe('loadProtocolGallery', () => {
         ).toBe(true);
         expect(download.protocolPath).not.toContain('assets.networkcanvas.com');
         expect(download.codebookPath).not.toContain('assets.networkcanvas.com');
-      }
-      for (const material of protocol.supplementaryMaterials) {
-        expect(material.filename).not.toContain('/');
-        expect(material.path).toContain('/protocols/protocol-gallery/');
-        expect(material.path).not.toContain('assets.networkcanvas.com');
       }
     }
   });
@@ -136,6 +124,37 @@ describe('loadProtocolGallery', () => {
 
     await expect(loadProtocolGallery(contentFile)).rejects.toThrow(
       'protocol-gallery.csv: row 3: Slug: duplicate slug',
+    );
+  });
+
+  it('rejects a slug that collides with the gallery route prefix', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset('"uk-jcoin-i",', '"protocol-gallery",'),
+      ),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: row 2: Slug: must not be the reserved gallery path',
+    );
+  });
+
+  it('rejects a list column that normalises to no values', async () => {
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset(
+          '"Sociology, Substance use, Public health"',
+          '" , , "',
+        ),
+      ),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: row 2: Field(s): must list at least one value',
+    );
+
+    await expect(
+      loadProtocolGallery(
+        await patchedDataset('"Sociogram, Tie-strength dyad census"', '",,"'),
+      ),
+    ).rejects.toThrow(
+      'protocol-gallery.csv: row 4: Edge Generation Methodology: must list at least one value',
     );
   });
 

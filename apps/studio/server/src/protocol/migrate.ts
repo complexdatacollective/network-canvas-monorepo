@@ -10,6 +10,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+import { stripAssetKeyValues, withPlaceholderAssetKeys } from './asset-keys.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
 
@@ -62,8 +63,27 @@ export async function migrateStoredVersionToDraft(
     typeof settings?.name === 'string' && settings.name !== ''
       ? settings.name
       : versionRow.name;
-  const migrated = migrateProtocol(document, CURRENT_SCHEMA_VERSION, { name });
+  // `migrateProtocol` validates its input against the stored version's schema
+  // and its output against the current one, and both require an `apikey`
+  // asset's `value` — which a stored, redacted document never carries (#1900).
+  // So the placeholder goes in for the migration and comes straight back out
+  // before anything is written.
+  const migrated = migrateProtocol(
+    withPlaceholderAssetKeys(document),
+    CURRENT_SCHEMA_VERSION,
+    { name },
+  );
   const migratedSections = sectionizeProtocol(migrated);
+  // Every apikey value present here is one this function put there a moment
+  // ago: the input came out of `sections`, where a key value never is. The
+  // stripped values are therefore placeholders and are dropped — the real keys
+  // stay sealed in `protocol_asset_keys`, which the new draft reaches under
+  // the same team, protocol and asset ids (no migration rekeys the manifest).
+  const assetsSectionId = sectionId({ kind: 'assets' });
+  const migratedAssets = migratedSections[assetsSectionId];
+  if (migratedAssets !== undefined) {
+    migratedSections[assetsSectionId] = stripAssetKeyValues(migratedAssets).doc;
+  }
 
   await runNoAuditTenantTransaction(
     db,

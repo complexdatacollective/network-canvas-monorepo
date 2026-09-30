@@ -10,6 +10,7 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  readTranslationSources,
 } from '../catalog-guards.ts';
 import type { ExtractedCatalog } from '../catalog-guards.ts';
 import { commonCatalogs } from '../common.ts';
@@ -61,10 +62,11 @@ describe('the package’s own common.* catalogs', () => {
       // A regional variant of the source language overrides it and may carry
       // only its divergences; any other language has to translate everything,
       // because there is no base underneath it to fall through to.
+      const sources = readTranslationSources(join(srcDir, 'locales'), locale);
       const issues =
         locale.split('-')[0] === SOURCE_LOCALE
-          ? checkOverrideLocale(committedEn, catalog)
-          : checkFullLocale(committedEn, catalog);
+          ? checkOverrideLocale(committedEn, catalog, sources)
+          : checkFullLocale(committedEn, catalog, sources);
       expect(issues, `common catalog issues for ${locale}`).toEqual([]);
     }
   });

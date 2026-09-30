@@ -78,7 +78,6 @@ const useAssetData = (id: string) => {
       } catch (error) {
         // The asset can't be shown; report it rather than leaving a blank
         // image with no trace of why.
-        console.error('Failed to load asset blob URL', error);
         reportError(error);
       }
     };

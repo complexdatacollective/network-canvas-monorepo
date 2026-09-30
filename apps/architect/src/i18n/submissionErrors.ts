@@ -7,7 +7,7 @@ import {
 } from '@codaco/app-i18n/messages';
 import { ensureError } from '@codaco/shared-consts';
 
-export const submissionMessages = defineMessages({
+const submissionMessages = defineMessages({
   missingAttribute: {
     id: 'architect.submission.missingAttribute',
     defaultMessage: 'Attribute not found',

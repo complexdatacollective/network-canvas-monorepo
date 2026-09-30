@@ -9,14 +9,12 @@ import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
-import { resourceOk, type ResourceDescriptor } from '../gateway.ts';
+import { resourceOk, type ResourceDescriptor } from '../types.ts';
+import ResourceChoiceCard from './ResourceChoiceCard.tsx';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   browsableKinds,
-  formatByteLength,
   RESOURCE_PICKER_COPY,
-  resourceKindLabel,
-  resourceStatusLabel,
   type ResourcePickerKind,
 } from './resourceKinds.ts';
 import ResourceSecretControl from './ResourceSecretControl.tsx';
@@ -69,8 +67,8 @@ export type ResourceBrowserDialogProps = Readonly<{
 
 /**
  * Where a researcher chooses a resource: everything the protocol already
- * holds, everything imported so far in this editing session, and the way to
- * add another.
+ * holds, everything imported since this stage was opened, and the way to add
+ * another.
  *
  * Importing selects what it imported, exactly as choosing an existing resource
  * does, so a researcher who has just dropped a file is not then asked to find
@@ -209,36 +207,16 @@ function ResourceBrowserBody({
         {library.resources.length > 0 && (
           <ul
             aria-label={intl.formatMessage(messages.libraryTitle)}
-            className="flex flex-col gap-2"
+            className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-4"
           >
             {library.resources.map((descriptor) => (
-              <li
-                key={descriptor.id}
-                className="flex flex-wrap items-center gap-3"
-              >
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+              <li key={descriptor.id} className="flex min-w-0">
+                <ResourceChoiceCard
+                  descriptor={descriptor}
+                  current={descriptor.id === selectedId}
+                  onSelect={onSelect}
                   disabled={disabled}
-                  aria-current={
-                    descriptor.id === selectedId ? 'true' : undefined
-                  }
-                  onClick={() => onSelect(descriptor)}
-                >
-                  {descriptor.name}
-                </Button>
-                <Paragraph intent="smallText" emphasis="muted" margin="none">
-                  {resourceKindLabel(descriptor.kind, intl)}
-                </Paragraph>
-                <Paragraph intent="smallText" emphasis="muted" margin="none">
-                  {resourceStatusLabel(descriptor.status, intl)}
-                </Paragraph>
-                {descriptor.byteLength !== undefined && (
-                  <Paragraph intent="smallText" emphasis="muted" margin="none">
-                    {formatByteLength(descriptor.byteLength, intl)}
-                  </Paragraph>
-                )}
+                />
               </li>
             ))}
           </ul>

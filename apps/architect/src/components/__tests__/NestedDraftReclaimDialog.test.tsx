@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
@@ -16,9 +16,6 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft, {
-  draftTimelineActions,
-} from '~/ducks/modules/stageEditorDraft';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import NestedDraftReclaimDialog from '../NestedDraftReclaimDialog';
@@ -33,15 +30,12 @@ const protocol = {
   codebook: {},
 } as unknown as CurrentProtocol;
 
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
-
 const createTestStore = () =>
   configureStore({
     reducer: combineReducers({
       app,
       protocols,
       protocolValidation,
-      stageEditorDraft,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });
@@ -113,10 +107,9 @@ describe('NestedDraftReclaimDialog', () => {
     expect(openDialogMock).toHaveBeenCalled();
   });
 
-  // Outside a stage editor the inner editor's Finish writes the canonical
-  // protocol, which this tab cannot save and the reclaim's re-read would
-  // replace — so cancelling is the only honest way through, and the copy must
-  // not promise otherwise.
+  // The inner editor's Finish writes the canonical protocol, which this tab
+  // cannot save and the reclaim's re-read would replace — so cancelling is the
+  // only honest way through, and the copy must not promise otherwise.
   it('asks the researcher to cancel the editor when finishing it could not be kept', async () => {
     store.dispatch(setProtocolLockState('reclaim-blocked'));
 
@@ -134,7 +127,8 @@ describe('NestedDraftReclaimDialog', () => {
       /finish that editor/i,
     );
     // Nothing offered here downloads anything: the stage flow's copy is built
-    // from the stage draft, which does not contain this editor's values.
+    // from the stage editor's own draft, which does not contain this editor's
+    // values.
     expect(renderQueuedMessage(dialog.actions.primary.label)).toBe(
       'Back to the Editor',
     );
@@ -144,27 +138,6 @@ describe('NestedDraftReclaimDialog', () => {
     // `DialogProvider` autofocuses cancel on a warning and primary otherwise;
     // nothing here is discouraged, so focus belongs on the primary action.
     expect(dialog.intent).toBe('info');
-  });
-
-  // Inside a stage editor the commit lands in that editor's draft transaction,
-  // which is exactly how the researcher moves this work somewhere the stage
-  // flow can then rescue or discard as one decision.
-  it('offers finishing the editor when its values would reach the stage draft', async () => {
-    store.dispatch(setProtocolLockState('reclaim-blocked'));
-    store.dispatch(draftTimelineActions.reset({ stage, codebook: {} }));
-
-    renderDialog(store);
-
-    await waitFor(() => {
-      expect(openDialogMock).toHaveBeenCalledTimes(1);
-    });
-    const dialog = lastDialog();
-    expect(renderQueuedMessage(dialog.description)).toMatch(
-      /Finish that editor to move its changes into this stage/i,
-    );
-    expect(renderQueuedMessage(dialog.description)).toMatch(
-      /or cancel it to discard them/i,
-    );
   });
 
   it('takes the question away once the editor that raised it is gone', async () => {

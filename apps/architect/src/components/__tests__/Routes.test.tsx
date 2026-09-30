@@ -12,7 +12,6 @@ import activeProtocol, {
 import app from '~/ducks/modules/app';
 import protocolsReducer, { addProtocol } from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 import Routes from '../Routes';
 
@@ -94,7 +93,6 @@ const createTestStore = () =>
       app,
       protocols: protocolsReducer,
       protocolValidation,
-      stageEditorDraft,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });

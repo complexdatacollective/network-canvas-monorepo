@@ -31,6 +31,8 @@ To work on a protocol somewhere else — or simply to keep a safe copy — downl
 
 At any time, use **Download** on the protocol overview screen to export your protocol as a `.netcanvas` file. This file is a complete, self-contained copy of your protocol, including any roster data, images, or media it uses.
 
+Because the file must be complete, Architect won't download a protocol whose resources are missing or can't be read. Instead it shows a message naming the files concerned; add them again on the **Resources** page, then download. See [Missing resources](/en/design-protocols/key-concepts/resources#missing-resources).
+
 A downloaded `.netcanvas` file lets you:
 
 - **Keep a backup** outside the browser, in case your browser's data is cleared.
@@ -65,7 +67,11 @@ Browsers also treat this kind of local data as **best-effort**: under heavy stor
 
 ## Undo and redo
 
-While you are editing a protocol, Architect keeps a history of your changes. Use **Undo** and **Redo** in the editor toolbar to step backward and forward through recent edits — useful for recovering from a change you didn't mean to make. This history applies to the current editing session and is separate from the backups you create by downloading a `.netcanvas` file.
+While you are editing a protocol, Architect keeps a history of your changes. Use **Undo** and **Redo** in the editor toolbar to step backward and forward through recent edits — useful for recovering from a change you didn't mean to make.
+
+Undo and redo work on changes that have been saved to the protocol: saving a stage, editing the codebook or resources, and deleting a stage, type, attribute or resource. They don't step through typing inside an editor you still have open — to throw away unsaved changes to a stage, cancel the stage editor instead. When you undo or redo a change, Architect takes you to the screen that shows it (such as **Stages**, **Codebook** or **Resources**) so you can see the result.
+
+The history lasts while the protocol remains open, and is separate from the backups you create by downloading a `.netcanvas` file.
 
 </AppOption>
 <AppOption label="Architect Classic" icon="desktop">

@@ -37,6 +37,13 @@ const messages = defineMessages({
 
 export type ProtocolWithInterviews = GetProtocolsQuery[number];
 
+const actionsColumn: ColumnDef<ProtocolWithInterviews> = {
+  id: 'actions',
+  cell: ({ row }: { row: Row<ProtocolWithInterviews> }) => (
+    <ActionsDropdown row={row} />
+  ),
+};
+
 const ProtocolsTableClient = ({ dataPromise }: { dataPromise: GetData }) => {
   'use no memo';
 
@@ -60,19 +67,11 @@ const ProtocolsTableClient = ({ dataPromise }: { dataPromise: GetData }) => {
     setShowAlertDialog(true);
   };
 
-  const actionsColumn: ColumnDef<ProtocolWithInterviews> = {
-    id: 'actions',
-    cell: ({ row }: { row: Row<ProtocolWithInterviews> }) => (
-      <ActionsDropdown row={row} />
-    ),
-  };
-
   const columns = useMemo<ColumnDef<ProtocolWithInterviews>[]>(
     () => [
       ...getProtocolColumns(intl, allowAnonymousRecruitment),
       actionsColumn,
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [intl, allowAnonymousRecruitment],
   );
 

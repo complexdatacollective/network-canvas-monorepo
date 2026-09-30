@@ -4,8 +4,7 @@ import { parseArgs } from 'node:util';
 import { createOwnerPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
 import { seed, type SeedScale } from '../src/db/seed.ts';
-import { readEncryptionEnv, readEnv } from '../src/env.ts';
-import { loadEncryptionKeys } from '../src/pii/keys.ts';
+import { readEnv } from '../src/env.ts';
 import { confirmDestructiveTarget } from './target-guard.ts';
 
 // The deploy-time seed step, run once per deployment rather than once per
@@ -32,29 +31,27 @@ if (values.scale !== 'demo' && values.scale !== 'large') {
 const scale: SeedScale = values.scale;
 
 const env = readEnv();
-const { db } = confirmDestructiveTarget(env, values.force, 'wipe and reseed');
-const encryption = readEncryptionEnv(env);
-const encryptionKeys = await loadEncryptionKeys(
-  encryption.configuration,
-  encryption.loadRootKey,
+const { db, secrets, local } = confirmDestructiveTarget(
+  env,
+  values.force,
+  'wipe and reseed',
 );
 
 const pool = createOwnerPool(db);
 
 try {
-  const state = await checkSchema(pool, {
-    allowedLogins: env.databaseAllowedLogins,
-    administrativeLogins: env.databaseAdministrativeLogins,
-    allowUnversioned: env.devDefaults,
-  });
+  const state = await checkSchema(pool);
   if (state.kind !== 'current') {
-    console.error(schemaProblemMessage(state));
+    console.error(schemaProblemMessage(state, 'development'));
     process.exit(1);
   }
   await seed(pool, {
+    secrets,
     adminPassword: env.seedAdminPassword,
     scale,
-    encryptionKeys,
+    // Local only: against a real deployment this seals with that deployment's
+    // keyring, and a PRNG nonce there is a nonce an attacker can predict.
+    reproducible: local,
   });
   console.log('Seed complete.');
 } finally {

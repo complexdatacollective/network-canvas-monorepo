@@ -80,9 +80,9 @@ const RichTextField = ({
   //
   // So hand the editor back its OWN last document whenever that document
   // still serialises to the markdown this field holds — same content, no
-  // rewrite, no reflow. A value that did NOT come from this editor (undo,
-  // redo, a restored draft, a new stage) does not match and normalises as
-  // before.
+  // rewrite, no reflow. A value that did NOT come from this editor (a write
+  // made elsewhere in the form, a different stage) does not match and
+  // normalises as before.
   const lastEmitted = useRef<{
     markdown: string;
     content: RichTextContent | undefined;
@@ -98,8 +98,8 @@ const RichTextField = ({
     lastEmitted.current = { markdown: nextMarkdown, content: nextContent };
 
     // The editor emits a change as it mounts. Committing a value that
-    // round-trips to the same document would dirty the stage — and add a draft
-    // timeline entry — merely by rendering the field.
+    // round-trips to the same document would dirty the stage merely by
+    // rendering the field.
     if (
       isEqual(
         normalizedContent,

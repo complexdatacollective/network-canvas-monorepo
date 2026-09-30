@@ -31,6 +31,13 @@ import { createValidations } from '~/utils/validations';
 import { getVariablesForSubject } from '../../../../selectors/codebook';
 import { sortByLabel } from '../../../Codebook/helpers';
 import ExternalLink from '../../../ExternalLink';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderVariableNamingLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.variableNaming}>{chunks}</ExternalLink>
+);
+
 const additionalMessages = defineMessages({
   toCreateYourFirstAttributeOf: {
     id: 'architect.additional.form.fields.variablePicker.variableSpotlight.toCreateYourFirstAttributeOf',
@@ -443,14 +450,16 @@ const VariableSpotlight = ({
     <Modal open={open} onOpenChange={handleOpenChange}>
       <div
         aria-hidden
-        className="bg-overlay publish-colors pointer-events-none fixed inset-0 z-1900 backdrop-blur-xs"
+        className="bg-overlay publish-colors pointer-events-none fixed inset-0 backdrop-blur-xs"
       />
       <ModalPopup
         key="variable-spotlight-popup"
         data-variable-spotlight=""
         onBlur={handlePopupBlur}
         finalFocus={finalFocus}
-        className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
+        // No z-index, here or on the dim it draws: the portal layer is already
+        // over the page, and a raise paints this window over what it opens.
+        className="fixed top-10 left-1/2 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >
         <MotionSurface
           floating
@@ -488,13 +497,7 @@ const VariableSpotlight = ({
                         value1: intl.formatMessage(
                           messages.documentationOnAttributeNaming,
                         ),
-                        ExternalLink: (chunks) => (
-                          <ExternalLink
-                            href={documentationLinks.variableNaming}
-                          >
-                            {chunks}
-                          </ExternalLink>
-                        ),
+                        ExternalLink: renderVariableNamingLink,
                       },
                     )}
                   </Paragraph>,

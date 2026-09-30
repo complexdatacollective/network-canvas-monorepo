@@ -10,6 +10,7 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
 import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -26,6 +27,9 @@ const src = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const source = JSON.parse(
   readFileSync(join(src, 'locales/en.json'), 'utf8'),
 ) as ExtractedCatalog;
+const localesDir = join(src, 'locales');
+const esSources = readTranslationSources(localesDir, 'es');
+const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
   it('extracts every live descriptor, with translator context and app ownership', async () => {
@@ -38,10 +42,10 @@ describe('the complete administration catalog', () => {
     }
   });
   it('ships full Spanish with valid ICU and identical placeholder semantics', () => {
-    expect(checkFullLocale(source, es)).toEqual([]);
+    expect(checkFullLocale(source, es, esSources)).toEqual([]);
   });
   it('ships only reviewed British differences and inherits the English base', () => {
-    expect(checkOverrideLocale(source, enGb)).toEqual([]);
+    expect(checkOverrideLocale(source, enGb, enGbSources)).toEqual([]);
     expect(Object.keys(enGb).length).toBeGreaterThan(0);
     expect(Object.keys(enGb).length).toBeLessThan(Object.keys(source).length);
     for (const [id, value] of Object.entries(enGb))

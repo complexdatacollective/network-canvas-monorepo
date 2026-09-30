@@ -80,6 +80,17 @@ const clearableFilters = ['q'] as const;
 
 export type ParticipantRow = GetParticipantsQuery[number];
 
+const createActionsColumn = (
+  onEdit: (participant: ParticipantRow) => void,
+  onDelete: (participant: ParticipantRow) => void,
+): ColumnDef<ParticipantRow> => ({
+  id: 'actions',
+  enableSorting: false,
+  cell: ({ row }: { row: Row<ParticipantRow> }) => (
+    <ActionsDropdown row={row} onEdit={onEdit} onDelete={onDelete} />
+  ),
+});
+
 type ParticipantsTableProps = {
   participantsPromise: GetParticipantsReturnType;
   allParticipantsPromise: GetParticipantsForSelectReturnType;
@@ -175,17 +186,7 @@ const ParticipantsTableInner = ({
   const columns = useMemo<ColumnDef<ParticipantRow>[]>(
     () => [
       ...getParticipantColumns(intl, protocols),
-      {
-        id: 'actions',
-        enableSorting: false,
-        cell: ({ row }: { row: Row<ParticipantRow> }) => (
-          <ActionsDropdown
-            row={row}
-            onEdit={handleEditParticipant}
-            onDelete={handleDeleteSingle}
-          />
-        ),
-      },
+      createActionsColumn(handleEditParticipant, handleDeleteSingle),
     ],
     [intl, protocols, handleEditParticipant, handleDeleteSingle],
   );

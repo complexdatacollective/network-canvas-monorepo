@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SignUpForm } from '~/app/(blobs)/(setup)/_components/SignUpForm';
 import { FrescoI18nProvider } from '~/i18n/FrescoI18nProvider';
-import LanguageSetting from '~/i18n/LanguageSetting';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 
 const { signup, signupWithPasskey, startRegistration, updateLocale, router } =
   vi.hoisted(() => ({
@@ -36,6 +36,17 @@ vi.mock('@simplewebauthn/browser', () => ({
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 vi.mock('usehooks-ts', () => ({ useMediaQuery: () => false }));
 
+const chooseLanguage = async (name: RegExp) => {
+  fireEvent.click(
+    screen.getByRole('combobox', {
+      name: /^(Interface language|Idioma de la interfaz):/,
+    }),
+  );
+  const popover = await screen.findByRole('dialog');
+  fireEvent.click(screen.getByRole('option', { name }));
+  await waitFor(() => expect(popover).not.toBeInTheDocument());
+};
+
 function View({ password = false }: { password?: boolean }) {
   return (
     <FrescoI18nProvider
@@ -46,7 +57,7 @@ function View({ password = false }: { password?: boolean }) {
         requested: ['en'],
       }}
     >
-      <LanguageSetting />
+      <FrescoLocaleSwitcher />
       <SignUpForm sandboxMode={password} />
     </FrescoI18nProvider>
   );
@@ -67,9 +78,7 @@ describe('setup language across account creation', () => {
   it('passes the selected password-signup preference before its mirror write completes', async () => {
     updateLocale.mockReturnValue(new Promise(() => undefined));
     const view = render(<View password />);
-    fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), {
-      target: { value: 'es' },
-    });
+    await chooseLanguage(/^Español$/);
     fireEvent.change(view.container.querySelector('input[name="username"]')!, {
       target: { value: 'Researcher' },
     });
@@ -94,7 +103,7 @@ describe('setup language across account creation', () => {
     );
   });
 
-  it.each(['es', '__automatic'])(
+  it.each(['es', 'automatic'])(
     'uses the latest committed preference %s after the passkey prompt resolves',
     async (choice) => {
       let resolveRegistration!: (credential: RegistrationResponseJSON) => void;
@@ -115,13 +124,8 @@ describe('setup language across account creation', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
       await waitFor(() => expect(startRegistration).toHaveBeenCalledOnce());
-      fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), {
-        target: { value: 'es' },
-      });
-      if (choice === '__automatic')
-        fireEvent.change(screen.getByRole('combobox', { name: 'Idioma' }), {
-          target: { value: choice },
-        });
+      await chooseLanguage(/^Español$/);
+      if (choice === 'automatic') await chooseLanguage(/^Automático/);
       await act(async () =>
         resolveRegistration({
           id: 'credential',

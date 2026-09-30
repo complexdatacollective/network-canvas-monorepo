@@ -2,14 +2,16 @@
 
 import { Search, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useId } from 'react';
 
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FacetGroup } from '~/components/protocol-gallery/FacetGroup';
+import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
 import type { FacetOption } from '~/lib/galleryFacets';
 import { parseSortId, type SortId, sortIds } from '~/lib/gallerySort';
 
@@ -43,6 +45,7 @@ export function GallerySidebar({
   onClearFilters: () => void;
 }) {
   const t = useTranslations('ProtocolGallery.collection');
+  const sortId = useId();
 
   return (
     <aside
@@ -109,19 +112,23 @@ export function GallerySidebar({
 
         <hr className="my-0" />
 
-        <UnconnectedField
-          name="protocol-sort"
-          label={t('sortLabel')}
-          component={RadioGroupField}
-          orientation="vertical"
-          size="sm"
-          value={sort}
-          onChange={(value) => onSortChange(parseSortId(value))}
-          options={sortIds.map((id) => ({
-            value: id,
-            label: t(`sortOptions.${id}`),
-          }))}
-        />
+        <div className="min-w-0">
+          <OverlineHeading as="label" htmlFor={sortId}>
+            {t('sortLabel')}
+          </OverlineHeading>
+          <div className="mt-3">
+            <SelectField
+              id={sortId}
+              name="protocol-sort"
+              value={sort}
+              onChange={(value) => onSortChange(parseSortId(value))}
+              options={sortIds.map((id) => ({
+                value: id,
+                label: t(`sortOptions.${id}`),
+              }))}
+            />
+          </div>
+        </div>
       </Surface>
     </aside>
   );

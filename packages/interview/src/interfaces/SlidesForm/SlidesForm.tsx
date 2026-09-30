@@ -321,10 +321,14 @@ export default function SlidesForm({
     null,
   );
 
-  useEffect(() => {
-    setIsReadyForNext(false);
+  // A new slide starts unready. Compared during render rather than in an
+  // effect, so the new slide is never shown while the previous slide's
+  // readiness still stands; the effect below is the one that reports it.
+  const [readySlideIndex, setReadySlideIndex] = useState(activeIndex);
+  if (readySlideIndex !== activeIndex) {
+    setReadySlideIndex(activeIndex);
     setSlideReady(false);
-  }, [activeIndex, setIsReadyForNext]);
+  }
 
   useEffect(() => {
     setIsReadyForNext(slideReady);

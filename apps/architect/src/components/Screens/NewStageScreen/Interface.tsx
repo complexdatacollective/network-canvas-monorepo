@@ -81,37 +81,39 @@ const InterfaceThumbnail = ({
       onFocus={setHighlighted}
       onBlur={removeHighlighted}
     >
-      <div className="mx-6 flex items-center gap-10">
-        <div className="shrink-0">
-          <StageTypeImage
-            type={interfaceType}
-            ratio="4:3"
-            sizes="10rem"
-            alt=""
-            className="h-auto w-40 rounded-sm"
-          />
-        </div>
-        <div className="flex flex-col">
-          <Heading
-            id={titleId}
-            level="h4"
-            margin="none"
-            className={`mb-2 ${highlighted ? 'text-white' : ''}`}
-          >
-            {title}
-          </Heading>
-          <div
-            id={descriptionId}
-            className={`mb-3 ${highlighted ? 'text-white' : ''}`}
-          >
-            {description}
+      <div className="@container mx-6">
+        <div className="flex flex-col items-start gap-4 @md:flex-row @md:items-center @md:gap-10">
+          <div className="shrink-0">
+            <StageTypeImage
+              type={interfaceType}
+              ratio="4:3"
+              sizes="10rem"
+              alt=""
+              className="h-auto w-32 rounded-sm @md:w-40"
+            />
           </div>
-          <div id={tagsId} className="flex flex-wrap gap-2">
-            {tags.map((tag: string) => (
-              <Tag key={tag} id={tag} color={get(TAG_COLORS, tag)} light>
-                {interfaceTagLabel(tag, intl)}
-              </Tag>
-            ))}
+          <div className="flex min-w-0 flex-col">
+            <Heading
+              id={titleId}
+              level="h4"
+              margin="none"
+              className={`mb-2 ${highlighted ? 'text-white' : ''}`}
+            >
+              {title}
+            </Heading>
+            <div
+              id={descriptionId}
+              className={`mb-3 ${highlighted ? 'text-white' : ''}`}
+            >
+              {description}
+            </div>
+            <div id={tagsId} className="flex flex-wrap gap-2">
+              {tags.map((tag: string) => (
+                <Tag key={tag} id={tag} color={get(TAG_COLORS, tag)} light>
+                  {interfaceTagLabel(tag, intl)}
+                </Tag>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import {
   type RuleSetVariant,
   ruleSetTargets,
@@ -39,7 +40,8 @@ export function useRuleSetValidation(
    */
   variant: RuleSetVariant,
 ): CustomFieldValidation {
-  const { protocolContext, storeApi } = useStageEditorForm();
+  const { storeApi } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const intl = useAppIntl();
   const codebook = protocolContext.codebook;
   const value = useStageValue(name);

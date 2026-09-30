@@ -178,7 +178,7 @@ export const InterviewColumns = (
             className="flex items-center gap-2"
             title={row.original.participant.identifier}
           >
-            <Badge variant={'outline'} className="max-w-80 truncate">
+            <Badge appearance="outline" className="max-w-80 truncate">
               {row.original.participant.identifier}
             </Badge>
           </div>
@@ -408,7 +408,7 @@ export const InterviewColumns = (
       cell: ({ row }) => {
         if (!row.original.exportTime) {
           return (
-            <Badge variant="destructive">
+            <Badge tone="destructive">
               {intl.formatMessage(messages.notExported2)}
             </Badge>
           );

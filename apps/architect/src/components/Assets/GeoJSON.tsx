@@ -22,6 +22,7 @@ type GeoJSONFeature = {
 type GeoJSON = {
   features: GeoJSONFeature[];
 };
+const EMPTY_GEOJSON: GeoJSON = { features: [] };
 const getGeoJSON = async (assetId: string): Promise<GeoJSON> => {
   const asset = await getAssetById(assetId);
   if (!asset) {
@@ -49,14 +50,30 @@ type GeoJSONTableProps = {
 };
 const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
   const intl = useAppIntl();
-  const [content, setContent] = useState<GeoJSON>({ features: [] });
+  // Held against the asset it was read for. Rendering derives from that match,
+  // so the table is empty for an asset that has not been read yet instead of
+  // showing the previous asset's features, and no clearing setState has to
+  // race the read that replaces them.
+  const [loaded, setLoaded] = useState<{
+    assetId: string;
+    geoJSON: GeoJSON;
+  } | null>(null);
   useEffect(() => {
     if (!assetId) {
-      setContent({ features: [] });
-      return;
+      return undefined;
     }
-    getGeoJSON(assetId).then(setContent);
+    let cancelled = false;
+    void (async () => {
+      const geoJSON = await getGeoJSON(assetId);
+      if (!cancelled) {
+        setLoaded({ assetId, geoJSON });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [assetId]);
+  const content = loaded?.assetId === assetId ? loaded.geoJSON : EMPTY_GEOJSON;
   const allRows = useMemo(() => getRows(content), [content]);
   const columns = useMemo(() => getColumns(content), [content]);
   const data = useMemo(() => allRows.slice(0, ROW_LIMIT), [allRows]);

@@ -17,6 +17,10 @@ import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 
+const toggleButtonGroupOwnVariants = cva({
+  base: 'w-full flex-wrap items-start justify-center',
+});
+
 // Compose fieldset wrapper variants
 const toggleButtonGroupComposedVariants = compose(
   controlVariants,
@@ -24,10 +28,49 @@ const toggleButtonGroupComposedVariants = compose(
   groupSpacingVariants,
   stateVariants,
   interactiveStateVariants,
-  cva({
-    base: 'w-full flex-wrap items-start justify-center',
-  }),
+  toggleButtonGroupOwnVariants,
 );
+
+const toggleButtonOwnVariants = cva({
+  base: cx(
+    'relative isolate inline-flex items-center justify-center',
+    'shrink-0 cursor-pointer rounded-full',
+    'overflow-hidden text-center font-medium',
+    'border-4 bg-transparent',
+    'focusable',
+    'disabled:cursor-not-allowed disabled:opacity-50',
+    'elevation-low',
+  ),
+  variants: {
+    selected: {
+      true: 'text-white',
+      false: 'text-current',
+    },
+    catColor: {
+      1: 'border-cat-1 focus-visible:outline-cat-1',
+      2: 'border-cat-2 focus-visible:outline-cat-2',
+      3: 'border-cat-3 focus-visible:outline-cat-3',
+      4: 'border-cat-4 focus-visible:outline-cat-4',
+      5: 'border-cat-5 focus-visible:outline-cat-5',
+      6: 'border-cat-6 focus-visible:outline-cat-6',
+      7: 'border-cat-7 focus-visible:outline-cat-7',
+      8: 'border-cat-8 focus-visible:outline-cat-8',
+      9: 'border-cat-9 focus-visible:outline-cat-9',
+      10: 'border-cat-10 focus-visible:outline-cat-10',
+    },
+    size: {
+      sm: 'size-24 p-2 text-xs',
+      md: 'size-36 p-3 text-sm',
+      lg: 'size-48 p-4 text-base',
+      xl: 'size-60 p-5 text-lg',
+    },
+  },
+  defaultVariants: {
+    selected: false,
+    catColor: 1,
+    size: 'md',
+  },
+});
 
 // Individual toggle button variants. Composes `inertReadOnlyVariants` (via a
 // `state` prop, distinct from the `disabled`/`catColor`/`size` variants below)
@@ -36,46 +79,7 @@ const toggleButtonGroupComposedVariants = compose(
 // `disabled:` pseudo-classes already cover the disabled treatment.
 const toggleButtonVariants = compose(
   inertReadOnlyVariants,
-  cva({
-    base: cx(
-      'relative isolate inline-flex items-center justify-center',
-      'shrink-0 cursor-pointer rounded-full',
-      'overflow-hidden text-center font-medium',
-      'border-4 bg-transparent',
-      'focusable',
-      'disabled:cursor-not-allowed disabled:opacity-50',
-      'elevation-low',
-    ),
-    variants: {
-      selected: {
-        true: 'text-white',
-        false: 'text-current',
-      },
-      catColor: {
-        1: 'border-cat-1 focus-visible:outline-cat-1',
-        2: 'border-cat-2 focus-visible:outline-cat-2',
-        3: 'border-cat-3 focus-visible:outline-cat-3',
-        4: 'border-cat-4 focus-visible:outline-cat-4',
-        5: 'border-cat-5 focus-visible:outline-cat-5',
-        6: 'border-cat-6 focus-visible:outline-cat-6',
-        7: 'border-cat-7 focus-visible:outline-cat-7',
-        8: 'border-cat-8 focus-visible:outline-cat-8',
-        9: 'border-cat-9 focus-visible:outline-cat-9',
-        10: 'border-cat-10 focus-visible:outline-cat-10',
-      },
-      size: {
-        sm: 'size-24 p-2 text-xs',
-        md: 'size-36 p-3 text-sm',
-        lg: 'size-48 p-4 text-base',
-        xl: 'size-60 p-5 text-lg',
-      },
-    },
-    defaultVariants: {
-      selected: false,
-      catColor: 1,
-      size: 'md',
-    },
-  }),
+  toggleButtonOwnVariants,
 );
 
 // Fill indicator variants for the animated background

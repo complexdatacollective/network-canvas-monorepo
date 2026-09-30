@@ -8,7 +8,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { useInterviewerLocale } from './InterviewerI18nProvider';
 import { interviewerLocales } from './locales';
 
-export const languageMessages = defineMessages({
+const languageMessages = defineMessages({
   label: {
     id: 'interviewer.language.label',
     defaultMessage: 'App language',

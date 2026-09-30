@@ -18,19 +18,17 @@ import { stageDraftValue, useStageValue } from '../form/stageFormHooks.ts';
  * An observer rather than an `onChange` handler on the field itself, because a
  * caller's `onChange` on a Fresco field REPLACES the store's own write rather
  * than running beside it — a side effect has to watch the value instead. And
- * watching is what creates the problem this solves: an undo, a redo, a
- * collaborator's change and the atomic edit that creates a type and selects it
- * all move the same value, and each arrives carrying the configuration that
- * belongs to the value it brings with it. Resetting there wipes the half of
- * the change the researcher was reaching for — an undo that restores a type
- * AND its attributes would lose the attributes again on the spot.
+ * watching is what creates the problem this solves: a value can move for
+ * reasons that are not a choice — the create dialog selecting the type it has
+ * just made, a refused pick being put back — and each of those arrives
+ * carrying the configuration that belongs to the value it brings with it.
+ * Resetting there wipes the half of the change the researcher was reaching for.
  *
- * They are told apart by watching the AGREED draft as well as the form. When
- * the agreed value moves, the form's controls are about to be re-seeded with
- * it, and the form's own value arriving there is that re-seed rather than a
- * choice. Deliberately not "did both move in the same render": the re-seed
- * happens in the shell's effect, which runs after this one, so the two are a
- * render apart and in an order no caller controls.
+ * They are told apart by watching the AGREED document as well as the form.
+ * When the agreed value moves, the form's controls are about to be brought
+ * level with it, and the form's own value arriving there is that rather than a
+ * choice. Deliberately not "did both move in the same render": the two are a
+ * render apart, in an order no caller controls.
  *
  * The FIRST OBSERVATION is not a change, and nothing else is exempt. There was
  * no previous value for anything to have been configured against, so a section

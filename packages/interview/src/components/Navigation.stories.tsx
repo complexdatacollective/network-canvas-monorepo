@@ -327,9 +327,15 @@ export const TextSize: Story = {
 
     // Language is the first setting. Tab reaches the native number field;
     // arrow-key stepping then proves scaling works without a pointer.
-    await expect(
-      within(popover).getByRole('combobox', { name: /interface language/i }),
-    ).toHaveFocus();
+    //
+    // Waited for rather than read once: the popover moves focus itself, a
+    // frame or more after it opens, and until it does focus is still on the
+    // trigger.
+    await waitFor(() =>
+      expect(
+        within(popover).getByRole('combobox', { name: /interface language/i }),
+      ).toHaveFocus(),
+    );
     await userEvent.tab();
     await expect(input).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}{ArrowUp}');

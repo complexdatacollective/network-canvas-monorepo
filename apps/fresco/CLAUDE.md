@@ -25,7 +25,7 @@ Releases flow one way:
 1. A changeset targeting `fresco` bumps the version in the normal Changesets
    lane (see the root `CLAUDE.md` and the `creating-a-changeset` skill).
 2. When the Version Packages PR merges, the `apps-release-fresco` job in
-   `.github/workflows/ci-and-release.yml` runs `scripts/mirror-app.mjs`, which
+   `.github/workflows/ci-and-release.yml` runs `scripts/release/mirror-app.mjs`, which
    replaces the Fresco repo's `main` with this app's source. Every
    `workspace:`/`catalog:` specifier is resolved to a registry version, and the
    single-package `pnpm-workspace.yaml` and lockfile the Dockerfile needs are
@@ -77,10 +77,127 @@ Consequences worth remembering:
   without adding, changing, or deleting workflow files.
 - The `Dockerfile` builds the _mirrored_ tree, so it assumes a standalone,
   single-package pnpm project. If you change what it copies, check
-  `scripts/mirror-app.mjs` still produces those files.
+  `scripts/release/mirror-app.mjs` still produces those files.
 - Workspace packages are consumed from source here but from **npm dist** in the
   mirror. Code that only works under one bundler will pass locally and fail in
   the released image — see "Workers and bundler portability" below.
+
+## Hotfix releases (when main is ahead)
+
+The normal lane always mirrors `main`, so it can only ship a patch together
+with everything else merged since the last release. When main carries work
+that is not ready to go out, release from the previous tag instead. The
+procedure is the one in `apps/interviewer/RELEASING.md`, with one difference
+that follows from how Fresco ships: the image installs the published
+`@codaco/*` packages, not workspace source, so a library fix cherry-picked onto
+the hotfix branch would never reach the image on its own. The lane therefore
+mirrors the branch with every workspace package in Fresco's dependency closure
+whose built artifact would differ from the release tag's — its own source
+changed, a catalog entry it consumes was re-pinned, a shared build input
+such as a tsconfig changed, or anything its resolution reaches in the root
+lockfile moved, a compiler's own dependency included — and every closure
+package that depends on one,
+packed into `vendor/` as tarballs, with pnpm overrides that
+resolve every range onto them (`scripts/release/mirror-app.mjs --vendor-changed-since`,
+built on `scripts/release/vendor-workspace-packages.mjs`, the same mechanism the
+release test uses). Nothing is published to npm. The packages the hotfix did
+not touch install at the exact registry versions the released image used: the
+lane seeds the mirror's lockfile and its generated workspace policy from the
+ones the Fresco repository holds at that release before resolving (bringing
+only the policy's catalog-backed overrides, such as `postcss`, to the branch's
+catalog), so only the vendored packages and the bumped app version are
+re-resolved, and neither a
+library or third-party version published after the release nor a dependency
+policy change that exists only on main can slip in. The corollary: a
+dependency fix that lives only in the branch's own `pnpm-lock.yaml`, or only
+in the root `pnpm-workspace.yaml` outside its catalog (an `overrides` entry,
+say), cannot reach the image, and the lane refuses such a branch — pin the
+fixed version in the affected manifest, or re-pin a catalog entry that package
+consumes, so it becomes a specifier change the mirror carries. After resolving,
+the lane also checks that every resolution the branch changed for a package the
+image installs is present in the mirror's lockfile, so one legitimate
+dependency change cannot mask another that only the branch's lockfile carried.
+
+1. Cut the branch from the released tag and cherry-pick the fix:
+
+   ```bash
+   git switch -c hotfix/fresco-<version> 'fresco@<previous>'
+   git cherry-pick <sha>
+   ```
+
+   Land the same fix on main through the usual pull request as well — the
+   hotfix branch is a delivery vehicle, not the source of truth.
+
+2. Bump `apps/fresco/package.json` to the hotfix version and add the matching
+   `## <version>` section to `apps/fresco/CHANGELOG.md`; `scripts/release/release-notes.mjs`
+   reads that section for both GitHub releases. Do **not** run
+   `changeset version` on the branch.
+3. Push the branch and open its merge-back pull request into `main` now. Then
+   certify it with the release test — using **main's** tooling, never the
+   branch's own: a branch cut from an older tag carries the release-test
+   harness and mirror scripts as they were then, which would stage a different
+   image from the one the lane ships (the lane itself always runs main's copy
+   from `.hotfix-lane`). Take the current tooling onto the branch first; none
+   of it is part of the release — `release-test/` is excluded from the mirror,
+   and `scripts/` and `.claude/` are never mirrored:
+
+   ```bash
+   git checkout main -- scripts apps/fresco/release-test .claude/workflows/fresco-release-test.js
+   git commit -m 'chore(fresco): refresh release tooling from main for certification'
+   VENDOR_CHANGED_SINCE='fresco@<previous>' bash apps/fresco/release-test/build-image.sh
+   ```
+
+   `VENDOR_CHANGED_SINCE` makes the build stage the tree exactly as the lane
+   does — vendoring what changed since that tag, seeding the lockfile from the
+   released mirror — instead of bundling the pending changesets. Then run
+   `/fresco-release-test` with `{ expectedVersion: "<version>", skipBuild: true }`
+   from that checkout. Proceed only on a full-coverage "go" with `releasable: true`.
+
+4. Run the **Hotfix Release** workflow **from main**, with `app: fresco` and
+   `source_ref` set to the hotfix branch. Its first job runs typecheck and
+   tests across Fresco's whole workspace dependency closure, builds the
+   closure so the changed packages can be packed, and stages the vendored
+   mirror tree. A second job, `fresco-publish`, re-validates the version,
+   claims `fresco@<version>`, pushes that tree to the Fresco repository's
+   `main` — which is what triggers the GHCR image build, exactly as a normal
+   release does — and creates the release on both repositories. The split is
+   deliberate: staging runs code from the hotfix branch (`pnpm pack` runs each
+   vendored package's lifecycle scripts, which could also plant a fake `gh` on
+   that job's `$GITHUB_PATH`), so the job that does it holds no credential at
+   all, and the job that holds the tag-claiming token and the push token runs
+   nothing from the branch. A protected `fresco-hotfix-production` environment
+   therefore asks for approval twice.
+   The GHCR publisher workflow the mirror carries is main's copy, not the
+   branch's (a branch cut from an older tag may predate a publisher change
+   already pre-applied to the Fresco repository). Both jobs check that the
+   staged tree carries exactly that workflow and that the Fresco repository
+   tracks exactly it — the publish job immediately before copying, so nothing
+   a lifecycle script left under `.github/workflows` can be pushed.
+   The lane holds the normal lane's `apps-release-fresco` lock, re-checks the
+   newest tag after building, and refuses a version older than the current
+   release, because the mirror's newest push is what `latest` points at. It
+   also reads the version the Fresco repository's `main` carries and refuses
+   while that is ahead of the tags here: the normal lane pushes the mirror
+   before it tags, so a run that failed between the two left a release the
+   tags do not record, which a hotfix cut from the newest tag would append
+   older code over. Re-run the normal lane for `main` (it re-mirrors and
+   tags) or tag `fresco@<version>` on the commit that produced it, then
+   re-dispatch. As
+   in the normal lane, the push is what starts the Fresco repository's image
+   build, and neither lane waits for it: if that build fails, re-run it from
+   the Fresco repository's Actions tab against the same mirrored commit — the
+   tag and releases already describe that commit, so nothing here needs
+   re-dispatching.
+5. **Merge the hotfix branch into main** with a merge commit, never a squash,
+   after the tag exists: `.github/scripts/app-release-guard.sh` skips main's
+   Fresco release until main contains the released commit. Then remove only
+   `'fresco'` from the changeset the hotfix consumed, deleting the file only if
+   Fresco was its sole target.
+
+The `fresco-hotfix-production` environment needs the same one-time protection
+the Interviewer lane documents (required reviewers, deployment branches
+restricted to `main`); until that is configured, the dispatch itself is the
+only gate. `LEGACY_RELEASE_GH_TOKEN` is the token the mirror pushes with.
 
 ## Release testing
 
@@ -88,7 +205,7 @@ Before a Fresco release is approved (the Version Packages PR merged), the
 pending state of `main` can be release-tested locally with the
 `/fresco-release-test` Claude workflow (`.claude/workflows/fresco-release-test.js`;
 Codex: run the harness scripts below manually). It builds the pending image the
-way a release would — `scripts/mirror-app.mjs` stages the mirrored tree,
+way a release would — `scripts/release/mirror-app.mjs` stages the mirrored tree,
 `release-test/scripts/bundle-pending-packages.mjs` swaps the registry
 resolutions of exactly the `@codaco/*` packages the pending release will
 publish — those the changesets bump, plus any whose current version npm does
@@ -106,15 +223,75 @@ then runs two Docker stacks via
   diffs pre- vs post-upgrade exports (`release-test/scripts/diff-exports.mjs`)
   for unanticipated differences.
 - **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
-  process of the pending image end-to-end.
+  process of the pending image end-to-end, and then runs the script-driven
+  checks on that instance — a whole interview conducted from the first stage to
+  the finish screen and out through an export, what `/api/health` tells an
+  anonymous caller, and the researcher interface in another language.
+- **Analytics lane** (ports 3212/5535/9312): the one deployment in the run with
+  analytics **enabled**, against a sink that terminates TLS and records every
+  request. It also imports the damaged protocol fixtures, because "opening a
+  damaged file is no longer recorded as an application error" is a claim about
+  what is sent.
+- **Two-factor lane** (ports 3213/5536/9313): a deployment that sets
+  `REQUIRE_TWO_FACTOR`.
+
+Both configured lanes are started and torn down around their own checks, so a
+run holds four stacks only as long as it has to.
+
+#### The script-driven lanes
+
+Those last three lanes are driven by deterministic scripts under
+`release-test/scripts/` rather than by an agent reading a checklist:
+`interview-lane.mjs`, `health-lane.mjs`, `localization-lane.mjs`,
+`analytics-lane.mjs` and `two-factor-lane.mjs`, over a shared Playwright driver
+(`fresco-driver.mjs`) and a lane table (`lanes.mjs`) that
+`scripts/release-test/fresco-release-test-workflow.test.mjs` binds to `up.sh`.
+What they check has a fixed answer — which payload was sent, which page was
+served, whether a request was refused — and an assertion in code is the same
+assertion on every run, can be made to fail on purpose in CI, and does not
+spend a model's attention rediscovering how to click a wizard. The agent that
+runs one is a courier: it runs the script and returns its JSON verbatim.
+
+Each script prints one line of `{ ok, checks: [{ id, status, detail }] }`, and
+the workflow holds every lane to the exact SET of check ids it expects
+(`expectedScriptChecks`). A missing id is a check that stopped running, an
+unknown one is a report the workflow cannot account for, and both fail the run
+rather than reading as coverage. `up.sh` reports the deployment configuration
+it started each lane in (`analytics`, `requireTwoFactor`) and the workflow
+refuses a lane that came up as the wrong deployment — an analytics lane with
+analytics disabled would send nothing at all, and every payload assertion in it
+would pass over an empty file.
+
+The judgment in those lanes lives in pure modules —
+`relay-payload-protocol.mjs` (what an enabled deployment may send),
+`localization-contract.mjs` (whether a page actually changed language) and
+`interview-export-contract.mjs` (whether an export carries the answers that
+were given) — so each oracle is exercised on synthetic input in
+`scripts/release-test/fresco-release-test-lane-contracts.test.mjs`, where it is
+also shown failing on input that breaks the behaviour it guards. Lists those
+contracts are written against are bound to the application's own: the element
+events and properties to `lib/posthog-client.ts`, the entity-id properties to
+`@codaco/interview`, and the import-failure vocabulary to
+`@codaco/protocol-validation`.
+
+The protocol fixtures are built rather than committed
+(`release-test/scripts/make-fixtures.mjs`, from
+`packages/protocols/e2e/fresco-release-test`): the protocol an interview is
+conducted with, and the damaged ones — a missing resource, a damaged archive, a
+protocol that inflates past the shared limit, and the pair of filters that
+shows a fractional comparison value accepted and a fractional COUNT refused. A
+repository is the wrong place for a deliberately corrupt archive and an entry
+that expands to more than a gigabyte.
 
 Harness scripts live in `apps/fresco/release-test/` (`build-image.sh`,
-`up.sh --lane upgrade|fresh --image <ref> [--keep-data]`, `down.sh`,
+`up.sh --lane upgrade|fresh|analytics|twofactor --image <ref> [--keep-data]`,
+`down.sh`,
 `stage-fixture.sh` and `enable-captures.sh` for browser-driven uploads and
 download capture via MinIO). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
 excluded from the public mirror. Storage is configured through the setup
-wizard, not env vars, matching real bundled-MinIO deployments. Both stacks set
+wizard, not env vars, matching real bundled-MinIO deployments. Every stack but
+the analytics lane sets
 `DISABLE_ANALYTICS`, and a deployment with analytics disabled sends nothing
 off-box from the browser: posthog-js is loaded only once the server has
 confirmed analytics are on (`components/Providers/AnalyticsLoader.tsx` and
@@ -168,7 +345,12 @@ The sink records connection attempts and never terminates TLS. posthog-node
 speaks https, so parsing requests would mean minting a certificate for the
 relay's name and trusting it inside the image under test — a container
 configured differently from the one that ships, handed a relay that appears to
-work. It would also buy nothing the gate uses: what it asks is whether the
+work. (The analytics lane does exactly that, deliberately and only there: its
+sink terminates TLS with a certificate `up.sh` mints for the run and that
+lane's container sets `NODE_TLS_REJECT_UNAUTHORIZED=0`, because the question
+that lane asks can only be answered by reading the payloads. It changes whether
+the container VERIFIES the relay, never what it sends — and no lane that
+asserts silence sets it.) It would also buy nothing the gate uses: what it asks is whether the
 container reached off-box for analytics at all, and a connection attempt
 answers that completely while being recorded before any handshake can fail.
 Its positive control is the same idea as `networkLogEntries`, one step
@@ -207,8 +389,10 @@ including the early one taken when the build never completes.
 ```
 
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
-the one `bundle-pending-packages.mjs` bakes into the staged tree, and the one
-both stacks must report from `/api/health`. Other args:
+the one `bundle-pending-packages.mjs` bakes into the staged tree and the one
+the build stamp records. Each lane is bound to that build by the image id
+docker reports for its Fresco container (`/api/health` names no version, on
+purpose). Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),
 `keepStack` (leave both stacks up), `releasedImage` (substitute the upgrade
 baseline; never certifying), `allowDirty` (accept an irreproducible image
@@ -233,9 +417,22 @@ changesets shipping Fresco-facing behaviour no check exercised — a statement
 about the evidence rather than the build, so it caps certification through
 `coverageGaps` instead of failing the run. Either extend the checklists to
 cover them or read the list and decide. Every pending changeset has to be
-classified as covered, untested or unrelated, and a library changeset counts
-as Fresco-facing: the harness bundles the pending `@codaco/*` packages into
-the image, so their behaviour ships inside the build under test.
+classified as covered, untested, unrelated or presentation-only, and a library
+changeset counts as Fresco-facing: the harness bundles the pending `@codaco/*`
+packages into the image, so their behaviour ships inside the build under test.
+
+`presentationOnlyChanges` is the fourth classification and the only one that
+takes a changeset out of the coverage tally without a check having run: a
+changeset whose entire Fresco-facing content is `@codaco/fresco-ui` component
+behaviour — how a field, a dialog or a picker looks and behaves in isolation —
+which its own Storybook interaction tests verify on every change to it. A
+release test that drives whole deployments is the wrong instrument for it, and
+counting those as untested only inflated the number until it stopped being
+read. The claim is checked rather than accepted: the artifact audit reports the
+packages each changeset bumps, and a changeset that also bumps `fresco`,
+`@codaco/interview`, `@codaco/protocol-validation`, `@codaco/network-exporters`,
+`@codaco/shared-consts` or `@codaco/app-i18n` — or any package the workflow has
+not classified — cannot be set aside.
 
 The verdict is computed in the workflow, not by an agent. Every checklist
 prompt numbers its items and synthesis binds the returned checks to that
@@ -248,7 +445,7 @@ found differing — so no agent's claim about any of them is taken on its word,
 and the export judge must classify every one of those files by name; and the
 `release-critic` agent is a narrator and cross-checker whose judgment can only
 make the verdict stricter. Regression tests for all of that
-live in `scripts/fresco-release-test-workflow.test.mjs` and run offline under
+live in `scripts/release-test/fresco-release-test-workflow.test.mjs` and run offline under
 `pnpm test:scripts` — they drive the workflow body with stub agents, so a
 change that reopens a fail-open fails CI.
 

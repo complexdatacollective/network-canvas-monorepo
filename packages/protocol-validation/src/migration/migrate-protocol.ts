@@ -13,7 +13,11 @@ import {
   SchemaVersionSchema,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
-import { SchemaVersionDetectionError, ValidationError } from './errors.ts';
+import {
+  MigrationResultInvalidError,
+  SchemaVersionDetectionError,
+  ValidationError,
+} from './errors.ts';
 import { type ProtocolDocument, protocolMigrations } from './index.ts';
 
 protocolMigrations.register(migrationV1toV2);
@@ -83,7 +87,10 @@ export function migrateProtocol(
   // bring per-target-version validation with it.
   const postValidationResult = CurrentProtocolSchema.safeParse(migrated);
   if (!postValidationResult.success) {
-    throw new ValidationError(
+    // Not a `ValidationError`: the input passed its own version's checks above,
+    // so this says a migration of ours returned something invalid. Hosts use
+    // the distinction to decide what belongs in exception tracking.
+    throw new MigrationResultInvalidError(
       `Migration resulted in invalid protocol: ${postValidationResult.error.message}`,
       targetVersion,
     );

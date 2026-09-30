@@ -9,10 +9,13 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { normalizeForComparison } from '@codaco/shared-consts';
+import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
+import {
+  hasDuplicateOptionLabels,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
 import {
   isOptionComplete,
-  isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
 import { createValidations } from '~/utils/validations';
@@ -73,7 +76,7 @@ const defaultIntl = createAppIntl({ locale: 'en' });
 export const minimumOptionsMessage = messages.minimum;
 
 export const minTwoOptions = (value: unknown, intl: IntlShape = defaultIntl) =>
-  !value || (Array.isArray(value) && value.length < 2)
+  !value || (Array.isArray(value) && value.length < MINIMUM_VARIABLE_OPTIONS)
     ? intl.formatMessage(messages.minimum)
     : undefined;
 
@@ -138,16 +141,18 @@ export const uniqueOptionValues = (
     ? intl.formatMessage(messages.uniqueValues)
     : undefined;
 
-/** The label counterpart of `uniqueOptionValues`. */
+/**
+ * The label counterpart of `uniqueOptionValues`, asked of the one predicate
+ * every surface that authors an option label asks — shared-consts'
+ * `hasDuplicateOptionLabels`, which the protocol-builder editors and the
+ * codebook write that records what they author ask as well, so a list this
+ * rule lets through is never refused again further down.
+ */
 export const uniqueOptionLabels = (
   value: unknown,
   intl: IntlShape = defaultIntl,
 ) =>
-  hasDuplicates(
-    readOptions(value)
-      .map((option) => option.label)
-      .filter((label) => !isOptionLabelEmpty(label)),
-  )
+  hasDuplicateOptionLabels(value)
     ? intl.formatMessage(messages.uniqueLabels)
     : undefined;
 
@@ -216,10 +221,10 @@ export type OptionsProps = Omit<
    * string rather than a `Create new ${itemLabel}` template, so it can be
    * localised and so no call site can fall back to a generic default.
    *
-   * The sibling `MultiSelect` doc explains what a shared default costs: a
-   * Categorical Bin prompt editor mounts this list alongside two sort-rule
-   * lists, and named "Add new" all three are the same control to anyone
-   * navigating by a list of buttons (#1391).
+   * A shared default costs a real defect: a Categorical Bin prompt editor
+   * mounts this list alongside two sort-rule lists, and named "Add new" all
+   * three are the same control to anyone navigating by a list of buttons
+   * (#1391).
    */
   addButtonLabel: string;
 };

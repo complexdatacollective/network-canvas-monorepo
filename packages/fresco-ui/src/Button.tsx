@@ -235,7 +235,11 @@ const buttonSpecificVariants = cva({
   ],
 });
 
-const buttonVariants = compose(
+// Shared with `iconButtonVariants` below, which can't compose `buttonVariants`
+// directly (a composed component's declared type drops the `config` property
+// `compose()` requires of its arguments) — listing these once and spreading
+// into both keeps the two from drifting apart as base-button variants change.
+const buttonBaseVariants = [
   heightVariants,
   textSizeVariants,
   proportionalLucideIconVariants,
@@ -243,7 +247,9 @@ const buttonVariants = compose(
   inlineSpacingVariants,
   wrapperPaddingVariants,
   buttonSpecificVariants,
-);
+] as const;
+
+const buttonVariants = compose(...buttonBaseVariants);
 
 type BaseButtonProps = {
   variant?: VariantProps<typeof buttonVariants>['variant'];
@@ -402,20 +408,27 @@ type IconButtonProps = Omit<
       | 'accent';
   };
 
+const iconButtonBaseVariants = cva({
+  // `shrink-0` restores the floor Button gives up: an icon button's width
+  // is fixed, so letting a crowded flex row squash it would squash the
+  // target itself, not a label.
+  base: 'aspect-square shrink-0 justify-center rounded-full p-0!',
+});
+
+// `compose()`'s declared return type doesn't expose the internal `config` a
+// composed component carries, so a composed component (`buttonVariants`)
+// cannot itself be a `compose()` argument — `buttonBaseVariants` is spread in
+// again here instead, which `cx`'s tailwind-merge pass resolves identically
+// to composing `buttonVariants` directly.
 const iconButtonVariants = compose(
-  buttonVariants,
+  ...buttonBaseVariants,
   // The width is stated explicitly per size (squareSizeVariants) rather than
   // left to `aspect-square` × height: shipped Safari computes 0 for a flex
   // item's ratio-derived width inside nested flex rows, collapsing the
   // control to nothing. The ratio stays as intent (and covers non-flex
   // hosts); the explicit width is what every engine honours.
   squareSizeVariants,
-  cva({
-    // `shrink-0` restores the floor Button gives up: an icon button's width
-    // is fixed, so letting a crowded flex row squash it would squash the
-    // target itself, not a label.
-    base: 'aspect-square shrink-0 justify-center rounded-full p-0!',
-  }),
+  iconButtonBaseVariants,
 );
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(

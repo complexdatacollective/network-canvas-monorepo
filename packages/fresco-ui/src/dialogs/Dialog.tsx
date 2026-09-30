@@ -30,6 +30,17 @@ export type DialogProps = {
   closeDialog?: () => void;
   footer?: React.ReactNode;
   open?: boolean;
+  /**
+   * Called once the close animation has finished and the dialog has left the
+   * DOM.
+   *
+   * A dialog whose CONTENT belongs to what it is editing must stay mounted
+   * with `open={false}` for the exit to run at all — rendering it only while
+   * there is something to edit takes the animation away with it, and the
+   * dialog vanishes instead of closing. Hold that state until this fires, then
+   * drop it.
+   */
+  onExitComplete?: () => void;
   children?: ReactNode;
   /** Supplementary controls rendered below the title in the fixed header. */
   header?: ReactNode;
@@ -44,8 +55,14 @@ export type DialogProps = {
   size?: DialogSize;
   /**
    * When false, the dialog cannot be dismissed: the close button is hidden,
-   * and clicks outside / Escape no longer trigger `closeDialog`. Use this for
-   * forced flows like a lock screen that the user must complete.
+   * and an outside press or Escape neither closes it nor calls `closeDialog`.
+   * Use this for forced flows like a lock screen that the user must complete,
+   * and for a dialog whose work must finish before it may go — a submit in
+   * flight, an export being built.
+   *
+   * A dialog held open this way must still offer a way out that a keyboard
+   * user can reach, unless there is genuinely none: with Escape refused and
+   * the close button gone, a footer action is the only route left.
    * @default true
    */
   dismissible?: boolean;
@@ -74,7 +91,8 @@ export type DialogProps = {
  * - Uses Base UI Dialog for accessibility and state management
  * - ModalPopup with ModalPopupAnimation for consistent animations
  * - Surface styling applied via className for proper elevation and spacing
- * - Backdrop click-to-close is handled by Base UI's dismissible behavior
+ * - Backdrop click-to-close is handled by Base UI's dismissible behavior,
+ *   which `Modal` refuses on this dialog's behalf when `dismissible` is false
  */
 export default function Dialog({
   title,
@@ -85,6 +103,7 @@ export default function Dialog({
   accent,
   footer,
   open = false,
+  onExitComplete,
   className,
   size = 'readable',
   dismissible = true,
@@ -96,6 +115,8 @@ export default function Dialog({
   return (
     <Modal
       open={open}
+      dismissible={dismissible}
+      onExitComplete={onExitComplete}
       onOpenChange={(isOpen) => {
         if (!isOpen && closeDialog) {
           closeDialog();

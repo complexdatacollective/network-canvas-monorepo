@@ -1,7 +1,12 @@
 'use client';
 
 import { Loader2, Trash2 } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useState,
+} from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -49,6 +54,8 @@ const messages = defineMessages({
   },
 });
 
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 type DeleteInterviewsDialog = {
   open: boolean;
   setOpen: Dispatch<SetStateAction<boolean>>;
@@ -62,24 +69,19 @@ export const DeleteInterviewsDialog = ({
 }: DeleteInterviewsDialog) => {
   const intl = useAppIntl();
 
-  const [hasUnexported, setHasUnexported] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    setHasUnexported(
-      interviewsToDelete?.some((interview) => !interview.exportTime),
-    );
-  }, [interviewsToDelete]);
+  const hasUnexported = interviewsToDelete.some(
+    (interview) => !interview.exportTime,
+  );
 
   const handleConfirm = async () => {
     await deleteInterviews(interviewsToDelete.map((d) => ({ id: d.id })));
-    setHasUnexported(false);
 
     setOpen(false);
   };
 
   const handleCancelDialog = () => {
-    setHasUnexported(false);
     setOpen(false);
   };
 
@@ -91,7 +93,7 @@ export const DeleteInterviewsDialog = ({
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description, {
         count: interviewsToDelete.length,
-        strong: (chunks) => <strong>{chunks}</strong>,
+        strong: renderStrongChunks,
       })}
       footer={
         <>
@@ -125,7 +127,7 @@ export const DeleteInterviewsDialog = ({
           <AlertDescription>
             {intl.formatMessage(messages.unexported, {
               count: interviewsToDelete.length,
-              strong: (chunks) => <strong>{chunks}</strong>,
+              strong: renderStrongChunks,
             })}
           </AlertDescription>
         </Alert>

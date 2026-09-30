@@ -22,8 +22,12 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  createMessageError,
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 
 import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
@@ -99,7 +103,59 @@ const messages = defineMessages({
     description:
       'Default empty state of the list field; mention the add button by its default label.',
   },
+  confirmDeleteTitle: {
+    id: 'frescoUi.arrayField.confirmDeleteTitle',
+    defaultMessage: 'Delete this {itemLabel}?',
+    description:
+      'Title of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  confirmDeleteDescription: {
+    id: 'frescoUi.arrayField.confirmDeleteDescription',
+    defaultMessage: 'This {itemLabel} will be removed from the list.',
+    description:
+      'Body of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  deleteUnavailable: {
+    id: 'frescoUi.arrayField.deleteUnavailable',
+    defaultMessage:
+      'This list stopped accepting changes while you were confirming, so nothing was removed. Try again once the list can be edited.',
+    description:
+      'Shown inside a delete confirmation when the list it was opened on stopped accepting changes while the reader was still deciding, so nothing was deleted.',
+  },
+  confirmDeleteAction: {
+    id: 'frescoUi.arrayField.confirmDeleteAction',
+    defaultMessage: 'Delete {itemLabel}',
+    description:
+      'Confirm button of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
 });
+
+/**
+ * One sentence of the delete confirmation, formatted where it is rendered
+ * rather than where the dialog was raised.
+ *
+ * A dialog outlives the click that opened it, and `DialogProvider` formats its
+ * own copy on every render, so copy frozen into strings at click time would
+ * leave the title, body and action in the language the reader has just left
+ * while the rest of the dialog follows the new one.
+ */
+function DeleteConfirmationMessage({
+  message,
+  itemLabel,
+}: {
+  message: MessageDescriptor;
+  itemLabel: MessageDescriptor;
+}) {
+  const intl = useAppIntl();
+
+  return (
+    <>
+      {intl.formatMessage(message, {
+        itemLabel: intl.formatMessage(itemLabel),
+      })}
+    </>
+  );
+}
 
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
@@ -120,20 +176,22 @@ function isItemList<T extends Record<string, unknown>>(
   );
 }
 
+const arrayFieldOwnVariants = cva({
+  // `min-w-0` overrides the `min-w-fit` `controlVariants` sets for buttons,
+  // whose labels should never be clipped. On this list that floor is
+  // `fit-content` of every row at once — a row of selects and buttons — so
+  // the group refused to shrink below ~428px and pushed the roster editor
+  // past a 390px viewport (#1388). The list wraps and clips its own rows
+  // (`overflow-hidden text-wrap`), so it has no need of a content floor.
+  base: 'relative w-full min-w-0 flex-col overflow-hidden text-wrap',
+});
+
 const arrayFieldVariants = compose(
   controlVariants,
   inputControlVariants,
   groupSpacingVariants,
   stateVariants,
-  cva({
-    // `min-w-0` overrides the `min-w-fit` `controlVariants` sets for buttons,
-    // whose labels should never be clipped. On this list that floor is
-    // `fit-content` of every row at once — a row of selects and buttons — so
-    // the group refused to shrink below ~428px and pushed the roster editor
-    // past a 390px viewport (#1388). The list wraps and clips its own rows
-    // (`overflow-hidden text-wrap`), so it has no need of a content floor.
-    base: 'relative w-full min-w-0 flex-col overflow-hidden text-wrap',
-  }),
+  arrayFieldOwnVariants,
 );
 
 const itemVariants = cva({
@@ -141,14 +199,21 @@ const itemVariants = cva({
 });
 
 /**
- * Returns animation props for array field items.
- * When hasMounted is false, initial is set to false to prevent mount animations.
- * This avoids flickering when ArrayField is rendered inside animated containers like dialogs.
+ * Enter and exit animations for the list's rows and its empty state.
+ *
+ * `initial` is resolved from `hasOpened` (see `hasOpenedRef`): rows that
+ * arrive with the field's value are simply there, and only what the researcher
+ * makes appear animates in.
+ *
+ * `exit` is deliberately NOT gated the same way. An exit that finishes in the
+ * frame it starts leaves the surviving rows projected against the box the
+ * empty state still occupied, and they keep a residual vertical stretch
+ * (~1.12) for as long as they are on screen.
  */
 const getItemAnimationProps = {
-  initial: (hasMounted: boolean) => ({
-    opacity: hasMounted ? 0 : 1,
-    scale: hasMounted ? 0.6 : 1,
+  initial: (hasOpened: boolean) => ({
+    opacity: hasOpened ? 0 : 1,
+    scale: hasOpened ? 0.6 : 1,
   }),
   animate: { opacity: 1, scale: 1 },
   exit: { opacity: 0, scale: 0.6 },
@@ -233,6 +298,30 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
    * open time is a detached node by the time focus is returned.
    */
   editTriggerRef?: (element: HTMLElement | null) => void;
+  /**
+   * Attach to the control that invokes `onDelete`.
+   *
+   * It is how the list's own delete confirmation finds the row that takes this
+   * one's place: on confirm, both this row and the control that opened the
+   * confirmation are gone, and focus has to land on a control the researcher
+   * can carry on from rather than on `<body>`, which Base UI resolves to the
+   * first tabbable element in the whole document. A ref rather than an element
+   * captured when the confirmation opened, for the reason `editTriggerRef`
+   * gives.
+   *
+   * An item component that runs its own confirmation instead does not need it.
+   */
+  deleteTriggerRef?: (element: HTMLElement | null) => void;
+  /**
+   * This list's own noun for one of its rows, as the list declared it.
+   *
+   * A DESCRIPTOR, formatted where the sentence around it is read: a row's
+   * affordances are named for the researcher ("Edit prompt", "Delete prompt"),
+   * and a list that mounts several of these at once is otherwise a row of
+   * identically named buttons to anyone navigating by them. Undefined for a
+   * list that has no word for its rows.
+   */
+  itemLabel?: MessageDescriptor;
   /**
    * Resolves the list's own add control — the one control that survives this
    * row being destroyed.
@@ -319,8 +408,24 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
   /**
    * Function that returns a new item template when adding a new item.
    * Note: You don't need to include an 'id' property - ArrayField handles ID generation internally.
+   *
+   * Optional: a list whose rows are filled in from nothing — every field of a
+   * new row answered in the editor, no seeded defaults — adds an empty item,
+   * which is what `DialogEditing` and every row dialog written after it does
+   * with the template it has to pass today.
    */
-  itemTemplate: () => Partial<T>;
+  itemTemplate?: () => Partial<T>;
+
+  /**
+   * This list's own noun for one of its rows ("prompt", "option"), as a
+   * DESCRIPTOR rather than a string, so the word a researcher reads is one
+   * extraction sees and a translator can answer for.
+   *
+   * Given, the delete confirmation names what is being deleted instead of
+   * asking the generic "Are you sure?"; absent, it keeps that generic copy,
+   * which is all a list with no word for its rows can honestly say.
+   */
+  itemLabel?: MessageDescriptor;
   addButtonLabel?: string;
   emptyStateMessage?: string;
   confirmDelete?: boolean;
@@ -476,7 +581,7 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   isSortable: boolean;
   isBeingEdited: boolean;
   isNewItem: boolean;
-  hasMounted: boolean;
+  hasOpened: boolean;
   onCancel: () => void;
   onChange?: (value: T) => void;
   // Answers the same way `onMoveItem` below does, and for the same reason: a
@@ -496,6 +601,8 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   onDragEndItem: () => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
   editTriggerRef: (element: HTMLElement | null) => void;
+  deleteTriggerRef: (element: HTMLElement | null) => void;
+  itemLabel?: MessageDescriptor;
   getAddTrigger: () => HTMLElement | null;
   disabled: boolean;
   readOnly: boolean;
@@ -517,7 +624,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     isSortable,
     isBeingEdited,
     isNewItem,
-    hasMounted,
+    hasOpened,
     onDeleteItem,
     onEditItem,
     onMoveItem,
@@ -528,6 +635,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     onUpdateItem,
     ItemComponent,
     editTriggerRef,
+    deleteTriggerRef,
+    itemLabel,
     getAddTrigger,
     itemClasses,
     disabled,
@@ -591,7 +700,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       className={cx(itemVariants(), resolvedItemClasses)}
       aria-hidden={isPresent ? undefined : true}
       inert={!isPresent}
-      custom={hasMounted}
+      custom={hasOpened}
       layout
       layoutId={item._internalId}
       variants={getItemAnimationProps}
@@ -617,6 +726,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         readOnly={readOnly}
         dragControls={dragControls}
         editTriggerRef={editTriggerRef}
+        deleteTriggerRef={deleteTriggerRef}
+        itemLabel={itemLabel}
         getAddTrigger={getAddTrigger}
       />
     </Surface>
@@ -639,7 +750,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
   getId,
   itemComponent: ItemComponent,
   editorComponent: EditorComponent,
-  itemTemplate,
+  // A row whose every field is answered in the editor starts from nothing.
+  itemTemplate = () => ({}),
+  itemLabel,
   addButtonLabel,
   emptyStateMessage,
   confirmDelete = true,
@@ -663,17 +776,27 @@ export default function ArrayField<T extends Record<string, unknown>>({
   // renders, which `useArrayFieldItems`' external-value sync depends on.
   const itemValue = isItemList<T>(value) ? value : (EMPTY_ARRAY as T[]);
 
-  // Track mount state to prevent initial animations when rendered inside
-  // animated containers (e.g., dialogs with layoutId animations).
-  // Using a ref instead of state to avoid triggering an extra render.
-  const hasMountedRef = useRef(false);
-  useEffect(() => {
-    hasMountedRef.current = true;
+  // Whether this list has opened: it has once it has rendered rows, or once
+  // the researcher has asked it for a new one.
+  //
+  // Not mount, which is too early — a host form hands the field `[]` on its
+  // first render and the real rows a render later, so a flag flipped by a
+  // mount effect is already `true` when those rows arrive and every one of
+  // them animates in.
+  //
+  // A ref rather than state: it only selects between two variants of an
+  // animation that has not started yet, so no render has to be corrected.
+  const hasOpenedRef = useRef(false);
+  const openList = useCallback(() => {
+    hasOpenedRef.current = true;
   }, []);
 
   const { confirm } = useDialog();
   const { announce } = useAccessibilityAnnouncements();
   const isInteractionDisabled = (disabled ?? false) || (readOnly ?? false);
+  // Read by a delete confirmation when it is ANSWERED; see its `onConfirm`.
+  const interactionDisabledRef = useRef(isInteractionDisabled);
+  interactionDisabledRef.current = isInteractionDisabled;
 
   const handleCommittedChange = useCallback(
     (nextValue: T[], operation: ArrayFieldOperation<T>): void | boolean => {
@@ -720,6 +843,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
    * `editingItem` is already null.
    */
   const editTriggerElements = useRef(new Map<string, HTMLElement>());
+  /**
+   * The same register for the control that opens each row's DELETE, so the
+   * confirmation can hand focus to the row that takes the removed one's place
+   * rather than sending the researcher back out to the add button from the
+   * middle of a list.
+   */
+  const deleteTriggerElements = useRef(new Map<string, HTMLElement>());
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const lastEditingRef = useRef<{ internalId: string; isNew: boolean } | null>(
     null,
@@ -738,6 +868,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const editTriggerCallbacks = useRef(
     new Map<string, (element: HTMLElement | null) => void>(),
   );
+  const deleteTriggerCallbacks = useRef(
+    new Map<string, (element: HTMLElement | null) => void>(),
+  );
 
   const registerEditTrigger = useCallback((internalId: string) => {
     const cached = editTriggerCallbacks.current.get(internalId);
@@ -751,6 +884,21 @@ export default function ArrayField<T extends Record<string, unknown>>({
       }
     };
     editTriggerCallbacks.current.set(internalId, callback);
+    return callback;
+  }, []);
+
+  const registerDeleteTrigger = useCallback((internalId: string) => {
+    const cached = deleteTriggerCallbacks.current.get(internalId);
+    if (cached) return cached;
+
+    const callback = (element: HTMLElement | null) => {
+      if (element) {
+        deleteTriggerElements.current.set(internalId, element);
+      } else {
+        deleteTriggerElements.current.delete(internalId);
+      }
+    };
+    deleteTriggerCallbacks.current.set(internalId, callback);
     return callback;
   }, []);
 
@@ -906,6 +1054,29 @@ export default function ArrayField<T extends Record<string, unknown>>({
     ],
   );
 
+  /**
+   * The delete control focus should land on once the row at `position` among
+   * the committed rows is gone: the row that takes its place, the last row
+   * when it was itself the last, and the add button when the list is emptied.
+   *
+   * Named by id rather than found in the document, so the row on its way out —
+   * which stays mounted, `inert` and `aria-hidden`, until its exit animation
+   * ends — cannot be the answer.
+   */
+  const surviving = useCallback(
+    (removedId: string, position: number): HTMLElement | null => {
+      const remaining = latestItemsRef.current.filter(
+        (item) => !item._draft && item._internalId !== removedId,
+      );
+      const neighbour = remaining[Math.min(position, remaining.length - 1)];
+      const control = neighbour
+        ? deleteTriggerElements.current.get(neighbour._internalId)
+        : undefined;
+      return control?.isConnected ? control : addButtonRef.current;
+    },
+    [],
+  );
+
   // Handle delete with optional confirmation for non-draft items
   const requestDelete = useCallback(
     async (internalId: string) => {
@@ -931,14 +1102,59 @@ export default function ArrayField<T extends Record<string, unknown>>({
       };
 
       if (confirmDelete) {
+        // A named list says what is going; an unnamed one keeps `confirm`'s
+        // own "Are you sure? This action cannot be undone.", which is all it
+        // can honestly say. Either way the copy goes to the dialog as nodes,
+        // so it is formatted in whatever language is active while the dialog
+        // is up rather than the one that was active when Delete was clicked.
         await confirm({
-          confirmLabel: intl.formatMessage(commonMessages.delete),
-          onConfirm: removeAndAnnounce,
+          title: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteTitle}
+              itemLabel={itemLabel}
+            />
+          ) : undefined,
+          description: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteDescription}
+              itemLabel={itemLabel}
+            />
+          ) : undefined,
+          confirmLabel: itemLabel ? (
+            <DeleteConfirmationMessage
+              message={messages.confirmDeleteAction}
+              itemLabel={itemLabel}
+            />
+          ) : (
+            <AppMessage message={commonMessages.delete} />
+          ),
+          // A confirmation is a WINDOW, and what the list will accept can
+          // change inside it: a list that has gone read-only or disabled since
+          // the researcher pressed Delete must not lose a row because they
+          // then pressed Delete again. Read live rather than from the value
+          // this callback closed over, which is the state at the moment the
+          // dialog opened. Thrown rather than silently ignored — `confirm`
+          // renders a throw as the dialog's own error and leaves it open — so
+          // a removal that did not happen is never read as one that did.
+          onConfirm: () => {
+            if (interactionDisabledRef.current) {
+              throw new Error(createMessageError(messages.deleteUnavailable));
+            }
+            removeAndAnnounce();
+          },
           // On confirm the row — and the Delete control that opened this — is
-          // gone, so focus has nowhere to return to. The add button is the
-          // surviving control for this list. (Cancel still returns to the row's
-          // own Delete control, which is untouched.)
-          finalFocus: () => addButtonRef.current,
+          // gone, so focus goes to the row that has taken its place, and to
+          // the add button when the row removed was the last one, that being
+          // the only control an emptied list still has. Sending it to the add
+          // button either way walks the researcher out of the middle of a list
+          // they were working down. (Cancel still returns to the row's own
+          // Delete control, which is untouched.)
+          //
+          // Resolved when focus is being RETURNED rather than now, and by row
+          // IDENTITY rather than by asking the document: the removed row stays
+          // mounted for its exit animation, so a search of the list would find
+          // its control and hand focus to a node about to be destroyed.
+          finalFocus: () => surviving(internalId, position - 1),
         });
       } else {
         removeAndAnnounce();
@@ -952,8 +1168,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
       intl,
       isDraft,
       isInteractionDisabled,
+      itemLabel,
       items,
       removeItem,
+      surviving,
     ],
   );
 
@@ -963,6 +1181,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
     () => (EditorComponent ? items.filter((item) => !item._draft) : items),
     [EditorComponent, items],
   );
+
+  // After every render, not just the first: the render that brings the list
+  // its rows must still see `hasOpenedRef` as `false`.
+  const hasRenderableItems = renderableItems.length > 0;
+  useEffect(() => {
+    if (hasRenderableItems) openList();
+  }, [hasRenderableItems, openList]);
 
   const id = useId();
   const isAtCapacity =
@@ -1028,7 +1253,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 layout
                 key="no-items"
                 className="m-10 text-sm text-current/70"
-                custom={hasMountedRef.current}
+                custom={hasOpenedRef.current}
                 variants={getItemAnimationProps}
                 initial="initial"
                 animate="animate"
@@ -1051,7 +1276,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   committedIndex={committedIndex}
                   itemCount={items.length}
                   isSortable={effectiveSortable}
-                  hasMounted={hasMountedRef.current}
+                  hasOpened={hasOpenedRef.current}
                   onDeleteItem={
                     isInteractionDisabled ? undefined : requestDelete
                   }
@@ -1066,6 +1291,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   onCancel={cancelEditing}
                   ItemComponent={ItemComponent}
                   editTriggerRef={registerEditTrigger(item._internalId)}
+                  deleteTriggerRef={registerDeleteTrigger(item._internalId)}
+                  itemLabel={itemLabel}
                   getAddTrigger={getAddTrigger}
                   itemClasses={itemClasses}
                   disabled={disabled ?? false}
@@ -1082,6 +1309,10 @@ export default function ArrayField<T extends Record<string, unknown>>({
             key="add-button"
             color="primary"
             onClick={() => {
+              // The one route by which a row reaches a list that has never
+              // rendered one. Set before the add, so the render it schedules
+              // already sees an opened list.
+              openList();
               if (immediateAdd) {
                 addItem(itemTemplate() as T);
                 announce(

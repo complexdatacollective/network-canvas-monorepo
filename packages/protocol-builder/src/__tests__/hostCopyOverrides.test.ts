@@ -279,8 +279,8 @@ describe('the not-yet-converted exclusions', () => {
   it('reaches every interface family that is here', () => {
     const families = [
       'sections/network',
-      'sections/pedigree',
-      'sections/narrativePedigree',
+      'editors/family-pedigree/sections',
+      'editors/narrative-pedigree/sections',
       'sections/geospatial',
       'sections/anonymisation',
     ];

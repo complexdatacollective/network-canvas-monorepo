@@ -3,12 +3,18 @@
 import { createId } from '@paralleldrive/cuid2';
 import { HelpCircle, WandSparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import {
+  useState,
+  type ComponentProps,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import { z } from 'zod/mini';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -256,6 +262,19 @@ function ParticipantModal({
   );
 }
 
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
+// Rendered through base-ui's `render` prop, which merges the popover
+// description props into the returned element.
+const renderIdentifierDescription = (props: ComponentProps<'p'>) => (
+  <Paragraph {...props}>
+    <AppMessage
+      message={messages.participantIdentifiersAreUsedByFrescoTo}
+      values={{ tag1: renderStrongChunks }}
+    />
+  </Paragraph>
+);
+
 // Separate component to handle the identifier field with generate button
 function IdentifierField({
   existingParticipants,
@@ -297,14 +316,7 @@ function IdentifierField({
       <InfoTooltip
         trigger={<HelpCircle className="inline-block size-4" />}
         title={intl.formatMessage(messages.participantIdentifiers)}
-        description={(props) => (
-          <Paragraph {...props}>
-            {intl.formatMessage(
-              messages.participantIdentifiersAreUsedByFrescoTo,
-              { tag1: (chunks) => <strong>{chunks}</strong> },
-            )}
-          </Paragraph>
-        )}
+        description={renderIdentifierDescription}
       />
     </>
   );

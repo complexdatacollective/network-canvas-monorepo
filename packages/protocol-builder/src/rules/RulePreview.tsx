@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -7,11 +7,13 @@ import Node, {
   NodeColors,
   type NodeColorSequence,
 } from '@codaco/fresco-ui/Node';
-import Pill from '@codaco/fresco-ui/Pill';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
-import { cx } from '@codaco/fresco-ui/utils/cva';
+import {
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import type { ColorReference } from '@codaco/protocol-validation';
 
+import AttributePill from '../fields/AttributePill.tsx';
 import { protocolColor } from '../protocolColor.ts';
 import type {
   RuleDescription,
@@ -90,12 +92,23 @@ function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
 }
 
 /**
- * The attribute a rule compares.
+ * The attribute a rule compares, drawn as the builder's own attribute pill.
+ *
+ * Architect's rule sentence used its filled, type-coloured variable pill, and
+ * this is the same pill: `AttributePill` is that control ported, and the
+ * `.variable-pill` cascades this sentence and the printable summary already
+ * carry (the zoom below, the summary's scale) are the ones Architect wrote for
+ * it. An outline chip here made the one place a researcher reads a rule back
+ * the one place an attribute did not look like an attribute.
  *
  * The pill conveys the attribute's kind visually; the wrapper says it in
- * words, so assistive technology reads "categorical attribute Age" rather than
- * a bare name. An attribute the codebook no longer has says so instead of
- * naming a type it cannot know.
+ * words, so assistive technology reads "Age (attribute type: categorical)"
+ * rather than a bare name. An attribute the codebook no longer has says so
+ * instead of naming a type it cannot know, and wears the destructive accent.
+ *
+ * `data-rule-part` names the part of the SENTENCE, so it sits on the wrapper
+ * that carries the words for it; the pill keeps what it says about the
+ * attribute itself.
  */
 function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
   const intl = useAppIntl();
@@ -112,21 +125,13 @@ function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
     <span
       className="inline-flex max-w-full align-middle"
       aria-label={description}
+      data-rule-part="attribute"
     >
-      <Pill
-        variant="outline"
-        className={cx(
-          'variable-pill max-w-full min-w-0',
-          attribute.missing && 'border-destructive text-destructive',
-        )}
-        data-rule-part="attribute"
-        data-attribute-type={attribute.type}
-        data-attribute-missing={attribute.missing ? '' : undefined}
-      >
-        <span className="min-w-0 overflow-hidden text-ellipsis">
-          {attribute.label}
-        </span>
-      </Pill>
+      <AttributePill
+        name={attribute.label}
+        {...(attribute.type === undefined ? {} : { type: attribute.type })}
+        missing={attribute.missing}
+      />
     </span>
   );
 }
@@ -173,16 +178,43 @@ function RuleOperand({
   operand: RuleDescriptionOperand;
   plain: boolean;
 }) {
-  return operand.items.map((item, index) => (
-    <Fragment key={`${typeof item}-${String(item)}-${index}`}>
-      {index > 0 && ', '}
-      <OperandToken
-        value={item}
-        plain={plain}
-        markdown={operand.authoredLabels}
-      />
-    </Fragment>
-  ));
+  const intl = useAppIntl();
+
+  // Joined through the reader's own list grammar rather than with commas:
+  // English puts "and" before the last item, Spanish "e" rather than "y"
+  // before one that begins with an i sound. Which of those it is depends on
+  // the WORDS, so the parts are computed from the operands as they read —
+  // markdown syntax stripped exactly as the renderer strips it, which would
+  // otherwise hide the initial sound — and each value part is then replaced,
+  // by position, with the token that renders the authored value untouched.
+  const labels = operand.items.map((item) =>
+    operand.authoredLabels
+      ? getMarkdownLabelText(String(item)).trim()
+      : String(item).trim(),
+  );
+  let nextValue = 0;
+
+  // Named as one part, because it IS one: the operand list reads the same in
+  // the editor's own list and in a printable summary, whose surrounding
+  // markup differs.
+  return (
+    <span data-rule-part="operand">
+      {intl.formatListToParts(labels).map((part, partIndex) => {
+        if (part.type === 'literal') return part.value;
+        const index = nextValue++;
+        const item = operand.items[index];
+        if (item === undefined) return part.value;
+        return (
+          <OperandToken
+            key={`${typeof item}-${String(item)}-${index}-${partIndex}`}
+            value={item}
+            plain={plain}
+            markdown={operand.authoredLabels}
+          />
+        );
+      })}
+    </span>
+  );
 }
 
 export type RulePreviewProps = Readonly<{

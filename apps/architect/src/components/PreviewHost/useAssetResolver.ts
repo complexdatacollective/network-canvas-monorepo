@@ -6,7 +6,7 @@ import {
   createAssetUrlOwner,
 } from '@codaco/interview/contract';
 import { assetKey } from '~/utils/assetDB';
-import { getAssetById } from '~/utils/assetUtils';
+import { getAssetById, MissingAssetDataError } from '~/utils/assetUtils';
 
 // The preview shows one generation of one protocol: assets cannot be replaced
 // underneath it, because re-opening the preview mounts a new host with a new
@@ -62,7 +62,10 @@ export function useAssetResolver(
           // private browsing).
           const entry = await getAssetById(assetId, protocolId);
           if (!entry || typeof entry.data === 'string') {
-            throw new Error(`Asset ${assetId} not found in local store`);
+            // Typed, so the preview treats a resource the protocol arrived
+            // without as a fact about that protocol rather than a failure of
+            // the preview.
+            throw new MissingAssetDataError(assetId);
           }
           return entry.data instanceof Blob
             ? entry.data

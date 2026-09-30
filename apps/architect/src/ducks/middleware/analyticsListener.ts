@@ -7,7 +7,7 @@ import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
 
 import { setActiveProtocol } from '../modules/activeProtocol';
-import { commitStageEditorDraft } from '../modules/protocol/commitStageEditorDraft';
+import { commitStage } from '../modules/protocol/commitStage';
 import { validateProtocolAsync } from '../modules/protocolValidation';
 import type { RootState } from '../modules/root';
 import { exportNetcanvas } from '../modules/userActions/userActions';
@@ -34,7 +34,7 @@ startAppListening({
 });
 
 startAppListening({
-  actionCreator: commitStageEditorDraft,
+  actionCreator: commitStage,
   effect: (action) => {
     // The stage editor commits creates and edits through one action; only a
     // create (no pre-existing stage id) is a `stage_added`.
@@ -67,7 +67,13 @@ startAppListening({
 
 startAppListening({
   actionCreator: exportNetcanvas.fulfilled,
-  effect: (_action, listenerApi) => {
+  effect: (action, listenerApi) => {
+    // A refused export fulfils too — it is an outcome, not a rejection — and
+    // wrote no file. Counting it as a download would report more protocols
+    // leaving Architect than ever did.
+    if (action.payload.status !== 'exported') {
+      return;
+    }
     const state = listenerApi.getState();
     const protocol = state.activeProtocol?.present;
     posthog.capture('protocol_downloaded', {

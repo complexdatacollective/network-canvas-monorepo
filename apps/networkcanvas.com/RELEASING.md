@@ -58,7 +58,10 @@ from `networkcanvas.com` (`lib/analytics/isProductionHost.ts`). The site is a
 static export, so one bundle serves production, every deploy preview, and local
 development, and any `next build` sets `NODE_ENV` to production — a build-time
 flag would record preview traffic as if it were real. Add a hostname to that
-list when the site gains a domain; nothing else gates analytics.
+list when the site gains a domain. The gate also accepts the host of
+`NEXT_PUBLIC_PROTOCOL_GALLERY_URL` when that variable names an HTTPS origin,
+so a deployment that replaces the canonical gallery subdomain keeps its
+analytics; nothing else gates them.
 
 Source maps upload on the same terms as the other products: only the production
 release job sets `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID`, and their

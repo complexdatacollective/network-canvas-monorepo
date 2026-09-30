@@ -29,6 +29,18 @@ this command from Claude Code.)
      (the dev site serves `main`'s pre-bump version until that PR merges),
      or a deployment of the hotfix branch for a hotfix (e.g. its PR's
      preview). The bare dev site is for ad-hoc `main` health checks.
+     Pass the preview's immutable deploy permalink rather than its
+     `deploy-preview-<n>--` alias: every push to `main` regenerates the
+     Version Packages PR and redeploys the alias, and a redeploy during
+     the run fails the fingerprint guard (one of three certifying runs on
+     2026-09-15 was lost that way). The permalink is
+     `https://<deploy-id>--interviewer-pwa-dev.netlify.app`, where the
+     deploy id is the last path segment of the Netlify check run's details
+     URL on the PR's head commit
+     (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`). Confirm the
+     permalink's fingerprint matches the alias before launching, and record
+     the head SHA the run certified — if the PR regenerates before it
+     merges, the certified tree is no longer the one that ships.
    - `journeys` — a subset of: `protocol-management`, `conduct-offline`,
      `session-management`, `data-export`, `security-vault`, `pwa-offline`,
      `settings-and-chrome`. A subset run
@@ -117,7 +129,7 @@ insufficient to validate them. Two rules follow:
   dev deployment is fine) and require a verdict free of gate-caused false
   failures — every INCOMPLETE cause and failure record must trace to the
   app or the deployment, never to the gate's own text. The offline suite
-  (`scripts/interviewer-release-test-workflow.test.mjs`) guards the
+  (`scripts/release-test/interviewer-release-test-workflow.test.mjs`) guards the
   synthesis code; only execution guards the prompts.
 - **Review findings against prompt text are adjudicated by execution.**
   Accept and fix synthesis-code findings directly (with a regression test,

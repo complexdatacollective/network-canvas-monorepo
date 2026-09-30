@@ -617,14 +617,16 @@ function createCustomExtensions({
   return extensions;
 }
 
+const editorContainerOwnVariants = cva({
+  base: 'flex h-auto w-full min-w-0 flex-col',
+});
+
 const editorContainerVariants = compose(
   controlVariants,
   inputControlVariants,
   stateVariants,
   interactiveStateVariants,
-  cva({
-    base: 'flex h-auto w-full min-w-0 flex-col',
-  }),
+  editorContainerOwnVariants,
 );
 
 const toolbarStyles = cx(
@@ -1054,12 +1056,12 @@ export default function RichTextEditorField({
   // editor commands against a field the host had just made read-only —
   // reporting the result back as a change a researcher had made. So the
   // popover is closed when the field stops being one anybody can edit.
-  useEffect(() => {
-    if (!isDisabled) return;
-
+  // Adjusted during render rather than after a commit: the panel is gone in
+  // the same paint that disables the field, and cannot reappear on re-enable.
+  if (isDisabled && (isLinkPopoverOpen || linkValidationMessage !== '')) {
     setIsLinkPopoverOpen(false);
     setLinkValidationMessage('');
-  }, [isDisabled]);
+  }
 
   if (!editor) {
     return null;
@@ -1325,7 +1327,7 @@ export default function RichTextEditorField({
                     />
                     <div
                       id={linkErrorId}
-                      className="text-destructive min-h-5 text-sm leading-snug"
+                      className="text-destructive-ink min-h-5 text-sm leading-snug"
                       aria-live="polite"
                     >
                       {linkValidationMessage}

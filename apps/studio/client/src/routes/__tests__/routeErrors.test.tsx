@@ -212,9 +212,8 @@ function renderAt(path: string) {
 
 /**
  * One route inside each of the four areas, all of them placeholders — which is
- * what the `Placeholder` mock above needs to reach them. `/account/language`
- * was the account area's entry until #1310 built it; any unbuilt route in the
- * area serves, and each of these leaves as its own screen arrives.
+ * what the `Placeholder` mock above needs to reach them. Any unbuilt route in
+ * the area serves, and each of these leaves as its own screen arrives.
  */
 const AREA_ROUTES = [
   ['the account area', '/account/tokens'],

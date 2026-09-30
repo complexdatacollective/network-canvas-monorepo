@@ -40,6 +40,12 @@
     --surface-accent-3-contrast: oklch(var(--white));
     --surface-accent-4: oklch(var(--slate-blue--dark));
     --surface-accent-4-contrast: oklch(var(--white));
+    --surface-accent-link: oklch(var(--white));
+    --surface-accent-destructive: color-mix(
+      in oklch,
+      var(--destructive) 8%,
+      oklch(var(--white))
+    );
     /* Focus rings stay mustard through the shared focus-styles machinery. */
     --focus-color: oklch(var(--mustard));
   }
@@ -86,6 +92,31 @@
 @custom-variant short (@media (max-height: 760px));
 
 @layer base {
+  :root {
+    /*
+     * How tall the sticky navigation bar is. `NavShell` measures the real
+     * header and overwrites this before the first paint; the value here is
+     * what a screen resolves to until it does, so a declaration reading the
+     * variable is never dropped for being unresolvable — which would put the
+     * stage editor's section list back underneath the bar.
+     *
+     * 108px is the header's own border box on every route at a desktop width,
+     * so the fallback is the measurement rather than a guess short of it.
+     */
+    --architect-nav-height: 6.75rem;
+
+    /*
+     * How tall the stage editor's title block is. `StageTitle` measures the
+     * real block and overwrites this before the first paint; the value here is
+     * what the route resolves to until it does, so the declaration that starts
+     * the section list level with the editor's first card is never dropped for
+     * being unresolvable.
+     *
+     * 184px is that block's own border box at a desktop width with a stage
+     * name on one line, so the fallback is a measurement rather than a guess.
+     */
+    --architect-stage-hero-height: 11.5rem;
+  }
   html,
   body {
     @apply h-full w-full text-base;

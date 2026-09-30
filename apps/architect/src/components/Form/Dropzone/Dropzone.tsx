@@ -5,6 +5,7 @@ import {
   useId,
   useImperativeHandle,
   useState,
+  type ReactNode,
   type RefObject,
 } from 'react';
 import { useDropzone } from 'react-dropzone';
@@ -16,6 +17,15 @@ import { cva, cx } from '~/utils/cva';
 
 import { acceptsFiles, getRejectedExtensions } from './helpers';
 import useTimer from './useTimer';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderSelectFileSpan = (chunks: ReactNode[]) => (
+  <span className="border-primary inline-block cursor-pointer border-b-2">
+    {chunks}
+  </span>
+);
+
 const messages = defineMessages({
   uploadFile: {
     id: 'architect.form.dropzone.dropzone.uploadFile',
@@ -303,11 +313,7 @@ const Dropzone = ({
         />
         <div className={labelVariants({ state: dropzoneState })}>
           {intl.formatMessage(messages.dragAndDropAFileHere, {
-            span: (chunks) => (
-              <span className="border-primary inline-block cursor-pointer border-b-2">
-                {chunks}
-              </span>
-            ),
+            span: renderSelectFileSpan,
           })}
         </div>
         <div className={loadingVariants({ state: dropzoneState })}>

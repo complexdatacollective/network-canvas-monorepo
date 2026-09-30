@@ -6,6 +6,7 @@ import {
   extractProtocolFromZip,
   loadNetcanvasArchive,
   MAX_INFLATED_BYTES,
+  missingAssetsError,
   NetcanvasInflationLimitError,
 } from '../extractProtocol.ts';
 import { MalformedNetcanvasError } from '../malformedNetcanvasError.ts';
@@ -31,7 +32,7 @@ describe('extractProtocol', () => {
     });
 
     const result = await extractProtocol(buffer);
-    expect(result).toEqual({ protocol, assets: [] });
+    expect(result).toEqual({ protocol, assets: [], missingAssets: [] });
   });
 
   // Every failure below is classified rather than left to the thrower, so a
@@ -94,7 +95,7 @@ describe('extractProtocol', () => {
       );
     });
 
-    it('rejects a manifest entry whose file is absent, naming the resource', async () => {
+    it('reports a manifest entry whose file is absent instead of rejecting', async () => {
       const protocol = {
         schemaVersion: 8,
         assetManifest: {
@@ -109,15 +110,48 @@ describe('extractProtocol', () => {
         'protocol.json': JSON.stringify(protocol),
       });
 
-      const error = await extractProtocol(buffer).catch(
-        (thrown: unknown) => thrown,
-      );
+      // Reported, not thrown: an authoring tool opens the protocol and lets
+      // the researcher re-supply the file, while a runtime refuses. Only the
+      // host knows which it is.
+      const { assets, missingAssets } = await extractProtocol(buffer);
+
+      expect(assets).toEqual([]);
+      expect(missingAssets).toEqual([
+        { id: 'img1', name: 'Village map', source: 'village-map.png' },
+      ]);
+    });
+
+    it('keeps the assets it could read alongside the ones it could not', async () => {
+      const protocol = {
+        schemaVersion: 8,
+        assetManifest: {
+          here: { type: 'image', name: 'Present', source: 'here.png' },
+          gone: { type: 'image', name: 'Absent', source: 'gone.png' },
+        },
+      };
+      const buffer = await buildZip({
+        'protocol.json': JSON.stringify(protocol),
+        'assets/here.png': 'bytes',
+      });
+
+      const { assets, missingAssets } = await extractProtocol(buffer);
+
+      expect(assets.map((asset) => asset.id)).toEqual(['here']);
+      expect(missingAssets.map((asset) => asset.id)).toEqual(['gone']);
+    });
+
+    it('turns reported missing assets into one refusal a runtime can describe', async () => {
+      const error = missingAssetsError([
+        { id: 'a', name: 'Village map', source: 'a.png' },
+        { id: 'b', name: 'Consent video', source: 'b.mp4' },
+      ]);
 
       expect(error).toBeInstanceOf(MalformedNetcanvasError);
-      expect((error as MalformedNetcanvasError).reason).toBe('missing-asset');
-      // The manifest's display name, not the zip path — it is what the
-      // researcher called the resource.
-      expect((error as MalformedNetcanvasError).assetName).toBe('Village map');
+      expect(error.reason).toBe('missing-asset');
+      // The researcher-facing sentence names one resource, so the first is
+      // carried for it; the rest stay on the technical message.
+      expect(error.assetName).toBe('Village map');
+      expect(error.message).toContain('b.mp4');
     });
 
     it('rejects a manifest entry that is not a recognised shape', async () => {

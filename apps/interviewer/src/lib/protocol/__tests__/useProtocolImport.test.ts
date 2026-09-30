@@ -21,7 +21,7 @@ vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => ({ openDialog: dialogOpen, closeDialog: vi.fn() }),
 }));
 vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
-  useAnalytics: () => ({ track: vi.fn() }),
+  useAnalytics: () => ({ track: vi.fn(), captureException: vi.fn() }),
 }));
 vi.mock('~/lib/db/api', () => ({
   updateSettings: vi.fn(),

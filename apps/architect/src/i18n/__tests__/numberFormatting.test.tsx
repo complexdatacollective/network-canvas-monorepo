@@ -148,10 +148,10 @@ it('formats every Codebook count and the sibling conflict count in the active lo
     );
   });
   expect(
-    screen.getByRole('heading', { name: 'Tipos de nodos (12.345)' }),
+    screen.getByRole('heading', { name: 'Tipos de nodo (12.345)' }),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole('heading', { name: 'Tipos de vínculos (23.456)' }),
+    screen.getByRole('heading', { name: 'Tipos de vínculo (23.456)' }),
   ).toBeInTheDocument();
   expect(
     screen.getByRole('heading', { name: 'Recursos de red (34.567)' }),

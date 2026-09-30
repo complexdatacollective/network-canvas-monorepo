@@ -1,8 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import preview from '../../../.storybook/preview';
+import { Badge } from '../../Badge';
 import Node, { type NodeColorSequence } from '../../Node';
 import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
@@ -107,16 +108,12 @@ function CardItem({
     >
       <div className="flex items-center justify-between">
         <Heading level="label">{item.name}</Heading>
-        <span
-          className={cx(
-            'rounded-full px-2 py-0.5 text-xs',
-            item.completed
-              ? 'bg-success/20 text-success'
-              : 'bg-warning/20 text-warning',
-          )}
+        <Badge
+          tone={item.completed ? 'success' : 'warning'}
+          appearance="outline"
         >
           {item.completed ? 'Done' : 'Pending'}
-        </span>
+        </Badge>
       </div>
       <div className="text-surface-1-contrast/70 mt-2 flex flex-wrap gap-4 text-sm">
         <span>{item.department}</span>
@@ -274,19 +271,23 @@ function PrimaryStoryRender(args: PrimaryStoryArgs) {
   } = args;
 
   const [items, setItems] = useState(() => generateDemoItems(itemCount));
-  const nextIdRef = useRef(itemCount + 1);
+  const [nextId, setNextId] = useState(itemCount + 1);
 
-  useEffect(() => {
+  // Rebuild the demo set when the control changes it. Done during render so the
+  // collection never paints a frame at the previous count.
+  const [appliedItemCount, setAppliedItemCount] = useState(itemCount);
+  if (appliedItemCount !== itemCount) {
+    setAppliedItemCount(itemCount);
     setItems(generateDemoItems(itemCount));
-    nextIdRef.current = itemCount + 1;
-  }, [itemCount]);
+    setNextId(itemCount + 1);
+  }
 
   const addItem = useCallback(() => {
-    const id = nextIdRef.current++;
-    const [newItem] = generateDemoItems(1, id);
+    const [newItem] = generateDemoItems(1, nextId);
     if (!newItem) return;
-    setItems((prev) => [...prev, { ...newItem, id: `item-${id}` }]);
-  }, []);
+    setItems((prev) => [...prev, { ...newItem, id: `item-${nextId}` }]);
+    setNextId(nextId + 1);
+  }, [nextId]);
 
   const removeItem = useCallback(() => {
     setItems((prev) => prev.slice(0, -1));

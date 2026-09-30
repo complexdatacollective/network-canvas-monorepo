@@ -5,6 +5,7 @@ import type { ProtocolSourceRef } from '~/templates';
 
 import { assetDb, type StoredProtocolRow } from './assetDB';
 import { deleteOrphanedAssets, deleteProtocolAssets } from './assetUtils';
+import { reportError } from './reportError';
 
 // Most-recently-updated first. Sort the materialised array (rather than the
 // Dexie collection) so the lint autofixer doesn't rewrite a Dexie `.reverse()`
@@ -66,7 +67,7 @@ export const putStoredProtocol = async ({
         ...retainedAssetIds,
       ]);
     } catch (error) {
-      console.error('Failed to remove orphaned assets during save', error);
+      reportError(error, { operation: 'protocolLibraryOrphanedAssetGc' });
     }
   }
 };

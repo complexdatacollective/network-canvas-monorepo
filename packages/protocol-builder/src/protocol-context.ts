@@ -179,6 +179,13 @@ const stageOrderFrom = (
  * Malformed sections are reported and omitted instead of making every
  * accessor throw; the host's canonical whole-document validation remains the
  * authority on whether the draft may be finished or published.
+ *
+ * A stage the stage schema refuses — for a shape it cannot read, or for a rule
+ * the schema states about a stage on its own — is omitted the same way, and
+ * reported against its own section with the schema's own wording and path.
+ * The stage is still editable: an editor's fields come from the stage's
+ * section document, not from here, so the section that carries the problem is
+ * where a researcher is told about it and where they can fix it.
  */
 export function protocolContextFromSections(
   sections: Readonly<Record<string, SectionDoc>>,
@@ -187,6 +194,11 @@ export function protocolContextFromSections(
   const node = new Map<string, NodeDefinition>();
   const edge = new Map<string, EdgeDefinition>();
   const stages = new Map<string, Stage>();
+  // Stages the protocol HAS and this read model could not use: the section is
+  // there, it just did not pass the stage schema. Kept apart from the ones
+  // that are genuinely absent so the stage order is not accused of naming a
+  // stage that does not exist.
+  const unreadableStageIds = new Set<string>();
   const assets = new Map<string, Asset>();
   const variableOwners = new Map<string, string>();
   const entityNameOwners = new Map<string, string>();
@@ -261,6 +273,7 @@ export function protocolContextFromSections(
       case 'stage': {
         const result = stageSchema.safeParse(document);
         if (!result.success) {
+          unreadableStageIds.add(ref.stageId);
           issues.push(...sectionIssues(id, result.error.issues));
           break;
         }
@@ -341,13 +354,18 @@ export function protocolContextFromSections(
   for (const stageId of stageOrder ?? []) {
     const stage = stages.get(stageId);
     if (stage === undefined) {
-      issues.push({
-        sectionId: orderSectionId,
-        path: ['stages'],
-        message: createMessageError(messages.stageOrderMissingStage, {
-          stageId,
-        }),
-      });
+      // A stage whose own section was reported just above is not one the order
+      // invented: saying so as well would send a researcher looking for a
+      // missing stage instead of at the one thing actually wrong with it.
+      if (!unreadableStageIds.has(stageId)) {
+        issues.push({
+          sectionId: orderSectionId,
+          path: ['stages'],
+          message: createMessageError(messages.stageOrderMissingStage, {
+            stageId,
+          }),
+        });
+      }
       continue;
     }
     orderedStages.push(stage);

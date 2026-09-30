@@ -1263,35 +1263,8 @@ const ProtocolSchema = z
         });
       }
 
-      // External-data panels: filter rules must target node attributes,
-      // not edges (the panel data source is a flat list of node rows).
-      if ('panels' in stage && stage.panels) {
-        stage.panels.forEach((panel, panelIndex) => {
-          if (panel.dataSource !== 'existing' && panel.filter?.rules) {
-            panel.filter.rules.forEach((rule, ruleIndex) => {
-              if (rule.type === 'edge') {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message:
-                    'External-data panel filters cannot use edge rules; rules must target node attributes.',
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'panels',
-                    panelIndex,
-                    'filter',
-                    'rules',
-                    ruleIndex,
-                    'type',
-                  ],
-                });
-              }
-            });
-          }
-        });
-      }
-
-      // Note: Panels duplicate ID validation moved to individual stage schemas
+      // Note: external-data panel edge rules and panels duplicate ID
+      // validation moved to the stage schemas (`common/panels.ts`)
 
       // Note: Items duplicate ID validation moved to individual stage schemas
 

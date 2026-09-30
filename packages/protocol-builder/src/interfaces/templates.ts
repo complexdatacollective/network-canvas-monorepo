@@ -26,6 +26,18 @@ import type { StageType } from '@codaco/protocol-validation';
  * actually still needs, so that question is answered by a list rather than by
  * an empty object.
  */
+/**
+ * A template rather than a schema default, because `ConcentricCircles`
+ * defaults `skewed` to `true` while the editor's toggle reads off. The ring
+ * count, matching the interview and the schema-8 migration, lives here
+ * rather than as a field default so the subject reset does not count it as
+ * the researcher's work.
+ */
+const DEFAULT_CIRCLES_BACKGROUND = {
+  concentricCircles: 4,
+  skewedTowardCenter: false,
+};
+
 const INTERFACE_TEMPLATES: Partial<
   Record<StageType, Record<string, FieldValue>>
 > = {
@@ -34,16 +46,21 @@ const INTERFACE_TEMPLATES: Partial<
       removeAfterConsideration: true,
     },
   },
+  Sociogram: {
+    background: DEFAULT_CIRCLES_BACKGROUND,
+  },
   Narrative: {
     behaviours: {
       allowRepositioning: true,
       automaticLayout: true,
     },
+    background: DEFAULT_CIRCLES_BACKGROUND,
   },
   NetworkComposer: {
     behaviours: {
       automaticLayout: true,
     },
+    background: DEFAULT_CIRCLES_BACKGROUND,
   },
   FamilyPedigree: {
     framing: { mode: 'fixed', value: 'gamete' },

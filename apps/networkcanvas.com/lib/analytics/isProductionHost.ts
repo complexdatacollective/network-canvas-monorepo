@@ -9,6 +9,21 @@ const PRODUCTION_HOSTNAMES = [
   'protocolgallery.networkcanvas.com',
 ];
 
+function configuredGalleryHostname(): string | undefined {
+  const configuredUrl = process.env.NEXT_PUBLIC_PROTOCOL_GALLERY_URL;
+  if (!configuredUrl) return undefined;
+
+  try {
+    const { protocol, hostname } = new URL(configuredUrl);
+    return protocol === 'https:' ? hostname : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function isProductionHost(hostname: string): boolean {
-  return PRODUCTION_HOSTNAMES.includes(hostname);
+  return (
+    PRODUCTION_HOSTNAMES.includes(hostname) ||
+    hostname === configuredGalleryHostname()
+  );
 }

@@ -1,8 +1,10 @@
 import { act, cleanup, render, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import PreviewText from '~/components/Query/Rules/PreviewText';
-import { getRuleDisplayOptions } from '~/components/Query/Rules/withDisplayOptions';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { describeRule } from '@codaco/protocol-builder/rules/ruleDescription';
+import RulePreview from '@codaco/protocol-builder/rules/RulePreview';
+import type { Codebook } from '@codaco/protocol-validation';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
@@ -27,10 +29,41 @@ function selectLocale(locale: string) {
   });
 }
 
+/**
+ * A rule as each of the two surfaces that read one renders it: `default` is
+ * the rule list inside the stage editor, `summary` the printable protocol
+ * summary. Both go through the builder package, which is the point — the
+ * sentence is one implementation and only its surrounding markup differs.
+ */
+function RuleSentence({
+  rule,
+  codebook,
+  variant,
+}: {
+  rule: unknown;
+  codebook: Codebook;
+  variant?: 'default' | 'summary';
+}) {
+  const intl = useAppIntl();
+  return (
+    <RulePreview
+      description={describeRule({ rule, codebook, intl })}
+      variant={variant}
+    />
+  );
+}
+
+// The fixtures below are written as codebooks and read as ones; nothing is
+// narrowed from a wider type, so each cast is the shape's own declaration.
+const asCodebook = (value: object): Codebook =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  value as unknown as Codebook;
+
 it.each(['default', 'summary'] as const)(
   'formats the whole %s operand list across languages while retaining duplicate labels, markup, and stored values',
   (variant) => {
     const rule = {
+      id: 'authored-rule',
       type: 'node',
       options: {
         type: 'person',
@@ -38,36 +71,34 @@ it.each(['default', 'summary'] as const)(
         operator: 'INCLUDES',
         value: ['first', 'second', 'third'],
       },
-      codebook: {
-        node: {
-          person: {
-            name: 'Authored_Person',
-            variables: {
-              groups: {
-                name: 'Authored_Groups',
-                type: 'categorical',
-                options: [
-                  { value: 'first', label: 'Bravo' },
-                  { value: 'second', label: '**Bravo**' },
-                  {
-                    value: 'third',
-                    label: '[Isabel](https://example.org/authored)',
-                  },
-                ],
-              },
+    };
+    const codebook = asCodebook({
+      node: {
+        person: {
+          name: 'Authored_Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            groups: {
+              name: 'Authored_Groups',
+              type: 'categorical',
+              options: [
+                { value: 'first', label: 'Bravo' },
+                { value: 'second', label: '**Bravo**' },
+                {
+                  value: 'third',
+                  label: '[Isabel](https://example.org/authored)',
+                },
+              ],
             },
           },
         },
       },
-    };
+    });
     const original = structuredClone(rule);
     const { container } = render(
       <ArchitectI18nProvider>
-        <PreviewText
-          type={rule.type}
-          options={getRuleDisplayOptions(rule)}
-          variant={variant}
-        />
+        <RuleSentence rule={rule} codebook={codebook} variant={variant} />
       </ArchitectI18nProvider>,
     );
     const tokens = Array.from(
@@ -107,14 +138,33 @@ it('retains literal numeric option operands while formatting their surrounding l
   const values = [12345, 0];
   const { container } = render(
     <ArchitectI18nProvider>
-      <PreviewText
-        type="ego"
-        options={{
-          attribute: 'Authored_Groups',
-          variableType: 'categorical',
-          operator: 'INCLUDES',
-          value: values,
+      <RuleSentence
+        rule={{
+          id: 'authored-rule',
+          type: 'ego',
+          options: {
+            attribute: 'groups',
+            operator: 'INCLUDES',
+            value: values,
+          },
         }}
+        codebook={asCodebook({
+          ego: {
+            variables: {
+              groups: {
+                name: 'Authored_Groups',
+                type: 'categorical',
+                // Numeric option values with no label of their own: the
+                // operand a rule stores is the option VALUE, and these are
+                // the ones a list formatter could quietly localise.
+                options: [
+                  { value: 12345, label: '' },
+                  { value: 0, label: '' },
+                ],
+              },
+            },
+          },
+        })}
       />
     </ArchitectI18nProvider>,
   );
@@ -158,21 +208,39 @@ it.each([
     if (!label || !displayed || !spanishConjunction) {
       throw new Error('Expected a complete Markdown label case');
     }
-    const values = ['Bravo', label];
+    const values = ['bravo', 'isabel'];
     const original = [...values];
+    const rule = {
+      id: 'authored-rule',
+      type: 'ego',
+      options: {
+        attribute: 'groups',
+        operator: 'INCLUDES',
+        value: values,
+      },
+    };
+    const codebook = asCodebook({
+      ego: {
+        variables: {
+          groups: {
+            name: 'Authored_Groups',
+            type: 'categorical',
+            options: [
+              { value: 'bravo', label: 'Bravo' },
+              { value: 'isabel', label },
+            ],
+          },
+        },
+      },
+    });
     const { container } = render(
       <ArchitectI18nProvider>
         {(['default', 'summary'] as const).map((variant) => (
-          <PreviewText
+          <RuleSentence
             key={variant}
-            type="ego"
+            rule={rule}
+            codebook={codebook}
             variant={variant}
-            options={{
-              attribute: 'Authored_Groups',
-              variableType: 'categorical',
-              operator: 'INCLUDES',
-              value: values,
-            }}
           />
         ))}
       </ArchitectI18nProvider>,

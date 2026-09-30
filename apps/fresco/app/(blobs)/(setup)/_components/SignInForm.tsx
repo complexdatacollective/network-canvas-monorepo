@@ -19,6 +19,7 @@ import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField
 import Form from '@codaco/fresco-ui/form/Form';
 import { type FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { login, recoveryCodeLogin, type LoginResult } from '~/actions/auth';
 import { verifyTwoFactor } from '~/actions/twoFactor';
@@ -26,6 +27,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthentication,
 } from '~/actions/webauthn';
+import { describePasskeyCeremonyError } from '~/i18n/passkeyCeremony';
 import { TWO_FACTOR_SETUP_PATH } from '~/lib/auth/paths';
 import { createAuthSchemas } from '~/schemas/auth';
 
@@ -226,14 +228,15 @@ export const SignInForm = () => {
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
   const [useRecovery, setUseRecovery] = useState(false);
 
-  const [webauthnSupported, setWebauthnSupported] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
 
-  useEffect(() => {
-    setWebauthnSupported(browserSupportsWebAuthn());
-  }, []);
+  // The server has no WebAuthn API, so the capability check can only run once
+  // there is a browser to ask. `useHasHydrated` is false through the hydrating
+  // render — matching the server's markup — and true afterwards.
+  const hasHydrated = useHasHydrated();
+  const webauthnSupported = hasHydrated && browserSupportsWebAuthn();
 
   useEffect(() => {
     if (retryAfter === null || retryAfter <= 0) {
@@ -341,11 +344,12 @@ export const SignInForm = () => {
 
       router.push('/dashboard');
     } catch (e) {
-      if (e instanceof Error && e.name === 'NotAllowedError') {
-        return;
-      }
       setPasskeyError(
-        createMessageError(messages.copyPasskeyAuthenticationFailed),
+        describePasskeyCeremonyError(
+          e,
+          'signIn',
+          messages.copyPasskeyAuthenticationFailed,
+        ),
       );
     } finally {
       setPasskeyLoading(false);
@@ -543,7 +547,7 @@ export const SignInForm = () => {
 
           <Button
             variant="outline"
-            className="w-full"
+            className="h-auto min-h-12 w-full py-2 text-center text-wrap"
             onClick={handlePasskeySignIn}
             disabled={passkeyLoading}
             icon={<KeyRound />}
@@ -568,7 +572,7 @@ export const SignInForm = () => {
         variant="link"
         type="button"
         onClick={() => setShowRecovery(true)}
-        className="mt-4"
+        className="mt-4 text-wrap"
       >
         {intl.formatMessage(messages.troubleSigningIn)}
       </Button>

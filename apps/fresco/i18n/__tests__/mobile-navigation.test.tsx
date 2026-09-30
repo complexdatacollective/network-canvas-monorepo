@@ -8,6 +8,9 @@ import { frescoCatalogs } from '~/src/locales/catalogs';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard' }));
 vi.mock('~/actions/auth', () => ({ logout: vi.fn() }));
+vi.mock('~/i18n/FrescoLocaleSwitcher', () => ({
+  default: () => <button type="button">Interface language</button>,
+}));
 
 const view = (locale: string) => (
   <AppI18nProvider
@@ -27,6 +30,9 @@ describe('Fresco mobile navigation locale changes', () => {
     );
     expect(
       await screen.findByRole('dialog', { name: 'Mobile navigation' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Interface language' }),
     ).toBeVisible();
     const participantLink = screen.getByRole('link', { name: 'Participants' });
     participantLink.focus();

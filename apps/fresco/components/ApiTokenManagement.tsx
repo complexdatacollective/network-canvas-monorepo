@@ -5,7 +5,7 @@ import { Clipboard } from 'lucide-react';
 import { use, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import {
   AppErrorMessage,
   AppMessage,
@@ -169,6 +169,115 @@ type ApiTokenManagementProps = {
   disabled?: boolean;
 };
 
+const copiedToClipboardTitle = (
+  <AppMessage message={messages.copiedToClipboard} />
+);
+
+const getApiTokenColumns = ({
+  intl,
+  disabled,
+  onToggleActive,
+  onRequestDelete,
+}: {
+  intl: IntlShape;
+  disabled?: boolean;
+  onToggleActive: (id: string, isActive: boolean) => Promise<void>;
+  onRequestDelete: (token: ApiToken) => void;
+}): StrictColumnDef<ApiToken>[] => [
+  {
+    accessorKey: 'description',
+    header: ({ column }) => (
+      <DataTableColumnHeader
+        column={column}
+        title={intl.formatMessage(messages.description)}
+      />
+    ),
+    cell: ({ row }) => (
+      <span data-testid={`token-row-${row.original.description ?? 'Untitled'}`}>
+        {row.original.description ?? (
+          <em>{intl.formatMessage(messages.untitled)}</em>
+        )}
+      </span>
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: 'createdAt',
+    sortingFn: 'datetime',
+    header: ({ column }) => (
+      <DataTableColumnHeader
+        column={column}
+        title={intl.formatMessage(messages.created)}
+      />
+    ),
+    cell: ({ row }) => (
+      <TimeAgo
+        date={row.original.createdAt}
+        className="flex space-x-2 truncate"
+      />
+    ),
+  },
+  {
+    accessorKey: 'lastUsedAt',
+    sortingFn: 'datetime',
+    header: ({ column }) => (
+      <DataTableColumnHeader
+        column={column}
+        title={intl.formatMessage(messages.lastUsed)}
+      />
+    ),
+    cell: ({ row }) => {
+      if (!row.original.lastUsedAt) {
+        return intl.formatMessage(messages.copyNever);
+      }
+
+      return (
+        <TimeAgo
+          date={row.original.lastUsedAt}
+          className="flex space-x-2 truncate"
+        />
+      );
+    },
+  },
+  {
+    accessorKey: 'isActive',
+    sortingFn: 'basic',
+    header: ({ column }) => (
+      <DataTableColumnHeader
+        column={column}
+        title={intl.formatMessage(messages.status)}
+      />
+    ),
+    cell: ({ row }) => (
+      <ToggleField
+        aria-label={intl.formatMessage(messages.activeToken, {
+          name:
+            row.original.description ?? intl.formatMessage(messages.untitled),
+        })}
+        value={row.original.isActive}
+        disabled={disabled}
+        onChange={() => onToggleActive(row.original.id, row.original.isActive)}
+      />
+    ),
+  },
+  {
+    id: 'actions',
+    enableSorting: false,
+    cell: ({ row }: { row: Row<ApiToken> }) => (
+      <Button
+        onClick={() => onRequestDelete(row.original)}
+        color="destructive"
+        size="sm"
+        disabled={disabled}
+        data-testid={`delete-token-${row.original.description ?? 'Untitled'}`}
+      >
+        {intl.formatMessage(commonMessages.delete)}
+      </Button>
+    ),
+  },
+];
+
 export default function ApiTokenManagement({
   tokensPromise,
   disabled,
@@ -253,104 +362,12 @@ export default function ApiTokenManagement({
     setIsDeleting(false);
   };
 
-  const columns: StrictColumnDef<ApiToken>[] = [
-    {
-      accessorKey: 'description',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={intl.formatMessage(messages.description)}
-        />
-      ),
-      cell: ({ row }) => (
-        <span
-          data-testid={`token-row-${row.original.description ?? 'Untitled'}`}
-        >
-          {row.original.description ?? (
-            <em>{intl.formatMessage(messages.untitled)}</em>
-          )}
-        </span>
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: 'createdAt',
-      sortingFn: 'datetime',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={intl.formatMessage(messages.created)}
-        />
-      ),
-      cell: ({ row }) => (
-        <TimeAgo
-          date={row.original.createdAt}
-          className="flex space-x-2 truncate"
-        />
-      ),
-    },
-    {
-      accessorKey: 'lastUsedAt',
-      sortingFn: 'datetime',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={intl.formatMessage(messages.lastUsed)}
-        />
-      ),
-      cell: ({ row }) => {
-        if (!row.original.lastUsedAt) {
-          return intl.formatMessage(messages.copyNever);
-        }
-
-        return (
-          <TimeAgo
-            date={row.original.lastUsedAt}
-            className="flex space-x-2 truncate"
-          />
-        );
-      },
-    },
-    {
-      accessorKey: 'isActive',
-      sortingFn: 'basic',
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={intl.formatMessage(messages.status)}
-        />
-      ),
-      cell: ({ row }) => (
-        <ToggleField
-          aria-label={intl.formatMessage(messages.activeToken, {
-            name:
-              row.original.description ?? intl.formatMessage(messages.untitled),
-          })}
-          value={row.original.isActive}
-          disabled={disabled}
-          onChange={() =>
-            handleToggleActive(row.original.id, row.original.isActive)
-          }
-        />
-      ),
-    },
-    {
-      id: 'actions',
-      enableSorting: false,
-      cell: ({ row }: { row: Row<ApiToken> }) => (
-        <Button
-          onClick={() => setTokenToDelete(row.original)}
-          color="destructive"
-          size="sm"
-          disabled={disabled}
-          data-testid={`delete-token-${row.original.description ?? 'Untitled'}`}
-        >
-          {intl.formatMessage(commonMessages.delete)}
-        </Button>
-      ),
-    },
-  ];
+  const columns = getApiTokenColumns({
+    intl,
+    disabled,
+    onToggleActive: handleToggleActive,
+    onRequestDelete: setTokenToDelete,
+  });
 
   const { table } = useClientDataTable({
     data: tokens,
@@ -438,7 +455,7 @@ export default function ApiTokenManagement({
               onClick={() => {
                 void navigator.clipboard.writeText(createdToken!);
                 add({
-                  title: <AppMessage message={messages.copiedToClipboard} />,
+                  title: copiedToClipboardTitle,
                   variant: 'success',
                 });
               }}

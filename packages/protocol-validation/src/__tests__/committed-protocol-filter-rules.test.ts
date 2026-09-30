@@ -41,13 +41,29 @@ const repoRoot = path.resolve(import.meta.dirname, '../../../..');
  */
 const CORPUS_ROOTS = ['apps', 'packages'];
 
+/**
+ * Directories that hold GENERATED protocols rather than committed ones.
+ *
+ * The Fresco release test builds its fixtures into a git-ignored artifacts
+ * directory, and several of them are damaged on purpose — a filter rule the
+ * schema must refuse is the whole point of one of them. Sweeping them in would
+ * fail this test on any machine that had run the release test, and pass on
+ * every machine that had not, which is the same "different corpus on different
+ * machines" problem the named roots above exist to avoid.
+ */
+const GENERATED = ['release-test/artifacts/'];
+
 const discoverProtocols = (): string[] =>
   CORPUS_ROOTS.flatMap((root) =>
     readdirSync(path.join(repoRoot, root), { recursive: true })
       .filter((entry): entry is string => typeof entry === 'string')
       .filter(
         (entry) =>
-          entry.endsWith('.netcanvas') && !entry.includes('node_modules'),
+          entry.endsWith('.netcanvas') &&
+          !entry.includes('node_modules') &&
+          !GENERATED.some((generated) =>
+            entry.split(path.sep).join('/').includes(generated),
+          ),
       )
       .map((entry) => path.join(root, entry)),
   ).toSorted();

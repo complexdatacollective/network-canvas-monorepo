@@ -1,13 +1,6 @@
 import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import {
-  createElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createElement, useCallback, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -150,9 +143,15 @@ const Timeline = () => {
   // with redux (the source of truth) whenever the committed stage list changes.
   const [orderedStages, setOrderedStages] = useState(stages);
 
-  useEffect(() => {
+  // Adopting a newly committed list is a change in a value we already have, so
+  // it is compared during render rather than synced from an effect: the drag
+  // order is replaced in the same render that receives the new list, without a
+  // commit that paints the stale order first.
+  const [committedStages, setCommittedStages] = useState(stages);
+  if (committedStages !== stages) {
+    setCommittedStages(stages);
     setOrderedStages(stages);
-  }, [stages]);
+  }
 
   // Every row's "open" control, so a deleted row can hand focus to a surviving
   // neighbour. WHICH neighbour is decided eagerly, before the delete, from the
@@ -445,7 +444,7 @@ const Timeline = () => {
           // no count — which is the whole point of this element, and would
           // have left the "wrong number of stages" defect fixed on one of the
           // two engines Architect ships to. Same reason, same fix as
-          // `PreviewRules.tsx` and fresco-ui's `ArrayField`.
+          // fresco-ui's `ArrayField`.
           // oxlint-disable-next-line jsx-a11y/no-redundant-roles
           role="list"
           className="relative grid w-full grid-cols-1 justify-items-center gap-1"

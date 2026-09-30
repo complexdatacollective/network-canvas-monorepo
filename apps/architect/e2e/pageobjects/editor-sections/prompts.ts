@@ -1,18 +1,18 @@
 import { type Locator, type Page } from '@playwright/test';
 
-// Every interface's `prompts` array is backed by the same DialogArrayField
-// (Form/DialogArrayField.tsx) pattern — verified against
-// DyadCensusPrompts.tsx (`addTitle: 'Edit Prompt'`, `editorTitle: 'Edit
-// Prompt'`) and the same shape recurs across the other prompt-array sections.
-// Each add button names what it adds ("Create new prompt", "Create new
-// preset", "Create new disease" — DialogArrayField requires the label, there
-// is no default), so `addButtonLabel` names the list this helper is driving.
-// The dialog's submit button reads "Add" for a brand-new item
-// (DialogArrayField.tsx's `DialogEditor`: `isNewItem ? 'Add' : 'Save'`).
+// Every interface's `prompts` array is the same list-in-a-dialog pattern from
+// `@codaco/protocol-builder` (`form/rowDialog.tsx`'s `RowList`/`RowDialog`,
+// wired by `sections/PromptsSection.tsx` and the per-interface prompt
+// sections). Each list names what it adds on its own add button ("Create new
+// prompt", "Create new preset", "Create new disease" — `addButtonLabel` is
+// required, there is no default), so `addButtonLabel` names the list this
+// helper is driving. The dialog's submit reads "Add" for a brand-new row and
+// "Save" for one being edited (`RowDialog`: `isNewItem ? messages.addSubmit :
+// commonMessages.save`).
 //
-// Still takes the enclosing section `Locator` rather than the Page: a stage
-// can render two lists of the SAME kind (a Network Composer's per-edge-type
-// attribute lists), and scoping keeps the click on the intended one. The
+// Still takes the enclosing section/field `Locator` rather than the Page: a
+// stage can render two lists of the SAME kind (a Network Composer's per-edge-
+// type attribute lists), and scoping keeps the click on the intended one. The
 // opened dialog is a page-level portal, so the "Add" submit is unambiguous and
 // is targeted via `section.page()`.
 //
@@ -24,11 +24,11 @@ export async function addPrompt(
   fill: () => Promise<void>,
   opts: {
     // A locator that is VISIBLE only in a genuinely fresh dialog (e.g. an
-    // unset picker's 'Select variable' button). The item dialogs share one
-    // never-reinitializing redux-form ('editable-list-form'); if the next
-    // dialog opens before the previous unmount completed, it resurrects the
-    // PREVIOUS item's values and id (observed live). When the sign doesn't
-    // show, cancel — a full close cycle forces the unmount — and reopen.
+    // unset picker's own empty state). Each row dialog now mounts a form store
+    // of its own, keyed to the row it opened on, so a caller that does not
+    // care can leave this out; passing it is how a caller REQUIRES that the
+    // dialog it is about to fill is the empty one, and reopens once when the
+    // sign does not show.
     freshSign?: (page: Page) => Locator;
     /** The list's own add-button label. */
     addButtonLabel?: string;
@@ -61,13 +61,9 @@ export async function addPrompt(
     .page()
     .getByRole('button', { name: 'Add', exact: true });
   await submit.click();
-  // Wait for the dialog subtree to actually LEAVE the DOM, not just hide:
-  // the dialog form (InlineEditScreen/Form) has `enableReinitialize: false`
-  // and every item dialog shares the 'editable-list-form' name, so opening
-  // the next dialog while this one is still mounted mid-exit-animation
-  // reuses the PREVIOUS item's form state (stale values and — worse — a
-  // duplicate item id that the app then rejects at commit). Unmount destroys
-  // the form state (redux-form destroyOnUnmount), guaranteeing a fresh
-  // initialize on the next open. Observed live before this guard existed.
+  // Wait for the dialog subtree to actually LEAVE the DOM, not just hide: the
+  // next row's dialog animates in over this one's exit, and a locator resolved
+  // while both are mounted can land on the closing copy. Waiting for the
+  // submit to detach is waiting for the dialog that owned it to be gone.
   await submit.waitFor({ state: 'detached' });
 }

@@ -14,6 +14,7 @@ import {
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
+  readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
 import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
@@ -90,10 +91,11 @@ describe('the package’s own protocolValidation.* catalogs', () => {
       // only its divergences; any other language has to translate everything,
       // because there is no base underneath it to fall through to. Same rule
       // as the shared common.* guard in @codaco/app-i18n.
+      const sources = readTranslationSources(localesDir, locale);
       const issues =
         locale.split('-')[0] === SOURCE_LOCALE
-          ? checkOverrideLocale(committedEn, catalog)
-          : checkFullLocale(committedEn, catalog);
+          ? checkOverrideLocale(committedEn, catalog, sources)
+          : checkFullLocale(committedEn, catalog, sources);
       expect(issues, `protocolValidation catalog issues for ${locale}`).toEqual(
         [],
       );

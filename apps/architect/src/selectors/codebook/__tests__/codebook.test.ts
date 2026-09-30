@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Stage } from '@codaco/protocol-validation';
+import {
+  closeStageDraft,
+  publishStageDraft,
+} from '~/components/StageEditor/stageDraftBeacon';
 import type { RootState } from '~/ducks/modules/root';
 
 import {
@@ -40,36 +44,33 @@ describe('codebook selectors', () => {
       expect(result).toMatchSnapshot();
     });
 
-    // `StageFormBridge` mirrors the stage form's live values into Redux on a
-    // debounce while the researcher types, replacing
-    // `stageEditorDraft.ui.liveValues` with a new object per tick even when
-    // nothing relevant changed. Every mounted consumer of variable options
-    // selects through this selector, so its identity must hold across those
-    // ticks or each keystroke re-renders every picker and prompt editor.
-    describe('identity across live-value mirror ticks', () => {
+    // The stage editor publishes its whole document on every change to its
+    // form, and every mounted consumer of variable options selects through
+    // this selector — so its identity must hold across the publications that
+    // change nothing relevant, or each keystroke re-renders every picker and
+    // prompt editor.
+    describe('identity across published stage drafts', () => {
       const subject = { type: 'bar', entity: 'node' as const };
-      const withLiveValues = (liveValues: Record<string, unknown> | null) => ({
-        ...testState,
-        stageEditorDraft: {
-          ...testState.stageEditorDraft,
-          ui: { ...testState.stageEditorDraft.ui, liveValues },
-        },
+      const state = testState as unknown as RootState;
+      const publish = (fields: Record<string, unknown>) => {
+        publishStageDraft(
+          { id: 'stage-1', type: 'Information', ...fields } as unknown as Stage,
+          {},
+          fields,
+        );
+      };
+
+      afterEach(() => {
+        closeStageDraft();
       });
 
-      it('returns the identical array and elements when only the liveValues object identity changes', () => {
-        // Content-equal but referentially distinct: a mirror tick that
-        // changed nothing.
-        const tickA = withLiveValues({ draftPromptText: 'still typing' });
-        const tickB = withLiveValues({ draftPromptText: 'still typing' });
-
-        const resultA = getVariableOptionsForSubject(
-          tickA as unknown as RootState,
-          subject,
-        );
-        const resultB = getVariableOptionsForSubject(
-          tickB as unknown as RootState,
-          subject,
-        );
+      it('returns the identical array and elements when only the published draft identity changes', () => {
+        publish({ draftPromptText: 'still typing' });
+        const resultA = getVariableOptionsForSubject(state, subject);
+        // The same document again: a keystroke that changed nothing about
+        // which variables are named.
+        publish({ draftPromptText: 'still typing' });
+        const resultB = getVariableOptionsForSubject(state, subject);
 
         expect(resultB).toBe(resultA);
         expect(resultB[0]).toBe(resultA[0]);
@@ -79,17 +80,10 @@ describe('codebook selectors', () => {
         // 'charlie' is defined on node/bar but referenced by no stage, so a
         // live value naming it must flip its isUsed — the intentional
         // live-stage reactivity the identity fix must not break.
-        const before = withLiveValues({ draftPromptText: 'still typing' });
-        const after = withLiveValues({ someField: 'charlie' });
-
-        const resultBefore = getVariableOptionsForSubject(
-          before as unknown as RootState,
-          subject,
-        );
-        const resultAfter = getVariableOptionsForSubject(
-          after as unknown as RootState,
-          subject,
-        );
+        publish({ draftPromptText: 'still typing' });
+        const resultBefore = getVariableOptionsForSubject(state, subject);
+        publish({ someField: 'charlie' });
+        const resultAfter = getVariableOptionsForSubject(state, subject);
 
         expect(resultAfter).not.toBe(resultBefore);
         expect(

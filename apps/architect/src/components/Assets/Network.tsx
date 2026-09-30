@@ -53,23 +53,46 @@ const Network = ({
   assetName,
 }: NetworkProps) => {
   const intl = useAppIntl();
-  const [content, setContent] = useState({ ...initialContent });
+  // Held against the asset it was read for. Rendering derives from that match,
+  // so the table is empty for an asset that has not been read yet instead of
+  // showing the previous asset's rows, and no clearing setState has to race
+  // the read that replaces them.
+  const [loaded, setLoaded] = useState<{
+    assetId: string;
+    assetName: string;
+    network: NetworkType;
+  } | null>(null);
   useEffect(() => {
     if (!assetId || !assetName) {
-      setContent({ ...initialContent });
-      return;
+      return undefined;
     }
+    let cancelled = false;
     const result = networkReader(assetName, assetId);
     if (result) {
-      result.then((networkData: unknown) => {
+      void (async () => {
+        const networkData: unknown = await result;
+        if (cancelled) {
+          return;
+        }
         const data = networkData as Partial<NetworkType> | undefined;
-        setContent({
-          nodes: data?.nodes ?? [],
-          edges: data?.edges ?? [],
+        setLoaded({
+          assetId,
+          assetName,
+          network: {
+            nodes: data?.nodes ?? [],
+            edges: data?.edges ?? [],
+          },
         });
-      });
+      })();
     }
+    return () => {
+      cancelled = true;
+    };
   }, [assetId, assetName]);
+  const content =
+    loaded?.assetId === assetId && loaded.assetName === assetName
+      ? loaded.network
+      : initialContent;
   const allRows = useMemo(() => getRows(content), [content]);
   const columns = useMemo(() => getColumns(content), [content]);
   const data = useMemo(() => allRows.slice(0, ROW_LIMIT), [allRows]);

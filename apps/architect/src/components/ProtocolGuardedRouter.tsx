@@ -3,7 +3,7 @@ import { Router, type AroundNavHandler } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
-import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
+import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useAppDispatch } from '~/ducks/hooks';
 import { store } from '~/ducks/store';
 import {
@@ -14,7 +14,6 @@ import {
   promptLeaveEditor,
   useProtocolNavGuard,
 } from '~/hooks/useProtocolNavGuard';
-import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 
 const NavGuardListener = () => {
   useProtocolNavGuard();
@@ -45,14 +44,6 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
         return;
       }
 
-      // The stage form's mirror into Redux is debounced, so the edit the user
-      // made in the moment before pressing "Return to start screen" is not
-      // there yet. Reading the dirty flag without flushing first shows the
-      // reassuring "your work is saved automatically" dialog over an edit that
-      // is about to be thrown away — the same flush the popstate guard in
-      // `useProtocolNavGuard` already performs for Back.
-      flushStageLiveValues();
-
       void promptLeaveEditor(
         dispatch,
         openDialog,
@@ -63,7 +54,7 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
         // A nested editor left open holds unsaved work that the stage form's
         // mirror knows nothing about; without this the researcher is shown the
         // reassuring "saved automatically" copy over a draft about to be lost.
-        getLiveStageDraftDirty(store.getState()) || hasDirtyNestedDraft(),
+        readStageDraft().dirty || hasDirtyNestedDraft(),
         // ...and `persistence` still decides WHICH discard copy that is, so a
         // tab that cannot save is never told the protocol behind the draft is
         // fine.

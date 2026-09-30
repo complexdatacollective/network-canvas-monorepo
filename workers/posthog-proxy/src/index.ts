@@ -54,13 +54,21 @@ async function retrieveStatic(
 async function forwardRequest(request: Request, pathWithSearch: string) {
   // Analytics are described as anonymous, so the participant's or
   // researcher's network address must not reach PostHog with them.
-  // Cloudflare sets CF-Connecting-IP on the incoming request; a client
-  // cannot forge it, but we must not turn around and forward it upstream.
+  // Cloudflare sets these on the incoming request (CF-Connecting-IPv6 in
+  // place of CF-Connecting-IP when Pseudo-IPv4 overwrite mode hides an IPv6
+  // client's real address there); a client cannot forge them, but we must
+  // not turn around and forward any of them upstream.
   const originHeaders = new Headers(request.headers);
   originHeaders.delete('cookie');
-  originHeaders.delete('x-forwarded-for');
-  originHeaders.delete('cf-connecting-ip');
-  originHeaders.delete('true-client-ip');
+  for (const header of [
+    'x-forwarded-for',
+    'cf-connecting-ip',
+    'cf-connecting-ipv6',
+    'true-client-ip',
+    'x-real-ip',
+  ]) {
+    originHeaders.delete(header);
+  }
 
   const originRequest = new Request(`https://${API_HOST}${pathWithSearch}`, {
     method: request.method,

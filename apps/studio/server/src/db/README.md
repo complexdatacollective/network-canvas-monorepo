@@ -1,12 +1,16 @@
 # Studio's schema and its sidecars
 
-Studio's database is defined in two halves. Drizzle defines the tables,
+Studio's database is defined in three parts. Drizzle defines the tables,
 columns, indexes, CHECK constraints, foreign keys and row-level security
 policies. Everything else Postgres needs — the roles the application runs as,
 `FORCE ROW LEVEL SECURITY`, the `GRANT`/`REVOKE` pairs, and the plpgsql trigger
-functions that enforce transitions — is written as raw SQL in **sidecars**.
+functions that enforce transitions — is written as raw SQL in **sidecars**. The
+third part is not Studio's to define: pg-boss owns the `pgboss` schema, which
+`scripts/apply.ts` installs from pg-boss's own construction plan, with a grants
+sidecar and the queue declarations beside it in `@codaco/studio-sync/jobs`
+(#1895).
 
-Both halves are hashed into one fingerprint and applied together. A sidecar is
+All three are hashed into one fingerprint and applied together. A sidecar is
 not a migration, an afterthought, or an escape hatch: it is the part of the
 schema that Drizzle has no vocabulary for, and it carries most of the rules
 that make a row safe to trust.
@@ -119,42 +123,44 @@ Both properties are pinned by tests rather than by comment alone — see below.
 
 ## How they are applied
 
-The image's explicit `migrate` command applies immutable versioned SQL. The
-server itself only verifies. `scripts/apply.ts` remains the direct-definition
-helper for disposable developer resets, demos and test fixtures.
+`scripts/apply.ts` is the only thing that writes schema; the server itself only
+verifies.
 
 - `renderSchemaStatements()` = the Drizzle DDL that `drizzle-kit` generates,
   followed by `SIDECARS`.
-- `computeSchemaFingerprint()` is a SHA-256 over those statements joined.
+- `renderJobStatements()` = pg-boss's construction plan for the `pgboss`
+  schema, the job grants from `@codaco/studio-sync/jobs`, and the queue
+  declarations. They are rendered separately because the first list is the DDL
+  the suites execute into a scratch schema by setting `search_path`, and these
+  statements name a schema of their own instead.
+- `computeSchemaFingerprint()` is a SHA-256 over both lists joined.
   **Sidecars are inside the hash, and whitespace counts** — editing a sidecar
   changes the fingerprint, which is why every sidecar change needs
-  `pnpm --filter @codaco/studio-server sync-fingerprint`.
-- Production migrations store that version's Drizzle snapshot, generated delta,
-  complete ordered sidecars and target fingerprint. A checksummed history and
-  one transaction under the advisory lock prevent partial application or silent
-  adoption of unknown databases. See [Database migrations](../../../MIGRATIONS.md).
-- Developer-only `applySchema()` takes an advisory lock, clears the stamp (so a failure
+  `pnpm --filter @codaco/studio-server sync-fingerprint`. So is pg-boss's plan:
+  upgrading the dependency, changing a grant, or changing a queue's retry,
+  expiry or dead-letter settings moves the fingerprint too, and every process
+  refuses the database until `apply-schema` has been run against it.
+- `applySchema()` takes an advisory lock, clears the stamp (so a failure
   part-way cannot leave a drifted database reading as current), runs
-  `drizzle-kit push`, executes the sidecars, and stamps the fingerprint.
+  `drizzle-kit push`, executes the sidecars, installs the `pgboss` schema and
+  re-runs its grants, reconciles every declared queue, and stamps the
+  fingerprint. A database whose installed pg-boss version is not this build's
+  is dropped and reinstalled rather than migrated — the same pre-release
+  posture the public schema takes, and it discards whatever was queued, which
+  is why the count is logged first. No process migrates pg-boss at start.
+- `migrateDatabase()` (`src/db/migrate.ts`) is what `studio-api migrate` runs
+  in the image, where drizzle-kit does not exist. The build renders the same
+  statements into `dist/schema-ddl.json` (`scripts/render-schema-ddl.ts`) and
+  this executes them in one transaction, then installs pg-boss's schema and
+  reconciles the queues through the same `src/jobs/install.ts` that
+  `applySchema` calls, and stamps the fingerprint. It refuses a document whose
+  statements do not hash to the fingerprint beside them, and — pre-release — it
+  refuses a database another build created rather than reconciling it (#1901).
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
-  `mismatch`, `unstamped`, `unversioned`, or `unsafe-evidence`). A database carrying the tables with no
+  `mismatch` or `unstamped`). A database carrying the tables with no
   fingerprint is refused rather than adopted: the SQL that built it is unknown.
-  Outside explicit local development, the caller supplies the validated
-  `STUDIO_DATABASE_ALLOWED_LOGINS` enrollment. The check pins a single connection,
-  verifies database CONNECT and existing sessions, and checks evidence shape,
-  effective table/column write privileges, owner-backed triggers, and rewrite
-  rules before reading the fingerprint. Designated runtime/backup roles and
-  every enrolled non-administrative login remain protected regardless of evidence
-  ownership; the actual runtime session is protected even if it becomes the
-  database owner. An offline database owner or explicitly configured administrative login remains able to administer evidence; configuring the actual scoped serving login as administrative never exempts it.
-  Startup and readiness additionally verify the actual app and maintenance
-  login capabilities. Production supplies those as distinct connections whose
-  logins may assume exactly their intended singleton runtime role. Only
-  `allowUnversioned: true`, passed from validated local
-  development configuration, skips enrollment/ACL provenance requirements;
-  relation-shape and owner-backed-action checks still apply.
 
-Domain test suites take a different path. `provisionScratchSchema()` runs the composed
+Test suites take a different path. `provisionScratchSchema()` runs the composed
 statements directly instead of pushing, because `drizzle-kit push` introspects
 `public` and cannot target a named schema.
 

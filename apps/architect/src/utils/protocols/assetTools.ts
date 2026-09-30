@@ -8,7 +8,7 @@ import {
   type Network,
   validateNames,
 } from '@codaco/protocol-validation';
-import { getAssetById } from '~/utils/assetUtils';
+import { getAssetById, MissingAssetDataError } from '~/utils/assetUtils';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
 
 type ReaderFunc = (...args: string[]) => Promise<unknown>;
@@ -37,7 +37,7 @@ const readJsonNetwork = async (assetId: string): Promise<Network> => {
   const asset = await getAssetById(assetId);
 
   if (!asset) {
-    throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+    throw new MissingAssetDataError(assetId);
   }
 
   if (typeof asset.data === 'string') {
@@ -52,7 +52,7 @@ const readCsvNetwork = async (assetId: string): Promise<Network> => {
   const asset = await getAssetById(assetId);
 
   if (!asset) {
-    throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+    throw new MissingAssetDataError(assetId);
   }
 
   if (typeof asset.data === 'string') {
@@ -87,7 +87,7 @@ export const networkReader = withExtensionSwitch({
 export const getNetworkVariables = async (assetId: string) => {
   const asset = await getAssetById(assetId);
   if (!asset) {
-    throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+    throw new MissingAssetDataError(assetId);
   }
 
   const network = (await networkReader(asset.name, assetId)) as Network | null;
@@ -194,7 +194,7 @@ export const getGeoJsonVariables = async (assetId: string) => {
   const asset = await getAssetById(assetId);
 
   if (!asset) {
-    throw new Error(`Asset with ID "${assetId}" not found in IndexedDB`);
+    throw new MissingAssetDataError(assetId);
   }
 
   if (typeof asset.data === 'string') {

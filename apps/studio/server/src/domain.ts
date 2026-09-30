@@ -3,6 +3,7 @@ import type { InferContractRouterOutputs } from '@orpc/contract';
 import type { contract } from '@codaco/studio-rpc';
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
+import type { Installation } from './setup/bootstrap.ts';
 import { STUDIO_VERSION } from './version.ts';
 
 // The domain layer: one implementation of app behaviour that every surface
@@ -26,10 +27,11 @@ export type InstanceStatus = InferContractRouterOutputs<
 export type AuthCapabilities = InstanceStatus['auth'];
 
 /**
- * Which topology this deployment is, and whether it offers billing. The
- * client reads it to decide what a signed-in researcher may navigate to;
- * the HTTP gate in src/client-assets.ts enforces the same classification
- * independently, so a client that ignores this cannot reach the surfaces.
+ * Which topology this deployment is, and whether it offers billing. The client
+ * reads it to decide what a signed-in researcher may navigate to, and guards
+ * its own route tree with the same classification
+ * (client/src/lib/deployment.ts). Since #1909 the client is served by nginx
+ * rather than by this process, so there is no second, HTTP-layer gate.
  */
 export type DeploymentStatus = InstanceStatus['deployment'];
 
@@ -44,16 +46,35 @@ export function getDeploymentStatus(mode: DeploymentMode): DeploymentStatus {
   };
 }
 
+/**
+ * How a surface reads the installation row without knowing where it lives, or
+ * whether there is a database at all. `null` is "nothing to read": no
+ * database, no installation row, or a read that failed — see `createApp`,
+ * which is where the fallback is decided, because `status` must stay
+ * answerable while the database is away.
+ */
+export type InstallationReader = () => Promise<Installation | null>;
+
+/** Until an owner names the instance at first-run setup (#1909). */
+const DEFAULT_INSTANCE_NAME = 'Network Canvas Studio';
+
 export function getInstanceStatus(
   auth: AuthCapabilities,
   deployment: DeploymentStatus,
-  telemetry: boolean,
+  installation: Installation | null,
 ): InstanceStatus {
   return {
-    name: 'Network Canvas Studio',
+    name: installation?.name ?? DEFAULT_INSTANCE_NAME,
     version: STUDIO_VERSION,
     auth,
     deployment,
-    telemetry,
+    setup: {
+      // An instance that exists and has no owner is the one case `/setup` is
+      // for. Nothing to read reports `false` rather than `true`: a deployment
+      // with no database, and a database the schema step never ran against,
+      // both have no bootstrap token outstanding, so offering the screen would
+      // offer a form that cannot be completed.
+      required: installation !== null && installation.ownerUserId === null,
+    },
   };
 }

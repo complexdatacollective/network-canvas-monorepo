@@ -5,9 +5,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
-import type { ResourceInspection } from '../gateway.ts';
+import type { ResourceInspection } from '../types.ts';
 import {
   formatByteLength,
+  RESOURCE_KIND_BADGE_COLORS,
   resourceKindLabel,
   resourceStatusLabel,
 } from './resourceKinds.ts';
@@ -17,7 +18,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.resourceSummary.fileTerm',
     defaultMessage: 'File',
     description:
-      'Label beside the original filename of a resource a researcher imported into their protocol.',
+      'Label beside the original filename of a file a researcher has just imported into their protocol and not yet saved.',
   },
   sizeTerm: {
     id: 'protocolBuilder.resourceSummary.sizeTerm',
@@ -101,13 +102,28 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         <Heading level="h4" margin="none">
           {descriptor.name}
         </Heading>
-        <Badge variant="outline">
+        {/*
+          The type's own colour, which is what the protocol's resource library
+          badges it in.
+        */}
+        <Badge
+          appearance="outline"
+          color={RESOURCE_KIND_BADGE_COLORS[descriptor.kind]}
+        >
           {resourceKindLabel(descriptor.kind, intl)}
         </Badge>
         <Badge>{resourceStatusLabel(descriptor.status, intl)}</Badge>
       </div>
       <dl className="flex flex-col gap-1 text-sm">
-        {descriptor.source !== undefined && (
+        {/*
+          The file the researcher picked, while their import is still theirs to
+          recognise. Only while it is staged: once the protocol has committed
+          it, `source` is the name the host files the bytes under, which the
+          contract lets a host derive from the content. The
+          heading above is what the protocol calls the resource, and that is
+          the answer to "which file is this" for a saved one.
+        */}
+        {descriptor.status === 'staged' && descriptor.source !== undefined && (
           <Detail term={intl.formatMessage(messages.fileTerm)}>
             {descriptor.source}
           </Detail>
