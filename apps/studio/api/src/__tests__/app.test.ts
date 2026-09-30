@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Layer, Option } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import { openApiDocument } from '@codaco/studio-contract/api/v1';
@@ -7,6 +7,7 @@ import { createStudio } from '../app.ts';
 import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
 import type { AuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { authServiceStub } from './support/auth.ts';
 import { createRpcClient } from './support/rpc.ts';
@@ -260,6 +261,34 @@ describe('studio server', () => {
           status: 404,
         });
       }
+    } finally {
+      await stack.dispose();
+    }
+  });
+  it('closes unmatched paths too while the instance is in maintenance', async () => {
+    // No route claims these, so it is the gate, a global middleware, that has
+    // to answer them — there is no catch-all route behind it any more.
+    const env = readEnv();
+    const closed = Layer.succeed(MaintenanceTriggers)(
+      MaintenanceTriggers.of({
+        closure: Effect.succeed(
+          Option.some({
+            trigger: 'maintenance' as const,
+            detail: 'maintenance mode is on',
+          }),
+        ),
+      }),
+    );
+    const stack = composeStudio(env, createStudio(env), undefined, closed);
+    try {
+      for (const path of ['/nope', '/', '/api/nope', '/storage/']) {
+        const res = await stack.request(path);
+        expect(res.status, path).toBe(503);
+        expect(res.headers.get('Content-Type'), path).toContain(
+          'application/problem+json',
+        );
+      }
+      expect((await stack.request('/healthz')).status).toBe(200);
     } finally {
       await stack.dispose();
     }

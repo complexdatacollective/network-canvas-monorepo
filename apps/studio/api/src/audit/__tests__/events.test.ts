@@ -214,4 +214,65 @@ describe('audit event registry', () => {
       expect(() => parseAuditEventInput(withFirst(refused)), refused).toThrow();
     }
   });
+
+  it('holds every bound the zod schemas carried', () => {
+    const withDetails = <Key extends AuditEventKey>(
+      key: Key,
+      details: Record<string, unknown>,
+    ) => {
+      const fixture = AUDIT_EVENT_REGISTRY[key].fixture;
+      return { ...fixture, details: { ...fixture.details, ...details } };
+    };
+    const withField = (field: string, value: unknown) => ({
+      ...AUDIT_EVENT_REGISTRY['protocol.created@1'].fixture,
+      [field]: value,
+    });
+    const roles = (newRoles: readonly string[]) =>
+      withDetails('team.member.role_changed@1', { newRoles });
+    const committed = (details: Record<string, unknown>) =>
+      withDetails('protocol.draft.committed@1', details);
+    const sections = (count: number) =>
+      Array.from({ length: count }, (_, index) => `stage:${index}`);
+    const cases: [string, unknown, boolean][] = [
+      ['three roles', roles(['owner', 'admin', 'member']), true],
+      ['four roles', roles(['owner', 'admin', 'member', 'member']), false],
+      ['no roles', roles([]), false],
+      ['a 20-digit revision', committed({ revision: '1'.repeat(20) }), true],
+      ['a 21-digit revision', committed({ revision: '1'.repeat(21) }), false],
+      ['a 255-character id', withField('teamId', 'x'.repeat(255)), true],
+      ['a 256-character id', withField('teamId', 'x'.repeat(256)), false],
+      ['an empty id', withField('teamId', ''), false],
+      [
+        'a fractional suppressed count',
+        withDetails('security.denied_attempts.rate_limited@1', {
+          suppressedCount: 1.5,
+        }),
+        false,
+      ],
+      ['1000 operations', committed({ operationCount: 1_000 }), true],
+      ['1001 operations', committed({ operationCount: 1_001 }), false],
+      ['128 sections', committed({ affectedSectionIds: sections(128) }), true],
+      ['129 sections', committed({ affectedSectionIds: sections(129) }), false],
+      [
+        'an unknown participation mode',
+        withDetails('study.created@1', { participationMode: 'broadcast' }),
+        false,
+      ],
+      [
+        'a v2 cancellation labelled with a non-address',
+        {
+          ...AUDIT_EVENT_REGISTRY['team.invitation.cancelled@2'].fixture,
+          subjectLabel: 'Fixture invitee',
+        },
+        false,
+      ],
+    ];
+    for (const [label, input, accepted] of cases) {
+      if (accepted) {
+        expect(parseAuditEventInput(input), label).toEqual(input);
+      } else {
+        expect(() => parseAuditEventInput(input), label).toThrow();
+      }
+    }
+  });
 });

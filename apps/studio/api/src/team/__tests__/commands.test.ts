@@ -1793,6 +1793,28 @@ describe.skipIf(!testDb)('audited team commands', () => {
     );
 
     suite.effect(
+      'refuses a malformed invitation id as a defect before any lookup',
+      () =>
+        Effect.gen(function* () {
+          const teamId = yield* seedTeam('command-accept-malformed-id');
+          const invitee = identity(teamId, 'invitee', 'member');
+          yield* seedUser(invitee);
+
+          for (const invitationId of ['a b', 'a'.repeat(256)]) {
+            const exit = yield* Effect.exit(
+              asActor(invitee, acceptTeamInvitation({ invitationId })),
+            );
+            const cause = Exit.isFailure(exit) ? exit.cause : Cause.empty;
+            assert.isTrue(Cause.hasDies(cause), invitationId);
+            assert.isFalse(Cause.hasFails(cause), invitationId);
+            assert.isTrue(Schema.isSchemaError(Cause.squash(cause)));
+          }
+          assert.lengthOf(yield* auditRows(teamId), 0);
+        }),
+      { timeout: 30_000 },
+    );
+
+    suite.effect(
       'cancels and completely audits a legacy multi-role invitation',
       () =>
         Effect.gen(function* () {

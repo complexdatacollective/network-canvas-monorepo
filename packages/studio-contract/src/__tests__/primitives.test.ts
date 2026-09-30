@@ -57,6 +57,18 @@ describe('Email', () => {
     expect(Exit.isFailure(decodeEmail('a@b'))).toBe(true);
     expect(Exit.isSuccess(decodeEmail('a@b.co'))).toBe(true);
   });
+
+  // Each row is what zod 4.5.4's `z.email()` returned for the address.
+  it.each([
+    ['a..b@c.de', false],
+    ['.a@b.cd', false],
+    ['a@-b.cd', false],
+    ['a@b.c', false],
+    ['a.b+c@d-e.fg', true],
+    ['invitee@example.com', true],
+  ])('decides %s as zod did (accepted: %s)', (address, accepted) => {
+    expect(Exit.isSuccess(decodeEmail(address))).toBe(accepted);
+  });
 });
 
 describe('ids', () => {
@@ -74,6 +86,11 @@ describe('ids', () => {
   it('refuses a TeamInvitationId containing a space', () => {
     expect(Exit.isFailure(decodeInvitationId('a b'))).toBe(true);
     expect(Exit.isSuccess(decodeInvitationId('a-b_C9'))).toBe(true);
+  });
+
+  it('bounds a TeamInvitationId at 255 characters', () => {
+    expect(Exit.isSuccess(decodeInvitationId('a'.repeat(255)))).toBe(true);
+    expect(Exit.isFailure(decodeInvitationId('a'.repeat(256)))).toBe(true);
   });
 
   it('refuses a SessionToken below the entropy floor', () => {

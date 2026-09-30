@@ -42,7 +42,7 @@ const templates = pgTable(
     curated: boolean('curated').notNull().default(false),
     state: text('state').notNull().default('draft'),
     // #1283's citation and provenance layer: authors, DOIs, validating
-    // papers, keywords. Zod-validated at write, queried by the gallery.
+    // papers, keywords. Validated at write, queried by the gallery.
     metadata: jsonb('metadata')
       .notNull()
       .default(sql`'{}'::jsonb`),

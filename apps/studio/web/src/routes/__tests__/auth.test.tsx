@@ -553,6 +553,34 @@ describe('sign-out', () => {
 });
 
 describe('sign-in page', () => {
+  // Only ids the route accepts are pinned. An id it refuses still reaches
+  // `useSearch` through the root route's unvalidated search, so the refusal
+  // has no observable effect today (recorded on #1937).
+  it.each([INVITATION_ID, 'a'.repeat(255)])(
+    'returns to invitation %# after sign-in',
+    async (invitationId) => {
+      mocked.signIn.magicLink.mockResolvedValue({
+        data: { status: true },
+        error: null,
+      } as unknown as MagicLinkResult);
+      renderAt(`/sign-in?invitationId=${encodeURIComponent(invitationId)}`);
+      const email = await screen.findByLabelText(/Email address/);
+      fireEvent.change(email, {
+        target: { value: 'researcher@example.com' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Send sign-in link' }),
+      );
+      await waitFor(() =>
+        expect(mocked.signIn.magicLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            callbackURL: `/invitations/${invitationId}`,
+          }),
+        ),
+      );
+    },
+  );
+
   it('sends a magic link and confirms where it went', async () => {
     mocked.signIn.magicLink.mockResolvedValue({
       data: { status: true },

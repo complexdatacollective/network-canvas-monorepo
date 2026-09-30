@@ -6,11 +6,11 @@
 
 Studio's packages take their final names. The server is `@codaco/studio-api`
 in `apps/studio/api`, the web app is `@codaco/studio-web` in
-`apps/studio/web`, and the schemas the two halves shared through the old
-internal RPC package now come from `@codaco/studio-contract`, which that
-package's version history continues under. The image targets (`studio-api`,
-`studio-web`), the published image names and the compose service names are
-unchanged.
+`apps/studio/web`. The old internal RPC package is gone: the schemas the two
+halves shared through it now come from `@codaco/studio-contract`, which joins
+the Studio release lane in its place; the old package's changelog is not
+carried over. The image targets (`studio-api`, `studio-web`), the published
+image names and the compose service names are unchanged.
 
 The API no longer carries Hono or zod. A path no route serves is answered by
 the router's own 404 as problem JSON, which is what the machine surfaces
