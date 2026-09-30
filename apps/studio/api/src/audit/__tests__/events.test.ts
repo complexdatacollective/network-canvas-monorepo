@@ -253,6 +253,21 @@ describe('audit event registry', () => {
       ['1001 operations', committed({ operationCount: 1_001 }), false],
       ['128 sections', committed({ affectedSectionIds: sections(128) }), true],
       ['129 sections', committed({ affectedSectionIds: sections(129) }), false],
+      ['no sections', committed({ affectedSectionIds: [] }), false],
+      [
+        'seven operation types',
+        committed({ operationTypes: Array(7).fill('set') }),
+        true,
+      ],
+      [
+        'eight operation types',
+        committed({ operationTypes: Array(8).fill('set') }),
+        false,
+      ],
+      ['no operation types', committed({ operationTypes: [] }), false],
+      ['a zero revision', committed({ revision: '0' }), true],
+      ['a zero-padded revision', committed({ revision: '01' }), false],
+      ['an empty label', withField('teamLabel', ''), false],
       [
         'an unknown participation mode',
         withDetails('study.created@1', { participationMode: 'broadcast' }),

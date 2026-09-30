@@ -66,6 +66,9 @@ describe('Email', () => {
     ['a@b.c', false],
     ['a.b+c@d-e.fg', true],
     ['invitee@example.com', true],
+    ['a.@b.cd', false],
+    ["o'b@x.io", true],
+    ['A@B.CD', true],
   ])('decides %s as zod did (accepted: %s)', (address, accepted) => {
     expect(Exit.isSuccess(decodeEmail(address))).toBe(accepted);
   });

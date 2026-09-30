@@ -12,6 +12,12 @@ import { workspaceManifests } from '../release/changeset-app-utils.mjs';
 
 const REPO_ROOT = new URL('../../', import.meta.url);
 
+/** Everything before a glob's first wildcard; the whole string when it has none. */
+const staticPrefix = (glob) => {
+  const wildcard = glob.search(/[*?{[]/u);
+  return wildcard === -1 ? glob : glob.slice(0, wildcard);
+};
+
 /** Both files carry full-line `//` comments only. */
 const readCommentedJson = (name) =>
   JSON.parse(
@@ -38,9 +44,22 @@ test('every package-scoped turbo task names a workspace', () => {
 test('every path-anchored oxlint override names a directory that exists', () => {
   const anchored = readCommentedJson('.oxlintrc.json')
     .overrides.flatMap((override) => override.files)
-    .map((glob) => glob.slice(0, glob.search(/[*?{[]/u)))
+    .map(staticPrefix)
     .filter((prefix) => prefix.includes('/'));
   assert.ok(anchored.length > 0, 'no path-anchored override found');
+  assert.deepEqual(
+    anchored.filter((prefix) => !existsSync(new URL(prefix, REPO_ROOT))),
+    [],
+  );
+});
+
+test('every repository-anchored turbo input names a path that exists', () => {
+  const anchored = Object.values(readCommentedJson('turbo.json').tasks)
+    .flatMap((task) => task.inputs ?? [])
+    .map((input) => input.replace(/^!/u, ''))
+    .filter((input) => input.startsWith('$TURBO_ROOT$/'))
+    .map((input) => staticPrefix(input.slice('$TURBO_ROOT$/'.length)));
+  assert.ok(anchored.length > 0, 'no repository-anchored input found');
   assert.deepEqual(
     anchored.filter((prefix) => !existsSync(new URL(prefix, REPO_ROOT))),
     [],

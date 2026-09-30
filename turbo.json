@@ -552,13 +552,12 @@
       "outputs": []
     },
     // The Vite configs compiled by the apps' node tsconfigs import the shared
-    // plugin sources under scripts/ (and apps/studio/scripts/), so those files
-    // must be typecheck inputs or a cached result can hide an error in them.
+    // plugin sources under scripts/, so those files must be typecheck inputs
+    // or a cached result can hide an error in them.
     "@codaco/studio-web#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "*.config.ts",
         "tsconfig*.json",
@@ -571,7 +570,6 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "scripts/**",
         "*.config.ts",

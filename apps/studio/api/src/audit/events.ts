@@ -55,8 +55,8 @@ const TeamRoles = Schema.Array(TeamRole).check(
  * Every event schema below is a closed shape, `details` included: a field the
  * registry never declared must be refused rather than recorded or dropped.
  * `Schema.Struct` strips an undeclared key unless decoded with this option,
- * which reaches every nested struct, so every decode in this module applies
- * it — as `z.strictObject` did at each level before.
+ * which reaches every nested struct, so every event-schema decode in this
+ * module applies it — as `z.strictObject` did at each level before.
  */
 export const AUDIT_EVENT_PARSE_OPTIONS = {
   onExcessProperty: 'error',
