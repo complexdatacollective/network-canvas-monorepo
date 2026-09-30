@@ -121,6 +121,52 @@ describe('CodebookEntityEditor', () => {
     ]);
   });
 
+  it.each([
+    {
+      subject: NODE_SUBJECT,
+      document: NODE_DOCUMENT,
+      nameLabel: 'Node type name',
+      example: '"Person", "Place", or "Organization"',
+      placeholder: 'Enter a name for this node type...',
+      colorLabel: 'Node color',
+      colorHint: 'Choose a color for this node type.',
+    },
+    {
+      subject: { entity: 'edge', type: 'friends' } as const,
+      document: { name: 'Friends', color: 'edge-color-seq-1', variables: {} },
+      nameLabel: 'Edge type name',
+      example: '"Friends" or "Works With"',
+      placeholder: 'Enter a name for this edge type...',
+      colorLabel: 'Edge color',
+      colorHint: 'Choose a color for this edge type.',
+    },
+  ])(
+    'names the $subject.entity type’s fields for the entity, as Architect did',
+    ({ subject, document, ...copy }) => {
+      render(
+        <CodebookEntityEditor
+          mode="update"
+          sessionKey={`copy-${subject.entity}`}
+          subject={subject}
+          initialDraft={document}
+          authoritativeDocument={document}
+          existingEntityNames={[]}
+          onSubmit={async () => applied()}
+        />,
+      );
+
+      const name = screen.getByRole('textbox', { name: copy.nameLabel });
+      expect(name).toHaveAttribute('placeholder', copy.placeholder);
+      expect(name).toHaveAccessibleDescription(
+        expect.stringContaining(copy.example),
+      );
+      expect(
+        screen.getByRole('radiogroup', { name: copy.colorLabel }),
+      ).toHaveAccessibleDescription(expect.stringContaining(copy.colorHint));
+      expect(screen.queryByText(/Protocol color|color reference/)).toBeNull();
+    },
+  );
+
   /**
    * Cancel and the save belong to the dialog's own footer, in that order: the
    * footer is what pins the first of its children left, so a control rendered
@@ -244,7 +290,7 @@ describe('CodebookEntityEditor', () => {
     // field, because the shape beside it is a group of swatches too and one of
     // those is legitimately checked.
     expect(
-      within(screen.getByRole('radiogroup', { name: 'Protocol color' }))
+      within(screen.getByRole('radiogroup', { name: 'Node color' }))
         .getAllByRole('radio')
         .filter((swatch) => swatch.getAttribute('aria-checked') === 'true'),
     ).toHaveLength(1);

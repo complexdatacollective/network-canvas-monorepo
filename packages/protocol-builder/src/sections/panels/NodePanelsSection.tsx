@@ -183,6 +183,19 @@ const messages = defineMessages({
     description:
       'Refusal shown when a researcher saves a side panel without saying who it lists.',
   },
+  configurationGroupTitle: {
+    id: 'protocolBuilder.nodePanels.configurationGroupTitle',
+    defaultMessage: 'Configuration',
+    description:
+      'Heading of the first half of the dialog for one side panel, holding the panel’s title and the source of the people it lists.',
+  },
+  configurationGroupDescription: {
+    id: 'protocolBuilder.nodePanels.configurationGroupDescription',
+    defaultMessage:
+      'Name this panel, and choose where the people it lists come from.',
+    description:
+      'Description of the first half of the side-panel dialog, saying what its two controls settle: what the participant reads above the panel, and whether it lists the people named so far in the interview or the contents of an imported file.',
+  },
   filterGroupTitle: {
     id: 'protocolBuilder.nodePanels.filterGroupTitle',
     defaultMessage: 'Panel filter',
@@ -588,28 +601,34 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
   return (
     <>
       {/*
-        Bare fields rather than a titled group: Architect's panel row carries
-        no heading of its own above the title and source, and the dialog the
-        row opens in is already named for the panel.
+        A titled group rather than bare fields, so the two things every panel
+        must settle read as a pair with a name, and the filter below reads as
+        the second of two groups rather than the only one. Not toggleable:
+        neither field is optional, so there is nothing here to switch off.
       */}
-      <Field<typeof InputField>
-        name="title"
-        component={InputField}
-        label={intl.formatMessage(messages.panelTitleLabel)}
-        hint={intl.formatMessage(messages.panelTitleHint)}
-        initialValue={asString(item.title) ?? ''}
-        required={PANEL_TITLE_REQUIRED}
-      />
-      <Field<typeof ResourcePicker>
-        name="dataSource"
-        component={ResourcePicker}
-        label={intl.formatMessage(messages.sourceLabel, { position })}
-        hint={intl.formatMessage(messages.sourceHint)}
-        kind={PANEL_SOURCE_KIND}
-        canUseExisting
-        initialValue={openedDataSource}
-        required={PANEL_SOURCE_REQUIRED}
-      />
+      <Section
+        title={intl.formatMessage(messages.configurationGroupTitle)}
+        description={intl.formatMessage(messages.configurationGroupDescription)}
+      >
+        <Field<typeof InputField>
+          name="title"
+          component={InputField}
+          label={intl.formatMessage(messages.panelTitleLabel)}
+          hint={intl.formatMessage(messages.panelTitleHint)}
+          initialValue={asString(item.title) ?? ''}
+          required={PANEL_TITLE_REQUIRED}
+        />
+        <Field<typeof ResourcePicker>
+          name="dataSource"
+          component={ResourcePicker}
+          label={intl.formatMessage(messages.sourceLabel, { position })}
+          hint={intl.formatMessage(messages.sourceHint)}
+          kind={PANEL_SOURCE_KIND}
+          canUseExisting
+          initialValue={openedDataSource}
+          required={PANEL_SOURCE_REQUIRED}
+        />
+      </Section>
       <Section
         title={intl.formatMessage(messages.filterGroupTitle)}
         description={intl.formatMessage(messages.filterGroupDescription)}

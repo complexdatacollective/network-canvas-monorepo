@@ -39,7 +39,7 @@ describe('what the participant sees behind the nodes', () => {
     // The stage's name, the type it arranges, what it asks and how it arranges
     // belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'prompts', 'behaviours'],
+      unowned: ['subject', 'prompts', 'behaviours'],
     });
   });
 
@@ -50,7 +50,7 @@ describe('what the participant sees behind the nodes', () => {
       await screen.findByRole('button', { name: 'Change the image' }),
     ).toBeVisible();
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'prompts', 'behaviours'],
+      unowned: ['subject', 'prompts', 'behaviours'],
     });
   });
 
@@ -74,6 +74,19 @@ describe('what the participant sees behind the nodes', () => {
     // shape the file happens to be.
     expect(frame).not.toBe(preview);
     expect(frame?.className).toContain('aspect-video');
+  });
+
+  it('opens a stage created from scratch on the ring count the interview draws', async () => {
+    renderStageEditor({
+      create: { type: 'Narrative', position: 0 },
+      sections: <Background />,
+    });
+
+    expect(
+      await screen.findByRole('spinbutton', {
+        name: 'Number of concentric circles',
+      }),
+    ).toHaveDisplayValue('4');
   });
 
   it('changes the number of circles the researcher asked for', async () => {

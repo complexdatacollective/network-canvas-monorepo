@@ -105,11 +105,10 @@ it('lists an imported file as staged, and lets a second field reference it, befo
   const library = await screen.findByRole('list', {
     name: 'Resources in this protocol',
   });
-  expect(
-    within(library)
-      .getAllByRole('button')
-      .map((button) => button.textContent),
-  ).toEqual(['Neighbourhood photo', 'skyline.png']);
+  const cards = within(library).getAllByRole('button');
+  expect(cards).toHaveLength(2);
+  expect(cards[0]).toHaveAccessibleName('Neighbourhood photo');
+  expect(cards[1]).toHaveAccessibleName('skyline.png');
   await user.click(
     within(library).getByRole('button', { name: 'skyline.png' }),
   );

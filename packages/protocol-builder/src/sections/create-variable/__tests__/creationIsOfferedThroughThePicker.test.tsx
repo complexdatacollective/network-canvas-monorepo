@@ -175,16 +175,6 @@ const collapse = (text: string) => text.replaceAll(/\s+/gu, ' ').trim();
  * that marker, an invent affordance is the create row — which is where spec
  * §3.1 says it belongs. Outside it, it is the sibling control this criterion
  * forbids.
- *
- * `AttributeCodebookControls`' buttons — "Create this attribute and its
- * values", "Create this attribute and what it accepts", "Change this
- * attribute's values" — sit outside the window
- * too, and are deliberately not among these: they are the codebook's own
- * surfaces for the attribute a row has ALREADY chosen or is already inventing,
- * which is the picker's escalation path rather than a second way in. The
- * package's wording marks the difference exactly — "this attribute" for the
- * one in hand, "a new … attribute" for one that does not exist — so the phrase
- * above separates them without an exception list.
  */
 const inventControls = (): HTMLElement[] => {
   const wanted = new Set(inventLabels());
@@ -417,14 +407,9 @@ describe('no create control sits beside an attribute picker', () => {
       namedIn('editors/', /codebook\/components\/VariableEditor\.tsx/u),
     ).toEqual([]);
 
-    // And the editor itself is mounted in exactly the two places above, so a
-    // third module cannot become a way in without this failing.
     expect(
       namedIn('', /from '[^']*codebook\/components\/VariableEditor\.tsx'/u),
-    ).toEqual([
-      'sections/AttributeCodebookControls.tsx',
-      'sections/create-variable/useCreateVariableEditor.tsx',
-    ]);
+    ).toEqual(['sections/create-variable/useCreateVariableEditor.tsx']);
   });
 });
 

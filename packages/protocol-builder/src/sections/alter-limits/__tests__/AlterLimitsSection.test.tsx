@@ -55,7 +55,6 @@ describe('the nomination limits a name generator may set', () => {
     // to sections this mount does not include.
     await harness.roundTrip({
       unowned: [
-        'label',
         'subject',
         'dataSource',
         'cardOptions',

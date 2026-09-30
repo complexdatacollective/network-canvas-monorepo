@@ -11,8 +11,8 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Tag from '~/components/Tag';
 import type { RootState } from '~/ducks/modules/root';
 import { getExperiments, getTimelineLocus } from '~/selectors/protocol';
 
@@ -332,7 +332,7 @@ const NewStageScreen = ({
               }
             />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Heading
               level="h4"
               margin="none"
@@ -341,7 +341,7 @@ const NewStageScreen = ({
               {intl.formatMessage(messages.filterByCapabilities)}
             </Heading>
             <div
-              className="flex flex-wrap gap-1"
+              className="flex min-w-0 flex-wrap gap-1"
               role="group"
               aria-label={intl.formatMessage(
                 messages.interfaceCapabilityFilters,
@@ -350,9 +350,8 @@ const NewStageScreen = ({
               {tags.map(({ value, selected, disabled }) => (
                 <Tag
                   key={value}
-                  id={value}
-                  selected={selected}
-                  onClick={handleTagClick}
+                  pressed={selected}
+                  onPressedChange={() => handleTagClick(value)}
                   color={get(TAG_COLORS, value)}
                   disabled={disabled}
                 >

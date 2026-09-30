@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import Pill from '@codaco/fresco-ui/Pill';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Link } from '~/lib/i18n/navigation';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
@@ -61,12 +60,10 @@ function NewsItem({
 }
 
 const NewsLabel = () => (
-  <Pill
-    icon={<Sparkles aria-hidden className="text-mustard size-5" />}
-    className="font-heading text-base-sm text-text inline-flex shrink-0 items-center gap-2 p-0 font-bold tracking-[0.12em] uppercase"
-  >
+  <span className="font-heading text-base-sm text-text inline-flex shrink-0 items-center gap-2 font-bold tracking-[0.12em] uppercase">
+    <Sparkles aria-hidden className="text-mustard size-5" />
     {useTranslations('News')('label')}
-  </Pill>
+  </span>
 );
 
 export function NewsTicker({

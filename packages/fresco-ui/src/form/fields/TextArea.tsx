@@ -12,26 +12,30 @@ import { compose, cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
+const textareaWrapperOwnVariants = cva({
+  base: 'h-auto w-full',
+});
+
 const textareaWrapperVariants = compose(
   controlVariants,
   inputControlVariants,
   stateVariants,
   interactiveStateVariants,
-  cva({
-    base: 'h-auto w-full',
-  }),
+  textareaWrapperOwnVariants,
 );
+
+const textareaOwnVariants = cva({
+  base: cx(
+    'size-full resize-y',
+    'border-none bg-transparent outline-none focus:ring-0',
+    'cursor-[inherit]',
+  ),
+});
 
 const textareaVariants = compose(
   placeholderVariants,
   multilineContentVariants,
-  cva({
-    base: cx(
-      'size-full resize-y',
-      'border-none bg-transparent outline-none focus:ring-0',
-      'cursor-[inherit]',
-    ),
-  }),
+  textareaOwnVariants,
 );
 
 type TextAreaFieldProps = CreateFormFieldProps<string, 'textarea'> &

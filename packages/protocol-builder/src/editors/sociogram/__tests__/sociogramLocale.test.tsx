@@ -105,7 +105,7 @@ describe('the canvas sections, read in Spanish', () => {
         harness.user,
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
         'Busca o crea un atributo',
-        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+        (term) => `Crear un atributo nuevo llamado «${term}».`,
       ),
     ).not.toBeNull();
     expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe('the canvas sections, read in Spanish', () => {
     // Spanish fails here rather than rendering as `{edgeTypeId}`.
     expect(
       prompt.getByRole('checkbox', {
-        name: `${LOST_EDGE} — este tipo de vínculo ya no está en el libro de códigos`,
+        name: `${LOST_EDGE}: este tipo de vínculo ya no está en el libro de códigos`,
       }),
     ).toBeChecked();
   });

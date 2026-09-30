@@ -4,6 +4,8 @@ import type { FlattenedErrors } from '../store/types';
 
 const FIELD_CONTAINER_SELECTOR = '[data-field-path], [data-field-name]';
 
+const FIELD_FORM_ATTRIBUTE = 'data-field-form';
+
 /**
  * The field container an error key names.
  *
@@ -191,6 +193,41 @@ export const resolveFieldErrorTarget = (
   return findOperableControl(container) ?? makeContainerFocusable(container);
 };
 
+/**
+ * Every field container one form may claim: what its markup contains, plus
+ * what carries its store's identity wherever it was drawn. De-duplicated,
+ * because `findFieldContainer` only trusts a public `data-field-name` carried
+ * by exactly ONE candidate, and the same element twice disqualifies it.
+ */
+const fieldCandidates = (
+  root: ParentNode | null | undefined,
+  formId: string | undefined,
+): HTMLElement[] => {
+  const inDocument = () =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR),
+    );
+
+  if (!root && formId === undefined) return inDocument();
+
+  const found = new Set<HTMLElement>();
+  if (root) {
+    for (const candidate of root.querySelectorAll<HTMLElement>(
+      FIELD_CONTAINER_SELECTOR,
+    )) {
+      found.add(candidate);
+    }
+  }
+  if (formId !== undefined) {
+    for (const candidate of inDocument()) {
+      if (candidate.getAttribute(FIELD_FORM_ATTRIBUTE) === formId) {
+        found.add(candidate);
+      }
+    }
+  }
+  return [...found];
+};
+
 /** The earliest of `containers` in document order. */
 const earliestInDocument = (
   containers: HTMLElement[],
@@ -229,33 +266,30 @@ const earliestInDocument = (
  * this for a date input's segment selection even with `preventScroll` — can
  * then no longer leave the scroller somewhere other than where we put it.
  *
- * `root` scopes the search to one form's own markup. Two forms mounted at once
- * (a dialog over a page, two slides mid-transition) render the same field
- * paths, and without a scope the document-order rule would hand the earlier
- * form's control to the later form's failed submit. It falls back to the whole
- * document when the root contains none of the errored fields, so a form that
- * renders a field outside its own element still reaches it.
+ * Scoped to one form by two facts, and neither is sufficient: `root` is the
+ * form's markup, which a host's field drawn outside the element is not in, and
+ * `formId` is the store's identity, which Architect's whole-editor
+ * contradiction alert does not carry. Nothing outside that scope is a
+ * candidate, for the focus OR the scroll — two forms mounted at once render
+ * the same field paths, and the background one must not be reached. With
+ * neither given the scope is the whole document.
  */
 export const focusFirstError = (
   errors: FlattenedErrors | null,
   root?: ParentNode | null,
+  formId?: string,
 ) => {
   if (!errors) return;
 
   const fieldNames = Object.keys(errors.fieldErrors);
   if (fieldNames.length === 0) return;
 
-  const resolveWithin = (scope: ParentNode): HTMLElement[] => {
-    const candidates = Array.from(
-      scope.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR),
-    );
-    return fieldNames
-      .map((fieldName) => findFieldContainer(candidates, fieldName))
-      .filter((candidate): candidate is HTMLElement => candidate !== undefined);
-  };
-
-  const scoped = root ? resolveWithin(root) : [];
-  const containers = scoped.length > 0 ? scoped : resolveWithin(document);
+  const candidates = fieldCandidates(root, formId);
+  const containers: HTMLElement[] = [];
+  for (const fieldName of fieldNames) {
+    const container = findFieldContainer(candidates, fieldName);
+    if (container) containers.push(container);
+  }
 
   // If no errored field is in the DOM, prevent crash.
   const scrollTarget = earliestInDocument(containers);

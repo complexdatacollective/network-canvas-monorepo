@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import StudioLocaleSwitcher from '../i18n/StudioLocaleSwitcher.tsx';
 import { authClient } from '../lib/auth.ts';
 import { landingDestination, type LandingDestination } from '../lib/landing.ts';
 import AccountMenu from './AccountMenu.tsx';
@@ -94,7 +95,7 @@ export default function AppHeader() {
   const home = homeDestination(teams.data, activeTeam.data?.id);
 
   return (
-    <div className="border-surface-2 flex flex-wrap items-center gap-4 border-b px-4 py-2">
+    <div className="border-surface-2 @container flex flex-wrap items-center gap-4 border-b px-4 py-2">
       <Wordmark home={home} />
       {/*
         A width the lockup does not derive from its contents, which is what
@@ -125,6 +126,7 @@ export default function AppHeader() {
             {intl.formatMessage(entry.label)}
           </Link>
         ))}
+        <StudioLocaleSwitcher />
         <AccountMenu />
       </div>
     </div>

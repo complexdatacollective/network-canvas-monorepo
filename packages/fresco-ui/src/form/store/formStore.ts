@@ -608,6 +608,14 @@ export const createFormStore = (
   let formValidationToken = Symbol('form-validation');
   const fieldRecords = new Map<string, FieldState>();
   const dormantRecords = new Map<string, FieldState>();
+  /**
+   * How many mounted callers are holding each field. One path may be bound by
+   * more than one at a time — a stage editor's title and a rename dialog over
+   * it — and without a count registration is last-write-wins in both
+   * directions: the second mount resets the live field, and the first unmount
+   * deletes it.
+   */
+  const fieldHolders = new Map<string, number>();
   // The last container value handed out per container name, so `getValue` can
   // keep returning it by identity while it stays deep-equal. See `getValue`.
   const containerValues = new Map<string, FieldValue>();
@@ -825,6 +833,7 @@ export const createFormStore = (
         invalidateAllValidations();
         fieldRecords.clear();
         dormantRecords.clear();
+        fieldHolders.clear();
         containerValues.clear();
         set((state) => {
           state.fields.clear();
@@ -905,6 +914,13 @@ export const createFormStore = (
         // gate field's post-change revalidation is dropped by the very mount
         // that change caused, so its now-stale "required" error survives until
         // the field is blurred again.
+        // Another HOLDER of a mounted field, not a fresh registration: the
+        // record below carries untouched, unblurred, undirty meta, and the
+        // rules that stand are the mounted field's.
+        const holders = fieldHolders.get(fieldName) ?? 0;
+        fieldHolders.set(fieldName, holders + 1);
+        if (holders > 0 && fieldRecords.has(fieldName)) return;
+
         const supersededFields = collectSupersededFields(
           fieldRecords,
           fieldName,
@@ -974,6 +990,13 @@ export const createFormStore = (
           dormantRecords,
           fieldReference,
         );
+        const holders = fieldHolders.get(fieldName) ?? 0;
+        if (holders > 1) {
+          // Still held, so still mounted.
+          fieldHolders.set(fieldName, holders - 1);
+          return;
+        }
+        fieldHolders.delete(fieldName);
         if (fieldRecords.has(fieldName)) {
           // Unmounting removes a value from the snapshot, so it invalidates
           // every in-flight validation for the same reason `registerField`

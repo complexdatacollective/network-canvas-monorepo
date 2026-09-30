@@ -155,11 +155,11 @@ test('the stage editor lists its sections beside the form at desktop width', asy
   await architectPage.goto(`/protocol/stage/${stage.id}`);
 
   const { outline, form } = await stageEditorColumns(architectPage);
-  // Beside, not above: the list ends where the form's column begins, and the
-  // two share the same band of the page.
+  // Asked horizontally, because that is what two columns MEANS: the editor
+  // draws its title above the form element, so how far down the page the form
+  // begins is a fact about the title's height.
   expect(outline.right).toBeLessThanOrEqual(form.left + 1);
-  expect(outline.top).toBeLessThan(form.bottom);
-  expect(form.top).toBeLessThan(outline.bottom);
+  expect(outline.top).toBeLessThanOrEqual(form.top);
 
   // The whole of its column, with nothing inset inside it. The track is
   // `16rem`, and the list's titles are `truncate`d — so every pixel a gutter
@@ -279,9 +279,10 @@ test('the stage editor splits into two columns on the room the researcher can se
   // Polled rather than read once: a viewport change re-runs the container
   // query on the next frame, and this reads the frame after the resize is
   // settled rather than racing it.
+  // Horizontal, for the reason the case above gives.
   const arrangement = async () => {
     const { outline, form } = await stageEditorColumns(architectPage);
-    return outline.bottom <= form.top + 1 ? 'stacked' : 'beside';
+    return outline.right <= form.left + 1 ? 'beside' : 'stacked';
   };
 
   await expect.poll(arrangement).toBe('stacked');
@@ -291,12 +292,13 @@ test('the stage editor splits into two columns on the room the researcher can se
 
   const { outline, form } = await stageEditorColumns(architectPage);
   expect(outline.right).toBeLessThanOrEqual(form.left + 1);
-  expect(outline.top).toBeLessThan(form.bottom);
+  expect(outline.top).toBeLessThanOrEqual(form.top);
 });
 
 for (const page of [
   { path: '/protocol/assets', heading: 'Resource Library' },
   { path: '/protocol/codebook', heading: 'Codebook' },
+  { path: '/protocol/summary', heading: 'Protocol Summary' },
 ] as const) {
   test(`${page.heading} content keeps a horizontal inset at phone width`, async ({
     architectPage,
@@ -531,17 +533,22 @@ for (const viewport of VIEWPORTS) {
     // width and clipped "Cancel" off the left edge of the screen. It may now
     // scroll internally, but no part of the pill itself may sit outside the
     // viewport.
-    const bounds = await architectPage
-      .getByRole('toolbar', { name: 'Page actions' })
-      .evaluate((toolbar) => {
-        const pill = toolbar.parentElement;
-        if (!pill) throw new Error('toolbar has no pill container');
-        const box = pill.getBoundingClientRect();
-        return { left: box.left, right: box.right, width: window.innerWidth };
-      });
+    const toolbar = architectPage.getByRole('toolbar', {
+      name: 'Page actions',
+    });
+    const trailing = toolbar.getByRole('button', { name: 'Download' });
+    await expect(trailing).toBeVisible();
 
-    expect(bounds.left).toBeGreaterThanOrEqual(0);
-    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
+    const pill = await toolbar.boundingBox();
+    const control = await trailing.boundingBox();
+    if (!pill || !control) throw new Error('toolbar is not laid out');
+
+    expect(pill.x).toBeGreaterThanOrEqual(0);
+    expect(pill.x + pill.width).toBeLessThanOrEqual(viewport.width);
+    expect(control.x).toBeGreaterThanOrEqual(pill.x - 1);
+    expect(control.x + control.width).toBeLessThanOrEqual(
+      pill.x + pill.width + 1,
+    );
   });
 }
 

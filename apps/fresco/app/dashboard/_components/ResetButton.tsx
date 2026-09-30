@@ -52,6 +52,7 @@ const ResetButton = () => {
         type="submit"
         color="destructive"
         onClick={() => setShowConfirmDialog(true)}
+        className="h-auto min-h-12 py-2 text-center text-wrap"
       >
         {intl.formatMessage(messages.resetAllAppData)}
       </Button>

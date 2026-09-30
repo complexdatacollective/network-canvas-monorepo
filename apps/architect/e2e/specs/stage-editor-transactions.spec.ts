@@ -80,7 +80,7 @@ async function seedStageWithVariable(
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'How old are you?',
-    inputControl: 'Number input',
+    inputControl: 'Number Input',
   });
 
   await editor.save();

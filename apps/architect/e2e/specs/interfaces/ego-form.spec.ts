@@ -48,7 +48,7 @@ test('creates a valid EgoForm stage from scratch', async ({
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
-    inputControl: 'Text input',
+    inputControl: 'Text Input',
   });
 
   await editor.expectNoIssues();
@@ -95,7 +95,7 @@ test('previews a form field, and keeps the trial answer out of the protocol', as
   );
   await inventAttributeInFieldDialog(dialog, {
     variableName: 'nickname',
-    inputControl: 'Text input',
+    inputControl: 'Text Input',
   });
   const question = 'What do your friends call you?';
   const prompt = fieldSettings(dialog).getByRole('textbox', {

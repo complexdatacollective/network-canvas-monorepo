@@ -19,7 +19,6 @@ import IntroductionSection from '../introduction/IntroductionSection.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import StageNameSection from '../stage-heading/StageNameSection.tsx';
 import SubjectSection from '../subject-picker/SubjectSection.tsx';
 import {
   TestItemEditor,
@@ -69,7 +68,6 @@ describe('the shared stage sections, read in Spanish', () => {
       locale: 'es',
       sections: (
         <>
-          <StageNameSection />
           <PageContentSection
             ItemEditor={TestItemEditor}
             ItemPreview={TestItemPreview}
@@ -89,8 +87,8 @@ describe('the shared stage sections, read in Spanish', () => {
     // English would fail here rather than pass halfway. Its state is the
     // harness's own English reading of the store — the words belong to
     // whichever host draws the list, not to this package.
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
-    expect(harness.outline()[1]).toEqual({
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
       title: 'Contenido de la página',
       state: 'Finished',
     });
@@ -223,7 +221,7 @@ describe('the content-block dialog, read in Spanish', () => {
         'Elige el tipo de contenido que mostrará este elemento.',
       ),
     ).toBeInTheDocument();
-    for (const kind of ['Imagen', 'Video', 'Audio', 'Texto']) {
+    for (const kind of ['Imagen', 'Vídeo', 'Audio', 'Texto']) {
       expect(
         within(dialog).getByRole('radio', { name: kind }),
       ).toBeInTheDocument();
@@ -290,10 +288,10 @@ describe('the content-block dialog, read in Spanish', () => {
       ),
     ).toBeInTheDocument();
 
-    await chooseKind('Video');
+    await chooseKind('Vídeo');
     expect(
       await within(dialog).findByText(
-        'Proporciona el contenido de video para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
+        'Proporciona el contenido de vídeo para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.',
       ),
     ).toBeInTheDocument();
     await commit();

@@ -1,20 +1,24 @@
 {
   "name": "networkcanvas.com",
-  "version": "0.4.7",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3001",
+    "gallery:sync": "node ./scripts/sync-protocol-gallery.ts",
     "build": "next build",
     "optimize-images": "node ./scripts/optimize-images.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/art": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
+    "@codaco/interview": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@fontsource-variable/inclusive-sans": "catalog:",
@@ -46,6 +50,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
+    "jszip": "catalog:",
     "postcss": "catalog:",
     "sharp": "^0.35.3",
     "tailwindcss": "catalog:",

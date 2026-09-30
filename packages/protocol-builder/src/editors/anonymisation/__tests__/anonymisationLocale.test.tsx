@@ -90,7 +90,7 @@ describe('the anonymisation sections, read in Spanish', () => {
     expect(
       screen.getByRole('switch', { name: 'person' }),
     ).toHaveAccessibleDescription(
-      'Activar el cifrado de atributos pertenecientes a este tipo de nodo.',
+      'Activa el cifrado de atributos pertenecientes a este tipo de nodo.',
     );
   });
 

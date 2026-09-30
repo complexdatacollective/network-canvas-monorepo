@@ -1,3 +1,4 @@
+import { Upload } from 'lucide-react';
 import { useCallback, useEffect, useId, useState, type DragEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -7,6 +8,7 @@ import {
   formatMessageError,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceClient, type ResourceClient } from '../client.tsx';
@@ -122,10 +124,8 @@ export type ResourceUploadControlProps = Readonly<{
 /**
  * Imports a file into this edit, through the resource client alone.
  *
- * Two ways in, deliberately: a drop target for a pointer, and a file input
- * that is a real, labelled, focusable control rather than a visually hidden
- * one behind the drop target — dropping a file is not something a keyboard can
- * do, so the input is the operable path and the drop target is the shortcut.
+ * The drop target is a pointer shortcut; the labelled file input is the
+ * keyboard-operable path.
  *
  * The file is staged, not committed: it takes its asset id immediately so the
  * field can reference it, and the host holds the bytes outside the protocol
@@ -282,33 +282,37 @@ export default function ResourceUploadControl({
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         data-dragging={dragging ? '' : undefined}
-        className="border-input-contrast/30 data-dragging:border-primary data-dragging:bg-primary/10 flex flex-col items-center gap-3 rounded border-2 border-dashed p-6 text-center"
+        className="bg-input text-input-contrast border-input-contrast/30 data-dragging:border-primary data-dragging:bg-primary/10 flex min-h-36 flex-col items-center justify-center gap-3 rounded border-2 border-dashed p-6 text-center transition-[border-color,background-color] duration-150 motion-reduce:transition-none"
       >
         <Paragraph margin="none">
           {intl.formatMessage(messages.dropHint)}
         </Paragraph>
-        <div className="flex flex-col items-center gap-1">
-          <label htmlFor={inputId}>
+        <input
+          id={inputId}
+          type="file"
+          accept={acceptedExtensions(kind).join(',')}
+          disabled={disabled || busy}
+          className="peer sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.item(0);
+            // Cleared so choosing the same file twice — after a failure the
+            // researcher has since fixed — still raises a change event.
+            event.target.value = '';
+            if (file != null) void stageFile(file);
+          }}
+        />
+        <Button asChild color="primary" icon={<Upload aria-hidden="true" />}>
+          <label
+            htmlFor={inputId}
+            className="peer-focus-visible:focus-styles peer-focus-visible:outline-primary peer-disabled:active:elevation-low! peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-disabled:active:translate-y-0!"
+          >
             {intl.formatMessage(messages.chooseFile)}
           </label>
-          <input
-            id={inputId}
-            type="file"
-            accept={acceptedExtensions(kind).join(',')}
-            disabled={disabled || busy}
-            onChange={(event) => {
-              const file = event.target.files?.item(0);
-              // Cleared so choosing the same file twice — after a failure the
-              // researcher has since fixed — still raises a change event.
-              event.target.value = '';
-              if (file != null) void stageFile(file);
-            }}
-          />
-        </div>
+        </Button>
       </div>
 
       {rejected !== undefined && (
-        <div role="alert" className="text-destructive text-sm">
+        <div role="alert" className="text-destructive-ink text-sm">
           {formatMessageError(rejected, intl) ?? rejected}
         </div>
       )}

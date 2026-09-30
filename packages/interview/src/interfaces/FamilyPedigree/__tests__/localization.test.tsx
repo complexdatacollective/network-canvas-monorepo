@@ -169,7 +169,7 @@ describe('pedigree built-in localization and recorded data', () => {
     );
     expect(issues).toHaveLength(1);
     expect(issues[0]?.message).toBe(
-      'Debes tener al menos dos progenitores definidos.',
+      'Debes registrar al menos dos progenitores.',
     );
     expect(JSON.stringify({ nodes: [...nodes], edges: [...edges] })).toBe(
       before,

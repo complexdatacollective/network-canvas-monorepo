@@ -20,6 +20,7 @@ import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
+  useFormFieldScope,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FieldValue,
@@ -28,11 +29,6 @@ import type {
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
-import {
-  EnclosingHeadingLevel,
-  headingTagBelow,
-  useEnclosingHeadingLevel,
-} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { stageSchema } from '@codaco/protocol-validation';
 import { applyCommands, type Command } from '@codaco/studio-sync/apply';
@@ -61,7 +57,10 @@ import {
   type OwnCommandsResult,
   StageEditorFormContext,
 } from './stageEditorContext.ts';
-import { createStageSectionsStore } from './stageSections.ts';
+import {
+  createStageProblemsStore,
+  createStageSectionsStore,
+} from './stageSections.ts';
 
 /**
  * Where the slot's own types live is `stage-editor-contract.ts`: they are part
@@ -77,6 +76,12 @@ export type {
 export type StageEditorShellProps = Readonly<{
   /** The host's action chrome. Receives the form id and whether it may write. */
   actions?: StageEditorActions;
+  /**
+   * The host's chrome ABOVE the form, drawn immediately before the `<form>`
+   * and inside the form's own provider — which is the pair a stage title
+   * needs, the name being a field of this form.
+   */
+  header?: StageEditorActions;
   children: ReactNode;
   className?: string;
 }>;
@@ -202,6 +207,7 @@ function StageDocument({
 
 function StageEditorFormBody({
   actions,
+  header,
   children,
   className,
   identity,
@@ -235,6 +241,7 @@ function StageEditorFormBody({
   const intl = useAppIntl();
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
+  const fieldScope = useFormFieldScope();
   const outline = useMemo(() => new SectionOutlineStore(), []);
   // Beside the registry rather than derived from it on every render: a host
   // reads this with `useSyncExternalStore`, which re-subscribes whenever the
@@ -247,6 +254,7 @@ function StageEditorFormBody({
         : createStageSectionsStore(outline, storeApi),
     [outline, storeApi],
   );
+  const problems = useMemo(() => createStageProblemsStore(outline), [outline]);
 
   const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
     undefined,
@@ -339,19 +347,15 @@ function StageEditorFormBody({
       });
       working.current = fields;
 
-      // The schema's own reading of the stage, for the researcher's benefit.
-      // Every sentence it can produce is read out above the form, because
-      // that list is the one thing every host renders: an anchored problem
-      // published only to the sections seam reaches a researcher in Architect,
-      // which draws a section list, and nowhere at all in a host that draws
-      // none — a save refused with nothing on screen saying why.
+      // The schema's reading of the stage. Anchored problems go to the
+      // outline, which files each under the section that answers for it and
+      // the rest into the stage-level list `problems` publishes — both the
+      // host's to render.
       //
-      // The anchored ones are still published to the seam as well. There they
-      // are what marks a section and what a row of the list is read out with;
-      // here they are the account of the refusal, named by the section that
-      // answers for each, in the order the sections sit on the page. The rest
-      // are about the stage as a whole and have no section to name, so they
-      // are said in the schema's own words after them.
+      // What this form says for itself is the account of the REFUSAL: each
+      // section's problems named by that section, then the rules about the
+      // stage as a whole. The unattributed ones are deliberately not here;
+      // they are what a host's own issue surfacing is for.
       const { sections: anchored, whole } = stageProblems(identity, fields);
       outline.setValidationIssues(anchored);
       if (anchored.length > 0 || whole.length > 0) {
@@ -421,10 +425,10 @@ function StageEditorFormBody({
   const { formProps, formErrors } = useForm({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
-      // Scoped to this form's own markup: an item dialog open over the editor
-      // renders the same field names, and an unscoped search can hand this
-      // form's failed submit a control belonging to the dialog above it.
-      focusFirstError(errors, formRef.current);
+      // Both halves: the element, because an item dialog over the editor
+      // renders the same field names; the store's identity, because the
+      // stage's NAME is drawn outside this element and is still ours.
+      focusFirstError(errors, formRef.current, fieldScope);
     },
   });
 
@@ -461,21 +465,6 @@ function StageEditorFormBody({
     });
     return () => observer.disconnect();
   }, [outline]);
-
-  /**
-   * The level of the stage's own name, which every editor wears as the page's
-   * heading and which everything else in the form is a subsection of.
-   *
-   * Stated rather than left to Surface depth, which is a fact about how deep
-   * the card sits rather than about the outline. A host that says what it
-   * encloses pushes the whole ladder down: the title one below the host's
-   * heading, each section one below the title.
-   */
-  const enclosingHeadingLevel = useEnclosingHeadingLevel();
-  const stageTitleLevel =
-    enclosingHeadingLevel === null
-      ? 'h2'
-      : headingTagBelow(enclosingHeadingLevel);
 
   const layoutGroupId = useId();
   const context = useMemo(
@@ -533,6 +522,7 @@ function StageEditorFormBody({
         */}
         <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+            {header?.({ formId, readOnly, sections, problems })}
             <form
               id={formId}
               ref={formRef}
@@ -541,32 +531,38 @@ function StageEditorFormBody({
               onSubmit={formProps.onSubmit}
               className="flex min-w-0 flex-col"
             >
+              {/*
+                No heading level is stated here, and that is the whole of this
+                editor's part in the document outline: the stage's own title is
+                the HOST's, drawn in the header slot above, so the host is also
+                the only thing that knows what heading these sections sit
+                under. It says so with
+                `EnclosingHeadingLevel`, and each section counts one below it.
+                A host that states nothing gets fresco's own page convention,
+                where a top-level `Section` is an `h3`.
+              */}
               <LayoutGroup id={layoutGroupId}>
-                <EnclosingHeadingLevel level={stageTitleLevel}>
-                  {access === 'readOnly' && (
-                    <Alert variant="info" density="compact">
-                      {holder === undefined
-                        ? intl.formatMessage(messages.heldByNobodyNamed)
-                        : intl.formatMessage(messages.heldBy, {
-                            holder: holder.displayName,
-                          })}
-                    </Alert>
-                  )}
-                  {reportedErrors && (
-                    <FormErrorsList key="form-errors" errors={reportedErrors} />
-                  )}
-                  {/*
+                {access === 'readOnly' && (
+                  <Alert variant="info" density="compact">
+                    {holder === undefined
+                      ? intl.formatMessage(messages.heldByNobodyNamed)
+                      : intl.formatMessage(messages.heldBy, {
+                          holder: holder.displayName,
+                        })}
+                  </Alert>
+                )}
+                {reportedErrors && (
+                  <FormErrorsList key="form-errors" errors={reportedErrors} />
+                )}
+                {/*
                   Said once by the form rather than by every control: being
                   unable to write is a property of the edit, not of any one
                   field, so no section has to remember to pass it down.
                 */}
-                  <FieldsDisabled disabled={readOnly}>
-                    {children}
-                  </FieldsDisabled>
-                </EnclosingHeadingLevel>
+                <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
-            {actions?.({ formId, readOnly, sections })}
+            {actions?.({ formId, readOnly, sections, problems })}
           </div>
         </div>
       </div>

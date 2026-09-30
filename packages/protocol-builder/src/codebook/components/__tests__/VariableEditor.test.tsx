@@ -43,6 +43,9 @@ const REFUSED = {
     'This change could not be saved, and nothing was altered. Wait a moment and try again.',
 } as const;
 
+const TOO_FEW_OPTIONS =
+  'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.';
+
 /** What a host says. None of it reaches the researcher. */
 const HOST_WORDS =
   'Expected object, received undefined at codebook.node.person';
@@ -542,10 +545,12 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     const alert = await screen.findByRole('alert');
-    // The draft never left the editor, so the alert says what happened rather
-    // than repeating the schema's account of which path was wrong.
-    expect(alert).toHaveTextContent(REFUSED.threw);
+    expect(alert).toHaveTextContent(TOO_FEW_OPTIONS);
+    expect(alert).not.toHaveTextContent(REFUSED.threw);
     expect(alert).not.toHaveTextContent('the variable draft is invalid');
+    expect(
+      screen.getByRole('group', { name: /Choice values/ }),
+    ).toHaveAccessibleDescription(TOO_FEW_OPTIONS);
     expect(alert).toHaveFocus();
     expect(
       screen.getByRole('textbox', { name: /attribute name/i }),
@@ -2236,38 +2241,22 @@ describe('the two answers a boolean offers', () => {
   });
 });
 
-/**
- * Where the strong destructive ink is opted into, and where it must not be.
- *
- * `--destructive` is an ink AND a fill: a field's error text is drawn with it,
- * and so is the BACKGROUND of a destructive button, whose icon is drawn with
- * `--destructive-contrast`. The tinted option and answer rows redeclare
- * `--destructive` as the stronger mixture so an error on them stays legible —
- * and a redeclaration is inherited by everything below the element carrying
- * it. Put on the row's own surface it therefore repaints the remove button's
- * fill while leaving the icon on top of it where it was: 2.85:1 on the default
- * dark theme, where the untouched pair reaches 3.85:1 and the WCAG threshold
- * for a control is 3:1.
- *
- * Asserted on class placement rather than on colour because these are custom
- * properties resolved by a stylesheet jsdom does not load; what the component
- * decides, and all it decides, is which subtree inherits the override. The
- * measured ratios live in `Colors.stories.tsx`, which reads them in a browser.
- */
-describe('the strong destructive ink a tinted row opts into', () => {
-  const STRONG_INK = '[--destructive:var(--destructive-strong)]';
-  /** What `Surface` puts on the element whose background it tints. */
-  const TINTED_SURFACE = 'bg-surface-accent';
+describe('the destructive ink on a tinted row', () => {
+  const ACCENT_INK = '[--destructive-ink:var(--surface-accent-destructive)]';
+  const FILL_OVERRIDE = '[--destructive:';
 
-  const elementsClassed = (token: string): HTMLElement[] =>
-    Array.from(document.querySelectorAll<HTMLElement>('*')).filter((element) =>
-      element.classList.contains(token),
-    );
+  const redeclares = (element: Element, prefix: string) =>
+    Array.from(element.classList).some((token) => token.startsWith(prefix));
 
-  /**
-   * The live region `FieldErrors` mounts for a field, error or no error — the
-   * content the strong ink exists for.
-   */
+  const inkOwnerOf = (element: Element): Element | null => {
+    let current = element.parentElement;
+    while (current !== null) {
+      if (redeclares(current, '[--destructive-ink:')) return current;
+      current = current.parentElement;
+    }
+    return null;
+  };
+
   const errorRegionOf = (fieldName: string): HTMLElement => {
     const region = document.querySelector<HTMLElement>(
       `[data-field-name="${fieldName}"] [aria-live]`,
@@ -2278,25 +2267,16 @@ describe('the strong destructive ink a tinted row opts into', () => {
     return region;
   };
 
-  /**
-   * The rule both rows follow: the override sits INSIDE the surface it tints,
-   * on the field content, never on the surface itself.
-   */
-  const expectScopedToFieldContent = (fieldNames: readonly string[]) => {
-    const owners = elementsClassed(STRONG_INK);
-    expect(owners.length).toBeGreaterThan(0);
-    const surfaces = elementsClassed(TINTED_SURFACE);
-    expect(surfaces.length).toBeGreaterThan(0);
-    for (const owner of owners) {
-      expect(owner.classList.contains(TINTED_SURFACE)).toBe(false);
-    }
+  const expectAccentInk = (fieldNames: readonly string[]) => {
     for (const fieldName of fieldNames) {
-      const region = errorRegionOf(fieldName);
-      expect(owners.some((owner) => owner.contains(region))).toBe(true);
+      const owner = inkOwnerOf(errorRegionOf(fieldName));
+      expect(owner).not.toBeNull();
+      expect(owner?.classList.contains(ACCENT_INK)).toBe(true);
+      expect(owner?.classList.contains('bg-surface-accent')).toBe(true);
     }
   };
 
-  it('reaches every option field of a choice, and not the button that removes the option', () => {
+  it('reaches every option field of a choice, and leaves the fill of the button that removes the option alone', () => {
     const existing = {
       name: 'preference',
       type: 'categorical',
@@ -2319,19 +2299,19 @@ describe('the strong destructive ink a tinted row opts into', () => {
       />,
     );
 
-    // Asserted before the placement rule below, so this test fails on the
-    // harm itself rather than on the shape the fix happens to take.
     const removeButtons = screen.getAllByRole('button', {
       name: /^Remove option \d+$/,
     });
     expect(removeButtons).toHaveLength(2);
     for (const button of removeButtons) {
-      expect(
-        elementsClassed(STRONG_INK).some((owner) => owner.contains(button)),
-      ).toBe(false);
+      let current: Element | null = button;
+      while (current !== null) {
+        expect(redeclares(current, FILL_OVERRIDE)).toBe(false);
+        current = current.parentElement;
+      }
     }
 
-    expectScopedToFieldContent([
+    expectAccentInk([
       'option-1-label',
       'option-1-value',
       'option-2-label',
@@ -2339,7 +2319,7 @@ describe('the strong destructive ink a tinted row opts into', () => {
     ]);
   });
 
-  it('reaches the answer fields of a boolean without being put on the row itself', () => {
+  it('reaches the answer fields of a boolean without overriding the destructive fill', () => {
     const variable = {
       name: 'flagged',
       type: 'boolean',
@@ -2359,9 +2339,19 @@ describe('the strong destructive ink a tinted row opts into', () => {
       />,
     );
 
-    expectScopedToFieldContent([
+    expectAccentInk([
       'boolean-answer-true-label',
       'boolean-answer-false-label',
     ]);
+    for (const fieldName of [
+      'boolean-answer-true-label',
+      'boolean-answer-false-label',
+    ]) {
+      let current: Element | null = errorRegionOf(fieldName);
+      while (current !== null) {
+        expect(redeclares(current, FILL_OVERRIDE)).toBe(false);
+        current = current.parentElement;
+      }
+    }
   });
 });

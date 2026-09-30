@@ -13,7 +13,7 @@ Interviewer comes in two supported versions, and you get them in different ways:
 
 ## Using Interviewer in the browser
 
-Open [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com) in a modern web browser — there is no download or installation step, and the app always runs the latest version. To keep it handy on an interview device, use your browser's **Install** option (often shown as an install icon in the address bar, or "Add to Home Screen") to install it as a Progressive Web App. It then opens in its own window, appears alongside your other apps, and remains available offline.
+Open [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com) in a modern web browser — there is no download or installation step, and the app always runs the latest version. To keep it handy on an interview device, use your browser's **Install** option (often shown as an install icon in the address bar, or "Add to Home Screen") to install it as a Progressive Web App. It then opens in its own window, appears alongside your other apps, and remains available offline. Every interface language (English, British English, and Spanish) is stored with the installed app, so you can switch language offline too.
 
 Interview performance depends on the device you run Interviewer on. For advice on picking a device that will give your participants a smooth interview experience, see [choosing a hardware device for Interviewer](/en/collect-data/interviewer/choosing-hardware).
 

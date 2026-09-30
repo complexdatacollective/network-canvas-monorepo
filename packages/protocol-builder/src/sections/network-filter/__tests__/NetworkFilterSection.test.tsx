@@ -508,6 +508,30 @@ describe('a filter the researcher cannot save', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps a rule set emptied down to nothing switched on and unfinished', async () => {
+    const harness = renderStageEditor({
+      stage: alterForm({ filter: nodeFilter }),
+      sections: nodeFilterSection,
+    });
+    await waitFor(() => expect(filterOutline(harness)?.state).toBe('Finished'));
+
+    await harness.user.click(
+      screen.getByRole('button', { name: /^Delete rule:/ }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Delete' }),
+    );
+
+    await waitFor(() =>
+      expect(filterOutline(harness)?.state).toBe('Not finished'),
+    );
+    expect(filterSwitch()).toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Add new filter rule' }),
+    ).toBeEnabled();
+    expect(await harness.submit()).toBeNull();
+  });
+
   it('refuses a filter switched on and left empty', async () => {
     const harness = renderStageEditor({
       stage: alterForm(),

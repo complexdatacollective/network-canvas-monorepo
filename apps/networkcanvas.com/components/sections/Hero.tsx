@@ -6,7 +6,7 @@ import type { MotionStyle, Variants } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
-import { buttonVariants } from '@codaco/fresco-ui/Button';
+import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { NewsTicker } from '~/components/sections/NewsTicker';
@@ -97,17 +97,12 @@ export function Hero({
           data-testid="hero-cta-wrapper"
           className="entrance-motion-item tablet-portrait:col-start-1 tablet-portrait:row-start-4 tablet-portrait:mt-0 mt-12 flex flex-col items-center gap-3"
         >
-          <Link
-            href={GET_STARTED_PATH}
-            className={buttonVariants({
-              size: 'xl',
-              color: 'destructive',
-              variant: 'raised',
-            })}
-          >
-            {t('getStarted')}
-            <ArrowRight aria-hidden />
-          </Link>
+          <Button asChild size="xl" color="destructive" variant="raised">
+            <Link href={GET_STARTED_PATH}>
+              {t('getStarted')}
+              <ArrowRight aria-hidden />
+            </Link>
+          </Button>
           <Paragraph margin="none" className="text-base-sm text-text/60">
             {t('keepScrolling')}
           </Paragraph>

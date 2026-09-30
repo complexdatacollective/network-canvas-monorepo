@@ -11,6 +11,10 @@ import {
 import { useMergeRefs } from 'react-best-merge-refs';
 
 import { cx } from './utils/cva';
+import {
+  measureHorizontalOverflow,
+  setHorizontalOverflowVariables,
+} from './utils/horizontalOverflow';
 
 type ScrollSnapType = 'mandatory' | 'proximity';
 
@@ -99,7 +103,6 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           scrollTop,
           scrollHeight,
           clientHeight,
-          scrollLeft,
           scrollWidth,
           clientWidth,
         } = viewportRef.current;
@@ -107,8 +110,6 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
         const styles = getComputedStyle(viewportRef.current);
         const padTop = Number.parseFloat(styles.paddingBlockStart);
         const padBottom = Number.parseFloat(styles.paddingBlockEnd);
-        const padLeft = Number.parseFloat(styles.paddingInlineStart);
-        const padRight = Number.parseFloat(styles.paddingInlineEnd);
 
         // Vertical overflow — subtract padding so the fade only appears
         // once content (not just padding) has scrolled past the edge.
@@ -145,20 +146,11 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
         // `fade={false}` still scrolls, and would otherwise never be reachable
         // by keyboard.
         setOverflows(hasVerticalOverflow || hasHorizontalOverflow);
-        const overflowXStart = hasHorizontalOverflow
-          ? Math.max(0, scrollLeft - padLeft)
-          : 0;
-        const overflowXEnd = hasHorizontalOverflow
-          ? Math.max(0, scrollWidth - clientWidth - scrollLeft - padRight)
-          : 0;
-
-        viewportRef.current.style.setProperty(
-          '--scroll-area-overflow-x-start',
-          `${overflowXStart}px`,
-        );
-        viewportRef.current.style.setProperty(
-          '--scroll-area-overflow-x-end',
-          `${overflowXEnd}px`,
+        setHorizontalOverflowVariables(
+          viewportRef.current,
+          measureHorizontalOverflow(viewportRef.current, {
+            excludePadding: true,
+          }),
         );
 
         const scrollbarHeight =

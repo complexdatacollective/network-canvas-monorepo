@@ -1221,7 +1221,7 @@ describe('the attribute picker, read in Spanish', () => {
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: `Crear un atributo nuevo llamado “${attributeName}”.`,
+        name: `Crear un atributo nuevo llamado «${attributeName}».`,
       }),
     );
     return within(dialog).findByRole('alert');
@@ -1255,7 +1255,7 @@ describe('the attribute picker, read in Spanish', () => {
 
     expect(
       within(dialog).getByRole('option', {
-        name: 'Crear un atributo nuevo llamado “nominado_pronto”.',
+        name: 'Crear un atributo nuevo llamado «nominado_pronto».',
       }),
     ).toBeInTheDocument();
   });
@@ -1278,7 +1278,7 @@ describe('the attribute picker, read in Spanish', () => {
 
     expect(
       within(dialog).getByRole('option', {
-        name: 'No se puede crear un atributo llamado “nominado pronto”: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
+        name: 'No se puede crear un atributo llamado «nominado pronto»: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
       }),
     ).toHaveAttribute('aria-disabled', 'true');
   });
@@ -1328,7 +1328,7 @@ describe('the attribute picker, read in Spanish', () => {
     });
 
     expect(await askFor(harness, 'nominado_pronto')).toHaveTextContent(
-      'No se ha podido crear este atributo, así que no se ha cambiado nada. Inténtalo de nuevo.',
+      'No se pudo crear este atributo, así que no se cambió nada. Inténtalo de nuevo.',
     );
   });
 
@@ -1364,7 +1364,7 @@ describe('the attribute picker, read in Spanish', () => {
     );
     await control.user.click(
       within(dialog).getByRole('option', {
-        name: 'Crear un atributo nuevo llamado “nominado_pronto”.',
+        name: 'Crear un atributo nuevo llamado «nominado_pronto».',
       }),
     );
     control.answerWith({ status: 'unassigned' });

@@ -9,7 +9,6 @@ import {
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
-  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { addPreset, narrativeEditor, presetsOf } from './narrativeFixtures.tsx';
@@ -41,17 +40,6 @@ describe('the narrative stage editor', () => {
     });
 
     await expectOpenedAsANewStage('Narrative');
-  });
-
-  /**
-   * And the other way round: a stage the interview already holds says where in
-   * it the researcher is. Asked here because this editor composes the shared
-   * heading itself, so dropping it would leave every other case passing.
-   */
-  it('says where the stage sits in the interview', () => {
-    openFixture();
-
-    expectStatesItsPosition('narrative-1');
   });
 
   /**
@@ -87,13 +75,7 @@ describe('the narrative stage editor', () => {
     const name = await screen.findByRole('textbox', { name: 'Stage name' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Story');
-    // The template's own automatic-layout default is something the picker can
-    // see, so the first node type chosen for this stage still asks before it
-    // throws that default away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Choose the node type' }),
-    );
 
     const preset = await addPreset(harness);
     await harness.user.type(
@@ -109,10 +91,9 @@ describe('the narrative stage editor', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    await harness.user.type(
+    expect(
       screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
-      '4',
-    );
+    ).toHaveDisplayValue('4');
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
@@ -135,7 +116,7 @@ describe('the narrative stage editor', () => {
    */
   it('offers automatic layout as a switch in the behaviours section', async () => {
     const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
+    await waitFor(() => expect(harness.outline()).toHaveLength(7));
 
     expect(
       screen.queryByRole('listbox', { name: 'Layout mode' }),

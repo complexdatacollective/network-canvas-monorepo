@@ -183,7 +183,7 @@ describe('the editor for a form about the participant', () => {
     const harness = renderStageEditor(openFixture());
     expect(
       await screen.findByText(
-        exactlyText('Text attribute using Text input input control'),
+        exactlyText('Text attribute using Text Input input control'),
       ),
     ).toBeInTheDocument();
 

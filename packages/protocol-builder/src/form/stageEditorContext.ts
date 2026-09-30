@@ -117,8 +117,8 @@ export type StageEditorFormContextValue = Readonly<{
   identity: StageIdentity;
   /**
    * Set while this stage is being CREATED, and `undefined` for one the
-   * interview already contains. `StageNameSection` proposes a name only for one
-   * of these, and `SkipLogicSection` offers destinations from `position`
+   * interview already contains. `useAutoStageName` proposes a name only for
+   * one of these, and `SkipLogicSection` offers destinations from `position`
    * because a stage the stage order does not list has no place of its own.
    */
   creation: StageCreation | undefined;

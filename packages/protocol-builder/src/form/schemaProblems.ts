@@ -1,7 +1,10 @@
 import type { z } from 'zod';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import type {
+  MessageDescriptor,
+  MessageErrorValues,
+} from '@codaco/app-i18n/messages';
 
 /**
  * Every code the protocol schema's validator can put on an issue.
@@ -115,6 +118,12 @@ const stageMessages = defineMessages({
     description:
       'Shown beside one section of a stage editor when a value the stage requires is simply not there. Said for every refusal about an empty value, whatever code the validator reached for. fieldLabel is the control’s own name and starts the sentence.',
   },
+  unnamedSetting: {
+    id: 'protocolBuilder.schemaProblem.unnamedSetting',
+    defaultMessage: 'A setting this editor does not show',
+    description:
+      'Stands in for the name of a control in the sentences above, when the thing the protocol refused about the stage is not on screen at all — no part of the editor edits it. Reads as, for example, “A setting this editor does not show has no value, and this stage needs one.” A stage is one step of an interview.',
+  },
   unrecognised: {
     id: 'protocolBuilder.schemaProblem.unrecognised',
     defaultMessage: '{fieldLabel} holds something this stage cannot use.',
@@ -205,6 +214,26 @@ const COPY_BY_CODE: ReadonlyMap<string, SchemaProblemCopy> = new Map(
 export function schemaProblemSentence(
   problem: SchemaProblem,
   fieldLabel: string,
+): string {
+  return problemSentence(problem, fieldLabel);
+}
+
+/**
+ * The same sentence for a refusal nothing on screen answers for: every
+ * sentence above names a control, and there is none, so the subject becomes a
+ * stand-in saying so. The stand-in is carried as a message-error REFERENCE
+ * rather than English, so the decoder resolves it in the reader's language
+ * before putting it into the sentence around it.
+ */
+export function unattributedProblemSentence(problem: SchemaProblem): string {
+  return problemSentence(problem, {
+    messageError: createMessageError(stageMessages.unnamedSetting),
+  });
+}
+
+function problemSentence(
+  problem: SchemaProblem,
+  fieldLabel: MessageErrorValues[string],
 ): string {
   const copy = COPY_BY_CODE.get(problem.code);
   if (copy?.kind === 'theValidatorsOwn') return problem.message;

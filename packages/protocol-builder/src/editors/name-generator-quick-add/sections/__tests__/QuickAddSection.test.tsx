@@ -5,6 +5,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   offeredAttributes,
   openAttributePicker,
@@ -60,7 +61,7 @@ describe('what a quick-add name generator records', () => {
     await waitFor(() => expect(within(field).getByText('name')).toBeVisible());
     // The stage's name, the type it nominates and what it asks belong to
     // sections this mount does not include.
-    await harness.roundTrip({ unowned: ['label', 'subject', 'prompts'] });
+    await harness.roundTrip({ unowned: ['subject', 'prompts'] });
   });
 
   /**
@@ -269,8 +270,8 @@ describe('what a quick-add name generator records', () => {
       },
     });
 
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, field)).toContain('alias'),
+    await awaitOfferedAttributes(harness.user, field, (offered) =>
+      expect(offered).toContain('alias'),
     );
   });
 });

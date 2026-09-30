@@ -101,7 +101,7 @@ const Network = ({
   return (
     <>
       {isTruncated && (
-        <Paragraph className="mb-2 text-sm text-current/70">
+        <Paragraph intent="smallText" emphasis="muted" className="mb-2">
           {intl.formatMessage(messages.showingOfRows, {
             ROW_LIMIT: intl.formatNumber(ROW_LIMIT),
             value2: intl.formatNumber(totalRows),

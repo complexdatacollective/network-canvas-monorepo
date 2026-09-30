@@ -47,7 +47,7 @@ const view = (
 
 describe('passkey names in researcher chrome', () => {
   it.each([
-    ['multiDevice', 'Synced passkey', 'Clave de acceso sincronizada'],
+    ['multiDevice', 'Synced passkey', 'Llave de acceso sincronizada'],
     ['singleDevice', 'Security key', 'Llave de seguridad'],
   ])(
     'changes a generic %s name in the list and an already open removal confirmation',

@@ -34,6 +34,7 @@ import {
 } from '../FieldNamespace';
 import { useFieldsDisabled } from '../FieldsDisabled';
 import { useShouldDiscardFieldOnUnmount } from '../FieldUnmountPolicy';
+import { useFormFieldScope } from '../store/formStoreProvider';
 import type { FieldState, ValidationContext } from '../store/types';
 import { validationPropKeys } from '../validation/functions';
 import {
@@ -91,6 +92,8 @@ type UseFieldResult = {
   containerProps: {
     'data-field-name': string;
     'data-field-path': string; // Canonical internal key used to focus errors
+    /** Which form this field belongs to; see `useFormFieldScope`. */
+    'data-field-form': string | undefined;
     // Validate-on-blur is scoped to the whole field: this fires on focusout
     // bubbling from any descendant, so moving focus to an in-field control
     // (a slot button, a sibling radio…) does not validate prematurely.
@@ -319,6 +322,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const validateField = useFormStore((store) => store.validateField);
   const shouldDiscardOnUnmount = useShouldDiscardFieldOnUnmount();
   const fieldsDisabled = useFieldsDisabled();
+  const fieldScope = useFormFieldScope();
 
   const isDisabled = isSubmitting || fieldsDisabled || config.disabled;
   const isReadOnly = config.readOnly;
@@ -547,6 +551,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     containerProps: {
       'data-field-name': publicResolvedName,
       'data-field-path': resolvedName,
+      'data-field-form': fieldScope,
       'onBlur': handleContainerBlur,
     },
     fieldProps: {

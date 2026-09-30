@@ -1086,6 +1086,7 @@ export default function UserManagement({
             size="sm"
             color="primary"
             icon={<Plus />}
+            className="shrink-0"
           >
             {intl.formatMessage(messages.addUser)}
           </Button>

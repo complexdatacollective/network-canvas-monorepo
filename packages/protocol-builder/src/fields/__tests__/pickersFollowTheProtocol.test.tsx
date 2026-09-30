@@ -13,6 +13,7 @@ import {
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   offeredAttributes,
 } from '../../testing/attributePicker.ts';
@@ -195,10 +196,8 @@ describe('the attribute picker', () => {
       },
     });
 
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, picker)).toContain(
-        'nominated_early',
-      ),
+    await awaitOfferedAttributes(harness.user, picker, (offered) =>
+      expect(offered).toContain('nominated_early'),
     );
   });
 

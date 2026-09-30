@@ -70,6 +70,8 @@ The very first time you open Interviewer you are greeted with a welcome screen a
 
 ![The Interviewer welcome screen](/assets/img/interviewer-guide/welcome.png)
 
+The welcome screen, and every step of the setup wizard, includes an **App language** select, so you can switch the interface language before going any further (see [Interface language](#interface-language) below).
+
 The wizard opens with a brief overview of what it will cover — securing your data, and setting your app preferences.
 
 ![The setup wizard introduction](/assets/img/interviewer-guide/setup-intro.png)
@@ -103,17 +105,21 @@ When the app is locked you see only the lock screen — never any protocol names
 
 <Screenshot axis="interviewer" name="lock-screen" alt="The Interviewer lock screen"></Screenshot>
 
-Interviewer locks itself automatically after a period of inactivity (configurable in **Settings**, from one minute up to an hour), as well as when the app is closed. You can also lock it immediately with **Lock now** in Settings.
+Interviewer locks itself automatically after a period of inactivity (configurable in **Settings**, from one minute up to an hour), as well as when the app is closed. You can also lock it immediately with the **Lock app** button (the padlock icon) in the dashboard's top bar.
 
 For extra protection, you can require re-authentication at interview boundaries — **entering** an interview (on by default), **exiting** to the dashboard, and **exporting** data — each toggled independently in Settings.
 
 ### Settings
 
-**Settings** is where you manage app preferences, control what your exports contain, and check on the app itself. Open it from the gear icon on the dashboard. It is organized into five areas: **About**, **Data export**, **Privacy**, **Security**, and **Synthetic data**.
+**Settings** is where you manage app preferences, control what your exports contain, and check on the app itself. Open it from the gear icon on the dashboard. It is organized into seven areas: **About**, **Language**, **Interview**, **Data export**, **Privacy**, **Security**, and **Synthetic data**.
 
 ![The Interviewer settings screen](/assets/img/interviewer-guide/settings.png)
 
 **About** reports basic information about the app and this device: the app version, how much of your storage is in use (shown as a usage bar — on desktop it also shows free disk space), and your installation ID, a unique per-device identifier. The version and installation ID are the details to quote when contacting us for support. This area also lets you re-show the one-click sample protocol card on the home screen if you previously dismissed it.
+
+**Language** holds the **App language** select, which sets the language of Interviewer and its built-in interview controls on this device. Choose a language, or **Automatic (browser)** to follow your browser's language preferences. See [Interface language](#interface-language) below.
+
+**Interview** has a single **Allow stage navigation** toggle, on by default. While it is on, tapping the progress bar during an interview opens a stages menu, from which you can jump directly to any stage. When it is off, the progress bar stops opening that menu; the up and down arrows still move one screen at a time, which on a stage with several prompts means one prompt rather than one whole stage. Jumping between stages is useful when piloting a protocol, but is usually turned off for real interviews.
 
 **Data export** controls what every export contains, so you set it once here rather than choosing each time you export:
 
@@ -122,9 +128,28 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 **Privacy** has a single **Enable analytics** toggle. When it is on (the default), the app sends a small amount of anonymous usage and error information — which interview stages and features are used, when protocols are imported or data is exported, and details of any crashes — to help us improve the app. No participant data ever leaves the device: network data, responses, case IDs, protocol contents, and asset files are never collected, and analytics contain nothing that identifies you. You can change this at any time.
 
-**Security** appears once you have set a security method during setup. It shows your current method and when it was set and, for a PIN, lets you **change your PIN** without losing data. It also holds the auto-lock timeout and the re-authentication options described under [Locking and unlocking](#locking-and-unlocking) above. Finally, it offers a **Revoke / Reset device** option: because your stored data is tied to your security method, using this **wipes every protocol and session on the device** and returns you to first-run setup.
+**Security** is always listed. On a device used without a lock it offers **Enable app security**, which runs the **Get started** wizard so you can set a device lock. Adding that first lock keeps whatever is already on the device: the protocols and sessions stored there are re-encrypted with a key derived from your new credential, not erased. So a device that has been collecting data without a lock can be secured at any point. Once a security method is set, it shows your current method and when it was set and, for a PIN, lets you **change your PIN** without losing data. It also holds the auto-lock timeout and the re-authentication options described under [Locking and unlocking](#locking-and-unlocking) above. Finally, it offers a **Revoke / Reset device** option: because your stored data is tied to your security method, using this **wipes every protocol and session on the device** and returns you to first-run setup.
 
 **Synthetic data** generates fake interview sessions so you can rehearse and validate your export pipeline before collecting real data. Choose a **protocol**, set the **number of sessions** to create (1–1000, default 10), and optionally **simulate participant drop-out** (on by default, which leaves some sessions incomplete to mirror real-world data) or **respect skip logic and filtering** (off by default). Generated sessions appear in your **Data** view and export exactly like real ones; **Delete All** removes every synthetic session in one step. For how synthetic data fits into a full rehearsal of your study, see [Piloting Your Study](/en/get-started/planning-a-study/piloting-your-study).
+
+### Interface language
+
+Interviewer's interface — its menus, buttons and messages, and the built-in interview controls, help, validation messages and dialogs — is available in English, British English, and Spanish. Each language is listed in its own language: **English**, **English (UK)**, and **Español**. An **Automatic** option, the default, follows the language preferences set in your browser.
+
+You can change the language from any of these places:
+
+- The **globe button** in the dashboard's top bar, which opens a list of every language. The **Automatic** entry names the language your browser currently resolves to, and choosing any entry applies it at once.
+- The **App language** select on the welcome screen and on each step of the setup wizard.
+- **Settings → Language**.
+- The **Interface language** option in the interview settings menu (see [Key navigation elements](#key-navigation-elements)). Switching language mid-interview keeps the answers already entered, any open form, and your place in the interview.
+
+The choice is stored in the browser on each device, so every interview device keeps its own language. If the browser blocks device storage, the language you chose still applies for the current session but is not remembered: the globe button's list reports that it couldn't save, with a **Try again** button, and **Settings → Language** reports that the preference could not be saved. Every language remains available offline in the installed app.
+
+<TipBox>
+
+The interface language never changes your protocol or your data. Everything written in Architect — prompts, form labels, response options, and Information screens — appears exactly as the researcher wrote it, and collected data and exported values are unchanged. To run interviews in Spanish, author the protocol in Spanish.
+
+</TipBox>
 
 </AppOnly>
 
@@ -161,11 +186,13 @@ The **protocols section** which allows you to quickly import a [Network Canvas p
 
 <AppOnly axis="interviewer" app="current">
 
-Interviewer presents this as a dashboard. You switch between two views from the toggle at the top of the screen — **Protocols** and **Data** — with a settings icon alongside them:
+Interviewer presents this as a dashboard. You switch between two views from the toggle at the top of the screen — **Protocols** and **Data** — with a row of buttons alongside them:
 
 - **Protocols** — your installed protocols, shown as a deck you can flip through, alongside a card for importing a new protocol.
 - **Data** — every collected session, ready to resume, review, or export (covered under [Resuming, exporting, and managing interview sessions](#resuming-exporting-and-managing-interview-sessions) below).
-- **Settings** (the gear icon) — app preferences and diagnostics, grouped into About, Data export, Privacy, and Security (see [Security and locking](#security-and-locking) above).
+- **Interface language** (the globe icon) — switches the interface language (see [Interface language](#interface-language) above).
+- **Lock app** (the padlock icon) — locks Interviewer immediately. It appears only once you have set up an app lock.
+- **Settings** (the gear icon) — app preferences and diagnostics, grouped into About, Language, Interview, Data export, Privacy, Security, and Synthetic data (see [Settings](#settings) above).
 
 </AppOnly>
 
@@ -184,6 +211,12 @@ There are two ways to import a protocol into the devices running Interviewer. Wh
 Protocols are imported into Interviewer from a `.netcanvas` file on the device. Each protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically, with a notification telling you the migration occurred.
 
 ![The Import a protocol dialog in Interviewer](/assets/img/interviewer-guide/import-protocol.png)
+
+<TipBox>
+
+Interviewer refuses a `.netcanvas` file that is missing any of its resource files, and the message names the missing resource. A file whose contents are damaged is reported as damaged. To repair a protocol with missing resources, open it in Architect (which can open it despite the missing files), add the files again from **Resources**, and download a fresh copy of the protocol. See [Resources](/en/design-protocols/key-concepts/resources).
+
+</TipBox>
 
 </AppOnly>
 
@@ -381,15 +414,20 @@ device, which may help with engagement.
 
 <AppOnly axis="interviewer" app="current">
 
-Interviewer keeps the interview chrome deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains just three controls:
+Interviewer keeps the interview chrome deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains only a few controls:
 
-- A **settings** control (the gear icon) that opens a small menu containing a **Text size** option — letting the participant enlarge or reduce the whole interview, useful on tablets — and an **Exit interview** action that leaves the interview and returns to the dashboard after a confirmation.
+- A **settings** control (the gear icon) that opens a small menu containing:
+  - **Interface language**, which switches the language of the interview's built-in controls, help, and messages without losing the answers already entered, any open form, or the current position in the interview. The choice is remembered on the device, like the other language controls (see [Interface language](#interface-language)).
+  - **Text size**, letting the participant enlarge or reduce the whole interview — useful on tablets.
+  - **Exit interview**, which leaves the interview and returns to the dashboard after a confirmation.
 - An **up** arrow to move to the previous stage or prompt.
 - A **down** arrow to advance to the next stage or prompt.
 
-Between the up and down arrows, a **progress bar** fills as the participant moves through the interview. Progress is saved continuously, so you can exit an interview and resume it later from the **Interviews** list without losing data.
+Between the up and down arrows, a **progress bar** fills as the participant moves through the interview. While **Allow stage navigation** is on in **Settings → Interview** (the default), the progress bar is also a button (announced to screen readers as **Go to another screen**) that opens a stages menu for jumping directly to any stage. Progress is saved continuously, so you can exit an interview and resume it later from the **Interviews** list without losing data.
 
-Beyond the settings menu's participant-facing options, there are no in-interview app settings — those live in the dashboard **Settings** area, reached after exiting the interview.
+The settings menu holds only these participant-facing options; every other app setting lives in the dashboard **Settings** area, reached after exiting the interview.
+
+![The interview settings menu, with Interface language, Text size, and Exit interview](/assets/img/interviewer-guide/interview-settings.png)
 
 <TipBox danger={true}>
 

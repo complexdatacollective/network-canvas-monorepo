@@ -111,8 +111,8 @@
   },
   "protocolBuilder.codebookEntity.shapeMappingDescription": {
     "en": "Override the default shape based on the value of a node's attribute.",
-    "es": "Sustituir la forma predeterminada según el valor de un atributo del nodo.",
-    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.overrideTheDefaultShapeBasedOn"
+    "es": "Sustituye la forma predeterminada según el valor de un atributo del nodo.",
+    "from": "74a07e626 architect.typeEditor.shapeVariableMapping.overrideTheDefaultShapeBasedOn; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.codebookEntity.shapeMappingNeedsAttribute": {
     "en": "Select an attribute to map to a shape, or turn off shape mapping.",

@@ -6,6 +6,7 @@ import AssetBrowser from '~/components/AssetBrowser';
 import UnusedAssetsAlert from '~/components/AssetBrowser/UnusedAssetsAlert';
 import ExternalLink from '~/components/ExternalLink';
 import PageHeading from '~/components/ProjectNav/PageHeading';
+import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 // Rich-text tag renderers live at module scope so they keep one identity across
@@ -33,7 +34,7 @@ const messages = defineMessages({
 const AssetsPage = () => {
   const intl = useAppIntl();
   return (
-    <div className="phone-landscape:px-7 tablet-landscape:px-29 px-5">
+    <div className={pageInsetClasses}>
       <PageHeading
         title={intl.formatMessage(messages.resourceLibrary)}
         description={

@@ -13,7 +13,7 @@ describe('what becomes of a person already considered', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openSection());
 
-    await harness.roundTrip({ unowned: ['label', 'subject', 'prompts'] });
+    await harness.roundTrip({ unowned: ['subject', 'prompts'] });
   });
 
   /**
@@ -100,10 +100,10 @@ describe('the node availability section, read in Spanish', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: 'Quitarla de la lista' }),
+      screen.getByRole('radio', { name: 'Quitarlo de la lista' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: 'Mantenerla en la lista' }),
+      screen.getByRole('radio', { name: 'Mantenerlo en la lista' }),
     ).toBeInTheDocument();
   });
 });

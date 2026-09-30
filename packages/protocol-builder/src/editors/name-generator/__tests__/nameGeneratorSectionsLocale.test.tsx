@@ -128,7 +128,7 @@ describe('the name-generator sections, read in Spanish', () => {
     // Spanish sentence would fail here.
     expect(
       screen.getByText(
-        'Muestra las personas nombradas hasta ahora, limitado por 1 regla.',
+        'Muestra a las personas nombradas hasta ahora, limitado por 1 regla.',
       ),
     ).toBeInTheDocument();
   });

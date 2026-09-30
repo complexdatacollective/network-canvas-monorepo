@@ -91,26 +91,23 @@ const result = { ok: false, checks, lane: laneName };
 let browser;
 
 /**
- * The language control, found by what it offers rather than by its own label.
+ * The language switcher in the dashboard's top bar, found by where it sits
+ * rather than by its own name.
  *
- * Its label is itself translated, so a lane that looked for "Language" could
- * only ever run once: the second time the control is called "Idioma" and the
- * check fails as if the app had no language setting at all. The option labels
- * are each language's own name, in every language.
+ * Its name is itself translated, so a lane that looked for "Interface
+ * language" could only ever run once: the second time the control is called
+ * "Idioma de la interfaz" and the check fails as if the app had no language
+ * control at all. The option labels are each language's own name, in every
+ * language.
  */
-const languageSelect = (page) =>
-  page
-    .locator('select')
-    .filter({ has: page.locator('option', { hasText: LANGUAGE }) })
-    .first();
-
 const setLanguage = async (page, label) => {
-  await page.goto(`${config.baseUrl}/dashboard/settings`, {
-    waitUntil: 'networkidle',
-  });
-  const select = languageSelect(page);
-  await select.waitFor({ state: 'visible', timeout: 30_000 });
-  await select.selectOption({ label });
+  await page.goto(`${config.baseUrl}/dashboard`, { waitUntil: 'networkidle' });
+  const trigger = page.getByRole('navigation').getByRole('combobox');
+  await trigger.waitFor({ state: 'visible', timeout: 30_000 });
+  await trigger.click();
+  const option = page.getByRole('option', { name: label, exact: true });
+  await option.click();
+  await option.waitFor({ state: 'detached' });
   await page.waitForTimeout(4000);
 };
 

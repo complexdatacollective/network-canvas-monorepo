@@ -127,9 +127,9 @@ describe('the merged catalog a locale actually renders through', () => {
     // simply the same string twice.
     expect(
       enGb.formatMessage({
-        id: 'protocolBuilder.codebookEntity.colorLabel',
-        defaultMessage: 'Protocol color',
+        id: 'protocolBuilder.codebookEntity.colorSectionTitle',
+        defaultMessage: 'Type color',
       }),
-    ).toBe('Protocol colour');
+    ).toBe('Type colour');
   });
 });

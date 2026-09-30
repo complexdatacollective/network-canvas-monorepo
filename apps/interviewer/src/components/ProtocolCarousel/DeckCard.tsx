@@ -15,19 +15,20 @@ import { Link } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { buttonVariants, IconButton } from '@codaco/fresco-ui/Button';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
+import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
-import { proportionalLucideIconVariants } from '@codaco/fresco-ui/styles/controlVariants';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { protocolDataViewPath } from '~/components/DataView/dataViewUrlState';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
-import { cardBase, cardHeadingSizeClass } from './cardStyles';
+import { cardHeadingSizeClass } from './cardStyles';
 
 const messages = defineMessages({
   protocol: {
@@ -64,39 +65,6 @@ const messages = defineMessages({
     description: 'Administration text in Interviewer DeckCard.',
   },
 });
-
-function Pill({
-  children,
-  icon,
-  intent,
-}: {
-  children: ReactNode;
-  icon: ReactNode;
-  intent?: 'default' | 'error' | 'success' | 'warning';
-}) {
-  return (
-    // layout="position": the pill glides (on the shared region clock) when
-    // the delete control entering/leaving changes its position in the row.
-    <motion.div
-      layout="position"
-      transition={REGION_TRANSITION}
-      className={cx(
-        'font-monospace flex items-center gap-2 rounded-full border px-[2cqi] py-[0.75cqi] text-[max(12px,2.5cqi)] uppercase',
-        proportionalLucideIconVariants(),
-        'backdrop-blur-xs',
-        intent === 'error' &&
-          'text-destructive border-destructive bg-[color-mix(in_oklab,oklch(var(--destructive))_10%,oklch(var(--rich-black)))]/60',
-        intent === 'success' &&
-          'text-sea-green border-sea-green bg-[color-mix(in_oklab,oklch(var(--sea-green))_10%,oklch(var(--rich-black)))]/60',
-        intent === 'warning' &&
-          'text-neon-carrot border-neon-carrot bg-[color-mix(in_oklab,oklch(var(--neon-carrot))_20%,oklch(var(--rich-black)))]/60',
-      )}
-    >
-      {icon}
-      {children}
-    </motion.div>
-  );
-}
 
 // CSS line-breaking treats `_` as part of a word, so an underscore is never a
 // wrap opportunity on its own — only spaces, hyphens (`-`) and soft hyphens
@@ -494,39 +462,28 @@ export function DeckCard(props: DeckCardProps) {
 
   return (
     <LayoutGroup id={id}>
-      <motion.div
+      <ProtocolCard
         layout
+        background={
+          <Pattern
+            aria-hidden
+            seed={protocol.name ?? ''}
+            className="absolute inset-0 size-full"
+          />
+        }
+        isActive={isActive}
+        className={cx(
+          'effect-shadow-xl h-full',
+          isActive && 'effect-shadow-2xl',
+        )}
         aria-label={intl.formatMessage(messages.cardName, {
           name: protocol.name ?? intl.formatMessage(messages.protocol),
           active: String(isActive),
         })}
         aria-busy={loading || undefined}
         onKeyDown={onCardKeyDown}
-        // Border echoes the color the Pattern paints for this protocol's seed.
-        // style={{ borderColor: seedToPatternPalette(protocol.name).backgroundTop }}
-        className={cx(
-          cardBase(),
-          // No minimum size of its own: the card always fills the box it's
-          // given (the text budget degrades content gracefully), so it can
-          // never overflow its carousel slot or a story frame. The deck's
-          // readability floor lives in ProtocolDeck's card-size computation.
-          'text-navy-taupe bg-platinum publish-colors',
-          'effect-shadow-xl @container relative h-full w-full overflow-clip rounded',
-          isActive && 'spring-medium effect-shadow-2xl',
-          'border-platinum-dark border-[0.15cqi]',
-        )}
       >
         <AnimatePresence mode="popLayout" initial={false}>
-          <Pattern
-            key="pattern"
-            seed={protocol.name ?? ''}
-            className="absolute inset-0 size-full"
-          />
-          <div
-            key="gradient"
-            className="to-platinum from-rich-black/20 via-platinum/80 absolute inset-0 size-full bg-linear-to-b via-30% to-70%"
-          />
-
           <div
             key="content"
             ref={budget.columnRef}
@@ -554,9 +511,20 @@ export function DeckCard(props: DeckCardProps) {
                   className="flex min-h-[max(40px,10cqi)] shrink-0 items-center justify-end gap-4"
                 >
                   {requiresInternetConnection && (
-                    <Pill icon={<Globe />} intent="warning">
+                    <Badge
+                      render={
+                        <motion.div
+                          layout="position"
+                          transition={REGION_TRANSITION}
+                        />
+                      }
+                      tone="warning"
+                      uppercase
+                      icon={<Globe className="size-4" />}
+                      className="whitespace-nowrap"
+                    >
                       {intl.formatMessage(messages.requiresInternet)}
-                    </Pill>
+                    </Badge>
                   )}
 
                   {/* Direct presence parent: gives the control real enter/exit
@@ -818,7 +786,7 @@ export function DeckCard(props: DeckCardProps) {
             </AnimatePresence>
           </div>
         </AnimatePresence>
-      </motion.div>
+      </ProtocolCard>
     </LayoutGroup>
   );
 }

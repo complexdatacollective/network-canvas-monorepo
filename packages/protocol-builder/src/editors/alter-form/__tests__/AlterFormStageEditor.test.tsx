@@ -62,7 +62,7 @@ const createFixture = () => ({
  * true of `relationship_to_ego` both before and after it is renamed, since
  * the badge names the attribute's kind and control, not its identifier.
  */
-const FIELD_ROW_BADGE = 'Text attribute using Text input input control';
+const FIELD_ROW_BADGE = 'Text attribute using Text Input input control';
 
 /**
  * What is true of THIS interface and no other. The list of sections it

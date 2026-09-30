@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import { type CSSProperties, useCallback, useId, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -742,7 +742,8 @@ function EntityTypeCodebookControls({
             <Button
               ref={editTrigger}
               type="button"
-              color="primary"
+              color="default"
+              icon={<Pencil aria-hidden="true" />}
               onClick={() =>
                 openSession({
                   key: uuid(),
@@ -1096,7 +1097,7 @@ export default function EntityTypePickerField({
         )}
       </fieldset>
       {isMissing && (
-        <p className="text-destructive text-sm">
+        <p className="text-destructive-ink text-sm">
           {intl.formatMessage(messages.missingType)}
         </p>
       )}

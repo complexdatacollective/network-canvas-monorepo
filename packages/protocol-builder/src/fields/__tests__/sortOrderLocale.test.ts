@@ -42,7 +42,7 @@ describe('sort-rule options, read in Spanish', () => {
       {
         option: {
           value: 'nickname',
-          label: 'nickname — este atributo ya no está en el libro de códigos',
+          label: 'nickname: este atributo ya no está en el libro de códigos',
           disabled: true,
         },
         message: MISSING_SORT_PROPERTY_MESSAGE,
@@ -61,7 +61,7 @@ describe('sort-rule options, read in Spanish', () => {
       {
         option: {
           value: 'position',
-          label: 'Posición — este atributo no se puede usar para ordenar',
+          label: 'Posición: este atributo no se puede usar para ordenar',
           disabled: true,
         },
         message: UNSORTABLE_SORT_PROPERTY_MESSAGE,

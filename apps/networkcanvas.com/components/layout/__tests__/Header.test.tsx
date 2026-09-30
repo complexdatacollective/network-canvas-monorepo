@@ -54,7 +54,7 @@ describe('localized layout navigation', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Galería de protocolos' }),
-    ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
+    ).toHaveAttribute('href', '/protocol-gallery');
     expect(
       screen.getByRole('button', { name: 'Software' }),
     ).toBeInTheDocument();
@@ -63,9 +63,7 @@ describe('localized layout navigation', () => {
       expect(link).toHaveAttribute('href', '/get-started');
       expect(link).toHaveAttribute('aria-current', 'page');
     }
-    expect(
-      screen.queryByRole('combobox', { name: 'Idioma' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Abrir navegación del sitio' }),
@@ -73,6 +71,52 @@ describe('localized layout navigation', () => {
     expect(
       screen.getByRole('button', { name: 'Cerrar navegación del sitio' }),
     ).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('opens the gallery in the same tab while it is a route of this site', () => {
+    renderWithIntl(<Header />, 'es');
+
+    const gallery = screen.getByRole('link', {
+      name: 'Galería de protocolos',
+    });
+    expect(gallery).toHaveAttribute('href', '/protocol-gallery');
+    expect(gallery).not.toHaveAttribute('target');
+    expect(gallery).not.toHaveAttribute('rel');
+  });
+
+  it('carries the locale across hosts once the gallery has its own origin', () => {
+    vi.stubEnv(
+      'NEXT_PUBLIC_PROTOCOL_GALLERY_URL',
+      'https://protocolgallery.networkcanvas.com',
+    );
+
+    renderWithIntl(<Header />, 'es');
+    expect(
+      screen.getByRole('link', { name: 'Galería de protocolos' }),
+    ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/es/');
+    cleanup();
+
+    renderWithIntl(<Header host="protocolGallery" />, 'es');
+    // The active gallery item now points at the gallery's own origin, which is
+    // this site: it must not keep the shared navigation's new-tab treatment.
+    const activeGallery = screen.getByRole('link', {
+      name: 'Galería de protocolos',
+    });
+    expect(activeGallery).toHaveAttribute(
+      'href',
+      'https://protocolgallery.networkcanvas.com/es/',
+    );
+    expect(activeGallery).not.toHaveAttribute('target');
+    expect(activeGallery).not.toHaveAttribute('rel');
+    expect(
+      screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
+    ).toHaveAttribute('href', 'https://networkcanvas.com/es/');
+    for (const link of screen.getAllByRole('link', { name: 'Comenzar' })) {
+      expect(link).toHaveAttribute(
+        'href',
+        'https://networkcanvas.com/es/get-started/',
+      );
+    }
   });
 
   it('marks animated navigation for its pre-hydration entrance state', () => {
@@ -126,7 +170,7 @@ describe('localized layout navigation', () => {
       screen.getByText(/Derechos de autor de Complex Data Collective/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('combobox', { name: 'Idioma' }),
+      screen.getByRole('combobox', { name: /^Idioma de la interfaz: .+/ }),
     ).toBeInTheDocument();
   });
 });

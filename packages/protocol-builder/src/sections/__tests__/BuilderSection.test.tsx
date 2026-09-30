@@ -89,9 +89,6 @@ function SearchOptionsAgainstASubject() {
           entityType="node"
         />
       </BuilderSection>
-      <BuilderSection title="Stage name">
-        <Field name="label" label="Stage name" component={InputField} />
-      </BuilderSection>
       <BuilderSection
         title="Search options"
         capability={SEARCH}
@@ -446,6 +443,8 @@ describe('a capability that resets on a value with structure', () => {
     const harness = renderStageEditor(openSectionAgainstASubject());
     await screen.findByRole('textbox', { name: 'Fuzziness' });
 
+    // A keystroke somewhere else in the stage entirely — the name, which the
+    // host draws outside every section.
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
       '!',

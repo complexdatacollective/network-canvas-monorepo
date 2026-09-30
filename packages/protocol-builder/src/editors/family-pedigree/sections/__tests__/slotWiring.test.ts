@@ -332,11 +332,7 @@ describe('an attribute a pedigree control can no longer use', () => {
     ).toBeUndefined();
   });
 
-  /**
-   * Named by its stored id, because there is no definition left to take a name
-   * from — the same treatment a deleted type gets in `EntityTypePickerField`.
-   */
-  it('names an attribute that has left the codebook', () => {
+  it('refuses an attribute that has left the codebook without showing its id', () => {
     const issue = unusableVariableIssue(
       VARIABLES,
       'deleted_attribute',
@@ -345,7 +341,7 @@ describe('an attribute a pedigree control can no longer use', () => {
 
     expect(issue).toBeDefined();
     expect(issue === undefined ? '' : readMessage(issue)).toBe(
-      '"deleted_attribute" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      'This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
     );
   });
 

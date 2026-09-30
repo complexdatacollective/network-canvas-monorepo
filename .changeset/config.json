@@ -23,7 +23,13 @@
     "@codaco/studio-rpc",
     "@codaco/studio-server",
     "@codaco/studio-sync",
-    "@codaco/studio-web"
+    "@codaco/studio-web",
+    "@codaco/protocol-builder",
+    "@codaco/protocol-builder-core",
+    "@codaco/protocols",
+    "@codaco/storybook-config",
+    "@codaco/tsconfig",
+    "@codaco/vitest-config"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

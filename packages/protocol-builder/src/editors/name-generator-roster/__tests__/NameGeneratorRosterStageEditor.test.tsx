@@ -81,6 +81,31 @@ describe('creating a roster name generator', () => {
     }
   });
 
+  it('lists the sections the data file unlocks in page order', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'NameGeneratorRoster', position: ROSTER_INDEX },
+      registry: nameGeneratorRosterStageEditor,
+    });
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Roster Name Generator'),
+    );
+    const order = harness.outline().map((section) => section.title);
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: /Select/ }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Roster' }),
+    );
+    await screen.findByText(
+      'The people in it carry these attributes: age and name.',
+    );
+
+    expect(harness.outline().map((section) => section.title)).toEqual(order);
+  });
+
   /**
    * The roster IS the panel, so this generator has no side panels — the schema
    * gives `panels` to the other two and to nothing else, and a heading

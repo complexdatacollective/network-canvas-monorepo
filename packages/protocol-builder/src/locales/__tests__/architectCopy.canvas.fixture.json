@@ -76,8 +76,8 @@
   },
   "protocolBuilder.anonymisation.typeSwitchDescription": {
     "en": "Enable encryption for attributes belonging to this node type.",
-    "es": "Activar el cifrado de atributos pertenecientes a este tipo de nodo.",
-    "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.enableEncryptionForAttributesBelongingTo"
+    "es": "Activa el cifrado de atributos pertenecientes a este tipo de nodo.",
+    "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.enableEncryptionForAttributesBelongingTo; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.familyPedigree.familyMemberAttributesDescription": {
     "en": "Map the node attributes used to label family members and store pedigree relationships.",
@@ -101,8 +101,8 @@
   },
   "protocolBuilder.familyPedigree.relationshipAttributesTitle": {
     "en": "Relationship attributes",
-    "es": "Atributos de la relación",
-    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.relationshipAttributes"
+    "es": "Atributos de relación",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.relationshipAttributes; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.geospatial.accessDescription": {
     "en": "Provide the Mapbox API key required to display the map.",
@@ -116,8 +116,8 @@
   },
   "protocolBuilder.geospatial.appearanceDescription": {
     "en": "Customize the colors, style, and features of the map.",
-    "es": "Personalice los colores, el estilo y las funciones del mapa.",
-    "from": "74a07e626 architect.sections.mapOptions.customizeTheColorsStyleAndFeatures"
+    "es": "Personaliza los colores, el estilo y las funciones del mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.customizeTheColorsStyleAndFeatures; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.geospatial.appearanceTitle": {
     "en": "Map appearance",
@@ -151,8 +151,8 @@
   },
   "protocolBuilder.geospatial.layerHint": {
     "en": "Choose a GeoJSON resource containing the geographic areas participants can select. Each feature should include a property that identifies the area, such as a census tract, ZIP code, or neighborhood; after selecting the resource, choose which property value to record below. Avoid very large files or features outside the study area, as they can slow map loading.",
-    "es": "Elige un recurso GeoJSON que contenga las áreas geográficas que los participantes pueden seleccionar. Cada elemento debe incluir una propiedad que identifique el área, como una sección censal, un código postal o un barrio. Después de seleccionar el recurso, elige abajo qué valor de propiedad se registrará. Evita archivos muy grandes o elementos fuera del área de estudio, ya que pueden ralentizar la carga del mapa.",
-    "from": "74a07e626 architect.sections.mapOptions.chooseAGeoJSONResourceContainingThe"
+    "es": "Elige un recurso GeoJSON que contenga las áreas geográficas que los participantes pueden seleccionar. Cada entidad geográfica debe incluir una propiedad que identifique el área, como una sección censal, un código postal o un barrio. Después de seleccionar el recurso, elige abajo qué valor de propiedad se registrará. Evita archivos muy grandes o entidades geográficas fuera del área de estudio, ya que pueden ralentizar la carga del mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.chooseAGeoJSONResourceContainingThe; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.geospatial.layerLabel": {
     "en": "Layer data source",
@@ -196,8 +196,8 @@
   },
   "protocolBuilder.geospatial.searchHint": {
     "en": "Allow participants to search the map for addresses, neighborhoods, and points of interest.",
-    "es": "Permitir que los participantes busquen direcciones, barrios y puntos de interés en el mapa.",
-    "from": "74a07e626 architect.sections.mapOptions.allowParticipantsToSearchTheMap"
+    "es": "Permite que los participantes busquen direcciones, barrios y puntos de interés en el mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.allowParticipantsToSearchTheMap; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.geospatial.searchLabel": {
     "en": "Allow location search",
@@ -226,8 +226,8 @@
   },
   "protocolBuilder.geospatial.transitHint": {
     "en": "Show public transit routes and stations on the map.",
-    "es": "Mostrar rutas y estaciones de transporte público en el mapa.",
-    "from": "74a07e626 architect.sections.mapOptions.showPublicTransitRoutesAndStations"
+    "es": "Muestra rutas y estaciones de transporte público en el mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.showPublicTransitRoutesAndStations; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.geospatial.transitLabel": {
     "en": "Show public transit",
@@ -386,8 +386,8 @@
   },
   "protocolBuilder.networkCanvas.canvasInteractionDescription": {
     "en": "Control automatic layout, drawing, and node repositioning on the narrative canvas.",
-    "es": "Controle la disposición automática, el dibujo y el movimiento de nodos en el lienzo narrativo.",
-    "from": "74a07e626 architect.sections.narrativeBehaviours.controlAutomaticLayoutDrawingAndNode"
+    "es": "Controla la disposición automática, el dibujo y el movimiento de nodos en el lienzo narrativo.",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.controlAutomaticLayoutDrawingAndNode; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.canvasInteractionTitle": {
     "en": "Narrative behaviors",
@@ -396,13 +396,13 @@
   },
   "protocolBuilder.networkCanvas.composerEdgeDescription": {
     "en": "Define the connection types participants can draw and the attributes collected for each type.",
-    "es": "Define los tipos de conexiones que los participantes pueden dibujar y los atributos recogidos para cada tipo.",
-    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.defineTheConnectionTypesParticipantsCan"
+    "es": "Define los tipos de vínculo que los participantes pueden dibujar y los atributos recogidos para cada tipo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.defineTheConnectionTypesParticipantsCan; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.composerEdgeFieldLabel": {
     "en": "Edge types",
-    "es": "Tipos de vínculos",
-    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.edgeTypes"
+    "es": "Tipos de vínculo",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.edgeTypes; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.composerEdgeTitle": {
     "en": "Edge configuration",
@@ -426,13 +426,13 @@
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
     "en": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
-    "es": "Selecciona los tipos de vínculos que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.",
-    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.selectTheEdgeTypesParticipantsCan"
+    "es": "Selecciona los tipos de vínculo que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.selectTheEdgeTypesParticipantsCan; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionTitle": {
     "en": "Connection types",
-    "es": "Tipos de conexiones",
-    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.connectionTypes"
+    "es": "Tipos de vínculo",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.connectionTypes; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.edgeFormAddLabel": {
     "en": "Create new attribute for {typeName}",
@@ -451,8 +451,8 @@
   },
   "protocolBuilder.networkCanvas.edgeFormsDescription": {
     "en": "Configure the attributes collected for this connection type.",
-    "es": "Configura los atributos recogidos para este tipo de conexión.",
-    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.configureTheAttributesCollectedForThis"
+    "es": "Configura los atributos recogidos para este tipo de vínculo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.configureTheAttributesCollectedForThis; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.edgeFormsTitle": {
     "en": "Editable attributes",
@@ -461,8 +461,8 @@
   },
   "protocolBuilder.networkCanvas.freeDrawHint": {
     "en": "Allow drawing on the canvas",
-    "es": "Permitir dibujar en el lienzo",
-    "from": "74a07e626 architect.sections.narrativeBehaviours.allowDrawingOnTheCanvas"
+    "es": "Permite dibujar en el lienzo",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.allowDrawingOnTheCanvas; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.freeDrawLabel": {
     "en": "Free-draw",
@@ -506,8 +506,8 @@
   },
   "protocolBuilder.networkCanvas.narrativeAutomaticLayoutHint": {
     "en": "Position nodes automatically using a force-directed layout",
-    "es": "Colocar los nodos automáticamente mediante una disposición dirigida por fuerzas",
-    "from": "74a07e626 architect.sections.narrativeBehaviours.positionNodesAutomaticallyUsingAForceDirected"
+    "es": "Coloca los nodos automáticamente mediante una disposición dirigida por fuerzas",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.positionNodesAutomaticallyUsingAForceDirected; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.narrativeAutomaticLayoutLabel": {
     "en": "Automatic layout",
@@ -541,8 +541,8 @@
   },
   "protocolBuilder.networkCanvas.presetConnectionsDescription": {
     "en": "Select the edge types shown in this visualization preset.",
-    "es": "Selecciona los tipos de vínculos que se muestran en esta vista predefinida.",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.selectTheEdgeTypesShownIn"
+    "es": "Selecciona los tipos de vínculo que se muestran en esta vista predefinida.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.selectTheEdgeTypesShownIn; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.presetConnectionsTitle": {
     "en": "Displayed edges",
@@ -551,8 +551,8 @@
   },
   "protocolBuilder.networkCanvas.presetDisplayEdgesLabel": {
     "en": "Edge types",
-    "es": "Tipos de vínculos",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.edgeTypes"
+    "es": "Tipos de vínculo",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.edgeTypes; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.presetGroupHint": {
     "en": "The selected values draw semi-transparent convex hulls around matching nodes; nodes with multiple values appear in overlapping hulls.",
@@ -566,8 +566,8 @@
   },
   "protocolBuilder.networkCanvas.presetGroupingDescription": {
     "en": "Draw convex hulls around nodes that share a categorical attribute.",
-    "es": "Dibujar envolventes convexas alrededor de los nodos que comparten un atributo categórico.",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.drawConvexHullsAroundNodesThat"
+    "es": "Dibuja envolventes convexas alrededor de los nodos que comparten un atributo categórico.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.drawConvexHullsAroundNodesThat; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.presetGroupingTitle": {
     "en": "Node grouping",
@@ -576,8 +576,8 @@
   },
   "protocolBuilder.networkCanvas.presetHighlightDescription": {
     "en": "Highlight nodes whose selected boolean attributes are true.",
-    "es": "Resaltar los nodos cuyos atributos booleanos seleccionados sean verdaderos.",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.highlightNodesWhoseSelectedBooleanAttributes"
+    "es": "Resalta los nodos cuyos atributos booleanos seleccionados sean verdaderos.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.highlightNodesWhoseSelectedBooleanAttributes; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.presetHighlightLabel": {
     "en": "Highlight attributes",
@@ -656,8 +656,8 @@
   },
   "protocolBuilder.networkCanvas.presetsTitle": {
     "en": "Visualization presets",
-    "es": "Vistas predefinidas de visualización",
-    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.visualizationPresets"
+    "es": "Vistas predefinidas",
+    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.visualizationPresets; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.promptCreateEdgeLabel": {
     "en": "Created edge type",
@@ -666,13 +666,13 @@
   },
   "protocolBuilder.networkCanvas.promptDisplayEdgesLabel": {
     "en": "Edge types",
-    "es": "Tipos de vínculos",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsEdges.edgeTypes"
+    "es": "Tipos de vínculo",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsEdges.edgeTypes; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.promptEdgesDescription": {
     "en": "Choose the edge types shown on this prompt.",
-    "es": "Elige los tipos de vínculos que se muestran en esta pregunta.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsEdges.chooseTheEdgeTypesShownOn"
+    "es": "Elige los tipos de vínculo que se muestran en esta pregunta.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsEdges.chooseTheEdgeTypesShownOn; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.promptEdgesTitle": {
     "en": "Displayed edges",
@@ -716,8 +716,8 @@
   },
   "protocolBuilder.networkCanvas.promptSortDescription": {
     "en": "Control the order of the stack participants use to position nodes.",
-    "es": "Controle el orden de la pila que usan los participantes para colocar nodos.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.controlTheOrderOfTheStack"
+    "es": "Controla el orden de la pila que usan los participantes para colocar nodos.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.controlTheOrderOfTheStack; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.networkCanvas.promptSortLabel": {
     "en": "Sort rules",
@@ -946,8 +946,8 @@
   },
   "protocolBuilder.pedigree.nodeRelationshipHint": {
     "en": "Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically.",
-    "es": "Guarda la relación de cada persona con el participante, como madre, tío o hija. La interfaz de genealogía familiar calcula este valor automáticamente.",
-    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.storesEachPersonSRelationshipToThe"
+    "es": "Guarda la relación de cada persona con el participante, como madre, tío o hija. La interfaz de Genealogía familiar calcula este valor automáticamente.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.storesEachPersonSRelationshipToThe; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.pedigree.nodeRelationshipLabel": {
     "en": "Relationship to participant",

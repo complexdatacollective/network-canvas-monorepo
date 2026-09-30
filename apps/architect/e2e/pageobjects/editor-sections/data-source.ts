@@ -11,11 +11,11 @@ import { expect, type Locator, type Page } from '@playwright/test';
 // "Resource Browser" dialog any more, so a kind has to be named here.
 //
 // Inside the dialog the protocol's own resources are a `<ul>` labelled
-// "Resources in this protocol" whose every row carries a `<button>` named by
-// the resource's own name (ResourceBrowserDialog.tsx) — not a listbox of
-// option cards with an `<h4>` inside. Choosing one closes the dialog, and so
-// does importing a file or adding a key: `AssetPickerField.handleSelect` sets
-// the field and shuts the browser either way.
+// "Resources in this protocol" whose every row is a card `<button>` named by
+// the resource's own name (ResourceChoiceCard.tsx) — not a listbox of
+// options. Choosing one closes the dialog, and so does importing a file or
+// adding a key: `AssetPickerField.handleSelect` sets the field and shuts the
+// browser either way.
 export type ResourceKind = 'network' | 'geojson' | 'image' | 'apikey';
 
 const PICKER_COPY: Record<
@@ -91,9 +91,9 @@ export async function selectResource(
  * Imports a file through the browser's own import control, which selects what
  * it imported into the field that opened it.
  *
- * The control is a plain visible `<input type="file">` labelled "Choose a file
- * from your computer" (ResourceUploadControl.tsx) — not a dropzone with
- * `role="button"` — so the file goes to the input by its label.
+ * The control is an `sr-only` `<input type="file">` behind a visible label,
+ * "Choose a file from your computer" (ResourceUploadControl.tsx) — not a
+ * dropzone with `role="button"` — so the file goes to the input by its label.
  */
 export async function importResource(
   page: Page,

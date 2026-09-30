@@ -40,7 +40,7 @@ describe('the narrative sections, read in Spanish', () => {
     // halfway.
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Vistas predefinidas de visualización',
+      'Vistas predefinidas',
       'Comportamientos de la narrativa',
     ]);
     expect(
@@ -78,7 +78,7 @@ describe('the narrative sections, read in Spanish', () => {
         harness.user,
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
         'Busca o crea un atributo',
-        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+        (term) => `Crear un atributo nuevo llamado «${term}».`,
       ),
     ).not.toBeNull();
     expect(preset.getByText('Resaltado de nodos')).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe('the narrative sections, read in Spanish', () => {
       // gap is the field's own empty error slot, which every hinted control in
       // the package carries.
     ).toHaveAccessibleDescription(
-      /^Colocar los nodos automáticamente mediante una disposición dirigida por fuerzas\s*$/,
+      /^Coloca los nodos automáticamente mediante una disposición dirigida por fuerzas\s*$/,
     );
   });
 
@@ -127,7 +127,7 @@ describe('the narrative sections, read in Spanish', () => {
     // Spanish fails here rather than rendering as `{attributeId}`.
     expect(
       preset.getByRole('checkbox', {
-        name: `${LOST_HIGHLIGHT} — este atributo no está disponible aquí`,
+        name: `${LOST_HIGHLIGHT}: este atributo no está disponible aquí`,
       }),
     ).toBeChecked();
   });

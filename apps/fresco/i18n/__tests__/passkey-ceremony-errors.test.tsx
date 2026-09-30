@@ -140,12 +140,12 @@ describe('passkey sign-in', () => {
     render(provide('es', <SignInForm />));
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Iniciar sesión con una clave de acceso',
+        name: 'Iniciar sesión con una llave de acceso',
       }),
     );
     expect(
       await screen.findByText(
-        /^No se completó el inicio de sesión con clave de acceso\./,
+        /^No se completó el inicio de sesión con llave de acceso\./,
       ),
     ).toBeVisible();
   });

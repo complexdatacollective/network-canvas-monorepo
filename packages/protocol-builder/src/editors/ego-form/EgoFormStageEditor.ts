@@ -2,7 +2,6 @@ import { formFields } from '../../sections/form-fields/formFields.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { introduction } from '../../sections/introduction/introduction.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 
 /**
@@ -15,7 +14,6 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  * reading it from the stage — there is no `subject` in the document to read.
  */
 export const egoFormStageEditor = defineStageEditor('EgoForm', [
-  stageHeading({ documentation: 'ego-form' }),
   introduction(),
   formFields({ subject: 'ego' }),
   skipLogic(),

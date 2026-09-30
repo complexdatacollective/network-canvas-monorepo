@@ -1,6 +1,5 @@
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { encryptedAttributes } from './sections/encryptedAttributes.tsx';
 import { passphraseRules } from './sections/passphraseRules.tsx';
@@ -26,7 +25,6 @@ import { taskExplanation } from './sections/taskExplanation.tsx';
  * else.
  */
 export const anonymisationStageEditor = defineStageEditor('Anonymisation', [
-  stageHeading({ documentation: 'anonymisation' }),
   taskExplanation(),
   passphraseRules(),
   encryptedAttributes(),

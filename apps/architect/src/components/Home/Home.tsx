@@ -21,6 +21,7 @@ import type {
 } from '@codaco/protocol-validation';
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
+import NavLink from '~/components/ProjectNav/NavLink';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
@@ -334,25 +335,20 @@ const Home = () => {
         )}
 
         <NavShell
-          trailing={
-            <>
-              {formatConfig(NAV_LINKS, intl).map(({ href, label, Icon }) => (
-                <a
-                  key={href}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-action relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors"
-                >
-                  <span className="relative inline-flex items-center gap-2">
-                    <Icon className="size-4 shrink-0" aria-hidden />
-                    {label}
-                  </span>
-                </a>
-              ))}
-              <AppUpdatePill />
-            </>
-          }
+          items={formatConfig(NAV_LINKS, intl).map(({ href, label, Icon }) => (
+            <NavLink
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="relative inline-flex items-center gap-2">
+                <Icon className="size-4 shrink-0" aria-hidden />
+                {label}
+              </span>
+            </NavLink>
+          ))}
+          end={<AppUpdatePill />}
         />
 
         {/* Hero section */}
@@ -385,8 +381,9 @@ const Home = () => {
                   </Heading>
                   <Paragraph
                     intent="lead"
+                    emphasis="muted"
                     margin="none"
-                    className="hidden max-w-xl text-current/70 [@container_(height>760px)]:block"
+                    className="hidden max-w-xl [@container_(height>760px)]:block"
                   >
                     {intl.formatMessage(
                       messages.architectIsTheProtocolDesignerFor,

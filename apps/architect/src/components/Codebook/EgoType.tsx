@@ -84,7 +84,7 @@ const EgoType = ({
       {filteredVariables.length > 0 ? (
         <VariablesTyped variables={filteredVariables} entity="ego" />
       ) : (
-        <Paragraph className="mt-5 text-current/70">
+        <Paragraph emphasis="muted" className="mt-5">
           {variableArray.length === 0
             ? intl.formatMessage(messages.noEgoAttributesYet)
             : intl.formatMessage(messages.noEgoAttributesMatchTheCurrent)}

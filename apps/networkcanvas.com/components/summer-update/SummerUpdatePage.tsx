@@ -12,6 +12,7 @@ import Image from 'next/image';
 import { Fragment, type ReactNode, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import Definition from '@codaco/fresco-ui/Definition';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
@@ -562,11 +563,7 @@ export function SummerUpdatePage() {
               >
                 {t('features.heading')}
               </Heading>
-              <Paragraph
-                intent="lead"
-                emphasis="muted"
-                className="max-w-3xl text-current/70"
-              >
+              <Paragraph intent="lead" emphasis="muted" className="max-w-3xl">
                 {t.rich('features.introduction', {
                   definition: renderProtocolSchema,
                 })}
@@ -715,7 +712,7 @@ export function SummerUpdatePage() {
                       <Heading level="h3" variant="subheading">
                         {activeInterface.name}
                       </Heading>
-                      <Paragraph emphasis="muted" className="text-current/70">
+                      <Paragraph emphasis="muted">
                         {activeInterface.summary}
                       </Paragraph>
                       <ul className="mt-5 space-y-3">
@@ -742,7 +739,6 @@ export function SummerUpdatePage() {
                               intent="smallText"
                               emphasis="muted"
                               margin="none"
-                              className="text-current/70"
                             >
                               {detail}
                             </Paragraph>
@@ -959,9 +955,9 @@ export function SummerUpdatePage() {
             <div className="tablet-portrait:grid-cols-2 mt-8 grid grid-cols-1 gap-6">
               <Reveal {...summerUpdateRevealMotion}>
                 <Surface as="article" noContainer className="h-full">
-                  <span className="bg-sea-green/15 font-monospace text-sea-green inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
+                  <Badge mono uppercase appearance="outline" color="sea-green">
                     {t('compatibility.upgrade.newStudy.label')}
-                  </span>
+                  </Badge>
                   <Heading level="h3" variant="subheading">
                     {t('compatibility.upgrade.newStudy.heading')}
                   </Heading>
@@ -974,9 +970,14 @@ export function SummerUpdatePage() {
               </Reveal>
               <Reveal {...summerUpdateRevealMotion} delay={0.11}>
                 <Surface as="article" noContainer className="h-full">
-                  <span className="bg-sea-serpent/15 font-monospace text-sea-serpent inline-flex rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase">
+                  <Badge
+                    mono
+                    uppercase
+                    appearance="outline"
+                    color="sea-serpent"
+                  >
                     {t('compatibility.upgrade.ongoing.label')}
-                  </span>
+                  </Badge>
                   <Heading level="h3" variant="subheading">
                     {t('compatibility.upgrade.ongoing.heading')}
                   </Heading>

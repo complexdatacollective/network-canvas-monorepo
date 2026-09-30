@@ -166,9 +166,11 @@ function RuleSetControl({
       // stale one would leave a key in the saved stage that describes a
       // combination the rule set no longer has.
       onChange?.(
-        nextRules.length < 2
-          ? { rules: nextRules }
-          : { join, rules: nextRules },
+        nextRules.length === 0
+          ? undefined
+          : nextRules.length === 1
+            ? { rules: nextRules }
+            : { join, rules: nextRules },
       );
     },
     [join, onChange],

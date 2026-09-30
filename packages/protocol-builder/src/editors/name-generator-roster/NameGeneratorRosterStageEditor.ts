@@ -2,7 +2,6 @@ import { alterLimits } from '../../sections/alter-limits/alterLimits.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { nameGeneratorPrompts } from '../../sections/name-generator-prompts/nameGeneratorPrompts.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { cardDisplay } from './sections/cardDisplay.tsx';
@@ -25,7 +24,6 @@ import { sortOptions } from './sections/sortOptions.tsx';
 export const nameGeneratorRosterStageEditor = defineStageEditor(
   'NameGeneratorRoster',
   [
-    stageHeading({ documentation: 'name-generator-roster' }),
     subjectPicker({ entity: 'node' }),
     rosterDataSource(),
     nameGeneratorPrompts(),

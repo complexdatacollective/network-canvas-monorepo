@@ -450,14 +450,16 @@ const VariableSpotlight = ({
     <Modal open={open} onOpenChange={handleOpenChange}>
       <div
         aria-hidden
-        className="bg-overlay publish-colors pointer-events-none fixed inset-0 z-1900 backdrop-blur-xs"
+        className="bg-overlay publish-colors pointer-events-none fixed inset-0 backdrop-blur-xs"
       />
       <ModalPopup
         key="variable-spotlight-popup"
         data-variable-spotlight=""
         onBlur={handlePopupBlur}
         finalFocus={finalFocus}
-        className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
+        // No z-index, here or on the dim it draws: the portal layer is already
+        // over the page, and a raise paints this window over what it opens.
+        className="fixed top-10 left-1/2 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >
         <MotionSurface
           floating

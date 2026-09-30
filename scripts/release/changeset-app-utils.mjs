@@ -132,11 +132,21 @@ export function missingBundlingApps(
 // in no gated lane. A changeset must not name one.
 //
 // The default is the other way round, which is why this needs a guard rather
-// than a convention. `privatePackages.version` is `true` and these are not in
-// the config `ignore` list, so `changeset version` does not reject a changeset
-// naming one — it bumps the package and writes it a `CHANGELOG.md` in the
-// normal lane's Version Packages PR, announcing a release of something nobody
-// can install.
+// than a convention. `privatePackages.version` is `true`, so `changeset
+// version` bumps any private workspace a changeset names — or whose dependency
+// it bumps — and writes it a `CHANGELOG.md` in the normal lane's Version
+// Packages PR, announcing a release of something nobody can install.
+//
+// Each of these is therefore also in the config `ignore` list (the tests hold
+// every derived entry to that), which stops the dependency-bump half: the
+// Version Packages PR for 2026-09 bumped both protocol-builder halves and
+// `@codaco/storybook-config` that way, and the `CHANGELOG.md` it wrote each one
+// is exactly what this derivation reads as a release path. An ignored package
+// never gets one from `changeset version`, so its absence stays a stable
+// signal; the classic apps are ignored too, and their own `CHANGELOG.md` keeps
+// them out. `ignore` cannot refuse a changeset naming one, though — it only
+// skips it, or hard-errors at release time when the changeset also names a
+// normal-lane package — so the refusal is still this guard's.
 //
 // Being private is not the qualifying property on its own: `@codaco/architect`,
 // `@codaco/interviewer`, `fresco` and `@codaco/background-creator` are private
@@ -159,7 +169,6 @@ const isDeployedWorker = (directory) =>
   readdirSync(directory).some((entry) => entry.startsWith('wrangler.'));
 
 const unreleasedPackages = (root = REPO_ROOT) => {
-  const { ignore } = readJson(new URL('.changeset/config.json', root));
   // A package npm has never heard of but whose first publication is approved is
   // about to have a publish path (CLAUDE.md: first publications are made by
   // hand, so its version moves outside the lane and no changeset should name it
@@ -177,7 +186,6 @@ const unreleasedPackages = (root = REPO_ROOT) => {
         manifest.publishConfig === undefined &&
         !existsSync(join(directory, 'CHANGELOG.md')) &&
         !GATED_PRODUCT_PACKAGES.includes(manifest.name) &&
-        !ignore.includes(manifest.name) &&
         !approved.has(manifest.name) &&
         !isDeployedWorker(directory),
     )

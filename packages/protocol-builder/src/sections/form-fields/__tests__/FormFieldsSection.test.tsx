@@ -24,6 +24,7 @@ import {
 import { fixtureMessage } from '../../../testing/i18n.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { exactlyText } from '../../../testing/text.ts';
 import type { SectionCapability } from '../../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
@@ -99,18 +100,14 @@ const collectedAttributeName = (dialog: RowDialog, name: string) =>
   within(attributePicker(dialog)).getByText(name);
 
 /**
- * The button that opens the picker's window, under either of its two names.
- *
- * It says what it does rather than which question it answers, and which of the
- * two it says depends on whether the row has chosen anything yet — so a test
- * about where focus lands names both.
+ * The notice under the input control, which is the only place an invention's
+ * kind of answer is stated. It bolds the kind inside itself, so the sentence
+ * lives in no single text node — hence `exactlyText`.
  */
-const attributeTrigger = (dialog: RowDialog): HTMLElement =>
-  within(attributePicker(dialog)).getByRole('button', {
-    name: (accessibleName: string) =>
-      accessibleName === 'Select attribute' ||
-      accessibleName === 'Change attribute',
-  });
+const saysTheTypeWillBe = (variableType: string) =>
+  exactlyText(
+    `The selected input control will cause this attribute to be defined as type ${variableType}. Once set, this cannot be changed (although you may change the input control within this type).`,
+  );
 
 /**
  * Starts this row off inventing an attribute of this name, the way a
@@ -142,8 +139,8 @@ const addInventedAttribute = async (
   const dialog = await openField(harness, 'Create new form field');
   await inventThroughThePicker(harness, dialog, attributeName);
   await harness.user.selectOptions(
-    await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-    'text',
+    await dialog.findByRole('combobox', { name: 'Input control' }),
+    'Text',
   );
   await harness.user.type(
     dialog.getByRole('textbox', { name: 'Question text' }),
@@ -238,7 +235,7 @@ describe('the fields a form collects', () => {
     // The stage's name, the type it collects about, and the screen shown
     // before it belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'introductionPanel'],
+      unowned: ['subject', 'introductionPanel'],
     });
   });
 
@@ -406,18 +403,9 @@ describe('the fields a form collects', () => {
     ).not.toBeInTheDocument();
     // An ego form has no subject to own; its name and its introduction screen
     // belong to sections this mount does not include.
-    await harness.roundTrip({ unowned: ['label', 'introductionPanel'] });
+    await harness.roundTrip({ unowned: ['introductionPanel'] });
   });
 
-  /**
-   * A protocol nobody has recorded anything about the participant in has no
-   * `codebook.ego` at all — the section is written by the first attribute put
-   * into it. The controls that open the codebook's own editor are offered
-   * against a section that EXISTS, which is the right rule for a node or edge
-   * type (an absent one has been deleted) and the wrong one here: it left the
-   * kinds that can only be made in that editor — a list of answers, a scale —
-   * with no way in at all on the first ego form of a new protocol.
-   */
   it('offers to invent the first attribute the participant has', async () => {
     const harness = renderStageEditor({
       stageId: 'ego-form-1',
@@ -431,14 +419,15 @@ describe('the fields a form collects', () => {
     const dialog = await openField(harness, 'Create new form field');
     await inventThroughThePicker(harness, dialog, 'contact_setting');
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      'categorical',
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'CheckboxGroup',
     );
 
+    const values = within(
+      await dialog.findByRole('region', { name: 'Choice values' }),
+    );
     expect(
-      await dialog.findByRole('button', {
-        name: 'Create this attribute and its values',
-      }),
+      values.getByRole('button', { name: 'Create new option' }),
     ).toBeInTheDocument();
   });
 
@@ -465,7 +454,7 @@ describe('the fields a form collects', () => {
     // The stage's name, the relationship it collects about, and the screen
     // shown before it belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'introductionPanel'],
+      unowned: ['subject', 'introductionPanel'],
     });
   });
 
@@ -1480,58 +1469,6 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
 });
 
 /**
- * Adds one value to the attribute list the codebook editor is showing.
- *
- * The editor opens on the values the attribute already has, so the row a new
- * one lands in is one past them.
- */
-/** What the row offers for the settings a date control accepts. */
-const EDIT_PARAMETERS = 'Set what this field accepts';
-
-/**
- * Binds the open row to a date attribute and opens the editor for what its
- * control accepts, leaving both on screen.
- *
- * The lifecycle of a nested editor over a row — what it does when its section
- * or its attribute goes — is asked of this one now that the values and the two
- * answers of a boolean are authored inline, and so have no editor to lose.
- */
-const openParametersEditor = async (
-  harness: ReturnType<typeof renderStageEditor>,
-  dialog: RowDialog,
-) => {
-  const metOn = seedDateAttribute(harness);
-  await chooseAttributeById(harness.user, attributePicker(dialog), metOn);
-  await harness.user.click(
-    await dialog.findByRole('button', { name: EDIT_PARAMETERS }),
-  );
-  await screen.findByRole('button', { name: 'Save attribute' });
-};
-
-/**
- * Adds one answer through the CODEBOOK editor's own option rows, which a
- * create still goes through: a list of answers cannot be made from a name.
- */
-const addValue = async (
-  harness: ReturnType<typeof renderStageEditor>,
-  position: number,
-  label: string,
-  value: string,
-) => {
-  await harness.user.click(
-    screen.getByRole('button', { name: 'Create new option' }),
-  );
-  await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} label` }),
-    label,
-  );
-  await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} value` }),
-    value,
-  );
-};
-
-/**
  * Adds one answer to the inline list under the row's attribute picker.
  *
  * A new row opens straight into its own editor, so its two cells are the only
@@ -1604,24 +1541,16 @@ const createContactSetting = async (
 ) => {
   await inventThroughThePicker(harness, dialog, name);
   await harness.user.selectOptions(
-    await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-    'categorical',
+    await dialog.findByRole('combobox', { name: 'Input control' }),
+    'CheckboxGroup',
   );
-  await harness.user.click(
-    dialog.getByRole('button', {
-      name: 'Create this attribute and its values',
-    }),
+  await addInlineValue(harness, 'At home', 'home');
+  await addInlineValue(harness, 'At work', 'work');
+  await harness.user.type(
+    dialog.getByRole('textbox', { name: 'Question text' }),
+    'Where do you usually meet?',
   );
-  // Already named: the editor opens on the name the create row took, so the
-  // researcher is not asked for it twice.
-  expect(
-    await screen.findByRole('textbox', { name: 'Attribute name' }),
-  ).toHaveValue(name);
-  await addValue(harness, 1, 'At home', 'home');
-  await addValue(harness, 2, 'At work', 'work');
-  await harness.user.click(
-    screen.getByRole('button', { name: 'Create attribute' }),
-  );
+  await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
   return waitFor(() => {
     const entry = savedAttribute(harness, name);
@@ -1788,12 +1717,6 @@ const addFieldCollecting = async (
  * editors on them and the field's save writes only the field.
  */
 describe('the codebook an attribute a form field collects lives in', () => {
-  /**
-   * A categorical attribute IS its values — `categoricalOptionsSchema`
-   * requires at least two — so an attribute invented from a name and a type
-   * alone is one the schema refuses every time, and the researcher is sent to
-   * the codebook and back to finish what they had just started.
-   */
   it('creates a categorical attribute with the values it will offer', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
@@ -1811,25 +1734,10 @@ describe('the codebook an attribute a form field collects lives in', () => {
       ],
     });
 
-    // Creating the attribute is what takes this row out of inventing one, so
-    // the button that opened the editor has gone by the time it closes. Focus
-    // has to land on something still mounted: the next Tab from `<body>`
-    // starts at the top of the document, and a screen-reader user is returned
-    // to the page rather than to the control they left.
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', { name: 'Create attribute' }),
-      ).toBeNull(),
-    );
-    expect(document.activeElement).toBe(attributeTrigger(dialog));
-
-    // The row is left collecting what was just invented for it: the researcher
-    // asked for an attribute they did not have, and the answer to "which one
-    // does this field collect?" is the one they finished authoring. Read as
-    // the name the picker shows, which is the only account of the held id the
-    // closed control gives — and an id it could not resolve would read as
-    // "not available here" rather than as the attribute just authored.
-    expect(collectedAttributeName(dialog, 'contact_setting')).toBeVisible();
+    expect(fieldsOf(await harness.submit()).at(-1)).toMatchObject({
+      variable: created[0],
+      prompt: 'Where do you usually meet?',
+    });
   });
 
   /**
@@ -1924,82 +1832,6 @@ describe('the codebook an attribute a form field collects lives in', () => {
    * and a value thought of a moment later would mean leaving the form, finding
    * the attribute in the codebook, and coming back.
    */
-  /**
-   * A dialog says what it is once.
-   *
-   * The attribute editor used to be handed the words on the button that opened
-   * it and print them again as its own heading, so "Set what this field
-   * accepts" was the dialog's title and the first line of its body — Josh's
-   * D2. The dialog's title is the one that stays: it is more specific than
-   * anything the editor could write about itself.
-   */
-  it('says what the attribute editor is for once, in the dialog’s title', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    await openParametersEditor(harness, dialog);
-
-    const editor = within(
-      screen.getByRole('dialog', { name: 'Set what this field accepts' }),
-    );
-    expect(
-      editor.getAllByRole('heading', { name: 'Set what this field accepts' }),
-    ).toHaveLength(1);
-    // And no heading of the editor's own under it, saying the same thing in
-    // the package's own default words.
-    expect(
-      editor.queryByRole('heading', { name: 'Save attribute' }),
-    ).toBeNull();
-    expect(
-      editor.queryByRole('heading', { name: 'Edit attribute' }),
-    ).toBeNull();
-  });
-
-  /**
-   * And its actions are in the dialog's own footer, Cancel first.
-   *
-   * Every other dialog in the package keeps them there
-   * (`fresco-ui/dialogs/Dialog.tsx`'s footer convention, which `DialogForm`
-   * follows); this one had a submit inside the scrolling body and no Cancel at
-   * all, so the only way out was the close button in the corner.
-   */
-  it('puts the attribute editor’s actions in the dialog footer, cancel first', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    await openParametersEditor(harness, dialog);
-
-    const editor = screen.getByRole('dialog', {
-      name: 'Set what this field accepts',
-    });
-    const footer = editor.querySelector('footer');
-    expect(footer).not.toBeNull();
-    expect(
-      within(footer!)
-        .getAllByRole('button')
-        .map((button) => button.textContent),
-    ).toEqual(['Cancel', 'Save attribute']);
-
-    // Cancel closes the editor and leaves the row behind it standing.
-    await harness.user.click(
-      within(footer!).getByRole('button', { name: 'Cancel' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Set what this field accepts' }),
-      ).toBeNull(),
-    );
-    expect(
-      dialog.getByRole('textbox', { name: 'Question text' }),
-    ).toBeVisible();
-  });
-
   /**
    * The sections of this dialog, and which of them each control belongs to.
    *
@@ -2411,19 +2243,14 @@ describe('the codebook an attribute a form field collects lives in', () => {
     await addFieldCollecting(harness, variableId, 'When did you first meet?');
 
     const editing = await openField(harness, 'Edit field', 2);
-    await harness.user.click(
-      await editing.findByRole('button', {
-        name: 'Set what this field accepts',
-      }),
+    const settings = within(
+      await editing.findByRole('region', { name: 'Control settings' }),
     );
-    await screen.findByRole('button', { name: 'Save attribute' });
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
+      settings.getByRole('combobox', { name: 'Date resolution' }),
       'year',
     );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    );
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
       expect(asRecord(personVariables(harness)[variableId]).parameters).toEqual(
@@ -2469,21 +2296,17 @@ describe('the codebook an attribute a form field collects lives in', () => {
       await editing.findByRole('combobox', { name: 'Input control' }),
       'RelativeDatePicker',
     );
-    await harness.user.click(
-      await editing.findByRole('button', {
-        name: 'Set what this field accepts',
-      }),
+    const settings = within(
+      await editing.findByRole('region', { name: 'Control settings' }),
     );
-    await screen.findByRole('button', { name: 'Save attribute' });
 
-    // The picker the row now names, not the one the codebook still holds.
     expect(
-      screen.queryByRole('combobox', { name: 'Date resolution' }),
+      settings.queryByRole('combobox', { name: 'Date resolution' }),
     ).toBeNull();
-    await harness.user.type(screen.getByLabelText('Days before'), '30');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    );
+    expect(settings.getByLabelText('Anchor date')).toBeInTheDocument();
+    expect(settings.getByLabelText('Days after')).toBeInTheDocument();
+    await harness.user.type(settings.getByLabelText('Days before'), '30');
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
 
     // The control is written with the settings that depend on it, so the two
     // can never be committed out of step.
@@ -2593,13 +2416,49 @@ describe('the codebook an attribute a form field collects lives in', () => {
     });
   });
 
-  /**
-   * The create control is the only way an attribute with values comes into
-   * existence here, so a row that names one and never opened it points at
-   * nothing — and the refusal has to say what to press rather than repeating
-   * the schema's own count.
-   */
-  it('refuses a row that named a categorical attribute it never created', async () => {
+  it('keeps the values typed for an invented attribute when the control moves to another list', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await inventThroughThePicker(harness, dialog, 'meeting_place');
+    const control = await dialog.findByRole('combobox', {
+      name: 'Input control',
+    });
+    await harness.user.selectOptions(control, 'CheckboxGroup');
+    await addInlineValue(harness, 'At home', 'home');
+    await addInlineValue(harness, 'At work', 'work');
+    await harness.user.selectOptions(control, 'RadioGroup');
+
+    const values = within(
+      await dialog.findByRole('region', { name: 'Choice values' }),
+    );
+    expect(values.getByRole('button', { name: 'Edit option 1' })).toBeVisible();
+    expect(values.getByRole('button', { name: 'Edit option 2' })).toBeVisible();
+
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Where do you usually meet?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    const [, created] = await waitFor(() => {
+      const entry = savedAttribute(harness, 'meeting_place');
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(created).toMatchObject({
+      type: 'ordinal',
+      options: [
+        { label: 'At home', value: 'home' },
+        { label: 'At work', value: 'work' },
+      ],
+    });
+  });
+
+  it('refuses a row that invents a categorical attribute without its values', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -2608,8 +2467,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
     const dialog = await openField(harness, 'Create new form field');
     await inventThroughThePicker(harness, dialog, 'meeting_place');
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      'categorical',
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'CheckboxGroup',
     );
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
@@ -2619,7 +2478,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(
       await dialog.findByText(
-        'Create this attribute and the values it offers before adding the field that collects it.',
+        'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
       ),
     ).toBeInTheDocument();
     // Nothing was written, and the row is still open to be finished.
@@ -2647,19 +2506,6 @@ describe('the codebook an attribute a form field collects lives in', () => {
  * with the control, exactly as the codebook editor's own save does.
  */
 describe('switching the input control on a configured attribute', () => {
-  /**
-   * A form field collecting a date attribute, with `parameters` already
-   * authored for the plain picker when the test needs a settings block.
-   *
-   * Both are premises here, not subjects: what the row's save does when the
-   * researcher CHANGES the control is, and inventing the attribute through the
-   * dialog (four interactions and a name) and authoring the resolution through
-   * the codebook editor (six more) are what
-   * `creates a categorical attribute with the values it will offer` and
-   * `sets what a date field accepts, on the attribute it collects` already
-   * assert. Handed over by the host instead, which halves what the slower of
-   * these two tests costs a CI runner.
-   */
   const collectADateField = async (
     harness: ReturnType<typeof renderStageEditor>,
     parameters?: Readonly<Record<string, unknown>>,
@@ -2719,6 +2565,31 @@ describe('switching the input control on a configured attribute', () => {
     // The resolution belonged to the date picker: a relative picker's schema
     // is a `strictObject` of `anchor`/`before`/`after` and would refuse it.
     expect(Object.hasOwn(saved, 'parameters')).toBe(false);
+  });
+
+  it('shows the settings the attribute holds, and keeps them when the row is saved untouched', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const variableId = await collectADateField(harness, { type: 'year' });
+
+    const editing = await openField(harness, 'Edit field', 2);
+    const settings = within(
+      await editing.findByRole('region', { name: 'Control settings' }),
+    );
+    expect(
+      settings.getByRole('combobox', { name: 'Date resolution' }),
+    ).toHaveValue('year');
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(asRecord(personVariables(harness)[variableId])).toMatchObject({
+      component: 'DatePicker',
+      parameters: { type: 'year' },
+    });
   });
 });
 
@@ -2787,13 +2658,12 @@ describe('rebinding a form field to another attribute', () => {
   });
 
   /**
-   * The same rule where there is no attribute yet: the kind of answer decides
-   * which controls exist, so changing it is the same rebinding. A control left
-   * over from the previous kind is one the variable schema refuses outright —
-   * a `number` is not collected with a `Text` box — so the invention is turned
-   * away with the codebook's words for a draft the researcher never authored.
+   * The same rule where there is no attribute yet: the last control chosen is
+   * the one the create writes, because keeping the kind of a control the
+   * researcher left behind would create a `number` collected with a `Text`
+   * box, which the variable schema refuses outright.
    */
-  it('offers the invented attribute’s own controls when its kind of answer changes', async () => {
+  it('makes the invented attribute the kind its input control collects, whichever control it ends on', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -2801,14 +2671,19 @@ describe('rebinding a form field to another attribute', () => {
 
     const dialog = await openField(harness, 'Create new form field');
     await inventThroughThePicker(harness, dialog, 'household_size');
-    const kind = await dialog.findByRole('combobox', {
-      name: 'Kind of answer',
+    const control = await dialog.findByRole('combobox', {
+      name: 'Input control',
     });
-    await harness.user.selectOptions(kind, 'text');
-    await waitFor(() => expect(inputControl(dialog)).toHaveValue('Text'));
+    await harness.user.selectOptions(control, 'Text');
+    await waitFor(() =>
+      expect(dialog.getByText(saysTheTypeWillBe('Text'))).toBeVisible(),
+    );
 
-    await harness.user.selectOptions(kind, 'number');
-    await waitFor(() => expect(inputControl(dialog)).toHaveValue('Number'));
+    await harness.user.selectOptions(control, 'Number');
+    await waitFor(() =>
+      expect(dialog.getByText(saysTheTypeWillBe('Number'))).toBeVisible(),
+    );
+    expect(inputControl(dialog)).toHaveValue('Number');
 
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
@@ -2928,18 +2803,7 @@ describe('a control the collaborator changed under an open row', () => {
   });
 });
 
-/**
- * The same rule, met from the other direction: the SECTION these editors read
- * disappearing while one of them is open.
- *
- * A collaborator deleting the node type takes the whole codebook document
- * away, and the launch controls with it — there is nothing left to start an
- * edit against. What was already started is a draft the researcher made in
- * this session, and the row dialog around it survives the same arrival. So the
- * editor stays, holding what they had, with its save refused for the reason it
- * is actually refused: there is no section to write into.
- */
-describe('a codebook editor open over a row when its section goes', () => {
+describe('a row whose codebook section goes', () => {
   const deleteThePersonType = (
     harness: ReturnType<typeof renderStageEditor>,
   ) => {
@@ -2974,53 +2838,7 @@ describe('a codebook editor open over a row when its section goes', () => {
     ).toBeVisible();
   });
 
-  it('keeps the attribute editor on screen, with its draft, and refuses the save', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    await openParametersEditor(harness, dialog);
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-      'year',
-    );
-
-    deleteThePersonType(harness);
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save attribute' }),
-      ).toBeDisabled(),
-    );
-    expect(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-    ).toHaveValue('year');
-  });
-
   /** And the other half: nothing new may be started. */
-  it('offers no way to open another one', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    const metOn = seedDateAttribute(harness);
-    await chooseAttributeById(harness.user, attributePicker(dialog), metOn);
-    expect(
-      await dialog.findByRole('button', { name: EDIT_PARAMETERS }),
-    ).toBeInTheDocument();
-
-    deleteThePersonType(harness);
-
-    await waitFor(() =>
-      expect(
-        dialog.queryByRole('button', { name: EDIT_PARAMETERS }),
-      ).toBeNull(),
-    );
-  });
 });
 
 /**
@@ -3102,11 +2920,18 @@ describe('an attribute id that collides with the create option', () => {
       attributePicker(dialog),
       COLLIDING_ID,
     );
-    // The attribute exists, so the row has no kind of answer to decide: that
-    // control is on screen only while one is being invented.
+    // The attribute exists, so its kind is settled: the control narrows to
+    // the two a `text` attribute allows, where a row still inventing would be
+    // offered the whole list.
+    const control = await dialog.findByRole('combobox', {
+      name: 'Input control',
+    });
+    expect(control).toHaveValue('Text');
     expect(
-      dialog.queryByRole('combobox', { name: 'Kind of answer' }),
-    ).toBeNull();
+      within(control)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Text Input', 'Text Area']);
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
       'What do people call them?',
@@ -3242,95 +3067,6 @@ describe('an attribute that stops being collectable under an open row', () => {
       },
       { variable: 'flagged', prompt: 'Does this person have this attribute?' },
     ]);
-  });
-});
-
-/**
- * Where focus goes when a codebook editor closes and its trigger has gone.
- *
- * Two of the three surfaces keep their own trigger, and the create's does not
- * survive the edit it opens — which is why that one already walks back to the
- * row's picker. The other two can lose theirs just as completely, because what
- * offers them is a fact about the LIVE codebook: a collaborator changing what
- * kind of answer an attribute holds takes the values button away, and deleting
- * it takes both away, while the editor deliberately stays open. A `finalFocus`
- * naming a button that is no
- * longer in the document leaves focus on `<body>`, where the next Tab starts
- * at the top of the page and a screen-reader user is returned to the document
- * rather than to the row they were in.
- */
-describe('closing a codebook editor whose trigger has gone', () => {
-  const closeTheEditor = async (
-    harness: ReturnType<typeof renderStageEditor>,
-  ) => {
-    const editor = screen.getAllByRole('dialog').at(-1)!;
-    await harness.user.click(
-      within(editor).getByRole('button', { name: 'Close' }),
-    );
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(1),
-    );
-  };
-
-  it('returns to the row’s picker when the attribute changes kind', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    await openParametersEditor(harness, dialog);
-
-    // A text answer has no settings to accept, so this takes the button that
-    // opened this editor away under the researcher.
-    harness.receiveCodebookUpdate({
-      node: {
-        person: {
-          ...personDocument(harness),
-          variables: {
-            ...personVariables(harness),
-            [SEEDED_MET_ON]: {
-              name: 'met_on',
-              type: 'text',
-              component: 'Text',
-            },
-          },
-        },
-      },
-    });
-    // The premise, waited for rather than assumed: the editor is closed with
-    // the button that opened it already gone.
-    await waitFor(() =>
-      expect(
-        dialog.queryByRole('button', { name: EDIT_PARAMETERS }),
-      ).toBeNull(),
-    );
-
-    await closeTheEditor(harness);
-    expect(document.activeElement).toBe(attributeTrigger(dialog));
-  });
-
-  it('returns to the row’s picker when the attribute is deleted', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    await openParametersEditor(harness, dialog);
-
-    const { [SEEDED_MET_ON]: _gone, ...variables } = personVariables(harness);
-    harness.receiveCodebookUpdate({
-      node: { person: { ...personDocument(harness), variables } },
-    });
-    await waitFor(() =>
-      expect(
-        dialog.queryByRole('button', { name: EDIT_PARAMETERS }),
-      ).toBeNull(),
-    );
-
-    await closeTheEditor(harness);
-    expect(document.activeElement).toBe(attributeTrigger(dialog));
   });
 });
 
@@ -3589,8 +3325,8 @@ describe('a stored field the schema refuses for its own shape', () => {
  * `REQUIRED_PARAMETERS` makes both of them settings the codebook editor
  * refuses to save without, for the reason a categorical attribute needs two
  * values: a slider with nothing written at either end asks the participant to
- * place themselves on a line that means nothing. Invented from a name and a
- * kind alone, that is exactly what the interview would render — the schema
+ * place themselves on a line that means nothing. Invented from a name and the
+ * slider alone, that is exactly what the interview would render — the schema
  * takes a scalar with no `parameters` at all — so the row sends the researcher
  * to the editor that authors both, as it already does for a list of values.
  */
@@ -3609,13 +3345,13 @@ describe('a stored field the schema refuses for its own shape', () => {
 describe('the answers a boolean a field is inventing offers', () => {
   const inventBoolean = async (
     harness: ReturnType<typeof renderStageEditor>,
-    kind = 'boolean',
+    control = 'Boolean',
   ) => {
     const dialog = await openField(harness, 'Create new form field');
     await inventThroughThePicker(harness, dialog, 'nickname');
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      kind,
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      control,
     );
     return dialog;
   };
@@ -3767,7 +3503,7 @@ describe('the answers a boolean a field is inventing offers', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await inventBoolean(harness, 'text');
+    const dialog = await inventBoolean(harness, 'Text');
 
     await dialog.findByRole('textbox', { name: 'Question text' });
     expect(dialog.queryByRole('region', { name: 'Boolean values' })).toBeNull();
@@ -3816,13 +3552,13 @@ describe('the answers a boolean a field is inventing offers', () => {
 describe('rules for the attribute a field is inventing', () => {
   const startInventing = async (
     harness: ReturnType<typeof renderStageEditor>,
-    kind: string,
+    control: string,
   ) => {
     const dialog = await openField(harness, 'Create new form field');
     await inventThroughThePicker(harness, dialog, 'nickname');
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      kind,
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      control,
     );
     return dialog;
   };
@@ -3833,7 +3569,7 @@ describe('rules for the attribute a field is inventing', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'text');
+    const dialog = await startInventing(harness, 'Text');
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Validation' }),
     );
@@ -3874,33 +3610,27 @@ describe('rules for the attribute a field is inventing', () => {
     });
   });
 
-  /**
-   * A kind of answer that cannot be made from a name goes to the codebook's
-   * own editor, which creates the attribute as it saves — so the ordinary
-   * rules surface is the one that serves it, a moment later, against an
-   * attribute that exists. Offered a draft as well, the row would have two
-   * places to write one set of rules.
-   */
-  it('leaves the rules to the codebook editor for a kind a name cannot finish', async () => {
+  it('offers rules for an attribute whose answers are a list', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'categorical');
+    const dialog = await startInventing(harness, 'CheckboxGroup');
 
     expect(
-      await dialog.findByRole('button', {
-        name: 'Create this attribute and its values',
-      }),
+      await dialog.findByRole('switch', { name: 'Validation' }),
     ).toBeInTheDocument();
-    expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull();
+    expect(
+      dialog.queryByRole('button', { name: /Create this attribute/ }),
+    ).toBeNull();
   });
 
   /**
-   * The kind of answer is a control the researcher can go back to, and the
-   * rules are held on the ROW rather than on an attribute — so they outlive
-   * the kind they were written about unless something moves them.
+   * The input control is one the researcher can go back to, and the kind of
+   * answer goes with it. The rules are held on the row rather than on an
+   * attribute, so they outlive the kind they were written about unless
+   * something moves them.
    *
    * Every variable schema's `validation` is picked from its own kind's rule
    * set, so a rule the new kind does not accept is refused by the create; and
@@ -3916,7 +3646,7 @@ describe('rules for the attribute a field is inventing', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'text');
+    const dialog = await startInventing(harness, 'Text');
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Validation' }),
     );
@@ -3928,8 +3658,8 @@ describe('rules for the attribute a field is inventing', () => {
     );
 
     await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'number',
+      dialog.getByRole('combobox', { name: 'Input control' }),
+      'Number',
     );
 
     // Said, because the researcher wrote it: a rule that disappeared between
@@ -3973,7 +3703,7 @@ describe('rules for the attribute a field is inventing', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'text');
+    const dialog = await startInventing(harness, 'Text');
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Validation' }),
     );
@@ -4023,7 +3753,7 @@ describe('rules for the attribute a field is inventing', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'text');
+    const dialog = await startInventing(harness, 'Text');
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Validation' }),
     );
@@ -4032,8 +3762,8 @@ describe('rules for the attribute a field is inventing', () => {
     );
 
     await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'number',
+      dialog.getByRole('combobox', { name: 'Input control' }),
+      'Number',
     );
     expect(
       await dialog.findByText(
@@ -4057,8 +3787,8 @@ describe('rules for the attribute a field is inventing', () => {
     // The kind moves again, and the rule written for a number goes with it —
     // which is the notice's own subject, said again about this change.
     await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'text',
+      dialog.getByRole('combobox', { name: 'Input control' }),
+      'Text',
     );
     expect(
       await dialog.findByText(
@@ -4080,7 +3810,7 @@ describe('rules for the attribute a field is inventing', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'text');
+    const dialog = await startInventing(harness, 'Text');
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Validation' }),
     );
@@ -4088,8 +3818,8 @@ describe('rules for the attribute a field is inventing', () => {
       await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
 
-    const kind = dialog.getByRole('combobox', { name: 'Kind of answer' });
-    await harness.user.selectOptions(kind, 'number');
+    const control = dialog.getByRole('combobox', { name: 'Input control' });
+    await harness.user.selectOptions(control, 'Number');
     expect(
       await dialog.findByText(
         'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
@@ -4099,18 +3829,18 @@ describe('rules for the attribute a field is inventing', () => {
     // The draft is empty now, so a yes/no answer takes nothing off it — and
     // the rule the researcher wrote is still missing, which is what the
     // sentence is for.
-    await harness.user.selectOptions(kind, 'boolean');
-    expect(kind).toHaveValue('boolean');
+    await harness.user.selectOptions(control, 'Boolean');
+    expect(control).toHaveValue('Boolean');
     expect(
       dialog.getByText(
         'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
       ),
     ).toBeInTheDocument();
 
-    // Including the correction back to where it started: the kind is the one
-    // the rule was written for, and the rule is not there.
-    await harness.user.selectOptions(kind, 'text');
-    expect(kind).toHaveValue('text');
+    // Including the correction back to where it started: the control is the
+    // one the rule was written for, and the rule is not there.
+    await harness.user.selectOptions(control, 'Text');
+    expect(control).toHaveValue('Text');
     expect(
       dialog.getByText(
         'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
@@ -4141,7 +3871,7 @@ describe('rules for the attribute a field is inventing', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'text');
+    const dialog = await startInventing(harness, 'Text');
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Validation' }),
     );
@@ -4150,8 +3880,8 @@ describe('rules for the attribute a field is inventing', () => {
     );
 
     await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'number',
+      dialog.getByRole('combobox', { name: 'Input control' }),
+      'Number',
     );
     expect(
       await dialog.findByText(
@@ -4168,55 +3898,45 @@ describe('rules for the attribute a field is inventing', () => {
     );
   });
 
-  /**
-   * A kind a name cannot finish takes the rules button away and sends the
-   * invention to the codebook's own editor, which creates the attribute as it
-   * saves. Rules written while the kind was one a name could finish are still
-   * on the row at that moment: they go into that create, rather than being
-   * dropped behind a control the researcher can no longer see.
-   */
-  it('carries the rules into the editor that creates a kind a name cannot finish', async () => {
+  it('carries the rules written for a list of answers into its create', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventing(harness, 'text');
+    const dialog = await startInventing(harness, 'CheckboxGroup');
     await harness.user.click(
       await dialog.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
-
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'categorical',
+    await addInlineValue(harness, 'At home', 'home');
+    await addInlineValue(harness, 'At work', 'work');
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Where do you usually meet?',
     );
-    await harness.user.click(
-      dialog.getByRole('button', {
-        name: 'Create this attribute and its values',
-      }),
-    );
-    expect(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-    ).toHaveValue('nickname');
-    await addValue(harness, 1, 'At home', 'home');
-    await addValue(harness, 2, 'At work', 'work');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
-    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
     const created = await waitFor(() => {
       const entry = savedAttribute(harness, 'nickname');
       if (entry === undefined) throw new Error('the attribute was not created');
       return entry;
     });
-    expect(asRecord(created[1]).validation).toEqual({ required: true });
+    expect(created[1]).toMatchObject({
+      type: 'categorical',
+      component: 'CheckboxGroup',
+      validation: { required: true },
+      options: [
+        { label: 'At home', value: 'home' },
+        { label: 'At work', value: 'work' },
+      ],
+    });
   });
 
-  /** And a row that has not said what kind of answer it holds has no rules. */
-  it('offers none until the kind of answer is chosen', async () => {
+  /** And a row that has not chosen a control has no kind, so it has no rules. */
+  it('offers none until the input control is chosen', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -4226,47 +3946,51 @@ describe('rules for the attribute a field is inventing', () => {
     await inventThroughThePicker(harness, dialog, 'nickname');
 
     expect(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      await dialog.findByRole('combobox', { name: 'Input control' }),
     ).toHaveValue('');
     expect(dialog.queryByRole('switch', { name: 'Validation' })).toBeNull();
   });
 });
 
-describe('inventing an attribute answered on a scale', () => {
-  const startInventingAScale = async (
+describe('inventing an attribute whose control takes settings', () => {
+  const startInventingWith = async (
     harness: ReturnType<typeof renderStageEditor>,
+    name: string,
+    control: string,
   ) => {
     const dialog = await openField(harness, 'Create new form field');
-    await inventThroughThePicker(harness, dialog, 'closeness');
+    await inventThroughThePicker(harness, dialog, name);
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      'scalar',
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      control,
     );
     return dialog;
   };
 
-  it('sends the researcher to the editor that asks for its end labels', async () => {
+  it('shows a visual analog scale’s end labels inline', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventingAScale(harness);
+    const dialog = await startInventingWith(
+      harness,
+      'closeness',
+      'VisualAnalogScale',
+    );
+    const settings = within(
+      await dialog.findByRole('region', { name: 'Control settings' }),
+    );
 
     expect(
-      await dialog.findByRole('button', {
-        name: 'Create this attribute and what it accepts',
-      }),
+      settings.getByRole('textbox', { name: 'Minimum label' }),
     ).toBeInTheDocument();
-    // No input control either: there is nothing yet for one to be chosen for.
     expect(
-      dialog.queryByRole('combobox', { name: 'Input control' }),
+      settings.getByRole('textbox', { name: 'Maximum label' }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.queryByRole('button', { name: /Create this attribute/ }),
     ).toBeNull();
-    expect(
-      dialog.getByText(
-        'An attribute answered on a scale needs a label at each end, so it is created together with them.',
-      ),
-    ).toBeInTheDocument();
   });
 
   it('writes both labels onto the attribute, and binds the field to it', async () => {
@@ -4275,47 +3999,21 @@ describe('inventing an attribute answered on a scale', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventingAScale(harness);
-    await harness.user.click(
-      await dialog.findByRole('button', {
-        name: 'Create this attribute and what it accepts',
-      }),
+    const dialog = await startInventingWith(
+      harness,
+      'closeness',
+      'VisualAnalogScale',
     );
-    expect(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-    ).toHaveValue('closeness');
+    const settings = within(
+      await dialog.findByRole('region', { name: 'Control settings' }),
+    );
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Minimum label' }),
+      settings.getByRole('textbox', { name: 'Minimum label' }),
       'Not at all close',
     );
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Maximum label' }),
+      settings.getByRole('textbox', { name: 'Maximum label' }),
       'As close as can be',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
-    );
-
-    const created = await waitFor(() => {
-      const entry = savedAttribute(harness, 'closeness');
-      if (entry === undefined) throw new Error('the attribute was not created');
-      return entry;
-    });
-    expect(created[1]).toMatchObject({
-      type: 'scalar',
-      parameters: {
-        minLabel: 'Not at all close',
-        maxLabel: 'As close as can be',
-      },
-    });
-    // A scalar the schema would refuse outright: its own strict object admits
-    // no `options` key, so the empty list a list-of-values invention seeds
-    // must never reach a scale.
-    expect(created[1]).not.toHaveProperty('options');
-
-    await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Input control' }),
-      'VisualAnalogScale',
     );
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
@@ -4326,28 +4024,34 @@ describe('inventing an attribute answered on a scale', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
+    const created = savedAttribute(harness, 'closeness');
+    expect(created?.[1]).toEqual({
+      name: 'closeness',
+      type: 'scalar',
+      component: 'VisualAnalogScale',
+      parameters: {
+        minLabel: 'Not at all close',
+        maxLabel: 'As close as can be',
+      },
+    });
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
-      variable: created[0],
+      variable: created?.[0],
       prompt: 'How close are you?',
     });
   });
 
-  /**
-   * The belt behind the control: a row that reaches the commit still naming a
-   * scale it never created is refused there rather than quick-creating one
-   * with no labels on it.
-   */
-  it('refuses a row that named a scale it never created', async () => {
+  it('refuses a scale whose end labels are missing', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await startInventingAScale(harness);
-    await dialog.findByRole('button', {
-      name: 'Create this attribute and what it accepts',
-    });
+    const dialog = await startInventingWith(
+      harness,
+      'closeness',
+      'VisualAnalogScale',
+    );
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
       'How close are you?',
@@ -4355,76 +4059,58 @@ describe('inventing an attribute answered on a scale', () => {
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
     expect(
-      await dialog.findByText(
-        'Create this attribute and what it accepts before adding the field that collects it.',
-      ),
-    ).toBeInTheDocument();
+      (await dialog.findAllByText('Write what the low end of the scale means.'))
+        .length,
+    ).toBeGreaterThan(0);
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(savedAttribute(harness, 'closeness')).toBeUndefined();
   });
+
+  it('shows a relative date picker’s anchor and window inline, and creates the attribute with them', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventingWith(
+      harness,
+      'last_contact',
+      'RelativeDatePicker',
+    );
+    const settings = within(
+      await dialog.findByRole('region', { name: 'Control settings' }),
+    );
+    expect(settings.getByLabelText('Anchor date')).toBeInTheDocument();
+    expect(
+      settings.queryByRole('combobox', { name: 'Date resolution' }),
+    ).toBeNull();
+    await harness.user.type(settings.getByLabelText('Days before'), '30');
+    await harness.user.type(settings.getByLabelText('Days after'), '7');
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'When did you last speak?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(savedAttribute(harness, 'last_contact')?.[1]).toEqual({
+      name: 'last_contact',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30, after: 7 },
+    });
+  });
 });
 
-/**
- * A collaborator deleting the attribute an open codebook editor is editing.
- *
- * The section is still there and the stage still points at the same type, so
- * nothing the launch controls read has changed — and the editor beneath cannot
- * say this for itself: `VariableEditor` reads an absent attribute as one whose
- * TYPE changed, so the draft stayed writable and the save came back "the
- * attribute type changed elsewhere. Close and reopen this editor" about an
- * attribute there is nothing left to reopen.
- */
-describe('a codebook editor open over a row when its attribute is deleted', () => {
+describe('a row whose attribute is deleted', () => {
   const deleteFlagged = (harness: ReturnType<typeof renderStageEditor>) => {
     const { flagged: _removed, ...variables } = personVariables(harness);
     harness.receiveCodebookUpdate({
       node: { person: { ...personDocument(harness), variables } },
     });
   };
-
-  const deleteMetOn = (harness: ReturnType<typeof renderStageEditor>) => {
-    const { [SEEDED_MET_ON]: _removed, ...variables } =
-      personVariables(harness);
-    harness.receiveCodebookUpdate({
-      node: { person: { ...personDocument(harness), variables } },
-    });
-  };
-
-  it('keeps the attribute editor on screen, with its draft, and says what happened', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    await openParametersEditor(harness, dialog);
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-      'year',
-    );
-
-    deleteMetOn(harness);
-
-    // The draft the researcher made is still in front of them...
-    expect(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-    ).toHaveValue('year');
-    // ...with the reason it cannot be written, in its own words rather than
-    // the type-changed refusal that used to answer a press of Save.
-    expect(
-      await screen.findByText(
-        'This attribute is no longer in the codebook, so these changes cannot be saved.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    ).toBeDisabled();
-    expect(
-      screen.queryByText(
-        'The attribute type changed elsewhere. Close and reopen this editor before saving.',
-      ),
-    ).toBeNull();
-  });
 
   /**
    * The rules are the attribute's own, so an attribute that is gone has no
@@ -4503,40 +4189,6 @@ describe('dismissing a codebook editor while its save is in flight', () => {
     };
   };
 
-  it('refuses every way out of the attribute editor until it answers', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: <FormFieldsSection subject="node" />,
-    });
-    const release = holdCodebookWrites(harness);
-
-    const dialog = await openField(harness, 'Edit field', 1);
-    await openParametersEditor(harness, dialog);
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-      'year',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Save attribute' }),
-    );
-
-    // Escape and a press outside are the two routes left; the close button is
-    // taken away rather than left on screen doing nothing.
-    await harness.user.keyboard('{Escape}');
-    await harness.user.click(document.body);
-    expect(
-      screen.getByRole('combobox', { name: 'Date resolution' }),
-    ).toBeInTheDocument();
-    expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
-
-    release();
-    await waitFor(() =>
-      expect(
-        asRecord(personVariables(harness)[SEEDED_MET_ON]).parameters,
-      ).toEqual({ type: 'year' }),
-    );
-  });
-
   /**
    * The nested validation section has no dialog of its own to escape, so what
    * a held write must not do is take the rule off the screen: the switch the
@@ -4585,13 +4237,10 @@ describe('dismissing a codebook editor while its save is in flight', () => {
  * label on screen: it changes how that attribute is collected in every form
  * that asks for it, out of a save the researcher made about a question.
  *
- * The routes differ in whether the control is on screen throughout. An
- * attribute that IS its values or its end labels is authored in the codebook's
- * own editor, and the row has no control to offer while one is being invented
- * — so the field is unmounted across the invention, and its value survives
- * that unmount (`registerField` prefers a dormant value over the initial one
- * it is handed). Every route here that passes through the sentinel is a route
- * where whatever remembers the binding has to outlive the field.
+ * A field's value survives a rebinding and even an unmount (`registerField`
+ * prefers a dormant value over the initial one it is handed), so every route
+ * here that passes through the sentinel is a route where whatever remembers
+ * the binding has to outlive whatever the field is showing.
  */
 describe('the control a row saves for the attribute it finally collects', () => {
   /** Resolves the attribute the row ended up collecting, after the save. */
@@ -4645,17 +4294,17 @@ describe('the control a row saves for the attribute it finally collects', () => 
     await chooseControl(harness, dialog, 'ToggleButtonGroup');
   };
 
-  /** Invents an attribute of this name, and names the kind of answer it holds. */
-  const inventKind = async (
+  /** Invents an attribute of this name, collected with this control. */
+  const inventCollectedWith = async (
     harness: ReturnType<typeof renderStageEditor>,
     dialog: RowDialog,
     attributeName: string,
-    kind: string,
+    control: string,
   ) => {
     await inventThroughThePicker(harness, dialog, attributeName);
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      kind,
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      control,
     );
   };
 
@@ -4692,38 +4341,44 @@ describe('the control a row saves for the attribute it finally collects', () => 
       saves: 'TextArea',
     },
     {
-      name: 'the default of an attribute invented from a name and a kind',
+      name: 'the control chosen for an attribute invented from a name',
       route: async (harness, dialog) => {
         await chooseAControlForTheSeededAttribute(harness, dialog);
-        await inventKind(harness, dialog, 'nickname', 'text');
+        await inventCollectedWith(harness, dialog, 'nickname', 'Text');
         return created(harness, 'nickname');
       },
       saves: 'Text',
     },
     {
-      name: 'the default of an attribute authored in the codebook editor',
+      name: 'the control chosen for an attribute invented with its values',
       route: async (harness, dialog) => {
         await chooseAControlForTheSeededAttribute(harness, dialog);
-        const entry = await createContactSetting(
+        await inventCollectedWith(
           harness,
           dialog,
           'meeting_place',
+          'CheckboxGroup',
         );
-        return () => entry[0];
+        await addInlineValue(harness, 'At home', 'home');
+        await addInlineValue(harness, 'At work', 'work');
+        return created(harness, 'meeting_place');
       },
       saves: 'CheckboxGroup',
     },
     {
-      name: 'the choice made for that attribute once there is one to make it for',
+      name: 'the choice made again for that invention, within its kind',
       route: async (harness, dialog) => {
         await chooseAControlForTheSeededAttribute(harness, dialog);
-        const entry = await createContactSetting(
+        await inventCollectedWith(
           harness,
           dialog,
           'meeting_place',
+          'CheckboxGroup',
         );
+        await addInlineValue(harness, 'At home', 'home');
+        await addInlineValue(harness, 'At work', 'work');
         await chooseControl(harness, dialog, 'ToggleButtonGroup');
-        return () => entry[0];
+        return created(harness, 'meeting_place');
       },
       saves: 'ToggleButtonGroup',
     },
@@ -4731,27 +4386,24 @@ describe('the control a row saves for the attribute it finally collects', () => 
       name: 'the only control a scale offers, which is not the one carried in',
       route: async (harness, dialog) => {
         await chooseAControlForTheSeededAttribute(harness, dialog);
-        await inventKind(harness, dialog, 'closeness', 'scalar');
-        await harness.user.click(
-          dialog.getByRole('button', {
-            name: 'Create this attribute and what it accepts',
-          }),
+        await inventCollectedWith(
+          harness,
+          dialog,
+          'closeness',
+          'VisualAnalogScale',
         );
-        await screen.findByRole('textbox', { name: 'Attribute name' });
+        const settings = within(
+          await dialog.findByRole('region', { name: 'Control settings' }),
+        );
         await harness.user.type(
-          screen.getByRole('textbox', { name: 'Minimum label' }),
+          settings.getByRole('textbox', { name: 'Minimum label' }),
           'Not at all close',
         );
         await harness.user.type(
-          screen.getByRole('textbox', { name: 'Maximum label' }),
+          settings.getByRole('textbox', { name: 'Maximum label' }),
           'As close as can be',
         );
-        await harness.user.click(
-          screen.getByRole('button', { name: 'Create attribute' }),
-        );
-        const entry = created(harness, 'closeness');
-        await waitFor(entry);
-        return entry;
+        return created(harness, 'closeness');
       },
       saves: 'VisualAnalogScale',
     },
@@ -4759,19 +4411,13 @@ describe('the control a row saves for the attribute it finally collects', () => 
       name: 'the next binding’s own, after an invention the researcher abandoned',
       route: async (harness, dialog) => {
         await chooseAControlForTheSeededAttribute(harness, dialog);
-        await inventKind(harness, dialog, 'meeting_place', 'categorical');
-        await harness.user.click(
-          dialog.getByRole('button', {
-            name: 'Create this attribute and its values',
-          }),
+        await inventCollectedWith(
+          harness,
+          dialog,
+          'meeting_place',
+          'CheckboxGroup',
         );
-        await screen.findByRole('button', { name: 'Create attribute' });
-        await harness.user.keyboard('{Escape}');
-        await waitFor(() =>
-          expect(
-            screen.queryByRole('button', { name: 'Create attribute' }),
-          ).toBeNull(),
-        );
+        await addInlineValue(harness, 'At home', 'home');
         await chooseAttribute(harness, dialog, 'notes');
         return () => 'notes';
       },
@@ -5026,8 +4672,8 @@ describe('the live preview beside a form field’s settings', () => {
    * This row defers its codebook write to its own save, so while the
    * researcher is authoring there is no attribute for the pane to read — it
    * follows the row's draft instead. Both halves are asserted, because they
-   * are answered by different readings: the draft is previewed as the kind of
-   * answer is chosen, and the row that saved it, reopened, is previewed from
+   * are answered by different readings: the draft is previewed as the input
+   * control is chosen, and the row that saved it, reopened, is previewed from
    * the attribute the create really wrote.
    */
   it('previews an attribute the picker’s create row is inventing, and then the one it created', async () => {
@@ -5042,8 +4688,8 @@ describe('the live preview beside a form field’s settings', () => {
       dialog.getByRole('region', { name: 'Interactive preview' }),
     );
     await harness.user.selectOptions(
-      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
-      'boolean',
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'Boolean',
     );
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
