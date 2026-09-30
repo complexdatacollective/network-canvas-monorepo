@@ -24,7 +24,7 @@ when its boundary moved.
   TanStack Query, `@codaco/fresco-ui`). Builds to static assets; talks to the
   server through typed Effect rpc procedures, importing the boundary contract
   type-only.
-- `api/` — `@codaco/studio-api`: Hono app on `@hono/node-server`
+- `api/` — `@codaco/studio-api`: Effect programs on `@effect/platform-node`
   (Node 24 baseline), one persistent process serving every surface below. It
   serves no client assets in any topology — nginx does, from the `studio-web`
   image (#1909). A second process built from the same source runs background
@@ -32,9 +32,10 @@ when its boundary moved.
   third creates the schema and exits. It owns the database:
   `src/db` holds the pool and the schema, and `src/protocol` is the sectioned,
   content-addressed protocol store (#1276) built on top of it.
-- `packages/studio-contract` — `@codaco/studio-contract`: the internal RPC boundary
-  (Zod vocabulary the halves still share); the `/rpc` and `/ws` contracts
-  live in `packages/studio-contract`.
+- `packages/studio-contract` — `@codaco/studio-contract`: the boundary the
+  halves share, on Effect `Schema`: the `/rpc` procedures, the `/api/v1`
+  definition, and the `/ws` protocol-builder group, which it re-exports from
+  `@codaco/protocol-builder-core`.
 - `packages/studio-sync` — `@codaco/studio-sync`: the sync protocol core
   (#1247). Isomorphic: the client imports its apply engine, the server its
   lease and commit engine and the schema those run against. It also carries the
