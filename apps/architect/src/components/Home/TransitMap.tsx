@@ -59,9 +59,10 @@ function timelineColor(type: StageType) {
 }
 
 // Most stage colours fall below AA as caption text on the page, so the caption
-// keeps the hue but caps its lightness.
+// keeps the hue but moves toward the ink contrast-color() picks for the page,
+// as Badge does. 35% is the least that keeps every stage colour above AA.
 function captionColor(color: string) {
-  return `oklch(from ${color} min(l, 0.45) c h)`;
+  return `color-mix(in oklab, ${color}, contrast-color(var(--background)) 35%)`;
 }
 
 type TransitMapProps = {
