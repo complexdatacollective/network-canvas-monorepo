@@ -24,6 +24,7 @@
     "@codaco/studio-server",
     "@codaco/studio-sync",
     "@codaco/studio-web",
+    "@codaco/effect-query",
     "@codaco/protocol-builder",
     "@codaco/protocol-builder-core",
     "@codaco/protocols",
