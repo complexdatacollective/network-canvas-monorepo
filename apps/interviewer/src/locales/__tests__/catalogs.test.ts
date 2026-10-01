@@ -20,6 +20,7 @@ import { createAppIntl } from '@codaco/app-i18n/messages';
 import { interviewerProductionLocales } from '../../i18n/locales';
 import { buildDeleteProtocolMessage } from '../../routes/deleteProtocolMessage';
 import { interviewerCatalogs } from '../catalogs';
+import de from '../de.json';
 import enGb from '../en-GB.json';
 import es from '../es.json';
 import zhHans from '../zh-Hans.json';
@@ -31,6 +32,7 @@ const source = JSON.parse(
 const localesDir = join(src, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const deSources = readTranslationSources(localesDir, 'de');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
@@ -48,6 +50,9 @@ describe('the complete administration catalog', () => {
   });
   it('ships full Simplified Chinese with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, zhHans, zhHansSources)).toEqual([]);
+  });
+  it('ships full German with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, de, deSources)).toEqual([]);
   });
   it('ships only reviewed British differences and inherits the English base', () => {
     expect(checkOverrideLocale(source, enGb, enGbSources)).toEqual([]);
@@ -75,6 +80,7 @@ describe('the complete administration catalog', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'de',
     ]);
     for (const entry of interviewerProductionLocales)
       expect(

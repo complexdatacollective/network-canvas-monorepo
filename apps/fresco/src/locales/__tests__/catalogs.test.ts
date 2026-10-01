@@ -17,6 +17,7 @@ import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { frescoLocales } from '~/i18n/locales';
 import { frescoCatalogs } from '~/src/locales/catalogs';
+import de from '~/src/locales/de.json';
 import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
 import zhHans from '~/src/locales/zh-Hans.json';
@@ -37,6 +38,7 @@ const en = JSON.parse(
 const localesDir = resolve(root, 'src/locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const deSources = readTranslationSources(localesDir, 'de');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Fresco researcher message catalogs', () => {
@@ -57,6 +59,7 @@ describe('Fresco researcher message catalogs', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'de',
     ]);
     for (const { locale } of frescoLocales) {
       expect(ecosystemLocales.map((entry) => entry.locale)).toContain(locale);
@@ -70,6 +73,10 @@ describe('Fresco researcher message catalogs', () => {
 
   it('requires complete Simplified Chinese and matching ICU arguments and rich text tags', () => {
     expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
+  });
+
+  it('requires complete German and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, de, deSources)).toEqual([]);
   });
 
   it('keeps British English sparse with only reviewed differences', () => {

@@ -6,6 +6,7 @@ import { networkExporterCatalogs } from '@codaco/network-exporters/locales';
 import { protocolUtilitiesCatalogs } from '@codaco/protocol-utilities/locales';
 import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 
+import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
 import zhHans from './zh-Hans.json';
@@ -39,5 +40,13 @@ export const interviewerCatalogs: Readonly<
     protocolValidationCatalogs['zh-Hans'] ?? {},
     protocolUtilitiesCatalogs['zh-Hans'] ?? {},
     zhHans,
+  ),
+  'de': mergeCatalogs(
+    commonCatalogs.de ?? {},
+    frescoUiCatalogs.de ?? {},
+    networkExporterCatalogs.de ?? {},
+    protocolValidationCatalogs.de ?? {},
+    protocolUtilitiesCatalogs.de ?? {},
+    de,
   ),
 };
