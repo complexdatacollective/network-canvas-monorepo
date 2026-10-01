@@ -22,6 +22,12 @@ describe('Fresco source-map upload', () => {
     path.join(process.cwd(), 'next.config.ts'),
     'utf8',
   );
+  // Source-controlled here and carried to the Fresco repository by
+  // scripts/release/mirror-app.mjs, which is where it actually runs.
+  const publisher = readFileSync(
+    path.join(process.cwd(), '.github/workflows/docker-publish.yml'),
+    'utf8',
+  );
 
   it('offers the build the PostHog credentials as BuildKit secrets', () => {
     // Secrets, not ARG/ENV: a build arg is readable in the image's layer
@@ -57,5 +63,21 @@ describe('Fresco source-map upload', () => {
   it('deletes the maps from the build output once uploaded', () => {
     // The image must never serve the maps it uploads.
     expect(nextConfig).toContain('deleteAfterUpload: true');
+  });
+
+  it('has the publisher workflow pass both secrets to the image build', () => {
+    // The last link in the chain: turbo keeps the credentials in the cache key,
+    // next.config.ts gates on them, the Dockerfile mounts them, and this is
+    // what supplies them. Drop this and the other three change nothing.
+    expect(publisher).toContain(
+      'posthog_personal_api_key=${{ secrets.POSTHOG_PERSONAL_API_KEY }}',
+    );
+    expect(publisher).toContain(
+      'posthog_project_id=${{ secrets.POSTHOG_PROJECT_ID }}',
+    );
+    // `secrets:`, not `build-args:` — a build arg would be readable in the
+    // published image's layer history.
+    expect(publisher).toMatch(/^\s+secrets: \|$/m);
+    expect(publisher).not.toMatch(/build-args:[\s\S]{0,120}POSTHOG/);
   });
 });
