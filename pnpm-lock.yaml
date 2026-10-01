@@ -3086,8 +3086,8 @@ importers:
         specifier: workspace:^
         version: link:../../tooling/typescript
       '@octokit/types':
-        specifier: ^16.0.0
-        version: 16.0.0
+        specifier: ^18.0.0
+        version: 18.0.0
       '@types/gunzip-maybe':
         specifier: ^1.4.3
         version: 1.4.3
@@ -3337,8 +3337,8 @@ importers:
   workers/development-protocol:
     dependencies:
       '@octokit/types':
-        specifier: ^16.0.0
-        version: 16.0.0
+        specifier: ^18.0.0
+        version: 18.0.0
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:^
@@ -6291,11 +6291,11 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@octokit/openapi-types@27.0.0':
-    resolution: {integrity: sha512-whrdktVs1h6gtR+09+QsNk2+FO+49j6ga1c55YZudfEG+oKJVvJLQi3zkOm5JjiUXAagWK2tI2kTGKJ2Ys7MGA==}
+  '@octokit/openapi-types@29.0.1':
+    resolution: {integrity: sha512-9qWOMFNxxLokERcms42rU0PTLqQmVs7g5E41TI4mCOxmpFayD1rfC7XxOL55cG9MBZLFlC31BrR37myMKardwg==}
 
-  '@octokit/types@16.0.0':
-    resolution: {integrity: sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg==}
+  '@octokit/types@18.0.0':
+    resolution: {integrity: sha512-l6bAF43PNxkJp6g+W4PjoUSSkxHomXw2nOum5CTftJz1NlV3vu93NImgOYtLf6CbBUb5j+fiuzW0PPQ5JTSvZA==}
 
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
@@ -20899,11 +20899,11 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@octokit/openapi-types@27.0.0': {}
+  '@octokit/openapi-types@29.0.1': {}
 
-  '@octokit/types@16.0.0':
+  '@octokit/types@18.0.0':
     dependencies:
-      '@octokit/openapi-types': 27.0.0
+      '@octokit/openapi-types': 29.0.1
 
   '@one-ini/wasm@0.1.1': {}
 

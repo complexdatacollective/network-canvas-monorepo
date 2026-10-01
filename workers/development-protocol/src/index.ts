@@ -32,7 +32,7 @@ export default {
         return new Response('Failed to fetch releases', { status: 500 });
       }
 
-      const releases: GitHubRelease[] = await releaseResponse.json();
+      const releases = await releaseResponse.json<GitHubRelease[]>();
 
       // Find all development protocol releases and sort by timestamp
       const developmentReleases = releases
