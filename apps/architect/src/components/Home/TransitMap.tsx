@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -48,8 +48,8 @@ const INITIAL_BLOOM_STAGGER_S = 0.12;
 
 const ICON_STROKE = 2.75;
 
-// Information's platinum-dark is illegible against Architect's platinum page bg
-// Override it with charcoal throughout the timeline.
+// Information's platinum-dark is illegible against Architect's platinum page
+// background, so the timeline draws Information stations in charcoal.
 const INFORMATION_TIMELINE_COLOR = 'var(--color-charcoal)';
 
 function timelineColor(type: StageType) {
@@ -243,7 +243,6 @@ function Station({
   // Palette colours are CSS custom properties, which SVG presentation
   // attributes do not resolve — they have to be set as style properties.
   const color = timelineColor(type);
-  const StageIcon = stageTypeIcon(type);
   const shouldEntry = entryDelay !== undefined;
   const baseDelay = entryDelay ?? 0;
   const stationSpring = {
@@ -293,16 +292,16 @@ function Station({
         )}
         <circle cx={x} cy={y} r={STATION_R} fill="#fff" />
         <circle cx={x} cy={y} r={STATION_INNER_R} style={{ fill: color }} />
-        <StageIcon
-          x={x - ICON_SIZE / 2}
-          y={y - ICON_SIZE / 2}
-          width={ICON_SIZE}
-          height={ICON_SIZE}
-          style={{
+        {createElement(stageTypeIcon(type), {
+          x: x - ICON_SIZE / 2,
+          y: y - ICON_SIZE / 2,
+          width: ICON_SIZE,
+          height: ICON_SIZE,
+          style: {
             stroke: `contrast-color(${color})`,
             strokeWidth: ICON_STROKE,
-          }}
-        />
+          },
+        })}
       </motion.g>
 
       {/* Label pill: slide in from its outer side */}
