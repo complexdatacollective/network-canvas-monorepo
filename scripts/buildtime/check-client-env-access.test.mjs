@@ -18,10 +18,6 @@ import { z } from 'zod';
 export const env = createEnv({
   server: {
     DATABASE_URL: z.string(),
-    UPLOADTHING_TOKEN: z.string().optional(),
-  },
-  client: {
-    NEXT_PUBLIC_THING: z.string(),
   },
   shared: {
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -64,16 +60,16 @@ function fixture(
 const run = (cwd) =>
   spawnSync(process.execPath, [GUARD], { cwd, encoding: 'utf8' });
 
-const clientComponent = (body) => `'use client';
+const clientComponent = (body, specifier = '~/env') => `'use client';
 
-import { env } from '~/env';
+import { env } from '${specifier}';
 
 export default function Thing() {
   ${body}
 }
 `;
 
-test('flags a server-only variable read in a client module', () => {
+test('flags a variable the browser is not given', () => {
   const cwd = fixture({
     'components/Badge.tsx': clientComponent(
       'if (!env.SANDBOX_MODE) return null;\n  return <footer />;',
@@ -89,12 +85,72 @@ test('flags a server-only variable read in a client module', () => {
   assert.match(result.stderr, /does not expose it to the browser/);
 });
 
-test('flags a server-block variable too', () => {
-  const cwd = fixture({
-    'components/Upload.tsx': clientComponent(
-      'return <p>{env.UPLOADTHING_TOKEN}</p>;',
-    ),
-  });
+test('flags it however the env module declares it — quoted key', () => {
+  // The first version of this guard derived the GUARDED names from `env.js`,
+  // and its property matcher skipped quoted keys, so this read passed
+  // silently. The allowlist design cannot miss a declaration because it never
+  // reads one.
+  const cwd = fixture(
+    {
+      'components/Leak.tsx': clientComponent(
+        'return <p>{env.SECRET_TOKEN}</p>;',
+      ),
+    },
+    {
+      env: `export const env = createEnv({
+  server: { 'SECRET_TOKEN': z.string() },
+  shared: { NODE_ENV: z.string() },
+});
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
+});
+
+test('flags it however the env module declares it — brace inside a comment', () => {
+  // The other reported silent pass: a `}` in a comment truncated the block the
+  // old guard was counting braces through.
+  const cwd = fixture(
+    {
+      'components/Leak.tsx': clientComponent(
+        'return <p>{env.SECRET_TOKEN}</p>;',
+      ),
+    },
+    {
+      env: `export const env = createEnv({
+  server: {
+    // A closing brace in prose: }
+    SECRET_TOKEN: z.string(),
+  },
+  shared: { NODE_ENV: z.string() },
+});
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
+});
+
+test('flags it however the env module declares it — spread', () => {
+  const cwd = fixture(
+    {
+      'components/Leak.tsx': clientComponent(
+        'return <p>{env.SECRET_TOKEN}</p>;',
+      ),
+    },
+    {
+      env: `export const env = createEnv({
+  server: { ...sharedServerSchema },
+  shared: { NODE_ENV: z.string() },
+});
+`,
+    },
+  );
 
   assert.equal(run(cwd).status, 1);
 });
@@ -131,6 +187,50 @@ test('stops allowing it once next.config no longer inlines it', () => {
   );
 
   assert.equal(run(cwd).status, 1);
+});
+
+test('reads a next.config env value written as a template literal', () => {
+  const cwd = fixture(
+    {
+      'components/Version.tsx': clientComponent(
+        'return <p>{env.APP_VERSION}</p>;',
+      ),
+    },
+    {
+      nextConfig: `const config = {
+  env: {
+    APP_VERSION: \`v\${pkg.version}\`,
+    COMMIT_HASH: commitHash,
+  },
+};
+export default config;
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('refuses a next.config env map it cannot read rather than shortening it', () => {
+  const cwd = fixture(
+    {},
+    {
+      nextConfig: `export default {
+  env: {
+    ...inheritedEnv,
+  },
+};
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cannot read the property starting at/);
+  assert.match(result.stderr, /next\.config\.ts \(`env:`\)/);
+  // The message is the whole output: no stack trace for CI to scroll past.
+  assert.doesNotMatch(result.stderr, /at topLevelKeys/);
 });
 
 test('allows a NEXT_PUBLIC_ variable', () => {
@@ -172,181 +272,68 @@ export default function Badge() {
   assert.equal(run(cwd).status, 1);
 });
 
-test('ignores an unrelated binding that merely ends in env', () => {
+test("ignores an `env` imported from another package's subpath", () => {
+  // `@codaco/some-package/env` is not this app's env module, and its names have
+  // nothing to do with what this app gives the browser.
   const cwd = fixture({
-    'components/Other.tsx': `'use client';
-
-import { environment } from '~/elsewhere';
-
-export default function Other() {
-  return environment.SANDBOX_MODE ? <footer /> : null;
-}
-`,
+    'components/Other.tsx': clientComponent(
+      'return <p>{env.SOMETHING}</p>;',
+      '@codaco/some-package/env',
+    ),
   });
 
   assert.equal(run(cwd).status, 0);
 });
 
-test("ignores an `env` imported from somewhere other than the app's own module", () => {
-  // The allowlist is derived from `apps/<app>/env.js`, so the guard makes no
-  // claim about an unrelated package that happens to export `env`.
+test('ignores an `env` imported from an unrelated relative path', () => {
   const cwd = fixture({
-    'components/Other.tsx': `'use client';
-
-import { env } from 'some-library';
-
-export default function Other() {
-  return env.SANDBOX_MODE ? <footer /> : null;
-}
-`,
+    'components/feature/env.ts': 'export const env = { SOMETHING: 1 };\n',
+    'components/feature/Other.tsx': clientComponent(
+      'return <p>{env.SOMETHING}</p>;',
+      './env',
+    ),
   });
 
   assert.equal(run(cwd).status, 0);
 });
 
-test('refuses an env module whose server block it cannot read', () => {
-  const cwd = fixture({}, { env: 'export const env = {};\n' });
-  const result = run(cwd);
-
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /no `server:` block found/);
-});
-
-test('flags a server-only variable declared with a quoted key', () => {
-  // Reported on #2030: `topLevelKeys` skipped anything that was not a bare
-  // `NAME:` property, so the variable never entered the guarded set and a
-  // client module reading it passed silently.
-  const cwd = fixture(
-    {
-      'components/Leak.tsx': clientComponent(
-        'return <p>{env.SECRET_TOKEN}</p>;',
-      ),
-    },
-    {
-      env: `export const env = createEnv({
-  server: {
-    'SECRET_TOKEN': z.string(),
-  },
-  shared: {
-    NODE_ENV: z.string(),
-  },
-});
-`,
-    },
-  );
-  const result = run(cwd);
-
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
-});
-
-test('refuses a spread it cannot expand rather than skipping it', () => {
-  const cwd = fixture(
-    {},
-    {
-      env: `export const env = createEnv({
-  server: {
-    ...sharedServerSchema,
-  },
-  shared: {
-    NODE_ENV: z.string(),
-  },
-});
-`,
-    },
-  );
-  const result = run(cwd);
-
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /cannot read the property starting at/);
-  assert.match(result.stderr, /env\.js \(`server:`\)/);
-  // The message is the whole output: no stack trace for CI to scroll past.
-  assert.doesNotMatch(result.stderr, /at topLevelKeys/);
-});
-
-test('refuses a computed key', () => {
-  const cwd = fixture(
-    {},
-    {
-      env: `export const env = createEnv({
-  server: {
-    [SECRET]: z.string(),
-  },
-  shared: { NODE_ENV: z.string() },
-});
-`,
-    },
-  );
+test("follows a relative import that does resolve to the app's env module", () => {
+  const cwd = fixture({
+    'components/Badge.tsx': clientComponent(
+      'return env.SANDBOX_MODE ? <footer /> : null;',
+      '../env.js',
+    ),
+  });
 
   assert.equal(run(cwd).status, 1);
 });
 
-test('refuses a shorthand property, which declares no schema it can read', () => {
-  const cwd = fixture(
-    {},
-    {
-      env: `export const env = createEnv({
-  server: {
-    SECRET_TOKEN,
-  },
-  shared: { NODE_ENV: z.string() },
-});
-`,
-    },
-  );
+test('does not read the import specifier itself as a use of the binding', () => {
+  // `from '~/env.js'` contains the text `env.js`.
+  const cwd = fixture({
+    'components/Debug.tsx': clientComponent(
+      "return env.NODE_ENV === 'development' ? <p /> : null;",
+      '~/env.js',
+    ),
+  });
   const result = run(cwd);
 
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /cannot read the property/);
+  assert.equal(result.status, 0, result.stderr);
 });
 
-test('reads a block that carries comments and a trailing comma', () => {
+test('skips a directory under apps/ that has no env module', () => {
   const cwd = fixture(
     {
-      'components/Leak.tsx': clientComponent(
-        'return <p>{env.SECRET_TOKEN}</p>;',
+      'components/Badge.tsx': clientComponent(
+        'return <p>{env.SANDBOX_MODE}</p>;',
       ),
     },
-    {
-      env: `export const env = createEnv({
-  server: {
-    // The deployment supplies this one.
-    SECRET_TOKEN: z.string(), /* required */
-  },
-  shared: {
-    NODE_ENV: z.string(),
-  },
-});
-`,
-    },
-  );
-  const result = run(cwd);
-
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
-});
-
-test('reads a next.config env value written as a template literal', () => {
-  const cwd = fixture(
-    {
-      'components/Version.tsx': clientComponent(
-        'return <p>{env.APP_VERSION}</p>;',
-      ),
-    },
-    {
-      nextConfig: `const config = {
-  env: {
-    APP_VERSION: \`v\${pkg.version}\`,
-    COMMIT_HASH: commitHash,
-  },
-};
-export default config;
-`,
-    },
+    { env: null },
   );
   const result = run(cwd);
 
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /0 app\(s\) checked/);
 });
 
 test('passes on this repository', () => {

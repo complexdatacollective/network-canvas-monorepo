@@ -51,9 +51,15 @@ export const EMAIL_OFF_CLOSE = '<!--/email_off-->';
  * rewrite either — the RSC payload carries the same addresses and is served
  * untouched, which is exactly why the client's render disagrees with the
  * markup).
+ *
+ * The tag arm steps over quoted attribute values rather than stopping at the
+ * first `>`, because `>` is legal inside one. Review of this pass found that a
+ * plain `<[^>]*>` turned `<div title="1 > 0">foo@example.com</div>` into a tag
+ * ending mid-attribute and a text run beginning inside it, so the opt-out
+ * comment was inserted into the start tag and corrupted the markup.
  */
 const NON_TEXT =
-  /(<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>|<!--[\s\S]*?-->|<[^>]*>)/i;
+  /(<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>|<!--[\s\S]*?-->|<[a-zA-Z/!?](?:[^>"']|"[^"]*"|'[^']*')*>)/i;
 
 /** Regions the HTML already opts out of rewriting, so the pass is idempotent. */
 const ALREADY_PROTECTED =

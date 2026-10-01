@@ -102,6 +102,35 @@ describe('protectEmailAddresses', () => {
     );
   });
 
+  it('steps over a `>` inside a quoted attribute', () => {
+    // A plain `<[^>]*>` ended the tag mid-attribute and began a text run
+    // inside it, inserting the opt-out comment into the start tag.
+    const { html } = protectEmailAddresses(
+      '<div title="1 > 0">foo@example.com</div>',
+    );
+
+    expect(html).toBe(
+      `<div title="1 > 0">${EMAIL_OFF_OPEN}foo@example.com${EMAIL_OFF_CLOSE}</div>`,
+    );
+  });
+
+  it('steps over a `>` inside a single-quoted attribute', () => {
+    const { html } = protectEmailAddresses("<p data-note='a > b'>x@y.com</p>");
+
+    expect(html).toBe(
+      `<p data-note='a > b'>${EMAIL_OFF_OPEN}x@y.com${EMAIL_OFF_CLOSE}</p>`,
+    );
+  });
+
+  it('reports nothing unprotected for an attribute holding a `>` and an address', () => {
+    const page = '<a href="mailto:x@y.com" title="a > b">x@y.com</a>';
+
+    expect(findUnprotectedEmailText(page)).toEqual(['x@y.com']);
+    expect(findUnprotectedEmailText(protectEmailAddresses(page).html)).toEqual(
+      [],
+    );
+  });
+
   it('does not treat a comment as a text run', () => {
     // React's streaming markers and any other comment must survive untouched.
     const html = '<!--$--><p>you@example.com</p><!--/$-->';

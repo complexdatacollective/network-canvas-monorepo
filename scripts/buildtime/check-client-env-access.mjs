@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// CI guard: a client component may not read a server-only environment variable.
+// CI guard: a client component may not read an environment variable the browser
+// is not given.
 //
 // Next only defines `NEXT_PUBLIC_`-prefixed variables (and whatever
 // `next.config`'s `env` map inlines) in the browser. A `'use client'` module
@@ -21,24 +22,36 @@
 // The fix is to decide in the server component that renders the client one —
 // `{env.SANDBOX_MODE && <NetlifyBadge />}` — so the branch happens where the
 // variable exists. Exposing the variable to the browser instead would be wrong
-// here for a second reason: Next inlines `NEXT_PUBLIC_`/`env` values at build
-// time, and Fresco's image is built once and run by deployments that set
+// for a second reason: Next inlines `NEXT_PUBLIC_`/`env` values at build time,
+// and Fresco's image is built once and run by deployments that set
 // `SANDBOX_MODE` differently at runtime.
 //
-// SCOPE, stated plainly so the next reader does not over-trust this: it reads
-// each app's own `env.js` for the variables it declares, and each app's
-// `next.config` for the ones it inlines, so the allowlist cannot drift from the
-// configuration. It flags only a direct `env.NAME` read inside a module that
-// itself carries the `'use client'` directive. It does NOT follow imports: a
-// shared helper with no directive of its own that reads `env.NAME` and is
-// called from a client component is the same bug and is not caught here.
+// WHY THE CHECK IS AN ALLOWLIST. The obvious shape — read the `server:` and
+// `shared:` blocks of each `env.js` and flag reads of what they declare — was
+// the first version of this script, and review found two ways it could pass
+// silently: a quoted key (`'SECRET_TOKEN':`) that its property matcher skipped,
+// and a `}` inside a comment that truncated the block it was reading. Both
+// produced a variable missing from the guarded set, which reads exactly like a
+// variable that is safe. Deriving the ALLOWED names instead makes every
+// mis-parse fail the other way: a name this script fails to recognise as
+// browser-exposed is reported as an offence, which is loud, visible in the
+// diff, and fixable — never a quiet pass. It also needs no knowledge of the
+// env module's contents at all, only that the app has one.
+//
+// SCOPE, stated plainly so the next reader does not over-trust this: it flags a
+// direct `NAME.PROPERTY` read where `NAME` is bound by importing `env` from the
+// app's own env module, inside a module that itself carries the `'use client'`
+// directive. It does NOT follow imports: a shared helper with no directive of
+// its own that reads `env.NAME` and is called from a client component is the
+// same bug and is not caught here.
 //
 // Usage: node scripts/buildtime/check-client-env-access.mjs   (from anywhere inside the repo)
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
+const ENV_MODULE_BASENAMES = ['env.js', 'env.ts', 'env.mjs'];
 const SKIP_DIRECTORIES = new Set([
   'node_modules',
   '.next',
@@ -71,19 +84,27 @@ const readIfPresent = (path) => {
 };
 
 /**
- * The text inside the braces of `key: { … }`, matched by counting braces so a
- * nested object cannot end the block early. String and template literals are
- * skipped, so a brace inside a message or a regex is not counted.
+ * The text inside the braces of `key: { … }`, matched by counting braces while
+ * skipping strings, template literals and comments — a brace inside any of
+ * those is not JavaScript structure, and counting one truncates the block.
+ * Returns null when the key is absent.
  */
 const objectBlock = (source, key) => {
   const opening = new RegExp(`(^|[\\s{,])${key}\\s*:\\s*\\{`, 'm').exec(source);
   if (!opening) return null;
   const start = opening.index + opening[0].length;
   let depth = 1;
-  for (let index = start; index < source.length; index += 1) {
+  let index = start;
+  while (index < source.length) {
     const character = source[index];
-    if (character === '\\') {
-      index += 1;
+    if (source.startsWith('//', index)) {
+      const end = source.indexOf('\n', index);
+      index = end === -1 ? source.length : end + 1;
+      continue;
+    }
+    if (source.startsWith('/*', index)) {
+      const end = source.indexOf('*/', index);
+      index = end === -1 ? source.length : end + 2;
       continue;
     }
     if (character === "'" || character === '"' || character === '`') {
@@ -93,6 +114,7 @@ const objectBlock = (source, key) => {
         if (source[index] === '\\') index += 1;
         index += 1;
       }
+      index += 1;
       continue;
     }
     if (character === '{') depth += 1;
@@ -100,6 +122,7 @@ const objectBlock = (source, key) => {
       depth -= 1;
       if (depth === 0) return source.slice(start, index);
     }
+    index += 1;
   }
   return null;
 };
@@ -107,12 +130,11 @@ const objectBlock = (source, key) => {
 /**
  * The keys declared directly in an object block.
  *
- * This reads the block exhaustively and **throws** on any property it cannot
- * account for — a spread (`...sharedServerSchema`), a computed key, a method
- * shorthand — rather than passing over it. A key this misses is a variable
- * missing from the guarded set, which is a silent pass: exactly the failure a
- * guard must not have. Quoted keys (`'SECRET_TOKEN': …`) are read, since they
- * declare a variable like any other.
+ * Used only for `next.config`'s `env` map, which is the allowlist: a key this
+ * fails to read is a false offence rather than a missed one. It still refuses
+ * anything it cannot account for — a spread, a computed key, a property with no
+ * `:` — because a silently shortened allowlist would report offences whose
+ * cause is invisible.
  */
 const topLevelKeys = (block, describe) => {
   const keys = [];
@@ -180,8 +202,8 @@ const topLevelKeys = (block, describe) => {
       `${describe}: cannot read the property starting at ${JSON.stringify(
         block.slice(index, index + 48),
       )}. The guard only understands \`NAME: value\` and \`'NAME': value\` properties; ` +
-        'a spread, a computed key or a method shorthand could hide a variable from it, ' +
-        'so it refuses rather than reporting a pass it cannot support.',
+        'a spread, a computed key or a method shorthand could hide a name from it, ' +
+        'so it refuses rather than reporting offences it cannot explain.',
     );
 
   for (;;) {
@@ -236,16 +258,33 @@ const isClientModule = (source) => {
 };
 
 /**
- * The local name the module binds the validated env object to, or null when it
- * does not import one. Matches the app's own env module by path, so an
- * unrelated `env` import is not mistaken for it.
+ * Whether an import specifier names this app's own env module.
+ *
+ * `~/…` is the repository's alias for the app root; a relative specifier has to
+ * resolve onto the module itself. Accepting every specifier ending in `env`
+ * would claim an unrelated `@codaco/some-package/env` or `../feature/env` as
+ * this one and report offences against a set of names that has nothing to do
+ * with it.
  */
-const envBinding = (source) => {
-  const pattern =
-    /import\s*\{([^}]*)\}\s*from\s*['"](?:[~@./][^'"]*\/)?env(?:\.js)?['"]/g;
-  for (const [, clause] of source.matchAll(pattern)) {
-    for (const specifier of clause.split(',')) {
-      const [imported, local] = specifier
+const isAppEnvSpecifier = (specifier, fileDirectory, appEnvPaths) => {
+  if (/^~\/env(\.js|\.ts|\.mjs)?$/.test(specifier)) return true;
+  if (!specifier.startsWith('.')) return false;
+  return appEnvPaths.has(resolve(fileDirectory, specifier));
+};
+
+/** The local name the module binds the app's own env object to, or null. */
+const envBinding = (source, file, appDirectory) => {
+  const fileDirectory = dirname(file);
+  const appEnvPaths = new Set([
+    join(appDirectory, 'env'),
+    ...ENV_MODULE_BASENAMES.map((name) => join(appDirectory, name)),
+  ]);
+  const pattern = /import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
+
+  for (const [, clause, specifier] of source.matchAll(pattern)) {
+    if (!isAppEnvSpecifier(specifier, fileDirectory, appEnvPaths)) continue;
+    for (const entry of clause.split(',')) {
+      const [imported, local] = entry
         .split(/\s+as\s+/)
         .map((part) => part.trim());
       if (imported === 'env') return local ?? imported;
@@ -272,23 +311,11 @@ const main = () => {
 
   for (const appName of appNames) {
     const appDirectory = join(appsDirectory, appName);
-    const envSource = readIfPresent(join(appDirectory, 'env.js'));
-    if (envSource === null) continue;
-
-    const declared = ['server', 'shared'].flatMap((key) => {
-      const block = objectBlock(envSource, key);
-      if (block === null) {
-        throw new Error(
-          `${relative(root, join(appDirectory, 'env.js'))}: no \`${key}:\` block found. ` +
-            'The guard reads it to know which variables are server-only; fix the ' +
-            'guard rather than letting it pass over an env module it cannot read.',
-        );
-      }
-      return topLevelKeys(
-        block,
-        `${relative(root, join(appDirectory, 'env.js'))} (\`${key}:\`)`,
-      );
-    });
+    const hasEnvModule = ENV_MODULE_BASENAMES.some(
+      (name) => readIfPresent(join(appDirectory, name)) !== null,
+    );
+    if (!hasEnvModule) continue;
+    appsChecked += 1;
 
     const nextConfigName = [
       'next.config.ts',
@@ -299,32 +326,28 @@ const main = () => {
       nextConfigName === undefined
         ? ''
         : (readIfPresent(join(appDirectory, nextConfigName)) ?? '');
-    const inlined = [
+    const inlined = new Set([
       ...ALWAYS_INLINED,
       ...topLevelKeys(
         objectBlock(nextConfigSource, 'env') ?? '',
         `${relative(root, join(appDirectory, nextConfigName ?? 'next.config.ts'))} (\`env:\`)`,
       ),
-    ];
-
-    const guarded = new Set(
-      declared.filter(
-        (name) => !name.startsWith('NEXT_PUBLIC_') && !inlined.includes(name),
-      ),
-    );
-    if (guarded.size === 0) continue;
-    appsChecked += 1;
+    ]);
 
     for (const file of sourceFiles(appDirectory)) {
       const source = readFileSync(file, 'utf8');
       if (!isClientModule(source)) continue;
-      const binding = envBinding(source);
+      const binding = envBinding(source, file, appDirectory);
       if (binding === null) continue;
-      const reads = new RegExp(`\\b${binding}\\.([A-Za-z_$][\\w$]*)`, 'g');
-      const lines = source.split('\n');
-      for (const [index, line] of lines.entries()) {
+      // The lookbehind keeps the import specifier itself (`from '~/env.js'`)
+      // and any `something.env.NAME` from reading as a use of the binding.
+      const reads = new RegExp(
+        `(?<![\\w$./'"\`])${binding}\\.([A-Za-z_$][\\w$]*)`,
+        'g',
+      );
+      for (const [index, line] of source.split('\n').entries()) {
         for (const [, name] of line.matchAll(reads)) {
-          if (!guarded.has(name)) continue;
+          if (name.startsWith('NEXT_PUBLIC_') || inlined.has(name)) continue;
           offences.push({
             file: relative(root, file),
             line: index + 1,
@@ -341,17 +364,19 @@ const main = () => {
       console.error(
         `${offence.file}:${offence.line}: \`env.${offence.name}\` is read in a 'use client' module, ` +
           `but ${offence.app} does not expose it to the browser, so it is \`undefined\` there. ` +
-          'Branch on it in the server component that renders this one instead.',
+          'Branch on it in the server component that renders this one instead, or — if the browser ' +
+          `really does need it — expose it as \`NEXT_PUBLIC_${offence.name}\` or through ` +
+          "`next.config`'s `env` map.",
       );
     }
     console.error(
-      `\n${offences.length} client-side read(s) of a server-only environment variable.`,
+      `\n${offences.length} client-side read(s) of an environment variable the browser is not given.`,
     );
     process.exit(1);
   }
 
   console.log(
-    `No client-side reads of server-only environment variables (${appsChecked} app(s) checked).`,
+    `No client-side reads of environment variables the browser is not given (${appsChecked} app(s) checked).`,
   );
 };
 
