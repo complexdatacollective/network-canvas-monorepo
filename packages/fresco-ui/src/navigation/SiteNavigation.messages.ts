@@ -151,19 +151,19 @@ export const siteNavigationMessages = {
         name: 'Interviewer',
         action: '打开 Interviewer',
         description:
-          '在任何受支持的浏览器中，于实地开展引人投入、由访谈员主导的网络访谈。',
+          '在任何受支持的浏览器中，于实地开展富有吸引力、由访谈员主导的社会网络访谈。',
       },
       interviewerClassic: {
         name: 'Interviewer Classic',
         action: '获取 Interviewer Classic',
         description:
-          '适用于已建立的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。',
+          '适用于已在进行的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。',
       },
       fresco: {
         name: 'Fresco',
         action: '试用 Fresco 沙盒',
         description:
-          '通过一个基于浏览器的共享仪表板，协调远程网络访谈并管理研究数据。',
+          '通过一个基于浏览器的共享仪表板，协调远程社会网络访谈并管理研究数据。',
       },
     },
   },

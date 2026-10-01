@@ -8,13 +8,13 @@
   },
   "Metadata": {
     "siteTitle": "Network Canvas",
-    "siteDescription": "Network Canvas 提供免费、开源的网络调查软件，围绕研究人员及其参与者的需求而设计。",
+    "siteDescription": "Network Canvas 提供免费、开源的社会网络调查软件，围绕研究人员及其参与者的需求而设计。",
     "getStartedTitle": "快速入门",
     "getStartedDescription": "选择合适的 Network Canvas 应用，用于设计协议或收集网络数据。"
   },
   "Hero": {
     "headline": "让复杂的网络数据收集变得简单。",
-    "description": "Network Canvas 提供<strong>免费、开源</strong>的网络调查软件，围绕研究人员及其参与者的需求而设计。",
+    "description": "Network Canvas 提供<strong>免费、开源</strong>的社会网络调查软件，围绕研究人员及其参与者的需求而设计。",
     "getStarted": "快速入门",
     "keepScrolling": "或继续向下滚动以了解更多"
   },
@@ -36,7 +36,7 @@
       "screenshotAlt": "Interviewer 主屏幕，显示可用的 Network Canvas 协议"
     },
     "fresco": {
-      "description": "将 Network Canvas 访谈带到网络上！Fresco 让研究人员能够在网页浏览器中开展 Network Canvas 访谈。",
+      "description": "将 Network Canvas 访谈带到网页端！Fresco 让研究人员能够在网页浏览器中开展 Network Canvas 访谈。",
       "action": "试用 Fresco 沙盒",
       "deployAction": "部署 Fresco",
       "screenshotAlt": "Fresco 仪表板，显示协议、参与者和访谈总数"
@@ -64,7 +64,7 @@
     },
     "emphasisOnDesign": {
       "title": "重视设计",
-      "paragraph1": "我们的软件从一开始就以尽可能吸引参与者视觉、降低参与者负担为目标进行设计。",
+      "paragraph1": "我们的软件从一开始就致力于为参与者提供尽可能有吸引力的视觉体验，并尽量减轻其负担。",
       "paragraph2": "我们高度重视设计，借鉴了人机交互（HCI）文献以及网络分析领域的研究论文，打造出参与者易于理解的访谈体验，以清晰、一致且直观可触的交互引导数据收集。"
     },
     "endToEndWorkflow": {
@@ -229,7 +229,7 @@
       "citation": "引用此出版物",
       "demonstrates": "此协议展示的内容",
       "details": "研究详情",
-      "studyPi": "研究首席研究员",
+      "studyPi": "研究负责人（PI）",
       "grantNumber": "资助编号",
       "contact": "协议联系人",
       "methods": "关系生成",
@@ -375,9 +375,9 @@
       },
       "interviewerClassic": {
         "status": "Classic · 现有研究",
-        "description": "适用于已建立的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。",
+        "description": "适用于已在进行的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。",
         "bestFor": {
-          "schema7Study": "依赖架构 7 的已建立研究",
+          "schema7Study": "依赖架构 7 的现有研究",
           "desktopTablet": "保留现有的桌面或平板电脑工作流程",
           "offlineCollection": "需要旧版离线收集工作流程的研究"
         }
@@ -631,7 +631,7 @@
         "summary": "只要配置了 Interviewer 应用锁，即可保护存储在设备上的协议、访谈和设置。",
         "details": {
           "0": "在设置过程中选择 PIN 码、密码短语或受支持的生物识别方式；同一身份验证方式会解锁用于解密本地数据的密钥。",
-          "1": "解密密钥仅在 Interviewer 解锁期间保存在内存中。重新加载、锁定、关闭应用或达到空闲超时都会清除该密钥。",
+          "1": "Interviewer 解锁期间，解密密钥仅保存在内存中。重新加载、锁定、关闭应用或达到空闲超时都会清除该密钥。",
           "2": "将这一应用级保护与全设备加密和定期导出结合使用，作为多层数据安全方案的一部分。"
         }
       },
@@ -670,7 +670,7 @@
         "name": "安全的访谈数据 API",
         "summary": "通过带版本号的只读 JSON API，将分析工具直接连接到 Fresco 部署。",
         "details": {
-          "0": "在需要之前保持 API 停用，需要时再从已验证身份的仪表板创建持有者令牌（bearer token）。",
+          "0": "在需要之前保持 API 停用，需要时再登录仪表板创建持有者令牌（bearer token）。",
           "1": "列出并获取访谈网络和协议元数据，不开放任何可修改研究数据的端点。",
           "2": "撤销令牌、查看每个令牌的最后使用时间，并构建可重复的 R、Python、仪表板或报告工作流程。"
         }

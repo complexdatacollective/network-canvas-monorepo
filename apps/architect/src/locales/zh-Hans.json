@@ -352,7 +352,7 @@
   "architect.home.libraryPanel.whereYourProtocolsAreStored": "协议的存储位置",
   "architect.home.libraryPanel.yourProtocolsAreSavedOnlyOn": "您的协议仅保存在此设备上，绝不会上传到服务器。",
   "architect.home.timelineScript.config.closeOut": "结束",
-  "architect.home.timelineScript.config.closeTies": "亲密关系",
+  "architect.home.timelineScript.config.closeTies": "紧密关系",
   "architect.home.timelineScript.config.closeness": "亲密程度",
   "architect.home.timelineScript.config.consent": "知情同意",
   "architect.home.timelineScript.config.contactFrequency": "联系频率",
@@ -390,7 +390,7 @@
   "architect.interface.description.AlterForm": "一种界面，让参与者为访谈网络中的每个他者填写表单。",
   "architect.interface.description.Anonymisation": "一种界面，让参与者设置用于节点匿名化的密码短语。",
   "architect.interface.description.CategoricalBin": "一种姓名解释器界面，让参与者将他者拖放到代表各类别的圆圈中，以收集定类数据。",
-  "architect.interface.description.DyadCensus": "一种姓名解释器界面，通过系统地逐一询问访谈网络中的所有他者来创建关系。",
+  "architect.interface.description.DyadCensus": "一种姓名解释器界面，通过系统地遍历访谈网络中的所有他者来创建关系。",
   "architect.interface.description.EgoForm": "一种收集参与者（自我）数据的界面。",
   "architect.interface.description.FamilyPedigree": "一种用于收集家族谱系的界面，可记录复杂的家庭关系和属性，以及遗传病信息。",
   "architect.interface.description.Geospatial": "一种界面，让用户在地图上选择项目以收集地理空间数据",
@@ -791,7 +791,7 @@
   "architect.utility.installBanner.rarelyRemovesNetworkCanvasData": "{browserName} 很少会自动删除 Network Canvas 数据，但存储在浏览器标签页中的数据无法得到保证。立即安装 Architect，以防止您的协议被删除。",
   "architect.utility.installBanner.rarelyRemovesNetworkCanvasData16bdc": "{browserName} 很少会自动删除 Network Canvas 数据，但存储在浏览器标签页中的数据无法得到保证。请使用浏览器地址栏中的安装图标立即安装 Architect，以防止您的协议被删除。",
   "architect.utility.protocolInfoCard.ofCharactersRemaining": "还可输入 {remaining, number} 个字符（共 {maximum, number} 个）",
-  "architect.utility.protocolInfoCard.overTheCharacterLimit": "{over, plural, other {超出 {maximum, number} 个字符的上限 # 个字符}}",
+  "architect.utility.protocolInfoCard.overTheCharacterLimit": "{over, plural, other {已超出 {maximum, number} 个字符的上限，多出 # 个字符}}",
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "无法删除阶段",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "无法移动阶段",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} 是 {dependentReferences} 的跳转目标。删除之前，请先在这些阶段上选择其他目标。",
@@ -841,8 +841,8 @@
   "architect.variableRoleConflictsAlert.valuesWrittenOutsideAFormBypass": "在表单之外写入的值会绕过属性的验证规则，因此其他位置的表单可能会收到本应拒绝的值。对于下方的每个属性，请将其从表单或另一个阶段中移除。",
   "architect.viewManager.views.app.autosaveFailed": "自动保存失败",
   "architect.viewManager.views.app.couldNotOpenFile": "无法打开文件",
-  "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, other {无法读取 # 个启动的文件。自打开以来，文件可能已被移动、删除或变得不可用。}}",
+  "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, other {无法读取 # 个用于打开应用的文件。文件在打开后可能已被移动、删除或变得不可用。}}",
   "architect.viewManager.views.app.oK": "确定",
   "architect.viewManager.views.app.protocolUpdated": "协议已更新",
-  "architect.viewManager.views.app.wasMadeWithAn": "“{name}”是使用旧版 Architect 创建的。它已更新为可在此处打开，资源库中的副本也已被替换。"
+  "architect.viewManager.views.app.wasMadeWithAn": "“{name}”是使用旧版 Architect 创建的。它已更新为可在此处打开，协议库中的副本也已被替换。"
 }

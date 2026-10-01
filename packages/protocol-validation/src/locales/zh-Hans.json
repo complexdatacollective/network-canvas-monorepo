@@ -43,7 +43,7 @@
   "protocolValidation.migrationNotes.schema8.filterRuleEntities": "更改了 FilterRule 类型，使其使用与其他地方相同的实体名称",
   "protocolValidation.migrationNotes.schema8.geospatialInterface": "新界面：“地理空间界面”。允许参与者根据 geojson 形状文件在地图上选择位置。",
   "protocolValidation.migrationNotes.schema8.informationTitle": "信息阶段的 `title`（页面标题）现在为必填项。任何缺少标题的信息阶段都会以其阶段标签作为标题；如果未设置标签，则使用“Information”。",
-  "protocolValidation.migrationNotes.schema8.inputControlCompatibility": "属性的 `component`（输入控件）必须是其类型能够呈现的控件。无法识别或不匹配的控件会被替换为该类型的标准控件（日期时间类型根据其 `parameters` 的结构选择）；布局属性没有控件，因此会将其移除。",
+  "protocolValidation.migrationNotes.schema8.inputControlCompatibility": "属性的 `component`（输入控件）必须是其类型能够呈现的控件。无法识别或不匹配的控件会被替换为该类型的标准控件（日期时间类型根据其 `parameters` 的结构选择）；布局属性不使用控件，因此其 `component` 会被移除。",
   "protocolValidation.migrationNotes.schema8.membershipComparators": "为跳过逻辑和筛选添加新的比较选项：`contains` 和 `does not contain`。",
   "protocolValidation.migrationNotes.schema8.multiValueMembership": "扩展有序属性和分类属性的比较选项 `includes` 和 `excludes`，以支持多选。",
   "protocolValidation.migrationNotes.schema8.nameGeneratorTitle": "NameGenerator 的 `form.title`（添加人员对话框的标题）现在为必填项。任何缺少该标题的 NameGenerator 表单都会被设为“Add '{node type name}'”（例如“Add Person”）。",
