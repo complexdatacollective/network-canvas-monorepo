@@ -423,6 +423,7 @@
         "**/package.json",
         "turbo.json",
         "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
         "apps/fresco/release-test/**",
         "apps/fresco/CLAUDE.md",
         "apps/studio/stack-test/**",
