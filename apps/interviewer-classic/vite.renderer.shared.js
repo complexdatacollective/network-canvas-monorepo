@@ -30,6 +30,12 @@ export const sharedRendererConfig = {
       // package so its schema files are bundled as chunks.
       exclude: [/^(?!.*\/@codaco\/protocol-validation\/).*\/node_modules\//],
     },
+    // @codaco/ui reads animation settings by JSON.parse-ing CSS custom
+    // properties (--animation-easing-json: [0.4, 0, 0.2, 1]). The CSS minifier
+    // shortens those numbers to `.4`, which is not JSON, so every transition
+    // threw and the mobile (web) build never rendered an interview. Ship CSS
+    // unminified, as the Electron renderer already does.
+    cssMinify: false,
   },
   plugins: [react()],
   worker: { format: 'es' },

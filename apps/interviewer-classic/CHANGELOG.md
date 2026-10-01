@@ -2,6 +2,10 @@
 
 ## 6.6.2
 
+- **Fixed interviews not starting in the iOS and Android apps.** Starting or resuming an
+  interview showed the loading animation indefinitely, because the mobile build's stylesheet
+  compression broke the animation settings the interview screens read. Interviews now open
+  normally on mobile.
 - **Fixed protocol import.** Every protocol, including the sample protocol, failed to import
   with "Couldn't find validator for schema version 7". The protocol validators were left out of
   the packaged app; they are now included, and protocols import and open again.

@@ -34,4 +34,11 @@ describe('renderer build config', () => {
       false,
     );
   });
+
+  // @codaco/ui JSON.parses CSS custom properties such as
+  // --animation-easing-json; minification rewrites 0.4 as .4, which broke
+  // every transition in the mobile build.
+  it('keeps CSS unminified so JSON-valued custom properties stay JSON', () => {
+    expect(sharedRendererConfig.build.cssMinify).toBe(false);
+  });
 });
