@@ -849,6 +849,43 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
   );
 });
 
+test('turbo runs at the one version the root package.json pins', () => {
+  // A step that fetches its own turbo drifts from the installed one: the
+  // Studio image pruned with 2.10.4 and change detection listed packages with
+  // 2.9.6, so a turbo.json key that only the installed 2.11.5 knew failed the
+  // Studio stack build and silently emptied change detection.
+  const pinned = rootPackage.devDependencies.turbo;
+  assert.match(
+    pinned,
+    /^\d+\.\d+\.\d+$/,
+    'root package.json pins turbo exactly, so a fetch of that version matches the lockfile',
+  );
+
+  const actionDir = new URL('../../.github/actions/', import.meta.url);
+  const dockerfile = new URL('../../apps/studio/Dockerfile', import.meta.url);
+  const sources = [
+    ...readdirSync(WORKFLOW_DIR).map((file) => new URL(file, WORKFLOW_DIR)),
+    ...readdirSync(actionDir, { recursive: true })
+      .filter((file) => file.endsWith('.yml'))
+      .map((file) => new URL(file, actionDir)),
+    dockerfile,
+  ];
+  for (const url of sources) {
+    assert.doesNotMatch(
+      readFileSync(url, 'utf8'),
+      /(?<![\w-])turbo@\d/,
+      `${url.pathname} hard-codes a turbo version instead of reading the root pin`,
+    );
+  }
+
+  // The two callers without an install must read the pin, not drop turbo.
+  const readsPin = /require\('\.\/package\.json'\)\.devDependencies\.turbo/;
+  assert.match(readFileSync(dockerfile, 'utf8'), readsPin);
+  assert.match(readFileSync(dockerfile, 'utf8'), /dlx "turbo@\$\(node -p/);
+  assert.match(job('detect'), readsPin);
+  assert.match(job('detect'), /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
+});
+
 test('release job prunes ignored-lane changesets before changesets/action', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');

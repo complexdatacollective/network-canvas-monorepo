@@ -48,7 +48,7 @@
     "oxlint-tailwindcss": "^1.14.0",
     "oxlint-tsgolint": "^7.0.2003",
     "playwright": "catalog:",
-    "turbo": "^2.11.5",
+    "turbo": "2.11.5",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
