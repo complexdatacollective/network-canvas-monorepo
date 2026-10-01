@@ -5,10 +5,13 @@
 The site now honours the operating-system "reduce motion" setting throughout.
 
 Motion is off by default in the animation library the site uses, so the
-preference was only respected where an individual component had been written to
-ask for it. Everywhere else — section reveals, the homepage background, page
-transitions — a visitor who had asked their device for less movement still got
-the full animation.
+preference reached only those components that had been written to ask for it
+individually. The homepage background, the hero intro, the publication rail and
+the Summer Update visuals all did ask, and were already correct. Everywhere
+else — the site header, the hero, the grants section, the Summer Update's
+entrance sequence, and every animated dialog, menu and overlay from the shared
+component library — a visitor who had asked their device for less movement
+still got the full animation.
 
 The preference is now applied once, for the whole site. Content that used to
 slide, travel or scale into place arrives already in position for those
