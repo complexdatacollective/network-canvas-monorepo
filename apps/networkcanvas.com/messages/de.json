@@ -65,12 +65,12 @@
     "emphasisOnDesign": {
       "title": "Besonderer Wert auf Design",
       "paragraph1": "Unsere Software wurde von Grund auf so gestaltet, dass sie für Teilnehmende visuell möglichst ansprechend und möglichst wenig belastend ist.",
-      "paragraph2": "Wir nehmen Design sehr ernst und haben auf Literatur aus der Mensch-Computer-Interaktion (HCI) sowie auf Arbeiten aus der Netzwerkanalyse zurückgegriffen, um ein Interviewerlebnis zu schaffen, das für Teilnehmende leicht verständlich ist – mit klaren, einheitlichen und haptischen Interaktionen, die durch die Datenerhebung führen."
+      "paragraph2": "Wir nehmen Design sehr ernst und haben auf Literatur aus der Mensch-Computer-Interaktion (HCI) sowie auf Arbeiten aus der Netzwerkanalyse zurückgegriffen, um ein Interview-Erlebnis zu schaffen, das für Teilnehmende leicht verständlich ist – mit klaren, einheitlichen und haptischen Interaktionen, die durch die Datenerhebung führen."
     },
     "endToEndWorkflow": {
       "title": "Durchgängiger Arbeitsablauf",
       "paragraph1": "Um die Erhebung komplexer struktureller Daten zu vereinfachen, braucht es nicht nur ein Werkzeug für das Interview, sondern auch eines für die Gestaltung dieser Interviews. Zusammen bilden diese Werkzeuge einen durchgängigen Arbeitsablauf, der die (materiellen wie technischen) Kosten der Erhebung von Netzwerkdaten senkt.",
-      "paragraph2": "Wichtig ist: Die Bedienung unserer Werkzeuge erfordert keine umfassenden technischen Kenntnisse. Vielmehr ermöglichen sie es Forschenden, sich darauf zu konzentrieren, mit ihrer fachlichen Expertise ein wirkungsvolles Interviewerlebnis zu gestalten."
+      "paragraph2": "Wichtig ist: Die Bedienung unserer Werkzeuge erfordert keine umfassenden technischen Kenntnisse. Vielmehr ermöglichen sie es Forschenden, sich darauf zu konzentrieren, mit ihrer fachlichen Expertise ein wirkungsvolles Interview-Erlebnis zu gestalten."
     },
     "openSourceCommunity": {
       "title": "Von der Community getragene Open-Source-Entwicklung",
@@ -375,9 +375,9 @@
       },
       "interviewerClassic": {
         "status": "Classic · Bestehende Studien",
-        "description": "Für bereits laufende Studien mit Schema 7 und für Offline-Arbeitsabläufe auf Desktop-Computern oder Tablets. Wird für Kompatibilität und Fehlerbehebungen weiter gepflegt.",
+        "description": "Für bestehende Studien mit Schema 7 und für Offline-Arbeitsabläufe auf Desktop-Computern oder Tablets. Wird für Kompatibilität und Fehlerbehebungen weiter gepflegt.",
         "bestFor": {
-          "schema7Study": "Eine laufende Studie, die auf Schema 7 angewiesen ist",
+          "schema7Study": "Eine bestehende Studie, die auf Schema 7 angewiesen ist",
           "desktopTablet": "Einen bestehenden Arbeitsablauf auf Desktop-Computern oder Tablets beibehalten",
           "offlineCollection": "Studien, die den bisherigen Offline-Arbeitsablauf für die Erhebung benötigen"
         }
@@ -498,7 +498,7 @@
       "geospatial": {
         "shortName": "Geodaten",
         "name": "Geodaten-Oberfläche",
-        "summary": "Erheben Sie Standortdaten zu jedem Alter, indem Sie Teilnehmende bitten, auf einer interaktiven Karte ein Gebiet auszuwählen.",
+        "summary": "Erheben Sie Standortdaten zu jeder genannten Person, indem Sie Teilnehmende bitten, auf einer interaktiven Karte ein Gebiet auszuwählen.",
         "details": {
           "0": "Legen Sie mit einer GeoJSON-Datei auswählbare Zählbezirke, Postleitzahlgebiete, Stadtviertel oder eigene Untersuchungsregionen fest.",
           "1": "Wählen Sie, welche GeoJSON-Eigenschaft zu jeder Person gespeichert wird, damit sich die Antwort bei der Analyse direkt mit räumlichen Daten verknüpfen lässt.",
@@ -592,7 +592,7 @@
         "details": {
           "0": "Fügen Sie einem Formularfeld einen Hinweis im Markdown-Format hinzu, ohne die Hauptfrage des Abschnitts zu verlängern.",
           "1": "Verwenden Sie Hinweise, um erwartete Formate, unbekannte Begriffe oder die Interpretation einer Antwort zu erläutern.",
-          "2": "Zeigen Sie optional automatische Hinweise an, die sich aus den Validierungsregeln des Feldes ergeben, etwa zulässige Wertebereiche oder Pflichtangaben."
+          "2": "Zeigen Sie optional automatische Hinweise an, die sich aus den Prüfregeln des Feldes ergeben, etwa zulässige Wertebereiche oder Pflichtangaben."
         }
       },
       "protocolTemplates": {
@@ -631,7 +631,7 @@
         "summary": "Schützen Sie auf dem Gerät gespeicherte Protokolle, Interviews und Einstellungen, sobald Sie eine App-Sperre für Interviewer einrichten.",
         "details": {
           "0": "Wählen Sie bei der Einrichtung eine PIN, eine Passphrase oder ein unterstütztes biometrisches Verfahren; dieselbe Authentifizierung entsperrt den Schlüssel, mit dem lokale Daten entschlüsselt werden.",
-          "1": "Der Entschlüsselungsschlüssel wird nur im Arbeitsspeicher gehalten, solange Interviewer entsperrt ist. Durch Neuladen, Sperren oder Schließen oder wenn das Zeitlimit für Inaktivität abläuft, wird er entfernt.",
+          "1": "Der Entschlüsselungsschlüssel wird nur im Arbeitsspeicher gehalten, solange Interviewer entsperrt ist. Beim Neuladen, Sperren oder Schließen sowie nach Ablauf des Zeitlimits für Inaktivität wird er entfernt.",
           "2": "Nutzen Sie diesen Schutz auf App-Ebene zusammen mit einer vollständigen Geräteverschlüsselung und regelmäßigen Exporten als Teil eines mehrstufigen Datensicherheitskonzepts."
         }
       },
@@ -640,7 +640,7 @@
         "name": "Konfigurierbare Autorisierungsprüfungen",
         "summary": "Verlangen Sie an sensiblen Stellen im Arbeitsablauf eine erneute Entsperrung, statt sich nur auf die allgemeine Inaktivitätssperre der App zu verlassen.",
         "details": {
-          "0": "Verlangen Sie unabhängig voneinander eine erneute Authentifizierung, bevor ein Interview begonnen, zum Dashboard hin verlassen oder erhobene Daten exportiert werden.",
+          "0": "Verlangen Sie unabhängig voneinander eine erneute Authentifizierung – vor dem Beginn eines Interviews, vor dem Verlassen eines Interviews in Richtung Dashboard und vor dem Export erhobener Daten.",
           "1": "Nutzen Sie die bereits eingerichtete PIN, Passphrase oder biometrische Methode, ohne zusätzliche Zugangsdaten einzuführen.",
           "2": "Protokollnamen, Sitzungszahlen und gespeicherte Daten bleiben verborgen, solange Interviewer gesperrt ist."
         }
