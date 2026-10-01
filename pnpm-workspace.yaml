@@ -91,7 +91,7 @@ catalog:
   '@tailwindcss/typography': ^0.5.20
   '@tailwindcss/vite': ^4.3.3
   '@tanstack/react-query': ^5.104.0
-  '@tanstack/react-table': ^8.21.3
+  '@tanstack/react-table': ^9.2.4
   # Declared so the shared Vitest setup can call `configure()` on the very same
   # module instance the suites' own queries read. React Testing Library depends
   # on this range, so the catalog pin keeps it a single copy.
@@ -115,7 +115,7 @@ catalog:
   # `heading-order` rule a story is.
   axe-core: ^4.13.0
   # Pinned: 1.7.x is the first line whose peer range admits the pinned
-  # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2), and 1.7.5 the first to declare
+  # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2), and 1.7.5 is the first to declare
   # a Vitest 5 peer, so stay on 1.7.5 or newer.
   better-auth: 1.7.6
   chromatic: ^18.10.1
@@ -193,6 +193,12 @@ overrides:
   # catalog version above rather than letting a plugin's looser peer range
   # pull a second, older Vite into the tree.
   vite: 'catalog:'
+  # `@storybook/addon-docs` takes React as an ordinary dependency ranged
+  # ^16.8 || … || ^19, so a fresh resolution can bind it to the classic apps'
+  # React 16 and run the docs blocks' hooks against a second React inside the
+  # catalog's 19. Pin it to the catalog React the stories render with.
+  '@storybook/addon-docs>react': 'catalog:'
+  '@storybook/addon-docs>react-dom': 'catalog:'
   react-resize-aware: 3.1.3
   cheerio: 1.0.0-rc.12
   immer: ^11.1.18
@@ -310,7 +316,6 @@ minimumReleaseAgeExclude:
   - '@formatjs/cli-native-win32-x64@1.1.18'
   - babel-plugin-formatjs@13.0.3
   - react-intl@10.1.26
-  - pg-protocol@1.16.1
 patchedDependencies:
   # The addon applies a story's `viewport` parameter by importing `page` from
   # `@vitest/browser/context`, an entry point Vitest 5 no longer serves to a

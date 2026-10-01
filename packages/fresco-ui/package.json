@@ -30,6 +30,7 @@
     "./DataTable/DataTableSkeleton": "./src/DataTable/DataTableSkeleton.tsx",
     "./DataTable/DataTableToolbar": "./src/DataTable/DataTableToolbar.tsx",
     "./DataTable/SelectAllHeader": "./src/DataTable/SelectAllHeader.tsx",
+    "./DataTable/features": "./src/DataTable/features.ts",
     "./DataTable/filters/BooleanFilter": "./src/DataTable/filters/BooleanFilter.tsx",
     "./DataTable/filters/DateFilter": "./src/DataTable/filters/DateFilter.tsx",
     "./DataTable/filters/FacetedFilter": "./src/DataTable/filters/FacetedFilter.tsx",
@@ -257,6 +258,10 @@
       "./DataTable/SelectAllHeader": {
         "types": "./dist/DataTable/SelectAllHeader.d.ts",
         "default": "./dist/DataTable/SelectAllHeader.js"
+      },
+      "./DataTable/features": {
+        "types": "./dist/DataTable/features.d.ts",
+        "default": "./dist/DataTable/features.js"
       },
       "./DataTable/filters/BooleanFilter": {
         "types": "./dist/DataTable/filters/BooleanFilter.d.ts",
