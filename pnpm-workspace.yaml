@@ -191,6 +191,8 @@ overrides:
   # @codaco/ui (classic apps) asks for ^3.0.1. 3.1.2 and 3.1.3 were published
   # with a dist build that calls an undefined `jsx`, which crashed Architect
   # classic's stage editor ("jsx is not defined"); 3.1.1 is the last good 3.x.
+  # Both classic apps repeat this as an npm `overrides` entry for their
+  # standalone mirrors (scripts/release/classic-mirror-overrides.test.mjs).
   react-resize-aware: 3.1.1
   cheerio: 1.0.0-rc.12
   immer: ^11.1.8

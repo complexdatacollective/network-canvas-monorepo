@@ -145,4 +145,12 @@ test('isOptionalRequire tolerates supports-color only inside debug', () => {
     isOptionalRequire('lodash', 'node_modules/debug/src/node.js'),
     false,
   );
+  // A package nested under debug's own node_modules is not debug.
+  assert.equal(
+    isOptionalRequire(
+      'supports-color',
+      'node_modules/debug/node_modules/other/index.js',
+    ),
+    false,
+  );
 });

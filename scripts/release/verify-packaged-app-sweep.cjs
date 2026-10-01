@@ -51,7 +51,11 @@ const ALLOWED_MISSING = new Map([
 // missing `supports-color` is a packaging bug anywhere except inside `debug`,
 // which loads it only to colourise output when it happens to be installed.
 const OPTIONAL_REQUIRES = [
-  { specifier: 'supports-color', requiredBy: /(^|\/)node_modules\/debug\// },
+  // Only debug's own Node entry, not packages nested under debug/node_modules.
+  {
+    specifier: 'supports-color',
+    requiredBy: /(^|\/)node_modules\/debug\/src\/node\.js$/,
+  },
 ];
 
 function isOptionalRequire(specifier, relFile) {
