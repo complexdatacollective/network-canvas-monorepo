@@ -1,20 +1,20 @@
 {
   "ThemeTranslations": {
-    "label": "色彩主題",
-    "triggerLabel": "色彩主題：{theme}",
+    "label": "顏色主題",
+    "triggerLabel": "顏色主題：{theme}",
     "light": "淺色",
     "dark": "深色",
     "system": "跟隨系統"
   },
   "Metadata": {
     "siteTitle": "Network Canvas",
-    "siteDescription": "Network Canvas 提供免費且開放原始碼的網絡調查軟體，並以研究人員與參與者雙方的需求為設計核心。",
+    "siteDescription": "Network Canvas 提供免費且開放原始碼的軟體，用於蒐集社會網絡資料，並以研究人員與參與者雙方的需求為設計核心。",
     "getStartedTitle": "開始使用",
-    "getStartedDescription": "選擇合適的 Network Canvas 應用程式，用來設計協定或蒐集網絡資料。"
+    "getStartedDescription": "選擇合適的 Network Canvas 應用程式，用來設計協定或蒐集社會網絡資料。"
   },
   "Hero": {
-    "headline": "讓複雜的網絡資料蒐集化繁為簡。",
-    "description": "Network Canvas 提供<strong>免費且開放原始碼</strong>的網絡調查軟體，並以研究人員與參與者雙方的需求為設計核心。",
+    "headline": "讓複雜的社會網絡資料蒐集化繁為簡。",
+    "description": "Network Canvas 提供<strong>免費且開放原始碼</strong>的軟體，用於蒐集社會網絡資料，並以研究人員與參與者雙方的需求為設計核心。",
     "getStarted": "開始使用",
     "keepScrolling": "或繼續往下捲動，深入瞭解"
   },
@@ -69,7 +69,7 @@
     },
     "endToEndWorkflow": {
       "title": "端對端工作流程",
-      "paragraph1": "要簡化複雜結構資料的蒐集過程，不僅需要訪談工具，也需要設計這些訪談的工具。這些工具共同構成端對端的工作流程，降低蒐集網絡資料的成本（包括物質與技術成本）。",
+      "paragraph1": "要簡化複雜結構資料的蒐集過程，不僅需要訪談工具，也需要設計這些訪談的工具。這些工具共同構成端對端的工作流程，降低蒐集網絡資料在物力與技術上的成本。",
       "paragraph2": "重要的是，操作我們的工具不需要高深的技術知識。研究人員反而能專注於運用自身的專業知識，設計出有效的訪談體驗。"
     },
     "openSourceCommunity": {
@@ -89,7 +89,7 @@
     "heading": "使用 Network Canvas 的近期著作",
     "carouselLabel": "近期著作輪播",
     "introduction": "以下是最近 16 篇使用 Network Canvas 的著作。您也可以瀏覽<all>完整的著作清單</all>。",
-    "submission": "如果您希望在此展示您的著作，請在我們社群網站的<thread>討論串</thread>中留言告訴我們。",
+    "submission": "如果您希望在此展示您的著作，請在我們社群論壇的<thread>討論串</thread>中留言告訴我們。",
     "thread": "討論串"
   },
   "PublicationsPage": {
@@ -99,7 +99,7 @@
     },
     "heading": "使用 Network Canvas 的研究著作",
     "citing": "關於引用 Network Canvas 的方式，請參閱我們<article>說明文件中的相關文章</article>。",
-    "submission": "如果您希望在此展示您的著作，請在我們社群網站的<thread>討論串</thread>中留言告訴我們。"
+    "submission": "如果您希望在此展示您的著作，請在我們社群論壇的<thread>討論串</thread>中留言告訴我們。"
   },
   "Team": {
     "heading": "核心團隊",
@@ -124,8 +124,8 @@
     },
     "community": {
       "title": "需要協助嗎？",
-      "body": "我們最近也推出了社群網站，您可以在那裡提問、回報錯誤、分享您的成果，並向其他研究人員尋求協助。",
-      "action": "前往社群網站"
+      "body": "我們最近也推出了社群論壇，您可以在那裡提問、回報錯誤、分享您的成果，並向其他研究人員尋求協助。",
+      "action": "前往社群論壇"
     },
     "keepInTouch": {
       "title": "保持聯繫",
@@ -252,9 +252,9 @@
         "title": "預覽：{name}"
       },
       "loading": "正在準備預覽…",
-      "finishConfirmation": "這只是預覽，不會儲存任何內容。結束後，這次的協定執行就會終止，之後您可以重新開始。",
+      "finishConfirmation": "這只是預覽，不會儲存任何內容。完成後會結束這次的協定執行，您之後可以重新開始。",
       "finishedHeading": "預覽已結束",
-      "finishedDescription": "訪談已結束，過程與參與者實際進行時完全相同。未儲存任何內容。",
+      "finishedDescription": "訪談的結束方式與參與者實際進行時相同。未儲存任何內容。",
       "restart": "重新開始預覽",
       "backToProtocol": "返回協定",
       "errorHeading": "無法預覽此協定",
@@ -275,7 +275,7 @@
   "GetStarted": {
     "metadata": {
       "title": "開始使用",
-      "description": "選擇合適的 Network Canvas 應用程式，用來設計協定或蒐集網絡資料。"
+      "description": "選擇合適的 Network Canvas 應用程式，用來設計協定或蒐集社會網絡資料。"
     },
     "intro": {
       "heading": "選擇從哪裡開始",
@@ -318,8 +318,8 @@
       "schemaVersionLink": "瞭解架構版本"
     },
     "platforms": {
-      "appleSilicon": "Apple 晶片",
-      "appleIntel": "Intel 處理器",
+      "appleSilicon": "Mac（Apple 晶片）",
+      "appleIntel": "Mac（Intel 處理器）",
       "windows": "Windows",
       "linux": "Linux",
       "android": "Android"
@@ -358,7 +358,7 @@
           "remoteBrowser": "參與者在自己的瀏覽器中遠端完成訪談",
           "centralManagement": "集中管理研究與參與者",
           "sharedDashboard": "透過共用儀表板管理與匯出資料",
-          "selfHosted": "能夠部署並自行託管 Fresco 執行個體的團隊"
+          "selfHosted": "能夠部署並自架 Fresco 執行個體的團隊"
         },
         "actions": {
           "sandbox": "Fresco 沙箱存取指南",
@@ -448,11 +448,11 @@
       "interviewer": {
         "label": "面對面訪談",
         "heading": "Interviewer：隨時隨地進行訪談",
-        "description": "Interviewer 也已針對瀏覽器重新設計：在 <link>interviewer.networkcanvas.com</link> 上傳協定，無須安裝任何軟體即可部署。將它安裝為 <pwa>PWA</pwa> 即可支援離線工作流程——它依然是面對面、由訪員協助進行之網絡研究的理想工具。",
+        "description": "Interviewer 也已針對瀏覽器重新設計：在 <link>interviewer.networkcanvas.com</link> 上傳協定，無須安裝任何軟體即可部署。將它安裝為 <pwa>PWA</pwa> 即可支援離線工作流程——它依然是面對面、由訪員協助進行之社會網絡研究的理想工具。",
         "iconAlt": "Interviewer 應用程式圖示",
         "screenshotAlt": "顯示協定卡片與繼續訪談按鈕的 Interviewer 儀表板",
         "bullets": {
-          "security": "全新進階安全機制：加密的資料儲存，以及匯出資料等敏感操作須經應用程式授權",
+          "security": "全新進階安全機制：加密的資料儲存，且匯出資料等敏感操作須先在應用程式中完成授權",
           "schema8": "原生支援<strong>架構 8</strong>，並在您匯入既有的架構 7 協定時自動完成移轉",
           "compatibility": "相容於所有桌上型電腦與平板裝置，包括 iPad 與 Android 平板電腦"
         },
@@ -469,15 +469,15 @@
         "cards": {
           "multiUser": {
             "title": "多使用者存取",
-            "description": "每位團隊成員都有自己的帳號，支援雙重驗證與通行金鑰，並保留系統中所有操作的完整稽核紀錄。"
+            "description": "每位團隊成員都有自己的帳號，支援雙重驗證與密碼金鑰，並保留系統中所有操作的完整稽核紀錄。"
           },
           "api": {
             "title": "安全的資料 API",
             "description": "Fresco 現在提供安全的唯讀 API，讓您以程式存取研究資料，支援即時報表、儀表板與分析。"
           },
           "selfHosted": {
-            "title": "可完全自行託管",
-            "description": "Fresco 現在可以完整安裝在您自己的伺服器上，或託管於您的私有雲，讓您完全掌控自己的資料。"
+            "title": "可完全自架",
+            "description": "Fresco 現在可以完整安裝在您自己的伺服器上，或架設於您的私有雲，讓您完全掌控自己的資料。"
           }
         }
       }
@@ -651,7 +651,7 @@
         "summary": "為每位研究人員提供個別的管理員帳號，而不是共用同一組儀表板憑證。",
         "details": {
           "0": "從設定中新增與移除多個管理員帳號；現有的每個帳號都具有同等的管理權限。",
-          "1": "選擇密碼驗證並可搭配 TOTP 雙重驗證保護，或使用通行金鑰進行免密碼登入。",
+          "1": "選擇密碼驗證並可搭配 TOTP 雙重驗證保護，或使用密碼金鑰進行免密碼登入。",
           "2": "在共用的稽核活動紀錄中，將儀表板活動對應到使用者名稱，包括驗證、協定、匯出與帳號管理事件。"
         }
       },

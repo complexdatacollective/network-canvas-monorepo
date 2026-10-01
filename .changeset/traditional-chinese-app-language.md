@@ -21,7 +21,10 @@ languages still get Simplified Chinese. The built-in interview controls
 participants see are translated too; protocol content keeps the language it
 was written in.
 
-For host apps, `resolveAppLocale` from `@codaco/app-i18n` now matches Chinese
-requests by script, so a browser that sends `zh-HK, zh` resolves to `zh-Hant`
-rather than letting the generic `zh` behind it pick `zh-Hans`. The rule lives in
-`toScriptMatchingTag` from `@codaco/shared-consts`, which the website uses too.
+Chinese browser languages are now matched by script rather than by region.
+`resolveAppLocale` in `@codaco/app-i18n` maps each Chinese tag to its script
+first, so Hong Kong (`zh-HK`) and Macau (`zh-MO`) resolve to Traditional
+Chinese even when the browser also sends a generic `zh`, which previously won
+Simplified Chinese. `@codaco/shared-consts` exports the rule as
+`toScriptMatchingTag`, which the website uses too. A registry that declares a
+regional Chinese tag such as `zh-TW` exactly still receives that tag.

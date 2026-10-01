@@ -15,7 +15,7 @@
   "protocolUtilities.constraint.negativeSelectionMaximum": "最多選取數量為負數，因此不允許任何答案。請將上限設為零或以上。",
   "protocolUtilities.constraint.negativeTextMaximum": "文字長度上限為負數，因此不允許任何答案。請將上限設為零或以上。",
   "protocolUtilities.constraint.noSolution": "沒有任何允許值的組合能同時滿足所有這些規則。請檢查所列屬性的規則。",
-  "protocolUtilities.constraint.numberDateComparison": "有數字正與日期進行比較。請在此比較中使用類型相容的屬性。",
+  "protocolUtilities.constraint.numberDateComparison": "某個比較條件將數字與日期相比。請在此比較中使用類型相容的屬性。",
   "protocolUtilities.constraint.oddDifferentFromCycle": "允許的值太少，無法讓所有必要的屬性彼此不同。請新增允許值，或移除相衝突的規則。",
   "protocolUtilities.constraint.pedigreeFixedValue": "某條驗證規則拒絕了家族譜系資料模型所需的固定值。請調整規則，允許該必要值。",
   "protocolUtilities.constraint.pinnedDifferentFromParity": "固定值與要求答案彼此不同的規則，無法同時滿足。請變更固定值或比較條件。",

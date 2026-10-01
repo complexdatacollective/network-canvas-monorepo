@@ -196,7 +196,7 @@ export const siteNavigationMessages = {
         name: 'Interviewer',
         action: '開啟 Interviewer',
         description:
-          '在任何支援的瀏覽器中，進行引人入勝、由訪員主導的實地網絡訪談。',
+          '在任何支援的瀏覽器中，進行引人入勝、由訪員主導的實地社會網絡訪談。',
       },
       interviewerClassic: {
         name: 'Interviewer Classic',
@@ -208,7 +208,7 @@ export const siteNavigationMessages = {
         name: 'Fresco',
         action: '試用 Fresco 沙箱',
         description:
-          '透過單一共用的瀏覽器儀表板，協調遠端網絡訪談並管理研究資料。',
+          '透過單一共用的瀏覽器儀表板，協調遠端社會網絡訪談並管理研究資料。',
       },
     },
   },
