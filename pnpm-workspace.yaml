@@ -159,7 +159,7 @@ catalog:
   posthog-js: ^1.413.2
   react: ^19.3.0
   react-dom: ^19.3.0
-  react-dropzone: ^15.0.0
+  react-dropzone: ^20.1.2
   # ICU MessageFormat runtime for app UI catalogs; consumed only through
   # @codaco/app-i18n's curated API, never imported directly.
   react-intl: ^10.1.26
