@@ -144,8 +144,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: "better-auth's `transaction()` handed to the bridge, which opens it as `sql-bridge.ts`'s untenanted scope: sign-up, OAuth linking and the like on the auth tables, which belong to no team",
   },
   [`${SERVER}/src/auth/sql-bridge.ts › UntenantedScope.open`]: {
-    count: 2,
-    why: "better-auth's adapter: one pinned transaction per statement outside better-auth's `transaction()`, and one around the whole callback inside it — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
+    count: 1,
+    why: "better-auth's adapter: the transaction around a `transaction()` callback — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
   },
   [`${SERVER}/src/app.ts › UntenantedScope.open`]: {
     count: 1,
