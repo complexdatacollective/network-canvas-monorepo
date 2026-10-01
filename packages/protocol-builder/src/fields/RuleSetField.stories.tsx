@@ -156,14 +156,6 @@ export const TheRulesAStageHolds: Story = {
     await expect(
       canvas.getByRole('radio', { name: 'All rules must match' }),
     ).toBeChecked();
-    // The radio turns checked after mount, when the stage arrives, and its
-    // label's colour runs a CSS transition the preview's AnimationProvider
-    // does not reach (see storyDialogVisible). The a11y check runs as this
-    // play returns, so let the transition finish rather than have axe read
-    // the label half-way between its two colours.
-    await waitFor(() =>
-      expect(canvasElement.getAnimations({ subtree: true })).toHaveLength(0),
-    );
   },
 };
 

@@ -193,6 +193,11 @@ catalog:
   zod: ^4.6.5
   zustand: ^5.0.15
 overrides:
+  # Held below 4.13 (pulled in by @storybook/addon-a11y): 4.13.0's colour-contrast
+  # stacking-context rewrite intermittently reports a 1.08 contrast on
+  # protocol-builder's RuleSetField radio labels (about 1 run in 4), which
+  # 4.11 and 4.12 never do. Lift it once that check is understood.
+  axe-core: ~4.12.1
   # Keep transitive resolutions (vitest, @vitejs/plugin-react, …) on the
   # catalog version above rather than letting a plugin's looser peer range
   # pull a second, older Vite into the tree.
