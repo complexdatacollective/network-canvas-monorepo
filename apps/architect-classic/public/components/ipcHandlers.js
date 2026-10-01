@@ -9,7 +9,8 @@ const { ipcMain, dialog, app, shell, BrowserWindow } = require("electron");
 const fse = require("fs-extra");
 const path = require("node:path");
 const archiver = require("archiver");
-const decompress = require("decompress");
+// ESM-only package: Node 24's require(esm) returns the module namespace.
+const { default: decompress } = require("@xhmikosr/decompress");
 const log = require("./log");
 
 /**
