@@ -141,13 +141,24 @@ function InViewReveal({
     ...entryOffset,
     scale: direction === 'zoom' ? 0.955 : 1,
   };
+  const visible = { opacity: 1, x: 0, y: 0, scale: 1 };
 
   return (
     <motion.div
-      initial={shouldReduceMotion ? false : initial}
-      whileInView={
-        shouldReduceMotion ? undefined : { opacity: 1, x: 0, y: 0, scale: 1 }
-      }
+      // `initial` is deliberately unconditional. motion resolves it into an
+      // inline style in the server markup, and the server cannot know the
+      // visitor's preference — `useReducedMotion()` answers `null` there and
+      // `true`/`false` on the client. Choosing `initial` by the preference
+      // therefore served every visitor `opacity: 0; translateY(24px)` and then
+      // had a reduced-motion client render no style at all, which React treats
+      // as an attribute mismatch it "won't patch up".
+      initial={initial}
+      // Reduced motion reaches the visible state on mount instead of on scroll,
+      // so those visitors still see no transition, and — unlike a `whileInView`
+      // with zero duration — never wait on the viewport observer to be shown
+      // the content at all.
+      animate={shouldReduceMotion ? visible : undefined}
+      whileInView={shouldReduceMotion ? undefined : visible}
       viewport={{ once: true, margin: '0px 0px -7% 0px' }}
       transition={
         shouldReduceMotion

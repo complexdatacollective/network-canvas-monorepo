@@ -127,8 +127,18 @@ export function NavigationBar() {
           'text-primary-contrast tablet-portrait:gap-4 bg-primary sticky top-4 flex max-w-5xl grow items-center justify-between gap-2 overflow-visible rounded-full px-6 py-2 shadow-lg shadow-black/25 backdrop-blur-sm',
         )}
         variants={containerVariants}
-        initial={shouldReduceMotion ? false : 'hidden'}
+        // Unconditional on purpose: motion resolves `initial` into an inline
+        // style in the server markup, and the server cannot know this visitor's
+        // preference — `useReducedMotion()` answers `null` there and
+        // `true`/`false` on the client. Choosing `initial` by the preference
+        // made a reduced-motion visitor hydrate markup that disagreed with
+        // their own first render, which React "won't patch up".
+        initial="hidden"
         animate="visible"
+        // The preference belongs on `transition`, which is runtime-only and
+        // never reaches the server markup. `animate` runs on mount, so a
+        // zero-duration transition shows the bar immediately and without motion.
+        transition={shouldReduceMotion ? { duration: 0 } : undefined}
         noContainer
       >
         <Link href="/" className="focusable flex items-center gap-2 rounded-sm">
