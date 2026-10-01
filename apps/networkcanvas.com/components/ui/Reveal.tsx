@@ -68,6 +68,18 @@ function ScrollLinkedReveal({
   ...props
 }: ScrollLinkedRevealProps) {
   const targetRef = useRef<HTMLDivElement>(null);
+  // This check stays, unlike the one `InViewReveal` used to carry. The
+  // app-root `<MotionConfig reducedMotion="user">` can only neutralise
+  // *animations* — it hands transform keys `type: false` inside
+  // `animateTarget`, and zeroes layout-projection transitions. The scroll
+  // transforms below are neither: they are `MotionValue`s bound straight to
+  // `style`, so motion applies them verbatim however `reducedMotion` is set,
+  // and a visitor who prefers reduced motion would still be scrubbed through a
+  // full translate/scale by their own scrolling.
+  //
+  // `useHasHydrated()` is what keeps the preference out of the server markup:
+  // it is `false` for the server render and the first client render alike, so
+  // both agree on the plain `style` before the preference is ever consulted.
   const shouldReduceMotion = useReducedMotion();
   const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
@@ -134,37 +146,31 @@ function InViewReveal({
   easing,
   ...props
 }: RevealContentProps) {
-  const shouldReduceMotion = useReducedMotion();
   const entryOffset = getEntryOffset(direction, distance);
   const initial = {
     opacity: 0,
     ...entryOffset,
     scale: direction === 'zoom' ? 0.955 : 1,
   };
-  const visible = { opacity: 1, x: 0, y: 0, scale: 1 };
 
   return (
     <motion.div
-      // `initial` is deliberately unconditional. motion resolves it into an
-      // inline style in the server markup, and the server cannot know the
-      // visitor's preference — `useReducedMotion()` answers `null` there and
-      // `true`/`false` on the client. Choosing `initial` by the preference
-      // therefore served every visitor `opacity: 0; translateY(24px)` and then
-      // had a reduced-motion client render no style at all, which React treats
-      // as an attribute mismatch it "won't patch up".
+      // Nothing here consults the reduced-motion preference, and nothing may:
+      // motion resolves `initial` into an inline style in the server markup,
+      // and the server cannot know the preference (`useReducedMotion()` answers
+      // `null` there and `true`/`false` on the client), so any prop that fed
+      // off it would make this component a hydration mismatch for every visitor
+      // who prefers reduced motion.
+      //
+      // The app-root `<MotionConfig reducedMotion="user">` honours the
+      // preference instead, and does it where no markup is at stake: it gives
+      // the transform keys in this animation (`x`/`y`/`scale`) `type: false`,
+      // so they arrive at their target instantly, and leaves the opacity fade
+      // — a simple animation, safe under the preference — to play.
       initial={initial}
-      // Reduced motion reaches the visible state on mount instead of on scroll,
-      // so those visitors still see no transition, and — unlike a `whileInView`
-      // with zero duration — never wait on the viewport observer to be shown
-      // the content at all.
-      animate={shouldReduceMotion ? visible : undefined}
-      whileInView={shouldReduceMotion ? undefined : visible}
+      whileInView={{ opacity: 1, x: 0, y: 0, scale: 1 }}
       viewport={{ once: true, margin: '0px 0px -7% 0px' }}
-      transition={
-        shouldReduceMotion
-          ? { duration: 0 }
-          : { duration, ease: easing ?? 'easeOut', delay }
-      }
+      transition={{ duration, ease: easing ?? 'easeOut', delay }}
       className={className}
       {...props}
     >

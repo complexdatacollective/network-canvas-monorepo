@@ -3,7 +3,7 @@
 import type { UrlObject } from 'url';
 
 import { Settings } from 'lucide-react';
-import { motion, useReducedMotion, type Variants } from 'motion/react';
+import { motion, type Variants } from 'motion/react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -116,7 +116,6 @@ export function NavigationBar() {
   const intl = useAppIntl();
 
   const pathname = usePathname();
-  const shouldReduceMotion = useReducedMotion();
 
   return (
     <div className="sticky top-4 z-50 flex items-center justify-center">
@@ -127,18 +126,19 @@ export function NavigationBar() {
           'text-primary-contrast tablet-portrait:gap-4 bg-primary sticky top-4 flex max-w-5xl grow items-center justify-between gap-2 overflow-visible rounded-full px-6 py-2 shadow-lg shadow-black/25 backdrop-blur-sm',
         )}
         variants={containerVariants}
-        // Unconditional on purpose: motion resolves `initial` into an inline
-        // style in the server markup, and the server cannot know this visitor's
-        // preference — `useReducedMotion()` answers `null` there and
-        // `true`/`false` on the client. Choosing `initial` by the preference
-        // made a reduced-motion visitor hydrate markup that disagreed with
-        // their own first render, which React "won't patch up".
+        // Preference-independent on purpose. motion resolves `initial` into an
+        // inline style in the server markup, and the server cannot know this
+        // visitor's preference (`useReducedMotion()` answers `null` there and
+        // `true`/`false` on the client), so choosing any of these props by the
+        // preference would make the bar a hydration mismatch for a researcher
+        // who prefers reduced motion.
+        //
+        // The app-root `<MotionConfig reducedMotion="user">` honours the
+        // preference instead: `containerVariants` only moves `y`, a transform
+        // key, so under the preference motion gives it `type: false` and the
+        // bar arrives in place without travelling.
         initial="hidden"
         animate="visible"
-        // The preference belongs on `transition`, which is runtime-only and
-        // never reaches the server markup. `animate` runs on mount, so a
-        // zero-duration transition shows the bar immediately and without motion.
-        transition={shouldReduceMotion ? { duration: 0 } : undefined}
         noContainer
       >
         <Link href="/" className="focusable flex items-center gap-2 rounded-sm">
