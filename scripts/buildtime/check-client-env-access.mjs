@@ -104,41 +104,111 @@ const objectBlock = (source, key) => {
   return null;
 };
 
-/** The keys declared directly in an object block, ignoring nested ones. */
-const topLevelKeys = (block) => {
+/**
+ * The keys declared directly in an object block.
+ *
+ * This reads the block exhaustively and **throws** on any property it cannot
+ * account for — a spread (`...sharedServerSchema`), a computed key, a method
+ * shorthand — rather than passing over it. A key this misses is a variable
+ * missing from the guarded set, which is a silent pass: exactly the failure a
+ * guard must not have. Quoted keys (`'SECRET_TOKEN': …`) are read, since they
+ * declare a variable like any other.
+ */
+const topLevelKeys = (block, describe) => {
   const keys = [];
-  let depth = 0;
   let index = 0;
-  while (index < block.length) {
-    const character = block[index];
-    if (character === '\\') {
-      index += 2;
-      continue;
-    }
-    if (character === "'" || character === '"' || character === '`') {
-      const quote = character;
-      index += 1;
-      while (index < block.length && block[index] !== quote) {
-        if (block[index] === '\\') index += 1;
-        index += 1;
-      }
-      index += 1;
-      continue;
-    }
-    if (character === '{' || character === '(' || character === '[') depth += 1;
-    else if (character === '}' || character === ')' || character === ']')
-      depth -= 1;
-    else if (depth === 0) {
-      const identifier = /^([A-Za-z_$][\w$]*)\s*:/.exec(block.slice(index));
-      if (identifier) {
-        keys.push(identifier[1]);
-        index += identifier[0].length;
+
+  const skipSpace = () => {
+    for (;;) {
+      while (index < block.length && /\s/.test(block[index])) index += 1;
+      if (block.startsWith('//', index)) {
+        const end = block.indexOf('\n', index);
+        index = end === -1 ? block.length : end + 1;
         continue;
       }
+      if (block.startsWith('/*', index)) {
+        const end = block.indexOf('*/', index);
+        index = end === -1 ? block.length : end + 2;
+        continue;
+      }
+      return;
+    }
+  };
+
+  /** Advances past a quoted string, returning its contents. */
+  const readQuoted = () => {
+    const quote = block[index];
+    index += 1;
+    let value = '';
+    while (index < block.length && block[index] !== quote) {
+      if (block[index] === '\\') {
+        value += block[index + 1] ?? '';
+        index += 2;
+        continue;
+      }
+      value += block[index];
+      index += 1;
     }
     index += 1;
+    return value;
+  };
+
+  /** Advances past one property's value, stopping at the separating comma. */
+  const skipValue = () => {
+    let depth = 0;
+    while (index < block.length) {
+      const character = block[index];
+      if (character === "'" || character === '"' || character === '`') {
+        readQuoted();
+        continue;
+      }
+      if (block.startsWith('//', index) || block.startsWith('/*', index)) {
+        skipSpace();
+        continue;
+      }
+      if (character === '{' || character === '(' || character === '[')
+        depth += 1;
+      else if (character === '}' || character === ')' || character === ']')
+        depth -= 1;
+      else if (character === ',' && depth === 0) return;
+      index += 1;
+    }
+  };
+
+  const unreadable = () =>
+    new Error(
+      `${describe}: cannot read the property starting at ${JSON.stringify(
+        block.slice(index, index + 48),
+      )}. The guard only understands \`NAME: value\` and \`'NAME': value\` properties; ` +
+        'a spread, a computed key or a method shorthand could hide a variable from it, ' +
+        'so it refuses rather than reporting a pass it cannot support.',
+    );
+
+  for (;;) {
+    skipSpace();
+    while (block[index] === ',' || block[index] === ';') {
+      index += 1;
+      skipSpace();
+    }
+    if (index >= block.length) return keys;
+
+    let name;
+    const identifier = /^[A-Za-z_$][\w$]*/.exec(block.slice(index));
+    if (identifier) {
+      name = identifier[0];
+      index += identifier[0].length;
+    } else if (block[index] === "'" || block[index] === '"') {
+      name = readQuoted();
+    } else {
+      throw unreadable();
+    }
+
+    skipSpace();
+    if (block[index] !== ':') throw unreadable();
+    index += 1;
+    keys.push(name);
+    skipValue();
   }
-  return keys;
 };
 
 const sourceFiles = (directory, collected = []) => {
@@ -214,16 +284,27 @@ const main = () => {
             'guard rather than letting it pass over an env module it cannot read.',
         );
       }
-      return topLevelKeys(block);
+      return topLevelKeys(
+        block,
+        `${relative(root, join(appDirectory, 'env.js'))} (\`${key}:\`)`,
+      );
     });
 
+    const nextConfigName = [
+      'next.config.ts',
+      'next.config.js',
+      'next.config.mjs',
+    ].find((name) => readIfPresent(join(appDirectory, name)) !== null);
     const nextConfigSource =
-      ['next.config.ts', 'next.config.js', 'next.config.mjs']
-        .map((name) => readIfPresent(join(appDirectory, name)))
-        .find((source) => source !== null) ?? '';
+      nextConfigName === undefined
+        ? ''
+        : (readIfPresent(join(appDirectory, nextConfigName)) ?? '');
     const inlined = [
       ...ALWAYS_INLINED,
-      ...topLevelKeys(objectBlock(nextConfigSource, 'env') ?? ''),
+      ...topLevelKeys(
+        objectBlock(nextConfigSource, 'env') ?? '',
+        `${relative(root, join(appDirectory, nextConfigName ?? 'next.config.ts'))} (\`env:\`)`,
+      ),
     ];
 
     const guarded = new Set(
@@ -274,4 +355,11 @@ const main = () => {
   );
 };
 
-main();
+// A guard that cannot read its inputs fails loudly and readably: the message
+// says which file it choked on, without a stack trace nobody reads in CI.
+try {
+  main();
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}

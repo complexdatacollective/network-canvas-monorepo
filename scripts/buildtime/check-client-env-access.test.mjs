@@ -212,6 +212,143 @@ test('refuses an env module whose server block it cannot read', () => {
   assert.match(result.stderr, /no `server:` block found/);
 });
 
+test('flags a server-only variable declared with a quoted key', () => {
+  // Reported on #2030: `topLevelKeys` skipped anything that was not a bare
+  // `NAME:` property, so the variable never entered the guarded set and a
+  // client module reading it passed silently.
+  const cwd = fixture(
+    {
+      'components/Leak.tsx': clientComponent(
+        'return <p>{env.SECRET_TOKEN}</p>;',
+      ),
+    },
+    {
+      env: `export const env = createEnv({
+  server: {
+    'SECRET_TOKEN': z.string(),
+  },
+  shared: {
+    NODE_ENV: z.string(),
+  },
+});
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
+});
+
+test('refuses a spread it cannot expand rather than skipping it', () => {
+  const cwd = fixture(
+    {},
+    {
+      env: `export const env = createEnv({
+  server: {
+    ...sharedServerSchema,
+  },
+  shared: {
+    NODE_ENV: z.string(),
+  },
+});
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cannot read the property starting at/);
+  assert.match(result.stderr, /env\.js \(`server:`\)/);
+  // The message is the whole output: no stack trace for CI to scroll past.
+  assert.doesNotMatch(result.stderr, /at topLevelKeys/);
+});
+
+test('refuses a computed key', () => {
+  const cwd = fixture(
+    {},
+    {
+      env: `export const env = createEnv({
+  server: {
+    [SECRET]: z.string(),
+  },
+  shared: { NODE_ENV: z.string() },
+});
+`,
+    },
+  );
+
+  assert.equal(run(cwd).status, 1);
+});
+
+test('refuses a shorthand property, which declares no schema it can read', () => {
+  const cwd = fixture(
+    {},
+    {
+      env: `export const env = createEnv({
+  server: {
+    SECRET_TOKEN,
+  },
+  shared: { NODE_ENV: z.string() },
+});
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cannot read the property/);
+});
+
+test('reads a block that carries comments and a trailing comma', () => {
+  const cwd = fixture(
+    {
+      'components/Leak.tsx': clientComponent(
+        'return <p>{env.SECRET_TOKEN}</p>;',
+      ),
+    },
+    {
+      env: `export const env = createEnv({
+  server: {
+    // The deployment supplies this one.
+    SECRET_TOKEN: z.string(), /* required */
+  },
+  shared: {
+    NODE_ENV: z.string(),
+  },
+});
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
+});
+
+test('reads a next.config env value written as a template literal', () => {
+  const cwd = fixture(
+    {
+      'components/Version.tsx': clientComponent(
+        'return <p>{env.APP_VERSION}</p>;',
+      ),
+    },
+    {
+      nextConfig: `const config = {
+  env: {
+    APP_VERSION: \`v\${pkg.version}\`,
+    COMMIT_HASH: commitHash,
+  },
+};
+export default config;
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('passes on this repository', () => {
   const result = run(REPO_ROOT);
 
