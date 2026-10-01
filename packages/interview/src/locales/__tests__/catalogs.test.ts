@@ -24,6 +24,7 @@ const committedEn = JSON.parse(
 ) as ExtractedCatalog;
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const italianSources = readTranslationSources(localesDir, 'it');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the interview package built-in message catalogs', () => {
@@ -46,7 +47,7 @@ describe('the interview package built-in message catalogs', () => {
 
   it('ships every ecosystem language without assuming the host registry', () => {
     const declared = interviewLocales.map(({ locale }) => locale);
-    expect(declared).toEqual(['en', 'en-GB', 'es', 'zh-Hans']);
+    expect(declared).toEqual(['en', 'en-GB', 'es', 'zh-Hans', 'it']);
     expect(ecosystemLocales.map(({ locale }) => locale).toSorted()).toEqual(
       declared.toSorted(),
     );
@@ -67,6 +68,13 @@ describe('the interview package built-in message catalogs', () => {
       readFileSync(join(localesDir, 'zh-Hans.json'), 'utf8'),
     ) as Record<string, string>;
     expect(checkFullLocale(committedEn, zhHans, zhHansSources)).toEqual([]);
+  });
+
+  it('provides complete nonblank Italian with ICU and rich-text token parity', () => {
+    const italian = JSON.parse(
+      readFileSync(join(localesDir, 'it.json'), 'utf8'),
+    ) as Record<string, string>;
+    expect(checkFullLocale(committedEn, italian, italianSources)).toEqual([]);
   });
 
   it('keeps British English a valid sparse override', () => {

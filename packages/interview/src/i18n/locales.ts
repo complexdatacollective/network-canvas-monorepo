@@ -7,6 +7,7 @@ export const interviewLocales = defineAppLocales([
   { locale: 'en-GB', label: 'English (UK)', direction: 'ltr' },
   { locale: 'es', label: 'Español', direction: 'ltr' },
   { locale: 'zh-Hans', label: '简体中文', direction: 'ltr' },
+  { locale: 'it', label: 'Italiano', direction: 'ltr' },
 ]);
 
 export type RequestedLocale = string | readonly string[] | null;

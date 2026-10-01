@@ -8,6 +8,7 @@ import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales'
 
 import enGb from './en-GB.json';
 import es from './es.json';
+import it from './it.json';
 import zhHans from './zh-Hans.json';
 
 // Static imports ship every language in the precached app, including on a
@@ -39,5 +40,13 @@ export const interviewerCatalogs: Readonly<
     protocolValidationCatalogs['zh-Hans'] ?? {},
     protocolUtilitiesCatalogs['zh-Hans'] ?? {},
     zhHans,
+  ),
+  'it': mergeCatalogs(
+    commonCatalogs.it ?? {},
+    frescoUiCatalogs.it ?? {},
+    networkExporterCatalogs.it ?? {},
+    protocolValidationCatalogs.it ?? {},
+    protocolUtilitiesCatalogs.it ?? {},
+    it,
   ),
 };
