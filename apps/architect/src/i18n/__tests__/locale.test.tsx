@@ -14,10 +14,7 @@ import { InterviewI18nProvider } from '@codaco/interview';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VARIABLE_TYPES } from '~/config/variables';
 
-import {
-  ArchitectI18nProvider,
-  useArchitectLocale,
-} from '../ArchitectI18nProvider';
+import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { formatConfig } from '../formatConfig';
 import {
   ARCHITECT_LOCALE_KEY,
@@ -28,11 +25,9 @@ import {
 function Harness() {
   const intl = useAppIntl();
   const { locale, setLocale } = useAppLocale();
-  const preference = useArchitectLocale();
   return (
     <>
       <output data-testid="locale">{locale}</output>
-      <output data-testid="saved">{String(preference?.saved)}</output>
       <output data-testid="label">
         {formatConfig(VARIABLE_TYPES.number, intl).label}
       </output>
@@ -147,7 +142,7 @@ describe('Architect device language', () => {
     );
   });
 
-  it('applies a choice even when storage refuses the write and reports that it was not saved', () => {
+  it('applies a choice even when storage refuses the write', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('blocked', 'SecurityError');
     });
@@ -158,7 +153,6 @@ describe('Architect device language', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Spanish' }));
     expect(screen.getByTestId('locale')).toHaveTextContent('es');
-    expect(screen.getByTestId('saved')).toHaveTextContent('false');
     expect(document.documentElement).toHaveAttribute('lang', 'es');
   });
 

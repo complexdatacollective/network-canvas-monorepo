@@ -6,7 +6,6 @@ import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
-import StageNameSection from '../stage-heading/StageNameSection.tsx';
 
 const destinations = () =>
   within(screen.getByRole('combobox', { name: /When this stage is skipped/ }))
@@ -75,7 +74,7 @@ describe('the creation signal a new stage carries', () => {
         position: 0,
         fields: { title: 'New page', items: [] },
       },
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     const name = await screen.findByRole('textbox', { name: 'Stage name' });

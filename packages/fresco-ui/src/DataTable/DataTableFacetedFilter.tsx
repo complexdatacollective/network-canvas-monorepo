@@ -1,6 +1,6 @@
 'use client';
 
-import { type Column } from '@tanstack/react-table';
+import { type Column, type RowData } from '@tanstack/react-table';
 import { useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -8,6 +8,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import ComboboxField from '../form/fields/Combobox/Combobox';
 import { type ComboboxOption } from '../form/fields/Combobox/shared';
+import { type DataTableFeatures } from './features';
 import { type Option } from './types';
 
 const messages = defineMessages({
@@ -31,14 +32,14 @@ const messages = defineMessages({
   },
 });
 
-type DataTableFacetedFilterProps<TData, TValue> = {
-  column?: Column<TData, TValue>;
+type DataTableFacetedFilterProps<TData extends RowData, TValue> = {
+  column?: Column<DataTableFeatures, TData, TValue>;
   title?: string;
   options: Option[];
   className?: string;
 };
 
-export function DataTableFacetedFilter<TData, TValue>({
+export function DataTableFacetedFilter<TData extends RowData, TValue>({
   column,
   title,
   options,

@@ -152,7 +152,7 @@ describe('the geospatial sections, read in Spanish', () => {
         harness.user,
         attributeField('Atributo de ubicación', screen.getByRole('dialog')),
         'Busca o crea un atributo',
-        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+        (term) => `Crear un atributo nuevo llamado «${term}».`,
       ),
     ).not.toBeNull();
   });

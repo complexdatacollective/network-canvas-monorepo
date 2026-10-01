@@ -3,7 +3,7 @@
 import type { UrlObject } from 'url';
 
 import { Settings } from 'lucide-react';
-import { motion, useReducedMotion, type Variants } from 'motion/react';
+import { motion, type Variants } from 'motion/react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -14,6 +14,7 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 
 import { MobileNavDrawer } from './MobileNavDrawer';
 import UserMenu from './UserMenu';
@@ -77,6 +78,9 @@ const itemVariants: Variants = {
   },
 };
 
+const navItemClassName =
+  'focusable relative rounded-full font-semibold whitespace-nowrap outline-offset-10!';
+
 const NavButton = ({
   label,
   href,
@@ -94,10 +98,7 @@ const NavButton = ({
     >
       <Link
         href={href}
-        className={cx(
-          'focusable relative rounded-full font-semibold outline-offset-10!',
-          !isActive && 'hover:text-sea-green',
-        )}
+        className={cx(navItemClassName, !isActive && 'hover:text-sea-green')}
       >
         {isActive && (
           <motion.div
@@ -115,7 +116,6 @@ export function NavigationBar() {
   const intl = useAppIntl();
 
   const pathname = usePathname();
-  const shouldReduceMotion = useReducedMotion();
 
   return (
     <div className="sticky top-4 z-50 flex items-center justify-center">
@@ -126,7 +126,18 @@ export function NavigationBar() {
           'text-primary-contrast tablet-portrait:gap-4 bg-primary sticky top-4 flex max-w-5xl grow items-center justify-between gap-2 overflow-visible rounded-full px-6 py-2 shadow-lg shadow-black/25 backdrop-blur-sm',
         )}
         variants={containerVariants}
-        initial={shouldReduceMotion ? false : 'hidden'}
+        // Preference-independent on purpose. motion resolves `initial` into an
+        // inline style in the server markup, and the server cannot know this
+        // visitor's preference (`useReducedMotion()` answers `null` there and
+        // `true`/`false` on the client), so choosing any of these props by the
+        // preference would make the bar a hydration mismatch for a researcher
+        // who prefers reduced motion.
+        //
+        // The app-root `<MotionConfig reducedMotion="user">` honours the
+        // preference instead: `containerVariants` only moves `y`, a transform
+        // key, so under the preference motion gives it `type: false` and the
+        // bar arrives in place without travelling.
+        initial="hidden"
         animate="visible"
         noContainer
       >
@@ -162,27 +173,51 @@ export function NavigationBar() {
             isActive={pathname === '/dashboard/interviews'}
           />
         </ul>
-        <div className="tablet-landscape:flex hidden items-center gap-6">
-          <NavButton
-            label={
-              <div className="flex items-center gap-2">
-                <Settings className="inline-block" />
-                <span className="laptop:inline hidden">
-                  {intl.formatMessage(messages.settings)}
-                </span>
-              </div>
-            }
-            href="/dashboard/settings"
-            isActive={pathname === '/dashboard/settings'}
-          />
+        <div className="tablet-landscape:gap-6 flex items-center gap-2">
+          <div className="tablet-landscape:flex hidden">
+            <NavButton
+              label={
+                <div className="flex items-center gap-2">
+                  <Settings className="inline-block" />
+                  <span className="laptop:inline hidden">
+                    {intl.formatMessage(messages.settings)}
+                  </span>
+                </div>
+              }
+              href="/dashboard/settings"
+              isActive={pathname === '/dashboard/settings'}
+            />
+          </div>
 
-          <motion.div variants={itemVariants}>
+          <motion.div
+            variants={itemVariants}
+            className="tablet-landscape:flex hidden"
+          >
+            <FrescoLocaleSwitcher
+              renderTrigger={
+                // Named by the switcher, which sets the language on it at runtime.
+                // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+                <button
+                  type="button"
+                  className={cx(
+                    navItemClassName,
+                    'hover:text-sea-green data-popup-open:text-sea-green flex cursor-pointer items-center',
+                  )}
+                />
+              }
+            />
+          </motion.div>
+
+          <motion.div
+            variants={itemVariants}
+            className="tablet-landscape:block hidden"
+          >
             <UserMenu />
           </motion.div>
-        </div>
 
-        <div className="tablet-landscape:hidden">
-          <MobileNavDrawer />
+          <div className="tablet-landscape:hidden">
+            <MobileNavDrawer />
+          </div>
         </div>
       </MotionSurface>
     </div>

@@ -23,12 +23,10 @@ function mountSection(id: string): HTMLElement {
 describe('SectionOutlineStore', () => {
   it('follows the page when sections change places', () => {
     const store = new SectionOutlineStore();
-    const first = mountSection('first');
+    mountSection('first');
     const second = mountSection('second');
     store.registerSection({ id: 'first', title: 'First' });
     store.registerSection({ id: 'second', title: 'Second' });
-    store.setSectionElement('first', first);
-    store.setSectionElement('second', second);
 
     expect(store.getSnapshot().map((section) => section.title)).toEqual([
       'First',
@@ -46,11 +44,27 @@ describe('SectionOutlineStore', () => {
     ]);
   });
 
+  it('keeps a section in place when its element is replaced', () => {
+    const store = new SectionOutlineStore();
+    mountSection('first');
+    const second = mountSection('second');
+    store.registerSection({ id: 'first', title: 'First' });
+    store.registerSection({ id: 'second', title: 'Second' });
+    store.getSnapshot();
+
+    second.remove();
+    mountSection('second');
+
+    expect(store.getSnapshot().map((section) => section.title)).toEqual([
+      'First',
+      'Second',
+    ]);
+  });
+
   it('hands back the same snapshot while nothing has moved', () => {
     const store = new SectionOutlineStore();
-    const element = mountSection('only');
+    mountSection('only');
     store.registerSection({ id: 'only', title: 'Only' });
-    store.setSectionElement('only', element);
 
     // Identity has to hold, or `useSyncExternalStore` would re-render forever.
     expect(store.getSnapshot()).toBe(store.getSnapshot());
@@ -109,7 +123,6 @@ function storeWith(
   for (const [sectionId, names] of Object.entries(fields)) {
     const element = mountSection(sectionId);
     store.registerSection({ id: sectionId, title: sectionId });
-    store.setSectionElement(sectionId, element);
     for (const name of names) element.append(fieldMarkup(name, required));
   }
   return store;

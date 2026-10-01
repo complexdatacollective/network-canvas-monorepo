@@ -72,7 +72,7 @@ import {
 } from '../../styles/controlVariants';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
-import { compose, cva, cx } from '../../utils/cva';
+import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
@@ -617,15 +617,19 @@ function createCustomExtensions({
   return extensions;
 }
 
-const editorContainerVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  interactiveStateVariants,
-  cva({
-    base: 'flex h-auto w-full min-w-0 flex-col',
-  }),
-);
+const editorContainerOwnVariants = cva({
+  base: 'flex h-auto w-full min-w-0 flex-col',
+});
+
+const editorContainerVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    interactiveStateVariants,
+    editorContainerOwnVariants,
+  ],
+});
 
 const toolbarStyles = cx(
   'bg-surface-1 text-surface-1-contrast publish-colors order-1 flex w-max min-w-full items-center gap-1 border-b border-current/10 px-6 py-2',
@@ -1325,7 +1329,7 @@ export default function RichTextEditorField({
                     />
                     <div
                       id={linkErrorId}
-                      className="text-destructive min-h-5 text-sm leading-snug"
+                      className="text-destructive-ink min-h-5 text-sm leading-snug"
                       aria-live="polite"
                     >
                       {linkValidationMessage}

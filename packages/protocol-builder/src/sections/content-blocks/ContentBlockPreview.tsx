@@ -48,7 +48,7 @@ export default function ContentBlockPreview({ item }: RowPreviewProps) {
 
   if (kind === undefined) {
     return (
-      <Badge>
+      <Badge tone="warning">
         {intl.formatMessage(
           content === '' ? messages.noContent : messages.unusable,
         )}

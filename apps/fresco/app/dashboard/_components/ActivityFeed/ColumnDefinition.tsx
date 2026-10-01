@@ -9,7 +9,7 @@ import { formatActivityDetails } from '~/i18n/activityDetails';
 import type { Events } from '~/lib/db/generated/client';
 
 import { formatActivityType } from './messages';
-import { getBadgeColorsForActivityType } from './utils';
+import { getBadgeColorForActivityType } from './utils';
 
 const messages = defineMessages({
   time: {
@@ -35,7 +35,7 @@ export function fetchActivityFeedTableColumnDefs(
   return [
     {
       accessorKey: 'timestamp',
-      sortingFn: 'datetime',
+      sortFn: 'datetime',
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
@@ -49,7 +49,7 @@ export function fetchActivityFeedTableColumnDefs(
     },
     {
       accessorKey: 'type',
-      sortingFn: 'text',
+      sortFn: 'text',
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
@@ -58,11 +58,9 @@ export function fetchActivityFeedTableColumnDefs(
       ),
       cell: ({ row }) => {
         const activityType: string = row.getValue('type');
-        const color = getBadgeColorsForActivityType(activityType);
+        const color = getBadgeColorForActivityType(activityType);
         return (
-          <Badge className={color}>
-            {formatActivityType(intl, activityType)}
-          </Badge>
+          <Badge color={color}>{formatActivityType(intl, activityType)}</Badge>
         );
       },
       enableHiding: false,

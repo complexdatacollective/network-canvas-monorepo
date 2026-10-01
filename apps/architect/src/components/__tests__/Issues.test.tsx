@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { useContext, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -16,6 +17,7 @@ import FormStoreProvider, {
   FormStoreContext,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 
 import ArchitectField from '../Form/ArchitectField';
 import IssueAnchor from '../IssueAnchor';
@@ -74,8 +76,23 @@ const fieldErrors = {
   'baz[0].beep': ['boop'],
 };
 
-function IssuesHarness() {
-  const { control } = useIssuesToolbarControl();
+const NO_STAGE_PROBLEMS: readonly string[] = Object.freeze([]);
+
+/** The stage-level refusals the editor publishes, over a standing-in store. */
+const problemsStore = (
+  problems: readonly string[] = NO_STAGE_PROBLEMS,
+): StageProblemsStore => ({
+  subscribe: () => () => undefined,
+  getSnapshot: () => problems,
+  getServerSnapshot: () => problems,
+});
+
+function IssuesHarness({
+  problems = NO_STAGE_PROBLEMS,
+}: {
+  problems?: readonly string[];
+}) {
+  const { control } = useIssuesToolbarControl(problemsStore(problems));
   return control ? (
     <SegmentedToolbar aria-label="Stage editor actions">
       {control}
@@ -101,6 +118,50 @@ describe('<Issues />', () => {
     // Popover content lives in a portal mounted to document.body, and opens
     // automatically because submitFailed + hasIssues.
     expect(await screen.findAllByTestId('issue')).toHaveLength(3);
+  });
+
+  /**
+   * A refusal about no field at all. This panel is the only place in Architect
+   * one can be read: no control shows it and no section lists it. Dropped, the
+   * researcher met a Save button that did nothing.
+   */
+  it('lists a stage refusal that belongs to no field', async () => {
+    const view = renderStageForm({
+      children: (
+        <IssuesHarness
+          problems={['A setting this editor does not show has no value.']}
+        />
+      ),
+    });
+
+    act(() => {
+      view.reportRefusedSubmit();
+    });
+
+    const rows = await screen.findAllByTestId('issue');
+    expect(rows).toHaveLength(1);
+    // Its sentence and nothing else: the usual frame names a field.
+    expect(rows[0]).toHaveTextContent(
+      'A setting this editor does not show has no value.',
+    );
+    // And nowhere to send anybody, so it is not a link or a button.
+    expect(within(rows[0] as HTMLElement).queryByRole('link')).toBeNull();
+    expect(within(rows[0] as HTMLElement).queryByRole('button')).toBeNull();
+  });
+
+  /** Counted with the field errors, because a refused save is one event. */
+  it('counts stage refusals alongside the field errors', async () => {
+    const view = renderStageForm({
+      children: <IssuesHarness problems={['Something else is wrong.']} />,
+    });
+
+    act(() => {
+      view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
+      view.reportRefusedSubmit();
+    });
+
+    expect(await screen.findAllByTestId('issue')).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Issues (4)' })).toBeVisible();
   });
 
   it('uses the semantic warning colour and unpadded popover surface', () => {

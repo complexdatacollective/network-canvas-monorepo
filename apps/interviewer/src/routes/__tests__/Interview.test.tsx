@@ -249,7 +249,7 @@ describe('InterviewRoute enter gate', () => {
         'Al finalizar, se cierra esta entrevista.',
       );
       expect(shell).toHaveTextContent(
-        'un investigador puede volver a marcarla como sin finalizar',
+        'la persona responsable de la investigación puede volver a marcarla como sin finalizar',
       );
       expect(document.documentElement).toHaveAttribute('lang', 'es');
       expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');

@@ -8,6 +8,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { ResourceInspection } from '../types.ts';
 import {
   formatByteLength,
+  RESOURCE_KIND_BADGE_COLORS,
   resourceKindLabel,
   resourceStatusLabel,
 } from './resourceKinds.ts';
@@ -101,7 +102,14 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         <Heading level="h4" margin="none">
           {descriptor.name}
         </Heading>
-        <Badge variant="outline">
+        {/*
+          The type's own colour, which is what the protocol's resource library
+          badges it in.
+        */}
+        <Badge
+          appearance="outline"
+          color={RESOURCE_KIND_BADGE_COLORS[descriptor.kind]}
+        >
           {resourceKindLabel(descriptor.kind, intl)}
         </Badge>
         <Badge>{resourceStatusLabel(descriptor.status, intl)}</Badge>
@@ -110,10 +118,8 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         {/*
           The file the researcher picked, while their import is still theirs to
           recognise. Only while it is staged: once the protocol has committed
-          it, `source` is the name the host files the bytes under — worked out
-          from the bytes themselves, so two files imported under one filename
-          stay two assets — and showing that under "File" would tell the
-          researcher their photograph is called sixty-four hex characters. The
+          it, `source` is the name the host files the bytes under, which the
+          contract lets a host derive from the content. The
           heading above is what the protocol calls the resource, and that is
           the answer to "which file is this" for a saved one.
         */}

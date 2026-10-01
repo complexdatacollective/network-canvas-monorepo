@@ -4,7 +4,6 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { withoutAbsentValues } from '../../../../form/absentValues.ts';
 import {
@@ -32,23 +31,6 @@ const PRESETS_FIELD = 'presets';
  * own language where it is shown.
  */
 const AT_LEAST_ONE_PRESET = createMessageError(messages.presetsAtLeastOne);
-
-/**
- * The rule that can actually refuse a save.
- *
- * The whole list is one field value, so this is where a rule about the list
- * itself belongs — a row cannot refuse anything, and the protocol schema's own
- * "Too small: expected array to have >=1 items" arrives against a path rather
- * than against the section the researcher is looking at.
- */
-const presetsValidation = {
-  custom: messageRuleValidation([
-    (value: unknown) =>
-      Array.isArray(value) && value.length > 0
-        ? undefined
-        : AT_LEAST_ONE_PRESET,
-  ]),
-};
 
 /**
  * The ways of looking at the network this stage offers.
@@ -107,7 +89,7 @@ export default function NarrativePresetsSection() {
           editorComponent={RowDialog}
           itemTemplate={rowTemplate()}
           sortable
-          {...presetsValidation}
+          required={AT_LEAST_ONE_PRESET}
         />
       </RowList>
     </BuilderSection>

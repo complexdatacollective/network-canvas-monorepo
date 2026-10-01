@@ -80,6 +80,11 @@ concurrency:
   group: apps-release-${{ inputs.app == 'fresco' && 'fresco' || format('@codaco/{0}', inputs.app) }}
   cancel-in-progress: false
 
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   hotfix-release:
     runs-on: ubuntu-latest
@@ -214,7 +219,7 @@ jobs:
           MIRROR_VERSION: ${{ steps.mirror-version.outputs.version }}
         run: node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
 
-      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6

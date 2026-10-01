@@ -1,8 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+
+import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../renderStageEditor.tsx';
+
+/**
+ * Two sections owning two different keys, so each harness can be asked about
+ * something only it holds. Written out rather than taken from the shared
+ * sections, which are toggleable and register nothing until they are switched
+ * on — an empty answer would agree with both halves of every contrast below.
+ */
+const pageContent = (
+  <BuilderSection title="Page content">
+    <Field name="title" label="Page heading" component={InputField} />
+  </BuilderSection>
+);
+const guidance = (
+  <BuilderSection title="Interviewer guidance">
+    <Field
+      name="interviewScript"
+      label="Interviewer script text"
+      component={InputField}
+    />
+  </BuilderSection>
+);
 
 /**
  * A test may mount two harnesses — comparing two interfaces, or an editor
@@ -20,11 +43,11 @@ describe('two harnesses mounted in one test', () => {
   it('gives each its own form id', () => {
     const first = renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: pageContent,
     });
     const second = renderStageEditor({
       stageId: 'information-1',
-      sections: <InterviewerGuidanceSection />,
+      sections: guidance,
     });
 
     expect(second.formId).not.toBe(first.formId);
@@ -36,34 +59,34 @@ describe('two harnesses mounted in one test', () => {
   });
 
   it('answers `ownedKeys` about its own form', () => {
-    const withName = renderStageEditor({
+    const withPageContent = renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: pageContent,
     });
-    const withoutName = renderStageEditor({
+    const withGuidance = renderStageEditor({
       stageId: 'information-1',
-      sections: <InterviewerGuidanceSection />,
+      sections: guidance,
     });
 
-    expect(withName.ownedKeys()).toContain('label');
-    expect(withoutName.ownedKeys()).not.toContain('label');
+    expect(withPageContent.ownedKeys()).toContain('title');
+    expect(withGuidance.ownedKeys()).not.toContain('title');
   });
 
   it('answers `outline` about its own sections', () => {
-    const withName = renderStageEditor({
+    const withPageContent = renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: pageContent,
     });
-    const withoutName = renderStageEditor({
+    const withGuidance = renderStageEditor({
       stageId: 'information-1',
-      sections: <InterviewerGuidanceSection />,
+      sections: guidance,
     });
 
-    expect(withName.outline().map((entry) => entry.title)).toContain(
-      'Stage name',
+    expect(withPageContent.outline().map((entry) => entry.title)).toContain(
+      'Page content',
     );
-    expect(withoutName.outline().map((entry) => entry.title)).not.toContain(
-      'Stage name',
+    expect(withGuidance.outline().map((entry) => entry.title)).not.toContain(
+      'Page content',
     );
   });
 
@@ -76,11 +99,11 @@ describe('two harnesses mounted in one test', () => {
   it('saves its own stage', async () => {
     const first = renderStageEditor({
       stageId: 'information-1',
-      sections: <StageNameSection />,
+      sections: <></>,
     });
     const second = renderStageEditor({
       stageId: 'ego-form-1',
-      sections: <StageNameSection />,
+      sections: <></>,
     });
 
     expect((await second.submit())?.stageDocument.id).toBe('ego-form-1');

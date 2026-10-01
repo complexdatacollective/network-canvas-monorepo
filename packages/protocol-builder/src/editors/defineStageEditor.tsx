@@ -37,9 +37,12 @@ export function defineStageEditor<T extends StageType>(
   stageType: T,
   sections: readonly StageSection[],
 ): Record<T, StageEditorComponent<T>> {
-  function StageEditorFromSections({ actions }: StageEditorProps<T>) {
+  function StageEditorFromSections({ actions, header }: StageEditorProps<T>) {
     return (
-      <StageEditorShell actions={actions ?? saveStageAction}>
+      <StageEditorShell
+        actions={actions ?? saveStageAction}
+        {...(header === undefined ? {} : { header })}
+      >
         {sections.map((Section, index) => (
           // The list is settled when the editor is defined and never reordered
           // afterwards, so a section's position in it is its identity.

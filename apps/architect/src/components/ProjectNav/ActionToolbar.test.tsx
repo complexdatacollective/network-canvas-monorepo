@@ -97,6 +97,32 @@ describe('ActionToolbarProvider', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps the trailing page action on screen when the toolbar overflows', () => {
+    const { rerender } = render(
+      <ActionToolbarProvider>
+        <TimelineToolbarController />
+      </ActionToolbarProvider>,
+    );
+    const lane = screen.getByRole('toolbar', { name: 'Timeline actions' });
+    let scrollLeft = 0;
+    Object.defineProperty(lane, 'clientWidth', { get: () => 200 });
+    Object.defineProperty(lane, 'scrollWidth', { get: () => 320 });
+    Object.defineProperty(lane, 'scrollLeft', {
+      get: () => scrollLeft,
+      set: (next: number) => {
+        scrollLeft = next;
+      },
+    });
+
+    rerender(
+      <ActionToolbarProvider>
+        <StageToolbarController />
+      </ActionToolbarProvider>,
+    );
+
+    expect(scrollLeft).toBe(120);
+  });
+
   it('animates the history toolbar into and out of the viewport', async () => {
     const { rerender } = render(
       <ActionToolbarProvider>

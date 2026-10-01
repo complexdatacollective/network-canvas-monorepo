@@ -442,9 +442,7 @@ export function unusableVariableIssue(
   if (typeof variableId !== 'string' || variableId === '') return undefined;
   const variable = allVariables[variableId];
   if (variable === undefined) {
-    return createMessageError(pedigreeMessages.variableGoneRefusal, {
-      attributeName: variableId,
-    });
+    return createMessageError(pedigreeMessages.variableGoneRefusal);
   }
   if (variable.type !== expectedType) {
     return createMessageError(pedigreeMessages.variableTypeChangedRefusal, {

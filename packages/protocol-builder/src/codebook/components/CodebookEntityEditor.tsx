@@ -45,6 +45,8 @@ import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
   documentForNewEntity,
   documentWithEntityProperties,
+  draftRefusalMessage,
+  InvalidCodebookDraftError,
   type CodebookEntityDraft,
 } from '../editing.ts';
 import {
@@ -118,22 +120,29 @@ const messages = defineMessages({
   nameHint: {
     id: 'protocolBuilder.codebookEntity.nameHint',
     defaultMessage:
-      '{entity, select, node {This name identifies the node type in the codebook and exported data.} edge {This name identifies the edge type in the codebook and exported data.} other {This name identifies the ego definition in the codebook and exported data.}}',
+      '{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be "Person", "Place", or "Organization".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be "Friends" or "Works With".} other {This name identifies the ego definition in the codebook and exported data.}}',
     description:
-      'Guidance under the name field, saying where the name is read back. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards.',
+      'Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names and may be translated.',
+  },
+  namePlaceholder: {
+    id: 'protocolBuilder.codebookEntity.namePlaceholder',
+    defaultMessage:
+      '{entity, select, node {Enter a name for this node type...} other {Enter a name for this edge type...}}',
+    description:
+      'Placeholder in the empty name field of the entity editor. entity is node or edge; the ego has no type name.',
   },
   colorLabel: {
     id: 'protocolBuilder.codebookEntity.colorLabel',
-    defaultMessage: 'Protocol color',
+    defaultMessage: '{entity, select, node {Node color} other {Edge color}}',
     description:
-      'Label of the field choosing which position in the protocol’s palette this entity type is drawn in.',
+      'Label of the field choosing the colour this entity type is drawn in. entity is node or edge; the ego has no colour.',
   },
   colorHint: {
     id: 'protocolBuilder.codebookEntity.colorHint',
     defaultMessage:
-      '{entity, select, node {Choose a color reference for this node type.} edge {Choose a color reference for this edge type.} other {Choose a color reference for this ego definition.}}',
+      '{entity, select, node {Choose a color for this node type.} edge {Choose a color for this edge type.} other {Choose a color for this ego definition.}}',
     description:
-      'Guidance under the colour field. entity is node, edge or ego. A colour reference is a position in the protocol’s palette rather than a literal colour.',
+      'Guidance under the colour field. entity is node, edge or ego.',
   },
   colorOutsidePalette: {
     id: 'protocolBuilder.codebookEntity.colorOutsidePalette',
@@ -439,6 +448,9 @@ export function CodebookEntityFields({
             entity: subject.entity,
           })}
           component={InputField}
+          placeholder={intl.formatMessage(messages.namePlaceholder, {
+            entity: subject.entity,
+          })}
           value={stringValue(draft.name)}
           onChange={(value) =>
             onChange(replaceDraftProperty(draft, 'name', value ?? ''))
@@ -453,7 +465,9 @@ export function CodebookEntityFields({
       <Section title={intl.formatMessage(messages.colorSectionTitle)}>
         <UnconnectedField
           name="color"
-          label={intl.formatMessage(messages.colorLabel)}
+          label={intl.formatMessage(messages.colorLabel, {
+            entity: subject.entity,
+          })}
           hint={intl.formatMessage(messages.colorHint, {
             entity: subject.entity,
           })}
@@ -681,12 +695,15 @@ export default function CodebookEntityEditor({
               authoritativeDocument: modeProps.authoritativeDocument,
               draft,
             });
-    } catch {
+    } catch (error: unknown) {
       // Everything the entity schema refuses past `validateFields` is written
       // for whoever reads a log, so the researcher gets the package's own words
       // for a save that did not happen.
       setFailure({
-        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        message:
+          error instanceof InvalidCodebookDraftError
+            ? draftRefusalMessage(error)
+            : codebookRefusalMessage({ kind: 'unexplained' }),
         held: false,
       });
       return;

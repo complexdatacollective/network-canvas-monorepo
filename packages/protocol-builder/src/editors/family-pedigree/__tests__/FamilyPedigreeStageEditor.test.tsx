@@ -7,9 +7,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   inventAttribute,
-  offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
@@ -18,7 +18,6 @@ import {
 } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
-  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
@@ -91,17 +90,6 @@ function variableIdByName(
 }
 
 /**
- * The attributes a picker is currently offering, by their ids.
- *
- * The picker is a trigger and a window, so this opens the window, reads the
- * rows and closes it again — leaving the field exactly as it found it.
- */
-const optionsOf = (
-  harness: StageEditorHarness,
-  name: string,
-): Promise<string[]> => offeredAttributes(harness.user, attributeField(name));
-
-/**
  * Binds one attribute slot, through the window a researcher opens.
  *
  * Awaits the slot's own label first: the slots are mounted by the node type,
@@ -155,18 +143,6 @@ describe('the family pedigree stage editor', () => {
     await expectOpenedAsANewStage('Family Pedigree');
   });
 
-  /**
-   * And the other way round: a stage the interview already holds says where in
-   * it the researcher is. Asked here rather than only in the dispatch suite
-   * because this editor composes the shared heading itself, so dropping it
-   * would leave every other test in this file passing.
-   */
-  it('says where the stage sits in the interview', () => {
-    openFixture();
-
-    expectStatesItsPosition('family-pedigree-1');
-  });
-
   it('claims exactly this interface', () => {
     expect(Object.keys(familyPedigreeStageEditor)).toEqual(['FamilyPedigree']);
   });
@@ -193,7 +169,6 @@ describe('the family pedigree stage editor', () => {
     const harness = openFixture();
 
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Stage name',
       'Pedigree framing',
       'Pedigree boundaries',
       'Family member data',
@@ -464,10 +439,10 @@ describe('a codebook that changes while the pedigree is open', () => {
       },
     });
 
-    await waitFor(async () =>
-      expect(await optionsOf(harness, 'Display label')).toContain(
-        'fm_nickname',
-      ),
+    await awaitOfferedAttributes(
+      harness.user,
+      attributeField('Display label'),
+      (offered) => expect(offered).toContain('fm_nickname'),
     );
     expectStageUntouched(harness);
   });

@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import type { VariablePickerOption } from './VariablePickerField.tsx';
+import type { CreateRowOutcome } from './VariableSpotlight.tsx';
 import VariableSpotlight from './VariableSpotlight.tsx';
 
 const ATTRIBUTES: readonly VariablePickerOption[] = [
@@ -25,8 +28,12 @@ type HostProps = Readonly<{
   canCreate?: boolean;
   /** Names the type already holds, whatever kind of answer they record. */
   namesInUse?: readonly string[];
-  /** What the codebook answers a create with. */
-  outcome?: 'created' | 'refused';
+  /**
+   * What the codebook answers a create with. `editor` is the escalation: a kind
+   * of answer a name cannot finish opens the codebook's own editor and leaves
+   * this window open underneath it, waiting.
+   */
+  outcome?: 'created' | 'refused' | 'editor';
 }>;
 
 /**
@@ -42,6 +49,10 @@ function SpotlightHost({
 }: HostProps) {
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<string | undefined>(undefined);
+  const [editing, setEditing] = useState<string | undefined>(undefined);
+  const answerCreate = useRef<((outcome: CreateRowOutcome) => void) | null>(
+    null,
+  );
 
   return (
     <DialogProvider>
@@ -69,6 +80,12 @@ function SpotlightHost({
                   if (outcome === 'refused') {
                     return { keep: 'The codebook would not take that name.' };
                   }
+                  if (outcome === 'editor') {
+                    setEditing(name);
+                    return new Promise<CreateRowOutcome>((resolve) => {
+                      answerCreate.current = resolve;
+                    });
+                  }
                   setChosen(name);
                   return 'finished' as const;
                 },
@@ -76,6 +93,19 @@ function SpotlightHost({
               }
             : {})}
         />
+        <Dialog
+          open={editing !== undefined}
+          title="Create a new attribute"
+          closeDialog={() => {
+            setEditing(undefined);
+            answerCreate.current?.('correct-the-name');
+          }}
+        >
+          <Paragraph>
+            The codebook asks for everything a name cannot settle, which for an
+            ordinal attribute is the answers it ranks.
+          </Paragraph>
+        </Dialog>
       </div>
     </DialogProvider>
   );
@@ -273,5 +303,110 @@ export const NothingMatches: Story = {
         'No attribute matches what you typed, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.',
       ),
     ).toBeVisible();
+  },
+};
+
+/** Whether `element` starts a stacking context of its own. */
+function startsStackingContext(element: HTMLElement): boolean {
+  const style = getComputedStyle(element);
+  return (
+    (style.position !== 'static' && style.zIndex !== 'auto') ||
+    style.isolation === 'isolate' ||
+    style.transform !== 'none' ||
+    style.filter !== 'none' ||
+    style.opacity !== '1' ||
+    style.mixBlendMode !== 'normal' ||
+    style.contain.includes('paint')
+  );
+}
+
+function nearestCommonAncestor(
+  first: HTMLElement,
+  second: HTMLElement,
+): HTMLElement {
+  for (
+    let above: HTMLElement | null = first;
+    above;
+    above = above.parentElement
+  ) {
+    if (above.contains(second)) return above;
+  }
+  throw new Error('the two popups are not in one tree');
+}
+
+/**
+ * Which of two popups the browser paints last: inside one stacking context,
+ * z-index decides and document order settles a tie.
+ *
+ * Computed rather than hit-tested, because an open dialog makes everything
+ * outside it inert and `elementFromPoint` skips an inert subtree while it is
+ * still painted over the dialog — it answers "the editor" either way.
+ */
+function paintedLast(first: HTMLElement, second: HTMLElement): HTMLElement {
+  const root = nearestCommonAncestor(first, second);
+  for (const popup of [first, second]) {
+    for (
+      let above = popup.parentElement;
+      above !== null && above !== root;
+      above = above.parentElement
+    ) {
+      if (startsStackingContext(above)) {
+        throw new Error(
+          `${above.className} stacks between a popup and their shared root, so z-index and document order no longer decide which of the two is on top`,
+        );
+      }
+    }
+  }
+  const layer = (popup: HTMLElement): number => {
+    const zIndex = getComputedStyle(popup).zIndex;
+    return zIndex === 'auto' ? 0 : Number(zIndex);
+  };
+  if (layer(first) !== layer(second)) {
+    return layer(first) > layer(second) ? first : second;
+  }
+  return first.compareDocumentPosition(second) &
+    Node.DOCUMENT_POSITION_FOLLOWING
+    ? second
+    : first;
+}
+
+function overlaps(first: HTMLElement, second: HTMLElement): boolean {
+  const one = first.getBoundingClientRect();
+  const two = second.getBoundingClientRect();
+  return (
+    Math.min(one.right, two.right) > Math.max(one.left, two.left) &&
+    Math.min(one.bottom, two.bottom) > Math.max(one.top, two.top)
+  );
+}
+
+/**
+ * A kind of answer a name cannot finish opens the codebook's own editor, and
+ * this window waits underneath it — so the editor is the one on top. A z-index
+ * here put the window over every dialog opened after it.
+ */
+export const TheEditorItOpens: Story = {
+  args: { canCreate: true, outcome: 'editor' },
+  play: async ({ canvasElement }) => {
+    const body = within(document.body);
+    const dialog = await openIt(canvasElement);
+    // Read before the editor opens: it marks everything outside itself inert,
+    // and a role query cannot reach the window once it is.
+    const attributeWindow = body.getByRole('dialog', {
+      name: 'Attribute this question records',
+    });
+
+    await userEvent.keyboard('nominated_early');
+    await userEvent.click(
+      dialog.getByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
+    );
+
+    const editor = await body.findByRole('dialog', {
+      name: 'Create a new attribute',
+    });
+    // Both are on screen at once, which is what makes the question a question.
+    await expect(overlaps(attributeWindow, editor)).toBe(true);
+    await expect(paintedLast(attributeWindow, editor)).toBe(editor);
   },
 };

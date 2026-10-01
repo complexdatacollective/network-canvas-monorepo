@@ -1,0 +1,6 @@
+# Everything under /_next/static/ is content-hashed. Netlify's Next plugin
+# would normally mark it immutable, but netlify.toml disables that plugin
+# (NETLIFY_NEXT_PLUGIN_SKIP) and the default makes every font revalidate on
+# every page load.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

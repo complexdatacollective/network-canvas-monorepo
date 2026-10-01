@@ -6,6 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   attributeField,
+  awaitOfferedAttributes,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
@@ -141,8 +142,8 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     // The attribute exists and is of the one type this box can fill in, so its
     // absence below is the stamp's doing and not the type filter's.
     const picker = await quickAddPicker();
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, picker)).toContain('name'),
+    await awaitOfferedAttributes(harness.user, picker, (offered) =>
+      expect(offered).toContain('name'),
     );
     expect(await offeredAttributes(harness.user, picker)).not.toContain(
       'nickname',
@@ -175,10 +176,8 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     addFreeTextVariable(harness, 'nickname');
     // Held by the picker, so the conflict this is about is the live one.
     const picker = await quickAddPicker();
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, picker)).toContain(
-        'nickname',
-      ),
+    await awaitOfferedAttributes(harness.user, picker, (offered) =>
+      expect(offered).toContain('nickname'),
     );
 
     const prompt = await screen.findByRole('button', { name: 'Edit prompt' });

@@ -13,7 +13,7 @@ import {
   inputControlVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx } from '../../utils/cva';
+import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -254,18 +254,22 @@ type ColorPickerFieldProps = CreateFormFieldProps<
   }
 >;
 
-const colorPickerVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  cva({
-    // Overrides `controlVariants`' single-control shape: this group wraps its
-    // swatches over as many rows as it needs, and must be free to shrink with
-    // the field that holds it rather than hold a content-width floor.
-    base: 'w-full min-w-0 flex-wrap justify-start text-wrap',
-  }),
-);
+const colorPickerOwnVariants = cva({
+  // Overrides `controlVariants`' single-control shape: this group wraps its
+  // swatches over as many rows as it needs, and must be free to shrink with
+  // the field that holds it rather than hold a content-width floor.
+  base: 'w-full min-w-0 flex-wrap justify-start text-wrap',
+});
+
+const colorPickerVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    colorPickerOwnVariants,
+  ],
+});
 
 /**
  * A palette of colour swatches, chosen one at a time.

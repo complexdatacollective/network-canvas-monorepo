@@ -5,7 +5,11 @@ import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
 import type { StageSectionStatus } from '../stage-editor-contract.ts';
-import { type SchemaProblem, schemaProblemSentence } from './schemaProblems.ts';
+import {
+  type SchemaProblem,
+  schemaProblemSentence,
+  unattributedProblemSentence,
+} from './schemaProblems.ts';
 
 /**
  * Why a section is not asking for input.
@@ -89,6 +93,7 @@ type SectionRecord = {
 };
 
 const EMPTY_SECTIONS: readonly OutlineSection[] = Object.freeze([]);
+const NO_SENTENCES: readonly string[] = Object.freeze([]);
 const NO_ISSUES: readonly SectionValidationIssue[] = Object.freeze([]);
 const NO_FIELDS: readonly OutlineFieldRegistration[] = Object.freeze([]);
 
@@ -123,15 +128,30 @@ function fieldsInside(
     if (name === null || name === '') continue;
     fields.push({
       name,
-      label:
-        container.querySelector(`[id$="${FIELD_ELEMENT.label}"]`)
-          ?.textContent ?? '',
+      label: labelText(
+        container.querySelector(`[id$="${FIELD_ELEMENT.label}"]`),
+      ),
       required:
         container.querySelector(`[id$="${FIELD_ELEMENT.required}"]`) !== null,
       invalid: container.querySelector('[aria-invalid="true"]') !== null,
     });
   }
   return fields;
+}
+
+function labelText(label: Element | null): string {
+  if (label === null) return '';
+  let text = '';
+  for (const node of label.childNodes) {
+    if (
+      node.nodeType === Node.ELEMENT_NODE &&
+      (node as Element).getAttribute('aria-hidden') === 'true'
+    ) {
+      continue;
+    }
+    text += node.textContent ?? '';
+  }
+  return text.trim();
 }
 
 const sameField = (
@@ -211,6 +231,8 @@ export class SectionOutlineStore {
    */
   private validationIssues: readonly SectionValidationIssue[] = NO_ISSUES;
   private cachedSnapshot: readonly OutlineSection[] = EMPTY_SECTIONS;
+  /** The refusals the last snapshot could pin on no section, as sentences. */
+  private cachedUnattributed: readonly string[] = NO_SENTENCES;
   private cachedVersion = -1;
   private version = 0;
 
@@ -238,7 +260,18 @@ export class SectionOutlineStore {
     }
     this.cachedVersion = this.version;
     this.cachedFields = fields;
-    const issuesBySection = this.attributeIssues(ordered, fields);
+    const { bySection: issuesBySection, unattributed } = this.attributeIssues(
+      ordered,
+      fields,
+    );
+    // Identity kept when the sentences have not moved: a host reads this with
+    // `useSyncExternalStore`, which re-renders on every change of reference.
+    this.cachedUnattributed = sameSentences(
+      this.cachedUnattributed,
+      unattributed,
+    )
+      ? this.cachedUnattributed
+      : Object.freeze(unattributed);
     this.cachedSnapshot = Object.freeze(
       ordered.map((record, index) =>
         Object.freeze({
@@ -255,6 +288,18 @@ export class SectionOutlineStore {
 
   /** Server rendering has no DOM to order by, so the outline starts empty. */
   getServerSnapshot = (): readonly OutlineSection[] => EMPTY_SECTIONS;
+
+  /**
+   * What the protocol refused about this stage that no section on screen
+   * answers for, as sentences a host can read out. Derived by the same pass
+   * that files the rest under their sections, so a refusal is in exactly one
+   * of the two lists.
+   */
+  getUnattributedSnapshot = (): readonly string[] => {
+    // Asking for the sections is what re-reads the page and re-attributes.
+    this.getSnapshot();
+    return this.cachedUnattributed;
+  };
 
   registerSection(
     section: Readonly<{ id: string; title: string }>,
@@ -301,13 +346,6 @@ export class SectionOutlineStore {
     this.changed();
   }
 
-  setSectionElement(id: string, element: HTMLElement | null): void {
-    const record = this.sections.get(id);
-    if (!record || record.element === element) return;
-    record.element = element;
-    this.changed();
-  }
-
   setSectionAvailability(id: string, availability: SectionAvailability): void {
     const record = this.sections.get(id);
     if (!record || record.availability === availability) return;
@@ -340,9 +378,10 @@ export class SectionOutlineStore {
    * edits the exact value is preferred over one that merely encloses it, and
    * ties go to whichever section comes first on the page.
    *
-   * An issue no mounted field reaches is left unattributed rather than pinned
-   * somewhere arbitrary: nothing on this page can be pointed at for it, and it
-   * is still reported above the form when the save is refused.
+   * An issue no mounted field reaches goes to the stage-level list
+   * `getUnattributedSnapshot` publishes, where a host reads it beside the
+   * sections. Dropping it was the same as accepting it: the save is refused
+   * either way, with nothing on screen to say why.
    *
    * The field that claims an issue also decides whether it is a problem at all.
    * A schema that refuses a stage because a value is MISSING is saying what a
@@ -375,9 +414,13 @@ export class SectionOutlineStore {
   private attributeIssues(
     ordered: readonly SectionRecord[],
     fieldsBySection: readonly (readonly OutlineFieldRegistration[])[],
-  ): Map<string, OutlineSectionIssue[]> {
+  ): Readonly<{
+    bySection: Map<string, OutlineSectionIssue[]>;
+    unattributed: string[];
+  }> {
     const bySection = new Map<string, OutlineSectionIssue[]>();
-    if (this.validationIssues.length === 0) return bySection;
+    const unattributed: string[] = [];
+    if (this.validationIssues.length === 0) return { bySection, unattributed };
 
     const registered = ordered.flatMap((record, index) =>
       (fieldsBySection[index] ?? []).flatMap((field) => {
@@ -401,7 +444,10 @@ export class SectionOutlineStore {
         depth = shared;
         owner = field;
       }
-      if (owner === undefined) continue;
+      if (owner === undefined) {
+        unattributed.push(unattributedProblemSentence(issue));
+        continue;
+      }
       if (
         issue.absent &&
         owner.field.required &&
@@ -427,7 +473,7 @@ export class SectionOutlineStore {
       if (claimed === undefined) bySection.set(owner.sectionId, [problem]);
       else claimed.push(problem);
     }
-    return bySection;
+    return { bySection, unattributed };
   }
 
   private sameFields(
@@ -455,13 +501,20 @@ export class SectionOutlineStore {
   }
 
   private orderedRecords(): SectionRecord[] {
-    return [...this.sections.values()].toSorted(compareByDocumentPosition);
+    const records = [...this.sections.values()];
+    for (const record of records) locate(record);
+    return records.toSorted(compareByDocumentPosition);
   }
 
   private changed(): void {
     this.version += 1;
     for (const listener of this.listeners) listener();
   }
+}
+
+function locate(record: SectionRecord): void {
+  if (record.element?.isConnected === true) return;
+  record.element = document.getElementById(record.id);
 }
 
 /**
@@ -517,4 +570,8 @@ export function sectionOutlineStatus(
   }
 
   return incomplete ? 'incomplete' : 'complete';
+}
+
+function sameSentences(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
 }

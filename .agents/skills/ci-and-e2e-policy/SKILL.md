@@ -108,7 +108,8 @@ unrecognised paths, or unreadable history.
 Generated release branches (`changeset-release/*`) keep their release-aware
 selection: only suites whose subjects ship in that release lane run. The normal
 Changesets lane (`changeset-release/main`) runs all three because it versions
-libraries, Architect, and Interviewer; the Documentation, Website, and Studio
+libraries, Architect, and Interviewer; the Website lane runs Interview because
+its protocol previews ship `@codaco/interview`; the Documentation and Studio
 lanes run none. The mapping and feature-PR classifier live in
 `scripts/ci/release-e2e-policy.mjs`, with tests derived from the real package.json
 dependency graph. The required `quality` check requires exactly the suites the

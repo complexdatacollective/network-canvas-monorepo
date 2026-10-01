@@ -53,7 +53,6 @@ describe('the narrative pedigree sections, read in Spanish', () => {
       ),
     );
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Nombre de la etapa',
       'Origen de la genealogía',
       'Asignaciones de enfermedades',
       'Estados de riesgo',
@@ -84,7 +83,7 @@ describe('the narrative pedigree sections, read in Spanish', () => {
     expect(
       screen.getByRole('combobox', { name: 'Etapa de origen' }),
     ).toHaveTextContent(
-      'a-pedigree-that-was-deleted — esta etapa ya no se puede usar',
+      'a-pedigree-that-was-deleted: esta etapa ya no se puede usar',
     );
   });
 

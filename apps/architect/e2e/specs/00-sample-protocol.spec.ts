@@ -13,7 +13,6 @@ import { installMapboxMocks } from '../fixtures/mapbox-mocks.js';
 import { emptyProtocol, seedProtocol } from '../fixtures/seed.js';
 import {
   assertBuiltProtocolInvariants,
-  dropForcedRequiredValidation,
   normalizeProtocol,
 } from '../helpers/normalize-protocol.js';
 import { readProtocolJson, readStageJson } from '../helpers/read-store.js';
@@ -366,7 +365,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(editor.section('Form configuration'), {
       variableName: 'participant_consent',
       promptText: s('stages', 3, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'Yes or no buttons',
+      inputControl: 'Boolean Choice',
       booleanOptions: {
         // Canonical: both options carry explicit `negative` booleans.
         positive: {
@@ -402,42 +401,42 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'first_name',
       promptText: prompt(0),
-      inputControl: 'Text input',
+      inputControl: 'Text Input',
       required: true,
     });
     await addConfiguredFormField(form, {
       variableName: 'last_name',
       promptText: prompt(1),
-      inputControl: 'Text input',
+      inputControl: 'Text Input',
       required: true,
     });
     await addConfiguredFormField(form, {
       variableName: 'dob',
       promptText: prompt(2),
-      inputControl: 'Date picker',
+      inputControl: 'Date Picker',
     });
     await addConfiguredFormField(form, {
       variableName: 'languages_spoken',
       promptText: prompt(3),
-      inputControl: 'Toggle button group',
+      inputControl: 'Toggle Button Group',
       options: optionRows(...EGO, V_LANGUAGES, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'existing_software',
       promptText: prompt(4),
-      inputControl: 'Radio group',
+      inputControl: 'Radio Group',
       options: optionRows(...EGO, V_EXISTING_SOFTWARE, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'research_support',
       promptText: prompt(5),
-      inputControl: 'Likert scale',
+      inputControl: 'Likert Scale',
       options: optionRows(...EGO, V_RESEARCH_SUPPORT, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'operation_pain',
       promptText: prompt(6),
-      inputControl: 'Visual analogue scale',
+      inputControl: 'Visual Analog Scale',
       scalarParameters: {
         minLabel: s(...EGO, V_OPERATION_PAIN, 'parameters', 'minLabel'),
         maxLabel: s(...EGO, V_OPERATION_PAIN, 'parameters', 'maxLabel'),
@@ -446,13 +445,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'preferred_contact_method',
       promptText: prompt(7),
-      inputControl: 'Checkbox group',
+      inputControl: 'Checkbox Group',
       options: optionRows(...EGO, V_PREFERRED_CONTACT, 'options'),
     });
     await addConfiguredFormField(form, {
       variableName: 'other_info',
       promptText: prompt(8),
-      inputControl: 'Text area',
+      inputControl: 'Text Area',
     });
 
     await configureSkipLogic(editor, page, {
@@ -493,15 +492,8 @@ test.describe.serial('sample protocol built from scratch', () => {
     await selectOrCreateNodeType(page, 'Person');
     // Person has no text attribute yet, so this creates `name` through the
     // quick-add picker's own name box. An attribute created there is born
-    // `{ required: true }` — quick add's box is the only thing the participant
-    // gives — while canonical Person `name` is `{ name, type: 'text' }`, so
-    // the nested Validation section beneath the picker is switched off to
-    // clear it. `dropForcedRequiredValidation` deliberately does NOT forgive
-    // this one: the section makes it removable, so a requirement left on
-    // `name` is a real difference.
-    await selectOrCreateQuickAddVariable(editor, 'name', {
-      clearRequiredValidation: true,
-    });
+    // `{ required: true }`, matching canonical Person `name`.
+    await selectOrCreateQuickAddVariable(editor, 'name');
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
@@ -582,13 +574,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'name',
       promptText: s('stages', 10, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'Text input',
+      inputControl: 'Text Input',
       required: true,
     });
     await addConfiguredFormField(form, {
       variableName: 'last_visit',
       promptText: s('stages', 10, 'form', 'fields', 1, 'prompt').trim(),
-      inputControl: 'Date picker',
+      inputControl: 'Date Picker',
       dateMin: s(
         'codebook',
         'node',
@@ -602,7 +594,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'visit_purpose',
       promptText: s('stages', 10, 'form', 'fields', 2, 'prompt').trim(),
-      inputControl: 'Text area',
+      inputControl: 'Text Area',
     });
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
@@ -699,7 +691,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'visited',
       promptText: s('stages', 14, 'form', 'fields', 0, 'prompt').trim(),
-      inputControl: 'Yes or no buttons',
+      inputControl: 'Boolean Choice',
       booleanOptions: {
         // Canonical: option one has NO negative key; option two carries an
         // explicit `negative: false`.
@@ -734,7 +726,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await addConfiguredFormField(form, {
       variableName: 'overall_review',
       promptText: s('stages', 14, 'form', 'fields', 1, 'prompt').trim(),
-      inputControl: 'Likert scale',
+      inputControl: 'Likert Scale',
       options: optionRows(
         'codebook',
         'node',
@@ -973,6 +965,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         variableName: 'group_other',
         optionLabel: s('stages', 25, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 25, 'prompts', 0, 'otherVariablePrompt'),
+        required: true,
       });
     });
     const stage = await saveStage(25, 'CategoricalBin');
@@ -1019,6 +1012,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         variableName: 'social_network_research_relationship_other',
         optionLabel: s('stages', 27, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 27, 'prompts', 0, 'otherVariablePrompt'),
+        required: true,
       });
     });
     await configureStageFilter(editor, {
@@ -1105,8 +1099,6 @@ test.describe.serial('sample protocol built from scratch', () => {
 
     const normalizedBuilt = normalizeProtocol(built);
     const normalizedCanonical = normalizeProtocol(canonicalRaw);
-    expect(
-      dropForcedRequiredValidation(normalizedBuilt, normalizedCanonical),
-    ).toEqual(normalizedCanonical);
+    expect(normalizedBuilt).toEqual(normalizedCanonical);
   });
 });

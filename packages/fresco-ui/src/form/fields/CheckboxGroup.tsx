@@ -13,24 +13,28 @@ import {
   orientationVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import Checkbox from './Checkbox';
 
+const checkboxGroupOwnVariants = cva({
+  base: 'items-start',
+});
+
 // Compose fieldset wrapper variants
-const checkboxGroupComposedVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  interactiveStateVariants,
-  orientationVariants,
-  cva({
-    base: 'items-start',
-  }),
-);
+const checkboxGroupComposedVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    interactiveStateVariants,
+    orientationVariants,
+    checkboxGroupOwnVariants,
+  ],
+});
 
 type CheckboxOption = {
   value: string | number;

@@ -22,39 +22,12 @@ export const INVENTED_TYPE_NOTICE = defineMessages({
 }).newTypeNotice;
 
 /**
- * Why a kind of answer a name cannot finish is refused at the row's own save.
- *
- * Shared by both inventing rows for the reason the notice above is: one rule,
- * `needsCodebookEditorToCreate`, decides which inventions come here, and a row
- * that phrased the refusal for itself could say something the rule does not
- * mean. Each row files them against the control that DECIDED the kind, which
- * differs: the shared row's kind-of-answer select, the composer's input
- * control.
- */
-export const CREATE_FIRST_REFUSALS = defineMessages({
-  createWithValuesFirst: {
-    id: 'protocolBuilder.formFields.createWithValuesFirst',
-    defaultMessage:
-      'Create this attribute and the values it offers before adding the field that collects it.',
-    description:
-      'Refusal shown under the control that decided the kind of answer when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone.',
-  },
-  createWithSettingsFirst: {
-    id: 'protocolBuilder.formFields.createWithSettingsFirst',
-    defaultMessage:
-      'Create this attribute and what it accepts before adding the field that collects it.',
-    description:
-      'The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means.',
-  },
-});
-
-/**
  * What a form row holds while the attribute it collects is being invented.
  *
  * The picker's create row takes the name the researcher searched for and
- * writes this here, because the attribute cannot be created yet: what kind of
- * answer it holds is the next question, and which control collects it the one
- * after that, and the codebook refuses an attribute without them. So the row
+ * writes this here, because the attribute cannot be created yet: which control
+ * collects it is the next question, and the kind of answer it holds follows
+ * from that, and the codebook refuses an attribute without them. So the row
  * says "an attribute I am still making" until its own save makes it — which is
  * what Architect does too (`Form/fieldCommit.ts` creates the attribute as the
  * row commits). It is never written to the protocol: each family's own commit
@@ -71,9 +44,8 @@ export const CREATE_FIRST_REFUSALS = defineMessages({
  * `#` is outside the alphabet, so no attribute can ever be called this.
  *
  * Its own module because both form families invent: the shared form-fields
- * row, where the kind of answer is asked outright, and the network composer's,
- * where it follows from the input control. One sentinel and one pair of keys,
- * so a row of either shape is recognised as inventing by the same question.
+ * row and the network composer's. One sentinel and one pair of keys, so a row
+ * of either shape is recognised as inventing by the same question.
  */
 export const NEW_VARIABLE = '#create-new-attribute';
 

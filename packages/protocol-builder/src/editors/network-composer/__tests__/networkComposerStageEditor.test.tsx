@@ -10,7 +10,6 @@ import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
-  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import {
@@ -46,17 +45,6 @@ describe('the network composer stage editor', () => {
     });
 
     await expectOpenedAsANewStage('Network Composer');
-  });
-
-  /**
-   * And the other way round: a stage the interview already holds says where in
-   * it the researcher is. Asked here because this editor composes the shared
-   * heading itself, so dropping it would leave every other case passing.
-   */
-  it('says where the stage sits in the interview', () => {
-    openFixture();
-
-    expectStatesItsPosition('network-composer-1');
   });
 
   /**
@@ -133,13 +121,7 @@ describe('the network composer stage editor', () => {
     const name = await screen.findByRole('textbox', { name: 'Stage name' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Build');
-    // The template's own automatic-layout default is a dependent the picker
-    // can see, so the first node type chosen for this stage still asks before
-    // it throws that default away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Choose the node type' }),
-    );
     await screen.findByText(
       'Create or select an attribute for the quick-add form',
       { selector: 'label' },
@@ -154,10 +136,9 @@ describe('the network composer stage editor', () => {
       attributeField('Create or select an attribute to store node coordinates'),
       'layout',
     );
-    await harness.user.type(
+    expect(
       screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
-      '2',
-    );
+    ).toHaveDisplayValue('4');
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
@@ -165,7 +146,7 @@ describe('the network composer stage editor', () => {
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',
-      background: { concentricCircles: 2 },
+      background: { concentricCircles: 4 },
       behaviours: { automaticLayout: true },
     });
   });
@@ -286,7 +267,7 @@ describe('the network composer stage editor', () => {
     // not finished registering. The connection forms add a ninth; automatic
     // layout is a group inside the node configuration rather than a section of
     // its own, as released Architect had it, so it adds none.
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
 
     const saved = await harness.roundTrip({ unowned: [] });
     // Read back as well as compared, so a round trip that agreed about an

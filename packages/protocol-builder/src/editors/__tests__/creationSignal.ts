@@ -26,16 +26,16 @@ const stageNameInput = (): HTMLInputElement =>
  * family that forgot to pass one cannot be the reason a researcher sees the
  * wrong thing.
  *
- * - The name is PROPOSED. A stage nobody has named yet would otherwise open on
- *   an empty required field, which reads as an error before the researcher has
- *   done anything.
- * - There is NO position line. A stage the interview does not contain has no
- *   place in it to report, and a guessed one would tell the researcher they
- *   are editing stage 4 of an interview with no fourth stage.
+ * The name is PROPOSED: a stage nobody has named yet would otherwise open on
+ * an empty required field, which reads as an error before the researcher has
+ * done anything. The proposal is the interface's own name, refined by what the
+ * stage collects, so an editor that stopped reading the draft could not pass.
  *
- * The second is asserted as an absence, so it is only worth something while
- * something proves the line appears otherwise — which is what
- * `expectStatesItsPosition` below is for.
+ * Where the stage SITS in the interview is no longer asked here. A stage the
+ * interview does not contain has no place in it to report — but nothing in
+ * this package draws a position line at all now: the stage's title is the
+ * host's, and Architect's own `StageTitle` is where the line, and its absence
+ * for a stage being created, are asked about.
  */
 export async function expectOpenedAsANewStage(
   interfaceName: string,
@@ -47,31 +47,4 @@ export async function expectOpenedAsANewStage(
     stageNameInput().value,
     `a new ${interfaceName} stage opened on a name that does not describe it`,
   ).toMatch(new RegExp(`^${interfaceName}`));
-  expect(screen.queryByText(/^Stage \d+ of \d+$/)).not.toBeInTheDocument();
-}
-
-/**
- * What an editor owes a stage the interview already holds: its place in it.
- *
- * The other half of the absence above, and asked of each editor separately
- * because each composes the shared heading itself — an editor that left the
- * heading out would still dispatch to the right component, still open on the
- * right sections, and simply stop telling the researcher which stage they are
- * looking at.
- *
- * The number is derived from the fixture's own stage order rather than written
- * down here, so an editor that stopped reading the protocol and printed
- * something fixed could not pass.
- */
-export function expectStatesItsPosition(stageId: string): void {
-  const order = fixtureStageIds();
-  const index = order.indexOf(stageId);
-  if (index === -1) {
-    throw new Error(
-      `The all-interfaces protocol has no "${stageId}" stage, so there is no position to read for it.`,
-    );
-  }
-  expect(
-    screen.getByText(`Stage ${index + 1} of ${order.length}`),
-  ).toBeInTheDocument();
 }

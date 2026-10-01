@@ -2,12 +2,10 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import StageNameSection from '../../stage-heading/StageNameSection.tsx';
 import IntroductionSection from '../IntroductionSection.tsx';
 
 const introduction = (
   <>
-    <StageNameSection />
     <IntroductionSection />
   </>
 );
@@ -33,8 +31,8 @@ describe('the introduction a participant reads before a task', () => {
       sections: introduction,
     });
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
-    expect(harness.outline()[1]).toEqual({
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
       title: 'Task introduction',
       state: 'Finished',
     });
@@ -64,7 +62,7 @@ describe('the introduction a participant reads before a task', () => {
 
     await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
     await waitFor(() =>
-      expect(harness.outline()[1]?.state).toBe('Not finished'),
+      expect(harness.outline()[0]?.state).toBe('Not finished'),
     );
 
     expect(await harness.submit()).toBeNull();

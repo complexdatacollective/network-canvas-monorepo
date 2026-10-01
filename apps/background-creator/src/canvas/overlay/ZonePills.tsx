@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactElement } from 'react';
 
+import { Badge } from '@codaco/fresco-ui/Badge';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { zonesOf } from '~/geometry/zones';
 import { elementBounds } from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
@@ -41,23 +43,28 @@ export function ZonePills(): ReactElement | null {
           pointerEvents: interactive ? 'auto' : 'none',
         };
         return (
-          <button
+          <Badge
             key={zone.id}
-            type="button"
-            aria-hidden="true"
-            tabIndex={-1}
-            data-zone-id={zone.id}
-            {...{ [ZONE_PILL_ATTR]: '' }}
-            className={`elevation-low absolute max-w-[40%] truncate rounded-full border px-2 py-0.5 text-xs ${
-              selected
-                ? 'border-selected bg-selected text-selected-contrast'
-                : 'border-outline bg-surface text-surface-contrast'
-            }`}
+            render={
+              <button
+                type="button"
+                aria-hidden="true"
+                tabIndex={-1}
+                data-zone-id={zone.id}
+                {...{ [ZONE_PILL_ATTR]: '' }}
+                onClick={() => select({ id: zone.id })}
+              />
+            }
             style={style}
-            onClick={() => select({ id: zone.id })}
+            className={cx(
+              'elevation-low absolute max-w-[40%] min-w-0',
+              selected
+                ? '[--badge-color:var(--selected)]'
+                : 'border-outline [--badge-color:var(--surface)]',
+            )}
           >
-            {label}
-          </button>
+            <span className="truncate">{label}</span>
+          </Badge>
         );
       })}
     </div>

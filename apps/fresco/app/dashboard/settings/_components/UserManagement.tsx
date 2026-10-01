@@ -498,7 +498,7 @@ function makeUserColumns(
     {
       id: 'username',
       accessorKey: 'username',
-      sortingFn: 'text',
+      sortFn: 'text',
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
@@ -1086,6 +1086,7 @@ export default function UserManagement({
             size="sm"
             color="primary"
             icon={<Plus />}
+            className="shrink-0"
           >
             {intl.formatMessage(messages.addUser)}
           </Button>

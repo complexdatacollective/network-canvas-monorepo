@@ -1,7 +1,6 @@
 import { background } from '../../sections/background/background.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { canvasPermissions } from './sections/permissions/canvasPermissions.tsx';
@@ -22,7 +21,6 @@ import { narrativePresets } from './sections/presets/narrativePresets.tsx';
  * drawing and repositioning, which is where Architect put it.
  */
 export const narrativeStageEditor = defineStageEditor('Narrative', [
-  stageHeading({ documentation: 'narrative' }),
   subjectPicker({ entity: 'node', filter: true }),
   narrativePresets(),
   background(),

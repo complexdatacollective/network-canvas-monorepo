@@ -40,7 +40,6 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     stageId: 'name-generator-1',
     editor: nameGeneratorStageEditor,
     sections: [
-      'Stage name',
       'Node setup',
       'Form configuration',
       'Prompt collection',
@@ -56,7 +55,6 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     stageId: 'family-pedigree-1',
     editor: familyPedigreeStageEditor,
     sections: [
-      'Stage name',
       'Pedigree framing',
       'Pedigree boundaries',
       'Family member data',

@@ -12,7 +12,7 @@ import {
   stateVariants,
   textSizeVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -22,49 +22,54 @@ import { getInputState } from '../utils/getInputState';
 // inherited size, and a size class directly on the input would be
 // displaced by that rule instead of respected. See InputField for the
 // same wrapper-owns-size convention.
-const segmentGroupVariants = compose(
-  textSizeVariants,
-  cva({
-    base: cx('flex max-w-full min-w-0 items-center'),
-    variants: {
-      size: {
-        sm: 'gap-1.5',
-        md: 'gap-2',
-        lg: 'gap-2.5',
-        xl: 'gap-3',
-      },
+const segmentGroupOwnVariants = cva({
+  base: cx('flex max-w-full min-w-0 items-center'),
+  variants: {
+    size: {
+      sm: 'gap-1.5',
+      md: 'gap-2',
+      lg: 'gap-2.5',
+      xl: 'gap-3',
     },
-    defaultVariants: {
-      size: 'md',
-    },
-  }),
-);
+  },
+  defaultVariants: {
+    size: 'md',
+  },
+});
 
-const segmentVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  interactiveStateVariants,
-  cva({
-    base: cx(
-      'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
-      '[font-size:inherit]', // Size comes from segmentGroupVariants on the wrapper
-      'focusable',
-      'placeholder:text-input-contrast/30',
-    ),
-    variants: {
-      size: {
-        sm: 'size-10',
-        md: 'size-12',
-        lg: 'size-13',
-        xl: 'size-14',
-      },
+const segmentGroupVariants = cva({
+  composes: [textSizeVariants, segmentGroupOwnVariants],
+});
+
+const segmentOwnVariants = cva({
+  base: cx(
+    'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
+    '[font-size:inherit]', // Size comes from segmentGroupVariants on the wrapper
+    'focusable',
+    'placeholder:text-input-contrast/30',
+  ),
+  variants: {
+    size: {
+      sm: 'size-10',
+      md: 'size-12',
+      lg: 'size-13',
+      xl: 'size-14',
     },
-    defaultVariants: {
-      size: 'md',
-    },
-  }),
-);
+  },
+  defaultVariants: {
+    size: 'md',
+  },
+});
+
+const segmentVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    interactiveStateVariants,
+    segmentOwnVariants,
+  ],
+});
 
 const separatorVariants = cva({
   base: cx('text-input-contrast/30 font-bold select-none'),

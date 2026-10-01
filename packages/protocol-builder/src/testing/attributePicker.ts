@@ -259,6 +259,32 @@ export async function offeredAttributes(
   return offered;
 }
 
+/**
+ * The attributes this picker offers, read once they are the ones the caller is
+ * waiting for. Leaves the window as it found it: closed.
+ *
+ * The window is opened ONCE and the list inside it watched, which is what a
+ * researcher sees as a revision lands. A `waitFor` around `offeredAttributes`
+ * instead opens, reads and closes the window on every attempt — a quarter of a
+ * second of work per turn on an idle machine, and an order of magnitude more
+ * on a loaded CI runner, where the wait then spends its whole budget on the
+ * first attempt and fails having never waited for anything.
+ */
+export async function awaitOfferedAttributes(
+  user: HarnessUser,
+  field: HTMLElement,
+  areRight: (offered: string[]) => void,
+): Promise<string[]> {
+  const dialog = await openAttributePicker(user, field);
+  let offered: string[] = [];
+  await waitFor(() => {
+    offered = readOfferedIds(dialog);
+    areRight(offered);
+  });
+  await closeAttributePicker(user);
+  return offered;
+}
+
 /** Dismisses the open window, as Escape does. */
 export async function closeAttributePicker(user: HarnessUser): Promise<void> {
   await user.keyboard('{Escape}');

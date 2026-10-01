@@ -18,7 +18,7 @@ import {
   NATIVE_LINK_LABEL_CLASS_NAME,
   NATIVE_LINK_ROOT_CLASS_NAME,
 } from './styles/nativeLinkStyles';
-import { compose, cva, cx, type VariantProps } from './utils/cva';
+import { cva, cx, type VariantProps } from './utils/cva';
 
 const buttonSpecificVariants = cva({
   base: cx(
@@ -235,7 +235,11 @@ const buttonSpecificVariants = cva({
   ],
 });
 
-const buttonVariants = compose(
+// Shared with `iconButtonVariants` below — listing these once and spreading
+// them into both `composes` lists keeps the two from drifting apart as
+// base-button variants change. `as const` keeps the tuple type `composes`
+// needs to infer every composed variant.
+const buttonBaseVariants = [
   heightVariants,
   textSizeVariants,
   proportionalLucideIconVariants,
@@ -243,7 +247,9 @@ const buttonVariants = compose(
   inlineSpacingVariants,
   wrapperPaddingVariants,
   buttonSpecificVariants,
-);
+] as const;
+
+const buttonVariants = cva({ composes: [...buttonBaseVariants] });
 
 type BaseButtonProps = {
   variant?: VariantProps<typeof buttonVariants>['variant'];
@@ -402,21 +408,28 @@ type IconButtonProps = Omit<
       | 'accent';
   };
 
-const iconButtonVariants = compose(
-  buttonVariants,
-  // The width is stated explicitly per size (squareSizeVariants) rather than
-  // left to `aspect-square` × height: shipped Safari computes 0 for a flex
-  // item's ratio-derived width inside nested flex rows, collapsing the
-  // control to nothing. The ratio stays as intent (and covers non-flex
-  // hosts); the explicit width is what every engine honours.
-  squareSizeVariants,
-  cva({
-    // `shrink-0` restores the floor Button gives up: an icon button's width
-    // is fixed, so letting a crowded flex row squash it would squash the
-    // target itself, not a label.
-    base: 'aspect-square shrink-0 justify-center rounded-full p-0!',
-  }),
-);
+const iconButtonBaseVariants = cva({
+  // `shrink-0` restores the floor Button gives up: an icon button's width
+  // is fixed, so letting a crowded flex row squash it would squash the
+  // target itself, not a label.
+  base: 'aspect-square shrink-0 justify-center rounded-full p-0!',
+});
+
+// `buttonBaseVariants` is spread in again here rather than composing
+// `buttonVariants` itself, which `cx`'s tailwind-merge pass resolves
+// identically.
+const iconButtonVariants = cva({
+  composes: [
+    ...buttonBaseVariants,
+    // The width is stated explicitly per size (squareSizeVariants) rather
+    // than left to `aspect-square` × height: shipped Safari computes 0 for a
+    // flex item's ratio-derived width inside nested flex rows, collapsing the
+    // control to nothing. The ratio stays as intent (and covers non-flex
+    // hosts); the explicit width is what every engine honours.
+    squareSizeVariants,
+    iconButtonBaseVariants,
+  ],
+});
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   (

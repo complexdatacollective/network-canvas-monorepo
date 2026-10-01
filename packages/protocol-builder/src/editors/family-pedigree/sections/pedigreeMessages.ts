@@ -739,9 +739,9 @@ export const pedigreeMessages = defineMessages({
   variableGoneRefusal: {
     id: 'protocolBuilder.pedigree.variableGoneRefusal',
     defaultMessage:
-      '"{attributeName}" is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
+      'This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.',
     description:
-      'Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. attributeName is the codebook name of the attribute, or its stored identifier when there is no definition left to take a name from; neither is translated.',
+      'Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. The attribute is not named, because once it is deleted only its internal identifier is left.',
   },
   variableTypeChangedRefusal: {
     id: 'protocolBuilder.pedigree.variableTypeChangedRefusal',

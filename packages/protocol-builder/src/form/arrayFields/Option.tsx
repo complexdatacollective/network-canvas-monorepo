@@ -328,7 +328,6 @@ export default function Option({
         <IconButton
           icon={<Check />}
           aria-label={intl.formatMessage(messages.finishEditing)}
-          size="lg"
           color="primary"
           disabled={interactionDisabled}
           onClick={handleFinishEditing}

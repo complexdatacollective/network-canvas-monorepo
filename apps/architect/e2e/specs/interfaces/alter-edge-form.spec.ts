@@ -37,7 +37,7 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
-    inputControl: 'Text input',
+    inputControl: 'Text Input',
   });
 
   await editor.expectNoIssues();

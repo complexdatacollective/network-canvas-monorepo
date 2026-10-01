@@ -1171,6 +1171,14 @@
     "defaultMessage": "Connections",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
   },
+  "architect.home.demoSubtitle.dyadCensus": {
+    "defaultMessage": "Dyad Census",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.egoForm": {
+    "defaultMessage": "Ego Form",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
   "architect.home.demoSubtitle.information": {
     "defaultMessage": "Information",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
@@ -1185,6 +1193,18 @@
   },
   "architect.home.demoSubtitle.ordinalBin": {
     "defaultMessage": "Ordinal Bin",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.quickAdd": {
+    "defaultMessage": "Quick Add",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.roster": {
+    "defaultMessage": "Roster",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.tieStrength": {
+    "defaultMessage": "Tie Strength",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
   },
   "architect.home.home.architectIsTheProtocolDesignerFor": {
@@ -1387,10 +1407,6 @@
     "defaultMessage": "Your protocols are saved only on this device. They are never uploaded to a server.",
     "description": "Visible text in components / Home / LibraryPanel."
   },
-  "architect.home.timelineScript.config.categoricalBin": {
-    "defaultMessage": "Categorical Bin",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.closeOut": {
     "defaultMessage": "Close out",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
@@ -1423,24 +1439,8 @@
     "defaultMessage": "Group membership",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
-  "architect.home.timelineScript.config.information": {
-    "defaultMessage": "Information",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.keyMoments": {
     "defaultMessage": "Key moments",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.nameGenerator": {
-    "defaultMessage": "Name Generator",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.narrative": {
-    "defaultMessage": "Narrative",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.ordinalBin": {
-    "defaultMessage": "Ordinal Bin",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
   "architect.home.timelineScript.config.relationshipType": {
@@ -1473,6 +1473,10 @@
   },
   "architect.home.timelineScript.config.welcome": {
     "defaultMessage": "Welcome",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.whoKnowsWhom": {
+    "defaultMessage": "Who knows whom",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
   "architect.home.transitMap.protocolTimeline": {
@@ -1638,30 +1642,6 @@
   "architect.jsonPreviewOverlay.copy": {
     "defaultMessage": "Copy",
     "description": "Visible text in components / JsonPreviewOverlay."
-  },
-  "architect.language.automatic": {
-    "defaultMessage": "Automatic (browser language)",
-    "description": "Language choice that follows browser preferences instead of a fixed language."
-  },
-  "architect.language.failed": {
-    "defaultMessage": "Architect is using this language, but could not save the preference on this device. Choose it again on your next visit.",
-    "description": "Announced when browser storage blocks persistence; the local choice still applies."
-  },
-  "architect.language.hint": {
-    "defaultMessage": "Choose the language for Architect on this device. Automatic follows your browser language. Protocol content stays unchanged. Preview controls use this language unless you select a different one in the preview menu.",
-    "description": "Device language guidance: Automatic follows browser preferences; authored protocol content is preserved; built-in preview controls inherit this choice unless the full preview menu selects an override."
-  },
-  "architect.language.label": {
-    "defaultMessage": "Architect language",
-    "description": "Label of the app interface language selector."
-  },
-  "architect.language.saved": {
-    "defaultMessage": "Language saved on this device.",
-    "description": "Announced after the language preference is persisted successfully."
-  },
-  "architect.language.title": {
-    "defaultMessage": "Language settings",
-    "description": "Heading and accessible name for the app language settings dialog."
   },
   "architect.library.metadata.justNow": {
     "defaultMessage": "< 1 min ago",
@@ -1965,6 +1945,10 @@
   },
   "architect.projectNav.navShell.mobileNavigation": {
     "defaultMessage": "Mobile navigation",
+    "description": "The aria-label text in components / ProjectNav / NavShell."
+  },
+  "architect.projectNav.navShell.navigation": {
+    "defaultMessage": "Main navigation",
     "description": "The aria-label text in components / ProjectNav / NavShell."
   },
   "architect.projectNav.navShell.openMenu": {
@@ -2562,6 +2546,14 @@
   "architect.stageEditor.stageEditorPage.otherTab": {
     "defaultMessage": "Another tab",
     "description": "What an editor calls the browser tab that holds the saved copy of this protocol, when it is not this one. Read as, for example, “Another tab is editing this stage”."
+  },
+  "architect.stageEditor.stageTitle.documentation": {
+    "defaultMessage": "Documentation",
+    "description": "Link beside the name of the stage being edited, to the documentation for this type of interview interface."
+  },
+  "architect.stageEditor.stageTitle.position": {
+    "defaultMessage": "Stage {index, number} of {total, number}",
+    "description": "Where the stage being edited sits in the interview, shown above its name. index is one-based. A stage is one step of an interview."
   },
   "architect.storageUnavailableBanner.downloadFailed": {
     "defaultMessage": "Download failed",

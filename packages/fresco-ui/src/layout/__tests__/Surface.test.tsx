@@ -245,3 +245,106 @@ describe('SurfaceDepthReset', () => {
     expect(getSurface('reset-child').className).not.toContain('surface-accent');
   });
 });
+
+describe('Surface link colour', () => {
+  const LINK_RESET = '[--link:var(--surface-link)]';
+  const ACCENT_LINK = '[--link:var(--surface-accent-link)]';
+
+  it('leaves an inherited link colour alone on a default Surface outside an accent Surface', () => {
+    render(
+      <div className="[--link:var(--accent-contrast)]">
+        <Surface data-testid="top">
+          <Surface data-testid="nested" />
+        </Surface>
+      </div>,
+    );
+
+    for (const id of ['top', 'nested']) {
+      expect(getSurface(id).className).not.toContain('--link');
+    }
+  });
+
+  it('gives an accent Surface a resting underline that thickens on hover and focus', () => {
+    render(
+      <Surface series="accent" data-testid="accent">
+        <Surface data-testid="accent-1" />
+      </Surface>,
+    );
+
+    for (const id of ['accent', 'accent-1']) {
+      const { classList } = getSurface(id);
+      expect(classList).toContain(ACCENT_LINK);
+      expect(classList).toContain('[--link-underline-rest:100%_1px]');
+      expect(classList).toContain('[--link-underline-active:100%_3px]');
+    }
+  });
+
+  it('resets the link colour and underline for a default Surface inside an accent Surface', () => {
+    render(
+      <Surface series="accent">
+        <Surface series="default" data-testid="default">
+          <Surface data-testid="default-1" />
+        </Surface>
+        <Surface floating data-testid="float" />
+      </Surface>,
+    );
+
+    for (const id of ['default', 'float']) {
+      const { classList } = getSurface(id);
+      expect(classList).toContain(LINK_RESET);
+      expect(classList).toContain('[--link-underline-rest:initial]');
+      expect(classList).toContain('[--link-underline-active:initial]');
+      expect(classList).not.toContain(ACCENT_LINK);
+    }
+    expect(getSurface('default-1').className).not.toContain('--link');
+  });
+});
+
+describe('Surface destructive ink', () => {
+  const INK_RESET = '[--destructive-ink:var(--surface-destructive)]';
+  const ACCENT_INK = '[--destructive-ink:var(--surface-accent-destructive)]';
+
+  it('leaves the inherited destructive ink alone on a default Surface outside an accent Surface', () => {
+    render(
+      <Surface data-testid="top">
+        <Surface data-testid="nested" />
+      </Surface>,
+    );
+
+    for (const id of ['top', 'nested']) {
+      expect(getSurface(id).className).not.toContain('--destructive');
+    }
+  });
+
+  it('draws destructive text on an accent Surface with the accent ink, and never overrides the fill', () => {
+    render(
+      <Surface series="accent" data-testid="accent">
+        <Surface data-testid="accent-1" />
+      </Surface>,
+    );
+
+    for (const id of ['accent', 'accent-1']) {
+      const { classList } = getSurface(id);
+      expect(classList).toContain(ACCENT_INK);
+      expect(getSurface(id).className).not.toContain('[--destructive:');
+    }
+  });
+
+  it('resets the destructive ink for a default Surface inside an accent Surface', () => {
+    render(
+      <Surface series="accent">
+        <Surface series="default" data-testid="default">
+          <Surface data-testid="default-1" />
+        </Surface>
+        <Surface floating data-testid="float" />
+      </Surface>,
+    );
+
+    for (const id of ['default', 'float']) {
+      const { classList } = getSurface(id);
+      expect(classList).toContain(INK_RESET);
+      expect(classList).not.toContain(ACCENT_INK);
+    }
+    expect(getSurface('default-1').className).not.toContain('--destructive');
+  });
+});

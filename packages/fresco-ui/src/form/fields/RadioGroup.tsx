@@ -17,35 +17,43 @@ import {
   smallSizeVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
-const radioGroupWrapperVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  interactiveStateVariants,
-  orientationVariants,
-  cva({
-    base: 'items-start',
-  }),
-);
+const radioGroupWrapperOwnVariants = cva({
+  base: 'items-start',
+});
 
-const radioIndicatorVariants = compose(
-  smallSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  cva({
-    base: cx(
-      'flex aspect-square shrink-0! items-center justify-center',
-      'rounded-full',
-      'focusable',
-    ),
-  }),
-);
+const radioGroupWrapperVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    interactiveStateVariants,
+    orientationVariants,
+    radioGroupWrapperOwnVariants,
+  ],
+});
+
+const radioIndicatorOwnVariants = cva({
+  base: cx(
+    'flex aspect-square shrink-0! items-center justify-center',
+    'rounded-full',
+    'focusable',
+  ),
+});
+
+const radioIndicatorVariants = cva({
+  composes: [
+    smallSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    radioIndicatorOwnVariants,
+  ],
+});
 
 type RadioItemProps = {
   value: string | number;

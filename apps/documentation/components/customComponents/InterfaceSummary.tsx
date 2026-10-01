@@ -1,6 +1,7 @@
 import { Database, Globe, KeyRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { Badge } from '@codaco/fresco-ui/Badge';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
 import manifest, {
   type InterfaceType,
@@ -78,10 +79,13 @@ const iconForRequirement = (requirement: string) => {
 };
 
 const RequiresPill = ({ requirement }: { requirement: string }) => (
-  <span className="bg-primary text-primary-contrast inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-sm font-semibold">
-    {iconForRequirement(requirement)}
+  <Badge
+    size="lg"
+    icon={iconForRequirement(requirement)}
+    className="gap-1.5 rounded-lg py-1"
+  >
     {requirement}
-  </span>
+  </Badge>
 );
 
 export const InterfaceMeta = ({
@@ -114,9 +118,9 @@ export const InterfaceMeta = ({
         <SpecField label="Uses Prompts">{usesPromptsLabel}</SpecField>
         {compatibility && (
           <SpecField label="Schema">
-            <span className="bg-primary text-primary-contrast inline-block rounded-lg px-3 py-1 text-sm font-semibold">
+            <Badge size="lg" className="rounded-lg py-1">
               v{compatibility.introducedIn}+
-            </span>
+            </Badge>
           </SpecField>
         )}
       </div>
@@ -124,13 +128,14 @@ export const InterfaceMeta = ({
         <SpecField label="Available In">
           <span className="flex flex-wrap gap-1.5">
             {supportedApps.map((app) => (
-              <span
+              <Badge
                 key={app.id}
+                size="lg"
                 title={`${app.role === 'configure' ? 'Configure' : 'Run'} in ${app.label}`}
-                className="bg-primary text-primary-contrast inline-block rounded-lg px-3 py-1 text-sm font-semibold"
+                className="rounded-lg py-1"
               >
                 {app.label}
-              </span>
+              </Badge>
             ))}
           </span>
         </SpecField>

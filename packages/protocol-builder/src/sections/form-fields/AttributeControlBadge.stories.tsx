@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
+import Surface from '@codaco/fresco-ui/layout/Surface';
+
 import { VARIABLE_TYPE_OPTIONS } from '../../codebook/variableTypeLabels.ts';
 import { controlsForType } from '../collectableTypes.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
@@ -9,6 +11,8 @@ import AttributeControlBadge from './AttributeControlBadge.tsx';
  * One badge per kind of attribute, each with the first control its type
  * allows, on the surface the row list draws them on.
  *
+ * An accent `Surface`, because that is what an `ArrayField` row is.
+ *
  * Every colour at once because the badge's colour is the whole of what varies
  * between rows: the a11y check this preview runs over every story is what says
  * the sentence inside a badge is readable, and it can only say it about the
@@ -16,7 +20,12 @@ import AttributeControlBadge from './AttributeControlBadge.tsx';
  */
 function EveryAttributeType() {
   return (
-    <main className="bg-surface flex flex-col gap-2.5 p-6">
+    <Surface
+      noContainer
+      as="main"
+      series="accent"
+      className="flex flex-col gap-2.5"
+    >
       {VARIABLE_TYPE_OPTIONS.map(({ value }) => (
         <div key={value}>
           <AttributeControlBadge
@@ -35,7 +44,7 @@ function EveryAttributeType() {
       <div>
         <AttributeControlBadge attribute={undefined} />
       </div>
-    </main>
+    </Surface>
   );
 }
 
@@ -47,7 +56,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'What a form field collects, as its collapsed row says it: the kind of attribute and the control the participant answers with, marked in the colour that attribute type carries everywhere else. Outlined rather than filled — white on the filled colour is under 4.5:1 for several of these types.',
+          'What a form field collects, as its collapsed row says it: the kind of attribute and the control the participant answers with, marked in the colour that attribute type carries everywhere else. The colour is the badge’s fill, so the badge itself is the mark.',
       },
     },
   },
@@ -75,7 +84,7 @@ export const EveryType: Story = {
     // Named, because a badge that rendered nothing would pass the contrast
     // check this story exists for.
     await expect(
-      await badgeSaying('Text attribute using Text input input control'),
+      await badgeSaying('Text attribute using Text Input input control'),
     ).toBeVisible();
     await expect(
       await badgeSaying(

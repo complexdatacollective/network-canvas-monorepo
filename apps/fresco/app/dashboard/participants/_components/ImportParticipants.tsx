@@ -265,7 +265,12 @@ export default function ImportParticipants() {
                 ? intl.formatMessage(messages.copyDropFileHere)
                 : intl.formatMessage(messages.copyImportParticipants)}
             </Heading>
-            <Paragraph margin="none" emphasis="muted" className="mt-1 text-sm">
+            <Paragraph
+              intent="smallText"
+              margin="none"
+              emphasis="muted"
+              className="mt-1"
+            >
               {intl.formatMessage(messages.dragDropACsvFileHere, {
                 tag1: renderCodeChunks,
               })}

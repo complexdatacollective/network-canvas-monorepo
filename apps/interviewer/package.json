@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer",
-  "version": "8.2.4",
+  "version": "8.3.0",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -42,7 +42,7 @@
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@tanstack/react-table": "catalog:",
-    "dexie": "^4.4.4",
+    "dexie": "^4.4.6",
     "effect": "catalog:",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
@@ -53,7 +53,7 @@
     "react-dropzone": "catalog:",
     "uuid": "catalog:",
     "workbox-window": "^7.4.1",
-    "wouter": "^3.10.0",
+    "wouter": "^3.12.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -68,10 +68,10 @@
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "^14.6.1",
+    "@testing-library/user-event": "^14.6.7",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vite-pwa/assets-generator": "^1.0.2",
+    "@vite-pwa/assets-generator": "^2.0.0",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",

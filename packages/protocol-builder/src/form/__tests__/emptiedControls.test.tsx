@@ -5,7 +5,6 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
@@ -33,7 +32,6 @@ describe('a control the researcher emptied', () => {
       },
       sections: (
         <>
-          <StageNameSection />
           <BuilderSection title="Interviewer guidance">
             <Field
               name="interviewScript"
@@ -66,7 +64,6 @@ describe('a control the researcher emptied', () => {
       stageId: 'ego-form-1',
       sections: (
         <>
-          <StageNameSection />
           <BuilderSection title="Introduction panel">
             {probe}
             <Field
@@ -113,7 +110,6 @@ describe('a control the researcher emptied', () => {
       },
       sections: (
         <>
-          <StageNameSection />
           <BuilderSection title="Page content">
             <Field
               name="title"
@@ -156,7 +152,6 @@ describe('a control the researcher emptied', () => {
       },
       sections: (
         <>
-          <StageNameSection />
           <BuilderSection title="Page content">
             <Field name="title" label="Page heading" component={InputField} />
           </BuilderSection>

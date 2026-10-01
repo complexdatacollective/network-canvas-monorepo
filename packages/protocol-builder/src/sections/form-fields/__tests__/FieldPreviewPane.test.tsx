@@ -178,6 +178,7 @@ const renderPreview = (
     locale?: string;
     probe?: boolean;
     onSubmit?: () => { success: true };
+    fields?: ReactNode;
   }> = {},
 ) => {
   const submitAuthoring = options.onSubmit ?? (() => ({ success: true }));
@@ -187,6 +188,7 @@ const renderPreview = (
     >
       <Form onSubmit={submitAuthoring}>
         {options.probe === true && <ParentResponseProbe />}
+        {options.fields}
         <FieldPreviewPane
           subject={'subject' in options ? options.subject : PERSON}
           {...(options.mode === undefined ? {} : { mode: options.mode })}
@@ -214,7 +216,6 @@ describe('FieldPreviewPane', () => {
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
-      _newVariableType: 'text',
       _component: 'Text',
     });
 
@@ -258,11 +259,28 @@ describe('FieldPreviewPane', () => {
     expect(screen.getByText('Completely')).toBeVisible();
   });
 
+  it('drops the attribute’s settings from the preview once the row has cleared them', () => {
+    renderPreview(
+      { variable: 'satisfaction' },
+      {
+        fields: (
+          <Field
+            name="_parameters"
+            label="Cleared settings"
+            component={InputField}
+          />
+        ),
+      },
+    );
+
+    expect(screen.queryByText('Not at all')).not.toBeInTheDocument();
+    expect(screen.queryByText('Completely')).not.toBeInTheDocument();
+  });
+
   it('previews an invented attribute under the question being typed', () => {
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
-      _newVariableType: 'text',
       _component: 'Text',
       prompt: 'Research_Question_Á1',
     });
@@ -332,10 +350,9 @@ describe('FieldPreviewPane', () => {
     ).toBeVisible();
   });
 
-  it('previews the answer the chosen control collects when no kind has been chosen', () => {
-    // An invented attribute whose kind the row does not hold: the control
-    // itself says what the attribute will collect, because every control
-    // belongs to exactly one kind of answer.
+  it('reads an invented attribute’s kind off the control and nothing else', () => {
+    // Two rows alike in every other respect, and the participant meets a
+    // different kind of answer in each.
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
@@ -345,6 +362,22 @@ describe('FieldPreviewPane', () => {
 
     expect(
       screen.getByRole('textbox', { name: 'Research_Question_Á2' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Research_Question_Á2' }),
+    ).not.toBeInTheDocument();
+
+    cleanup();
+
+    renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'Nickname',
+      _component: 'Number',
+      prompt: 'Research_Question_Á2',
+    });
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Research_Question_Á2' }),
     ).toBeVisible();
   });
 
@@ -364,13 +397,46 @@ describe('FieldPreviewPane', () => {
     // would be right; throwing on `options.map` would not.
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
-      _newVariableType: 'ordinal',
       _component: 'RadioGroup',
       prompt: 'How often?',
     });
 
     const group = screen.getByRole('radiogroup', { name: 'How often?' });
     expect(within(group).queryAllByRole('radio')).toHaveLength(0);
+  });
+
+  it('previews the scale labels the row is writing for an invented attribute', () => {
+    const pane = renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'closeness',
+      _component: 'VisualAnalogScale',
+      _parameters: { minLabel: 'Not close', maxLabel: 'Very close' },
+      prompt: 'How close are you?',
+    });
+
+    expect(within(pane).getByText('Not close')).toBeVisible();
+    expect(within(pane).getByText('Very close')).toBeVisible();
+  });
+
+  it('previews the values the row is writing for an invented list attribute', () => {
+    renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'frequency',
+      _component: 'RadioGroup',
+      _options: [
+        { label: 'Daily', value: 'daily' },
+        { label: 'Weekly', value: 'weekly' },
+      ],
+      prompt: 'How often?',
+    });
+
+    const group = screen.getByRole('radiogroup', { name: 'How often?' });
+    expect(
+      within(group)
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label') ?? radio.textContent),
+    ).toHaveLength(2);
+    expect(within(group).getByText('Daily')).toBeVisible();
   });
 
   it('starts the trial answer again when the row is bound to another attribute', () => {
@@ -511,10 +577,9 @@ describe('FieldPreviewPane', () => {
   });
 
   it('previews a composer’s invented attribute from the control it chose', () => {
-    // The composer's row is never asked for a kind of answer: the input
-    // control is the question, so the control alone says what the participant
-    // will meet. Nothing writes `_newVariableType` here, which is exactly what
-    // separates this row from the form family's invention.
+    // The composer's row keeps its control on its own `component` rather than
+    // the `_component` the form family's dialog writes, so this pins that the
+    // preview reads the composer's own key.
     renderPreview(
       {
         variable: CREATE_NEW_ATTRIBUTE,

@@ -77,11 +77,11 @@ describe('Fresco researcher message catalogs', () => {
     const intl = createAppIntl({ locale: 'es', messages: frescoCatalogs.es });
     expect(
       intl.formatMessage({
-        id: 'fresco.language.label',
-        defaultMessage: 'Language',
-        description: 'Application language preference label.',
+        id: 'fresco.NavigationBar.settings',
+        defaultMessage: 'Settings',
+        description: 'Researcher-facing NavigationBar: Settings',
       }),
-    ).toBe('Idioma');
+    ).toBe('Configuración');
     expect(intl.formatMessage(commonMessages.cancel)).toBe('Cancelar');
   });
 
@@ -128,11 +128,11 @@ describe('Fresco researcher message catalogs', () => {
     ).toBe('Unauthorised');
     expect(
       intl.formatMessage({
-        id: 'fresco.language.label',
-        defaultMessage: 'Language',
-        description: 'Application language preference label.',
+        id: 'fresco.NavigationBar.settings',
+        defaultMessage: 'Settings',
+        description: 'Researcher-facing NavigationBar: Settings',
       }),
-    ).toBe('Language');
+    ).toBe('Settings');
   });
 
   it('uses British self-enrol wording on both recruitment surfaces', () => {
@@ -158,9 +158,10 @@ describe('Fresco researcher message catalogs', () => {
     const id = 'fresco.settings.interviews.completedLimit';
     const message = en[id];
     if (!message) throw new Error('Expected completed-interview guidance');
+    const descriptor = { ...message, id };
     const values = { strong: (chunks: string[]) => chunks.join('') };
     expect(
-      createAppIntl({ locale: 'en' }).formatMessage({ ...message, id }, values),
+      createAppIntl({ locale: 'en' }).formatMessage(descriptor, values),
     ).toContain(
       'starting a new interview or resuming any other incomplete interview is prevented',
     );
@@ -168,7 +169,7 @@ describe('Fresco researcher message catalogs', () => {
       createAppIntl({
         locale: 'es',
         messages: frescoCatalogs.es,
-      }).formatMessage({ ...message, id }, values),
+      }).formatMessage(descriptor, values),
     ).toContain(
       'no podrá iniciar una entrevista nueva ni reanudar ninguna otra entrevista incompleta',
     );

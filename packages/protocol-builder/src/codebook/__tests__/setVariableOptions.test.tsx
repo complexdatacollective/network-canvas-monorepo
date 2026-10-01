@@ -8,6 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { sectionIdForCodebookSubject } from '../editing.ts';
 import { useSetVariableOptions } from '../useCodebookVariableEdits.ts';
 
 /**
@@ -85,6 +86,7 @@ const familyMemberSection = sectionId({
 const write = async (
   variableId: string,
   options: unknown,
+  subject: CodebookSubject = FAMILY_MEMBER,
 ): Promise<{
   harness: ReturnType<typeof renderStageEditor>;
   outcome: () => string;
@@ -94,13 +96,13 @@ const write = async (
     stageId: 'family-pedigree-1',
     sections: (
       <WriteOptions
-        subject={FAMILY_MEMBER}
+        subject={subject}
         variableId={variableId}
         options={options}
       />
     ),
   });
-  const before = harness.host.store.read(familyMemberSection);
+  const before = harness.host.store.read(sectionIdForCodebookSubject(subject));
   await harness.user.click(
     await screen.findByRole('button', { name: 'Write the values' }),
   );
@@ -160,5 +162,23 @@ describe('writing the answers an attribute offers', () => {
       ),
     );
     expect(harness.host.store.read(familyMemberSection)).toEqual(before);
+  });
+
+  it('says a list of one value is too short to hold, and writes nothing', async () => {
+    const knows: CodebookSubject = { entity: 'edge', type: 'knows' };
+    const { harness, outcome, before } = await write(
+      'closeness',
+      [{ value: 1, label: 'Some' }],
+      knows,
+    );
+
+    await waitFor(() =>
+      expect(outcome()).toBe(
+        'refused: Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
+      ),
+    );
+    expect(harness.host.store.read(sectionIdForCodebookSubject(knows))).toEqual(
+      before,
+    );
   });
 });

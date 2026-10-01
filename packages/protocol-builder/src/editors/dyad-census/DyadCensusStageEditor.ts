@@ -1,7 +1,6 @@
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { introduction } from '../../sections/introduction/introduction.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { dyadCensusPrompts } from './sections/dyadCensusPrompts.tsx';
@@ -15,7 +14,6 @@ import { dyadCensusPrompts } from './sections/dyadCensusPrompts.tsx';
  * requires the introduction, and this editor puts it where it happens.
  */
 export const dyadCensusStageEditor = defineStageEditor('DyadCensus', [
-  stageHeading({ documentation: 'dyad-census' }),
   subjectPicker({ entity: 'node', filter: true }),
   introduction(),
   dyadCensusPrompts(),

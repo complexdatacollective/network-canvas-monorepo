@@ -768,12 +768,12 @@ export default function VariablePickerField({
             )}
           </Button>
           {isMissing && (
-            <p className="text-destructive text-sm">
+            <p className="text-destructive-ink text-sm">
               {intl.formatMessage(messages.missingAttribute)}
             </p>
           )}
           {isUnusable && (
-            <p className="text-destructive text-sm">
+            <p className="text-destructive-ink text-sm">
               {unusableWords?.note ??
                 intl.formatMessage(messages.unusableAttribute)}
             </p>

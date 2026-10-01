@@ -13,7 +13,15 @@ const meta = {
   argTypes: {
     intent: {
       control: 'select',
-      options: ['default', 'blockquote', 'inlineCode', 'lead', 'smallText'],
+      options: [
+        'default',
+        'blockquote',
+        'inlineCode',
+        'lead',
+        'smallText',
+        'caption',
+        'meta',
+      ],
       description: 'The visual intent/style of the paragraph',
     },
     emphasis: {
@@ -64,6 +72,26 @@ export const Intents: Story = {
         <Paragraph intent="smallText">
           This is small text, useful for captions, footnotes, or supplementary
           information. It uses the text-sm size from the type scale.
+        </Paragraph>
+      </div>
+
+      <div>
+        <div className="mb-2 text-xs">caption</div>
+        <Paragraph intent="caption">
+          Caption text: the smallest size with tight leading, for counts, dates
+          and footnotes that sit beside something else rather than reading as a
+          line of copy. 24 stages · 1 sociogram · 1 dyad census
+        </Paragraph>
+      </div>
+
+      <div>
+        <div className="mb-2 text-xs">meta</div>
+        <Paragraph intent="meta" emphasis="muted">
+          Bravo A, Butts S, Johnson AL, Rodriguez E, Rabin B, Smith L, Kanamori
+          M, &amp; Doblecki-Lewis S
+        </Paragraph>
+        <Paragraph intent="meta" render={<span />}>
+          SNAAPS_v1.0.netcanvas
         </Paragraph>
       </div>
 

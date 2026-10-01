@@ -1,4 +1,4 @@
-import { compose, cva, cx } from '../utils/cva';
+import { cva, cx } from '../utils/cva';
 
 // Small size variants for controls that should use a smaller scale, such as checkboxes
 export const smallSizeVariants = cva({
@@ -59,38 +59,39 @@ export const sliderTrackVariants = cva({
   },
 });
 
+const sliderThumbOwnVariants = cva({
+  base: cx(
+    // Positioning - base-ui sets --slider-thumb-position
+    'absolute top-1/2 aspect-square -translate-1/2',
+    'left-(--slider-thumb-position)',
+    // Appearance
+    'block rounded-full',
+    // focusable-within: the nested <input type="range"> receives focus, not the div
+    'focusable-within outline-primary',
+    'transition-colors duration-200',
+  ),
+  variants: {
+    state: {
+      normal: 'bg-primary cursor-grab active:cursor-grabbing',
+      pristine: 'bg-primary cursor-grab opacity-40 active:cursor-grabbing',
+      disabled:
+        'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
+      readOnly:
+        'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
+      invalid: 'bg-destructive cursor-grab active:cursor-grabbing',
+    },
+  },
+  defaultVariants: {
+    state: 'normal',
+  },
+});
+
 // Keeps its own fill and state colours so a thumb styled with this alone still
 // looks like a thumb — `./styles/controlVariants` is a published entry point and
 // consumers may use it without the surface variant below.
-export const sliderThumbVariants = compose(
-  smallSizeVariants,
-  cva({
-    base: cx(
-      // Positioning - base-ui sets --slider-thumb-position
-      'absolute top-1/2 aspect-square -translate-1/2',
-      'left-(--slider-thumb-position)',
-      // Appearance
-      'block rounded-full',
-      // focusable-within: the nested <input type="range"> receives focus, not the div
-      'focusable-within outline-primary',
-      'transition-colors duration-200',
-    ),
-    variants: {
-      state: {
-        normal: 'bg-primary cursor-grab active:cursor-grabbing',
-        pristine: 'bg-primary cursor-grab opacity-40 active:cursor-grabbing',
-        disabled:
-          'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
-        readOnly:
-          'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
-        invalid: 'bg-destructive cursor-grab active:cursor-grabbing',
-      },
-    },
-    defaultVariants: {
-      state: 'normal',
-    },
-  }),
-);
+export const sliderThumbVariants = cva({
+  composes: [smallSizeVariants, sliderThumbOwnVariants],
+});
 
 // The thumb's animated surface, rendered as a child of the thumb rather than on
 // the thumb itself. base-ui registers the thumb element in the slider's
@@ -288,7 +289,7 @@ export const stateVariants = cva({
 // options) need the opposite — compose this alongside `stateVariants` so they
 // stop advertising hover/press affordances for an activation they swallow.
 // Declares the same `state` keys as `stateVariants` (rather than `readOnly`
-// alone) so `compose()` keeps the full `state` union on the composed variant
+// alone) so `composes` keeps the full `state` union on the composed variant
 // function instead of narrowing it to whichever key this contributes to.
 export const inertReadOnlyVariants = cva({
   variants: {

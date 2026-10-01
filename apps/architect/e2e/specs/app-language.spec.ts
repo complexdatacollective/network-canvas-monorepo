@@ -11,23 +11,32 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
 
 test.use({ locale: 'es-MX' });
 
-async function selectLanguage(page: Page, locale: string) {
-  await page
-    .getByRole('button', { name: /^(Ajustes de idioma|Language settings)$/ })
-    .click();
-  const selector = page.getByRole('combobox', {
-    name: /^(Idioma de Architect|Architect language)$/,
+/** The header's language pill, whatever language it is currently named in. */
+function languageSwitcher(page: Page) {
+  return page.getByRole('combobox', {
+    name: /^(Idioma de la interfaz|Interface language):/,
   });
-  await selector.selectOption(locale);
-  await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: /Idioma guardado|Language saved/ }),
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: /^(Cerrar|Close)$/, exact: true })
-    .filter({ hasText: /^(Cerrar|Close)$/ })
-    .click();
+}
+
+function languagePopover(page: Page) {
+  return page.getByRole('dialog', {
+    name: /^(Idioma de la interfaz|Interface language)$/,
+  });
+}
+
+// Each option's accessible name is its autonym.
+const OPTION_NAMES: Record<string, RegExp> = {
+  '__automatic': /^(Automático|Automatic)\b/,
+  'en': /^English$/,
+  'en-GB': /^English \(UK\)/,
+  'es': /^Español/,
+};
+
+async function selectLanguage(page: Page, locale: string) {
+  await languageSwitcher(page).click();
+  const popover = languagePopover(page);
+  await popover.getByRole('option', { name: OPTION_NAMES[locale] }).click();
+  await expect(popover).toBeHidden();
 }
 
 test('negotiates regional Spanish before interaction, persists a choice, and restores automatic mode', async ({
@@ -36,28 +45,40 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
-  await page.getByRole('button', { name: 'Ajustes de idioma' }).click();
-  const selector = page.getByRole('combobox', { name: 'Idioma de Architect' });
-  await expect(selector).toHaveValue('__automatic');
-  await expect(selector.locator('option')).toHaveText([
-    'Automático (idioma del navegador)',
-    'English',
-    'English (UK)',
-    'Español',
-  ]);
-  await expect(selector.locator('option[value="es"]')).toHaveAttribute(
-    'lang',
-    'es',
+  const switcher = languageSwitcher(page);
+  await expect(switcher).toHaveText(/^Español$/);
+  await expect(switcher.locator('[lang]')).toHaveAttribute('lang', 'es');
+  await expect(switcher).toHaveAccessibleName(
+    'Idioma de la interfaz: Automático (Español)',
   );
-  await selector.selectOption('en-GB');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+  await switcher.click();
+  const popover = languagePopover(page);
+  const options = popover.getByRole('option');
+  await expect(options).toHaveText([
+    /^Automático \(Español\)$/,
+    /^English$/,
+    /^English \(UK\)$/,
+    /^Español$/,
+  ]);
+  await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   await expect(
-    page.getByRole('heading', { name: 'Language settings' }),
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Close', exact: true })
-    .filter({ hasText: /^Close$/ })
-    .click();
+    options.filter({ hasText: /^Español/ }).locator('[lang="es"]'),
+  ).toHaveText('Español');
+  await options.filter({ hasText: /^English \(UK\)/ }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+  await expect(popover).toBeHidden();
+  await expect(switcher).toHaveText(/^English \(UK\)$/);
+  await expect(switcher).toHaveAccessibleName(
+    'Interface language: English (UK)',
+  );
+  await expect(switcher).toBeFocused();
+  await switcher.click();
+  await expect(popover).toHaveAccessibleName('Interface language');
+  await expect(popover.getByRole('status').last()).toHaveText(
+    'Saved on this device.',
+  );
+  await page.keyboard.press('Escape');
+  await expect(popover).toBeHidden();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
   await selectLanguage(page, 'es');
@@ -66,10 +87,10 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   await selectLanguage(page, '__automatic');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await page.getByRole('button', { name: 'Ajustes de idioma' }).click();
-  await expect(
-    page.getByRole('combobox', { name: 'Idioma de Architect' }),
-  ).toHaveValue('__automatic');
+  await expect(languageSwitcher(page)).toHaveText(/^Español$/);
+  await expect(languageSwitcher(page)).toHaveAccessibleName(
+    'Idioma de la interfaz: Automático (Español)',
+  );
 });
 
 test('authors an Information stage in Spanish and changes built-in preview language without changing research data', async ({

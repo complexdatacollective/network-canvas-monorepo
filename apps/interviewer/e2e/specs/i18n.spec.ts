@@ -151,7 +151,7 @@ test('Spanish administration and built-in interview controls preserve authored c
     .getByRole('checkbox', { name: 'Seleccionar Caso Á-17', exact: true })
     .check();
   await page
-    .getByRole('button', { name: 'Eliminar selección (1)', exact: true })
+    .getByRole('button', { name: 'Eliminar seleccionadas (1)', exact: true })
     .click();
   const deletion = page.getByRole('dialog', {
     name: '¿Eliminar 1 entrevista?',
@@ -422,7 +422,7 @@ test('an open finish confirmation follows the device language without finishing 
     '¿Seguro que quieres finalizar la entrevista?',
   );
   const description = confirmation.getByText(
-    'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, un investigador puede volver a marcarla como sin finalizar más adelante.',
+    'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, la persona responsable de la investigación puede volver a marcarla como sin finalizar más adelante.',
     { exact: true },
   );
   await expect(description).toBeVisible();
@@ -727,7 +727,7 @@ test('welcome and setup language selectors retain the complete PIN form on a pho
   await wizard.getByTestId('wizard-next').click();
   await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.getByRole('button', { name: 'Idioma de la aplicación', exact: true }),
+    page.getByRole('combobox', { name: /^Idioma de la interfaz:/ }),
   ).toBeVisible();
   expect(await vault.readPersistedVaultRaw()).not.toBe(before);
   await page.reload();
@@ -740,7 +740,7 @@ test('welcome and setup language selectors retain the complete PIN form on a pho
   await expectCompletePinRow(page, page.getByTestId('segmented-code-pin'));
   await typePin(page.getByTestId('segmented-code-pin'), '12345678');
   await expect(
-    page.getByRole('button', { name: 'Idioma de la aplicación', exact: true }),
+    page.getByRole('combobox', { name: /^Idioma de la interfaz:/ }),
   ).toBeVisible();
 });
 

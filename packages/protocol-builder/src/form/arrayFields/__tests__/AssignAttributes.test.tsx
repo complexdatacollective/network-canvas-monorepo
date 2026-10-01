@@ -237,7 +237,12 @@ describe('AssignAttributes', () => {
 
     await addRow(user);
     // A row that has only just been added has nothing to answer for yet.
-    expect(screen.queryByText('Required')).toBeNull();
+    // Asked of this section rather than of the page: the stage's NAME is a
+    // required field too, drawn by the host wherever its own chrome puts it.
+    const section = screen.getByRole('region', {
+      name: 'Additional attributes',
+    });
+    expect(within(section).queryByText('Required')).toBeNull();
 
     expect(await harness.submit()).toBeNull();
 
@@ -248,7 +253,7 @@ describe('AssignAttributes', () => {
     await screen.findByText(
       'Every additional attribute needs both an attribute and a value.',
     );
-    await screen.findByText('Required');
+    await within(section).findByText('Required');
   });
 });
 

@@ -55,7 +55,10 @@ export default function Page() {
       </Paragraph>
       {env.NODE_ENV === 'development' && (
         <form action={resetAppSettings}>
-          <SubmitButton className="mt-6 max-w-80" type="submit">
+          <SubmitButton
+            className="mt-6 h-auto min-h-12 py-2 text-center text-wrap"
+            type="submit"
+          >
             {intl.formatMessage(messages.devModeResetConfiguration)}
           </SubmitButton>
         </form>

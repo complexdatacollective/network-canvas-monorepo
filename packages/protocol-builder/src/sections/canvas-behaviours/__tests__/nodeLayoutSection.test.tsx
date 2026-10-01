@@ -18,7 +18,7 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
     // Everything else about a sociogram belongs to sections this mount does
     // not include.
     await harness.roundTrip({
-      unowned: ['label', 'subject', 'prompts', 'background'],
+      unowned: ['subject', 'prompts', 'background'],
     });
   });
 

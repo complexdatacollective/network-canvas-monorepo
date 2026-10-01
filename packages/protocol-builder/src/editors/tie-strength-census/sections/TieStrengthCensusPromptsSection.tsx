@@ -35,9 +35,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import AttributeCodebookControls, {
-  useRowValue,
-} from '../../../sections/AttributeCodebookControls.tsx';
+import { useRowValue } from '../../../sections/AttributeCodebookControls.tsx';
 import AttributeValueFields, {
   attributeOptionsFieldFor,
 } from '../../../sections/AttributeValueFields.tsx';
@@ -57,14 +55,6 @@ const DECLINE_FIELD = 'negativeLabel';
 
 /** The strength is a point on a scale, so only an ordinal attribute holds it. */
 const SCALE_TYPE = 'ordinal' as const satisfies VariableType;
-
-/**
- * A tie-strength prompt keeps no input control of its own: the participant taps
- * one of the scale's points and the value is written as it is. So the key named
- * here is one the row never holds, and the codebook's own control is what the
- * attribute's settings are keyed on.
- */
-const NO_ROW_COMPONENT = 'component';
 
 /**
  * How many points the scale itself can carry. The decline answer is drawn
@@ -375,19 +365,6 @@ function ScaleField({
         ordered values, and the schema refuses one with fewer than two.
       */}
       {editor}
-      {/*
-        The points ARE the stage: a scale whose values cannot be read from here
-        sends the researcher to the codebook screen to find out what their own
-        question asks. Reached rather than inlined, for the reason every
-        codebook edit in this package is — the attribute lives in another
-        section of the protocol and commits on its own.
-      */}
-      <AttributeCodebookControls
-        subject={subject}
-        variableField={SCALE_FIELD}
-        committedVariable={committed}
-        componentField={NO_ROW_COMPONENT}
-      />
       <AttributeValueFields
         subject={subject}
         variableId={picked}

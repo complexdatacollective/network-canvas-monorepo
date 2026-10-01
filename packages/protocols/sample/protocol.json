@@ -12,7 +12,10 @@
         "variables": {
           "c7053a78-bcd5-44bb-bfca-36c8aefa793f": {
             "name": "name",
-            "type": "text"
+            "type": "text",
+            "validation": {
+              "required": true
+            }
           },
           "ee090c9b-2b70-4648-a6db-328d4ef4dbfe": {
             "name": "sociogram_layout",
@@ -80,7 +83,10 @@
           },
           "1380a661-ae08-4477-8e53-253f6c928ed9": {
             "name": "group_other",
-            "type": "text"
+            "type": "text",
+            "validation": {
+              "required": true
+            }
           },
           "1d6a2675-3cff-4740-8c56-d5f26982eaeb": {
             "name": "discuss_network_research",
@@ -110,7 +116,10 @@
           },
           "2bee574a-a12e-4ee0-8610-263130299a2d": {
             "name": "social_network_research_relationship_other",
-            "type": "text"
+            "type": "text",
+            "validation": {
+              "required": true
+            }
           }
         },
         "color": "node-color-seq-1",

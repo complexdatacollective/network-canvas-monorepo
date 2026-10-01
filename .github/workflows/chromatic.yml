@@ -41,6 +41,11 @@ concurrency:
   group: chromatic-${{ github.event_name }}-${{ (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.sha) || github.event.pull_request.head.ref || github.event.workflow_run.pull_requests[0].number || github.ref_name || github.run_id }}
   cancel-in-progress: true
 
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   # GitHub required contexts apply to every PR targeting main, not only release
   # PRs. Emit all three external UI Test statuses without publishing snapshots
@@ -87,7 +92,7 @@ jobs:
           echo "current=true" >> "$GITHUB_OUTPUT"
       # This privileged status-only path deliberately avoids shared caches and
       # installs only the three Chromatic workspaces from trusted code.
-      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6

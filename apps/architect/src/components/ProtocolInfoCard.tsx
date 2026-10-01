@@ -6,15 +6,17 @@ import {
 
 const defaultIntl = createAppIntl({ locale: 'en' });
 import { Globe } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import {
   PROTOCOL_NAME_MAX_LENGTH,
@@ -377,32 +379,34 @@ const ProtocolInfoCard = () => {
   }, [description]);
 
   return (
-    <motion.div
+    <ProtocolCard
+      background={
+        <Pattern
+          aria-hidden
+          seed={name ?? 'Network Canvas Protocol'}
+          className="absolute inset-0 size-full"
+        />
+      }
+      gradientClassName="from-rich-black/25 via-platinum/50 to-platinum via-20% to-45%"
       initial={animate ? { scale: 0, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-      className="text-navy-taupe bg-platinum border-platinum-dark relative mx-auto w-full max-w-3xl overflow-hidden rounded border shadow-xl"
+      className="mx-auto max-w-3xl shadow-xl"
     >
-      {/* The pattern fills the whole card; a top-to-bottom gradient lets it
-          read at the top, then fades to opaque platinum so the editable
-          content below stays legible. Mirrors interviewer's DeckCard. */}
-      <Pattern
-        aria-hidden
-        seed={name ?? 'Network Canvas Protocol'}
-        className="absolute inset-0 size-full"
-      />
-      <div className="from-rich-black/25 via-platinum/50 to-platinum absolute inset-0 size-full bg-linear-to-b via-20% to-45%" />
-
       <div className="relative z-10 flex flex-col gap-5 p-7">
         {/* Top controls row — reserves space above the heading (pushing the
             dark title clear of the gradient's dark top) and houses the
             requires-internet pill, mirroring interviewer's DeckCard. */}
         <div className="flex min-h-14 items-start justify-end">
           {requiresInternet && (
-            <span className="text-neon-carrot border-neon-carrot bg-rich-black/60 font-monospace flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs uppercase backdrop-blur-sm">
-              <Globe className="size-4" />
+            <Badge
+              tone="warning"
+              uppercase
+              icon={<Globe className="size-4" />}
+              className="whitespace-nowrap"
+            >
               {intl.formatMessage(messages.requiresInternet)}
-            </span>
+            </Badge>
           )}
         </div>
 
@@ -571,7 +575,7 @@ const ProtocolInfoCard = () => {
           </NativeLink>
         </div>
       </div>
-    </motion.div>
+    </ProtocolCard>
   );
 };
 

@@ -30,9 +30,7 @@ import type {
   CodebookSubject,
 } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
-import AttributeCodebookControls, {
-  useRowValue,
-} from '../sections/AttributeCodebookControls.tsx';
+import { useRowValue } from '../sections/AttributeCodebookControls.tsx';
 import AttributeValueFields, {
   attributeOptionsFieldFor,
 } from '../sections/AttributeValueFields.tsx';
@@ -42,14 +40,6 @@ import VariablePickerField from './VariablePickerField.tsx';
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
-
-/**
- * A bin prompt keeps no input control: the participant drags, and the value
- * the bin stands for is written as it is. So the key named here is one the row
- * never holds, and the codebook's own control is what the settings are keyed
- * on.
- */
-const NO_ROW_COMPONENT = 'component';
 
 /**
  * How many values the attribute offers, as the CODEBOOK holds them.
@@ -115,14 +105,6 @@ export type BinAttributeFieldProps = Readonly<{
 /**
  * The attribute a bin prompt sorts people by, and the codebook edits that
  * attribute invites.
- *
- * Three controls, in the order a researcher meets them: pick one of the
- * attributes this slot can bind, invent one if none fits, and change what the
- * one they picked holds. The third is `AttributeCodebookControls`, which is
- * where Architect's inline option editor went — and, for the follow-up answer
- * alone, its validation section: an attribute lives in a different protocol
- * section from the stage, so editing it takes that section's own lock and
- * commits on its own.
  *
  * Shared by the two bins and by the follow-up answer a categorical bin
  * collects, which are the same question asked of different kinds of answer.
@@ -223,12 +205,6 @@ export default function BinAttributeField({
         than two.
       */}
       {editor}
-      <AttributeCodebookControls
-        subject={subject}
-        variableField={slot.name}
-        committedVariable={committed}
-        componentField={NO_ROW_COMPONENT}
-      />
       {/* The values this prompt will draw as bins, edited where the prompt is
           written, as Architect had them
           (`sections/OrdinalBinPrompts/PromptFields.tsx`'s "Attribute options").

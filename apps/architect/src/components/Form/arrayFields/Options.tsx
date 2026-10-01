@@ -9,6 +9,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
 import {
   hasDuplicateOptionLabels,
   normalizeForComparison,
@@ -75,7 +76,7 @@ const defaultIntl = createAppIntl({ locale: 'en' });
 export const minimumOptionsMessage = messages.minimum;
 
 export const minTwoOptions = (value: unknown, intl: IntlShape = defaultIntl) =>
-  !value || (Array.isArray(value) && value.length < 2)
+  !value || (Array.isArray(value) && value.length < MINIMUM_VARIABLE_OPTIONS)
     ? intl.formatMessage(messages.minimum)
     : undefined;
 

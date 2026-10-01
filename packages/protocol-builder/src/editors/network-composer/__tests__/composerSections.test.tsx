@@ -7,6 +7,7 @@ import {
 } from '../../../codebook/variableValidation.ts';
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   createRowIn,
   inventAttribute,
@@ -45,16 +46,8 @@ const KNOWS_ENTRY = {
  */
 const picker = (label: string): HTMLElement => attributeField(label);
 
-/**
- * One value of a list the codebook editor is authoring, label and stored value.
- *
- * The editor numbers its rows, so each is named by the position it was added
- * in — which is also what proves the second landed beside the first rather
- * than over it.
- */
 const addOption = async (
   harness: ReturnType<typeof renderStageEditor>,
-  position: number,
   label: string,
   value: string,
 ) => {
@@ -62,12 +55,15 @@ const addOption = async (
     screen.getByRole('button', { name: 'Create new option' }),
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    await screen.findByRole('textbox', { name: 'Label' }),
     label,
   );
   await harness.user.type(
-    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    screen.getByRole('textbox', { name: 'Value' }),
     value,
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finish editing option' }),
   );
 };
 
@@ -106,7 +102,7 @@ describe('what a network composer lets the participant build', () => {
     );
 
     const saved = await harness.roundTrip({
-      unowned: ['label', 'subject', 'background'],
+      unowned: ['subject', 'background'],
     });
     // Read back as well as compared: a round trip that agreed about an empty
     // document would otherwise pass.
@@ -730,10 +726,8 @@ describe('what a network composer lets the participant build', () => {
     const grouping = await waitFor(() =>
       picker('Create or select a categorical attribute for grouping'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).toContain(
-        'circle',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).toContain('circle'),
     );
     await chooseAttributeById(harness.user, grouping, 'circle');
     await switchOnNodeForm(harness);
@@ -775,10 +769,8 @@ describe('what a network composer lets the participant build', () => {
     const grouping = await waitFor(() =>
       picker('Create or select a categorical attribute for grouping'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).toContain(
-        'circle',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).toContain('circle'),
     );
     expect(await offeredAttributes(harness.user, grouping)).not.toContain(
       'contactType',
@@ -867,18 +859,18 @@ describe('what a network composer lets the participant build', () => {
         .map((option) => option.textContent),
     ).toEqual([
       'Select an option…',
-      'Text input',
-      'Text area',
-      'Number input',
-      'Yes or no buttons',
+      'Text Input',
+      'Text Area',
+      'Number Input',
+      'Boolean Choice',
       'Toggle',
-      'Radio group',
-      'Likert scale',
-      'Checkbox group',
-      'Toggle button group',
-      'Visual analogue scale',
-      'Date picker',
-      'Relative date picker',
+      'Radio Group',
+      'Likert Scale',
+      'Checkbox Group',
+      'Toggle Button Group',
+      'Visual Analog Scale',
+      'Date Picker',
+      'Relative Date Picker',
     ]);
     // Unanswered, because the control is the question this row asks: seeded
     // with one, the researcher would have made a choice they were never
@@ -1118,13 +1110,7 @@ describe('what a network composer lets the participant build', () => {
     });
   });
 
-  /**
-   * A list of answers IS its values, and the schema refuses fewer than two of
-   * them — so a control that makes one cannot be finished from a name and a
-   * control alone. Said in the package's own words, under the control that
-   * decided the kind, rather than left to the schema.
-   */
-  it('refuses to invent a list of answers from the control alone', async () => {
+  it('refuses to invent a list of answers without its values', async () => {
     const harness = renderStageEditor(
       composerHolding({ nodeForm: { fields: [] } }),
     );
@@ -1140,7 +1126,7 @@ describe('what a network composer lets the participant build', () => {
 
     expect(
       await screen.findByText(
-        'Create this attribute and the values it offers before adding the field that collects it.',
+        'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -1150,20 +1136,7 @@ describe('what a network composer lets the participant build', () => {
     ).toBe(false);
   });
 
-  /**
-   * The control the researcher chose survives the create it caused.
-   *
-   * A kind of answer that comes from a list is authored in the codebook
-   * editor, which writes the attribute WITHOUT a control — in this family the
-   * control belongs to the stage, so one attribute can be asked for on a
-   * scale here and with radio buttons elsewhere. The row is then rebound from
-   * the name it was inventing to the attribute that now exists, and a rule
-   * that reads the codebook for the pairing finds nothing and answers with
-   * the first control the kind allows: `RadioGroup` over the `LikertScale`
-   * that DECIDED the kind. Asked with a control that is not first in its kind
-   * for exactly that reason.
-   */
-  it('keeps the control that decided the kind when the create lands', async () => {
+  it('invents a list of answers with its values, keeping the control that decided the kind', async () => {
     const harness = renderStageEditor(
       composerHolding({ nodeForm: { fields: [] } }),
     );
@@ -1176,47 +1149,32 @@ describe('what a network composer lets the participant build', () => {
     });
     await harness.user.selectOptions(control, 'LikertScale');
 
-    await harness.user.click(
-      dialog.getByRole('button', {
-        name: 'Create this attribute and its values',
-      }),
-    );
     expect(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-    ).toHaveValue('closeness');
-    await addOption(harness, 1, 'Not at all close', 'far');
-    await addOption(harness, 2, 'Very close', 'near');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
-    );
-
-    // The create landed, which is the moment the row stops inventing and the
-    // rule that pairs a control with an attribute is asked again.
-    const created = await waitFor(() => {
-      const variables = harness.hostCodebook().node?.person?.variables ?? {};
-      const entry = Object.entries(variables).find(
-        ([, variable]) => variable.name === 'closeness',
-      );
-      if (entry === undefined) {
-        throw new Error('the codebook has no “closeness” attribute');
-      }
-      return entry;
-    });
-    // Written without one, which is what makes the row's own the only answer
-    // there is.
-    expect(created[1]).not.toHaveProperty('component');
-    expect(control).toHaveValue('LikertScale');
-
+      dialog.queryByRole('button', { name: /Create this attribute/ }),
+    ).toBeNull();
+    await addOption(harness, 'Not at all close', 'far');
+    await addOption(harness, 'Very close', 'near');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
+    const created = Object.entries(
+      harness.hostCodebook().node?.person?.variables ?? {},
+    ).find(([, variable]) => variable.name === 'closeness');
+    expect(created?.[1]).toMatchObject({
+      type: 'ordinal',
+      options: [
+        { label: 'Not at all close', value: 'far' },
+        { label: 'Very close', value: 'near' },
+      ],
+    });
+
     const saved = await harness.submit();
     expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        variable: created[0],
+        variable: created?.[0],
         component: 'LikertScale',
       },
     ]);
@@ -1513,10 +1471,8 @@ describe('an attribute another stage starts writing mid-edit', () => {
     // value the row is holding would blank the control and write the blank
     // over the reference the researcher has to resolve — so the row's own gate
     // is the only thing left that can refuse it.
-    await waitFor(async () =>
-      expect(
-        await offeredAttributes(harness.user, picker('Attribute')),
-      ).toContain('highlighted'),
+    await awaitOfferedAttributes(harness.user, picker('Attribute'), (offered) =>
+      expect(offered).toContain('highlighted'),
     );
     expect(
       await offeredAttributes(harness.user, picker('Attribute')),
@@ -1599,9 +1555,9 @@ describe('an attribute a collaborator retypes mid-edit', () => {
     // is refused by nothing, which is the defect this test exists for. What
     // arrives is the list of controls a text attribute may be asked with — the
     // row's own `Number` is not among them, so the select has nothing to show.
-    await within(control).findByRole('option', { name: 'Text input' });
+    await within(control).findByRole('option', { name: 'Text Input' });
     expect(
-      within(control).queryByRole('option', { name: 'Number input' }),
+      within(control).queryByRole('option', { name: 'Number Input' }),
     ).toBeNull();
 
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
@@ -1728,7 +1684,7 @@ describe('what a composer field’s control accepts', () => {
     await screen.findByText(DATE_ATTRIBUTE);
 
     const saved = await harness.roundTrip({
-      unowned: ['label', 'subject', 'background', 'quickAdd', 'layoutVariable'],
+      unowned: ['subject', 'background'],
     });
     expect(nodeFormFieldsOf(saved.stageDocument)[0]).toMatchObject({
       parameters: { type: 'full', min: '2020-01-01' },
@@ -1925,17 +1881,13 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
     const grouping = await waitFor(() =>
       picker('Create or select a categorical attribute for grouping'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).toContain(
-        'region',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).toContain('region'),
     );
 
     collectInAnAlterForm(harness, 'contactType', 'region');
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, grouping)).not.toContain(
-        'region',
-      ),
+    await awaitOfferedAttributes(harness.user, grouping, (offered) =>
+      expect(offered).not.toContain('region'),
     );
     expect(await offeredAttributes(harness.user, grouping)).toContain(
       'contactType',
@@ -1955,19 +1907,15 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
     const quickAdd = await waitFor(() =>
       picker('Create or select an attribute for the quick-add form'),
     );
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, quickAdd)).toContain(
-        'relationship_to_ego',
-      ),
+    await awaitOfferedAttributes(harness.user, quickAdd, (offered) =>
+      expect(offered).toContain('relationship_to_ego'),
     );
 
     // Two claims in one edit, for the same reason: `composerName` is what this
     // picker is holding, so its leaving is not something a test can watch for.
     highlightInASociogram(harness, 'composerName', 'relationship_to_ego');
-    await waitFor(async () =>
-      expect(await offeredAttributes(harness.user, quickAdd)).not.toContain(
-        'relationship_to_ego',
-      ),
+    await awaitOfferedAttributes(harness.user, quickAdd, (offered) =>
+      expect(offered).not.toContain('relationship_to_ego'),
     );
     expect(await offeredAttributes(harness.user, quickAdd)).toContain(
       'composerName',

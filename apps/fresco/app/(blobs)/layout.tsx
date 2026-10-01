@@ -4,6 +4,7 @@ import { type PropsWithChildren, Suspense } from 'react';
 
 import BackgroundBlobs from '~/components/BackgroundBlobs/BackgroundBlobs';
 import NetlifyBadge from '~/components/NetlifyBadge';
+import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 
 export default function Layout({ children }: PropsWithChildren) {
   return (
@@ -18,19 +19,22 @@ export default function Layout({ children }: PropsWithChildren) {
       </div>
 
       <div className="relative z-10 grid min-h-dvh w-full grid-rows-[auto_1fr_auto]">
-        <header className="phone-landscape:p-4 p-2">
-          <Link href="/">
+        <header className="phone-landscape:p-4 flex items-center justify-between gap-4 p-2">
+          <Link href="/" className="min-w-0">
             <Image
               src="/images/NC-Type and Mark Wide Pos.svg"
               width={545.52}
               height={131.61}
               priority
               alt={brandName}
-              className="h-auto w-xs"
+              className="h-auto w-xs max-w-full"
             />
           </Link>
+          <FrescoLocaleSwitcher variant="default" color="default" size="md" />
         </header>
-        <main className="flex items-center justify-center">{children}</main>
+        <main className="flex min-w-0 items-center justify-center">
+          {children}
+        </main>
         <NetlifyBadge />
       </div>
     </>

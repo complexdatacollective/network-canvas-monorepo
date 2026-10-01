@@ -241,10 +241,6 @@ export default function DiseasesSection() {
   const diseasesValidation = useMemo(
     () => ({
       custom: messageRuleValidation([
-        (value: unknown) =>
-          Array.isArray(value) && value.length > 0
-            ? undefined
-            : AT_LEAST_ONE_DISEASE,
         (value: unknown) => {
           const names = unrecordedNames(value);
           return names.length === 0
@@ -331,6 +327,7 @@ export default function DiseasesSection() {
           editorComponent={RowDialog}
           itemTemplate={rowTemplate()}
           sortable
+          required={AT_LEAST_ONE_DISEASE}
           {...diseasesValidation}
         />
       </RowList>

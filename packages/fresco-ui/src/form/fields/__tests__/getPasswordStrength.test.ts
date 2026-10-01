@@ -21,7 +21,7 @@ describe('getPasswordStrength', () => {
     expect(result.score).toBe(1);
     expect(result.label).toBe('Weak');
     expect(result.percent).toBe(25);
-    expect(result.colorClass).toBe('text-destructive');
+    expect(result.colorClass).toBe('text-destructive-ink');
   });
 
   it('returns score 1 (Weak) for long password with only 1 character class', () => {

@@ -111,4 +111,13 @@ describe('the write that records the answers an attribute offers', () => {
       ]),
     ).toBe('Every option needs both a label and a value.');
   });
+
+  it.each([
+    { count: 'no values', options: [] },
+    { count: 'one value', options: [{ label: 'Close', value: 'close' }] },
+  ])('says a list of $count is too short to hold', ({ options }) => {
+    expect(refusal(options)).toBe(
+      'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
+    );
+  });
 });

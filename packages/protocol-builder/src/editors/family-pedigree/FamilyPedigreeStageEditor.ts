@@ -1,7 +1,6 @@
 import { contentBlocks } from '../../sections/content-blocks/contentBlocks.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { boundaryOptions } from './sections/boundaryOptions.tsx';
 import { censusPrompt } from './sections/censusPrompt.tsx';
@@ -27,7 +26,6 @@ import { pedigreeNodeConfiguration } from './sections/pedigreeNodeConfiguration.
  * rather than as the stage itself, which is what `variant` says.
  */
 export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
-  stageHeading({ documentation: 'family-pedigree' }),
   framingConfig(),
   boundaryOptions(),
   pedigreeNodeConfiguration(),

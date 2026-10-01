@@ -40,6 +40,7 @@ import type {
   StageEditorActions,
   StageEditorComponent,
   StageEditorRegistry,
+  StageProblemsStore,
   StageSection,
   StageSectionsStore,
   StageSectionStatus,
@@ -57,6 +58,7 @@ import {
   type InMemoryHost,
 } from './host/createInMemoryHost.ts';
 import type { HostPrincipal } from './host/protocolStore.ts';
+import HostStageTitle from './HostStageTitle.tsx';
 import { readMessage } from './i18n.ts';
 import {
   fixtureAssetContentFor,
@@ -238,9 +240,14 @@ export type StageEditorHarness = RenderResult &
      * The top-level stage keys the mounted sections have a field for.
      *
      * Read from the fields themselves — `data-field-path` is the canonical key
-     * the form store files a field under — and scoped to the stage form, so a
-     * row dialog's own fields (which belong to a form of their own, in a
-     * portal) are not mistaken for the stage's.
+     * the form store files a field under — and scoped to this harness's own
+     * markup, so a second harness in the same test is not mistaken for it and
+     * neither is a row dialog's own form, which is rendered in a portal.
+     *
+     * The harness rather than the `<form>` element, because a stage editor's
+     * fields are not all inside one: the stage's name is drawn by the HOST,
+     * which puts it wherever its page has room, and it is still a field of the
+     * form — the store is React state, not native form submission.
      */
     ownedKeys(): string[];
     /**
@@ -260,6 +267,10 @@ export type StageEditorHarness = RenderResult &
      * The editor is simply missing a section, and a researcher who opens the
      * stage cannot see or change something their protocol holds. So an
      * unrendered key has to be declared, one at a time, in `unowned`.
+     *
+     * Checked in BOTH directions: a key named in `unowned` that something
+     * mounted here does edit is refused too, because a tolerated one states
+     * something false and hides the case the list is there to catch.
      */
     roundTrip(
       options?: Readonly<{
@@ -278,6 +289,11 @@ export type StageEditorHarness = RenderResult &
      * a host's list would use. See {@link SECTION_STATE_WORDS}.
      */
     outline(): { title: string; state: string }[];
+    /**
+     * What the editor refuses about the stage that NO section answers for, as
+     * the sentences a host would read out — the other half of `outline()`.
+     */
+    problems(): string[];
     /**
      * Hands the stage's lock to somebody else while this editor still believes
      * it holds it.
@@ -444,6 +460,12 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      * only control that path has.
      */
     actions?: StageEditorActions;
+    /**
+     * The host's own chrome ABOVE the form — its stage title — in place of the
+     * plain one the harness draws. For a test about a host's real title rather
+     * than about the editor beneath it.
+     */
+    header?: StageEditorActions;
     /**
      * Mounts the editor with its action slot EMPTY, as a spectator view is.
      *
@@ -687,6 +709,9 @@ export function renderStageEditor<T extends StageType = StageType>(
               {...(options.actions === undefined
                 ? {}
                 : { actions: options.actions })}
+              {...(options.header === undefined
+                ? {}
+                : { hostHeader: options.header })}
               {...(options.editor === undefined
                 ? {}
                 : { editor: options.editor })}
@@ -713,7 +738,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   // chain or a timer that a real typist's fingers would have let through
   // arrives here only after the whole string is in.
   const keyboard = userEvent.setup({ delay: null });
-  const user = afterTheStageHasOpened(withSafeTypingIntoRichText(keyboard));
+  const user = asAResearcherActs(withSafeTypingIntoRichText(keyboard));
 
   /**
    * THIS harness's stage form, or `null` when what is mounted has none.
@@ -808,12 +833,7 @@ export function renderStageEditor<T extends StageType = StageType>(
         view.unmount();
       });
     },
-    opened: async () => {
-      // Everything the mount set in motion, settled: the acquire is a promise
-      // the effect made, so a turn of the microtask queue inside `act` is what
-      // its answer and the render that follows are waiting for.
-      await act(async () => {});
-    },
+    opened: settled,
     receiveCodebookUpdate: (patch) => {
       act(() => {
         for (const [id, document] of Object.entries(codebookSections(patch))) {
@@ -834,17 +854,26 @@ export function renderStageEditor<T extends StageType = StageType>(
           store.sectionIds().map((id) => [id, store.read(id).document]),
         ),
       ).codebook,
-    ownedKeys: () => readOwnedKeys(stageForm()),
+    ownedKeys: () => readOwnedKeys(view.container),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
       // the save's own failure would otherwise hide it.
-      const owned = new Set(readOwnedKeys(stageForm()));
+      const owned = new Set(readOwnedKeys(view.container));
       const orphaned = Object.keys(seeded.fields).filter(
         (key) => !owned.has(key) && !unowned.includes(key),
       );
       if (orphaned.length > 0) {
         throw new Error(
           `Nothing mounted here edits "${seeded.id}" keys: ${orphaned.join(', ')}. They round-trip untouched, so a researcher cannot see or change them. Add the section that owns each one, or name it in \`unowned\` to say the editor does not own it yet.`,
+        );
+      }
+      // The declaration polices itself: a key named as unowned that a mounted
+      // section DOES edit states something false about this editor, and masks
+      // the signal the list exists to raise.
+      const claimed = unowned.filter((key) => owned.has(key));
+      if (claimed.length > 0) {
+        throw new Error(
+          `"${seeded.id}" names ${claimed.join(', ')} in \`unowned\`, but something mounted here edits ${claimed.length === 1 ? 'it' : 'them'}. Drop ${claimed.length === 1 ? 'it' : 'them'} from the list: an editor that owns a key must not also declare that it does not.`,
         );
       }
       const written = await submit();
@@ -872,6 +901,8 @@ export function renderStageEditor<T extends StageType = StageType>(
       return written;
     },
     outline: () => readOutline(sectionsProbe.read()),
+    problems: () =>
+      sectionsProbe.readProblems().map((problem) => readMessage(problem)),
     takeOverLock: () => {
       store.release(stageSectionId, HARNESS_PRINCIPAL);
       store.acquire(stageSectionId, COLLABORATOR);
@@ -882,30 +913,55 @@ export function renderStageEditor<T extends StageType = StageType>(
 type HarnessUser = ReturnType<typeof userEvent.setup>;
 
 /**
- * The researcher's own actions, taken once the stage has finished opening.
+ * Every update the editor has in flight, run to a stop.
  *
- * A stage is not editable until the host has answered its acquire: until then
- * nobody has said whether this researcher may write to it, so the form renders
- * with its controls disabled. A test's first keystroke is otherwise in the
- * same turn as the render — earlier than any researcher could act, and into a
- * form that is on screen but not yet theirs.
+ * `act` drains the microtask queue and flushes what React has queued, again
+ * and again until nothing is left — so a chain of promise, state, render,
+ * effect, promise is followed the whole way down. What it deliberately does
+ * NOT wait out is a real timer, or a host that has not answered: those are
+ * waits a test states for itself, with an assertion that says what it is
+ * waiting for.
+ */
+const settled = async (): Promise<void> => {
+  await act(async () => {});
+};
+
+/**
+ * The researcher's own actions, taken on a settled editor and handed back on
+ * one.
  *
- * Waited for here, in the one place every test's interaction goes through,
+ * BEFORE, because a stage is not editable until the host has answered its
+ * acquire: until then nobody has said whether this researcher may write to it,
+ * so the form renders with its controls disabled. A test's first keystroke is
+ * otherwise in the same turn as the render — earlier than any researcher could
+ * act, and into a form that is on screen but not yet theirs.
+ *
+ * AFTER, because a control does not always answer a click in the click's own
+ * turn, and a researcher never sees a half-applied answer. A toggleable
+ * `Section` asks its owner whether it may open before it opens, so the panel
+ * arrives a microtask later — with the switch marked busy and the panel empty
+ * until it does. Nothing between one action and the next flushes that, because
+ * `userEvent` is set up here with no delay at all; a test reading the DOM
+ * straight after an action reads it mid-answer. Which test that bites varies
+ * run to run, because what settles the queue is whichever wait happened to
+ * poll.
+ *
+ * Both are done here, in the one place every test's interaction goes through,
  * rather than by each test: what a test is about is what it does to an open
  * editor, and "await the acquire first" in three hundred tests would be the
  * harness's own timing written out three hundred times.
  */
-function afterTheStageHasOpened(keyboard: HarnessUser): HarnessUser {
+function asAResearcherActs(keyboard: HarnessUser): HarnessUser {
   return new Proxy(keyboard, {
     get: (target, property, receiver) => {
       const value: unknown = Reflect.get(target, property, receiver);
       if (typeof value !== 'function') return value;
       const action = value as (...args: unknown[]) => unknown;
       return async (...args: unknown[]) => {
-        // Everything the mount set in motion, settled: the acquire above all,
-        // which is what takes the controls out of their disabled state.
-        await act(async () => {});
-        return action.apply(target, args);
+        await settled();
+        const outcome: unknown = await action.apply(target, args);
+        await settled();
+        return outcome;
       };
     },
   });
@@ -1018,6 +1074,12 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
   };
 }
 
+/**
+ * The stage's title, for the shell's header slot — where a host draws one, so
+ * a test about DOCUMENT order reads the order a host's page has.
+ */
+const stageTitleHeader: StageEditorActions = () => <HostStageTitle />;
+
 function HarnessEditor<T extends StageType>({
   target,
   formId,
@@ -1025,6 +1087,7 @@ function HarnessEditor<T extends StageType>({
   submitLabel,
   onSaved,
   actions,
+  hostHeader,
   editor: Editor,
   sections,
   registry,
@@ -1039,6 +1102,8 @@ function HarnessEditor<T extends StageType>({
   submitLabel: string;
   onSaved: (sectionId: ProtocolSectionId) => void;
   actions?: StageEditorActions;
+  /** The host's own title, in place of the harness's plain one. */
+  hostHeader?: StageEditorActions;
   editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
@@ -1050,10 +1115,16 @@ function HarnessEditor<T extends StageType>({
   // sections through it: what a test asked for if it asked for anything,
   // otherwise the same fallback save control the editor would have chosen for
   // itself — and nothing at all for the one call that is about an empty slot.
+  //
+  // The title goes in the HEADER slot whichever chrome a test asked for:
+  // without one there is no way to name the stage. A call that asked for NO
+  // chrome gets no title either — that one is about an empty slot.
   const chrome =
     withoutActionChrome === true
       ? undefined
       : captureSections(actions ?? saveStageAction);
+  const header =
+    withoutActionChrome === true ? undefined : (hostHeader ?? stageTitleHeader);
 
   if (sections === undefined && Editor === undefined) {
     return (
@@ -1064,6 +1135,7 @@ function HarnessEditor<T extends StageType>({
         onSaved={onSaved}
         {...(registry === undefined ? {} : { registry })}
         {...(chrome === undefined ? {} : { actions: chrome })}
+        {...(header === undefined ? {} : { header })}
       />
     );
   }
@@ -1073,6 +1145,7 @@ function HarnessEditor<T extends StageType>({
       <StageEditSession target={target} formId={formId} onSaved={onSaved}>
         {Editor === undefined ? (
           <StageEditorShell
+            {...(header === undefined ? {} : { header })}
             {...(chrome === undefined
               ? {}
               : {
@@ -1095,6 +1168,7 @@ function HarnessEditor<T extends StageType>({
           <NamedEditorUnderTest
             editor={Editor}
             {...(chrome === undefined ? {} : { actions: chrome })}
+            {...(header === undefined ? {} : { header })}
           />
         )}
       </StageEditSession>
@@ -1112,9 +1186,11 @@ function HarnessEditor<T extends StageType>({
 function NamedEditorUnderTest<T extends StageType>({
   editor: Editor,
   actions,
+  header,
 }: Readonly<{
   editor: StageEditorComponent<T>;
   actions?: StageEditorActions;
+  header?: StageEditorActions;
 }>) {
   const { identity } = useStageEdit();
   if (identity === undefined) return null;
@@ -1122,6 +1198,7 @@ function NamedEditorUnderTest<T extends StageType>({
     <Editor
       stageType={identity.type as T}
       {...(actions === undefined ? {} : { actions })}
+      {...(header === undefined ? {} : { header })}
     />
   );
 }
@@ -1296,10 +1373,10 @@ function collectDifferences(
  * own in a portal outside it, and its fields are named after the row's
  * properties — `text`, `content` — which are not stage keys at all.
  */
-function readOwnedKeys(form: HTMLFormElement | null): string[] {
-  if (form === null) return [];
+function readOwnedKeys(harness: HTMLElement | null): string[] {
+  if (harness === null) return [];
   const keys = new Set<string>();
-  for (const field of form.querySelectorAll('[data-field-path]')) {
+  for (const field of harness.querySelectorAll('[data-field-path]')) {
     const registeredName = field.getAttribute('data-field-path');
     if (registeredName === null || registeredName === '') continue;
     // Parsed rather than split on a dot: a protocol-authored key may contain
@@ -1368,14 +1445,18 @@ function readOutline(sections: readonly StageSection[]): {
 function createSectionsProbe(): Readonly<{
   wrap: (inner: StageEditorActions) => StageEditorActions;
   read: () => readonly StageSection[];
+  readProblems: () => readonly string[];
 }> {
   let published: StageSectionsStore | undefined;
+  let publishedProblems: StageProblemsStore | undefined;
   return {
     wrap: (inner) => (context) => {
       published = context.sections;
+      publishedProblems = context.problems;
       return inner(context);
     },
     read: () => published?.getSnapshot() ?? [],
+    readProblems: () => publishedProblems?.getSnapshot() ?? [],
   };
 }
 

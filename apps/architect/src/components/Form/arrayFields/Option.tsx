@@ -302,7 +302,6 @@ const Option = ({
         <IconButton
           icon={<Check />}
           aria-label={intl.formatMessage(messages.finishEditingOption)}
-          size="lg"
           color="primary"
           disabled={interactionDisabled}
           onClick={handleFinishEditing}

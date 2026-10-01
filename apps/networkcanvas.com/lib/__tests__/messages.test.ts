@@ -24,7 +24,10 @@ function messageLeaves(value: unknown, prefix = ''): Array<[string, string]> {
 }
 
 function messageTokens(text: string): string[] {
-  return text.match(/\{[^}]+\}|<\/?[a-z]+>/g)?.toSorted() ?? [];
+  return Array.from(
+    text.matchAll(/\{([a-zA-Z][\w]*)\b|(<\/?[a-z]+>)/g),
+    (match) => (match[1] ? `{${match[1]}}` : (match[2] ?? '')),
+  ).toSorted();
 }
 
 describe('message catalogs', () => {
