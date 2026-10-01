@@ -84,6 +84,40 @@ describe('protectEmailAddresses', () => {
     expect(findUnprotectedEmailText(url)).toEqual([]);
   });
 
+  it("ends a textarea's RCDATA at its own closing tag, not a title's", () => {
+    // `</title>` is ordinary text inside a `<textarea>`. A single
+    // `</(?:title|textarea)>` alternative ended the region there and put the
+    // opt-out comment inside the field's value.
+    const { html } = protectEmailAddresses(
+      '<textarea>literal </title> foo@example.com</textarea>',
+    );
+
+    expect(html).toBe(
+      `${EMAIL_OFF_OPEN}<textarea>literal </title> foo@example.com</textarea>${EMAIL_OFF_CLOSE}`,
+    );
+    expect(/<textarea[^>]*>[\s\S]*?<!--email_off-->/.test(html)).toBe(false);
+  });
+
+  it('does not read the marker text inside a script as an opt-out region', () => {
+    // Splitting the raw string on the markers took these script strings for
+    // real comments, left the paragraph unprotected, and reported nothing
+    // unprotected either — so the build-time assertion was fooled too.
+    const page =
+      '<script>const a="<!--email_off-->"</script>' +
+      '<p>foo@example.com</p>' +
+      '<script>const b="<!--/email_off-->"</script>';
+
+    expect(findUnprotectedEmailText(page)).toEqual(['foo@example.com']);
+
+    const { html, protectedRuns } = protectEmailAddresses(page);
+
+    expect(protectedRuns).toBe(1);
+    expect(html).toContain(
+      `<p>${EMAIL_OFF_OPEN}foo@example.com${EMAIL_OFF_CLOSE}</p>`,
+    );
+    expect(findUnprotectedEmailText(html)).toEqual([]);
+  });
+
   it('is idempotent', () => {
     const once = protectEmailAddresses('<p>info@networkcanvas.com</p>').html;
     const twice = protectEmailAddresses(once);
