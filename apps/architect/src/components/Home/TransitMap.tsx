@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { createElement, useEffect, useRef } from 'react';
+import { type CSSProperties, createElement, useEffect, useRef } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -50,13 +50,32 @@ const ICON_STROKE = 2.75;
 
 // Information's platinum-dark is illegible against Architect's platinum page
 // background, so the timeline draws Information stations in charcoal.
-const INFORMATION_TIMELINE_COLOR = 'var(--color-charcoal)';
+const INFORMATION_TIMELINE_STYLE = {
+  color: 'var(--color-charcoal)',
+  contrast: 'var(--color-white)',
+};
+
+function timelineStyle(type: StageType) {
+  return type === 'Information'
+    ? INFORMATION_TIMELINE_STYLE
+    : stageTypeColorStyle(type);
+}
 
 function timelineColor(type: StageType) {
-  return type === 'Information'
-    ? INFORMATION_TIMELINE_COLOR
-    : stageTypeColorStyle(type).color;
+  return timelineStyle(type).color;
 }
+
+// The icon takes whichever ink contrast-color() picks for its disc, as Badge
+// does. A stroke of contrast-color(var(...)) is only invalid at computed-value
+// time, so a browser without it would draw no stroke at all; there the icon
+// falls back to the palette's paired contrast colour instead.
+const STATION_ICON_CLASS =
+  'stroke-(--station-ink) supports-[color:contrast-color(red)]:stroke-[contrast-color(var(--station-color))]';
+
+type StationIconStyle = CSSProperties & {
+  '--station-color': string;
+  '--station-ink': string;
+};
 
 // Most stage colours fall below AA as caption text on the page, so the caption
 // keeps the hue but moves toward the ink contrast-color() picks for the page,
@@ -242,7 +261,12 @@ function Station({
 }: StationProps) {
   // Palette colours are CSS custom properties, which SVG presentation
   // attributes do not resolve — they have to be set as style properties.
-  const color = timelineColor(type);
+  const { color, contrast } = timelineStyle(type);
+  const iconStyle: StationIconStyle = {
+    '--station-color': color,
+    '--station-ink': contrast,
+    'strokeWidth': ICON_STROKE,
+  };
   const shouldEntry = entryDelay !== undefined;
   const baseDelay = entryDelay ?? 0;
   const stationSpring = {
@@ -297,10 +321,8 @@ function Station({
           y: y - ICON_SIZE / 2,
           width: ICON_SIZE,
           height: ICON_SIZE,
-          style: {
-            stroke: `contrast-color(${color})`,
-            strokeWidth: ICON_STROKE,
-          },
+          className: STATION_ICON_CLASS,
+          style: iconStyle,
         })}
       </motion.g>
 
