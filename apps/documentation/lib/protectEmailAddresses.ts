@@ -59,36 +59,74 @@ export const EMAIL_OFF_CLOSE = '<!--/email_off-->';
 const EMAIL_OFF_MARKER = /^<!--\s*(\/?)email_off\s*-->$/;
 
 /**
- * Everything that is not a text run, in one alternation.
+ * Elements the HTML parser does not read markup inside, so a comment placed
+ * within one is literal text rather than a comment node. Putting an opt-out
+ * marker inside any of them would show the marker to the reader — in the
+ * browser's tab title, a form field's value, or an iframe's fallback text — and
+ * leave the DOM disagreeing with what React rendered. Each is therefore matched
+ * whole and wrapped from outside.
  *
- * - `<script>`/`<style>` hold raw text that Cloudflare does not rewrite either
- *   — the RSC payload carries the same addresses and is served untouched, which
- *   is exactly why the client's render disagrees with the markup.
- * - `<title>` and `<textarea>` hold RCDATA, where the parser does not recognise
- *   comment syntax, so an opt-out comment placed inside one becomes literal
- *   text in the browser's tab title or the field's value. Each is matched with
- *   its own closing tag, never the other's: `</title>` inside a `<textarea>` is
- *   ordinary text and must not end the region.
- * - A tag steps over quoted attribute values rather than stopping at the first
- *   `>`, because `>` is legal inside one — `<div title="1 > 0">` otherwise
- *   tokenized as a tag ending mid-attribute.
+ * `title` and `textarea` hold escapable raw text (RCDATA); the rest take the
+ * HTML spec's generic raw text element parsing algorithm, `noscript` whenever
+ * scripting is enabled, which it is in every browser that runs this site.
+ * `script` and `style` are raw text too but are handled apart: the CDN does not
+ * rewrite them, so their contents want no protection at all.
  */
-const TOKEN =
-  /<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>|<title\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/title\s*>|<textarea\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/textarea\s*>|<!--[\s\S]*?-->|<[a-zA-Z/!?](?:[^>"']|"[^"]*"|'[^']*')*>/gi;
+const OPAQUE_TEXT_ELEMENTS = [
+  'title',
+  'textarea',
+  'iframe',
+  'xmp',
+  'noembed',
+  'noframes',
+  'noscript',
+];
+
+/** Attribute soup that steps over a quoted `>`, which is legal inside one. */
+const ATTRIBUTES = `(?:[^>"']|"[^"]*"|'[^']*')*`;
+
+/** One element, matched whole, with its own closing tag and never another's. */
+const element = (name: string) =>
+  `<${name}\\b${ATTRIBUTES}>[\\s\\S]*?<\\/${name}\\s*>`;
+
+/**
+ * Everything that is not a text run, in one alternation: the opaque elements
+ * above, `<script>`/`<style>` with their contents, comments, and tags.
+ *
+ * Every element is name-anchored to its own closing tag. A shared
+ * `</(?:title|textarea)>` alternative let either close either, and `</title>`
+ * is ordinary text inside a `<textarea>` — so a textarea's region ended early
+ * and the opt-out comment went into the field's value.
+ */
+const TOKEN = new RegExp(
+  [
+    element('script'),
+    element('style'),
+    ...OPAQUE_TEXT_ELEMENTS.map(element),
+    '<!--[\\s\\S]*?-->',
+    `<[a-zA-Z/!?]${ATTRIBUTES}>`,
+  ].join('|'),
+  'gi',
+);
+
+const OPAQUE_OPENING = new RegExp(
+  `^<(?:${OPAQUE_TEXT_ELEMENTS.join('|')})\\b`,
+  'i',
+);
 
 type Token =
   /** A text run: what the CDN rewrites, and what the opt-out has to cover. */
   | { kind: 'text'; value: string }
   /** A comment, which may be one of the opt-out markers. */
   | { kind: 'comment'; value: string }
-  /** A `<title>`/`<textarea>` element, whole, wrapped from outside if needed. */
-  | { kind: 'rcdata'; value: string }
+  /** An opaque element, whole, wrapped from outside if it holds an address. */
+  | { kind: 'opaque'; value: string }
   /** A tag, or `<script>`/`<style>` with its contents: never touched. */
   | { kind: 'other'; value: string };
 
 const classify = (value: string): Token => {
   if (value.startsWith('<!--')) return { kind: 'comment', value };
-  if (/^<(?:title|textarea)\b/i.test(value)) return { kind: 'rcdata', value };
+  if (OPAQUE_OPENING.test(value)) return { kind: 'opaque', value };
   return { kind: 'other', value };
 };
 

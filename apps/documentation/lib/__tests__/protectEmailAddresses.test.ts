@@ -118,6 +118,24 @@ describe('protectEmailAddresses', () => {
     expect(findUnprotectedEmailText(html)).toEqual([]);
   });
 
+  it.each(['iframe', 'xmp', 'noembed', 'noframes', 'noscript'])(
+    'wraps a <%s> from outside, since the parser reads no markup inside it',
+    (name) => {
+      // The HTML spec gives these the generic raw text parsing algorithm
+      // (`noscript` whenever scripting is enabled), so a comment placed inside
+      // one is literal text the reader would see.
+      const page = `<${name}>Contact foo@example.com</${name}>`;
+
+      expect(findUnprotectedEmailText(page)).toEqual(['foo@example.com']);
+
+      const { html, protectedRuns } = protectEmailAddresses(page);
+
+      expect(protectedRuns).toBe(1);
+      expect(html).toBe(`${EMAIL_OFF_OPEN}${page}${EMAIL_OFF_CLOSE}`);
+      expect(findUnprotectedEmailText(html)).toEqual([]);
+    },
+  );
+
   it('is idempotent', () => {
     const once = protectEmailAddresses('<p>info@networkcanvas.com</p>').html;
     const twice = protectEmailAddresses(once);
