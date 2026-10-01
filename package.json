@@ -14,7 +14,6 @@
     "check:changesets": "node scripts/release/check-changeset-app-isolation.mjs",
     "check:compat-protocols": "node packages/protocols/scripts/check-compat-packages.mjs",
     "check:dialog-exits": "node scripts/buildtime/check-dialog-exit-animations.mjs",
-    "check:docs-emails": "node scripts/buildtime/check-docs-code-block-emails.mjs",
     "check:hydration-flag": "node scripts/buildtime/check-hydration-flag.mjs",
     "check:mapbox-tokens": "node scripts/buildtime/check-mapbox-tokens.mjs",
     "verify:publish-exports": "node scripts/release/verify-publish-exports.mjs",
