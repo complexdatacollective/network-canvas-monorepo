@@ -72,7 +72,7 @@
   "frescoUi.combobox.placeholder": "Select items...",
   "frescoUi.combobox.searchPlaceholder": "Search...",
   "frescoUi.combobox.selectAll": "Select All",
-  "frescoUi.combobox.someSelected": "{count, plural, one {# {singular} selected} other {# {plural} selected}}",
+  "frescoUi.combobox.someSelected": "{count, plural, =1 {# {singular} selected} other {# {plural} selected}}",
   "frescoUi.dataTable.noResults": "No results.",
   "frescoUi.dataTableFacetedFilter.noOptions": "No {title} found.",
   "frescoUi.dataTableFacetedFilter.placeholder": "Filter {title}...",

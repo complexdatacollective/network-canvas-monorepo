@@ -72,7 +72,7 @@
   "frescoUi.combobox.placeholder": "Selecciona elementos…",
   "frescoUi.combobox.searchPlaceholder": "Buscar…",
   "frescoUi.combobox.selectAll": "Seleccionar todo",
-  "frescoUi.combobox.someSelected": "{count, plural, one {Selección: # {singular}} other {Selección: # {plural}}}",
+  "frescoUi.combobox.someSelected": "{count, plural, =1 {Selección: # {singular}} other {Selección: # {plural}}}",
   "frescoUi.dataTable.noResults": "No hay resultados.",
   "frescoUi.dataTableFacetedFilter.noOptions": "Sin resultados para {title}.",
   "frescoUi.dataTableFacetedFilter.placeholder": "Filtrar: {title}…",

@@ -72,7 +72,7 @@
   "frescoUi.combobox.placeholder": "选择项目…",
   "frescoUi.combobox.searchPlaceholder": "搜索…",
   "frescoUi.combobox.selectAll": "全选",
-  "frescoUi.combobox.someSelected": "{count, plural, one {已选择 # {singular}} other {已选择 # {plural}}}",
+  "frescoUi.combobox.someSelected": "{count, plural, =1 {已选择 # {singular}} other {已选择 # {plural}}}",
   "frescoUi.dataTable.noResults": "没有结果。",
   "frescoUi.dataTableFacetedFilter.noOptions": "未找到 {title}。",
   "frescoUi.dataTableFacetedFilter.placeholder": "筛选 {title}…",

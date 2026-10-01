@@ -17,7 +17,7 @@ const messages = defineMessages({
   updatedDescription: {
     id: 'interviewer.storedProtocolMigration.updatedDescription',
     defaultMessage:
-      '{count, plural, one {{name} was migrated to the current schema.} other {# protocols were migrated to the current schema.}}',
+      '{count, plural, =1 {{name} was migrated to the current schema.} other {# protocols were migrated to the current schema.}}',
     description:
       'Administration text in Interviewer useStoredProtocolMigration.',
   },
@@ -31,7 +31,7 @@ const messages = defineMessages({
   failedDescription: {
     id: 'interviewer.storedProtocolMigration.failedDescription',
     defaultMessage:
-      '{count, plural, one {{name} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.} other {# protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.}}',
+      '{count, plural, =1 {{name} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.} other {# protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.}}',
     description:
       'Administration text in Interviewer useStoredProtocolMigration.',
   },

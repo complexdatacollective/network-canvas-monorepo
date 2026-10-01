@@ -5,6 +5,7 @@ import { loadLocaleMessages } from '~/lib/i18n/messages';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
+import zhHans from '~/messages/zh-Hans.json';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -30,12 +31,20 @@ function messageTokens(text: string): string[] {
   ).toSorted();
 }
 
+const translatedCatalogs = [
+  ['Spanish', es],
+  ['Simplified Chinese', zhHans],
+] as const;
+
 describe('message catalogs', () => {
-  it('keeps Spanish keys in parity with English', () => {
-    expect(messageLeaves(es).map(([key]) => key)).toEqual(
-      messageLeaves(en).map(([key]) => key),
-    );
-  });
+  it.each(translatedCatalogs)(
+    'keeps %s keys in parity with English',
+    (_language, catalog) => {
+      expect(messageLeaves(catalog).map(([key]) => key)).toEqual(
+        messageLeaves(en).map(([key]) => key),
+      );
+    },
+  );
 
   it.each(
     supportedLocales.map(({ locale }) => [locale, loadLocaleMessages(locale)]),
@@ -82,14 +91,16 @@ describe('message catalogs', () => {
     ).toContain('analysing');
   });
 
-  it('keeps placeholders and rich-text tags in parity', () => {
-    const englishLeaves = messageLeaves(en);
-    const spanishLeaves = new Map(messageLeaves(es));
+  it.each(translatedCatalogs)(
+    'keeps %s placeholders and rich-text tags in parity',
+    (_language, catalog) => {
+      const translatedLeaves = new Map(messageLeaves(catalog));
 
-    for (const [key, englishText] of englishLeaves) {
-      expect(messageTokens(spanishLeaves.get(key) ?? '')).toEqual(
-        messageTokens(englishText),
-      );
-    }
-  });
+      for (const [key, englishText] of messageLeaves(en)) {
+        expect(messageTokens(translatedLeaves.get(key) ?? '')).toEqual(
+          messageTokens(englishText),
+        );
+      }
+    },
+  );
 });

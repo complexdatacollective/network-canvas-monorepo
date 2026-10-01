@@ -51,6 +51,21 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/es/',
   },
   {
+    name: 'mainland Chinese browser language',
+    headers: { 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Simplified Chinese browser language',
+    headers: { 'accept-language': 'zh-Hans,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Taiwanese Chinese browser language best-fits Simplified Chinese',
+    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
     name: 'US English fallback',
     headers: {},
     destination: 'http://localhost/en-US/',
