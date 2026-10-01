@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';

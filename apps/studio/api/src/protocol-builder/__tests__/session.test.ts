@@ -182,7 +182,6 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
           }),
       }),
       limiter: recordingLimiter,
-      pool: database.appPool,
       services: Context.add(database.services, SecretsCipher, testCipher()),
     });
     client = await createProtocolBuilderClient(studio);

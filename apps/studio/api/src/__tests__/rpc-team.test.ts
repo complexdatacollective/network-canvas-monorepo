@@ -95,14 +95,12 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth,
-        pool: database.appPool,
         services: database.services,
       }),
     );
     anonymousClient = await createRpcClient(
       createStudio(readEnv(), {
         auth: authServiceStub(),
-        pool: database.appPool,
         services: database.services,
       }),
     );
@@ -235,7 +233,6 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
                 }),
               getMembership: () => Effect.succeedSome({ role: 'admin' }),
             }),
-            pool: database.appPool,
             services: database.services,
             limiter: limits.limiter({ rpc_user: { max: 2, windowMs: 60_000 } }),
           },

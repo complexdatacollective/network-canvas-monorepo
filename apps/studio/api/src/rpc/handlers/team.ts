@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { TeamRpcs } from '@codaco/studio-contract/rpc/team';
@@ -20,7 +20,7 @@ import {
   type TeamCommandError as TeamCommandFailure,
   updateTeamMemberRole,
 } from '../../team/commands.ts';
-import { requirePool, withRequestId } from '../bridge.ts';
+import { requireDatabase, withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 import { openTeam } from '../team-scope.ts';
 
@@ -81,7 +81,7 @@ export const TeamHandlers = (deps: RpcDeps) =>
         // every other team procedure does — `openTeam` asserts it for the
         // three that carry a team id, and this one carries none, so it says
         // so itself rather than reaching a client with nothing behind it.
-        yield* requirePool(deps);
+        yield* requireDatabase(deps);
         // No `openTeam` here, and no team in the payload: the invitation is
         // what names the tenant, and the command resolves it.
         return decodeAcceptedInvitation(

@@ -1,6 +1,6 @@
 import { Effect, Option } from 'effect';
-import type { Headers } from 'effect/unstable/http';
-import { HttpServerRequest } from 'effect/unstable/http';
+import type { Headers } from 'effect/http';
+import { HttpServerRequest } from 'effect/http';
 
 /**
  * The headers an rpc middleware may speak for: the HTTP request's own, wherever

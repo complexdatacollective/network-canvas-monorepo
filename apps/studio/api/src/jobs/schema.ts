@@ -9,9 +9,7 @@ import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 // priorities, groups or heartbeats.
 //
 // Every statement names its schema so the same DDL can be installed into a
-// scratch schema per suite without a `search_path` — rc.115 has no
-// `startupParameters`, so a search path could not be pinned per connection
-// anyway (see src/db/client.ts).
+// scratch schema per suite without depending on a `search_path`.
 
 /** Interpolated into DDL, so it is checked rather than trusted. */
 const SCHEMA_NAME = /^[a-z_][a-z0-9_]*$/;

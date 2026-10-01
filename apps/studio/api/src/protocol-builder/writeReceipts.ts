@@ -17,7 +17,7 @@
 // there is no window in which the write is committed and its receipt is not.
 import { and, eq } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type {
   ResourceDescriptor,

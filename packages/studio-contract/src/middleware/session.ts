@@ -1,5 +1,5 @@
 import { Context } from 'effect';
-import { RpcMiddleware } from 'effect/unstable/rpc';
+import { RpcMiddleware } from 'effect/rpc';
 
 import { Unauthorized } from '../schema/errors.ts';
 import type { SessionToken, StudyId, TeamId } from '../schema/ids.ts';

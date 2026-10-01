@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from '@effect/vitest';
 import { Effect, Layer, Option } from 'effect';
-import {
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 import { Environment } from '../env.ts';
 import { resolve } from '../env/resolve.ts';

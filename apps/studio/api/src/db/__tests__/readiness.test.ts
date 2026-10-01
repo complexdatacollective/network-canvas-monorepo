@@ -1,6 +1,6 @@
 import { assert, layer } from '@effect/vitest';
 import { Cause, Context, Effect, Layer } from 'effect';
-import type { SqlClient } from 'effect/unstable/sql';
+import type { SqlClient } from 'effect/sql';
 import type pg from 'pg';
 import { describe } from 'vitest';
 

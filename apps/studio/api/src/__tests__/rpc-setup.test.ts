@@ -119,7 +119,6 @@ describe.skipIf(!testDb)('setup.complete', () => {
     database = await openTestDatabase();
     studio = createStudio(env, {
       auth: liveAuthService(env, database.services),
-      pool: database.appPool,
       services: database.services,
     });
     composed = composeStudio(env, studio);

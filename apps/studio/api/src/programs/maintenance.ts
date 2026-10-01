@@ -65,7 +65,7 @@ class MaintenanceFailed extends Schema.TaggedError<MaintenanceFailed>()(
  * never less.
  */
 const MaintenanceReason = Schema.String.check(
-  Schema.isLengthBetween(1, 280),
+  Schema.isBetweenLength(1, 280),
   Schema.isPattern(/\S/),
 );
 
@@ -132,7 +132,7 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
 
   // Built for this command and released with it, like rotation's.
   const Maintenance = MaintenanceDatabase.layer({
-    url: db.url,
+    ...db,
     applicationName: 'studio-maintenance',
   });
   return yield* applyMaintenanceWindow(window).pipe(

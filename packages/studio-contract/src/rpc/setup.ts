@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import { Rpc, RpcGroup } from 'effect/unstable/rpc';
+import { Rpc, RpcGroup } from 'effect/rpc';
 
 import { Conflict, NotFound, Unauthorized } from '../schema/errors.ts';
 import { CompleteSetupInput, CompleteSetupResult } from '../schema/setup.ts';

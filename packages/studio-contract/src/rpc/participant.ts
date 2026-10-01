@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import { Rpc, RpcGroup } from 'effect/unstable/rpc';
+import { Rpc, RpcGroup } from 'effect/rpc';
 
 import { RequireSession } from '../middleware/session.ts';
 import { RateLimited, Unauthorized } from '../schema/errors.ts';

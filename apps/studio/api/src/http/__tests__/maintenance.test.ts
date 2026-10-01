@@ -1,11 +1,7 @@
 import { assert, it, layer } from '@effect/vitest';
 import { Duration, Effect, Fiber, Layer, MutableRef } from 'effect';
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 import { TestClock } from 'effect/testing';
-import {
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from 'effect/unstable/http';
 import { describe } from 'vitest';
 
 import { TestDatabaseLive, testDb } from '../../__tests__/support/database.ts';

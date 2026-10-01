@@ -8,9 +8,9 @@ import {
   Scheduler,
   Stream,
 } from 'effect';
-import type * as Rpc from 'effect/unstable/rpc/Rpc';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
+import type * as Rpc from 'effect/rpc/Rpc';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcServer from 'effect/rpc/RpcServer';
 import { v4 as uuid } from 'uuid';
 
 import { makeRpcAdapter } from '@codaco/effect-query/adapter';

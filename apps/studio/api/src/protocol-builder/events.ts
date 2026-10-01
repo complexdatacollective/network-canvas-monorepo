@@ -8,7 +8,7 @@
 // replays from here.
 import { and, asc, eq, gt, max } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type {
   Presence,

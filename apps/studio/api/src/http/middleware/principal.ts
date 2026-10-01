@@ -1,5 +1,5 @@
 import { Effect, Option } from 'effect';
-import { HttpRouter, HttpServerResponse } from 'effect/unstable/http';
+import { HttpRouter, HttpServerResponse } from 'effect/http';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 

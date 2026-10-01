@@ -19,11 +19,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { Effect, Layer, Option, Predicate, Schema } from 'effect';
-import * as HttpRouter from 'effect/unstable/http/HttpRouter';
-import * as Rpc from 'effect/unstable/rpc/Rpc';
-import * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
+import * as HttpRouter from 'effect/http/HttpRouter';
+import * as Rpc from 'effect/rpc/Rpc';
+import * as RpcGroup from 'effect/rpc/RpcGroup';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as RpcServer from 'effect/rpc/RpcServer';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {

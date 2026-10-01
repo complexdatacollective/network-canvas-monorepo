@@ -3,12 +3,10 @@
 // scheme rests on — that the row never holds the value it printed.
 //
 // Which identity runs which statement is half of what is asserted here, and
-// the scopes are how the suite picks one: a bare statement outside a
-// transaction runs as the connecting login whatever client sent it, because
-// rc.115 has no startup parameter to pin a role with (fallback A). So every
-// case that means "the application role may not do this" opens
-// `UntenantedScope`, and every case that means "maintenance may not" opens
-// `MaintenanceScope` — the same seams production uses.
+// the scopes are how the suite picks one: every case that means "the
+// application role may not do this" opens `UntenantedScope`, and every case
+// that means "maintenance may not" opens `MaintenanceScope` — the same seams
+// production uses.
 import { assert, layer } from '@effect/vitest';
 import { Cause, Effect, Exit } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
@@ -58,12 +56,8 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
     });
 
     /**
-     * The row as the database holds it.
-     *
-     * `bootstrap_token_issued_at` is read as a boolean rather than as an
-     * instant: this is a raw statement, and rc.115 decodes `timestamptz` as
-     * epoch milliseconds rather than as a `Date` (fallback A). "There is an
-     * issue time" is what every case here means by it anyway.
+     * The row as the database holds it. `bootstrap_token_issued_at` is read as
+     * a boolean: "there is an issue time" is what every case here means by it.
      */
     const storedRow = Effect.fnUntraced(function* () {
       const harness = yield* TestDatabase;

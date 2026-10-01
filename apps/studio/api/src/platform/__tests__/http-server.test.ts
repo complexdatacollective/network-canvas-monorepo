@@ -3,11 +3,7 @@ import { networkInterfaces } from 'node:os';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import {
-  HttpClient,
-  HttpRouter,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpClient, HttpRouter, HttpServerResponse } from 'effect/http';
 
 import {
   connectionRefused,

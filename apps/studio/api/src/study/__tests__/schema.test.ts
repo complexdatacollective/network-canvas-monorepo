@@ -13,7 +13,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
 import { Effect, Layer, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 import { describe, expect } from 'vitest';
 
 import {
@@ -48,10 +48,8 @@ type Row = Record<string, unknown>;
 type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
 /**
- * `ownerRows`, decoded. `@effect/sql-pg` rc.115 hands a `timestamptz` back as
- * epoch milliseconds where drizzle's own column mapper hands back a `Date`, so
- * the two cases that read an instant through a raw statement say so rather than
- * trusting the driver to keep doing it.
+ * `ownerRows`, decoded, so the two cases that read an instant through a raw
+ * statement say what the driver hands back rather than trusting it.
  */
 const ownerDecoded = <S extends Schema.ConstraintDecoder<unknown>>(
   schema: S,
@@ -525,19 +523,12 @@ describe.skipIf(!testDb)('study spine schema', () => {
               const stored = yield* ownerDecoded(
                 Schema.Struct({
                   participation_mode: Schema.String,
-                  // Epoch milliseconds through a raw statement; a `Date` only
-                  // through the drizzle builder.
-                  went_live_at: Schema.Number,
+                  went_live_at: Schema.Date,
                 }),
                 `SELECT participation_mode, went_live_at FROM studies WHERE id = $1`,
                 [studyId],
               );
-              expect(
-                stored.map((row) => ({
-                  participation_mode: row.participation_mode,
-                  went_live_at: new Date(row.went_live_at),
-                }))[0],
-              ).toEqual({
+              expect(stored[0]).toEqual({
                 participation_mode: 'managed',
                 went_live_at: wentLiveAt,
               });
@@ -664,10 +655,7 @@ describe.skipIf(!testDb)('study spine schema', () => {
               // clear it.
               const studyId = yield* newStudy();
               yield* closeStudy(studyId);
-              // Epoch milliseconds through a raw statement, on both reads —
-              // which is all this case needs, since it compares them to
-              // each other.
-              const closedAtRow = Schema.Struct({ closed_at: Schema.Number });
+              const closedAtRow = Schema.Struct({ closed_at: Schema.Date });
               const closedAt = yield* ownerDecoded(
                 closedAtRow,
                 `SELECT closed_at FROM studies WHERE id = $1`,

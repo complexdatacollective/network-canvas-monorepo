@@ -3,8 +3,8 @@ import { createServer } from 'node:http';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type * as NodeServices from '@effect/platform-node/NodeServices';
 import { Effect, Layer } from 'effect';
-import type { Etag, HttpPlatform, HttpServer } from 'effect/unstable/http';
-import type { ServeError } from 'effect/unstable/http/HttpServerError';
+import type { Etag, HttpPlatform, HttpServer } from 'effect/http';
+import type { ServeError } from 'effect/http/HttpServerError';
 
 import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 

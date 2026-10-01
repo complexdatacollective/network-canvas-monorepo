@@ -8,8 +8,8 @@ import {
   Option,
   Scope,
 } from 'effect';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcServer from 'effect/rpc/RpcServer';
 
 import {
   ProtocolBuilderGroup,

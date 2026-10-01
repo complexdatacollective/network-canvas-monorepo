@@ -50,9 +50,8 @@ const MECHANISM = new Set([
  * Every way `source` opens a transaction other than through the two audit
  * seams, by the `Effect.fn` it sits in (`null` outside one) and the opener:
  * `TenantScope.open`, `MaintenanceScope.openTenant` and so on, `savepoint`,
- * `withTransaction` — the `SqlClient`'s own, which would open one without
- * `pinSession`'s role and search path — and drizzle's `.transaction(`, which
- * delegates to it. A scope named without a member (handed
+ * `withTransaction` — the `SqlClient`'s own, which would open one without the
+ * scope's team stamp — and drizzle's `.transaction(`, which delegates to it. A scope named without a member (handed
  * on, aliased, destructured) is `TenantScope` alone, and a renaming import is
  * counted where it is, so a call under another name cannot go unseen.
  */
@@ -145,8 +144,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: "better-auth's `transaction()` handed to the bridge, which opens it as `sql-bridge.ts`'s untenanted scope: sign-up, OAuth linking and the like on the auth tables, which belong to no team",
   },
   [`${SERVER}/src/auth/sql-bridge.ts › UntenantedScope.open`]: {
-    count: 2,
-    why: "better-auth's adapter: one pinned transaction per statement outside better-auth's `transaction()`, and one around the whole callback inside it — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
+    count: 1,
+    why: "better-auth's adapter: the transaction around a `transaction()` callback — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
   },
   [`${SERVER}/src/app.ts › UntenantedScope.open`]: {
     count: 1,
@@ -184,11 +183,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
   [`${SERVER}/src/auth/service.ts › auth.sendMagicLink › UntenantedScope.open`]:
     {
       count: 1,
-      why: 'the magic-link hook enqueueing a sign-in mail in a transaction of its own, because better-auth calls it outside any adapter transaction; it belongs to no team, and the scope only pins the application role',
+      why: 'the magic-link hook enqueueing a sign-in mail in a transaction of its own, because better-auth calls it outside any adapter transaction; it belongs to no team, and `Jobs.enqueue` requires a transaction',
     },
   [`${SERVER}/src/auth/service.ts › UntenantedScope.open`]: {
     count: 1,
-    why: "`AuthService`'s two membership reads over `team_members` (the `pinned` helper both go through), read-only and policy-free; the scope only pins the application role, which a bare statement loses on rc.115",
+    why: "`AuthService`'s two membership reads over `team_members` (the `pinned` helper both go through), read-only and policy-free; the scope is there because both reads require `Transaction`",
   },
   [`${SERVER}/src/jobs/handlers/denied-attempts-summary.ts › loadActor › MaintenanceScope.open`]:
     {
@@ -212,8 +211,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     },
   [`${SERVER}/src/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore › MaintenanceScope.open`]:
     {
-      count: 2,
-      why: 'the sweep’s role probe and its cross-team tenant enumeration, both read-only; its writes go through `noAuditMaintenanceTransaction`',
+      count: 1,
+      why: 'the sweep’s cross-team tenant enumeration, read-only; its writes go through `noAuditMaintenanceTransaction`',
     },
   [`${SERVER}/src/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore › MaintenanceScope.openTenant`]:
     {

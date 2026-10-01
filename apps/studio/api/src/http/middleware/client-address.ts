@@ -1,7 +1,7 @@
 import { BlockList, isIPv4, isIPv6 } from 'node:net';
 
 import { Context, Effect, Option } from 'effect';
-import { HttpRouter, HttpServerRequest } from 'effect/unstable/http';
+import { HttpRouter, HttpServerRequest } from 'effect/http';
 
 import { Environment } from '../../env.ts';
 

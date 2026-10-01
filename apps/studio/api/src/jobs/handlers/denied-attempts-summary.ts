@@ -1,5 +1,5 @@
 import { Cause, DateTime, Effect, Ref } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 

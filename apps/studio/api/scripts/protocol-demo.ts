@@ -165,7 +165,7 @@ const TEAM_ID = 'demo-team';
 // layer to open one, so it opens a tenant scope per call — which is exactly
 // what the `ProtocolStore` it replaced did per method.
 const runtime = ManagedRuntime.make(
-  Database.layer({ url: env.db.url, applicationName: 'studio-protocol-demo' }),
+  Database.layer({ ...env.db, applicationName: 'studio-protocol-demo' }),
 );
 // The membership a command proves in production; a demo has no command.
 const access = unsafeMakeTeamAccess(TEAM_ID, 'owner');

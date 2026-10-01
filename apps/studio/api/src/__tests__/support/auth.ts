@@ -1,5 +1,4 @@
 import { Context, Effect, Layer, Predicate } from 'effect';
-import type pg from 'pg';
 import { expect } from 'vitest';
 
 import { createStudio } from '../../app.ts';
@@ -112,7 +111,6 @@ function sentLink(recorded: RecordedJobs['Service']): {
  */
 export async function signInWithMagicLink(
   env: StudioEnv,
-  pool: pg.Pool,
   prefix: string,
   /** The Effect data layer over the same scratch schema (`scratch.services()`). */
   services: Context.Context<StudioServices>,
@@ -124,11 +122,9 @@ export async function signInWithMagicLink(
     ),
   );
   const auth = liveAuthService(env, services, { jobs });
-  // The same pool the rpc handlers are wired with, so procedures address the
-  // scratch schema too rather than whatever DATABASE_URL points at. The whole
-  // Studio, composed: `/api/auth/*` and `/rpc` are both the Effect shell's,
-  // and a suite driving `/rpc` needs `studio.rpc` (see support/rpc.ts).
-  const studio = createStudio(env, { auth, pool, services });
+  // The whole Studio, composed: `/api/auth/*` and `/rpc` are both the Effect
+  // shell's, and a suite driving `/rpc` needs `studio.rpc` (see support/rpc.ts).
+  const studio = createStudio(env, { auth, services });
   const stack = composeStudio(env, studio);
   const email = `${prefix}-${Date.now()}@example.com`;
 

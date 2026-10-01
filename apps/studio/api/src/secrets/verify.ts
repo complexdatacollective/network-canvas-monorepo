@@ -1,5 +1,5 @@
 import { Effect, Layer, Option, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { type DatabaseConfig, MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, type Transaction } from '../db/tenant.ts';

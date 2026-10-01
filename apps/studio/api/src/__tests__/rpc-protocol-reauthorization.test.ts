@@ -92,7 +92,6 @@ describe.skipIf(!testDb)(
       );
       const client = await createRpcClient(
         createStudio(readEnv(), {
-          pool: database.appPool,
           services: database.services,
           auth: authServiceStub({
             getSession: () => Effect.succeedSome(principal),

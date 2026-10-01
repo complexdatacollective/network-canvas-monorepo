@@ -20,7 +20,7 @@
 // module could not be imported while it was still node-postgres. There is one
 // definition of each now, in `protocol/commands.ts`, and `host.ts` calls it.
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type { SessionPrincipal } from '../auth/service.ts';
 import type { Database } from '../db/client.ts';

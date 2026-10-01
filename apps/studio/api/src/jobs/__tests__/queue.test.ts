@@ -226,7 +226,7 @@ describe.skipIf(!db)('the native queue', () => {
           const [row] = yield* readJobs('invitation-delivery');
           assert.strictEqual(row?.state, 'active');
           assert.strictEqual(
-            row?.locked_until,
+            row?.locked_until?.getTime(),
             DateTime.toDate(DateTime.addDuration(now, '7 seconds')).getTime(),
           );
 
@@ -267,7 +267,7 @@ describe.skipIf(!db)('the native queue', () => {
         const [row] = yield* readJobs('invitation-delivery');
         assert.strictEqual(row?.state, 'created');
         assert.strictEqual(row?.attempts, 1);
-        assert.strictEqual(row?.run_at, expected);
+        assert.strictEqual(row?.run_at.getTime(), expected);
         assert.strictEqual(row?.last_error, 'SMTP temporarily unavailable');
         assert.strictEqual(row?.locked_until, null);
 
@@ -299,7 +299,7 @@ describe.skipIf(!db)('the native queue', () => {
           if (last._tag === 'retrying') {
             // The ladder's own delay, taken from the row rather than guessed.
             const [row] = yield* readJobs('invitation-delivery');
-            yield* TestClock.setTime(row!.run_at);
+            yield* TestClock.setTime(row!.run_at.getTime());
           }
         }
 

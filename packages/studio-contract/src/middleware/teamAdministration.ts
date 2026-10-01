@@ -1,5 +1,5 @@
 import { Context, Schema } from 'effect';
-import { RpcMiddleware } from 'effect/unstable/rpc';
+import { RpcMiddleware } from 'effect/rpc';
 
 import type { TeamAccess as TeamAccessToken } from '@codaco/studio-sync/tenant';
 

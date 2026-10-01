@@ -26,15 +26,18 @@ import { limiterWithoutStore } from './valkey.ts';
  * on first touch rather than degrading, so "nothing reached the database" is a
  * property the suite proves rather than assumes.
  */
+/** The data services of a process with no database: every one refuses. */
+export const absentDataServices: Layer.Layer<StudioServices> = Layer.mergeAll(
+  DatabaseAbsent,
+  SecretsCipher.layerAbsent,
+  AuditSignal.layer,
+  Jobs.layer({ schema: JOB_SCHEMA }),
+  DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
+);
+
 const dataServices = (studio: Studio): Layer.Layer<StudioServices> =>
   studio.rpc.services === undefined
-    ? Layer.mergeAll(
-        DatabaseAbsent,
-        SecretsCipher.layerAbsent,
-        AuditSignal.layer,
-        Jobs.layer({ schema: JOB_SCHEMA }),
-        DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
-      )
+    ? absentDataServices
     : Layer.succeedContext(studio.rpc.services);
 
 /**

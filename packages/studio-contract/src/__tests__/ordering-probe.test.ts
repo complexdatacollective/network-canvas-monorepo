@@ -39,7 +39,7 @@
 
 import { it } from '@effect/vitest';
 import { Effect, Exit, Layer, Schema } from 'effect';
-import { Rpc, RpcGroup, RpcMiddleware, RpcTest } from 'effect/unstable/rpc';
+import { Rpc, RpcGroup, RpcMiddleware, RpcTest } from 'effect/rpc';
 import { describe, expect } from 'vitest';
 
 import { Authenticated, Principal } from '../middleware/authenticated.ts';

@@ -14,7 +14,7 @@ import {
   Result,
   Schema,
 } from 'effect';
-import type { SqlError, Statement } from 'effect/unstable/sql';
+import type { SqlError, Statement } from 'effect/sql';
 import pg from 'pg';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
@@ -52,18 +52,13 @@ import { scratchSchemaDdl } from './schema-ddl.ts';
 import { testDeniedAttempts } from './valkey.ts';
 
 // The scratch-schema harness: one schema per suite, with the three stage-3
-// clients over it (#1927 section 9). It replaced a node-postgres harness whose
-// pools carried `options=-c search_path=...` on the connection string — a
-// startup parameter `@effect/sql-pg` 4.0.0-rc.115 cannot set at all, and one
-// `env/resolve.ts` refuses in `DATABASE_URL` because it would also unpin the
+// clients over it (#1927 section 9). Each client is configured with
+// `DatabaseConfig.searchPath`, which `db/client.ts` sends as the `search_path`
+// startup parameter, so every statement on every client — the schema apply,
+// the fixtures, the oracle reads — resolves unqualified names in the scratch
+// schema. It is not set through `options` on the connection string, which
+// `env/resolve.ts` refuses in `DATABASE_URL` because it could also set the
 // role.
-//
-// The stand-in is fallback A's `search_path` half: each client is configured
-// with `DatabaseConfig.searchPath`, and `db/tenant.ts`'s `pinSession` emits
-// `set local search_path to <schema>` as the second statement of every
-// transaction it opens. Everything this file runs outside those scopes — the
-// schema apply, the fixtures, the oracle reads — pins the same search path
-// itself, through `onOwner`.
 //
 // `support/postgres.ts` keeps what is not a scratch schema: the reachability
 // probe, and the scratch *databases* the process suites point child processes
@@ -232,7 +227,6 @@ const installSchema = Effect.fnUntraced(function* (
   yield* owner.sql.withTransaction(
     Effect.gen(function* () {
       yield* owner.sql.unsafe(`create schema ${schema}`);
-      yield* owner.sql.unsafe(`set local search_path to ${schema}`);
       for (const statement of statements) {
         yield* owner.sql.unsafe(statement);
       }
@@ -328,12 +322,7 @@ export const TestDatabaseLive: Layer.Layer<
     const onOwner = <A, E, R>(
       body: Effect.Effect<A, E, R>,
     ): Effect.Effect<A, E | SqlError.SqlError, R> =>
-      owner.sql.withTransaction(
-        Effect.flatMap(
-          owner.sql.unsafe(`set local search_path to ${schema}`),
-          () => body,
-        ),
-      );
+      owner.sql.withTransaction(body);
 
     const harness: TestDatabaseShape = {
       schema,
@@ -391,15 +380,8 @@ const TestStudioServicesLive: Layer.Layer<
 ).pipe(Layer.provideMerge(TestDatabaseLive));
 
 /**
- * A node-postgres pool over the scratch schema, as the application role.
- *
- * Only for what still runs on node-postgres: the surfaces `createApp` hands a
- * pool to — the readiness probe, and the `requirePool` assertion on the rpc
- * plane. better-auth is not one of them since stage 4: it runs on
- * `auth/adapter.ts` over the Effect client. Everything else in a suite goes
- * through the Effect clients. The search path rides the
- * connection options, as `support/postgres.ts`'s pools did, because this pool
- * opens no scope to pin it in.
+ * A node-postgres pool over the scratch schema, as the application role, for
+ * the scripts' node-postgres `checkSchema`.
  */
 class TestAppPool extends Context.Service<TestAppPool, pg.Pool>()(
   '@studio/db/test/TestAppPool',
@@ -635,9 +617,9 @@ export const refusalOf = <A, E, R>(
  * security policies but not the triggers: the fixture tool and the cross-team
  * oracle. Role-sensitive probes open a `TenantScope` or a `MaintenanceScope`.
  *
- * Rows come back as `@effect/sql-pg` rc.115 decodes them, not as node-postgres
- * did: a raw `timestamptz` is epoch milliseconds, `int8` and an uncast
- * `count(*)` are `bigint`, and a `date` is a string (#1927 §20 Q6).
+ * Rows come back as `@effect/sql-pg` decodes them, not as node-postgres did:
+ * `int8` and an uncast `count(*)` are `bigint`, and a `date` is a string
+ * (#1927 §20 Q6).
  */
 export const ownerRows = <A extends object = Record<string, unknown>>(
   statement: string,
@@ -647,11 +629,11 @@ export const ownerRows = <A extends object = Record<string, unknown>>(
     harness.onOwner(harness.owner.sql.unsafe<A>(statement, params)),
   );
 
-const readNow = Schema.decodeUnknownSync(Schema.Struct({ now: Schema.Number }));
+const readNow = Schema.decodeUnknownSync(Schema.Struct({ now: Schema.Date }));
 
 /**
- * The database's clock, in epoch milliseconds (rc.115 decodes a raw
- * `timestamptz` as a number), read in a transaction of its own.
+ * The database's clock, in epoch milliseconds, read in a transaction of its
+ * own.
  *
  * What a case asserting "stamped no earlier than now" compares against. The
  * host's `Date.now()` is the wrong clock for that: the database runs in a
@@ -663,9 +645,8 @@ export const databaseNow: Effect.Effect<
   number,
   SqlError.SqlError,
   TestDatabase
-> = Effect.map(
-  ownerRows('select now() as now'),
-  (rows) => readNow(rows[0]).now,
+> = Effect.map(ownerRows('select now() as now'), (rows) =>
+  readNow(rows[0]).now.getTime(),
 );
 
 const readRowCount = Schema.decodeUnknownSync(

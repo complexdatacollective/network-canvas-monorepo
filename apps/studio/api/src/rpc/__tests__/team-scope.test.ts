@@ -1,11 +1,11 @@
-import { Cause, Effect, Exit, Option } from 'effect';
-import type pg from 'pg';
+import { Cause, Effect, Exit, Layer, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
 import { AuthServiceStub } from '../../__tests__/support/auth.ts';
+import { absentDataServices } from '../../__tests__/support/services.ts';
 import type { AuthService } from '../../auth/service.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RATE_LIMITS, type RateLimitScope } from '../../rate-limit/scopes.ts';
@@ -46,11 +46,13 @@ const PRINCIPAL = Principal.of({
 });
 
 /**
- * A pool object that is never connected to. `openTeam` asserts one exists
+ * A data layer whose every client refuses. `openTeam` asserts one exists
  * before it looks a membership up — a plane wired without a database is a
  * deployment bug — and nothing here gets far enough to use it.
  */
-const unusedPool = {} as unknown as pg.Pool;
+const unusedServices = Effect.runSync(
+  Effect.scoped(Layer.build(absentDataServices)),
+);
 
 /** An auth service whose only answer is which teams this caller is in. */
 const authFor = (memberOf: Record<string, string>) =>
@@ -83,7 +85,6 @@ const recordingLimiter = (
 });
 
 const DEPS: RpcDeps = {
-  pool: unusedPool,
   capabilities: {
     enabled: true,
     magicLink: true,
@@ -92,6 +93,7 @@ const DEPS: RpcDeps = {
   },
   deployment: { mode: 'self-hosted', billing: false },
   readInstallation: () => Promise.resolve(null),
+  services: unusedServices,
 };
 
 const attempt = <A, E>(

@@ -1,10 +1,9 @@
 import { Cause, Effect, type Context as ServiceContext } from 'effect';
-import type pg from 'pg';
+import type { SqlClient } from 'effect/sql';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-contract/schema/status';
 
 import { AuthService } from './auth/service.ts';
-import { createPool } from './db/pool.ts';
 import { UntenantedScope } from './db/tenant.ts';
 import {
   type AuthCapabilities,
@@ -30,7 +29,8 @@ type CreateStudioDeps = {
    * is also what a suite that is not about auth gets.
    */
   auth?: AuthService['Service'];
-  pool?: pg.Pool;
+  /** The client `/readyz`'s database check runs on; absent, readiness names no database. */
+  readiness?: SqlClient.SqlClient;
   /**
    * The Effect services every data-layer caller runs on (#1931 stage 3): the
    * application client, the operator signal, the job queue and the cipher.
@@ -74,7 +74,7 @@ export type Studio = {
   readonly objectStore?: ObjectStore['Service'] | undefined;
   /**
    * What the `/rpc` handlers are wired from. Resolved here because this is
-   * where the pool and the cipher are decided, and handed to the Effect shell,
+   * where the cipher is decided, and handed to the Effect shell,
    * which owns the route (src/http/rpc-routes.ts).
    */
   readonly rpc: RpcDeps;
@@ -96,7 +96,6 @@ export function createStudio(
   // left here is readiness.
   const limiter = deps.limiter;
 
-  const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
   const auth = deps.auth ?? AuthService.disabled;
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
@@ -168,7 +167,7 @@ export function createStudio(
   // `schema` is not here. Whether the database is this build's is the
   // program's verdict, because the program is what waited for it at boot.
   const checks: HealthChecks = {
-    ...(pool ? { db: databaseCheck(pool) } : {}),
+    ...(deps.readiness ? { db: databaseCheck(deps.readiness) } : {}),
     ...(objectStore
       ? {
           // The route's one-second bound interrupts this, and the store hands
@@ -195,7 +194,6 @@ export function createStudio(
     capabilities: authCaps,
     deployment,
     readInstallation: readInstallationRow,
-    pool,
     services: deps.services,
   };
   return {

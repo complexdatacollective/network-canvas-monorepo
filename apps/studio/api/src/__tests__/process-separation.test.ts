@@ -225,6 +225,13 @@ describe('every entry', () => {
 describe('the worker process', () => {
   const graph = moduleGraph('src/worker.ts');
 
+  it('runs on the Effect driver, with no node-postgres pool', () => {
+    expect(reached(graph, ['@effect/sql-pg'])).toEqual(['@effect/sql-pg']);
+    expect(
+      reached(graph, ['drizzle-orm/node-postgres', 'src/db/pool.ts']),
+    ).toEqual([]);
+  });
+
   it('serves nothing but the health routes', () => {
     // It does serve HTTP — the loopback health listener a container
     // healthcheck polls (#1897) — so "binds no port" is not the reading. What
@@ -404,7 +411,7 @@ function distSpecifiers(source: string): string[] {
 }
 
 const SCALAR =
-  /\/effect\/dist\/unstable\/httpapi\/(?:HttpApiScalar|internal\/httpApiScalar)\.js$/;
+  /\/effect\/dist\/http-api\/(?:HttpApiScalar|internal\/httpApiScalar)\.js$/;
 
 describe('what each process loads through the packages it imports', () => {
   const loadsScalar = (entry: string) =>
@@ -413,7 +420,7 @@ describe('what each process loads through the packages it imports', () => {
   it('keeps the API reference page out of the worker', () => {
     // The page inlines a 3 MB bundle, and the worker serves no page. The
     // contract's shared problem schema used to reach it through
-    // `effect/unstable/httpapi`'s barrel, which every module that raises a
+    // `effect/http-api`'s barrel, which every module that raises a
     // contract error — the worker's included — loads.
     //
     // Mutation: import `HttpApiScalar` from the barrel in
@@ -440,8 +447,8 @@ const byName = (left: string, right: string): number =>
 const PROTOCOL_BUILDER_HOST =
   /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher)\.ts$/;
 
-/** Effect's `unstable/httpapi` barrel, which carries every HttpApi module. */
-const HTTPAPI_BARREL = /\/effect\/dist\/unstable\/httpapi\/index\.js$/;
+/** Effect’s `http-api` barrel, which carries every HttpApi module. */
+const HTTPAPI_BARREL = /\/effect\/dist\/http-api\/index\.js$/;
 
 describe('the protocol-builder host', () => {
   const hostModules = (entry: string) =>
@@ -484,7 +491,7 @@ describe('the protocol-builder host', () => {
     // `unstable/*` barrels, and the socket server under `/ws` is Effect's
     // Node platform's — nothing of Studio's imports `ws` itself.
     //
-    // Mutation: import anything from 'effect/unstable/httpapi' in
+    // Mutation: import anything from 'effect/http-api' in
     // src/protocol-builder/rpc.ts.
     expect(
       [...loadedModules('src/protocol-builder/rpc.ts')].filter((path) =>
@@ -565,11 +572,7 @@ describe('the migrate process', () => {
       reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
     ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
     expect(
-      reached(graph, [
-        'drizzle-orm/node-postgres',
-        'src/db/pool.ts',
-        'src/db/database-pool.ts',
-      ]),
+      reached(graph, ['drizzle-orm/node-postgres', 'src/db/pool.ts']),
     ).toEqual([]);
   });
 });
@@ -651,21 +654,17 @@ describe('the web process', () => {
     // positive one. #1927 stage 3 moved every command onto `@effect/sql-pg`,
     // so this is now the client the process's own work runs on.
     //
-    // The matching negative — "and it carries no node-postgres" — is not true
-    // of this process today, so it is not asserted here: `pg` still arrives
-    // through db/pool.ts, db/database-pool.ts and http/health.ts, the
-    // readiness probes that stay on node-postgres while rc.115 cannot pin a
-    // role outside a transaction. better-auth left that list in stage 4, when
-    // `AuthService` put it on its sql-pg adapter (auth/adapter.ts). Asserting
-    // the absence would fail; asserting the presence of the holders would pass
-    // whatever else joined them. The negative is asserted
-    // where it is true instead — see the maintenance and rotation processes below, the
-    // entries already clear of the driver.
+    // Nor a node-postgres pool: `pg` arrives only as `import type` from the
+    // scripts' helpers in db/schema.ts and jobs/install.ts, which the build
+    // erases.
     //
     // Mutation: drop `@effect/sql-pg` from src/db/client.ts.
     expect(
       reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
     ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
+    expect(
+      reached(graph, ['drizzle-orm/node-postgres', 'src/db/pool.ts']),
+    ).toEqual([]);
   });
 
   it('cannot mint a TeamAccess without a membership check', () => {
@@ -763,12 +762,7 @@ describe('the maintenance process', () => {
     // Like rotation, a command written on the Effect driver from the start:
     // no pool, and no `pg` even as a type.
     expect(
-      reached(graph, [
-        'pg',
-        'drizzle-orm/node-postgres',
-        'src/db/pool.ts',
-        'src/db/database-pool.ts',
-      ]),
+      reached(graph, ['pg', 'drizzle-orm/node-postgres', 'src/db/pool.ts']),
     ).toEqual([]);
   });
 });
@@ -790,23 +784,13 @@ describe('the rotation process', () => {
   });
 
   it('is the entry already clear of node-postgres', () => {
-    // The measurement the web process cannot carry yet (see its driver case):
-    // one entry reaches the Effect driver and nothing else, so #1927 stage 3's
-    // retreat from node-postgres is asserted somewhere rather than nowhere.
-    // Rotation was already maintenance-only Effect code; the pools that keep
-    // `pg` in the web and worker graphs — db/pool.ts and db/database-pool.ts —
-    // are not in this one, and it carries no `import type` of `pg` either,
-    // which the migrate graph still does.
+    // Unlike the web, worker and migrate graphs, it carries no `import type`
+    // of `pg` either.
     //
     // Mutation: import src/db/pool.ts from src/programs/rotate-secrets.ts.
     expect(reached(graph, ['@effect/sql-pg'])).toEqual(['@effect/sql-pg']);
     expect(
-      reached(graph, [
-        'pg',
-        'drizzle-orm/node-postgres',
-        'src/db/pool.ts',
-        'src/db/database-pool.ts',
-      ]),
+      reached(graph, ['pg', 'drizzle-orm/node-postgres', 'src/db/pool.ts']),
     ).toEqual([]);
   });
 

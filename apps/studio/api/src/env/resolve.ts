@@ -17,6 +17,8 @@ export type S3Env = {
 
 export type DbEnv = {
   url: string;
+  /** `DATABASE_PASSWORD_FILE`, which the Effect clients reread per connection. */
+  passwordFile?: string | undefined;
 };
 
 export type MailerEnv =
@@ -237,17 +239,37 @@ function assertClientCanParse(url: string): void {
 }
 
 /**
- * The effective connection string, with the file secret's password folded in.
- *
- * The compose stack (#1909) delivers the database password as a Compose file
- * secret rather than a variable, so it appears in neither `docker inspect` nor
- * any process environment — but `pg.Pool` and `@effect/sql-pg` both take one
- * connection string. Producing the URL here is what lets
- * `DbEnv` stay `{ url }`, so every consumer is unchanged and none of them has
- * to know where the password came from.
- *
- * Read once, at boot, like every other variable: a file whose contents change
- * under a running process would give different pools different passwords.
+ * The password a `DATABASE_PASSWORD_FILE` holds. Trailing newlines only are
+ * stripped, as the Postgres image's own `POSTGRES_PASSWORD_FILE` reader does,
+ * so a file written with a shell redirection sets the same password on both
+ * sides.
+ */
+export function readPasswordFile(passwordFile: string): string {
+  let contents: string;
+  try {
+    contents = readFileSync(passwordFile, 'utf8');
+  } catch (error) {
+    throw new Error(
+      `DATABASE_PASSWORD_FILE names ${passwordFile}, which could not be read: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error },
+    );
+  }
+  const password = contents.replace(/[\r\n]+$/, '');
+  if (password === '') {
+    throw new Error(
+      `DATABASE_PASSWORD_FILE names ${passwordFile}, which is empty.`,
+    );
+  }
+  return password;
+}
+
+/**
+ * The effective connection string, with the file secret's password folded in
+ * as it read at boot, for the node-postgres scripts. The Effect clients reread
+ * the file for every new connection instead (`DbEnv.passwordFile`), so a
+ * rotated password reaches them without a restart.
  */
 function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
   const url = raw.DATABASE_URL;
@@ -289,27 +311,7 @@ function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
     );
   }
 
-  let contents: string;
-  try {
-    contents = readFileSync(passwordFile, 'utf8');
-  } catch (error) {
-    throw new Error(
-      `DATABASE_PASSWORD_FILE names ${passwordFile}, which could not be read: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      { cause: error },
-    );
-  }
-  // Trailing newlines only, and for a specific reason: the Postgres image's
-  // own POSTGRES_PASSWORD_FILE reader strips exactly these, so a file written
-  // with a shell redirection sets a password there that must match here.
-  // Anything else in the file is part of the password.
-  const password = contents.replace(/[\r\n]+$/, '');
-  if (password === '') {
-    throw new Error(
-      `DATABASE_PASSWORD_FILE names ${passwordFile}, which is empty.`,
-    );
-  }
+  const password = readPasswordFile(passwordFile);
 
   // The setter applies the userinfo percent-encode set, so a password
   // containing `@`, `/`, `:` or `#` survives the round trip through the
@@ -519,7 +521,14 @@ export function resolve(
   }
 
   const databaseUrl = resolveDatabaseUrl(raw);
-  const db = databaseUrl ? { url: databaseUrl } : undefined;
+  const db = databaseUrl
+    ? {
+        url: databaseUrl,
+        ...(raw.DATABASE_PASSWORD_FILE
+          ? { passwordFile: raw.DATABASE_PASSWORD_FILE }
+          : {}),
+      }
+    : undefined;
   if (db) {
     assertPinnedRoleSurvives(db.url);
     assertClientCanParse(db.url);

@@ -333,7 +333,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
           const harness = yield* TestDatabase;
           const before = yield* harness.onOwner(
             harness.owner.sql<{
-              updated_at: number;
+              updated_at: Date;
             }>`select updated_at from webhook_subscriptions where id = ${subscription.id}`,
           );
 
@@ -353,19 +353,17 @@ describe.skipIf(!testDb)('the secret stores', () => {
           const after = yield* harness.onOwner(
             harness.owner.sql<{
               secret_key_id: string;
-              updated_at: number;
+              updated_at: Date;
             }>`select secret_key_id, updated_at from webhook_subscriptions
                where id = ${subscription.id}`,
           );
           expect(after[0]?.secret_key_id).toBe('test-1');
           // Rotation changes how a row is stored, not when anyone last changed
-          // it. `updated_at` comes back from a RAW statement, so it is epoch
-          // milliseconds rather than a Date on rc.115 — pinned here, because
-          // the comparison below only means "unchanged" while it is a
-          // primitive (two equal Dates are two objects and would never be
-          // `toBe`-equal, so a change of shape would read as a failure).
-          expect(typeof after[0]?.updated_at).toBe('number');
-          expect(after[0]?.updated_at).toBe(before[0]?.updated_at);
+          // it.
+          expect(after[0]?.updated_at).toBeInstanceOf(Date);
+          expect(after[0]?.updated_at.getTime()).toBe(
+            before[0]?.updated_at.getTime(),
+          );
 
           // The plaintext survived the re-seal: the row now opens under the
           // new keyring and says the same thing.
@@ -536,7 +534,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
             harness.owner.sql<{
               asset_id: string;
               key_id: string;
-              updated_at: number;
+              updated_at: Date;
             }>`select asset_id, key_id, updated_at from protocol_asset_keys
                order by asset_id`,
           );
@@ -558,11 +556,10 @@ describe.skipIf(!testDb)('the secret stores', () => {
           // key is the row that was named — and it is still the same asset.
           expect(after[0]?.asset_id).toBe(key.assetId);
           expect(after[0]?.key_id).toBe('test-1');
-          // `updated_at` comes back from a RAW statement: epoch milliseconds
-          // rather than a Date on rc.115, pinned for the same reason as in the
-          // webhook case.
-          expect(typeof after[0]?.updated_at).toBe('number');
-          expect(after[0]?.updated_at).toBe(before[0]?.updated_at);
+          expect(after[0]?.updated_at).toBeInstanceOf(Date);
+          expect(after[0]?.updated_at.getTime()).toBe(
+            before[0]?.updated_at.getTime(),
+          );
 
           const opener = yield* MaintenanceScope.open(
             probeOf(assetKeyStore, 'test-1'),

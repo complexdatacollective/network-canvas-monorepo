@@ -19,7 +19,7 @@ import {
   Option,
   Stream,
 } from 'effect';
-import type { Rpc, RpcClient, RpcClientError } from 'effect/unstable/rpc';
+import type { Rpc, RpcClient, RpcClientError } from 'effect/rpc';
 import { useEffect, useRef, useState } from 'react';
 
 import type {

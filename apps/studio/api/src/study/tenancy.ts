@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { type Database } from '../db/client.ts';
 import {

@@ -1,5 +1,5 @@
 import { Effect, type Option } from 'effect';
-import { Headers, HttpServerRequest } from 'effect/unstable/http';
+import { Headers, HttpServerRequest } from 'effect/http';
 
 import { AuthService, type Principal } from './service.ts';
 

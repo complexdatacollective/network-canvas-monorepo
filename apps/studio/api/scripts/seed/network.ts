@@ -13,7 +13,7 @@
 // `scripts/seed/seed.ts`. Handing the function down keeps that allowlist honest.
 import { faker } from '@faker-js/faker';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { generateNetwork } from '@codaco/protocol-utilities';
 import type { NcNetwork } from '@codaco/shared-consts';

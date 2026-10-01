@@ -18,7 +18,7 @@ import {
   Schema,
   Semaphore,
 } from 'effect';
-import type { SqlClient, SqlError } from 'effect/unstable/sql';
+import type { SqlClient, SqlError } from 'effect/sql';
 
 import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
@@ -1066,7 +1066,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     const depths: readonly QueueDepth[] = yield* MaintenanceScope.open(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;
-        // `count(*)::int`: rc.115 decodes a bare `count(*)` as a `bigint`.
+        // `count(*)::int`: a bare `count(*)` decodes as a `bigint`.
         return yield* sql<QueueDepth>`
           SELECT queue, state, count(*)::int AS count
             FROM ${table(sql)}.jobs

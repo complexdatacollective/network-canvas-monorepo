@@ -1,5 +1,5 @@
 import { Context } from 'effect';
-import { RpcMiddleware } from 'effect/unstable/rpc';
+import { RpcMiddleware } from 'effect/rpc';
 
 // Re-exported rather than copied: one spelling of the header name, defined in
 // the module that explains why it exists, which now lives in this package.

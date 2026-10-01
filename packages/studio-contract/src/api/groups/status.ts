@@ -1,8 +1,4 @@
-import {
-  HttpApiEndpoint,
-  HttpApiGroup,
-  OpenApi,
-} from 'effect/unstable/httpapi';
+import { HttpApiEndpoint, HttpApiGroup, OpenApi } from 'effect/http-api';
 
 import { NotFoundResponse } from '../../schema/errors.ts';
 import { PublicInstanceStatus } from '../../schema/status.ts';

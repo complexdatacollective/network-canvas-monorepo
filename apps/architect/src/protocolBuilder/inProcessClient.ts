@@ -1,8 +1,8 @@
 import { Effect } from 'effect';
-import type * as Rpc from 'effect/unstable/rpc/Rpc';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import type * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
+import type * as Rpc from 'effect/rpc/Rpc';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import type * as RpcGroup from 'effect/rpc/RpcGroup';
+import * as RpcServer from 'effect/rpc/RpcServer';
 
 /**
  * A client wired straight to the group's handlers: no transport and no

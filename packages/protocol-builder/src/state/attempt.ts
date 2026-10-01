@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import type { RpcClientError } from 'effect/unstable/rpc/RpcClientError';
+import type { RpcClientError } from 'effect/rpc/RpcClientError';
 
 import type { ErrorOf, PayloadOf, SuccessOf } from '@codaco/effect-query/types';
 import {

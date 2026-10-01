@@ -1,18 +1,17 @@
 import { afterAll, describe, expect, it } from '@effect/vitest';
-import { Effect, Fiber } from 'effect';
+import { Effect, Fiber, Layer, ManagedRuntime } from 'effect';
 import { TestClock } from 'effect/testing';
-import type pg from 'pg';
 
 import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { createStudio } from '../app.ts';
-import { OwnerDatabase } from '../db/client.ts';
+import { OwnerDatabase, ReadinessDatabase } from '../db/client.ts';
 import { migrateDatabaseEffect } from '../db/migrate.ts';
-import { createOwnerPool } from '../db/pool.ts';
 import { resolve } from '../env/resolve.ts';
 import {
+  databaseCheck,
   type HealthChecks,
   readiness,
-  schemaCheckOnPool,
+  schemaCheckOn,
 } from '../http/health.ts';
 import { freePort } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
@@ -61,6 +60,15 @@ async function request(
       await limits.dispose();
     },
   };
+}
+
+/** The application role's readiness client over `url`, as the web program builds it. */
+async function readinessOver(url: string) {
+  const runtime = ManagedRuntime.make(
+    Layer.orDie(ReadinessDatabase.layer('app', { url })),
+  );
+  const { sql } = await runtime.runPromise(ReadinessDatabase);
+  return { sql, dispose: () => runtime.dispose() };
 }
 
 const ok = Effect.succeed('ok' as const);
@@ -126,27 +134,23 @@ describe('a readiness verdict', () => {
   );
 });
 
-describe('the schema check over a pool', () => {
-  it('names the database error when the pool cannot connect', async () => {
+describe('the schema check on the readiness client', () => {
+  it('names the database error when it cannot connect', async () => {
     // What a worker container's `/readyz` says when Postgres is down — the
     // only diagnostic it exposes, so the reason has to be the driver's.
-    // Mutation: build the read with `Effect.tryPromise(() => checkSchema(pool))`
-    // (the one-thunk form) and the reason becomes Effect's own
-    // `An error occurred in Effect.tryPromise` instead of the address that
-    // refused.
-    const pool = createOwnerPool({
-      url: 'postgres://studio:studio@127.0.0.1:59999/studio',
-    });
+    const probe = await readinessOver(
+      'postgres://studio:studio@127.0.0.1:59999/studio',
+    );
     try {
       const result = await Effect.runPromise(
-        readiness({ schema: schemaCheckOnPool(pool) }),
+        readiness({ schema: schemaCheckOn(probe.sql) }),
       );
       expect(result.status).toBe('failing');
       expect(result.checks.schema).toMatch(
         /^failed: connect ECONNREFUSED 127\.0\.0\.1:59999/,
       );
     } finally {
-      await pool.end();
+      await probe.dispose();
     }
   });
 });
@@ -258,7 +262,8 @@ describe('the web process routes', () => {
       STUDIO_SECRETS_KEY: testKeyringEntry('test-1'),
       ...AUTH,
     });
-    const studio = createStudio(env);
+    const probe = await readinessOver(env.db!.url);
+    const studio = createStudio(env, { readiness: probe.sql });
     const stack = composeStudio(env, studio);
     try {
       const response = await stack.request('/readyz');
@@ -275,6 +280,7 @@ describe('the web process routes', () => {
       expect((await stack.request('/healthz')).status).toBe(200);
     } finally {
       await stack.dispose();
+      await probe.dispose();
     }
   });
 });
@@ -300,14 +306,17 @@ describe.skipIf(!db)('the web process against a real database', () => {
         ...AUTH,
       } as const;
 
-      // The `schema` check is the program's, not the app's, so the suite
-      // supplies it the same way the worker program does — from a fresh read
-      // of the fingerprint on the pool.
-      const schema = (pool: pg.Pool) => ({ schema: schemaCheckOnPool(pool) });
+      // The `db` and `schema` checks are the program's, so the suite supplies
+      // them the way the worker program does, over a readiness client.
+      const probe = await readinessOver(scratch.db.url);
+      const checks = {
+        db: databaseCheck(probe.sql),
+        schema: schemaCheckOn(probe.sql),
+      };
 
       // Before the schema exists, readiness says so by name rather than
       // reporting a healthy process with nothing behind it.
-      const before = await request(variables, '/readyz', schema(scratch.pool));
+      const before = await request(variables, '/readyz', checks);
       try {
         expect(before.response.status).toBe(503);
         expect(
@@ -328,9 +337,7 @@ describe.skipIf(!db)('the web process against a real database', () => {
         ),
       );
 
-      // A second app, because the first one's pool is pinned to studio_app and
-      // was refused at connect before that role existed.
-      const after = await request(variables, '/readyz', schema(scratch.pool));
+      const after = await request(variables, '/readyz', checks);
       try {
         expect(after.response.status).toBe(200);
         expect(await after.response.json()).toEqual({
@@ -339,6 +346,7 @@ describe.skipIf(!db)('the web process against a real database', () => {
         });
       } finally {
         await after.dispose();
+        await probe.dispose();
       }
     },
     PROVISION_TIMEOUT_MS,

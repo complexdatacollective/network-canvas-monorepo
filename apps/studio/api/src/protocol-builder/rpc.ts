@@ -14,12 +14,12 @@ import {
   Option,
   Predicate,
 } from 'effect';
-import * as HttpRouter from 'effect/unstable/http/HttpRouter';
-import * as HttpServerRequest from 'effect/unstable/http/HttpServerRequest';
-import * as HttpServerResponse from 'effect/unstable/http/HttpServerResponse';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
-import * as Socket from 'effect/unstable/socket/Socket';
+import * as HttpRouter from 'effect/http/HttpRouter';
+import * as HttpServerRequest from 'effect/http/HttpServerRequest';
+import * as HttpServerResponse from 'effect/http/HttpServerResponse';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as RpcServer from 'effect/rpc/RpcServer';
+import * as Socket from 'effect/socket/Socket';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
 import {

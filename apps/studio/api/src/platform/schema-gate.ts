@@ -1,9 +1,9 @@
 import { Context, Effect, Latch, Layer, Schedule, Schema } from 'effect';
 
-import { DatabasePool } from '../db/database-pool.ts';
-import { isMissingRoleError } from '../db/pool.ts';
+import { ReadinessDatabase } from '../db/client.ts';
+import { isMissingRole } from '../db/errors.ts';
 import {
-  checkSchema,
+  checkSchemaEffect,
   type SchemaProblem,
   type SchemaState,
   schemaProblemMessage,
@@ -78,12 +78,12 @@ export class SchemaStatus extends Context.Service<
   static readonly layer: Layer.Layer<
     SchemaStatus,
     StaleSchema | SchemaUnreachable,
-    Environment | DatabasePool
+    Environment | ReadinessDatabase
   > = Layer.effect(
     SchemaStatus,
     Effect.gen(function* () {
       const env = yield* Environment;
-      const { pool } = yield* DatabasePool;
+      const { sql } = yield* ReadinessDatabase;
 
       // Closed until a verdict of `current` has been seen, so a consumer that
       // may only talk to the database afterwards suspends rather than polls.
@@ -93,10 +93,9 @@ export class SchemaStatus extends Context.Service<
       // in the error channel here is a connection failure rather than an
       // answer about the schema.
       const read: Effect.Effect<SchemaState, SchemaUnreachable> =
-        Effect.tryPromise({
-          try: () => checkSchema(pool),
-          catch: (cause) => new SchemaUnreachable({ cause }),
-        });
+        checkSchemaEffect(sql).pipe(
+          Effect.mapError((cause) => new SchemaUnreachable({ cause })),
+        );
 
       const status = SchemaStatus.of({ read, current: currentLatch.await });
 
@@ -132,9 +131,10 @@ export class SchemaStatus extends Context.Service<
 
       if (verdict._tag === 'Failure') {
         const failure = verdict.failure;
-        // The pools run as roles the schema apply creates, so a never-applied
-        // database refuses the connection before the fingerprint can be read.
-        if (isMissingRoleError(failure.cause)) {
+        // The client runs as a role the schema apply creates, so a
+        // never-applied database refuses the connection before the
+        // fingerprint can be read.
+        if (isMissingRole(failure.cause)) {
           if (!env.devDefaults)
             return yield* StaleSchema.fromState({ kind: 'absent' });
           yield* waitForSchema({ kind: 'absent' });

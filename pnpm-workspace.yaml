@@ -43,9 +43,9 @@ catalog:
   '@chromatic-com/storybook': ^5.3.1
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
-  '@effect/sql-pg': 4.0.0-rc.115
-  '@effect/platform-node': 4.0.0-rc.115
-  '@effect/vitest': 4.0.0-rc.115
+  '@effect/sql-pg': 4.0.0
+  '@effect/platform-node': 4.0.0
+  '@effect/vitest': 4.0.0
   # Held on 10.5: 10.6 reorganised the en first-name data, which moves every
   # seeded SyntheticInterview name and so every Storybook visual baseline.
   # Take 10.6+ in its own PR that updates the pinned SyntheticInterview
@@ -135,8 +135,9 @@ catalog:
   # requires.
   drizzle-kit: 1.0.0-rc.5-5935859
   drizzle-orm: 1.0.0-rc.5-5935859
-  # Pinned exactly: the `rc` dist-tag moves. Bumping is a chore PR of its own.
-  effect: 4.0.0-rc.115
+  # Pinned exactly, with every `@effect/*` entry above in lock-step. Bumping is
+  # a chore PR of its own.
+  effect: 4.0.0
   electron: ^43.7.7
   electron-builder: ^26.16.1
   electron-vite: ^6.0.0-beta.1
@@ -335,6 +336,14 @@ minimumReleaseAgeExclude:
   - '@next/third-parties@16.3.8'
   - 'better-auth@1.7.5'
   - 'electron@43.7.7'
+  # Effect 4.0.0, published 2026-10-01 between 01:47Z and 03:11Z — excluded only
+  # so the upgrade could install before it ages out at 2026-10-02T03:12Z. Inert
+  # after that, and safe to delete in any passing sweep.
+  - 'effect@4.0.0'
+  - '@effect/platform-node@4.0.0'
+  - '@effect/platform-node-shared@4.0.0'
+  - '@effect/sql-pg@4.0.0'
+  - '@effect/vitest@4.0.0'
 patchedDependencies:
   # The addon applies a story's `viewport` parameter by importing `page` from
   # `@vitest/browser/context`, an entry point Vitest 5 no longer serves to a
@@ -346,3 +355,4 @@ patchedDependencies:
   # Vitest 5 serves. 10.6.1 declares Vitest 5 peers but still imports the old
   # entry point; drop this once a release imports `vitest/browser` itself.
   '@storybook/addon-vitest@10.6.1': patches/@storybook__addon-vitest@10.6.1.patch
+  drizzle-orm@1.0.0-rc.5-5935859: patches/drizzle-orm@1.0.0-rc.5-5935859.patch

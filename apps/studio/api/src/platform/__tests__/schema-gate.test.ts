@@ -7,7 +7,7 @@ import {
   createScratchDatabase,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
-import { DatabasePool } from '../../db/database-pool.ts';
+import { ReadinessDatabase } from '../../db/client.ts';
 import { type DbEnv, Environment, readEnv } from '../../env.ts';
 import { SchemaStatus, StaleSchema } from '../schema-gate.ts';
 import { collectLogs } from './support/logs.ts';
@@ -32,13 +32,15 @@ const ABSENT_WARNING =
 const db = await reachableDb();
 
 /**
- * The gate as a program wires it: the application pool over this database, and
+ * The gate as a program wires it: the readiness client over this database, and
  * an environment that is the development lane's except for the one flag the
  * case is about.
  */
 const gate = (scratch: DbEnv, devDefaults: boolean) =>
   SchemaStatus.layer.pipe(
-    Layer.provide(DatabasePool.layerApplication(scratch)),
+    Layer.provide(
+      Layer.orDie(ReadinessDatabase.layer('app', { url: scratch.url })),
+    ),
     Layer.provide(
       Layer.succeed(Environment, { ...readEnv(), db: scratch, devDefaults }),
     ),

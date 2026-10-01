@@ -10,8 +10,8 @@ import {
   SchemaIssue,
   Scope,
 } from 'effect';
-import type { RpcClient, RpcGroup } from 'effect/unstable/rpc';
-import { RpcClient as Client, RpcTest } from 'effect/unstable/rpc';
+import type { RpcClient, RpcGroup } from 'effect/rpc';
+import { RpcClient as Client, RpcTest } from 'effect/rpc';
 import { expect } from 'vitest';
 
 import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
