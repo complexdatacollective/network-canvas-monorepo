@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import { preload } from 'react-dom';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import {
@@ -111,26 +112,35 @@ export default async function LocaleLayout({
         <script id="entrance-motion">{entranceMotionScript}</script>
       </head>
       <body className="root overflow-x-hidden">
-        <PostHogClientProvider>
-          <ThemeProvider
-            enableSystem
-            enableColorScheme
-            attribute="data-theme"
-            storageKey="networkcanvas-site"
-          >
-            <NextIntlClientProvider messages={messages}>
-              <AppI18nProvider
-                locale={locale}
-                locales={siteAppLocales}
-                messages={siteAppCatalogs[locale]}
-                manageDocument={false}
-                timeZone="UTC"
-              >
-                {children}
-              </AppI18nProvider>
-            </NextIntlClientProvider>
-          </ThemeProvider>
-        </PostHogClientProvider>
+        {/* Outermost, so every `motion` component on the site inherits it.
+            `reducedMotion="user"` is the provider's default: motion then drops
+            transform and layout animations by itself for a visitor who prefers
+            reduced motion, and keeps the simple ones. That has to live here
+            rather than in each component, because a component reading the
+            preference to pick its own props would serialise an answer the
+            server cannot know into the markup it sends. */}
+        <AnimationProvider>
+          <PostHogClientProvider>
+            <ThemeProvider
+              enableSystem
+              enableColorScheme
+              attribute="data-theme"
+              storageKey="networkcanvas-site"
+            >
+              <NextIntlClientProvider messages={messages}>
+                <AppI18nProvider
+                  locale={locale}
+                  locales={siteAppLocales}
+                  messages={siteAppCatalogs[locale]}
+                  manageDocument={false}
+                  timeZone="UTC"
+                >
+                  {children}
+                </AppI18nProvider>
+              </NextIntlClientProvider>
+            </ThemeProvider>
+          </PostHogClientProvider>
+        </AnimationProvider>
       </body>
     </html>
   );

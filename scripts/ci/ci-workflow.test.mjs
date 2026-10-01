@@ -37,6 +37,11 @@ const refreshWorkflow = parse(
     'utf8',
   ),
 );
+const WORKFLOW_DIR = new URL('../../.github/workflows/', import.meta.url);
+// Every turbo invocation in CI is capped by this, set at the top of each
+// workflow, rather than by a flag at each call site.
+const TURBO_CAP =
+  /^env:\n(?:[^\S\n][^\n]*\n)*?[^\S\n]+TURBO_CONCURRENCY: '1'$/m;
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
@@ -674,18 +679,18 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // nor the sharding can be quietly re-broken.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
     'the affected path scopes to the PR base and to this shard',
   );
   // The fallback runs whenever the diff touches anything outside the turbo
   // input trees — including an edit to this very workflow file, which is how
   // most changes to the job itself are exercised. Without its own assertion,
   // a shard restriction dropped or misquoted here would leave every shard
-  // running the whole workspace, and only the generic --concurrency=1 check
+  // running the whole workspace, and no other assertion
   // would have looked at the line.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 "\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test "\$\{SHARD_FILTERS\[@\]\}"/,
     'the full-suite fallback is scoped to this shard too',
   );
   // Both invocations, and no others: a third turbo run without the shard
@@ -796,22 +801,47 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
 });
 
-test('workspace test suites run one at a time', () => {
+test('every CI turbo invocation is capped at one task, job-wide', () => {
   // Every vitest sizes its fork pool to the runner's CPUs, so one suite
   // already fills the 4-vCPU runner; concurrent suites starve each other
   // into 20s timeouts without shortening the job (PR #1801).
-  const testJob = job('test');
-  assert.ok(testJob, 'test job exists');
-  const testRuns =
-    testJob.match(/pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g) ?? [];
-  assert.ok(testRuns.length >= 2, 'test job runs turbo test on both branches');
-  for (const run of testRuns) {
-    assert.match(run, /--concurrency=1/, `capped: ${run}`);
+  //
+  // This used to be asserted per invocation, which is how `quality-support`
+  // came to run `turbo run typecheck` uncapped and kill the runner on a pull
+  // request that invalidated six packages at once (#2023). The cap is now one
+  // variable per workflow, so this guards that rather than each call site.
+  let capped = 0;
+  for (const file of readdirSync(WORKFLOW_DIR)) {
+    const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
+
+    // A per-invocation flag would override the workflow's variable and drift
+    // from it, which is the arrangement #2023 replaced. The continuation group
+    // matters: these commands are routinely wrapped across `\`-continued
+    // lines, and `test:storybook` was written that way until this change, so a
+    // line-bounded pattern would miss the most likely way the flag comes back.
+    assert.doesNotMatch(
+      source,
+      /turbo run(?:[^\n]*\\\n)*[^\n]*--concurrency/,
+      `${file} passes --concurrency at a call site instead of setting TURBO_CONCURRENCY`,
+    );
+
+    if (!/exec turbo run/.test(source)) continue;
+    assert.match(
+      source,
+      TURBO_CAP,
+      `${file} runs turbo without setting TURBO_CONCURRENCY`,
+    );
+    capped += 1;
   }
+  // A rename of a workflow that runs turbo must not silently empty this loop.
+  assert.ok(
+    capped >= 5,
+    `expected every turbo workflow to be capped, saw ${capped}`,
+  );
 
   const seedJob = job('seed-turbo-cache');
   assert.ok(seedJob, 'seed-turbo-cache job exists');
-  assert.match(seedJob, /pnpm exec turbo run test --concurrency=1/);
+  assert.match(seedJob, /pnpm exec turbo run test/);
   assert.doesNotMatch(
     seedJob,
     /turbo run (?:build|typecheck)[^\n]*\btest\b/,

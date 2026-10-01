@@ -177,7 +177,7 @@ export const InGridLayout: Story = {
         Drops into a responsive grid — Collection&apos;s GridLayout, or any CSS
         grid container, would render cards this way.
       </Paragraph>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 grid grid-cols-1 gap-4">
         <DataCard
           label="Moses Crist"
           details={{ Age: 21, Location: 'New Haven' }}

@@ -37,7 +37,7 @@
     "@orpc/tanstack-query": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
-    "@tanstack/react-router": "^1.170.0",
+    "@tanstack/react-router": "^1.170.40",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",

@@ -4,6 +4,7 @@ import {
   type Column,
   flexRender,
   type Row,
+  type RowData,
   type Table as TTable,
 } from '@tanstack/react-table';
 import { type ReactNode } from 'react';
@@ -21,8 +22,11 @@ import {
 } from '../Table';
 import { cx } from '../utils/cva';
 import { DataTablePagination } from './DataTablePagination';
+import { type DataTableFeatures } from './features';
 
-function getColumnHighlight<TData>(column: Column<TData>) {
+function getColumnHighlight<TData extends RowData>(
+  column: Column<DataTableFeatures, TData>,
+) {
   const isSorted = column.getIsSorted();
   const isFiltered = column.getIsFiltered();
   if (isSorted && isFiltered)
@@ -42,17 +46,17 @@ const messages = defineMessages({
   },
 });
 
-type DataTableProps<TData> = {
-  table: TTable<TData>;
+type DataTableProps<TData extends RowData> = {
+  table: TTable<DataTableFeatures, TData>;
   toolbar?: ReactNode;
   floatingBar?: ReactNode;
   showPagination?: boolean;
   emptyText?: string;
-  getRowClasses?: (row: Row<TData>) => string | undefined;
+  getRowClasses?: (row: Row<DataTableFeatures, TData>) => string | undefined;
   bodyScroll?: boolean;
 };
 
-export function DataTable<TData>({
+export function DataTable<TData extends RowData>({
   table,
   toolbar,
   floatingBar,
