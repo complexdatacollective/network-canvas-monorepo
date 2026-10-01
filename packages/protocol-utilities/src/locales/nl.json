@@ -20,7 +20,7 @@
   "protocolUtilities.constraint.pedigreeFixedValue": "Een validatieregel wijst een vaste waarde af die het gegevensmodel van de familiestamboom vereist. Pas de regel aan zodat de vereiste waarde is toegestaan.",
   "protocolUtilities.constraint.pinnedDifferentFromParity": "Aan de vaste waarden en de regels die verschillende antwoorden vereisen, kan niet tegelijk worden voldaan. Wijzig een vaste waarde of een vergelijking.",
   "protocolUtilities.constraint.pinnedEqualDifferentFrom": "Deze attributen moeten verschillen, maar hun regels dwingen dezelfde waarde af. Verruim een bereik of wijzig een vergelijking.",
-  "protocolUtilities.constraint.requiredEmptySelection": "De maximale selectie is nul, maar een antwoord is verplicht. Sta minstens één selectie toe of maak het antwoord optioneel.",
+  "protocolUtilities.constraint.requiredEmptySelection": "De maximale selectie is nul, maar een antwoord is verplicht. Sta minimaal één selectie toe of maak het antwoord optioneel.",
   "protocolUtilities.constraint.requiredEmptyText": "De maximale tekstlengte is nul, maar een antwoord is verplicht. Sta tekst toe of maak het antwoord optioneel.",
   "protocolUtilities.constraint.sameAsGroupConflict": "Deze attributen moeten één waarde delen, maar hun toegestane waarden of datumprecisies zijn niet met elkaar verenigbaar. Stem hun regels en invoerelementen op elkaar af.",
   "protocolUtilities.constraint.sharedBounds": "Deze attributen moeten één waarde delen, maar hun toegestane bereiken overlappen niet. Pas de bereiken of de gelijkheidsregel aan.",

@@ -24,7 +24,7 @@
   },
   "Tools": {
     "heading": "Een reeks tools die je onderzoek makkelijker maken",
-    "introduction": "We bieden een complete workflow van begin tot eind voor netwerkonderzoek, met apps voor het ontwerpen en het afnemen van interviews. Met deze tools kunnen onderzoekers eenvoudig netwerkgegevens ontwerpen, vastleggen en exporteren.",
+    "introduction": "We bieden een complete workflow van begin tot eind voor netwerkonderzoek, met apps voor het ontwerpen en het afnemen van interviews. Met deze tools kunnen onderzoekers eenvoudig interviews ontwerpen en netwerkgegevens vastleggen en exporteren.",
     "architect": {
       "description": "Een browsergebaseerde tool om Network Canvas-interviews visueel te ontwerpen. Met Architect kunnen inhoudelijke experts zich richten op het ontwerp en de uitvoering van hun onderzoek, zonder ingewikkelde nieuwe technologie te hoeven leren.",
       "action": "Architect openen",
@@ -110,7 +110,7 @@
   },
   "Institutions": {
     "heading": "Instellingen",
-    "paragraph1": "De software wordt ontwikkeld door een team van onderzoekers en ontwikkelaars van Northwestern University en de University of Oxford, samen met een aantal externe ontwikkelaars die we inhuren. We zijn dankbaar voor de <prior>eerdere</prior> en <ongoing>lopende</ongoing> financiering van de National Institutes of Health die dit werk mogelijk maakt.",
+    "paragraph1": "De software wordt ontwikkeld door een team van onderzoekers en ontwikkelaars van Northwestern University en de Universiteit van Oxford, samen met een aantal externe ontwikkelaars die we inhuren. We zijn dankbaar voor de <prior>eerdere</prior> en <ongoing>lopende</ongoing> financiering van de National Institutes of Health die dit werk mogelijk maakt.",
     "paragraph2": "Het intellectuele eigendom en het auteursrecht op de software worden beheerd door een geregistreerde non-profitorganisatie, het Complex Data Collective, die bestaat uit de kernmedewerkers van het project.",
     "prior": "eerdere",
     "ongoing": "lopende"
@@ -206,12 +206,12 @@
     "stageTypes": {
       "AlterEdgeForm": "Formulier per relatie",
       "AlterForm": "Formulier per alter",
-      "Anonymisation": "Anonimiseringsinterface",
+      "Anonymisation": "Interface voor anonimisering",
       "CategoricalBin": "Categorische indeling",
       "DyadCensus": "Dyadencensus",
       "EgoForm": "Egoformulier",
       "FamilyPedigree": "Familiestamboom",
-      "Geospatial": "Geografische interface",
+      "Geospatial": "Interface voor geografische gegevens",
       "Information": "Informatie",
       "NameGenerator": "Naamgenerator (met formulieren)",
       "NameGeneratorQuickAdd": "Naamgenerator (snel toevoegen)",
@@ -252,9 +252,9 @@
         "title": "Voorbeeld: {name}"
       },
       "loading": "Het voorbeeld wordt voorbereid…",
-      "finishConfirmation": "Dit is een voorbeeld: er wordt niets opgeslagen. Door af te ronden beëindig je deze doorloop van het protocol; daarna kun je opnieuw beginnen.",
+      "finishConfirmation": "Dit is een voorbeeld: er wordt niets opgeslagen. Door te voltooien beëindig je deze doorloop van het protocol; daarna kun je opnieuw beginnen.",
       "finishedHeading": "Voorbeeld voltooid",
-      "finishedDescription": "Het interview is afgerond, precies zoals het voor een deelnemer zou gaan. Er is niets opgeslagen.",
+      "finishedDescription": "Het interview is voltooid, net zoals dat bij een deelnemer zou gaan. Er is niets opgeslagen.",
       "restart": "Voorbeeld opnieuw starten",
       "backToProtocol": "Terug naar het protocol",
       "errorHeading": "Van dit protocol kan geen voorbeeld worden getoond",
@@ -262,7 +262,7 @@
         "unavailable": "Het protocolbestand kan niet worden gedownload. Controleer je verbinding en probeer het opnieuw.",
         "unreadable": "Het protocolbestand kan niet worden geopend. Mogelijk is het beschadigd.",
         "unsupported-version": "Dit protocol gebruikt een schemaversie die de interviewengine niet kan uitvoeren.",
-        "invalid": "Het protocol is niet door de validatie gekomen, waardoor de interviewengine het niet kan uitvoeren."
+        "invalid": "Het protocol heeft de validatie niet doorstaan, waardoor de interviewengine het niet kan uitvoeren."
       },
       "retry": "Opnieuw proberen"
     },
@@ -457,7 +457,7 @@
           "compatibility": "Compatibel met alle desktops en tablets, waaronder iPads en Android-tablets"
         },
         "open": "Interviewer openen",
-        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> blijft beschikbaar voor lopende onderzoeken. Net als <architectClassic>Architect Classic</architectClassic> staat de app alleen nog in onderhoudsmodus en krijgt hij geen nieuwe functies."
+        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> blijft beschikbaar voor lopende onderzoeken. Net als <architectClassic>Architect Classic</architectClassic> staat de app alleen nog in onderhoudsmodus, zonder nieuwe functies."
       },
       "fresco": {
         "label": "Zelfstandig ingevulde interviews op afstand",
@@ -485,11 +485,11 @@
     "features": {
       "label": "Schema 8",
       "heading": "Nieuwe interfaces en functies",
-      "introduction": "Deze nieuwe generatie apps introduceert een nieuwe <definition>versie van het protocolschema</definition>, schema 8, met een aantal nieuwe interview-interfaces en functies. Heeft je onderzoek een daarvan nodig, dan moet je de nieuwe tools gebruiken. Kies een kaart om de details te bekijken.",
+      "introduction": "Deze nieuwe generatie apps introduceert een nieuwe <definition>versie van het protocolschema</definition>, schema 8, met een aantal nieuwe interviewinterfaces en functies. Heeft je onderzoek een daarvan nodig, dan moet je de nieuwe tools gebruiken. Kies een kaart om de details te bekijken.",
       "documentationLink": "Meer in de documentatie",
       "previewAlt": "Voorbeeld van {name}",
       "groups": {
-        "interfaces": "Nieuwe interview-interfaces",
+        "interfaces": "Nieuwe interviewinterfaces",
         "schema": "Functies van schema 8",
         "architect": "Architect",
         "interviewer": "Interviewer",
@@ -497,7 +497,7 @@
       },
       "geospatial": {
         "shortName": "Geografisch",
-        "name": "Geografische interface",
+        "name": "Interface voor geografische gegevens",
         "summary": "Leg locatiegegevens per alter vast door deelnemers een gebied op een interactieve kaart te laten selecteren.",
         "details": {
           "0": "Definieer met een GeoJSON-bestand welke censusgebieden, postcodegebieden, buurten of eigen onderzoeksgebieden selecteerbaar zijn.",
@@ -507,7 +507,7 @@
       },
       "anonymisation": {
         "shortName": "Anonimisering",
-        "name": "Anonimiseringsinterface",
+        "name": "Interface voor anonimisering",
         "summary": "Geef deelnemers zelf controle over gevoelige identificerende gegevens door geselecteerde knooppunt- of relatieattributen op hun apparaat te versleutelen.",
         "details": {
           "0": "Elke deelnemer kiest zelf de wachtzin waarmee de geselecteerde gegevens worden beschermd, en die wachtzin wordt nooit door de app opgeslagen.",
@@ -517,7 +517,7 @@
       },
       "oneToMany": {
         "shortName": "Een-op-veel-dyadencensus",
-        "name": "Interface Een-op-veel-dyadencensus",
+        "name": "Interface voor de een-op-veel-dyadencensus",
         "summary": "Maak op hetzelfde scherm relaties aan tussen één focale persoon en meerdere andere personen, in plaats van elk paar afzonderlijk te beoordelen.",
         "details": {
           "0": "Gebruik deze interface wanneer een netwerk centrale figuren bevat die waarschijnlijk relaties hebben met veel anderen.",
@@ -527,17 +527,17 @@
       },
       "familyPedigree": {
         "shortName": "Familiestamboom",
-        "name": "Interface Familiestamboom",
+        "name": "Interface voor de familiestamboom",
         "summary": "Begeleid deelnemers bij het opbouwen van een complexe familiestructuur in een speciaal daarvoor ontworpen visuele workflow.",
         "details": {
           "0": "Maak familieleden en relaties in één keer aan, terwijl een automatische lay-out de stamboom leesbaar houdt naarmate die groeit.",
           "1": "Breng biologische, sociale, adoptie-, donor-, draagouder- en partnerrelaties in beeld en verzamel attributen voor elk familielid.",
-          "2": "Voeg een optionele stap toe voor het nomineren van aandoeningen, om vast te leggen welke familieleden door specifieke aandoeningen zijn aangedaan, zodat je dit later kunt visualiseren."
+          "2": "Voeg een optionele stap toe waarin deelnemers aangeven welke familieleden door specifieke aandoeningen zijn aangedaan, zodat je dit later kunt visualiseren."
         }
       },
       "narrativePedigree": {
         "shortName": "Narratieve stamboom",
-        "name": "Interface Narratieve stamboom",
+        "name": "Interface voor de narratieve stamboom",
         "summary": "Zet een familiestamboom uit een eerdere fase om in een alleen-lezenvisualisatie met de standaard klinische stamboomnotatie.",
         "details": {
           "0": "Toon aangedane familieleden en zekere dragers van een of meer aandoeningen, voor de ondersteunde overervingspatronen.",
@@ -547,7 +547,7 @@
       },
       "networkComposer": {
         "shortName": "Netwerkbouwer",
-        "name": "Interface Netwerkbouwer",
+        "name": "Interface voor de netwerkbouwer",
         "summary": "Bouw en bewerk het volledige persoonlijke netwerk van een deelnemer op één canvas met een vrije indeling.",
         "details": {
           "0": "Voeg personen toe, vul attributen van personen en relaties in, teken verschillende relatietypen en herschik het netwerk naarmate het gesprek vordert.",
@@ -560,7 +560,7 @@
         "name": "Uitgebreidere veldvalidatie",
         "summary": "Leg verbanden tussen antwoorden direct in het protocol vast, zodat formulieren inconsistente antwoorden al opmerken terwijl het interview nog loopt.",
         "details": {
-          "0": "Vergelijk een numeriek antwoord met een andere variabele met de nieuwe regels “groter dan variabele” en “kleiner dan variabele”.",
+          "0": "Vergelijk met de nieuwe regels “Groter dan een ander attribuut” en “Kleiner dan een ander attribuut” een numeriek antwoord met een ander attribuut.",
           "1": "Combineer deze relatieve controles met de bestaande regels voor verplichte antwoorden, bereik, uniciteit en vergelijking tussen velden om vast te leggen welke antwoorden je onderzoek accepteert.",
           "2": "Bekijk het formulier als voorbeeld in Architect en test randgevallen voordat je het in gebruik neemt; dezelfde protocolregels worden in Interviewer en Fresco uitgevoerd."
         }
@@ -662,7 +662,7 @@
         "details": {
           "0": "Filter aan de serverzijde op protocol, datum, voortgang, netwerkgrootte, exportstatus of deelnemer-ID, over de volledige dataset.",
           "1": "Selecteer alle interviews die aan de actieve filters voldoen, niet alleen de rijen die op dat moment op het scherm staan.",
-          "2": "Exporteer alle, alle voltooide of alle nog niet geëxporteerde interviews binnen de gefilterde resultaten, zonder andere records aan te raken."
+          "2": "Exporteer alle interviews, alleen de voltooide of alleen de nog niet geëxporteerde binnen de gefilterde resultaten, zonder andere records aan te raken."
         }
       },
       "secureDataApi": {
@@ -670,7 +670,7 @@
         "name": "Beveiligde API voor interviewgegevens",
         "summary": "Koppel analysetools rechtstreeks aan een Fresco-installatie via een JSON-API met versiebeheer en alleen-lezentoegang.",
         "details": {
-          "0": "Laat de API uitgeschakeld tot je hem nodig hebt, en maak dan bearer-tokens aan vanuit het dashboard waarop je bent ingelogd.",
+          "0": "Laat de API uitgeschakeld tot je die nodig hebt, en maak dan bearer-tokens aan vanuit het dashboard waarop je bent ingelogd.",
           "1": "Vraag interviewnetwerken en protocolmetadata op, als lijst of afzonderlijk, zonder dat er een endpoint beschikbaar is waarmee onderzoeksgegevens kunnen worden gewijzigd.",
           "2": "Trek tokens in, bekijk wanneer elk token voor het laatst is gebruikt en bouw herhaalbare workflows voor R, Python, dashboards of rapportages."
         }
@@ -701,7 +701,7 @@
       "rows": {
         "interviewerClassic": {
           "platform": "Desktop en tablet",
-          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> draait schema 7 native, maar kan geen protocollen in schema 8 openen. Blijf de app gebruiken voor lopende onderzoeken in schema 7 – hij wordt nog steeds ondersteund met bugfixes."
+          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> draait schema 7 native, maar kan geen protocollen in schema 8 openen. Blijf de app gebruiken voor lopende onderzoeken in schema 7 – de app krijgt nog steeds bugfixes."
         },
         "architectClassic": {
           "platform": "Desktop",

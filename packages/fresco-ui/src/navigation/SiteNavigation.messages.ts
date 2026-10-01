@@ -190,7 +190,7 @@ export const siteNavigationMessages = {
         name: 'Architect Classic',
         action: 'Architect Classic downloaden',
         description:
-          'Gebruik dit alleen als je onderzoek compatibel moet blijven met Interviewer Classic en schema 7.',
+          'Gebruik deze app alleen als je onderzoek compatibel moet blijven met Interviewer Classic en schema 7.',
       },
       interviewer: {
         name: 'Interviewer',
@@ -202,11 +202,11 @@ export const siteNavigationMessages = {
         name: 'Interviewer Classic',
         action: 'Interviewer Classic downloaden',
         description:
-          'Voor lopende onderzoeken in schema 7 en offline werken op een desktop of tablet. Wordt onderhouden voor compatibiliteit en bugfixes.',
+          'Voor bestaande onderzoeken in schema 7 en offline workflows op desktop of tablet. Wordt onderhouden voor compatibiliteit en bugfixes.',
       },
       fresco: {
         name: 'Fresco',
-        action: 'De Fresco-sandbox proberen',
+        action: 'Fresco-sandbox uitproberen',
         description:
           'Coördineer netwerkinterviews op afstand en beheer onderzoeksgegevens vanuit één gedeeld dashboard in de browser.',
       },
