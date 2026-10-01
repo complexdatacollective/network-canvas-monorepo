@@ -40,7 +40,9 @@ export type Update = {
   date: string;
   apps: UpdateAppId[];
   title: string;
-  body: string;
+  summary: string;
+  details?: string;
+  link?: string;
 };
 
 export type SiteContent = {
@@ -136,6 +138,14 @@ const updateRowSchema = z
     title_en: requiredText,
     title_en_gb: requiredText,
     title_es: requiredText,
+    link: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value || undefined)
+      .pipe(
+        z.string().startsWith('/', 'must be a path on this site').optional(),
+      ),
   })
   .strict();
 
@@ -245,6 +255,8 @@ export async function loadSiteContent(
   };
 }
 
+const DETAILS_MARKER = '<!-- more -->';
+
 export async function loadUpdates(
   locale: Locale,
   contentDirectory = join(process.cwd(), 'content'),
@@ -262,6 +274,8 @@ export async function loadUpdates(
         throw new Error(`${filename}: missing update body`, { cause: error });
       }
 
+      const [summary = '', details] = body.split(DETAILS_MARKER);
+
       return {
         id: row.id,
         date: row.date,
@@ -271,7 +285,9 @@ export async function loadUpdates(
           'en-GB': row.title_en_gb,
           'es': row.title_es,
         }[locale],
-        body: body.trim(),
+        summary: summary.trim(),
+        ...(details === undefined ? {} : { details: details.trim() }),
+        ...(row.link ? { link: row.link } : {}),
       };
     }),
   );

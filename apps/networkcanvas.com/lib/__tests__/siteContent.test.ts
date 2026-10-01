@@ -224,14 +224,14 @@ newer,2026-03-10,architect|interviewer,Newer update,Newer update (GB),Novedad re
         date: '2026-03-10',
         apps: ['architect', 'interviewer'],
         title: 'Novedad reciente',
-        body: 'Cuerpo reciente',
+        summary: 'Cuerpo reciente',
       },
       {
         id: 'older',
         date: '2026-01-05',
         apps: ['fresco'],
         title: 'Novedad anterior',
-        body: 'Cuerpo anterior',
+        summary: 'Cuerpo anterior',
       },
     ]);
   });
@@ -242,12 +242,27 @@ newer,2026-03-10,architect|interviewer,Newer update,Newer update (GB),Novedad re
 
     expect(american).toMatchObject({
       title: 'Newer update',
-      body: 'Newer body',
+      summary: 'Newer body',
     });
     expect(british).toMatchObject({
       title: 'Newer update (GB)',
-      body: 'Newer body (GB)',
+      summary: 'Newer body (GB)',
     });
+  });
+
+  it('splits a body into a summary and the details after the marker', async () => {
+    await writeFile(
+      join(directory, 'updates/newer.en.md'),
+      'Newer summary\n\n<!-- more -->\n\nNewer details\n',
+    );
+
+    const [newer, older] = await loadUpdates('en-US', directory);
+
+    expect(newer).toMatchObject({
+      summary: 'Newer summary',
+      details: 'Newer details',
+    });
+    expect(older).not.toHaveProperty('details');
   });
 
   it('rejects an update without a body for the locale', async () => {

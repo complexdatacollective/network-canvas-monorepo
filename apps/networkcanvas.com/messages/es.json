@@ -113,7 +113,6 @@
       "automatic": "Architect e Interviewer se actualizan automáticamente, sin necesidad de gestionar versiones manualmente. Si los ha instalado desde su navegador como aplicaciones web progresivas, las actualizaciones se cargan al reiniciarlas, y sus datos locales siguen seguros y bajo su control.",
       "fresco": "Para actualizar Fresco a la versión más reciente, siga las <link>instrucciones de actualización de nuestra documentación</link>."
     },
-    "published": "Publicado el {date}",
     "search": {
       "label": "Buscar novedades",
       "placeholder": "Buscar novedades",
@@ -123,6 +122,12 @@
       "emptyDescription": "Pruebe con otra búsqueda."
     },
     "latest": "Novedad más reciente",
+    "details": {
+      "show": "Mostrar todos los detalles",
+      "hide": "Ocultar detalles"
+    },
+    "moreLanguagesSoon": "Más muy pronto",
+    "readMore": "Leer el anuncio completo",
     "filter": {
       "label": "Filtrar por aplicación",
       "all": "Todas"

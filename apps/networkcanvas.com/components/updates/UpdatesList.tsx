@@ -1,6 +1,7 @@
 'use client';
 
-import { Search, X } from 'lucide-react';
+import { Accordion as BaseAccordion } from '@base-ui/react/accordion';
+import { ArrowRight, ChevronDown, Search, X } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -9,11 +10,12 @@ import {
   AccordionHeader,
   AccordionItem,
   AccordionPanel,
-  AccordionTrigger,
 } from '@codaco/fresco-ui/Accordion';
-import { IconButton } from '@codaco/fresco-ui/Button';
+import { Badge } from '@codaco/fresco-ui/Badge';
+import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
@@ -21,11 +23,13 @@ import {
 import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 import { foldText } from '@codaco/fresco-ui/utils/foldText';
 import { EmptyResults } from '~/components/ui/EmptyResults';
-import { OverlineHeading } from '~/components/ui/OverlineHeading';
 import { SiteLink } from '~/components/ui/SiteLink';
+import { updateIllustrations } from '~/components/updates/illustrations/updateIllustrations';
 import { tools } from '~/lib/content';
+import { Link } from '~/lib/i18n/navigation';
 import type { Update } from '~/lib/siteContent';
 import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
 
@@ -44,9 +48,8 @@ const markdownComponents = { a: MarkdownLink };
 
 // Link destinations are not part of what a reader sees, so they do not match.
 function searchableText(update: Update) {
-  return foldText(
-    `${update.title} ${update.body.replace(/\]\([^)]*\)/g, ']')}`,
-  );
+  const text = `${update.title} ${update.summary} ${update.details ?? ''}`;
+  return foldText(text.replace(/\]\([^)]*\)/g, ']'));
 }
 
 type AppFilter = 'all' | UpdateAppId;
@@ -84,7 +87,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   const t = useTranslations('UpdatesPage');
   const format = useFormatter();
   const latestId = updates[0]?.id;
-  const [openIds, setOpenIds] = useState<string[]>(latestId ? [latestId] : []);
+  const [openIds, setOpenIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [app, setApp] = useState<AppFilter>('all');
   const searchable = useMemo(
@@ -98,16 +101,15 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   const visibleUpdates = visibleUpdatesFor(searchable, query, app);
   const narrowed = query.trim() !== '' || app !== 'all';
 
-  // Every search match opens so the text that matched is on screen; without a
-  // search, only the newest update left in view does.
   const showUpdates = (nextQuery: string, nextApp: AppFilter) => {
     setQuery(nextQuery);
     setApp(nextApp);
-    const visible = visibleUpdatesFor(searchable, nextQuery, nextApp);
     setOpenIds(
       nextQuery.trim()
-        ? visible.map((update) => update.id)
-        : visible.slice(0, 1).map((update) => update.id),
+        ? visibleUpdatesFor(searchable, nextQuery, nextApp).map(
+            (update) => update.id,
+          )
+        : [],
     );
   };
 
@@ -202,52 +204,77 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
         multiple
         value={openIds}
         onValueChange={setOpenIds}
-        className="divide-text/10 mt-2 gap-0 divide-y"
+        render={<ol />}
+        className="mt-6 gap-0"
       >
-        {visibleUpdates.map((update) => (
-          <AccordionItem key={update.id} value={update.id} className="py-6">
-            <AccordionHeader
-              render={({ children, ...props }) => (
-                <h2 {...props}>{children}</h2>
-              )}
-              id={update.id}
-              className="scroll-mt-8"
+        {visibleUpdates.map((update) => {
+          const illustration = updateIllustrations[update.id];
+          const date = new Date(update.date);
+          const open = openIds.includes(update.id);
+          return (
+            <AccordionItem
+              key={update.id}
+              value={update.id}
+              render={<li />}
+              className="group tablet-portrait:grid-cols-[6rem_1.5rem_minmax(0,1fr)] tablet-portrait:gap-x-6 grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-4"
             >
-              <AccordionTrigger
-                typography="inherit"
-                className="text-text items-start text-left"
+              <time
+                dateTime={update.date}
+                className="tablet-portrait:col-start-1 tablet-portrait:row-start-1 tablet-portrait:pt-0.5 tablet-portrait:pb-0 tablet-portrait:text-right col-start-2 row-start-1 flex flex-col pb-3"
               >
-                <span className="flex flex-col gap-2">
-                  {update.id === latestId ? (
-                    <OverlineHeading as="span" className="text-link">
-                      {t('latest')}
-                    </OverlineHeading>
-                  ) : null}
-                  <Heading
-                    level="h2"
-                    variant="subheading"
-                    margin="none"
-                    render={<span />}
-                  >
-                    {update.title}
-                  </Heading>
-                  <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <Paragraph
-                      render={<span />}
-                      intent="meta"
-                      emphasis="muted"
-                      margin="none"
+                <Heading level="h4" margin="none" render={<span />}>
+                  {format.dateTime(date, {
+                    month: 'short',
+                    day: 'numeric',
+                    timeZone: 'UTC',
+                  })}
+                </Heading>{' '}
+                <Paragraph
+                  render={<span />}
+                  intent="smallText"
+                  emphasis="muted"
+                  margin="none"
+                >
+                  {format.dateTime(date, { year: 'numeric', timeZone: 'UTC' })}
+                </Paragraph>
+              </time>
+              <div
+                aria-hidden
+                className="tablet-portrait:col-start-2 relative col-start-1 row-span-2 row-start-1 flex justify-center"
+              >
+                <span
+                  className={cx(
+                    'border-text relative z-10 mt-1 size-5 rounded-full border-4',
+                    illustration?.dotClassName ?? 'bg-primary',
+                  )}
+                />
+                <span className="bg-text/10 absolute top-1 -bottom-2 left-1/2 w-1 -translate-x-1/2 rounded-full group-last:hidden" />
+              </div>
+              <div className="tablet-portrait:col-start-3 tablet-portrait:row-start-1 tablet-portrait:row-span-2 col-start-2 row-start-2 pb-12">
+                <Surface
+                  as="article"
+                  noContainer
+                  spacing="none"
+                  shadow="sm"
+                  aria-labelledby={update.id}
+                >
+                  {illustration ? (
+                    <div
+                      className={cx(
+                        'tablet-portrait:px-10 px-4 pt-4',
+                        illustration.bandClassName,
+                      )}
                     >
-                      <time dateTime={update.date}>
-                        {t('published', {
-                          date: format.dateTime(new Date(update.date), {
-                            dateStyle: 'long',
-                            timeZone: 'UTC',
-                          }),
-                        })}
-                      </time>
-                    </Paragraph>
-                    <span className="flex flex-wrap gap-1.5">
+                      <illustration.Illustration />
+                    </div>
+                  ) : null}
+                  <div className="tablet-portrait:p-8 p-6">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {update.id === latestId ? (
+                        <Badge color="neon-coral" uppercase>
+                          {t('latest')}
+                        </Badge>
+                      ) : null}
                       {update.apps.map((id) => (
                         <Fragment key={id}>
                           {' '}
@@ -256,26 +283,75 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                           </Tag>
                         </Fragment>
                       ))}
-                    </span>
-                  </span>
-                </span>
-              </AccordionTrigger>
-            </AccordionHeader>
-            <AccordionPanel
-              className="mt-0"
-              inert={!openIds.includes(update.id)}
-            >
-              <div className="pt-4">
-                <RenderMarkdown
-                  allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-                  components={markdownComponents}
-                >
-                  {update.body}
-                </RenderMarkdown>
+                    </div>
+                    <Heading
+                      level="h2"
+                      variant="subheading"
+                      margin="none"
+                      id={update.id}
+                      className="scroll-mt-8"
+                    >
+                      {update.title}
+                    </Heading>
+                    <div className="mt-3">
+                      <RenderMarkdown
+                        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+                        components={markdownComponents}
+                      >
+                        {update.summary}
+                      </RenderMarkdown>
+                    </div>
+                    {update.details ? (
+                      <>
+                        <AccordionPanel inert={!open}>
+                          <RenderMarkdown
+                            allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+                            components={markdownComponents}
+                          >
+                            {update.details}
+                          </RenderMarkdown>
+                        </AccordionPanel>
+                        <AccordionHeader render={<div />} className="mt-4">
+                          <BaseAccordion.Trigger
+                            aria-describedby={update.id}
+                            render={
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                iconPosition="right"
+                                icon={
+                                  <ChevronDown
+                                    aria-hidden
+                                    className="transition-transform [[data-panel-open]>&]:rotate-180"
+                                  />
+                                }
+                              />
+                            }
+                          >
+                            {open ? t('details.hide') : t('details.show')}
+                          </BaseAccordion.Trigger>
+                        </AccordionHeader>
+                      </>
+                    ) : null}
+                    {update.link ? (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="mt-4"
+                      >
+                        <Link href={update.link}>
+                          {t('readMore')}
+                          <ArrowRight aria-hidden />
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                </Surface>
               </div>
-            </AccordionPanel>
-          </AccordionItem>
-        ))}
+            </AccordionItem>
+          );
+        })}
       </Accordion>
     </div>
   );

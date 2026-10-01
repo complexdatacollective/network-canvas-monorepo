@@ -73,51 +73,62 @@ async function renderPage(locale: 'en-US' | 'es' = 'en-US') {
   renderWithIntl(page, locale);
 }
 
-// Each entry heading also carries its date, apps and, for the newest, a
-// label, so an entry is identified by the title its heading contains.
 function entryTitles(titles: readonly string[]) {
-  return screen
-    .queryAllByRole('heading', { level: 2, hidden: true })
-    .filter((heading) => heading.querySelector('button'))
-    .map((heading) =>
-      titles.find((title) => heading.textContent?.includes(title)),
-    );
+  return screen.queryAllByRole('article', { hidden: true }).map((article) =>
+    titles.find((title) =>
+      within(article).queryByRole('heading', {
+        level: 2,
+        name: title,
+        hidden: true,
+      }),
+    ),
+  );
+}
+
+function updateEntry(title: string) {
+  return screen.getByRole('article', { name: title, hidden: true });
 }
 
 // jsdom cannot compute the styles of the accordion's animated panels, so role
 // queries skip the visibility check and assert aria-expanded instead.
-function updateTrigger(title: string) {
-  return within(
-    screen.getByRole('heading', {
-      level: 2,
-      name: (name) => name.includes(title),
-      hidden: true,
-    }),
-  ).getByRole('button', { hidden: true });
+function detailsTrigger(title: string) {
+  return within(updateEntry(title)).getByRole('button', { hidden: true });
 }
 
 describe('updates page', () => {
-  it('opens the newest update and collapses the rest', async () => {
+  it('shows each update’s summary with its details collapsed', async () => {
     const updates = await loadUpdates('en-US');
     await renderPage();
 
-    const headings = screen
-      .getAllByRole('heading', { level: 2, hidden: true })
-      .filter((heading) => heading.querySelector('button'));
-    expect(headings).toHaveLength(updates.length);
+    expect(screen.getAllByRole('article', { hidden: true })).toHaveLength(
+      updates.length,
+    );
     expect(updates.length).toBeGreaterThan(1);
 
-    const [newest, ...older] = updates;
-    expect(updateTrigger(newest!.title)).toHaveAttribute(
+    for (const update of updates) {
+      const toggle = within(updateEntry(update.title)).queryByRole('button', {
+        hidden: true,
+      });
+      if (update.details) {
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(toggle).toHaveTextContent('Show full details');
+      } else {
+        expect(toggle).toBeNull();
+      }
+    }
+  });
+
+  it('expands an update’s full details on request', async () => {
+    const [newest] = await loadUpdates('en-US');
+    await renderPage();
+
+    fireEvent.click(detailsTrigger(newest!.title));
+
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
       'aria-expanded',
       'true',
     );
-    for (const update of older) {
-      expect(updateTrigger(update.title)).toHaveAttribute(
-        'aria-expanded',
-        'false',
-      );
-    }
+    expect(detailsTrigger(newest!.title)).toHaveTextContent('Hide details');
   });
 
   it('explains how to upgrade before the list of updates', async () => {
@@ -136,11 +147,11 @@ describe('updates page', () => {
   });
 
   it('opens the update a link points at', async () => {
-    const [, older] = await loadUpdates('en-US');
-    window.history.replaceState(null, '', `/en-US/updates#${older!.id}`);
+    const [newest] = await loadUpdates('en-US');
+    window.history.replaceState(null, '', `/en-US/updates#${newest!.id}`);
     await renderPage();
 
-    expect(updateTrigger(older!.title)).toHaveAttribute(
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
       'aria-expanded',
       'true',
     );
@@ -151,26 +162,26 @@ describe('updates page', () => {
     window.history.replaceState(null, '', '/en-US/updates#%E0%A4');
     await renderPage();
 
-    expect(updateTrigger(newest!.title)).toHaveAttribute(
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
       'aria-expanded',
-      'true',
+      'false',
     );
   });
 
   it('opens an update when the address changes to point at it', async () => {
-    const [, older] = await loadUpdates('en-US');
+    const [newest] = await loadUpdates('en-US');
     await renderPage();
-    expect(updateTrigger(older!.title)).toHaveAttribute(
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
       'aria-expanded',
       'false',
     );
 
     act(() => {
-      window.history.replaceState(null, '', `#${older!.id}`);
+      window.history.replaceState(null, '', `#${newest!.id}`);
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
 
-    expect(updateTrigger(older!.title)).toHaveAttribute(
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
       'aria-expanded',
       'true',
     );
@@ -195,16 +206,26 @@ describe('updates page', () => {
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
-      target: { value: 'schema  PROGRESSIVE' },
+      target: { value: 'schema  TABLETS' },
     });
 
     expect(entryTitles(titles)).toEqual([older!.title]);
-    expect(updateTrigger(older!.title)).toHaveAttribute(
+    expect(screen.getByText('1 of 2 updates')).toBeInTheDocument();
+    expect(entryTitles(titles)).not.toContain(newest!.title);
+  });
+
+  it('opens the details of every update a search matches', async () => {
+    const [newest] = await loadUpdates('en-US');
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'compensation' },
+    });
+
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
       'aria-expanded',
       'true',
     );
-    expect(screen.getByText('1 of 2 updates')).toBeInTheDocument();
-    expect(entryTitles(titles)).not.toContain(newest!.title);
   });
 
   it('ignores accents when searching', async () => {
@@ -247,9 +268,9 @@ describe('updates page', () => {
     );
 
     expect(entryTitles(titles)).toEqual(updates.map((update) => update.title));
-    expect(updateTrigger(updates[0]!.title)).toHaveAttribute(
+    expect(detailsTrigger(updates[0]!.title)).toHaveAttribute(
       'aria-expanded',
-      'true',
+      'false',
     );
   });
 
@@ -257,11 +278,12 @@ describe('updates page', () => {
     const [newest, older] = await loadUpdates('en-US');
     await renderPage();
 
-    expect(updateTrigger(newest!.title)).toHaveTextContent(/^Latest update/);
-    expect(updateTrigger(older!.title)).not.toHaveTextContent('Latest update');
-    expect(updateTrigger(newest!.title)).toHaveTextContent(
-      'Architect Interviewer Fresco',
-    );
+    expect(
+      within(updateEntry(newest!.title)).getByText('Latest update'),
+    ).toBeInTheDocument();
+    expect(
+      within(updateEntry(older!.title)).queryByText('Latest update'),
+    ).toBeNull();
   });
 
   it('filters updates by app alongside the search', async () => {

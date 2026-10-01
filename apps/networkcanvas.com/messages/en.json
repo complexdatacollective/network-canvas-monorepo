@@ -113,7 +113,6 @@
       "automatic": "Architect and Interviewer update automatically, without the need for manual version management. If you have installed them from your browser as Progressive Web Apps, updates load on restart while keeping your local data secure and under your control.",
       "fresco": "To upgrade to the latest version of Fresco, follow the <link>upgrade instructions in our documentation</link>."
     },
-    "published": "Published {date}",
     "search": {
       "label": "Search updates",
       "placeholder": "Search updates",
@@ -123,6 +122,12 @@
       "emptyDescription": "Try a different search."
     },
     "latest": "Latest update",
+    "details": {
+      "show": "Show full details",
+      "hide": "Hide details"
+    },
+    "moreLanguagesSoon": "More coming soon",
+    "readMore": "Read the full announcement",
     "filter": {
       "label": "Filter by app",
       "all": "All"

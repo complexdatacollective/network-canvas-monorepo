@@ -93,10 +93,7 @@ export default async function UpdatesPage({ params }: UpdatesPageProps) {
         />
         <Container margin="bottom" className="mt-12">
           <UpdatesList updates={updates} />
-          <section
-            aria-labelledby="upgrading"
-            className="border-text/10 mx-auto max-w-4xl border-t pt-12"
-          >
+          <section aria-labelledby="upgrading" className="mx-auto max-w-4xl">
             <Alert variant="info">
               <AlertTitle id="upgrading" headingLevel="h2">
                 {t('upgrading.heading')}

@@ -1,21 +1,15 @@
-New versions of Architect, Interviewer, and Fresco are available, and they can be used in more than one language.
+Architect, Interviewer, and Fresco now speak more than one language! Language support has been one of our most requested features, and you can now use the apps in English, British English, or Spanish, including the interview your participants see. Just pick your language from the globe icon in each app, or from the settings menu during an interview. More languages are coming soon.
 
-Highlights include:
+<!-- more -->
 
-- **Language support** in English, British English, and Spanish across Architect, Interviewer, and Fresco, including the interview experience. Choose your language from the globe icon within each app, or from the settings menu during an interview.
-- **A rebuilt protocol editor in Architect**, with a new outline showing which parts of a stage still need configuring, a searchable attribute picker, and a preview of each form field as your participant will see it.
-- **Stronger account security in Fresco**, where passkeys now verify the user every time and deployments can require two-factor authentication on every password account.
+### What's translated?
 
-These updates have no impact on your protocols: they improve the apps' interfaces without changing the structure of your instrument.
+Everything in the app interfaces: buttons, guidance, dialogs, and messages, including what a participant sees during an interview. Your protocol content (questions, prompts, labels, and response options) appears exactly as you wrote it, and your collected data isn't affected. Translating protocol content is coming in a future release.
 
-### What does language support cover?
+By default, each app follows your browser's language. Architect and Interviewer remember your choice on each device, and Fresco saves it to your account.
 
-Language support applies to the app interfaces: controls, guidance, dialogs, and validation messages, including those a participant sees during an interview. It does not yet extend to the content of your protocols: questions, prompts, labels, and response options appear exactly as you wrote them in Architect, and your collected data is unaffected. Support for translating protocol content is coming in a future release.
+### More languages coming soon
 
-By default, each app follows the language your browser is set to. Choose a specific language from the globe icon to override this. Architect and Interviewer remember your choice on each device, and Fresco saves it to your user account.
+We're working on adding more languages. These first translations are machine-led, so some phrasing may read awkwardly. If you spot something, or would like to help bring a new language to Network Canvas, we'd love to hear from you. Email us at [info@networkcanvas.com](mailto:info@networkcanvas.com) or post on the [user community](https://community.networkcanvas.com/). We may be able to offer limited compensation for help with a new language.
 
-### A call for feedback and contributions
-
-These first translations are machine-led, so we expect some phrasing to read awkwardly and some specialist terms to be wrong. If you spot something, please let us know! We would appreciate review of the existing translations and help with adding new languages. If you would be willing to collaborate on adding a new supported language, please get in touch; we may be able to provide limited compensation.
-
-As with any new feature, we welcome your questions and insights. Email us at [info@networkcanvas.com](mailto:info@networkcanvas.com) or post on the [user community](https://community.networkcanvas.com/).
+Thank you for all your feedback. It helps shape what we build next!
