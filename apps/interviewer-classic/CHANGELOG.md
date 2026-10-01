@@ -22,8 +22,8 @@
 - **Fixed out-of-date results appearing for external data.** When an external data source
   (such as a roster or network file) changed quickly, a slow response for the old source could
   overwrite the newer one. Only the latest request is used now.
-- **Updated the mobile libraries.** Capacitor core and iOS were updated to 8.5, with matching
-  Device and Filesystem plugin updates.
+- **Updated the mobile libraries.** Capacitor core, Android and iOS were updated to 8.5.2, with
+  matching updates to the App, Browser, Device, Filesystem, Share and File Picker plugins.
 - **Linux package names.** The `.deb` and `.rpm` packages are named `network-canvas-interviewer`
   again, so they upgrade existing installs in place, and the `.rpm` build no longer fails.
 - **More reliable macOS signing.** The build tooling (electron-builder 26.16) unlocks the
