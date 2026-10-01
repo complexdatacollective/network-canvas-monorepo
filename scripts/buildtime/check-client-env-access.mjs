@@ -26,24 +26,54 @@
 // and Fresco's image is built once and run by deployments that set
 // `SANDBOX_MODE` differently at runtime.
 //
-// WHY THE CHECK IS AN ALLOWLIST. The obvious shape — read the `server:` and
-// `shared:` blocks of each `env.js` and flag reads of what they declare — was
-// the first version of this script, and review found two ways it could pass
-// silently: a quoted key (`'SECRET_TOKEN':`) that its property matcher skipped,
-// and a `}` inside a comment that truncated the block it was reading. Both
-// produced a variable missing from the guarded set, which reads exactly like a
-// variable that is safe. Deriving the ALLOWED names instead makes every
-// mis-parse fail the other way: a name this script fails to recognise as
-// browser-exposed is reported as an offence, which is loud, visible in the
-// diff, and fixable — never a quiet pass. It also needs no knowledge of the
-// env module's contents at all, only that the app has one.
+// ── Why this script does no parsing at all ──
+//
+// Review of #2030 found eleven ways earlier shapes of this script could pass
+// silently, and every one came from the same root: it was lexing TypeScript and
+// JSX with regular expressions. Each fix closed one hole and the next review
+// found another — a quoted key, a `}` in a comment, a commented-out `env:` map,
+// an unrelated object's `env` property, `'use strict'` before `'use client'`, a
+// regex literal holding a quote. Hardening the lexer was losing; TSX cannot be
+// lexed reliably this way, and `/` is ambiguous in a language where `</a>` and
+// `<Foo />` are everywhere.
+//
+// So the script was rebuilt around one rule: EVERY mistake it can still make
+// has to be a false offence, never a missed one. A false offence is loud,
+// appears in the diff that caused it, and is fixed by rewording a line. A
+// missed read is the hydration failure this guard exists to prevent.
+//
+// What that buys, concretely:
+//
+// - It is an allowlist. Reading each `env.js` to learn which names are
+//   server-only made every shortfall in that parse read exactly like a variable
+//   that is safe. This script never reads an env module's contents; it only
+//   notes that the app has one, and flags any name it cannot show the browser
+//   receives.
+// - The inlined names are written down (`INLINED_BY_NEXT_CONFIG`), not parsed.
+//   Deciding which object `next.config` actually exports needs a real parser;
+//   `typescript@7` here no longer exposes one and the parsers in the tree are
+//   transitive. `assertInlinedNamesStillDeclared` fails if a config stops
+//   mentioning a listed name, and adding a name to a config without adding it
+//   here produces a false offence.
+// - Reads are matched in the raw source, with no attempt to exclude comments or
+//   strings. A comment or string that merely mentions `env.NAME` is therefore
+//   reported. That is deliberate: the alternative needs a lexer, and a lexer
+//   that mis-reads a quote blanks the rest of the module and hides real reads.
+//   Reword the line, or move the example out of a client component.
+// - Every binding an `env` import might have introduced is scanned, not the
+//   first one found, so a commented-out import cannot shadow the live one.
+//
+// The one thing it does lex is the directive prologue, where there is no
+// ambiguity: nothing can precede the first statement but whitespace and
+// comments.
 //
 // SCOPE, stated plainly so the next reader does not over-trust this: it flags a
-// direct `NAME.PROPERTY` read where `NAME` is bound by importing `env` from the
-// app's own env module, inside a module that itself carries the `'use client'`
-// directive. It does NOT follow imports: a shared helper with no directive of
-// its own that reads `env.NAME` and is called from a client component is the
-// same bug and is not caught here.
+// direct `NAME.PROPERTY` occurrence where `NAME` is bound by importing `env`
+// from the app's own env module, in a module whose directive prologue contains
+// `'use client'`. It does NOT follow imports: a shared helper with no directive
+// of its own that reads `env.NAME` and is called from a client component is the
+// same bug and is not caught here. A real parser is the right tool for that,
+// and is the change to make if this script needs to grow.
 //
 // Usage: node scripts/buildtime/check-client-env-access.mjs   (from anywhere inside the repo)
 import { execFileSync } from 'node:child_process';
@@ -52,6 +82,11 @@ import { dirname, join, relative, resolve } from 'node:path';
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
 const ENV_MODULE_BASENAMES = ['env.js', 'env.ts', 'env.mjs'];
+const NEXT_CONFIG_BASENAMES = [
+  'next.config.ts',
+  'next.config.js',
+  'next.config.mjs',
+];
 const SKIP_DIRECTORIES = new Set([
   'node_modules',
   '.next',
@@ -69,6 +104,16 @@ const SKIP_DIRECTORIES = new Set([
  */
 const ALWAYS_INLINED = ['NODE_ENV'];
 
+/**
+ * Per app, the names its `next.config` `env` map inlines into the browser
+ * bundle — written down rather than parsed, for the reason in the header.
+ *
+ * Add a name here when you add one to an app's `next.config` `env` map.
+ */
+const INLINED_BY_NEXT_CONFIG = {
+  fresco: ['APP_VERSION', 'COMMIT_HASH'],
+};
+
 const repoRoot = (cwd) =>
   execFileSync('git', ['rev-parse', '--show-toplevel'], {
     cwd,
@@ -80,233 +125,6 @@ const readIfPresent = (path) => {
     return readFileSync(path, 'utf8');
   } catch {
     return null;
-  }
-};
-
-/**
- * A copy of `source` with comments and string-literal contents replaced by
- * spaces — same length, newlines kept — so every index and line number still
- * lines up with the original.
- *
- * Needed in two places, both of which review found reading text as code: the
- * search for `next.config`'s `env` map matched a commented-out one ahead of the
- * real configuration, which made a variable look browser-inlined; and the scan
- * for `env.NAME` reads flagged a comment or string that merely mentioned one.
- *
- * Template literals keep their `${…}` expressions, because `${env.NAME}` is a
- * real read. Regex literals are not recognised: a `/…/` containing something
- * env-shaped reads as code, which errs toward a false offence rather than a
- * missed one.
- */
-const blankNonCode = (source) => {
-  const out = source.split('');
-  const blank = (from, to) => {
-    for (let index = from; index < to && index < out.length; index += 1) {
-      if (out[index] !== '\n') out[index] = ' ';
-    }
-  };
-
-  /** Scans code from `from`; with `stopAtCloseBrace`, returns just past its matching `}`. */
-  const scanCode = (from, stopAtCloseBrace) => {
-    let index = from;
-    let depth = 0;
-    while (index < source.length) {
-      const pair = source.slice(index, index + 2);
-      if (pair === '//') {
-        const end = source.indexOf('\n', index);
-        const stop = end === -1 ? source.length : end;
-        blank(index, stop);
-        index = stop;
-        continue;
-      }
-      if (pair === '/*') {
-        const end = source.indexOf('*/', index);
-        const stop = end === -1 ? source.length : end + 2;
-        blank(index, stop);
-        index = stop;
-        continue;
-      }
-      const character = source[index];
-      if (character === "'" || character === '"') {
-        let end = index + 1;
-        while (end < source.length && source[end] !== character) {
-          if (source[end] === '\\') end += 1;
-          end += 1;
-        }
-        blank(index + 1, end);
-        index = end + 1;
-        continue;
-      }
-      if (character === '`') {
-        index = scanTemplate(index);
-        continue;
-      }
-      if (character === '{') depth += 1;
-      else if (character === '}') {
-        if (stopAtCloseBrace && depth === 0) return index + 1;
-        depth -= 1;
-      }
-      index += 1;
-    }
-    return index;
-  };
-
-  /** Blanks a template literal's text while leaving its `${…}` code alone. */
-  function scanTemplate(start) {
-    let index = start + 1;
-    let runFrom = index;
-    while (index < source.length) {
-      if (source[index] === '\\') {
-        index += 2;
-        continue;
-      }
-      if (source[index] === '`') {
-        blank(runFrom, index);
-        return index + 1;
-      }
-      if (source[index] === '$' && source[index + 1] === '{') {
-        blank(runFrom, index);
-        index = scanCode(index + 2, true);
-        runFrom = index;
-        continue;
-      }
-      index += 1;
-    }
-    blank(runFrom, source.length);
-    return source.length;
-  }
-
-  scanCode(0, false);
-  return out.join('');
-};
-
-/**
- * The text inside the braces of `key: { … }`.
- *
- * The search and the brace count both run over a copy with comments and string
- * contents blanked, so neither a commented-out `env: {` nor a brace inside a
- * string can be mistaken for structure; the returned text is sliced from the
- * original. Returns null when the key is absent.
- */
-const objectBlock = (source, key) => {
-  const code = blankNonCode(source);
-  const opening = new RegExp(`(^|[\\s{,])${key}\\s*:\\s*\\{`, 'm').exec(code);
-  if (!opening) return null;
-  const start = opening.index + opening[0].length;
-  let depth = 1;
-  for (let index = start; index < code.length; index += 1) {
-    if (code[index] === '{') depth += 1;
-    if (code[index] === '}') {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, index);
-    }
-  }
-  return null;
-};
-
-/**
- * The keys declared directly in an object block.
- *
- * Used only for `next.config`'s `env` map, which is the allowlist: a key this
- * fails to read is a false offence rather than a missed one. It still refuses
- * anything it cannot account for — a spread, a computed key, a property with no
- * `:` — because a silently shortened allowlist would report offences whose
- * cause is invisible.
- */
-const topLevelKeys = (block, describe) => {
-  const keys = [];
-  let index = 0;
-
-  const skipSpace = () => {
-    for (;;) {
-      while (index < block.length && /\s/.test(block[index])) index += 1;
-      if (block.startsWith('//', index)) {
-        const end = block.indexOf('\n', index);
-        index = end === -1 ? block.length : end + 1;
-        continue;
-      }
-      if (block.startsWith('/*', index)) {
-        const end = block.indexOf('*/', index);
-        index = end === -1 ? block.length : end + 2;
-        continue;
-      }
-      return;
-    }
-  };
-
-  /** Advances past a quoted string, returning its contents. */
-  const readQuoted = () => {
-    const quote = block[index];
-    index += 1;
-    let value = '';
-    while (index < block.length && block[index] !== quote) {
-      if (block[index] === '\\') {
-        value += block[index + 1] ?? '';
-        index += 2;
-        continue;
-      }
-      value += block[index];
-      index += 1;
-    }
-    index += 1;
-    return value;
-  };
-
-  /** Advances past one property's value, stopping at the separating comma. */
-  const skipValue = () => {
-    let depth = 0;
-    while (index < block.length) {
-      const character = block[index];
-      if (character === "'" || character === '"' || character === '`') {
-        readQuoted();
-        continue;
-      }
-      if (block.startsWith('//', index) || block.startsWith('/*', index)) {
-        skipSpace();
-        continue;
-      }
-      if (character === '{' || character === '(' || character === '[')
-        depth += 1;
-      else if (character === '}' || character === ')' || character === ']')
-        depth -= 1;
-      else if (character === ',' && depth === 0) return;
-      index += 1;
-    }
-  };
-
-  const unreadable = () =>
-    new Error(
-      `${describe}: cannot read the property starting at ${JSON.stringify(
-        block.slice(index, index + 48),
-      )}. The guard only understands \`NAME: value\` and \`'NAME': value\` properties; ` +
-        'a spread, a computed key or a method shorthand could hide a name from it, ' +
-        'so it refuses rather than reporting offences it cannot explain.',
-    );
-
-  for (;;) {
-    skipSpace();
-    while (block[index] === ',' || block[index] === ';') {
-      index += 1;
-      skipSpace();
-    }
-    if (index >= block.length) return keys;
-
-    let name;
-    const identifier = /^[A-Za-z_$][\w$]*/.exec(block.slice(index));
-    if (identifier) {
-      name = identifier[0];
-      index += identifier[0].length;
-    } else if (block[index] === "'" || block[index] === '"') {
-      name = readQuoted();
-    } else {
-      throw unreadable();
-    }
-
-    skipSpace();
-    if (block[index] !== ':') throw unreadable();
-    index += 1;
-    keys.push(name);
-    skipValue();
   }
 };
 
@@ -324,14 +142,30 @@ const sourceFiles = (directory, collected = []) => {
   return collected;
 };
 
-/** Whether the module opens with the `'use client'` directive. */
+/**
+ * Whether the module's directive prologue contains `'use client'`.
+ *
+ * The whole prologue, not just its first directive: Next treats
+ * `'use strict'; 'use client';` as a client boundary, and a check anchored to
+ * the first directive skipped such a module entirely — every read in it passed.
+ *
+ * Reading comments here is unambiguous, which it is nowhere else in the file:
+ * before the first statement, a `//` or `/*` cannot be inside anything.
+ */
 const isClientModule = (source) => {
-  const head = source
-    .replace(/^#!.*\n/, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '')
-    .trimStart();
-  return /^(['"])use client\1\s*;?/.test(head);
+  let rest = source.replace(/^#!.*\n/, '');
+  for (;;) {
+    rest = rest.replace(/^\s+/, '');
+    const comment = /^(\/\/.*(\n|$)|\/\*[\s\S]*?\*\/)/.exec(rest);
+    if (comment) {
+      rest = rest.slice(comment[0].length);
+      continue;
+    }
+    const directive = /^(['"])([^'"\n]*)\1\s*;?/.exec(rest);
+    if (!directive) return false;
+    if (directive[2] === 'use client') return true;
+    rest = rest.slice(directive[0].length);
+  }
 };
 
 /**
@@ -349,25 +183,74 @@ const isAppEnvSpecifier = (specifier, fileDirectory, appEnvPaths) => {
   return appEnvPaths.has(resolve(fileDirectory, specifier));
 };
 
-/** The local name the module binds the app's own env object to, or null. */
-const envBinding = (source, file, appDirectory) => {
+/**
+ * Every local name the module might have bound the app's env object to.
+ *
+ * Every match rather than the first: a commented-out
+ * `// import { env as oldEnv } from '~/env';` above the live import made a
+ * first-match search return `oldEnv`, and nothing was then scanned through the
+ * real binding. Collecting all of them needs no idea of which lines are code —
+ * a name that only ever existed in a comment simply finds no reads.
+ */
+const envBindings = (source, file, appDirectory) => {
   const fileDirectory = dirname(file);
   const appEnvPaths = new Set([
     join(appDirectory, 'env'),
     ...ENV_MODULE_BASENAMES.map((name) => join(appDirectory, name)),
   ]);
-  const pattern = /import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
+  const pattern = /import\s*\{([^}]*)\}\s*from\s*['"]([^'"]*)['"]/g;
+  const bindings = new Set();
 
   for (const [, clause, specifier] of source.matchAll(pattern)) {
-    if (!isAppEnvSpecifier(specifier, fileDirectory, appEnvPaths)) continue;
+    if (!isAppEnvSpecifier(specifier.trim(), fileDirectory, appEnvPaths))
+      continue;
     for (const entry of clause.split(',')) {
       const [imported, local] = entry
         .split(/\s+as\s+/)
         .map((part) => part.trim());
-      if (imported === 'env') return local ?? imported;
+      if (imported === 'env') bindings.add(local ?? imported);
     }
   }
-  return null;
+  return [...bindings];
+};
+
+/**
+ * Fails when the written-down allowlist names something an app's `next.config`
+ * no longer mentions, so the list cannot quietly outlive the configuration it
+ * describes. A substring test, deliberately: it cannot mis-lex.
+ */
+const assertInlinedNamesStillDeclared = (names, nextConfigSource, describe) => {
+  const missing = names.filter((name) => !nextConfigSource.includes(name));
+  if (missing.length > 0) {
+    throw new Error(
+      `${describe}: the guard's allowlist names ${missing.join(', ')}, but that file does not ` +
+        'mention them. If the `env` map no longer inlines them, remove them from ' +
+        'INLINED_BY_NEXT_CONFIG in scripts/buildtime/check-client-env-access.mjs.',
+    );
+  }
+};
+
+/** The names an app gives the browser, beyond the `NEXT_PUBLIC_` prefix. */
+const inlinedNamesFor = (appName, appDirectory, root) => {
+  const names = INLINED_BY_NEXT_CONFIG[appName] ?? [];
+  if (names.length > 0) {
+    const configName = NEXT_CONFIG_BASENAMES.find(
+      (name) => readIfPresent(join(appDirectory, name)) !== null,
+    );
+    const configSource =
+      configName === undefined
+        ? ''
+        : (readIfPresent(join(appDirectory, configName)) ?? '');
+    assertInlinedNamesStillDeclared(
+      names,
+      configSource,
+      relative(
+        root,
+        join(appDirectory, configName ?? NEXT_CONFIG_BASENAMES[0]),
+      ),
+    );
+  }
+  return new Set([...ALWAYS_INLINED, ...names]);
 };
 
 const main = () => {
@@ -394,50 +277,35 @@ const main = () => {
     if (!hasEnvModule) continue;
     appsChecked += 1;
 
-    const nextConfigName = [
-      'next.config.ts',
-      'next.config.js',
-      'next.config.mjs',
-    ].find((name) => readIfPresent(join(appDirectory, name)) !== null);
-    const nextConfigSource =
-      nextConfigName === undefined
-        ? ''
-        : (readIfPresent(join(appDirectory, nextConfigName)) ?? '');
-    const inlined = new Set([
-      ...ALWAYS_INLINED,
-      ...topLevelKeys(
-        objectBlock(nextConfigSource, 'env') ?? '',
-        `${relative(root, join(appDirectory, nextConfigName ?? 'next.config.ts'))} (\`env:\`)`,
-      ),
-    ]);
+    const inlined = inlinedNamesFor(appName, appDirectory, root);
 
     for (const file of sourceFiles(appDirectory)) {
       const source = readFileSync(file, 'utf8');
       if (!isClientModule(source)) continue;
-      const binding = envBinding(source, file, appDirectory);
-      if (binding === null) continue;
-      // The binding is escaped because `$` is a valid identifier character:
-      // interpolating `$env` verbatim gave `$` its regex-anchor meaning, so
-      // `$env.SECRET_TOKEN` matched nothing at all.
-      // The lookbehind keeps the import specifier itself (`from '~/env.js'`)
-      // and any `something.env.NAME` from reading as a use of the binding.
-      const escaped = binding.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const reads = new RegExp(
-        `(?<![\\w$./'"\`])${escaped}\\.([A-Za-z_$][\\w$]*)`,
-        'g',
-      );
-      // Comments and string literals are blanked first, so prose or an example
-      // that merely mentions `env.NAME` is not reported as a read. Blanking
-      // preserves length and newlines, so the line numbers still line up.
-      for (const [index, line] of blankNonCode(source).split('\n').entries()) {
-        for (const [, name] of line.matchAll(reads)) {
-          if (name.startsWith('NEXT_PUBLIC_') || inlined.has(name)) continue;
-          offences.push({
-            file: relative(root, file),
-            line: index + 1,
-            name,
-            app: appName,
-          });
+      const describe = relative(root, file);
+      const lines = source.split('\n');
+
+      for (const binding of envBindings(source, file, appDirectory)) {
+        // The binding is escaped because `$` is a valid identifier character:
+        // interpolating `$env` verbatim gave `$` its regex-anchor meaning, so
+        // `$env.SECRET_TOKEN` matched nothing at all.
+        // The lookbehind keeps the import specifier itself (`from '~/env.js'`)
+        // and any `something.env.NAME` from reading as a use of the binding.
+        const escaped = binding.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const reads = new RegExp(
+          `(?<![\\w$./'"\`])${escaped}\\.([A-Za-z_$][\\w$]*)`,
+          'g',
+        );
+        for (const [index, line] of lines.entries()) {
+          for (const [, name] of line.matchAll(reads)) {
+            if (name.startsWith('NEXT_PUBLIC_') || inlined.has(name)) continue;
+            offences.push({
+              file: describe,
+              line: index + 1,
+              name,
+              app: appName,
+            });
+          }
         }
       }
     }
@@ -446,11 +314,12 @@ const main = () => {
   if (offences.length > 0) {
     for (const offence of offences) {
       console.error(
-        `${offence.file}:${offence.line}: \`env.${offence.name}\` is read in a 'use client' module, ` +
+        `${offence.file}:${offence.line}: \`env.${offence.name}\` appears in a 'use client' module, ` +
           `but ${offence.app} does not expose it to the browser, so it is \`undefined\` there. ` +
           'Branch on it in the server component that renders this one instead, or — if the browser ' +
           `really does need it — expose it as \`NEXT_PUBLIC_${offence.name}\` or through ` +
-          "`next.config`'s `env` map.",
+          "`next.config`'s `env` map (adding it to INLINED_BY_NEXT_CONFIG in this guard). " +
+          'If it is a comment or a string rather than a read, reword it: this guard does not parse.',
       );
     }
     console.error(
