@@ -82,6 +82,53 @@ Consequences worth remembering:
   mirror. Code that only works under one bundler will pass locally and fail in
   the released image — see "Workers and bundler portability" below.
 
+### PostHog source maps
+
+Nothing in this repository builds the bundle the released image serves, so the
+`Dockerfile`'s build is the only place Fresco's source maps can be uploaded
+from: PostHog resolves a frame by matching the chunk ID baked into the bundle
+against an uploaded map, and no other build's chunk IDs match the image's. That
+is unlike Architect, Interviewer, Documentation and the Website, which are each
+built and deployed by a job in `.github/workflows/ci-and-release.yml` that
+passes `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` to the build step
+(`scripts/ci/ci-workflow.test.mjs` keeps those jobs wired).
+
+The `Dockerfile` therefore takes the credentials as two optional BuildKit
+secrets, `posthog_personal_api_key` and `posthog_project_id` — secrets rather
+than `ARG`/`ENV` so the key never lands in the image's layer history. Supply
+both and the build uploads its maps and deletes them from the output; supply
+neither and the build is byte-identical to one from before they existed.
+`apps/fresco/__tests__/sourceMapUpload.test.ts` guards both arms.
+
+The publisher workflow, `apps/fresco/.github/workflows/docker-publish.yml`,
+passes both as `secrets:` on its `docker/build-push-action` step. It is
+source-controlled here and the mirror carries it to the Fresco repository, so
+the whole chain lives in this repo: turbo keeps the credentials in the cache
+key, `next.config.ts` gates on them, the `Dockerfile` mounts them, and the
+publisher supplies them. Remove any one link and the other three change nothing,
+which is why the guard test covers all four.
+
+Two things this still depends on, neither of them a code change:
+
+- **`POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` must exist as secrets on
+  the `complexdatacollective/Fresco` repository**, because that is where the
+  publisher runs. While they are absent the expressions expand to empty, the
+  `-s` test in the Dockerfile fails, and the build emits no maps — the same
+  behaviour as before, just silently. There is no error to notice, so if Fresco
+  frames are still minified after a release, check these first.
+- **A publisher change must be pre-applied to the Fresco repository before the
+  next release.** `assertFrescoPublisherContract` in
+  `scripts/release/mirror-app.mjs` refuses to mirror unless the external copy is
+  already byte-identical, because the release token deliberately cannot modify
+  workflows. So editing this file here **blocks the next Fresco release** until a
+  maintainer credential applies the identical diff over there. Sequence it that
+  way round, or the release lane fails with "must already match the monorepo
+  copy".
+
+Netlify's `fresco-next` and `fresco-sandbox` deploys are built by Netlify rather
+than by this publisher, so they upload only if those two variables are also set
+on the Netlify site.
+
 ## Hotfix releases (when main is ahead)
 
 The normal lane always mirrors `main`, so it can only ship a patch together

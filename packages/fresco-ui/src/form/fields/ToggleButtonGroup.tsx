@@ -12,7 +12,7 @@ import {
   interactiveStateVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
@@ -22,14 +22,16 @@ const toggleButtonGroupOwnVariants = cva({
 });
 
 // Compose fieldset wrapper variants
-const toggleButtonGroupComposedVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  interactiveStateVariants,
-  toggleButtonGroupOwnVariants,
-);
+const toggleButtonGroupComposedVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    interactiveStateVariants,
+    toggleButtonGroupOwnVariants,
+  ],
+});
 
 const toggleButtonOwnVariants = cva({
   base: cx(
@@ -77,10 +79,9 @@ const toggleButtonOwnVariants = cva({
 // rather than `stateVariants`, since toggle buttons don't want stateVariants'
 // disabled background/invalid border — the native `disabled` attribute and
 // `disabled:` pseudo-classes already cover the disabled treatment.
-const toggleButtonVariants = compose(
-  inertReadOnlyVariants,
-  toggleButtonOwnVariants,
-);
+const toggleButtonVariants = cva({
+  composes: [inertReadOnlyVariants, toggleButtonOwnVariants],
+});
 
 // Fill indicator variants for the animated background
 const fillIndicatorVariants = cva({

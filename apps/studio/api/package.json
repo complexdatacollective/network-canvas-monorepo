@@ -34,7 +34,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1101.0",
+    "@aws-sdk/client-s3": "^3.1143.0",
     "@codaco/protocol-builder-core": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
@@ -45,27 +45,27 @@
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@faker-js/faker": "catalog:",
-    "@noble/hashes": "^2.3.0",
+    "@noble/hashes": "^2.4.0",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
     "ioredis": "6.0.0",
-    "nodemailer": "10.0.9",
-    "pg": "^8.23.0",
-    "pg-connection-string": "^2.14.0"
+    "nodemailer": "10.0.13",
+    "pg": "^8.23.1",
+    "pg-connection-string": "^2.14.1"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
-    "@dbml/core": "10.1.1",
+    "@dbml/core": "10.2.0",
     "@effect/vitest": "catalog:",
     "@softwaretechnik/dbml-renderer": "1.0.31",
-    "@types/pg": "^8.20.4",
+    "@types/pg": "^8.23.1",
     "concurrently": "^10.0.5",
     "drizzle-kit": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   },
   "engines": {
     "node": ">=24"

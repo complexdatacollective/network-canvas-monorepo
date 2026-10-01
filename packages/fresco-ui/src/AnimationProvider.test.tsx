@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { AnimatePresence, motion, MotionGlobalConfig } from 'motion/react';
-import { useState } from 'react';
+import {
+  AnimatePresence,
+  motion,
+  MotionConfigContext,
+  MotionGlobalConfig,
+} from 'motion/react';
+import { useContext, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from './AnimationProvider';
@@ -21,6 +26,41 @@ describe('AnimationProvider', () => {
   function AnimationState() {
     return <span>{String(globalThis.BASE_UI_ANIMATIONS_DISABLED)}</span>;
   }
+
+  function ReducedMotionSetting() {
+    return <span>{String(useContext(MotionConfigContext).reducedMotion)}</span>;
+  }
+
+  /**
+   * motion's own default is `reducedMotion: "never"` — it ignores the
+   * preference until something opts in. Every app root delegates that opt-in to
+   * this provider, and components such as the Fresco dashboard navigation bar
+   * and the website's `Reveal` deliberately carry no reduced-motion check of
+   * their own because of it: reading the preference to choose a prop would
+   * serialise an answer the server cannot know into the markup it sends.
+   *
+   * So this default is load-bearing for the preference being honoured at all,
+   * and for those components being allowed to stay preference-free.
+   */
+  it('asks motion to honour the user preference by default', () => {
+    render(
+      <AnimationProvider>
+        <ReducedMotionSetting />
+      </AnimationProvider>,
+    );
+
+    expect(screen.getByText('user')).toBeTruthy();
+  });
+
+  it('lets a host override the reduced-motion setting', () => {
+    render(
+      <AnimationProvider reducedMotion="always">
+        <ReducedMotionSetting />
+      </AnimationProvider>,
+    );
+
+    expect(screen.getByText('always')).toBeTruthy();
+  });
 
   it('disables Base UI before rendering descendants', () => {
     render(

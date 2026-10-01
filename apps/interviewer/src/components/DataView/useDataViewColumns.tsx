@@ -1,4 +1,4 @@
-import type { Column, ColumnDef } from '@tanstack/react-table';
+import type { Column, RowData } from '@tanstack/react-table';
 import { ArrowDown, Eye, Play, RotateCcw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useMemo } from 'react';
@@ -7,6 +7,8 @@ import { useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
+import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
+import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
@@ -95,11 +97,11 @@ const messages = defineMessages({
   },
 });
 
-function SortHeader<TData>({
+function SortHeader<TData extends RowData>({
   column,
   title,
 }: {
-  column: Column<TData>;
+  column: Column<DataTableFeatures, TData>;
   title: string;
 }) {
   const sortDir = column.getIsSorted();
@@ -161,7 +163,7 @@ export function useDataViewColumns({
   const intl = useAppIntl();
   const [, navigate] = useLocation();
 
-  return useMemo<ColumnDef<StoredSessionLite>[]>(
+  return useMemo<DataTableColumnDef<StoredSessionLite>[]>(
     () => [
       {
         id: 'select',

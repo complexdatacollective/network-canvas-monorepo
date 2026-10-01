@@ -5,6 +5,7 @@ import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Link } from '~/lib/i18n/navigation';
@@ -72,7 +73,20 @@ export function NewsTicker({
   newsItems: readonly NewsItemRecord[];
 }) {
   const t = useTranslations('News');
-  const shouldReduceMotion = useReducedMotion() === true;
+  const prefersReducedMotion = useReducedMotion() === true;
+  // The branch below chooses between two different element trees, so it must
+  // not depend on the preference until after hydration: `useReducedMotion()`
+  // answers `null` on the server (motion learns the preference from
+  // `matchMedia`, which the server cannot read) and `true` on a client that
+  // prefers reduced motion. Reading it during the first client render made the
+  // server send the marquee and a reduced-motion visitor render a single item
+  // over it — a structural mismatch, which React throws as a hydration error
+  // and discards the whole tree for. Gating on hydration keeps the first client
+  // render identical to the server's; the marquee's own
+  // `motion-reduce:animate-none` means that frame is already motionless, so
+  // these visitors never see it move.
+  const hasHydrated = useHasHydrated();
+  const shouldReduceMotion = hasHydrated && prefersReducedMotion;
   const activeNewsItem = newsItems[0];
 
   return (

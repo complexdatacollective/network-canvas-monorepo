@@ -18,6 +18,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   build:
     strategy:

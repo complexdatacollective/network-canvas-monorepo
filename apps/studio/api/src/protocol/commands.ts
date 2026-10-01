@@ -12,7 +12,6 @@ import type { SectionValidationFailedError } from '@codaco/studio-sync/section-v
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { audited, changed, unchanged } from '../audit/audited.ts';
-import type { AuditEventBody } from '../audit/audited.ts';
 import type { AuditSignal } from '../audit/signal.ts';
 import type { Database } from '../db/client.ts';
 import { sqlErrorsOnlyBeside } from '../db/errors.ts';
@@ -411,6 +410,3 @@ export const moveAuditedProtocolStage: (
     }),
   );
 });
-
-/** Exported for the suites' compile assertions; nothing in production reads it. */
-export type { AuditEventBody };

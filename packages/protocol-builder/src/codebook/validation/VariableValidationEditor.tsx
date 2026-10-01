@@ -8,7 +8,7 @@ import {
   inputControlVariants,
 } from '@codaco/fresco-ui/styles/controlVariants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import { compose, cx } from '@codaco/fresco-ui/utils/cva';
+import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { missingComparisonTargetMessage } from '../codebookMessages.ts';
 import {
@@ -519,11 +519,9 @@ export default function VariableValidationEditor({
       : offered;
   };
 
-  const variants = compose(
-    controlVariants,
-    inputControlVariants,
-    groupSpacingVariants,
-  );
+  const variants = cva({
+    composes: [controlVariants, inputControlVariants, groupSpacingVariants],
+  });
 
   return (
     <div

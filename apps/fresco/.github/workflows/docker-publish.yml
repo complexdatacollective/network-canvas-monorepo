@@ -53,6 +53,19 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          # This is the only build of the bundle the image serves, so it is the
+          # only place Fresco's source maps can be uploaded from: PostHog
+          # resolves a frame by matching the chunk ID baked into the bundle
+          # against an uploaded map, and no other build's chunk IDs match this
+          # one's. The Dockerfile reads both as optional BuildKit secrets, so
+          # they stay out of the image and its layer history; when a secret is
+          # unset here it arrives empty and the build emits no maps at all,
+          # exactly as it did before. Each platform builds separately and so
+          # uploads its own maps — the JS is identical, and an extra upload is
+          # cheaper than a frame nobody can read.
+          secrets: |
+            posthog_personal_api_key=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+            posthog_project_id=${{ secrets.POSTHOG_PROJECT_ID }}
           tags: |
             ghcr.io/complexdatacollective/fresco:${{ steps.version.outputs.version }}
             ghcr.io/complexdatacollective/fresco:latest

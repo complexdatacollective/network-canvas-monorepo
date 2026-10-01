@@ -74,6 +74,22 @@ concurrency:
     && (startsWith(github.ref_name, 'changeset-release/')
     || github.ref_name == 'e2e-snapshots/main')) }}
 
+env:
+  # Turbo runs one task at a time on every CI runner. Standard runners have four
+  # vCPUs and this repository's tasks are documented as sensitive to contention
+  # — see the `test` job below for the measurements that set the cap at one.
+  #
+  # Set here rather than per invocation. Capping each call site is what left
+  # `quality-support` running `turbo run typecheck` at turbo's default of ten,
+  # which was harmless while those tasks were cache replays and killed the
+  # runner outright on a pull request that invalidated six packages at once
+  # (#2023, run 36858613676, both attempts).
+  #
+  # CI only, on purpose: a developer's machine has cores to spare and keeps
+  # turbo's default. A `--concurrency` flag would override this, so there are
+  # none — `scripts/ci/ci-workflow.test.mjs` refuses one.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   # Skipped on push: its only consumers (site preview checks, the quality
   # aggregate, carry-forward-statuses) never run on push-to-main.
@@ -612,7 +628,7 @@ jobs:
       # what motivated splitting it out of `test` in the first place.
       - name: Seed the Studio server suite
         id: studio-server
-        run: pnpm exec turbo run '@codaco/studio-api#test' --concurrency=1
+        run: pnpm exec turbo run '@codaco/studio-api#test'
         continue-on-error: true
       # Fresco's `build` script is a bare `next build`, whose env.js validates
       # the full deployment env at config load; this job has no Fresco
@@ -654,7 +670,7 @@ jobs:
       - name: Run tests
         id: test
         continue-on-error: true
-        run: pnpm exec turbo run test --concurrency=1 --continue=dependencies-successful
+        run: pnpm exec turbo run test --continue=dependencies-successful
         env:
           SKIP_ENV_VALIDATION: 'true'
       # Surfaces a broken seed instead of letting it fail silently, and then
@@ -985,7 +1001,7 @@ jobs:
         # `continue-on-error` — as its own job its verdict is its own, and it
         # can no longer hide behind, or be hidden by, the workspace suite's
         # result.
-        run: pnpm exec turbo run '@codaco/studio-api#test' --concurrency=1
+        run: pnpm exec turbo run '@codaco/studio-api#test'
 
   # The Studio deployment stack, run the way a self-hoster runs it and once for
   # each documented swap with the swapped element replaced by a stub (#1909).
@@ -1133,17 +1149,17 @@ jobs:
     # These suites are embarrassingly parallel across MACHINES and stubbornly
     # serial on one. Every vitest sizes its fork pool to the runner's CPU
     # count, so a single suite already saturates a 4-vCPU standard runner and
-    # turbo's own `--concurrency` knob buys nothing — measured on the same
-    # thirteen tasks (#1801), 25m53s at `--concurrency=1`, 25m49s at 2, 26m08s
+    # turbo's own concurrency knob buys nothing — measured on the same
+    # thirteen tasks (#1801), 25m53s at 1, 25m49s at 2, 26m08s
     # at the default. The bottleneck is CPU throughput, not scheduling, so the
     # only lever is more CPUs. Standard runners are free on this public
     # repository and the org has 500 concurrent standard jobs against a
     # sampled live usage of ~26, so shard count is not the constraint either.
     #
-    # Each shard is a whole runner running its own bucket at
-    # `--concurrency=1`, which is the same uncontended machine per suite that
-    # the single job gave — the per-test wall-clock budgets still measure the
-    # test rather than the queue. scripts/ci/test-shards.mjs owns which package
+    # Each shard is a whole runner running its own bucket serially (from
+    # `TURBO_CONCURRENCY` at the top of this file), which is the same
+    # uncontended machine per suite that the single job gave — the per-test
+    # wall-clock budgets still measure the test rather than the queue. scripts/ci/test-shards.mjs owns which package
     # is in which bucket, how the buckets were weighted, and the coverage
     # check that refuses a package belonging to no shard.
     name: test (shard ${{ matrix.shard }})
@@ -1304,7 +1320,12 @@ jobs:
           # not invalidate workspace unit tests. Docs, changesets, and
           # markdown are inert to tests as well.
           #
-          # `--concurrency=1`: one suite at a time. Turbo's default runs up to
+          # One suite at a time. No flag here: `TURBO_CONCURRENCY` at the top
+          # of this file caps every turbo invocation in every job, and this is
+          # the measurement that set that cap — so it is recorded here rather
+          # than beside the variable.
+          #
+          # Turbo's default runs up to
           # ten tasks at once, and every vitest sizes its fork pool to the
           # runner's CPUs (three workers on the 4-vCPU runner, behind a main
           # process that serves their module transforms), so a single suite
@@ -1316,15 +1337,22 @@ jobs:
           # suites costs no wall time, because the runner is saturated either
           # way, and hands each suite the whole machine, so per-test budgets
           # measure the test rather than the queue. Measured on the same
-          # thirteen tasks (#1801): 25m53s at --concurrency=1 and 25m49s at 2
+          # thirteen tasks (#1801): 25m53s at concurrency 1 and 25m49s at 2
           # against 26m08s at the default, with no timeouts at either cap. Not
           # 2: a protocol-builder file that took 9.5s alone took 20s beside
           # one other suite, which is the headroom the 20s budgets need.
           #
-          # `--concurrency=1` is still right per shard. A shard is a whole
+          # The cap is still right per shard. A shard is a whole
           # runner, so serialising its bucket hands each suite the same
           # uncontended 4 vCPUs the single job did; the parallelism comes from
           # the other runners, not from this one.
+          #
+          # Capping per invocation was the old arrangement, and it left the
+          # invocations nobody had thought about uncapped: `quality-support`
+          # ran `turbo run typecheck` at the default, which was harmless while
+          # those tasks were cache replays and killed the runner outright on a
+          # pull request that invalidated six packages at once (#2023, run
+          # 36858613676, both attempts). Hence job-wide rather than per call.
           #
           # The `!@codaco/studio-api` negation SHARD_FILTERS carries: that
           # suite runs as its own `test-studio-server` job (see the comment
@@ -1369,14 +1397,14 @@ jobs:
             # against base b0bc600: 22 real `test` tasks unsharded, and with a
             # three-package bucket's negations exactly @codaco/art,
             # @codaco/network-query and @codaco/shared-consts.
-            pnpm exec turbo run test --concurrency=1 \
+            pnpm exec turbo run test \
               --filter="...[$DIFF_BASE_SHA]" \
               "${SHARD_FILTERS[@]}"
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test --concurrency=1 "${SHARD_FILTERS[@]}"
+          pnpm exec turbo run test "${SHARD_FILTERS[@]}"
 
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
@@ -1450,10 +1478,11 @@ jobs:
           # without being any task's declared input, so it forces the full
           # set. See that job for the reasoning behind each exclusion.
           #
-          # `--concurrency=1` because each suite drives its own Chromium (and
-          # Firefox, for fresco-ui). Run in parallel they starve each other on
-          # a four-core runner, and the timing-sensitive stories fail on a
-          # half-rendered DOM. Serially the whole set takes about 100s.
+          # These run one at a time, from `TURBO_CONCURRENCY` at the top of
+          # this file. Each suite drives its own
+          # Chromium (and Firefox, for fresco-ui); in parallel they starve each
+          # other on a four-core runner and the timing-sensitive stories fail on
+          # a half-rendered DOM. Serially the whole set takes about 100s.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -1464,12 +1493,12 @@ jobs:
               ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running storybook test tasks affected by $DIFF_BASE_SHA..HEAD"
             TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test:storybook \
-              --affected --concurrency=1
+              --affected
             exit 0
           fi
 
           echo "Running every storybook suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test:storybook --concurrency=1
+          pnpm exec turbo run test:storybook
 
   # Refuses to merge a stale Version Packages PR. Every push to main
   # regenerates changeset-release/main, but a head generated before main's
@@ -2419,7 +2448,7 @@ jobs:
     # requests. Raising `workers` on that same single four-vCPU runner
     # confronts the contention this repository's suites are documented
     # elsewhere in this file as sensitive to (see the `test` job's
-    # `--concurrency=1` comment and its measured starvation failures at
+    # concurrency comment and its measured starvation failures at
     # higher turbo concurrency): more workers would divide the same four
     # vCPUs more ways, not add capacity. Splitting the fixed test count
     # across two runners instead gives each shard's two workers a whole

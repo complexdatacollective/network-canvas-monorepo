@@ -1,13 +1,10 @@
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { useTable, flexRender } from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
+import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { fetchActivityFeedTableColumnDefs } from '~/app/dashboard/_components/ActivityFeed/ColumnDefinition';
 import { formatActivityType } from '~/app/dashboard/_components/ActivityFeed/messages';
 import {
@@ -31,10 +28,10 @@ const event = {
 
 function Details() {
   const intl = useAppIntl();
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data: [event],
     columns: fetchActivityFeedTableColumnDefs(intl),
-    getCoreRowModel: getCoreRowModel(),
   });
   const cell = table
     .getRowModel()
