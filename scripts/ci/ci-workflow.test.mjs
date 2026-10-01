@@ -1692,3 +1692,43 @@ test('studio-stack is selected by detect and required by the quality gate', () =
     'quality fails when a required studio-stack did not succeed',
   );
 });
+
+// PostHog resolves a minified stack frame by matching the chunk ID injected
+// into the bundle at build time against an uploaded map, so maps are only
+// useful when they come from the very build that produced the deployed
+// artefact. Each app below both wires `withPostHogConfig`/the Vite plugin into
+// its build config and is deployed from a build this workflow runs, so the
+// credentials have to reach that build step — silently losing them turns every
+// future exception in that app back into unresolved frames.
+const SOURCE_MAP_UPLOADING_RELEASES = {
+  'apps-release-architect': '@codaco/architect',
+  'apps-release-interviewer': '@codaco/interviewer',
+  'apps-release-documentation': '@codaco/documentation',
+  'apps-release-website': 'networkcanvas.com',
+  'refresh-website-after-classic-release': 'networkcanvas.com',
+};
+
+test('every production build that uploads source maps gets the credentials', () => {
+  for (const [jobName, filter] of Object.entries(
+    SOURCE_MAP_UPLOADING_RELEASES,
+  )) {
+    const steps = parsedWorkflow.jobs[jobName]?.steps;
+    assert.ok(steps, `${jobName} exists`);
+
+    const buildStep = steps.find((step) =>
+      step.run?.includes(`--filter=${filter}`),
+    );
+    assert.ok(buildStep, `${jobName} builds ${filter}`);
+
+    assert.equal(
+      buildStep.env?.POSTHOG_PERSONAL_API_KEY,
+      '${{ secrets.POSTHOG_PERSONAL_API_KEY }}',
+      `${jobName}'s build step receives POSTHOG_PERSONAL_API_KEY`,
+    );
+    assert.equal(
+      buildStep.env?.POSTHOG_PROJECT_ID,
+      '${{ secrets.POSTHOG_PROJECT_ID }}',
+      `${jobName}'s build step receives POSTHOG_PROJECT_ID`,
+    );
+  }
+});
