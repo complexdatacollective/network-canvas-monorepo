@@ -219,8 +219,26 @@ overrides:
   'effect@3.17.7': '^3.22.1'
   # ajv (build and dev tooling only) resolves fast-uri; 3.1.6 closes the
   # URI-normalisation host-confusion / SSRF family (GHSA-5jgf-p345-68v8,
-  # GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc).
-  fast-uri: '^3.1.6'
+  # GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc) and 3.1.8
+  # the percent-encoded host-case normalisation (GHSA-hrr3-gc8f-f4qj).
+  fast-uri: '^3.1.8'
+  # posthog-js pins dompurify to a range that resolves below the node-removing
+  # afterSanitize hook fix (GHSA-p98j-92pf-mc4p).
+  dompurify: '^3.4.16'
+  # minimatch (several majors, via electron-builder, archiver, eslint, api-extractor)
+  # resolves brace-expansion below the recursion and quadratic-expansion DoS
+  # fixes (GHSA-6j4f-fj2g-mc7p, GHSA-qhr7-859c-m2p7, GHSA-q2hr-2g5m-vwhr). One
+  # patched release per major line so the majors do not collapse together.
+  'brace-expansion@^1.0.0': '^1.1.21'
+  'brace-expansion@^2.0.0': '^2.1.7'
+  'brace-expansion@^5.0.0': '^5.0.12'
+  # undici advisories (GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3 and others):
+  # miniflare pins an exact 7.x, node-gyp and @electron/get ask for 6.x/7.x, and
+  # jsdom / @effect/platform-node use 8.x. One patched release per major line.
+  'undici@^6.0.0': '^6.28.1'
+  'undici@^7.0.0': '^7.29.1'
+  'undici@7.24.8': '^7.29.1'
+  'undici@^8.0.0': '^8.10.2'
   find-my-way: '^9.7.0'
   'immutable@4.3.8': '4.3.9'
   # electron-builder (app-builder-lib, builder-util, dmg-builder) asks for

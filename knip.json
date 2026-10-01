@@ -214,7 +214,7 @@
         // from `project` above: knip's CJS export --fix corrupts module.exports
         // in the main-process modules, so that tree is left out of analysis.
         "archiver",
-        "decompress",
+        "@xhmikosr/decompress",
         "electron-log",
         "electron-devtools-installer"
       ],
