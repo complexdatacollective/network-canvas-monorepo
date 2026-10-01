@@ -10,6 +10,7 @@ export const architectProductionLocales = defineAppLocales([
   { locale: 'en-GB', label: 'English (UK)', direction: 'ltr' },
   { locale: 'es', label: 'Español', direction: 'ltr' },
   { locale: 'zh-Hans', label: '简体中文', direction: 'ltr' },
+  { locale: 'fr', label: 'Français', direction: 'ltr' },
 ]);
 
 export const architectLocales: readonly AppLocale[] = import.meta.env.DEV

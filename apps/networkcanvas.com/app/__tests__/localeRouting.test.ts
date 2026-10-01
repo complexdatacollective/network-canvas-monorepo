@@ -66,6 +66,31 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/zh-Hans/',
   },
   {
+    name: 'France French browser language',
+    headers: { 'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'Canadian French browser language',
+    headers: { 'accept-language': 'fr-CA,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'Belgian French browser language',
+    headers: { 'accept-language': 'fr-BE,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'Swiss French browser language',
+    headers: { 'accept-language': 'fr-CH,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'bare French browser language',
+    headers: { 'accept-language': 'fr' },
+    destination: 'http://localhost/fr/',
+  },
+  {
     name: 'US English fallback',
     headers: {},
     destination: 'http://localhost/en-US/',
@@ -111,13 +136,14 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, Spanish, and Simplified Chinese static params', () => {
-    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans']);
+  it('generates US English, UK English, Spanish, Simplified Chinese, and French static params', () => {
+    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans', 'fr']);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
       { locale: 'en-GB' },
       { locale: 'es' },
       { locale: 'zh-Hans' },
+      { locale: 'fr' },
     ]);
   });
 

@@ -16,7 +16,7 @@ describe('interview-owned interface locale negotiation', () => {
     [' ES-mx ', 'es'],
     ['not_a_locale', 'en'],
     ['ar', 'en'],
-    [['not_a_locale', 'fr', 'es-CO'], 'es'],
+    [['not_a_locale', 'ja', 'es-CO'], 'es'],
     [['en-GB', 'es'], 'en-GB'],
   ] as const)('matches request %j to %s', (request, expected) => {
     expect(resolveInterviewLocale(request)).toBe(expected);

@@ -65,7 +65,7 @@ describe('device administration language', () => {
     ['es-AR', ['en-US'], 'es'],
     ['bad_tag', ['es-ES'], 'es'],
     ['de', ['es'], 'es'],
-    [null, ['fr-CA'], 'en'],
+    [null, ['ja-JP'], 'en'],
     [null, [], 'en'],
   ] as const)(
     'resolves stored %s with browser %j to %s',

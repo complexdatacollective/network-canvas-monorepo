@@ -15,6 +15,7 @@ import {
 } from '@codaco/app-i18n/catalog-guards';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 
+import fr from '../../locales/fr.json';
 import { architectProductionLocales } from '../locales';
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -33,6 +34,7 @@ const enGb = JSON.parse(
 const localesDir = join(srcDir, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Architect catalog contract', () => {
@@ -54,6 +56,7 @@ describe('Architect catalog contract', () => {
   it('ships complete Spanish and reviewed sparse British English with identical ICU arguments and rich tags', () => {
     expect(checkFullLocale(en, es, esSources)).toEqual([]);
     expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
+    expect(checkFullLocale(en, fr, frSources)).toEqual([]);
     expect(checkOverrideLocale(en, enGb, enGbSources)).toEqual([]);
   });
   it('keeps the selectable production set inside the shared ecosystem', () => {
@@ -62,6 +65,7 @@ describe('Architect catalog contract', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'fr',
     ]);
     const supported = new Set(ecosystemLocales.map((x) => x.locale));
     expect(

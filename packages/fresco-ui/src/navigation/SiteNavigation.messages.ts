@@ -167,4 +167,49 @@ export const siteNavigationMessages = {
       },
     },
   },
+  'fr': {
+    home: 'Accueil Network Canvas',
+    navigationLabel: 'Navigation principale',
+    skipToContent: 'Aller au contenu principal',
+    community: 'Communauté',
+    documentation: 'Documentation',
+    protocolGallery: 'Galerie de protocoles',
+    resources: 'Ressources',
+    software: 'Logiciels',
+    getStarted: 'Commencer',
+    openMenu: 'Ouvrir la navigation du site',
+    closeMenu: 'Fermer la navigation du site',
+    softwareLinks: {
+      architect: {
+        name: 'Architect',
+        action: 'Ouvrir Architect',
+        description:
+          'Concevez des protocoles d’entretien Network Canvas soignés dans votre navigateur, grâce à un flux de travail visuel pensé pour les équipes de recherche.',
+      },
+      architectClassic: {
+        name: 'Architect Classic',
+        action: 'Obtenir Architect Classic',
+        description:
+          'À utiliser uniquement si votre étude doit rester compatible avec Interviewer Classic et le schéma 7.',
+      },
+      interviewer: {
+        name: 'Interviewer',
+        action: 'Ouvrir Interviewer',
+        description:
+          'Menez sur le terrain, depuis n’importe quel navigateur pris en charge, des entretiens de réseau engageants, guidés par la personne qui mène l’entretien.',
+      },
+      interviewerClassic: {
+        name: 'Interviewer Classic',
+        action: 'Obtenir Interviewer Classic',
+        description:
+          'Pour les études établies en schéma 7 et les flux de travail hors ligne sur ordinateur ou tablette. Maintenu pour la compatibilité et la correction des bogues.',
+      },
+      fresco: {
+        name: 'Fresco',
+        action: 'Essayer le bac à sable Fresco',
+        description:
+          'Coordonnez des entretiens de réseau à distance et gérez les données de l’étude depuis un tableau de bord partagé, accessible dans le navigateur.',
+      },
+    },
+  },
 } satisfies Record<SiteLocale, SiteNavigationMessages>;
