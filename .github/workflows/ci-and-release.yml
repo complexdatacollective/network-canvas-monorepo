@@ -70,6 +70,22 @@ concurrency:
     && (startsWith(github.ref_name, 'changeset-release/')
     || github.ref_name == 'e2e-snapshots/main')) }}
 
+env:
+  # Turbo runs one task at a time on every CI runner. Standard runners have four
+  # vCPUs and this repository's tasks are documented as sensitive to contention
+  # — see the `test` job below for the measurements that set the cap at one.
+  #
+  # Set here rather than per invocation. Capping each call site is what left
+  # `quality-support` running `turbo run typecheck` at turbo's default of ten,
+  # which was harmless while those tasks were cache replays and killed the
+  # runner outright on a pull request that invalidated six packages at once
+  # (#2023, run 36858613676, both attempts).
+  #
+  # CI only, on purpose: a developer's machine has cores to spare and keeps
+  # turbo's default. A `--concurrency` flag would override this, so there are
+  # none — `scripts/ci/ci-workflow.test.mjs` refuses one.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   # Skipped on push: its only consumers (site preview checks, the quality
   # aggregate, carry-forward-statuses) never run on push-to-main.
@@ -1126,11 +1142,10 @@ jobs:
     # repository and the org has 500 concurrent standard jobs against a
     # sampled live usage of ~26, so shard count is not the constraint either.
     #
-    # Each shard is a whole runner running its own bucket serially (the
-    # job-wide cap from the `turbo-ci-concurrency` action), which is the same
+    # Each shard is a whole runner running its own bucket serially (from
+    # `TURBO_CONCURRENCY` at the top of this file), which is the same
     # uncontended machine per suite that the single job gave — the per-test
-    # wall-clock budgets still measure the
-    # test rather than the queue. scripts/ci/test-shards.mjs owns which package
+    # wall-clock budgets still measure the test rather than the queue. scripts/ci/test-shards.mjs owns which package
     # is in which bucket, how the buckets were weighted, and the coverage
     # check that refuses a package belonging to no shard.
     name: test (shard ${{ matrix.shard }})
@@ -1291,10 +1306,10 @@ jobs:
           # not invalidate workspace unit tests. Docs, changesets, and
           # markdown are inert to tests as well.
           #
-          # One suite at a time. No flag here: the `turbo-ci-concurrency`
-          # action caps every turbo invocation in every CI job at one task,
-          # and this is the measurement that set that cap — so it is recorded
-          # here rather than beside the action.
+          # One suite at a time. No flag here: `TURBO_CONCURRENCY` at the top
+          # of this file caps every turbo invocation in every job, and this is
+          # the measurement that set that cap — so it is recorded here rather
+          # than beside the variable.
           #
           # Turbo's default runs up to
           # ten tasks at once, and every vitest sizes its fork pool to the
@@ -1449,8 +1464,8 @@ jobs:
           # without being any task's declared input, so it forces the full
           # set. See that job for the reasoning behind each exclusion.
           #
-          # These run one at a time, from the job-wide cap the
-          # `turbo-ci-concurrency` action sets. Each suite drives its own
+          # These run one at a time, from `TURBO_CONCURRENCY` at the top of
+          # this file. Each suite drives its own
           # Chromium (and Firefox, for fresco-ui); in parallel they starve each
           # other on a four-core runner and the timing-sensitive stories fail on
           # a half-rendered DOM. Serially the whole set takes about 100s.

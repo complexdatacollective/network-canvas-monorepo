@@ -49,11 +49,6 @@ next-env.d.ts
 
 # Turbo
 .turbo
-# Generated in CI by .github/actions/turbo-ci-concurrency: turbo.json with
-# `concurrency` pinned to 1. Never committed — it is derived from turbo.json on
-# every run, and ignoring it also keeps it out of the untracked-file scan that
-# open-e2e-snapshot-update-pr uses to decide whether baselines changed.
-turbo.ci.json
 
 dist
 dist-electron

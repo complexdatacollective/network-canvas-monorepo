@@ -38,14 +38,10 @@ const refreshWorkflow = parse(
   ),
 );
 const WORKFLOW_DIR = new URL('../../.github/workflows/', import.meta.url);
-const turboCiSetupAction = readFileSync(
-  new URL('../../.github/actions/turbo-ci-setup/action.yml', import.meta.url),
-  'utf8',
-);
-// Every turbo invocation in CI is capped by exporting this, rather than by a
-// flag at the call site. Anything that runs turbo has to set it.
+// Every turbo invocation in CI is capped by this, set at the top of each
+// workflow, rather than by a flag at each call site.
 const TURBO_CAP =
-  /write-turbo-ci-config\.mjs[\s\S]{0,300}?TURBO_ROOT_TURBO_JSON=\$config" >> "\$GITHUB_ENV"/;
+  /^env:\n(?:[^\S\n][^\n]*\n)*?[^\S\n]+TURBO_CONCURRENCY: '1'$/m;
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
@@ -812,39 +808,33 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
   //
   // This used to be asserted per invocation, which is how `quality-support`
   // came to run `turbo run typecheck` uncapped and kill the runner on a pull
-  // request that invalidated six packages at once (#2023). The cap is now set
-  // once per job, so this guards the mechanism rather than each call site.
-  assert.match(
-    turboCiSetupAction,
-    TURBO_CAP,
-    'turbo-ci-setup caps turbo, so every job using it is capped',
-  );
-
-  // legacy-app-build is exempt on purpose: it builds a single app per matrix
-  // leg, so there is no fan-out to starve, and it is the only turbo workflow
-  // that also runs on Windows and macOS runners.
-  const exempt = new Set(['legacy-app-build.yml']);
+  // request that invalidated six packages at once (#2023). The cap is now one
+  // variable per workflow, so this guards that rather than each call site.
+  let capped = 0;
   for (const file of readdirSync(WORKFLOW_DIR)) {
     const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
 
-    // A per-invocation flag would override the job-wide config and drift from
-    // it, which is the arrangement #2023 replaced.
+    // A per-invocation flag would override the workflow's variable and drift
+    // from it, which is the arrangement #2023 replaced.
     assert.doesNotMatch(
       source,
       /turbo run[^\n]*--concurrency/,
-      `${file} passes --concurrency at a call site instead of capping the job`,
+      `${file} passes --concurrency at a call site instead of setting TURBO_CONCURRENCY`,
     );
 
-    if (!/exec turbo run/.test(source) || exempt.has(file)) continue;
-    // Either via the setup action, or by exporting it directly.
-    assert.ok(
-      // Any checkout path: architect-archive-release takes the action from a
-      // `.archive-tooling` checkout.
-      /uses: \.\/[^\n]*actions\/turbo-ci-setup/.test(source) ||
-        TURBO_CAP.test(source),
-      `${file} runs turbo without capping its concurrency`,
+    if (!/exec turbo run/.test(source)) continue;
+    assert.match(
+      source,
+      TURBO_CAP,
+      `${file} runs turbo without setting TURBO_CONCURRENCY`,
     );
+    capped += 1;
   }
+  // A rename of a workflow that runs turbo must not silently empty this loop.
+  assert.ok(
+    capped >= 5,
+    `expected every turbo workflow to be capped, saw ${capped}`,
+  );
 
   const seedJob = job('seed-turbo-cache');
   assert.ok(seedJob, 'seed-turbo-cache job exists');
