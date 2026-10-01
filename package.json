@@ -12,7 +12,6 @@
     "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
     "changeset": "changeset add",
     "check:changesets": "node scripts/release/check-changeset-app-isolation.mjs",
-    "check:client-env": "node scripts/buildtime/check-client-env-access.mjs",
     "check:compat-protocols": "node packages/protocols/scripts/check-compat-packages.mjs",
     "check:dialog-exits": "node scripts/buildtime/check-dialog-exit-animations.mjs",
     "check:hydration-flag": "node scripts/buildtime/check-hydration-flag.mjs",

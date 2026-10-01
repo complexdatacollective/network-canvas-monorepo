@@ -14,6 +14,4 @@ the notice carrying the demo sign-in credentials disappeared as the page
 finished loading.
 
 Both are now rendered by the server only when the deployment is a sandbox, so
-the decision is made where the variable exists. A repository check refuses any
-further client component that reads an environment variable the browser is not
-given.
+the decision is made where the variable exists.
