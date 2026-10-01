@@ -190,7 +190,7 @@ export const siteNavigationMessages = {
         name: 'Architect Classic',
         action: 'Scarica Architect Classic',
         description:
-          'Da usare solo se il tuo studio deve restare compatibile con Interviewer Classic e con lo schema 7.',
+          'Da usare solo se il tuo studio deve restare compatibile con Interviewer Classic e con lo Schema 7.',
       },
       interviewer: {
         name: 'Interviewer',
@@ -202,7 +202,7 @@ export const siteNavigationMessages = {
         name: 'Interviewer Classic',
         action: 'Scarica Interviewer Classic',
         description:
-          'Per studi già avviati con lo schema 7 e per flussi di lavoro offline su computer desktop o tablet. Mantenuto per compatibilità e correzioni di bug.',
+          'Per studi già avviati con lo Schema 7 e per flussi di lavoro offline su computer desktop o tablet. Mantenuto per compatibilità e correzioni di bug.',
       },
       fresco: {
         name: 'Fresco',

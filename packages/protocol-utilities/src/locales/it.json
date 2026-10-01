@@ -1,5 +1,5 @@
 {
-  "protocolUtilities.constraint.conflictingReferencePair": "Questi attributi dovrebbero essere contemporaneamente uguali e diversi. Rimuovi una delle regole in conflitto.",
+  "protocolUtilities.constraint.conflictingReferencePair": "Le regole richiedono che questi attributi siano contemporaneamente uguali e diversi. Rimuovi una delle regole in conflitto.",
   "protocolUtilities.constraint.disjointBounds": "I confronti tra questi attributi non sono compatibili con gli intervalli consentiti. Modifica gli intervalli o i confronti.",
   "protocolUtilities.constraint.disjointOptions": "Questi attributi devono avere lo stesso valore, ma le loro opzioni disponibili non hanno valori in comune. Aggiungi un’opzione comune o modifica la regola di uguaglianza.",
   "protocolUtilities.constraint.drawExhausted": "Nessun valore soddisfa queste regole insieme ai valori già scelti per gli attributi collegati. Rivedi le regole collegate o prova un altro seme di generazione.",
