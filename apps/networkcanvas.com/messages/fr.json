@@ -24,7 +24,7 @@
   },
   "Tools": {
     "heading": "Une sélection d’outils pour faciliter vos recherches",
-    "introduction": "Nous proposons un flux de travail complet, de bout en bout, pour la recherche sur les réseaux, avec des applications pour la conception des questionnaires et pour la conduite des entretiens. Grâce à ces outils, les équipes de recherche peuvent facilement concevoir, recueillir et exporter des données de réseau.",
+    "introduction": "Nous proposons un flux de travail complet, de bout en bout, pour la recherche sur les réseaux, avec des applications pour la conception des protocoles d’enquête et pour la conduite des entretiens. Grâce à ces outils, les équipes de recherche peuvent facilement concevoir, recueillir et exporter des données de réseau.",
     "architect": {
       "description": "Un outil accessible depuis le navigateur pour concevoir visuellement des entretiens Network Canvas. Architect permet aux spécialistes d’un domaine de se concentrer sur la conception et la mise en œuvre de leur étude, sans avoir à maîtriser de nouvelles technologies complexes.",
       "action": "Ouvrir Architect",
@@ -141,7 +141,7 @@
     "placeholder": "email@networkcanvas.com",
     "emailLabel": "Adresse e-mail",
     "submit": "S’inscrire",
-    "success": "Merci ! Nous restons en contact."
+    "success": "Merci ! Nous reviendrons vers vous très bientôt."
   },
   "Footer": {
     "terms": "Conditions d’utilisation",
@@ -225,7 +225,7 @@
       "TieStrengthCensus": "Recensement de la force des liens"
     },
     "detail": {
-      "back": "Retour à la bibliothèque",
+      "back": "Retour à la galerie",
       "citation": "Citer cette publication",
       "demonstrates": "Ce que ce protocole illustre",
       "details": "Détails de l’étude",
@@ -340,7 +340,7 @@
       },
       "interviewer": {
         "status": "En présentiel · Recommandé",
-        "description": "Menez une collecte de données accompagnée par une personne qui conduit l’entretien, sur un appareil que vous contrôlez, avec des protocoles conçus à partir de toutes les dernières fonctionnalités de Network Canvas.",
+        "description": "Réalisez la collecte de données avec l’aide d’une personne qui mène l’entretien, sur un appareil que vous contrôlez, avec des protocoles conçus avec toutes les dernières fonctionnalités de Network Canvas.",
         "bestFor": {
           "inPerson": "Entretiens menés en présentiel",
           "guided": "Une personne formée qui guide la personne participante pendant l’entretien",
@@ -353,9 +353,9 @@
       },
       "fresco": {
         "status": "Grandes équipes · Administration à distance · Recommandé",
-        "description": "Pour les personnes participantes qui répondent aux entretiens à distance, dans leur propre navigateur, avec une gestion centralisée des études et des données. Le bac à sable est un environnement de démonstration public : il ne convient pas à une véritable étude.",
+        "description": "Pour les personnes participantes qui réalisent l’entretien à distance, dans leur propre navigateur, avec une gestion centralisée des études et des données. Le bac à sable est un environnement de démonstration public : il ne convient pas à une véritable étude.",
         "bestFor": {
-          "remoteBrowser": "Personnes participantes qui répondent aux entretiens à distance, dans leur propre navigateur",
+          "remoteBrowser": "Personnes participantes qui réalisent l’entretien à distance, dans leur propre navigateur",
           "centralManagement": "Gestion centralisée des études et des personnes participantes",
           "sharedDashboard": "Gestion et exportation des données depuis un tableau de bord partagé",
           "selfHosted": "Équipes en mesure de déployer et d’héberger une instance de Fresco"
@@ -387,7 +387,7 @@
   "SummerUpdate": {
     "metadata": {
       "title": "Découvrez la nouvelle génération des applications Network Canvas",
-      "description": "Découvrez les applications Architect et Interviewer repensées, Fresco 4.0.0 et le nouveau format de protocole Schéma 8."
+      "description": "Découvrez les applications Architect et Interviewer repensées, Fresco 4.0.0 et le nouveau format de protocole, le schéma 8."
     },
     "hero": {
       "heading": "<lead>Découvrez la nouvelle génération des</lead> <product><apps>applications</apps> <brand>Network Canvas</brand></product>",
@@ -414,7 +414,7 @@
         },
         "installation": {
           "title": "Installation locale de l’application",
-          "description": "Installez l’un ou l’autre outil comme application directement depuis le navigateur. Il fonctionne comme une application classique sur votre appareil, tout en vous laissant le contrôle de vos données en local."
+          "description": "Installez l’un ou l’autre outil comme application directement depuis le navigateur. Il fonctionne comme n’importe quelle autre application de votre appareil, tout en vous laissant le contrôle de vos données en local."
         },
         "updates": {
           "title": "Des mises à jour simplifiées",
@@ -448,7 +448,7 @@
       "interviewer": {
         "label": "Entretiens en face à face",
         "heading": "Interviewer : menez des entretiens partout",
-        "description": "Interviewer a lui aussi été repensé pour le navigateur : téléversez un protocole sur <link>interviewer.networkcanvas.com</link> et lancez-vous sans rien installer. Installez-le comme <pwa>PWA</pwa> pour travailler hors ligne : il reste l’outil idéal pour les études de réseaux en présentiel, menées avec l’aide d’une personne qui conduit l’entretien.",
+        "description": "Interviewer a lui aussi été repensé pour le navigateur : téléversez un protocole sur <link>interviewer.networkcanvas.com</link> et lancez-vous sans rien installer. Installez-le comme <pwa>PWA</pwa> pour travailler hors ligne : il reste l’outil idéal pour les études de réseaux en présentiel, réalisées avec l’aide d’une personne qui mène l’entretien.",
         "iconAlt": "Icône de l’application Interviewer",
         "screenshotAlt": "Tableau de bord d’Interviewer affichant des cartes de protocole et une action pour reprendre un entretien",
         "bullets": {
@@ -512,7 +512,7 @@
         "details": {
           "0": "Chaque personne participante crée la phrase secrète qui protège les données sélectionnées, et l’application ne conserve jamais cette phrase secrète.",
           "1": "L’équipe de recherche ne peut pas déchiffrer les valeurs protégées : dans les exportations, les attributs chiffrés sont remplacés par un marqueur explicite.",
-          "2": "Il s’agit d’une fonctionnalité expérimentale, destinée aux études où des garanties de confidentialité renforcées peuvent favoriser la confiance et la divulgation."
+          "2": "Il s’agit d’une fonctionnalité expérimentale, destinée aux études où des garanties de confidentialité renforcées peuvent favoriser la confiance et la franchise des réponses."
         }
       },
       "oneToMany": {
@@ -540,7 +540,7 @@
         "name": "Interface d’arbre généalogique narratif",
         "summary": "Transformez un arbre généalogique créé précédemment en une visualisation en lecture seule qui utilise la notation clinique standard des arbres généalogiques.",
         "details": {
-          "0": "Montrez les membres de la famille atteints et les porteurs ou porteuses certains d’une ou plusieurs affections, selon les modes de transmission pris en charge.",
+          "0": "Montrez les membres de la famille atteints et les personnes porteuses obligatoires d’une ou plusieurs affections, selon les modes de transmission pris en charge.",
           "1": "Affichez si vous le souhaitez les statuts « à risque » possibles, lorsque l’étude prévoit un accompagnement adapté pour leur interprétation.",
           "2": "Concentrez-vous sur la lignée qui transmet à une personne donnée et exportez un instantané imprimable. La visualisation est une aide, pas un diagnostic."
         }
@@ -620,7 +620,7 @@
         "name": "Données d’entretien synthétiques",
         "summary": "Générez des entretiens de test réalistes avant le recrutement pour examiner l’ensemble du circuit des données sans exposer les données des personnes participantes.",
         "details": {
-          "0": "Créez jusqu’à 1 000 entretiens synthétiques à la fois et examinez comment les réponses apparaissent dans les tableaux de l’étude et dans les exportations.",
+          "0": "Créez jusqu’à 1 000 entretiens synthétiques à la fois et examinez comment les réponses apparaissent dans les tableaux de l’étude et dans les exportations.",
           "1": "Simulez si vous le souhaitez des abandons en cours d’entretien, dans le respect de la logique de saut et des filtres de réseau du protocole.",
           "2": "Les enregistrements synthétiques sont signalés à part et peuvent être supprimés en bloc sans toucher aux entretiens réels."
         }
@@ -640,7 +640,7 @@
         "name": "Contrôles d’autorisation configurables",
         "summary": "Exigez un nouveau déverrouillage aux étapes sensibles du travail, au lieu de vous fier uniquement au verrouillage général de l’application après inactivité.",
         "details": {
-          "0": "Exigez, indépendamment pour chaque cas, une nouvelle authentification avant d’ouvrir un entretien, de le quitter pour revenir au tableau de bord ou d’exporter les données recueillies.",
+          "0": "Exigez, séparément pour chacune de ces actions, une nouvelle authentification avant d’ouvrir un entretien, de le quitter pour revenir au tableau de bord ou d’exporter les données recueillies.",
           "1": "Utilisez le code PIN, la phrase secrète ou la méthode biométrique déjà configurés, sans ajouter un second jeu d’identifiants.",
           "2": "Les noms des protocoles, le nombre de sessions et les données stockées restent masqués tant qu’Interviewer est verrouillé."
         }
