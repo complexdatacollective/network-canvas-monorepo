@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type JsdomVirtualConsole = {
@@ -79,5 +79,69 @@ describe('AppUpdateProvider', () => {
       installUpdate: expect.any(Function),
     });
     expect(screen.getByText('idle')).toBeInTheDocument();
+  });
+
+  it('attaches a rejection handler to the background update check', async () => {
+    // `update()` rejects whenever the sw.js fetch fails, which is routine for
+    // an offline-first PWA. Without a handler the rejection escapes and is
+    // reported as an uncaught TypeError crash, so assert the provider claims
+    // it rather than relying on `void`.
+    vi.useFakeTimers();
+
+    try {
+      render(
+        <AppUpdateProvider>
+          <ContextProbe />
+        </AppUpdateProvider>,
+      );
+
+      const options = mockUseRegisterSW.mock.calls[0]?.[0] as {
+        onRegisteredSW?: (
+          url: string,
+          registration: ServiceWorkerRegistration,
+        ) => void;
+      };
+
+      const swFetchFailure = new TypeError(
+        "Failed to update a ServiceWorker for scope ('https://example.test/') with script ('https://example.test/sw.js'): An unknown error occurred when fetching the script.",
+      );
+      let rejectionHandled = false;
+      // A thenable rather than a real rejected promise: an unclaimed native
+      // rejection would leak out of this test as an unhandled rejection.
+      const update = vi.fn(() => ({
+        catch: (onRejected: (reason: unknown) => unknown) => {
+          rejectionHandled = true;
+          onRejected(swFetchFailure);
+          return Promise.resolve();
+        },
+        // oxlint-disable-next-line unicorn/no-thenable -- deliberately thenable: this stands in for the promise `update()` returns, and covers a handler attached via `then(undefined, onRejected)` as well as via `catch`
+        then: (
+          _onFulfilled?: unknown,
+          onRejected?: (reason: unknown) => unknown,
+        ) => {
+          if (onRejected) {
+            rejectionHandled = true;
+            onRejected(swFetchFailure);
+          }
+          return Promise.resolve();
+        },
+      }));
+
+      act(() => {
+        options.onRegisteredSW?.('/sw.js', {
+          update,
+        } as unknown as ServiceWorkerRegistration);
+      });
+
+      act(() => {
+        // Mirrors UPDATE_CHECK_INTERVAL_MS in AppUpdateProvider.
+        vi.advanceTimersByTime(60 * 60 * 1000);
+      });
+
+      expect(update).toHaveBeenCalledTimes(1);
+      expect(rejectionHandled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
