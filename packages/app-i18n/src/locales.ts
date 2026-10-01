@@ -69,6 +69,7 @@ export const ecosystemLocales = defineAppLocales([
   { locale: 'en', label: 'English', direction: 'ltr' },
   { locale: 'en-GB', label: 'English (UK)', direction: 'ltr' },
   { locale: 'es', label: 'Español', direction: 'ltr' },
+  { locale: 'zh-Hans', label: '简体中文', direction: 'ltr' },
 ]);
 
 /**

@@ -51,6 +51,21 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/es/',
   },
   {
+    name: 'mainland Chinese browser language',
+    headers: { 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Simplified Chinese browser language',
+    headers: { 'accept-language': 'zh-Hans,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Taiwanese Chinese browser language best-fits Simplified Chinese',
+    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
     name: 'US English fallback',
     headers: {},
     destination: 'http://localhost/en-US/',
@@ -96,12 +111,13 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, and Spanish static params', () => {
-    expect(locales).toEqual(['en-US', 'en-GB', 'es']);
+  it('generates US English, UK English, Spanish, and Simplified Chinese static params', () => {
+    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans']);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
       { locale: 'en-GB' },
       { locale: 'es' },
+      { locale: 'zh-Hans' },
     ]);
   });
 

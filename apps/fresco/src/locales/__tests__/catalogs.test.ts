@@ -19,6 +19,7 @@ import { frescoLocales } from '~/i18n/locales';
 import { frescoCatalogs } from '~/src/locales/catalogs';
 import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
+import zhHans from '~/src/locales/zh-Hans.json';
 
 const root = resolve(import.meta.dirname, '../../..');
 const sourceDirectories = [
@@ -35,6 +36,7 @@ const en = JSON.parse(
 ) as ExtractedCatalog;
 const localesDir = resolve(root, 'src/locales');
 const esSources = readTranslationSources(localesDir, 'es');
+const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Fresco researcher message catalogs', () => {
@@ -54,6 +56,7 @@ describe('Fresco researcher message catalogs', () => {
       'en',
       'en-GB',
       'es',
+      'zh-Hans',
     ]);
     for (const { locale } of frescoLocales) {
       expect(ecosystemLocales.map((entry) => entry.locale)).toContain(locale);
@@ -63,6 +66,10 @@ describe('Fresco researcher message catalogs', () => {
 
   it('requires complete Spanish and matching ICU arguments and rich text tags', () => {
     expect(checkFullLocale(en, es, esSources)).toEqual([]);
+  });
+
+  it('requires complete Simplified Chinese and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
   });
 
   it('keeps British English sparse with only reviewed differences', () => {

@@ -6,6 +6,7 @@ import { protocolUtilitiesCatalogs } from '@codaco/protocol-utilities/locales';
 import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
+import zhHans from '~/src/locales/zh-Hans.json';
 
 export const frescoCatalogs: Readonly<Record<string, CatalogMessages>> = {
   'en': {},
@@ -24,5 +25,13 @@ export const frescoCatalogs: Readonly<Record<string, CatalogMessages>> = {
     protocolUtilitiesCatalogs.es ?? {},
     protocolValidationCatalogs.es ?? {},
     es,
+  ),
+  'zh-Hans': mergeCatalogs(
+    commonCatalogs['zh-Hans'] ?? {},
+    frescoUiCatalogs['zh-Hans'] ?? {},
+    networkExporterCatalogs['zh-Hans'] ?? {},
+    protocolUtilitiesCatalogs['zh-Hans'] ?? {},
+    protocolValidationCatalogs['zh-Hans'] ?? {},
+    zhHans,
   ),
 };

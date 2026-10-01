@@ -68,6 +68,7 @@ export async function generateMetadata({
         'en-US': 'https://networkcanvas.com/en-US',
         'en-GB': 'https://networkcanvas.com/en-GB',
         'es': 'https://networkcanvas.com/es',
+        'zh-Hans': 'https://networkcanvas.com/zh-Hans',
       },
     },
     openGraph: {
