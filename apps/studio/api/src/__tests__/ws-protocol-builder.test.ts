@@ -383,7 +383,6 @@ describe.skipIf(!testDb || !env.auth)(
           listMemberships: () =>
             Effect.succeed([{ teamId: TEAM_ID, role: 'owner' }]),
         }),
-        pool: database.appPool,
         services,
       });
       server = await startStudioServer(

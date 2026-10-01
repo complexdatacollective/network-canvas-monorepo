@@ -1,5 +1,4 @@
 import type { Context } from 'effect';
-import type pg from 'pg';
 
 import type { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import type { AuditSignal } from '../audit/signal.ts';
@@ -33,7 +32,6 @@ export type RpcDeps = {
   readonly deployment: DeploymentStatus;
   /** The installation row behind `status.setup` and the instance's name. */
   readonly readInstallation: InstallationReader;
-  readonly pool?: pg.Pool | undefined;
   /**
    * The Effect services every data-layer caller on this plane runs on (#1931
    * stage 3): the application client, the operator signal, the job queue, the
@@ -42,7 +40,7 @@ export type RpcDeps = {
    * It is a `Context` rather than a set of layers because one of its
    * consumers is a promise — the installation read `status` answers from — and the
    * program that owns the layers is the only thing that can supply it. Absent wherever there is no database, where
-   * every procedure that would need one refuses beside the missing pool.
+   * every procedure that would need one refuses.
    */
   readonly services?: Context.Context<StudioServices> | undefined;
 };

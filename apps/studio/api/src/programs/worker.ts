@@ -1,15 +1,14 @@
 import { Effect, Layer, Option, Ref, Schema } from 'effect';
 import { HttpRouter } from 'effect/http';
 
-import { MaintenanceDatabase } from '../db/client.ts';
-import { DatabasePool } from '../db/database-pool.ts';
+import { MaintenanceDatabase, ReadinessDatabase } from '../db/client.ts';
 import { type DbEnv, Environment } from '../env.ts';
 import {
   databaseCheck,
   type HealthCheck,
   type HealthChecks,
   HealthRoutes,
-  schemaCheckOnPool,
+  schemaCheckOn,
 } from '../http/health.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { DeniedAttemptsStore } from '../jobs/handlers/denied-attempts/store.ts';
@@ -94,10 +93,10 @@ type StartedQueue = {
  * which its first answered claim sets, plus a read issued now — reached through
  * a handle the graph fills in, because the listener binds first. Until then the
  * answer is `failed: not started`: an instance that does not exist answers
- * nothing, and the maintenance pool would still reach Postgres.
+ * nothing, and the readiness client would still reach Postgres.
  */
 function workerChecks(
-  pool: DatabasePool['Service']['pool'],
+  readiness: ReadinessDatabase['Service'],
   limiter: RateLimiter['Service'],
   started: Ref.Ref<Option.Option<StartedQueue>>,
 ): HealthChecks {
@@ -107,10 +106,10 @@ function workerChecks(
     return yield* jobsCheck(queue.value.worker, queue.value.database);
   });
   return {
-    db: databaseCheck(pool),
-    // Checked live on the pool rather than through `SchemaStatus`, because the
-    // listener is acquired before the gate on purpose (above).
-    schema: schemaCheckOnPool(pool),
+    db: databaseCheck(readiness.sql),
+    // Checked live rather than through `SchemaStatus`, because the listener is
+    // acquired before the gate on purpose (above).
+    schema: schemaCheckOn(readiness.sql),
     // `degraded`, never `failed`: the limiter fails open, so a worker that
     // cannot reach it still runs every job it has — only the summary job has
     // nothing to drain. Omitted where no store is configured, like every other
@@ -123,7 +122,7 @@ function workerChecks(
 function workerWith(db: DbEnv) {
   return Layer.unwrap(
     Effect.gen(function* () {
-      const { pool } = yield* DatabasePool;
+      const readiness = yield* ReadinessDatabase;
       const limiter = yield* RateLimiter;
       const started = yield* Ref.make(Option.none<StartedQueue>());
 
@@ -131,7 +130,7 @@ function workerWith(db: DbEnv) {
       // (`WorkerHealthServerLive`): this listener answers the container runtime
       // and nothing else, and a worker is not a service anything routes to.
       const Health = HttpRouter.serve(
-        HealthRoutes(workerChecks(pool, limiter, started)),
+        HealthRoutes(workerChecks(readiness, limiter, started)),
         {
           disableLogger: true,
           disableListenLog: true,
@@ -157,8 +156,8 @@ function workerWith(db: DbEnv) {
       // The maintenance client the queue runs on, and the only client the
       // handlers use: the denied-attempts summary reads its idempotency check
       // and appends its audit row on this one client, so the two cannot
-      // disagree about the database, role or search path. The `DatabasePool`
-      // beside it serves the node-postgres schema gate and readiness checks.
+      // disagree about the database, role or search path. The
+      // `ReadinessDatabase` beside it serves the schema gate and readiness.
       const QueueDatabase = MaintenanceDatabase.layer({
         url: db.url,
         applicationName: 'studio-worker',
@@ -208,12 +207,13 @@ function workerWith(db: DbEnv) {
     }),
   ).pipe(
     // The one Valkey client, for the `limiter` readiness check and the
-    // denied-attempts summary job. Acquired after the pool and before
-    // everything that reads through it, so it closes after the job drain and
-    // before the pool ends.
+    // denied-attempts summary job. Acquired before everything that reads
+    // through it, so it closes after the job drain.
     Layer.provide(RateLimiter.layer),
     Layer.provide(RateLimitStore.layer),
-    Layer.provide(DatabasePool.layerMaintenance(db)),
+    Layer.provide(
+      Layer.orDie(ReadinessDatabase.layer('maintenance', { url: db.url })),
+    ),
   );
 }
 

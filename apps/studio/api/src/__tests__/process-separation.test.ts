@@ -225,6 +225,13 @@ describe('every entry', () => {
 describe('the worker process', () => {
   const graph = moduleGraph('src/worker.ts');
 
+  it('runs on the Effect driver, with no node-postgres pool', () => {
+    expect(reached(graph, ['@effect/sql-pg'])).toEqual(['@effect/sql-pg']);
+    expect(
+      reached(graph, ['drizzle-orm/node-postgres', 'src/db/pool.ts']),
+    ).toEqual([]);
+  });
+
   it('serves nothing but the health routes', () => {
     // It does serve HTTP — the loopback health listener a container
     // healthcheck polls (#1897) — so "binds no port" is not the reading. What
@@ -565,11 +572,7 @@ describe('the migrate process', () => {
       reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
     ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
     expect(
-      reached(graph, [
-        'drizzle-orm/node-postgres',
-        'src/db/pool.ts',
-        'src/db/database-pool.ts',
-      ]),
+      reached(graph, ['drizzle-orm/node-postgres', 'src/db/pool.ts']),
     ).toEqual([]);
   });
 });
@@ -651,21 +654,17 @@ describe('the web process', () => {
     // positive one. #1927 stage 3 moved every command onto `@effect/sql-pg`,
     // so this is now the client the process's own work runs on.
     //
-    // The matching negative — "and it carries no node-postgres" — is not true
-    // of this process today, so it is not asserted here: `pg` still arrives
-    // through db/pool.ts, db/database-pool.ts and http/health.ts, the
-    // readiness probes still on node-postgres. better-auth left that list in
-    // stage 4, when
-    // `AuthService` put it on its sql-pg adapter (auth/adapter.ts). Asserting
-    // the absence would fail; asserting the presence of the holders would pass
-    // whatever else joined them. The negative is asserted
-    // where it is true instead — see the maintenance and rotation processes below, the
-    // entries already clear of the driver.
+    // Nor a node-postgres pool: `pg` arrives only as `import type` from the
+    // scripts' helpers in db/schema.ts and jobs/install.ts, which the build
+    // erases.
     //
     // Mutation: drop `@effect/sql-pg` from src/db/client.ts.
     expect(
       reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
     ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
+    expect(
+      reached(graph, ['drizzle-orm/node-postgres', 'src/db/pool.ts']),
+    ).toEqual([]);
   });
 
   it('cannot mint a TeamAccess without a membership check', () => {
@@ -763,12 +762,7 @@ describe('the maintenance process', () => {
     // Like rotation, a command written on the Effect driver from the start:
     // no pool, and no `pg` even as a type.
     expect(
-      reached(graph, [
-        'pg',
-        'drizzle-orm/node-postgres',
-        'src/db/pool.ts',
-        'src/db/database-pool.ts',
-      ]),
+      reached(graph, ['pg', 'drizzle-orm/node-postgres', 'src/db/pool.ts']),
     ).toEqual([]);
   });
 });
@@ -790,23 +784,13 @@ describe('the rotation process', () => {
   });
 
   it('is the entry already clear of node-postgres', () => {
-    // The measurement the web process cannot carry yet (see its driver case):
-    // one entry reaches the Effect driver and nothing else, so #1927 stage 3's
-    // retreat from node-postgres is asserted somewhere rather than nowhere.
-    // Rotation was already maintenance-only Effect code; the pools that keep
-    // `pg` in the web and worker graphs — db/pool.ts and db/database-pool.ts —
-    // are not in this one, and it carries no `import type` of `pg` either,
-    // which the migrate graph still does.
+    // Unlike the web, worker and migrate graphs, it carries no `import type`
+    // of `pg` either.
     //
     // Mutation: import src/db/pool.ts from src/programs/rotate-secrets.ts.
     expect(reached(graph, ['@effect/sql-pg'])).toEqual(['@effect/sql-pg']);
     expect(
-      reached(graph, [
-        'pg',
-        'drizzle-orm/node-postgres',
-        'src/db/pool.ts',
-        'src/db/database-pool.ts',
-      ]),
+      reached(graph, ['pg', 'drizzle-orm/node-postgres', 'src/db/pool.ts']),
     ).toEqual([]);
   });
 

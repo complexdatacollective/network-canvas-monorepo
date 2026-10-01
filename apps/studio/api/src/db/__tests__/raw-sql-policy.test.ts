@@ -385,22 +385,14 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 5,
     why: 'the conformance suite’s scratch schema (node-postgres) and the tenant pin its Effect runtime sets',
   },
-  // node-postgres. Nothing here is Effect code; it is listed so the residue is
-  // pinned rather than invisible. better-auth left it in stage 4 (it runs on
-  // `auth/adapter.ts` now); what stays is readiness, the schema gate and the
-  // scripts. The Effect clients pin their role at connect now, so readiness and
-  // the schema gate could move onto them; the scripts stay for drizzle-kit.
+  // node-postgres, which only the scripts still use, for drizzle-kit.
   [`${SERVER}/db/schema.ts`]: {
     count: 3,
-    why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ and the schema gate’s twins of the Effect pair',
+    why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ twins of the Effect pair',
   },
   [`${SERVER}/jobs/install.ts`]: {
     count: 1,
     why: 'the node-postgres `installJobSchema`, over the same split statement list as the Effect path',
-  },
-  [`${SERVER}/http/health.ts`]: {
-    count: 1,
-    why: 'the readiness probe’s `select 1` on the process’s node-postgres pool',
   },
   [`${SERVER}/__tests__/support/postgres.ts`]: {
     count: 4,

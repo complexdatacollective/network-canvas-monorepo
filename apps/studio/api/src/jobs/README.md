@@ -322,8 +322,9 @@ made it, which is what the development lane needs, where `pnpm dev` can finish
 applying the schema long after the process booted.
 
 **The worker process** (`src/programs/worker.ts`) runs the queue. Over
-`Environment` it composes `DatabasePool.layerMaintenance(db)` — the `pg.Pool`
-the secrets check still needs — and then, in acquisition order:
+`Environment` it composes `ReadinessDatabase.layer('maintenance', …)` — the
+connection the schema gate and readiness run on — and then, in acquisition
+order:
 
 1. `Health`: the loopback readiness listener. First, so a `docker compose up`
    reads an honest `failing` naming the schema rather than a refused

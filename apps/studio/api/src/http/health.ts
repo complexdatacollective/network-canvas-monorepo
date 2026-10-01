@@ -1,8 +1,10 @@
 import { Cause, Duration, Effect, type Layer, Record } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/http';
-import type pg from 'pg';
+import type { SqlClient } from 'effect/sql';
 
-import { checkSchema, type SchemaState } from '../db/schema.ts';
+import { deepestMessage } from '../db/errors.ts';
+import { databaseAlive } from '../db/readiness.ts';
+import { checkSchemaEffect, type SchemaState } from '../db/schema.ts';
 
 // The two health routes, shared by both processes (#1897, #1909). The web
 // process mounts them on its own listener; the worker serves them on a
@@ -48,7 +50,7 @@ const CHECK_TIMEOUT_MS = 1000;
 
 /** One line, bounded: this ends up in a container runtime's status output. */
 function reasonOf(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = deepestMessage(error) ?? String(error);
   const single = message.replaceAll(/\s+/g, ' ').trim();
   return single.length > 200 ? `${single.slice(0, 197)}...` : single;
 }
@@ -72,28 +74,9 @@ const runCheck = Effect.fnUntraced(function* (check: HealthCheck) {
   );
 });
 
-/**
- * Can this process reach the database, as the role it actually runs as? Each
- * process passes its own pool — the application pool in the web process, the
- * maintenance pool in the worker — so a grant or role problem that only one of
- * them has is reported by that one.
- *
- * The query is not cancelled when the bound above fires, and does not need to
- * be: the pool it runs on already caps what a hung probe can accumulate.
- * `connectionTimeoutMillis` (10 s, src/db/pool.ts) ends an attempt that never
- * connects, so probes cannot queue up faster than they expire, and `max` caps
- * the connections at stake whatever happens — a probe that outlives its
- * verdict holds one of them and then releases it. The object-store check has
- * neither bound, which is why that one is aborted for real.
- */
-export function databaseCheck(pool: pg.Pool): HealthCheck {
-  return Effect.map(
-    Effect.tryPromise({
-      try: () => pool.query('select 1'),
-      catch: (cause: unknown) => cause,
-    }),
-    (): CheckVerdict => 'ok',
-  );
+/** Can this process reach the database, as the role it runs as? */
+export function databaseCheck(sql: SqlClient.SqlClient): HealthCheck {
+  return Effect.as(databaseAlive(sql), 'ok' satisfies CheckVerdict);
 }
 
 /**
@@ -102,10 +85,6 @@ export function databaseCheck(pool: pg.Pool): HealthCheck {
  * exiting, and a database can be recreated under a running process — so
  * readiness has to say so rather than infer it from the process still being
  * alive.
- *
- * The verdict is read through an Effect handed in rather than a pool taken
- * here, so the web process's fresh `checkSchema` and the program's
- * `SchemaStatus.read` are the same check from this module's point of view.
  */
 export function schemaCheck(
   read: Effect.Effect<SchemaState, unknown>,
@@ -124,19 +103,11 @@ export function schemaCheck(
 }
 
 /**
- * `schemaCheck` over a fresh read of the fingerprint on a pool, for the
- * process whose listener binds before its schema gate exists (the worker).
- * The rejection is kept as the driver raised it — `{ try, catch }` rather than
- * the one-thunk form, which would wrap it in Effect's own `UnknownError` and
- * report its boilerplate instead of `connect ECONNREFUSED …`.
+ * `schemaCheck` over a fresh read, for the worker, whose listener binds before
+ * its schema gate exists.
  */
-export function schemaCheckOnPool(pool: pg.Pool): HealthCheck {
-  return schemaCheck(
-    Effect.tryPromise({
-      try: () => checkSchema(pool),
-      catch: (cause: unknown) => cause,
-    }),
-  );
+export function schemaCheckOn(sql: SqlClient.SqlClient): HealthCheck {
+  return schemaCheck(checkSchemaEffect(sql));
 }
 
 export const readiness: (checks: HealthChecks) => Effect.Effect<Readiness> =

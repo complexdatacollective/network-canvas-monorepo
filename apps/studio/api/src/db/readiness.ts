@@ -17,15 +17,9 @@ import { checkSchemaEffect, SCHEMA_LOCK_KEY } from './schema.ts';
 // on the fiber, and the statement it sent stays on the server until it
 // completes. `schemaVerdict` reads `schemaFingerprint`, which a migration's
 // DDL holds `ACCESS EXCLUSIVE`, so during a migrate every timed-out probe
-// keeps one connection waiting behind the lock. Whoever mounts these behind
-// `/readyz` must give them a connection of their own, or a server-side
-// `statement_timeout` / `lock_timeout`, or a few probe intervals starve the
-// pool they share.
-//
-// The web and worker probes still run on node-postgres (`http/health.ts`'s
-// `databaseCheck` and `schemaCheckOnPool`, and `SchemaStatus.read`): those are
-// wired in `app.ts` and `programs/{serve,worker}.ts`, and the node pools pin
-// their role with a startup parameter these clients cannot yet send.
+// keeps one connection waiting behind the lock. That is why `/readyz` runs
+// them on `ReadinessDatabase`, a connection of their own with a server-side
+// `statement_timeout`.
 
 const PROBE_TIMEOUT = Duration.seconds(1);
 
@@ -47,7 +41,7 @@ export const schemaVerdict = (sql: SqlClient.SqlClient) =>
 /**
  * Whether some backend holds the migration's session lock right now — a
  * migrate is applying the schema to this database (`db/migrate.ts`,
- * `scripts/apply.ts`). Stage 4's `MaintenanceGate` reads it; nothing does yet.
+ * `scripts/apply.ts`). The maintenance middleware reads it.
  *
  * Read from `pg_locks` rather than by trying the lock: a `pg_try_advisory_lock`
  * that succeeded would itself be holding the lock a migrate is about to wait

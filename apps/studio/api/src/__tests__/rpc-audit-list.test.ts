@@ -200,7 +200,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth,
-        pool: database.appPool,
         services: database.services,
       }),
     );
@@ -789,7 +788,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     });
     const demotedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: database.appPool,
         services: database.services,
         auth: authServiceStub({
           getSession: () => Effect.succeedSome(demoted),
@@ -866,7 +864,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     });
     const promotedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: database.appPool,
         services: database.services,
         auth: authServiceStub({
           getSession: () => Effect.succeedSome(promoted),
@@ -940,7 +937,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       .mockImplementation(() => undefined);
     const unrecordedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: database.appPool,
         auth: authServiceStub({
           getSession: () => Effect.succeedSome(unrecorded),
           getMembership: () => Effect.succeedSome({ role: 'member' }),
@@ -1037,7 +1033,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       );
       const lostClient = await createRpcClient(
         createStudio(readEnv(), {
-          pool: database.appPool,
           auth: authServiceStub({
             getSession: () => Effect.succeedSome(lost),
             getMembership: () => Effect.succeedSome({ role: 'member' }),

@@ -5,8 +5,7 @@ import { createStudio, type Studio } from '../app.ts';
 import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import { AuthService } from '../auth/service.ts';
-import { Database, DatabaseAbsent } from '../db/client.ts';
-import { DatabasePool } from '../db/database-pool.ts';
+import { Database, DatabaseAbsent, ReadinessDatabase } from '../db/client.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import { type HealthChecks, schemaCheck } from '../http/health.ts';
 import {
@@ -127,14 +126,14 @@ function BootChecks(env: StudioEnv) {
 }
 
 /**
- * The shape of the process with a database: the application-role pool, the
+ * The shape of the process with a database: the readiness client, the
  * enqueue-only job client, the schema gate, and the boot checks that run once
  * the schema is current.
  */
 function withDatabase(env: StudioEnv, db: DbEnv) {
   return Layer.unwrap(
     Effect.gen(function* () {
-      const { pool } = yield* DatabasePool;
+      const readiness = yield* ReadinessDatabase;
       const status = yield* SchemaStatus;
       const limiter = yield* RateLimiter;
       const auth = yield* AuthService;
@@ -158,7 +157,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
 
       const studio = createStudio(env, {
         services,
-        pool,
+        readiness: readiness.sql,
         limiter,
         auth,
         objectStore,
@@ -192,13 +191,12 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     // the queue sign-in mail goes on.
     Layer.provide(AuthService.layerFromEnvironment),
     // The one Valkey client and the two services over it: every limit this
-    // process enforces, and the audit denial window. Acquired after the pool
-    // and before anything that charges a limit, so it releases after the
-    // listener closes and before the pool ends.
+    // process enforces, and the audit denial window. Acquired before anything
+    // that charges a limit, so it releases after the listener closes.
     Layer.provide(DeniedAttempts.layer),
     Layer.provide(RateLimiter.layer),
     Layer.provide(RateLimitStore.layer),
-    Layer.provide(DatabasePool.layerApplication(db)),
+    Layer.provide(Layer.orDie(ReadinessDatabase.layer('app', { url: db.url }))),
     // The application client and everything over it. `Jobs` is built above
     // `JobClock.layerApplication` so the skew against the database is measured
     // once, at boot, rather than per enqueue — the correction the

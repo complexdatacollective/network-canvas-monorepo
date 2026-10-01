@@ -512,7 +512,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         listMemberships: memberships,
         getMembership: membership,
       }),
-      pool: database.appPool,
       services,
     });
     // Everything a host keeps in memory — its staging areas, its lease keeper
@@ -538,7 +537,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             listMemberships: memberships,
             getMembership: membership,
           }),
-          pool: database.appPool,
           services,
         },
       ),
@@ -650,7 +648,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             getMembership: membership,
           }),
           limiter: store.limiter({ rpc_user: { max: 1, windowMs: 60_000 } }),
-          pool: database.appPool,
           services,
         }),
         { objectStore, layer: logs.layer },
@@ -3409,7 +3406,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           listMemberships: memberships,
           getMembership: membership,
         }),
-        pool: database.appPool,
         services: Context.add(services, Database, faulty),
       }),
       { clock: stranded.clock, objectStore, leases: counting },

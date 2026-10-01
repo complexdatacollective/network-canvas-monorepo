@@ -633,7 +633,6 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
         createStudio(env, {
           auth: liveAuthService(env, database.services),
           services: database.services,
-          pool: database.appPool,
         }),
       );
       const email = `queued-${Date.now()}@example.com`;
@@ -681,7 +680,6 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
     try {
       const { studio, email, cookie } = await signInWithMagicLink(
         env,
-        database.appPool,
         'researcher',
         database.services,
       );
@@ -789,7 +787,6 @@ describe.skipIf(!testDb)('teams (organization plugin)', () => {
     try {
       const { studio, auth, cookie } = await signInWithMagicLink(
         env,
-        database.appPool,
         'owner',
         database.services,
       );
@@ -840,7 +837,6 @@ describe.skipIf(!testDb)('teams (organization plugin)', () => {
     try {
       const { auth, cookie } = await signInWithMagicLink(
         env,
-        database.appPool,
         'owner',
         database.services,
       );

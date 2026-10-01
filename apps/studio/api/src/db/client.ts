@@ -46,6 +46,8 @@ export type DatabaseConfig = {
    * schema per file and every Studio table in it is unqualified.
    */
   readonly searchPath?: string | undefined;
+  /** Sent as the `statement_timeout` startup parameter, e.g. `'5s'`. */
+  readonly statementTimeout?: string | undefined;
 };
 
 /** The role a given identity runs as; the owner is the connecting login. */
@@ -95,6 +97,9 @@ const makeService = (
         ...(config.searchPath === undefined
           ? {}
           : { search_path: config.searchPath }),
+        ...(config.statementTimeout === undefined
+          ? {}
+          : { statement_timeout: config.statementTimeout }),
       },
       // No `types` and no name transforms, deliberately: a transform would
       // break the job queue's and better-auth's column names.
@@ -182,4 +187,32 @@ export class OwnerDatabase extends Context.Service<
     Layer.effect(OwnerDatabase, makeService('owner', config, 4)).pipe(
       Layer.provide(Reactivity.layer),
     );
+}
+
+/**
+ * The readiness probes' own connection, as the process's identity. A probe
+ * that times out behind a migration's lock keeps its statement running on the
+ * server; on a client of its own it cannot take a connection a request needs.
+ */
+export class ReadinessDatabase extends Context.Service<
+  ReadinessDatabase,
+  DatabaseService
+>()('@studio/db/ReadinessDatabase') {
+  static readonly layer = (
+    identity: 'app' | 'maintenance',
+    config: DatabaseConfig,
+  ): Layer.Layer<ReadinessDatabase, SqlError.SqlError> =>
+    Layer.effect(
+      ReadinessDatabase,
+      makeService(
+        identity,
+        {
+          statementTimeout: '5s',
+          applicationName: `studio-${identity}-readiness`,
+          ...config,
+          maxConnections: 1,
+        },
+        1,
+      ),
+    ).pipe(Layer.provide(Reactivity.layer));
 }
