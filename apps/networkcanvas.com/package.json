@@ -30,7 +30,7 @@
     "lucide-react": "catalog:",
     "motion": "catalog:",
     "next": "catalog:",
-    "next-intl": "^4.13.0",
+    "next-intl": "^4.14.8",
     "next-themes": "^0.4.6",
     "posthog-js": "catalog:",
     "react": "catalog:",
@@ -52,7 +52,7 @@
     "jsdom": "catalog:",
     "jszip": "catalog:",
     "postcss": "catalog:",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

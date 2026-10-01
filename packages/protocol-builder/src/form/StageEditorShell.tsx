@@ -68,10 +68,7 @@ import {
  * can read without compiling a component tree. Carried on through here because
  * this is the component that calls the slot.
  */
-export type {
-  StageEditorActionContext,
-  StageEditorActions,
-} from '../stage-editor-contract.ts';
+export type { StageEditorActions } from '../stage-editor-contract.ts';
 
 export type StageEditorShellProps = Readonly<{
   /** The host's action chrome. Receives the form id and whether it may write. */
