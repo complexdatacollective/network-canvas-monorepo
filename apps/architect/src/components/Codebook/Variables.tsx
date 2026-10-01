@@ -1,12 +1,9 @@
 import {
-  getCoreRowModel,
-  getSortedRowModel,
+  useTable,
   type CellContext,
-  type ColumnDef,
   type HeaderContext,
-  type SortingFn,
+  type SortFn,
   type SortingState,
-  useReactTable,
 } from '@tanstack/react-table';
 import { createElement, useCallback, useMemo, useState } from 'react';
 
@@ -19,6 +16,11 @@ import {
 } from '@codaco/app-i18n/react';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
+import {
+  dataTableFeatures,
+  type DataTableFeatures,
+} from '@codaco/fresco-ui/DataTable/features';
+import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ensureError } from '@codaco/shared-consts';
 import { ConnectedVariablePill } from '~/components/VariablePill';
@@ -96,7 +98,10 @@ type VariablesProps = {
  * a renderer redefined during render is a new component type on every render
  * and remounts the cell's whole subtree.
  */
-const NameHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
+const NameHeader = ({
+  column,
+  table,
+}: HeaderContext<DataTableFeatures, Variable>) => {
   const intl = useAppIntl();
   return (
     <DataTableColumnHeader
@@ -107,7 +112,7 @@ const NameHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
   );
 };
 
-const NameCell = ({ row }: CellContext<Variable, unknown>) => (
+const NameCell = ({ row }: CellContext<DataTableFeatures, Variable>) => (
   <ConnectedVariablePill
     editable
     uuid={row.original.id}
@@ -115,7 +120,10 @@ const NameCell = ({ row }: CellContext<Variable, unknown>) => (
   />
 );
 
-const UsedInHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
+const UsedInHeader = ({
+  column,
+  table,
+}: HeaderContext<DataTableFeatures, Variable>) => {
   const intl = useAppIntl();
   return (
     <DataTableColumnHeader
@@ -126,7 +134,7 @@ const UsedInHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
   );
 };
 
-const UsageCell = ({ row }: CellContext<Variable, unknown>) => (
+const UsageCell = ({ row }: CellContext<DataTableFeatures, Variable>) => (
   <UsageColumn inUse={row.original.inUse} usage={row.original.usage} />
 );
 
@@ -145,7 +153,7 @@ const ActionsHeader = () => {
  */
 const createActionsCell =
   (onDelete: (id: string) => void) =>
-  ({ row }: CellContext<Variable, unknown>) => (
+  ({ row }: CellContext<DataTableFeatures, Variable>) => (
     <div className="flex justify-end">
       <ControlsColumn
         onDelete={onDelete}
@@ -162,7 +170,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'name', desc: false },
   ]);
-  const caseInsensitiveSort = useMemo<SortingFn<Variable>>(
+  const caseInsensitiveSort = useMemo<SortFn<DataTableFeatures, Variable>>(
     () => (rowA, rowB, columnId) =>
       normalizeSortValue(rowA.getValue(columnId)).localeCompare(
         normalizeSortValue(rowB.getValue(columnId)),
@@ -227,18 +235,18 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
     [confirm, dispatch, entity, type, variables],
   );
 
-  const columns = useMemo<ColumnDef<Variable>[]>(
+  const columns = useMemo<DataTableColumnDef<Variable>[]>(
     () => [
       {
         accessorKey: 'name',
         header: NameHeader,
-        sortingFn: caseInsensitiveSort,
+        sortFn: caseInsensitiveSort,
         cell: NameCell,
       },
       {
         accessorKey: 'usageString',
         header: UsedInHeader,
-        sortingFn: caseInsensitiveSort,
+        sortFn: caseInsensitiveSort,
         cell: UsageCell,
       },
       {
@@ -251,14 +259,16 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
     [caseInsensitiveSort, handleDelete],
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data: localizedRows,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    // Every row on one page: this table renders without pagination, and
+    // `manualPagination` skips the shared feature set's paginated row model.
+    manualPagination: true,
   });
 
   return (

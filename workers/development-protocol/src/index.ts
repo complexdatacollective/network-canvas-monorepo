@@ -32,6 +32,8 @@ export default {
         return new Response('Failed to fetch releases', { status: 500 });
       }
 
+      // workerd's typed `Body.json<T>()`: with the current runtime types an
+      // untyped `json()` resolves to ts-reset's `Promise<unknown>` overload.
       const releases = await releaseResponse.json<GitHubRelease[]>();
 
       // Find all development protocol releases and sort by timestamp

@@ -91,7 +91,7 @@ catalog:
   '@tailwindcss/typography': ^0.5.20
   '@tailwindcss/vite': ^4.3.3
   '@tanstack/react-query': ^5.102.8
-  '@tanstack/react-table': ^8.21.3
+  '@tanstack/react-table': ^9.2.4
   # Declared so the shared Vitest setup can call `configure()` on the very same
   # module instance the suites' own queries read. React Testing Library depends
   # on this range, so the catalog pin keeps it a single copy.
@@ -151,7 +151,7 @@ catalog:
   # bytes identical to what the pre-commit hook writes with the root's copy;
   # two versions means the hook can rewrite a generated baseline that the
   # subsequent comparison then rejects.
-  oxfmt: ^0.66.0
+  oxfmt: ^0.71.0
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.63.0
@@ -176,7 +176,7 @@ catalog:
   vite: ^8.3.0
   vite-plugin-dts: ^5.1.0
   vitest: ^5.0.2
-  wrangler: ^4.95.0
+  wrangler: ^4.144.0
   ws: ^8.21.2
   # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer, so the catalog has
   # to resolve at least that: below it the OpenAPI conversion Studio publishes
@@ -310,23 +310,6 @@ minimumReleaseAgeExclude:
   - '@next/third-parties@16.3.8'
   - 'better-auth@1.7.5'
   - 'electron@43.7.7'
-  # The Changesets v3 majors, published 2026-08-11 — pinned only so this PR's
-  # own CI could install before they aged out at 2026-08-12T12:11Z. Inert since,
-  # and safe to delete in any passing sweep.
-  - '@changesets/apply-release-plan@8.0.0'
-  - '@changesets/assemble-release-plan@7.0.0'
-  - '@changesets/changelog-git@1.0.0'
-  - '@changesets/cli@3.0.0'
-  - '@changesets/config@4.0.0'
-  - '@changesets/errors@1.0.0'
-  - '@changesets/get-dependents-graph@3.0.0'
-  - '@changesets/git@4.0.0'
-  - '@changesets/parse@1.0.0'
-  - '@changesets/pre@3.0.0'
-  - '@changesets/read@1.0.0'
-  - '@changesets/should-skip-package@1.0.0'
-  - '@changesets/types@7.0.0'
-  - '@changesets/write@1.0.0'
   - '@formatjs/cli-lib@9.0.9'
   - '@formatjs/cli-native-darwin-arm64@1.1.17'
   - '@formatjs/cli-native-linux-arm64-musl@1.0.15'

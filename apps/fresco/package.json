@@ -107,7 +107,7 @@
     "esbuild": "^0.28.2",
     "fflate": "^0.8.3",
     "jsdom": "catalog:",
-    "knip": "^6.29.0",
+    "knip": "^6.39.0",
     "prisma": "^7.9.0",
     "sass": "catalog:",
     "sass-embedded": "^1.100.0",

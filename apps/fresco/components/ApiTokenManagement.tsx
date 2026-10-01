@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
+import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { type StrictColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -204,7 +205,7 @@ const getApiTokenColumns = ({
   },
   {
     accessorKey: 'createdAt',
-    sortingFn: 'datetime',
+    sortFn: 'datetime',
     header: ({ column }) => (
       <DataTableColumnHeader
         column={column}
@@ -220,7 +221,7 @@ const getApiTokenColumns = ({
   },
   {
     accessorKey: 'lastUsedAt',
-    sortingFn: 'datetime',
+    sortFn: 'datetime',
     header: ({ column }) => (
       <DataTableColumnHeader
         column={column}
@@ -242,7 +243,7 @@ const getApiTokenColumns = ({
   },
   {
     accessorKey: 'isActive',
-    sortingFn: 'basic',
+    sortFn: 'basic',
     header: ({ column }) => (
       <DataTableColumnHeader
         column={column}
@@ -264,7 +265,7 @@ const getApiTokenColumns = ({
   {
     id: 'actions',
     enableSorting: false,
-    cell: ({ row }: { row: Row<ApiToken> }) => (
+    cell: ({ row }: { row: Row<DataTableFeatures, ApiToken> }) => (
       <Button
         onClick={() => onRequestDelete(row.original)}
         color="destructive"
