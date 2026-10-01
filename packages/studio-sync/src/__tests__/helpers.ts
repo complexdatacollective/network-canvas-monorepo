@@ -67,6 +67,7 @@ const layerSyncDb = (url: string): Layer.Layer<SyncDb> =>
         url: Redacted.make(url),
         maxConnections: 20,
         applicationName: 'studio-sync-test',
+        startupParameters: { role: TENANT_ROLES.app },
       });
       const db = yield* makeDrizzle().pipe(
         Effect.provideService(PgClient.PgClient, sql),
@@ -284,7 +285,6 @@ export async function makeServer(
           (tx) =>
             Effect.provideService(
               Effect.gen(function* () {
-                yield* sql.unsafe(`set local role ${TENANT_ROLES.app}`);
                 if (teamId !== null) {
                   yield* sql`select set_config(${TEAM_GUC}, ${teamId}, true)`;
                 }

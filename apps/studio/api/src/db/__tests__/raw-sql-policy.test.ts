@@ -382,8 +382,8 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the queue suites’ scratch job schema and fixtures, and `holding`’s BEGIN, statements, lock probe and COMMIT/ROLLBACK on a reserved connection',
   },
   [`${SYNC}/__tests__/helpers.ts`]: {
-    count: 6,
-    why: 'the conformance suite’s scratch schema (node-postgres) and the role and tenant pin its Effect runtime sets',
+    count: 5,
+    why: 'the conformance suite’s scratch schema (node-postgres) and the tenant pin its Effect runtime sets',
   },
   // node-postgres. Nothing here is Effect code; it is listed so the residue is
   // pinned rather than invisible. better-auth left it in stage 4 (it runs on
