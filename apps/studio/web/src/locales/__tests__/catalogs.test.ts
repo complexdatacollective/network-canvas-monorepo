@@ -94,6 +94,7 @@ describe('the merged catalog a locale actually renders through', () => {
       enGb.formatMessage({
         id: 'studio.teamActivity.unrecognizedEvent',
         defaultMessage: 'Unrecognized event',
+        description: 'Test fixture.',
       }),
     ).toBe('Unrecognised event');
   });
@@ -105,6 +106,7 @@ describe('the merged catalog a locale actually renders through', () => {
       enGb.formatMessage({
         id: 'studio.teamStudies.heading',
         defaultMessage: 'Studies',
+        description: 'Test fixture.',
       }),
     ).toBe('Studies');
   });
@@ -129,6 +131,7 @@ describe('the merged catalog a locale actually renders through', () => {
       enGb.formatMessage({
         id: 'protocolBuilder.codebookEntity.colorSectionTitle',
         defaultMessage: 'Type color',
+        description: 'Test fixture.',
       }),
     ).toBe('Type colour');
   });

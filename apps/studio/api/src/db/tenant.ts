@@ -3,7 +3,6 @@ import type { SqlError } from 'effect/sql';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 import {
-  type DrizzleTransaction,
   type TeamAccess,
   Transaction,
   unsafeMakeTeamAccess,
@@ -23,12 +22,7 @@ import {
 // service tag's identity is its class, so two declarations sharing a string
 // key would still be two different services: there is one definition, and this
 // module is where the server reads it from.
-export {
-  type DrizzleTransaction,
-  type TeamAccess,
-  Transaction,
-  unsafeMakeTeamAccess,
-};
+export { type TeamAccess, Transaction, unsafeMakeTeamAccess };
 
 // Tenancy, and the two scopes that are the only way Studio opens a transaction
 // (#1927 §9, §10).

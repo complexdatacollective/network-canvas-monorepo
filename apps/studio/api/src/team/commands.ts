@@ -10,11 +10,7 @@ import { Email } from '@codaco/studio-contract/schema/primitives';
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
 
 import { audited, auditable, changed, unchanged } from '../audit/audited.ts';
-import type {
-  AuditableFailure,
-  AuditEventBody,
-  AuditEvents,
-} from '../audit/audited.ts';
+import type { AuditableFailure, AuditEvents } from '../audit/audited.ts';
 import { AuditContext } from '../audit/context.ts';
 import {
   type DeniedAttempts,
@@ -712,6 +708,3 @@ export const acceptTeamInvitation: (input: {
     ),
   );
 });
-
-/** Exported for the suites' compile assertions; nothing in production reads it. */
-export type { AuditEventBody };

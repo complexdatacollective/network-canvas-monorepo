@@ -9,7 +9,7 @@ import {
   useEffect,
 } from 'react';
 
-import { compose, cva, cx, type VariantProps } from '../utils/cva';
+import { cva, cx, type VariantProps } from '../utils/cva';
 import ResponsiveContainer, {
   type ResponsiveContainerProps,
 } from './ResponsiveContainer';
@@ -141,10 +141,9 @@ const surfaceOwnVariants = cva({
   },
 });
 
-export const surfaceVariants = compose(
-  surfaceSpacingVariants,
-  surfaceOwnVariants,
-);
+export const surfaceVariants = cva({
+  composes: [surfaceSpacingVariants, surfaceOwnVariants],
+});
 
 const MAX_SURFACE_DEPTH = 4;
 

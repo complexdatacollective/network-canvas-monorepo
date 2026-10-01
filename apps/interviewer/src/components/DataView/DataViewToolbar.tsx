@@ -7,6 +7,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { DataTableFacetedFilter } from '@codaco/fresco-ui/DataTable/DataTableFacetedFilter';
+import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';
 import DateFilter from '@codaco/fresco-ui/DataTable/filters/DateFilter';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -198,8 +199,8 @@ export function DataViewToolbar({
   onExport,
   onDelete,
 }: {
-  table: Table<StoredSessionLite>;
-  // Passed explicitly rather than read from table.getState(): Tanstack
+  table: Table<DataTableFeatures, StoredSessionLite>;
+  // Passed explicitly rather than read from the table's state: Tanstack
   // types globalFilter as `any`.
   globalFilter: string;
   onGlobalFilterChange: (next: string) => void;
@@ -214,7 +215,7 @@ export function DataViewToolbar({
   const intl = useAppIntl();
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
-  const columnFilters = table.getState().columnFilters;
+  const columnFilters = table.atoms.columnFilters.get();
   const isFilterActive = columnFilters.length > 0;
 
   const statusFilterValue = readStatusArray(

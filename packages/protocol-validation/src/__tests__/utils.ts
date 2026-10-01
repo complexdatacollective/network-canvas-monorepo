@@ -183,14 +183,22 @@ async function downloadCorpus(
   const readStream = Readable.from(decryptedData);
   const extract = tarStream.extract();
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     extract.on('entry', (header, stream, next) => {
       if (
         header.name.startsWith('data/') &&
         header.name.endsWith('.netcanvas')
       ) {
-        const chunks: Buffer[] = [];
-        stream.on('data', (chunk) => chunks.push(chunk));
+        const chunks: Uint8Array[] = [];
+        stream.on('data', (chunk) => {
+          if (!(chunk instanceof Uint8Array)) {
+            reject(
+              new TypeError(`Unexpected tar entry chunk in ${header.name}`),
+            );
+            return;
+          }
+          chunks.push(chunk);
+        });
         stream.on('end', () => {
           const fileName = header.name.split('/').pop() as string;
           protocols.set(fileName, Buffer.concat(chunks));
@@ -202,7 +210,7 @@ async function downloadCorpus(
       stream.resume();
     });
 
-    extract.on('finish', resolve);
+    extract.on('finish', () => resolve());
     extract.on('error', reject);
 
     readStream.pipe(gunzip()).pipe(extract);

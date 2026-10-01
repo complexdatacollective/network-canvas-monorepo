@@ -423,6 +423,7 @@
         "**/package.json",
         "turbo.json",
         "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
         "apps/fresco/release-test/**",
         "apps/fresco/CLAUDE.md",
         "apps/studio/stack-test/**",
@@ -694,6 +695,11 @@
     "fresco#build": {
       "dependsOn": ["^topo", "fresco#codegen"],
       "passThroughEnv": ["SKIP_ENV_VALIDATION"],
+      // A task override replaces the base `build` definition rather than
+      // merging with it, so these have to be repeated here: without them a
+      // credentialled build could replay a cached artefact whose maps were
+      // never uploaded (see apps/fresco/next.config.ts).
+      "env": ["NODE_ENV", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
       "inputs": [
         "app/**",
         "actions/**",

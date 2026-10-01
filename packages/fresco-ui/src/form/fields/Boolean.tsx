@@ -17,7 +17,7 @@ import {
   textSizeVariants,
 } from '../../styles/controlVariants';
 import { headingVariants } from '../../typography/Heading';
-import { compose, cva, cx } from '../../utils/cva';
+import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -93,11 +93,9 @@ const optionCardOwnVariants = cva({
   },
 });
 
-const optionCardVariants = compose(
-  groupSpacingVariants,
-  textSizeVariants,
-  optionCardOwnVariants,
-);
+const optionCardVariants = cva({
+  composes: [groupSpacingVariants, textSizeVariants, optionCardOwnVariants],
+});
 
 const booleanIndicatorOwnVariants = cva({
   base: cx(
@@ -107,13 +105,15 @@ const booleanIndicatorOwnVariants = cva({
   ),
 });
 
-const booleanIndicatorVariants = compose(
-  smallSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  booleanIndicatorOwnVariants,
-);
+const booleanIndicatorVariants = cva({
+  composes: [
+    smallSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    booleanIndicatorOwnVariants,
+  ],
+});
 
 const selectionSpring = {
   type: 'spring' as const,

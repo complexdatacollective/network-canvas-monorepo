@@ -18,7 +18,7 @@ import {
   NATIVE_LINK_LABEL_CLASS_NAME,
   NATIVE_LINK_ROOT_CLASS_NAME,
 } from './styles/nativeLinkStyles';
-import { compose, cva, cx, type VariantProps } from './utils/cva';
+import { cva, cx, type VariantProps } from './utils/cva';
 
 const buttonSpecificVariants = cva({
   base: cx(
@@ -235,10 +235,10 @@ const buttonSpecificVariants = cva({
   ],
 });
 
-// Shared with `iconButtonVariants` below, which can't compose `buttonVariants`
-// directly (a composed component's declared type drops the `config` property
-// `compose()` requires of its arguments) — listing these once and spreading
-// into both keeps the two from drifting apart as base-button variants change.
+// Shared with `iconButtonVariants` below — listing these once and spreading
+// them into both `composes` lists keeps the two from drifting apart as
+// base-button variants change. `as const` keeps the tuple type `composes`
+// needs to infer every composed variant.
 const buttonBaseVariants = [
   heightVariants,
   textSizeVariants,
@@ -249,7 +249,7 @@ const buttonBaseVariants = [
   buttonSpecificVariants,
 ] as const;
 
-const buttonVariants = compose(...buttonBaseVariants);
+const buttonVariants = cva({ composes: [...buttonBaseVariants] });
 
 type BaseButtonProps = {
   variant?: VariantProps<typeof buttonVariants>['variant'];
@@ -415,21 +415,21 @@ const iconButtonBaseVariants = cva({
   base: 'aspect-square shrink-0 justify-center rounded-full p-0!',
 });
 
-// `compose()`'s declared return type doesn't expose the internal `config` a
-// composed component carries, so a composed component (`buttonVariants`)
-// cannot itself be a `compose()` argument — `buttonBaseVariants` is spread in
-// again here instead, which `cx`'s tailwind-merge pass resolves identically
-// to composing `buttonVariants` directly.
-const iconButtonVariants = compose(
-  ...buttonBaseVariants,
-  // The width is stated explicitly per size (squareSizeVariants) rather than
-  // left to `aspect-square` × height: shipped Safari computes 0 for a flex
-  // item's ratio-derived width inside nested flex rows, collapsing the
-  // control to nothing. The ratio stays as intent (and covers non-flex
-  // hosts); the explicit width is what every engine honours.
-  squareSizeVariants,
-  iconButtonBaseVariants,
-);
+// `buttonBaseVariants` is spread in again here rather than composing
+// `buttonVariants` itself, which `cx`'s tailwind-merge pass resolves
+// identically.
+const iconButtonVariants = cva({
+  composes: [
+    ...buttonBaseVariants,
+    // The width is stated explicitly per size (squareSizeVariants) rather
+    // than left to `aspect-square` × height: shipped Safari computes 0 for a
+    // flex item's ratio-derived width inside nested flex rows, collapsing the
+    // control to nothing. The ratio stays as intent (and covers non-flex
+    // hosts); the explicit width is what every engine honours.
+    squareSizeVariants,
+    iconButtonBaseVariants,
+  ],
+});
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   (
