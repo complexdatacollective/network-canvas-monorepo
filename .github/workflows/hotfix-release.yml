@@ -222,6 +222,14 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      # This job does not use the `turbo-ci-setup` action, so it caps turbo
+      # itself, the same way that action does (see it for the reasoning).
+      # `--filter="${PKG}..."` fans out across the dependency closure, which is
+      # exactly the shape that starves a four-vCPU runner.
+      - shell: bash
+        run: |
+          config="$(node "$GITHUB_WORKSPACE/scripts/ci/write-turbo-ci-config.mjs")"
+          echo "TURBO_ROOT_TURBO_JSON=$config" >> "$GITHUB_ENV"
 
       # A hotfix branch has no required `quality` gate behind it, and workspace
       # packages are consumed as source — a fix cherry-picked into a dependency

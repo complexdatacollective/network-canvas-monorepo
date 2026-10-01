@@ -37,6 +37,15 @@ const refreshWorkflow = parse(
     'utf8',
   ),
 );
+const WORKFLOW_DIR = new URL('../../.github/workflows/', import.meta.url);
+const turboCiSetupAction = readFileSync(
+  new URL('../../.github/actions/turbo-ci-setup/action.yml', import.meta.url),
+  'utf8',
+);
+// Every turbo invocation in CI is capped by exporting this, rather than by a
+// flag at the call site. Anything that runs turbo has to set it.
+const TURBO_CAP =
+  /write-turbo-ci-config\.mjs[\s\S]{0,300}?TURBO_ROOT_TURBO_JSON=\$config" >> "\$GITHUB_ENV"/;
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
@@ -674,18 +683,18 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // nor the sharding can be quietly re-broken.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
     'the affected path scopes to the PR base and to this shard',
   );
   // The fallback runs whenever the diff touches anything outside the turbo
   // input trees — including an edit to this very workflow file, which is how
   // most changes to the job itself are exercised. Without its own assertion,
   // a shard restriction dropped or misquoted here would leave every shard
-  // running the whole workspace, and only the generic --concurrency=1 check
+  // running the whole workspace, and no other assertion
   // would have looked at the line.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 "\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test "\$\{SHARD_FILTERS\[@\]\}"/,
     'the full-suite fallback is scoped to this shard too',
   );
   // Both invocations, and no others: a third turbo run without the shard
@@ -796,22 +805,50 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
 });
 
-test('workspace test suites run one at a time', () => {
+test('every CI turbo invocation is capped at one task, job-wide', () => {
   // Every vitest sizes its fork pool to the runner's CPUs, so one suite
   // already fills the 4-vCPU runner; concurrent suites starve each other
   // into 20s timeouts without shortening the job (PR #1801).
-  const testJob = job('test');
-  assert.ok(testJob, 'test job exists');
-  const testRuns =
-    testJob.match(/pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g) ?? [];
-  assert.ok(testRuns.length >= 2, 'test job runs turbo test on both branches');
-  for (const run of testRuns) {
-    assert.match(run, /--concurrency=1/, `capped: ${run}`);
+  //
+  // This used to be asserted per invocation, which is how `quality-support`
+  // came to run `turbo run typecheck` uncapped and kill the runner on a pull
+  // request that invalidated six packages at once (#2023). The cap is now set
+  // once per job, so this guards the mechanism rather than each call site.
+  assert.match(
+    turboCiSetupAction,
+    TURBO_CAP,
+    'turbo-ci-setup caps turbo, so every job using it is capped',
+  );
+
+  // legacy-app-build is exempt on purpose: it builds a single app per matrix
+  // leg, so there is no fan-out to starve, and it is the only turbo workflow
+  // that also runs on Windows and macOS runners.
+  const exempt = new Set(['legacy-app-build.yml']);
+  for (const file of readdirSync(WORKFLOW_DIR)) {
+    const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
+
+    // A per-invocation flag would override the job-wide config and drift from
+    // it, which is the arrangement #2023 replaced.
+    assert.doesNotMatch(
+      source,
+      /turbo run[^\n]*--concurrency/,
+      `${file} passes --concurrency at a call site instead of capping the job`,
+    );
+
+    if (!/exec turbo run/.test(source) || exempt.has(file)) continue;
+    // Either via the setup action, or by exporting it directly.
+    assert.ok(
+      // Any checkout path: architect-archive-release takes the action from a
+      // `.archive-tooling` checkout.
+      /uses: \.\/[^\n]*actions\/turbo-ci-setup/.test(source) ||
+        TURBO_CAP.test(source),
+      `${file} runs turbo without capping its concurrency`,
+    );
   }
 
   const seedJob = job('seed-turbo-cache');
   assert.ok(seedJob, 'seed-turbo-cache job exists');
-  assert.match(seedJob, /pnpm exec turbo run test --concurrency=1/);
+  assert.match(seedJob, /pnpm exec turbo run test/);
   assert.doesNotMatch(
     seedJob,
     /turbo run (?:build|typecheck)[^\n]*\btest\b/,

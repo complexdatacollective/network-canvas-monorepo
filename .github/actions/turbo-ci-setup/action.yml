@@ -18,6 +18,34 @@ runs:
     # identifier in Actions expressions.
     - run: pnpm install --frozen-lockfile ${{ inputs['ignore-scripts'] == 'true' && '--ignore-scripts' || '' }}
       shell: bash
+    # Caps turbo at one task at a time for the rest of the job, so no call site
+    # has to pass `--concurrency`. Four-vCPU runners, and this repository's
+    # tasks are documented as sensitive to contention — see the `test` job in
+    # `ci-and-release.yml` for the measurements that set the cap at one, and
+    # `scripts/ci/write-turbo-ci-config.mjs` for why it is a generated config
+    # rather than a key in `turbo.json` or an environment variable.
+    #
+    # CI only, on purpose: a developer's machine has cores to spare and should
+    # keep turbo's default. Workflows that run turbo without this setup action
+    # repeat these two lines (hotfix-release); `legacy-app-build` is exempt,
+    # building one app per matrix leg with no fan-out to starve.
+    #
+    # The script is resolved from `$GITHUB_ACTION_PATH`, not the workspace,
+    # because architect-archive-release takes this action from a
+    # `.archive-tooling` checkout while the workspace root is the released
+    # tag's tree — which predates the script. The config it generates still
+    # comes from the workspace's `turbo.json`, since that is the one turbo
+    # reads. Capping is a performance guard, so a tree that cannot produce one
+    # gets a notice rather than a failed job.
+    - shell: bash
+      run: |
+        script="$GITHUB_ACTION_PATH/../../../scripts/ci/write-turbo-ci-config.mjs"
+        if config="$(node "$script" 2>&1)"; then
+          echo "TURBO_ROOT_TURBO_JSON=$config" >> "$GITHUB_ENV"
+          echo "turbo will run tasks serially, via $config"
+        else
+          echo "::notice::turbo concurrency left at the default: $config"
+        fi
     # Runner-local server implementing turbo's remote-cache protocol, backed by
     # the GitHub Actions Cache. Per-task, hash-addressed entries so fan-out jobs
     # share build outputs without the whole-.turbo-tarball race.
