@@ -6,6 +6,10 @@
   interview showed the loading animation indefinitely, because the mobile build's stylesheet
   compression broke the animation settings the interview screens read. Interviews now open
   normally on mobile.
+- **Fixed importing protocol files in the iOS and Android apps.** Choosing a `.netcanvas` file
+  with "Import From File" failed with "Protocol could not be imported", because the app looked
+  for the picked file inside its own storage instead of where the file picker placed it.
+  Protocols now import from Files on iOS and from the file picker on Android.
 - **Fixed protocol import.** Every protocol, including the sample protocol, failed to import
   with "Couldn't find validator for schema version 7". The protocol validators were left out of
   the packaged app; they are now included, and protocols import and open again.
