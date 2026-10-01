@@ -25,7 +25,17 @@ let runsProtected = 0;
 for await (const relativePath of glob('**/*.html', { cwd: OUT_DIR })) {
   const file = join(OUT_DIR, relativePath);
   const original = await readFile(file, 'utf8');
-  const { html, protectedRuns } = protectEmailAddresses(original);
+
+  // The pass refuses a page it cannot protect (a `<plaintext>` element) rather
+  // than writing output that only looks protected. Name the page, since the
+  // refusal is otherwise about markup the author has to find.
+  let result: ReturnType<typeof protectEmailAddresses>;
+  try {
+    result = protectEmailAddresses(original);
+  } catch (cause) {
+    throw new Error(`${relativePath}: ${(cause as Error).message}`, { cause });
+  }
+  const { html, protectedRuns } = result;
 
   // Checked on every page, not only the ones that changed: a page whose
   // addresses this pass somehow could not wrap is exactly the page that would

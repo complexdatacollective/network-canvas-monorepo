@@ -114,6 +114,27 @@ const OPAQUE_OPENING = new RegExp(
   'i',
 );
 
+/**
+ * `<plaintext>` is the one raw-text element that cannot be protected at all, so
+ * the pass refuses a document containing it rather than producing output that
+ * only looks protected.
+ *
+ * Its tokenizer state has no exit: `</plaintext>` is ordinary text, and every
+ * byte after the start tag — the rest of the body, `</html>` included — is text
+ * inside it. Confirmed in Chromium, which parses
+ * `<plaintext>x</plaintext><p>TAIL</p>` with no `<p>` element at all. So there
+ * is no "outside" to wrap from: an opt-out comment placed after the element
+ * renders as visible text exactly like one placed inside it, and the usual fix
+ * for the seven elements above does not apply.
+ *
+ * Refusing is not a false failure. A page carrying this element cannot hydrate
+ * whatever this pass does, because React builds its tree through the DOM API
+ * and can never produce the all-text parse the browser gives this markup — so
+ * failing the build is the right outcome on its own terms, and a louder one
+ * than the hydration error it would otherwise ship.
+ */
+const PLAINTEXT_OPENING = /^<plaintext\b/i;
+
 type Token =
   /** A text run: what the CDN rewrites, and what the opt-out has to cover. */
   | { kind: 'text'; value: string }
@@ -158,6 +179,13 @@ const mapRewritableRuns = (html: string, map: (run: string) => string) => {
   let protectedRegion = false;
 
   for (const token of tokenize(html)) {
+    if (token.kind === 'other' && PLAINTEXT_OPENING.test(token.value)) {
+      throw new Error(
+        'cannot be protected: <plaintext> swallows the rest of the document as ' +
+          'text, so no opt-out comment can be placed outside it. This page ' +
+          'cannot hydrate either way — remove the element.',
+      );
+    }
     if (token.kind === 'comment') {
       const marker = EMAIL_OFF_MARKER.exec(token.value);
       if (marker) protectedRegion = marker[1] !== '/';

@@ -226,4 +226,59 @@ describe('protectEmailAddresses', () => {
       `<!--$--><p>${EMAIL_OFF_OPEN}you@example.com${EMAIL_OFF_CLOSE}</p><!--/$-->`,
     );
   });
+
+  // `<plaintext>` is the one raw-text element with no closing tag: everything
+  // after the start tag is text inside it, so there is no position for the
+  // closing opt-out comment. Wrapping it from outside — the fix for every other
+  // raw-text element — leaves `<!--/email_off-->` as visible page text, which
+  // Chromium confirms. Both entry points therefore refuse the document, because
+  // a checker that calls such a page clean is the failure mode that matters.
+  it('refuses a document containing <plaintext> rather than protecting it', () => {
+    const html = '<plaintext>Contact foo@example.com';
+
+    expect(() => protectEmailAddresses(html)).toThrow(/<plaintext>/);
+  });
+
+  it('refuses to report on a <plaintext> document instead of calling it clean', () => {
+    const html = '<plaintext>Contact foo@example.com';
+
+    expect(() => findUnprotectedEmailText(html)).toThrow(/<plaintext>/);
+  });
+
+  it('refuses even when a closing tag makes the element look terminated', () => {
+    // `</plaintext>` is ordinary text, so this is the same unprotectable page.
+    expect(() =>
+      protectEmailAddresses('<plaintext>Contact foo@example.com</plaintext>'),
+    ).toThrow(/<plaintext>/);
+  });
+
+  it('refuses a <plaintext> page carrying no address at all', () => {
+    // The refusal is unconditional: the element makes the page unhydratable on
+    // its own, whether or not the CDN rewrite would have been the trigger.
+    expect(() => protectEmailAddresses('<p>hi</p><plaintext>nothing')).toThrow(
+      /<plaintext>/,
+    );
+  });
+
+  it('does not refuse marker text inside a script or a raw-text element', () => {
+    // The refusal reads tokens, like everything else here: only a real start
+    // tag counts. Deciding this from the raw text would fail the build on a
+    // page that merely mentions the element.
+    const inScript =
+      '<script>const a = "<plaintext>"</script><p>you@example.com</p>';
+    const inTitle = '<title>About <plaintext></title><p>you@example.com</p>';
+
+    expect(protectEmailAddresses(inScript).protectedRuns).toBe(1);
+    expect(protectEmailAddresses(inTitle).protectedRuns).toBe(1);
+  });
+
+  it('does not refuse a closing tag or an attribute that merely reads plaintext', () => {
+    // Only a `<plaintext …>` start tag opens the state; a stray `</plaintext>`
+    // or a `plaintext`-valued attribute must not fail the build.
+    const html = '<pre data-format="plaintext">you@example.com</pre>';
+
+    expect(protectEmailAddresses(html).html).toBe(
+      `<pre data-format="plaintext">${EMAIL_OFF_OPEN}you@example.com${EMAIL_OFF_CLOSE}</pre>`,
+    );
+  });
 });
