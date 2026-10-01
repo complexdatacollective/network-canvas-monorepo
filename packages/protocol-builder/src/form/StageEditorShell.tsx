@@ -65,8 +65,9 @@ import {
 /**
  * Where the slot's own types live is `stage-editor-contract.ts`: they are part
  * of what a named editor takes, and the contract is a module of types a host
- * can read without compiling a component tree. Carried on through here because
- * this is the component that calls the slot.
+ * can read without compiling a component tree. The slot type itself is carried
+ * on through here because this is the component that calls the slot; its
+ * context type (`StageEditorActionContext`) is imported from the contract.
  */
 export type { StageEditorActions } from '../stage-editor-contract.ts';
 
