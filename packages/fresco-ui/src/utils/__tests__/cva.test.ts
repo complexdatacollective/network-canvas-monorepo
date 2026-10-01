@@ -52,3 +52,28 @@ describe('deprecated compose', () => {
       .toHaveProperty('pad');
   });
 });
+
+describe('deprecated compose metadata', () => {
+  const tone = cva({
+    base: 'italic',
+    variants: { tone: { x: 'text-xs', y: 'text-lg' } },
+    defaultVariants: { tone: 'x' },
+  });
+
+  it('merges the components config as cva beta.10 did', () => {
+    expect(compose(box, tone).config).toMatchObject({
+      variants: { pad: { sm: 'p-1', lg: 'p-4' }, tone: { x: 'text-xs' } },
+      defaultVariants: { pad: 'sm', tone: 'x' },
+    });
+  });
+
+  it('keeps child variants and defaults when composed again', () => {
+    const outer = cva({
+      composes: [compose(box, tone)],
+      compoundVariants: [{ tone: 'x', pad: 'sm', className: 'underline' }],
+    });
+
+    expect(outer()).toContain('underline');
+    expect(outer({ tone: 'y' })).not.toContain('underline');
+  });
+});
