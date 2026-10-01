@@ -100,8 +100,8 @@ catalogs:
       specifier: ^1.63.0
       version: 1.63.0
     '@posthog/cli':
-      specifier: ^0.7.34
-      version: 0.7.34
+      specifier: ^0.18.9
+      version: 0.18.9
     '@posthog/nextjs-config':
       specifier: ^1.9.68
       version: 1.9.68
@@ -353,7 +353,7 @@ importers:
         version: 3.0.3
       '@posthog/cli':
         specifier: 'catalog:'
-        version: 0.7.34
+        version: 0.18.9
       '@posthog/plugin-utils':
         specifier: 'catalog:'
         version: 2.0.0
@@ -7505,6 +7505,11 @@ packages:
 
   '@posthog/browser-common@0.4.0':
     resolution: {integrity: sha512-W9DCGVks15docUMPvJ2nd8NS16Gn74bsGWuaeg31beEKFSjdW8wvnQ1ETY6WSql5pYxZb3GdJmEUZVVstKSrBQ==}
+
+  '@posthog/cli@0.18.9':
+    resolution: {integrity: sha512-uASaB3MLV5zHIZs9IqeG9d5sgo1lHhxxGh01Ndkmw6RWzLhZaM8ud+pcT0DVbYvpRZvT+eGFookh0/QakeaJ1g==}
+    engines: {node: '>=14.14', npm: '>=6'}
+    hasBin: true
 
   '@posthog/cli@0.7.34':
     resolution: {integrity: sha512-wrRwj0FhbypW01TLpFRo1HkPBrwZHKP2tFE9xI4NTb84yMKZnXy49ibBdbImktJ5NbW7ndeWidOCZx+2Lkk7/Q==}
@@ -21537,6 +21542,10 @@ snapshots:
     dependencies:
       '@posthog/core': 1.50.0
       '@posthog/types': 1.407.1
+
+  '@posthog/cli@0.18.9':
+    dependencies:
+      detect-libc: 2.1.2
 
   '@posthog/cli@0.7.34':
     dependencies:
