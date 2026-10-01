@@ -763,7 +763,7 @@
   "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": "Benennen Sie diesen Typ für das Codebuch und die exportierten Daten.",
   "architect.typeEditor.typeEditor.nodeAppearance": "Darstellung der Knoten",
   "architect.typeEditor.typeEditor.shape": "Form",
-  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Dieser Name kennzeichnet den Knotentyp im Codebuch und in Ihren Datenexporten. Beispiele wären „Person“, „Ort“ oder „Organisation“.} other {Dieser Name kennzeichnet den Kantentyp im Codebuch und in Ihren Datenexporten. Beispiele wären „Befreundet“ oder „Arbeitet mit“.}}",
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Dieser Name kennzeichnet den Knotentyp im Codebuch und in Ihren Datenexporten. Beispiele wären „Person“, „Ort“ oder „Organisation“.} other {Dieser Name kennzeichnet den Kantentyp im Codebuch und in Ihren Datenexporten. Beispiele wären „Befreundet“ oder „Arbeitskontakt“.}}",
   "architect.typeEditor.typeEditor.typeColor": "Typfarbe",
   "architect.typeEditor.typeEditor.typeIdentity": "Identität des Typs",
   "architect.typeEditor.typeEditor.typeName": "Name des {entity, select, node {Knotentyps} other {Kantentyps}}",
