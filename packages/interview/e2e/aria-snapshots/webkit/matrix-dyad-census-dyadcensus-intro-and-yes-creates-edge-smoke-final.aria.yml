@@ -1,13 +1,13 @@
 - main:
-  - text: Mohammad Crist and Clinton Leffler
-  - button "Mohammad Crist"
-  - button "Clinton Leffler"
+  - text: Nikita Crist and Collin Leffler
+  - button "Nikita Crist"
+  - button "Collin Leffler"
   - status:
     - heading "Do they know each other?" [level=2]:
       - text: ""
       - strong: know
       - text: ""
-  - radiogroup "Mohammad Crist and Clinton Leffler Do they know each other?":
+  - radiogroup "Nikita Crist and Collin Leffler Do they know each other?":
     - radio "Yes"
     - radio "No"
   - navigation:

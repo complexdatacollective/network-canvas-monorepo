@@ -45,7 +45,7 @@
     "clsx": "catalog:",
     "csvtojson": "catalog:",
     "cva": "1.0.0-beta.12",
-    "dexie": "^4.4.4",
+    "dexie": "^4.4.6",
     "es-toolkit": "catalog:",
     "fuse.js": "catalog:",
     "jszip": "catalog:",
@@ -63,7 +63,7 @@
     "redux-remember": "^6.0.2",
     "tailwind-merge": "catalog:",
     "uuid": "catalog:",
-    "wouter": "^3.10.0",
+    "wouter": "^3.12.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -76,7 +76,7 @@
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "^14.6.7",
-    "@types/luxon": "^3.7.2",
+    "@types/luxon": "^3.7.6",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/recompose": "^0.30.15",

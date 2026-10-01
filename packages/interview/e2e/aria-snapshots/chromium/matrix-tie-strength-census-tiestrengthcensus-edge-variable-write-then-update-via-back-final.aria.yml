@@ -1,10 +1,10 @@
 - main:
-  - text: Mohammad Crist and Clinton Leffler
-  - button "Mohammad Crist"
-  - button "Clinton Leffler"
+  - text: Nikita Crist and Collin Leffler
+  - button "Nikita Crist"
+  - button "Collin Leffler"
   - status:
     - heading "How close are these two people?" [level=2]
-  - listbox "Mohammad Crist and Clinton Leffler How close are these two people?":
+  - listbox "Nikita Crist and Collin Leffler How close are these two people?":
     - option "Weak"
     - option "Moderate"
     - option "Strong"
