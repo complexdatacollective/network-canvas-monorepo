@@ -336,6 +336,77 @@ test('skips a directory under apps/ that has no env module', () => {
   assert.match(result.stdout, /0 app\(s\) checked/);
 });
 
+test('does not report a comment or a string that merely mentions a read', () => {
+  const cwd = fixture({
+    'components/Doc.tsx': `'use client';
+
+import { env } from '~/env';
+
+// Never read env.SANDBOX_MODE here — the browser does not have it.
+const example = 'env.SANDBOX_MODE';
+
+export default function Doc() {
+  return <p>{example}</p>;
+}
+`,
+  });
+  const result = run(cwd);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('still reports a real read inside a template interpolation', () => {
+  // Blanking string literals must not swallow `${…}`: that is executable code.
+  const cwd = fixture({
+    'components/Tpl.tsx': clientComponent(
+      'return <p>{`mode ${env.SANDBOX_MODE}`}</p>;',
+    ),
+  });
+
+  assert.equal(run(cwd).status, 1);
+});
+
+test('does not treat a commented-out next.config env map as the real one', () => {
+  // The brace scan skipped comments, but the search that found `env: {` did
+  // not, so a commented-out map ahead of the real config made a variable look
+  // browser-inlined and the read passed with status 0.
+  const cwd = fixture(
+    {
+      'components/Leak.tsx': clientComponent(
+        'return <p>{env.SECRET_TOKEN}</p>;',
+      ),
+    },
+    {
+      nextConfig: `// env: { SECRET_TOKEN: process.env.SECRET_TOKEN },
+export default { reactStrictMode: true };
+`,
+    },
+  );
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
+});
+
+test('escapes a binding whose name carries regex syntax', () => {
+  // `$` is a valid identifier character, and interpolating `$env` verbatim gave
+  // it anchor semantics, so `$env.SECRET_TOKEN` matched nothing.
+  const cwd = fixture({
+    'components/Dollar.tsx': `'use client';
+
+import { env as $env } from '~/env';
+
+export default function Dollar() {
+  return <p>{$env.SECRET_TOKEN}</p>;
+}
+`,
+  });
+  const result = run(cwd);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /`env\.SECRET_TOKEN`/);
+});
+
 test('passes on this repository', () => {
   const result = run(REPO_ROOT);
 

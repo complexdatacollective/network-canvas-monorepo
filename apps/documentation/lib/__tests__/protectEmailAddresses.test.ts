@@ -131,6 +131,41 @@ describe('protectEmailAddresses', () => {
     );
   });
 
+  it('wraps a <title> from outside, never inside it', () => {
+    // `<title>` holds RCDATA: a comment placed inside it is literal text, so
+    // the browser tab would show the marker.
+    const { html, protectedRuns } = protectEmailAddresses(
+      '<title>Mail foo@example.com</title>',
+    );
+
+    expect(protectedRuns).toBe(1);
+    expect(html).toBe(
+      `${EMAIL_OFF_OPEN}<title>Mail foo@example.com</title>${EMAIL_OFF_CLOSE}`,
+    );
+    expect(findUnprotectedEmailText(html)).toEqual([]);
+  });
+
+  it('wraps a <textarea> from outside too', () => {
+    const { html } = protectEmailAddresses('<textarea>a@b.com</textarea>');
+
+    expect(html).toBe(
+      `${EMAIL_OFF_OPEN}<textarea>a@b.com</textarea>${EMAIL_OFF_CLOSE}`,
+    );
+  });
+
+  it('reports an address inside a <title> as unprotected before the pass', () => {
+    expect(
+      findUnprotectedEmailText('<title>Mail foo@example.com</title>'),
+    ).toEqual(['foo@example.com']);
+  });
+
+  it('leaves an RCDATA element with no address alone', () => {
+    const svg = '<svg><title>Info</title></svg>';
+
+    expect(protectEmailAddresses(svg).protectedRuns).toBe(0);
+    expect(protectEmailAddresses(svg).html).toBe(svg);
+  });
+
   it('does not treat a comment as a text run', () => {
     // React's streaming markers and any other comment must survive untouched.
     const html = '<!--$--><p>you@example.com</p><!--/$-->';

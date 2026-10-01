@@ -84,45 +84,122 @@ const readIfPresent = (path) => {
 };
 
 /**
- * The text inside the braces of `key: { … }`, matched by counting braces while
- * skipping strings, template literals and comments — a brace inside any of
- * those is not JavaScript structure, and counting one truncates the block.
- * Returns null when the key is absent.
+ * A copy of `source` with comments and string-literal contents replaced by
+ * spaces — same length, newlines kept — so every index and line number still
+ * lines up with the original.
+ *
+ * Needed in two places, both of which review found reading text as code: the
+ * search for `next.config`'s `env` map matched a commented-out one ahead of the
+ * real configuration, which made a variable look browser-inlined; and the scan
+ * for `env.NAME` reads flagged a comment or string that merely mentioned one.
+ *
+ * Template literals keep their `${…}` expressions, because `${env.NAME}` is a
+ * real read. Regex literals are not recognised: a `/…/` containing something
+ * env-shaped reads as code, which errs toward a false offence rather than a
+ * missed one.
+ */
+const blankNonCode = (source) => {
+  const out = source.split('');
+  const blank = (from, to) => {
+    for (let index = from; index < to && index < out.length; index += 1) {
+      if (out[index] !== '\n') out[index] = ' ';
+    }
+  };
+
+  /** Scans code from `from`; with `stopAtCloseBrace`, returns just past its matching `}`. */
+  const scanCode = (from, stopAtCloseBrace) => {
+    let index = from;
+    let depth = 0;
+    while (index < source.length) {
+      const pair = source.slice(index, index + 2);
+      if (pair === '//') {
+        const end = source.indexOf('\n', index);
+        const stop = end === -1 ? source.length : end;
+        blank(index, stop);
+        index = stop;
+        continue;
+      }
+      if (pair === '/*') {
+        const end = source.indexOf('*/', index);
+        const stop = end === -1 ? source.length : end + 2;
+        blank(index, stop);
+        index = stop;
+        continue;
+      }
+      const character = source[index];
+      if (character === "'" || character === '"') {
+        let end = index + 1;
+        while (end < source.length && source[end] !== character) {
+          if (source[end] === '\\') end += 1;
+          end += 1;
+        }
+        blank(index + 1, end);
+        index = end + 1;
+        continue;
+      }
+      if (character === '`') {
+        index = scanTemplate(index);
+        continue;
+      }
+      if (character === '{') depth += 1;
+      else if (character === '}') {
+        if (stopAtCloseBrace && depth === 0) return index + 1;
+        depth -= 1;
+      }
+      index += 1;
+    }
+    return index;
+  };
+
+  /** Blanks a template literal's text while leaving its `${…}` code alone. */
+  function scanTemplate(start) {
+    let index = start + 1;
+    let runFrom = index;
+    while (index < source.length) {
+      if (source[index] === '\\') {
+        index += 2;
+        continue;
+      }
+      if (source[index] === '`') {
+        blank(runFrom, index);
+        return index + 1;
+      }
+      if (source[index] === '$' && source[index + 1] === '{') {
+        blank(runFrom, index);
+        index = scanCode(index + 2, true);
+        runFrom = index;
+        continue;
+      }
+      index += 1;
+    }
+    blank(runFrom, source.length);
+    return source.length;
+  }
+
+  scanCode(0, false);
+  return out.join('');
+};
+
+/**
+ * The text inside the braces of `key: { … }`.
+ *
+ * The search and the brace count both run over a copy with comments and string
+ * contents blanked, so neither a commented-out `env: {` nor a brace inside a
+ * string can be mistaken for structure; the returned text is sliced from the
+ * original. Returns null when the key is absent.
  */
 const objectBlock = (source, key) => {
-  const opening = new RegExp(`(^|[\\s{,])${key}\\s*:\\s*\\{`, 'm').exec(source);
+  const code = blankNonCode(source);
+  const opening = new RegExp(`(^|[\\s{,])${key}\\s*:\\s*\\{`, 'm').exec(code);
   if (!opening) return null;
   const start = opening.index + opening[0].length;
   let depth = 1;
-  let index = start;
-  while (index < source.length) {
-    const character = source[index];
-    if (source.startsWith('//', index)) {
-      const end = source.indexOf('\n', index);
-      index = end === -1 ? source.length : end + 1;
-      continue;
-    }
-    if (source.startsWith('/*', index)) {
-      const end = source.indexOf('*/', index);
-      index = end === -1 ? source.length : end + 2;
-      continue;
-    }
-    if (character === "'" || character === '"' || character === '`') {
-      const quote = character;
-      index += 1;
-      while (index < source.length && source[index] !== quote) {
-        if (source[index] === '\\') index += 1;
-        index += 1;
-      }
-      index += 1;
-      continue;
-    }
-    if (character === '{') depth += 1;
-    if (character === '}') {
+  for (let index = start; index < code.length; index += 1) {
+    if (code[index] === '{') depth += 1;
+    if (code[index] === '}') {
       depth -= 1;
       if (depth === 0) return source.slice(start, index);
     }
-    index += 1;
   }
   return null;
 };
@@ -339,13 +416,20 @@ const main = () => {
       if (!isClientModule(source)) continue;
       const binding = envBinding(source, file, appDirectory);
       if (binding === null) continue;
+      // The binding is escaped because `$` is a valid identifier character:
+      // interpolating `$env` verbatim gave `$` its regex-anchor meaning, so
+      // `$env.SECRET_TOKEN` matched nothing at all.
       // The lookbehind keeps the import specifier itself (`from '~/env.js'`)
       // and any `something.env.NAME` from reading as a use of the binding.
+      const escaped = binding.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const reads = new RegExp(
-        `(?<![\\w$./'"\`])${binding}\\.([A-Za-z_$][\\w$]*)`,
+        `(?<![\\w$./'"\`])${escaped}\\.([A-Za-z_$][\\w$]*)`,
         'g',
       );
-      for (const [index, line] of source.split('\n').entries()) {
+      // Comments and string literals are blanked first, so prose or an example
+      // that merely mentions `env.NAME` is not reported as a read. Blanking
+      // preserves length and newlines, so the line numbers still line up.
+      for (const [index, line] of blankNonCode(source).split('\n').entries()) {
         for (const [, name] of line.matchAll(reads)) {
           if (name.startsWith('NEXT_PUBLIC_') || inlined.has(name)) continue;
           offences.push({

@@ -46,11 +46,20 @@ export const EMAIL_OFF_OPEN = '<!--email_off-->';
 export const EMAIL_OFF_CLOSE = '<!--/email_off-->';
 
 /**
+ * `<title>` and `<textarea>` hold RCDATA: the parser does not recognise comment
+ * syntax inside them, so an opt-out comment placed there becomes literal text
+ * in the browser's tab title or the field's value. They are matched whole so
+ * the wrap can go around the element instead of inside it.
+ */
+const RCDATA_ELEMENT =
+  /^<(title|textarea)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*<\/\1\s*>$/i;
+
+/**
  * Splits HTML into text runs and everything that is not a text run: comments,
- * tags, and the contents of `<script>`/`<style>` (which Cloudflare does not
- * rewrite either — the RSC payload carries the same addresses and is served
- * untouched, which is exactly why the client's render disagrees with the
- * markup).
+ * tags, RCDATA elements, and the contents of `<script>`/`<style>` (which
+ * Cloudflare does not rewrite either — the RSC payload carries the same
+ * addresses and is served untouched, which is exactly why the client's render
+ * disagrees with the markup).
  *
  * The tag arm steps over quoted attribute values rather than stopping at the
  * first `>`, because `>` is legal inside one. Review of this pass found that a
@@ -59,7 +68,7 @@ export const EMAIL_OFF_CLOSE = '<!--/email_off-->';
  * comment was inserted into the start tag and corrupted the markup.
  */
 const NON_TEXT =
-  /(<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>|<!--[\s\S]*?-->|<[a-zA-Z/!?](?:[^>"']|"[^"]*"|'[^']*')*>)/i;
+  /(<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>|<(?:title|textarea)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/(?:title|textarea)\s*>|<!--[\s\S]*?-->|<[a-zA-Z/!?](?:[^>"']|"[^"]*"|'[^']*')*>)/i;
 
 /** Regions the HTML already opts out of rewriting, so the pass is idempotent. */
 const ALREADY_PROTECTED =
@@ -74,24 +83,30 @@ const mapUnprotectedRegions = (html: string, map: (region: string) => string) =>
     .map((part) => (isProtectedRegion(part) ? part : map(part)))
     .join('');
 
-const mapTextRuns = (region: string, map: (text: string) => string) =>
+const mapTextRuns = (
+  region: string,
+  map: (text: string) => string,
+  mapRcdata: (element: string) => string = (element) => element,
+) =>
   region
     .split(NON_TEXT)
     // `split` on a pattern with one capture group alternates text run,
     // separator, text run, …, so the even indices are the text runs.
-    .map((part, index) => (index % 2 === 0 ? map(part) : part))
+    .map((part, index) => {
+      if (index % 2 === 0) return map(part);
+      return RCDATA_ELEMENT.test(part) ? mapRcdata(part) : part;
+    })
     .join('');
 
 /** Every text run that the CDN would still rewrite. Empty once protected. */
 export const findUnprotectedEmailText = (html: string): string[] => {
   const found: string[] = [];
-  mapUnprotectedRegions(html, (region) =>
-    mapTextRuns(region, (text) => {
-      const match = EMAIL_SHAPED.exec(text);
-      if (match) found.push(match[0]);
-      return text;
-    }),
-  );
+  const record = (text: string) => {
+    const match = EMAIL_SHAPED.exec(text);
+    if (match) found.push(match[0]);
+    return text;
+  };
+  mapUnprotectedRegions(html, (region) => mapTextRuns(region, record, record));
   return found;
 };
 
@@ -100,12 +115,16 @@ export const protectEmailAddresses = (
   html: string,
 ): { html: string; protectedRuns: number } => {
   let protectedRuns = 0;
+  const wrap = (text: string) => {
+    if (!EMAIL_SHAPED.test(text)) return text;
+    protectedRuns += 1;
+    return `${EMAIL_OFF_OPEN}${text}${EMAIL_OFF_CLOSE}`;
+  };
+  // An RCDATA element is wrapped as a whole, from outside: the opt-out is a
+  // region marker, so it protects the element's text without the comment ever
+  // being parsed as that element's content.
   const output = mapUnprotectedRegions(html, (region) =>
-    mapTextRuns(region, (text) => {
-      if (!EMAIL_SHAPED.test(text)) return text;
-      protectedRuns += 1;
-      return `${EMAIL_OFF_OPEN}${text}${EMAIL_OFF_CLOSE}`;
-    }),
+    mapTextRuns(region, wrap, wrap),
   );
   return { html: output, protectedRuns };
 };
