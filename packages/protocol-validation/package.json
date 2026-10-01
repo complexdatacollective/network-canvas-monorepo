@@ -50,7 +50,7 @@
   "dependencies": {
     "@codaco/shared-consts": "workspace:^",
     "jszip": "catalog:",
-    "ohash": "^2.0.11",
+    "ohash": "^2.0.12",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -58,10 +58,9 @@
     "@codaco/tsconfig": "workspace:^",
     "@octokit/types": "^18.0.0",
     "@types/gunzip-maybe": "^1.4.3",
-    "@types/tar-stream": "^3.1.4",
     "dotenv": "catalog:",
     "gunzip-maybe": "^1.4.2",
-    "tar-stream": "^3.2.0",
+    "tar-stream": "^3.2.1",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
