@@ -23,7 +23,7 @@
     "@codaco/tailwind-config": "workspace:^",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
-    "@formatjs/intl-localematcher": "^0.8.9",
+    "@formatjs/intl-localematcher": "catalog:",
     "@posthog/nextjs-config": "catalog:",
     "@posthog/react": "catalog:",
     "csvtojson": "catalog:",

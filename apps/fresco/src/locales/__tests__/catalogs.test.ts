@@ -158,9 +158,10 @@ describe('Fresco researcher message catalogs', () => {
     const id = 'fresco.settings.interviews.completedLimit';
     const message = en[id];
     if (!message) throw new Error('Expected completed-interview guidance');
+    const descriptor = { ...message, id };
     const values = { strong: (chunks: string[]) => chunks.join('') };
     expect(
-      createAppIntl({ locale: 'en' }).formatMessage({ ...message, id }, values),
+      createAppIntl({ locale: 'en' }).formatMessage(descriptor, values),
     ).toContain(
       'starting a new interview or resuming any other incomplete interview is prevented',
     );
@@ -168,7 +169,7 @@ describe('Fresco researcher message catalogs', () => {
       createAppIntl({
         locale: 'es',
         messages: frescoCatalogs.es,
-      }).formatMessage({ ...message, id }, values),
+      }).formatMessage(descriptor, values),
     ).toContain(
       'no podrá iniciar una entrevista nueva ni reanudar ninguna otra entrevista incompleta',
     );
