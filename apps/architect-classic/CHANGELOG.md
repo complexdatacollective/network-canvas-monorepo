@@ -2,6 +2,12 @@
 
 ## 6.6.3
 
+- **Fixed a crash when editing stages.** Adding or opening a stage whose editor shows option
+  cards (for example a Sociogram's background and layout mode) stopped with "Something went
+  wrong. jsx is not defined". A broken release of a supporting library has been replaced, and
+  these editors open normally again.
+- **Fixed "Download Sample Protocol".** Downloading the sample protocol always failed with
+  "Buffer is not defined". It now downloads, saves to the location you choose, and opens.
 - **Fixed a path traversal weakness when importing protocols.** Importing a protocol file
   (`.netcanvas`) used a ZIP extraction library with a known flaw: a specially crafted archive
   could write files outside the folder it was being unpacked into. It has been replaced with a

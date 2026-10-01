@@ -2,6 +2,9 @@
 
 ## 6.6.2
 
+- **Fixed protocol import.** Every protocol, including the sample protocol, failed to import
+  with "Couldn't find validator for schema version 7". The protocol validators were left out of
+  the packaged app; they are now included, and protocols import and open again.
 - **Fixed a path traversal weakness when importing protocols.** Importing a protocol file
   (`.netcanvas`) used a ZIP extraction library with a known flaw: a specially crafted archive
   could write files outside the folder it was being unpacked into. It has been replaced with a

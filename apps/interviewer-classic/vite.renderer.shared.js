@@ -14,11 +14,21 @@ export const sharedRendererConfig = {
     alias: {
       '@': rendererRoot,
       '~': resolve(__dirname, 'node_modules'),
-      // Shim for react-resize-aware which has a broken build (uses jsx without importing it)
-      'react-resize-aware': resolve(
-        __dirname,
-        'src/shims/react-resize-aware.js',
-      ),
+    },
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
+    dynamicImportVarsOptions: {
+      // Vite leaves dynamic imports in node_modules untransformed by default.
+      // protocol-validation loads its validators with
+      // import(`./schemas/${version}.js`), which then resolves against the
+      // bundle instead of the package and fails for every protocol
+      // ("Couldn't find validator for schema version N"). Transform that one
+      // package so its schema files are bundled as chunks.
+      exclude: [/^(?!.*\/@codaco\/protocol-validation\/).*\/node_modules\//],
     },
   },
   plugins: [react()],
