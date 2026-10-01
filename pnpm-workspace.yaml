@@ -66,21 +66,22 @@ catalog:
   '@microsoft/api-extractor': ^7.59.3
   '@next/bundle-analyzer': ^16.3.8
   '@next/third-parties': ^16.3.8
-  # oRPC is pre-1.0 and its packages only interoperate at the same beta: the
+  # oRPC v2 ships only on the `beta` dist-tag (`latest` is still the 1.x
+  # line), and its packages only interoperate at the same beta: the
   # contract, the server's `implement`, the client's links, and the TanStack
   # utils share internal symbols. Pin every one to the same exact release.
-  '@orpc/client': 2.0.0-beta.34
-  '@orpc/contract': 2.0.0-beta.34
-  '@orpc/openapi': 2.0.0-beta.34
-  '@orpc/server': 2.0.0-beta.34
-  '@orpc/tanstack-query': 2.0.0-beta.34
-  '@orpc/zod': 2.0.0-beta.34
+  '@orpc/client': 2.0.0-beta.40
+  '@orpc/contract': 2.0.0-beta.40
+  '@orpc/openapi': 2.0.0-beta.40
+  '@orpc/server': 2.0.0-beta.40
+  '@orpc/tanstack-query': 2.0.0-beta.40
+  '@orpc/zod': 2.0.0-beta.40
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.63.0
-  '@posthog/cli': ^0.7.34
+  '@posthog/cli': ^0.18.9
   '@posthog/nextjs-config': ^1.11.1
-  '@posthog/plugin-utils': ^1.2.0
+  '@posthog/plugin-utils': ^2.0.0
   '@posthog/react': ^1.11.3
   '@radix-ui/react-slot': ^1.3.3
   '@reduxjs/toolkit': ^2.13.0
@@ -127,7 +128,7 @@ catalog:
   # `cx` config option stays in lock-step with what `cva` was built against.
   clsx: ^2.1.1
   csvtojson: ^2.0.14
-  dotenv: ^17.4.2
+  dotenv: ^18.0.4
   # Pinned to the 1.0 RC, exactly (the rc dist-tag moves): stable drizzle-kit
   # 0.31.x `push` silently drops RLS policy USING/WITH CHECK expressions, which
   # #1249's tenancy layer depends on. Keep both in lock-step; unpin to a normal
@@ -160,7 +161,7 @@ catalog:
   # bytes identical to what the pre-commit hook writes with the root's copy;
   # two versions means the hook can rewrite a generated baseline that the
   # subsequent comparison then rejects.
-  oxfmt: ^0.66.0
+  oxfmt: ^0.71.0
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.63.0
@@ -168,7 +169,7 @@ catalog:
   posthog-js: ^1.435.3
   react: ^19.3.0
   react-dom: ^19.3.0
-  react-dropzone: ^15.0.0
+  react-dropzone: ^20.1.2
   # ICU MessageFormat runtime for app UI catalogs; consumed only through
   # @codaco/app-i18n's curated API, never imported directly.
   react-intl: ^10.1.26
@@ -185,7 +186,7 @@ catalog:
   vite: ^8.3.1
   vite-plugin-dts: ^5.1.1
   vitest: ^5.0.3
-  wrangler: ^4.95.0
+  wrangler: ^4.144.0
   ws: ^8.22.0
   # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer, so the catalog has
   # to resolve at least that: below it the OpenAPI conversion Studio publishes
@@ -311,6 +312,8 @@ minimumReleaseAgeExclude:
   - 'next@16.3.8'
   - '@next/bundle-analyzer@16.3.8'
   - '@next/third-parties@16.3.8'
+  - 'better-auth@1.7.5'
+  - 'electron@43.7.7'
   - '@formatjs/cli-lib@9.0.9'
   - '@formatjs/cli-native-darwin-arm64@1.1.17'
   - '@formatjs/cli-native-linux-arm64-musl@1.0.15'

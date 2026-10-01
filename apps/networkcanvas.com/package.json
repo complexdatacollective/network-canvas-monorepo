@@ -41,7 +41,7 @@
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
-    "@netlify/edge-functions": "^3.0.8",
+    "@netlify/edge-functions": "^4.0.1",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",

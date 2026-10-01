@@ -19,7 +19,7 @@ import {
   textSizeVariants,
   wrapperPaddingVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import { useFieldController } from '../Field/FieldController';
 import type { CreateFormFieldProps, FieldSlotController } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
@@ -87,18 +87,20 @@ const inputFieldOwnVariants = cva({
   ),
 });
 
-export const inputFieldControlVariants = compose(
-  heightVariants,
-  textSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  inlineSpacingVariants,
-  wrapperPaddingVariants,
-  proportionalLucideIconVariants,
-  stateVariants,
-  interactiveStateVariants,
-  inputFieldOwnVariants,
-);
+export const inputFieldControlVariants = cva({
+  composes: [
+    heightVariants,
+    textSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    inlineSpacingVariants,
+    wrapperPaddingVariants,
+    proportionalLucideIconVariants,
+    stateVariants,
+    interactiveStateVariants,
+    inputFieldOwnVariants,
+  ],
+});
 
 const inputOwnVariants = cva({
   base: cx(
@@ -125,7 +127,9 @@ const inputOwnVariants = cva({
 });
 
 // Input element when used with wrapper (prefix/suffix)
-const inputVariants = compose(placeholderVariants, inputOwnVariants);
+const inputVariants = cva({
+  composes: [placeholderVariants, inputOwnVariants],
+});
 
 // Native <input type="date"> doesn't expose its empty-state format hint via
 // ::placeholder, and :placeholder-shown doesn't match an empty date input. The

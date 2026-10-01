@@ -117,7 +117,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
-    "chalk": "5.6.2",
+    "chalk": "^6.0.1",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
     "playwright": "catalog:",

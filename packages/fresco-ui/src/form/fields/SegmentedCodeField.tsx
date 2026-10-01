@@ -12,7 +12,7 @@ import {
   stateVariants,
   textSizeVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -37,7 +37,9 @@ const segmentGroupOwnVariants = cva({
   },
 });
 
-const segmentGroupVariants = compose(textSizeVariants, segmentGroupOwnVariants);
+const segmentGroupVariants = cva({
+  composes: [textSizeVariants, segmentGroupOwnVariants],
+});
 
 const segmentOwnVariants = cva({
   base: cx(
@@ -59,13 +61,15 @@ const segmentOwnVariants = cva({
   },
 });
 
-const segmentVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  interactiveStateVariants,
-  segmentOwnVariants,
-);
+const segmentVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    interactiveStateVariants,
+    segmentOwnVariants,
+  ],
+});
 
 const separatorVariants = cva({
   base: cx('text-input-contrast/30 font-bold select-none'),

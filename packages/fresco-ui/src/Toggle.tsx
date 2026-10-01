@@ -6,7 +6,7 @@ import { type ComponentPropsWithoutRef, forwardRef } from 'react';
 
 import { getInputState } from './form/utils/getInputState';
 import { controlVariants, smallSizeVariants } from './styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from './utils/cva';
+import { cva, cx, type VariantProps } from './utils/cva';
 
 const toggleOwnVariants = cva({
   base: cx(
@@ -75,11 +75,9 @@ const toggleOwnVariants = cva({
   },
 });
 
-const toggleContainerVariants = compose(
-  controlVariants,
-  smallSizeVariants,
-  toggleOwnVariants,
-);
+const toggleContainerVariants = cva({
+  composes: [controlVariants, smallSizeVariants, toggleOwnVariants],
+});
 
 const toggleThumbVariants = cva({
   base: cx(
