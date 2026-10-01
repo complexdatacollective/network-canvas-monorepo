@@ -1,6 +1,6 @@
 'use client';
 
-import { type Table } from '@tanstack/react-table';
+import { type RowData, type Table } from '@tanstack/react-table';
 import { AnimatePresence } from 'motion/react';
 import { type ComponentProps } from 'react';
 
@@ -11,6 +11,7 @@ import CloseButton from '../CloseButton';
 import { MotionSurface } from '../layout/Surface';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
+import { type DataTableFeatures } from './features';
 
 const messages = defineMessages({
   rowsSelected: {
@@ -28,12 +29,12 @@ const messages = defineMessages({
   },
 });
 
-type DataTableFloatingBarProps<TData> = {
-  table: Table<TData>;
+type DataTableFloatingBarProps<TData extends RowData> = {
+  table: Table<DataTableFeatures, TData>;
   className?: string;
 } & Omit<ComponentProps<typeof MotionSurface>, 'table' | 'className'>;
 
-export function DataTableFloatingBar<TData>({
+export function DataTableFloatingBar<TData extends RowData>({
   table,
   children,
   className,

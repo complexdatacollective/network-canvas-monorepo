@@ -91,7 +91,7 @@ catalog:
   '@tailwindcss/typography': ^0.5.20
   '@tailwindcss/vite': ^4.3.3
   '@tanstack/react-query': ^5.102.8
-  '@tanstack/react-table': ^8.21.3
+  '@tanstack/react-table': ^9.2.4
   # Declared so the shared Vitest setup can call `configure()` on the very same
   # module instance the suites' own queries read. React Testing Library depends
   # on this range, so the catalog pin keeps it a single copy.

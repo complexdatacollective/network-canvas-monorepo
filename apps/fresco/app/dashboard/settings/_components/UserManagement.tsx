@@ -498,7 +498,7 @@ function makeUserColumns(
     {
       id: 'username',
       accessorKey: 'username',
-      sortingFn: 'text',
+      sortFn: 'text',
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}

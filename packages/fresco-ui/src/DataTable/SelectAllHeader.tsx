@@ -1,6 +1,6 @@
 'use client';
 
-import { type Table } from '@tanstack/react-table';
+import { type RowData, type Table } from '@tanstack/react-table';
 import { ChevronDown } from 'lucide-react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '../DropdownMenu';
 import Checkbox from '../form/fields/Checkbox';
+import { type DataTableFeatures } from './features';
 
 const messages = defineMessages({
   selectAllOnPage: {
@@ -47,11 +48,13 @@ const messages = defineMessages({
   },
 });
 
-type SelectAllHeaderProps<TData> = {
-  table: Table<TData>;
+type SelectAllHeaderProps<TData extends RowData> = {
+  table: Table<DataTableFeatures, TData>;
 };
 
-export function SelectAllHeader<TData>({ table }: SelectAllHeaderProps<TData>) {
+export function SelectAllHeader<TData extends RowData>({
+  table,
+}: SelectAllHeaderProps<TData>) {
   'use no memo';
   const intl = useAppIntl();
 
