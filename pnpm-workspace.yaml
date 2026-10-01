@@ -62,15 +62,16 @@ catalog:
   '@microsoft/api-extractor': ^7.58.12
   '@next/bundle-analyzer': ^16.3.8
   '@next/third-parties': ^16.3.8
-  # oRPC is pre-1.0 and its packages only interoperate at the same beta: the
+  # oRPC v2 ships only on the `beta` dist-tag (`latest` is still the 1.x
+  # line), and its packages only interoperate at the same beta: the
   # contract, the server's `implement`, the client's links, and the TanStack
   # utils share internal symbols. Pin every one to the same exact release.
-  '@orpc/client': 2.0.0-beta.34
-  '@orpc/contract': 2.0.0-beta.34
-  '@orpc/openapi': 2.0.0-beta.34
-  '@orpc/server': 2.0.0-beta.34
-  '@orpc/tanstack-query': 2.0.0-beta.34
-  '@orpc/zod': 2.0.0-beta.34
+  '@orpc/client': 2.0.0-beta.40
+  '@orpc/contract': 2.0.0-beta.40
+  '@orpc/openapi': 2.0.0-beta.40
+  '@orpc/server': 2.0.0-beta.40
+  '@orpc/tanstack-query': 2.0.0-beta.40
+  '@orpc/zod': 2.0.0-beta.40
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.63.0
