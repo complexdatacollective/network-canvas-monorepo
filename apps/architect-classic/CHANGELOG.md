@@ -6,6 +6,12 @@
   cards (for example a Sociogram's background and layout mode) stopped with "Something went
   wrong. jsx is not defined". A broken release of a supporting library has been replaced, and
   these editors open normally again.
+- **Fixed a crash when editing Information stages.** Opening an Information stage (for example
+  the sample protocol's Welcome stage) stopped with "Objects are not valid as a React child",
+  because the content-block layout loaded a second, incompatible copy of React. The editor
+  opens normally again.
+- **Fixed missing spaces in editor text.** The tie-strength census prompt guidance read "option
+  valuesincluding"; it now reads correctly.
 - **Fixed "Download Sample Protocol".** Downloading the sample protocol always failed with
   "Buffer is not defined". It now downloads, saves to the location you choose, and opens.
 - **Fixed a path traversal weakness when importing protocols.** Importing a protocol file

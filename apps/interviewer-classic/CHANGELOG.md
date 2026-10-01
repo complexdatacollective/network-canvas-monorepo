@@ -5,6 +5,12 @@
 - **Fixed protocol import.** Every protocol, including the sample protocol, failed to import
   with "Couldn't find validator for schema version 7". The protocol validators were left out of
   the packaged app; they are now included, and protocols import and open again.
+- **Exports record the Interviewer version.** The `APP_VERSION` column in exported ego data was
+  always empty; it now contains the version of Interviewer that produced the export.
+- **Fixed the interview stage menu highlight.** The current and hovered stages in the stage menu
+  are now highlighted across the full width of the menu instead of stopping after the label.
+- **Fixed missing spaces in several screens.** Text such as "Nonodes in this interview",
+  "pressing thealt key", "1 of5" and the CSV export description now has its spaces.
 - **Fixed a path traversal weakness when importing protocols.** Importing a protocol file
   (`.netcanvas`) used a ZIP extraction library with a known flaw: a specially crafted archive
   could write files outside the folder it was being unpacked into. It has been replaced with a
