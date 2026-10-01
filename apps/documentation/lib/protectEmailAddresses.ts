@@ -82,12 +82,31 @@ const OPAQUE_TEXT_ELEMENTS = [
   'noscript',
 ];
 
+/**
+ * HTML's ASCII whitespace, which is narrower than JavaScript's `\s`. The
+ * tokenizer accepts only these between a tag name and its `>`; `\s` also
+ * accepts NBSP, the Unicode line separators and friends, so it ended a
+ * `<script>` at a `</script\u00a0>` that the browser reads as ordinary script
+ * text — putting opt-out comments into executable code while the verifier
+ * reported the page clean.
+ */
+const HTML_SPACE = '[\\t\\n\\f\\r ]';
+
+/**
+ * What may follow a tag name: HTML whitespace, `/` or `>`. A `\b` boundary is
+ * wrong here, because `-` is a non-word character — so `<script-widget>` and
+ * `<plaintext-viewer>`, both valid custom elements, matched the patterns for
+ * `script` and `plaintext`. The first hid an address from the pass and the
+ * verifier alike; the second failed the build outright.
+ */
+const TAG_NAME_END = `(?=${HTML_SPACE}|/|>)`;
+
 /** Attribute soup that steps over a quoted `>`, which is legal inside one. */
 const ATTRIBUTES = `(?:[^>"']|"[^"]*"|'[^']*')*`;
 
 /** One element, matched whole, with its own closing tag and never another's. */
 const element = (name: string) =>
-  `<${name}\\b${ATTRIBUTES}>[\\s\\S]*?<\\/${name}\\s*>`;
+  `<${name}${TAG_NAME_END}${ATTRIBUTES}>[\\s\\S]*?<\\/${name}${HTML_SPACE}*>`;
 
 /**
  * A CDATA section, which is real character data inside foreign content — an
@@ -126,7 +145,7 @@ const TOKEN = new RegExp(
 );
 
 const OPAQUE_OPENING = new RegExp(
-  `^<(?:${OPAQUE_TEXT_ELEMENTS.join('|')})\\b`,
+  `^<(?:${OPAQUE_TEXT_ELEMENTS.join('|')})${TAG_NAME_END}`,
   'i',
 );
 
@@ -149,7 +168,7 @@ const OPAQUE_OPENING = new RegExp(
  * failing the build is the right outcome on its own terms, and a louder one
  * than the hydration error it would otherwise ship.
  */
-const PLAINTEXT_OPENING = /^<plaintext\b/i;
+const PLAINTEXT_OPENING = new RegExp(`^<plaintext${TAG_NAME_END}`, 'i');
 
 /**
  * A newline directly after a `<pre>` or `<listing>` start tag is swallowed by
@@ -170,7 +189,19 @@ const PLAINTEXT_OPENING = /^<plaintext\b/i;
  * addresses actually live. `<textarea>` shares the newline rule but is already
  * wrapped from outside as raw text, which preserves it.
  */
-const PREFORMATTED_OPENING = /^<(?:pre|listing)\b/i;
+const PREFORMATTED_OPENING = new RegExp(
+  `^<(?:pre|listing)${TAG_NAME_END}`,
+  'i',
+);
+
+/**
+ * The line ending that start tag makes significant. HTML input preprocessing
+ * turns a CRLF pair and a lone CR into a single LF *before* tokenizing, so the
+ * newline the parser drops may be spelled `\r\n` or `\r` in the served bytes;
+ * matching only `\n` left the marker in front of those two, which is the same
+ * mismatch in a different spelling.
+ */
+const LEADING_NEWLINE = /^(?:\r\n|[\r\n])/;
 
 type Token =
   /** A text run: what the CDN rewrites, and what the opt-out has to cover. */
@@ -275,8 +306,9 @@ export const protectEmailAddresses = (
   const output = mapRewritableRuns(html, (run, afterPreformattedStart) => {
     if (!EMAIL_SHAPED.test(run)) return run;
     protectedRuns += 1;
-    if (afterPreformattedStart && run.startsWith('\n')) {
-      return `\n${EMAIL_OFF_OPEN}${run.slice(1)}${EMAIL_OFF_CLOSE}`;
+    const newline = afterPreformattedStart ? LEADING_NEWLINE.exec(run) : null;
+    if (newline) {
+      return `${newline[0]}${EMAIL_OFF_OPEN}${run.slice(newline[0].length)}${EMAIL_OFF_CLOSE}`;
     }
     return `${EMAIL_OFF_OPEN}${run}${EMAIL_OFF_CLOSE}`;
   });

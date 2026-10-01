@@ -317,6 +317,59 @@ describe('protectEmailAddresses', () => {
     );
   });
 
+  // HTML's whitespace is narrower than JavaScript's `\s`: the tokenizer does not
+  // accept NBSP between a tag name and its `>`, so `</script\u00a0>` is ordinary
+  // script text. Chromium keeps the whole string inside the script.
+  it('does not end a raw-text element at a non-HTML-whitespace closing tag', () => {
+    const html =
+      '<script>const fake="</script\u00a0>"; const mail="foo@example.com";</script>';
+
+    expect(protectEmailAddresses(html).protectedRuns).toBe(0);
+    expect(protectEmailAddresses(html).html).toBe(html);
+    expect(findUnprotectedEmailText(html)).toEqual([]);
+  });
+
+  // `-` is not a word character, so a `\b` boundary let a custom element match
+  // the pattern for the special name it starts with. Both directions were bugs:
+  // an address hidden from the pass, and a build failed on valid markup.
+  it('does not mistake a custom element for the special name it starts with', () => {
+    const widget =
+      '<script-widget>foo@example.com<script></script></script-widget>';
+
+    expect(findUnprotectedEmailText(widget)).toEqual(['foo@example.com']);
+    expect(protectEmailAddresses(widget).html).toBe(
+      `<script-widget>${EMAIL_OFF_OPEN}foo@example.com${EMAIL_OFF_CLOSE}<script></script></script-widget>`,
+    );
+  });
+
+  it('does not refuse a custom element whose name starts with plaintext', () => {
+    const html =
+      '<plaintext-viewer>hi</plaintext-viewer><p>foo@example.com</p>';
+
+    expect(protectEmailAddresses(html).html).toBe(
+      `<plaintext-viewer>hi</plaintext-viewer><p>${EMAIL_OFF_OPEN}foo@example.com${EMAIL_OFF_CLOSE}</p>`,
+    );
+  });
+
+  // Input preprocessing normalises CRLF and a lone CR to one LF before the
+  // initial-newline rule applies, so the significant newline may be spelled
+  // either way in the served bytes.
+  it('places the marker after a CRLF or a bare CR a pre start tag makes significant', () => {
+    expect(
+      protectEmailAddresses('<pre>\r\n\r\nfoo@example.com</pre>').html,
+    ).toBe(
+      `<pre>\r\n${EMAIL_OFF_OPEN}\r\nfoo@example.com${EMAIL_OFF_CLOSE}</pre>`,
+    );
+    expect(protectEmailAddresses('<pre>\r\rfoo@example.com</pre>').html).toBe(
+      `<pre>\r${EMAIL_OFF_OPEN}\rfoo@example.com${EMAIL_OFF_CLOSE}</pre>`,
+    );
+    expect(
+      protectEmailAddresses('<listing>\r\n\r\nfoo@example.com</listing>').html,
+    ).toBe(
+      `<listing>\r\n${EMAIL_OFF_OPEN}\r\nfoo@example.com${EMAIL_OFF_CLOSE}</listing>`,
+    );
+  });
+
   it('does not refuse marker text inside a script or a raw-text element', () => {
     // The refusal reads tokens, like everything else here: only a real start
     // tag counts. Deciding this from the raw text would fail the build on a
@@ -382,6 +435,14 @@ describe('protectEmailAddresses parse equivalence', () => {
     'an iframe fallback': '<iframe>Contact foo@example.com</iframe>',
     'a script repeating the address':
       '<script>var a = "foo@example.com"</script><p>foo@example.com</p>',
+    'pre whose text starts with CRLF': '<pre>\r\n\r\nfoo@example.com</pre>',
+    'pre whose text starts with a bare CR': '<pre>\r\rfoo@example.com</pre>',
+    'a script closed with a non-HTML-whitespace tag':
+      '<script>const fake="</script\u00a0>"; const mail="foo@example.com";</script>',
+    'a custom element starting with a special name':
+      '<script-widget>foo@example.com<script></script></script-widget>',
+    'a custom element starting with plaintext':
+      '<plaintext-viewer>hi</plaintext-viewer><p>foo@example.com</p>',
   };
 
   it.each(Object.entries(SHAPES))(
