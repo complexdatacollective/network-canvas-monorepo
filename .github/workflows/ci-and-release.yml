@@ -162,6 +162,10 @@ jobs:
             echo "CI workflow changed in $PREV..$CURR — forcing all conditional jobs to run."
           fi
 
+          # This job installs no dependencies, so fetch turbo at the exact
+          # version the root package.json pins rather than a version of its own.
+          TURBO_VERSION=$(node -p "require('./package.json').devDependencies.turbo")
+
           # flag <package>: true if any file in the package's workspace dep
           # tree changed between PREV and CURR, false otherwise.
           flag() {
@@ -175,7 +179,7 @@ jobs:
               echo true; return
             fi
             local paths
-            paths=$(npx --yes turbo@2.9.6 ls --filter="${pkg}..." --output=json 2>/dev/null \
+            paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json 2>/dev/null \
               | jq -r '.packages.items[].path')
             local pathspec=()
             while IFS= read -r p; do
