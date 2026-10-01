@@ -5,6 +5,7 @@ import { loadLocaleMessages } from '~/lib/i18n/messages';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
+import ptBR from '~/messages/pt-BR.json';
 import zhHans from '~/messages/zh-Hans.json';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -34,6 +35,7 @@ function messageTokens(text: string): string[] {
 const translatedCatalogs = [
   ['Spanish', es],
   ['Simplified Chinese', zhHans],
+  ['Brazilian Portuguese', ptBR],
 ] as const;
 
 describe('message catalogs', () => {

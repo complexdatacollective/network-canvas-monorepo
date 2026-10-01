@@ -33,6 +33,7 @@ export async function generateMetadata({
         'en-GB': 'https://networkcanvas.com/en-GB/get-started',
         'es': 'https://networkcanvas.com/es/get-started',
         'zh-Hans': 'https://networkcanvas.com/zh-Hans/get-started',
+        'pt-BR': 'https://networkcanvas.com/pt-BR/get-started',
       },
     },
   };

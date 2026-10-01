@@ -7,6 +7,7 @@ import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales'
 
 import enGb from './en-GB.json';
 import es from './es.json';
+import ptBR from './pt-BR.json';
 import zhHans from './zh-Hans.json';
 
 /** Static imports include every production locale in installed/offline builds. */
@@ -36,5 +37,13 @@ export const architectCatalogs: Readonly<
     protocolValidationCatalogs['zh-Hans'] ?? {},
     protocolUtilitiesCatalogs['zh-Hans'] ?? {},
     zhHans,
+  ),
+  'pt-BR': mergeCatalogs(
+    commonCatalogs['pt-BR'] ?? {},
+    frescoUiCatalogs['pt-BR'] ?? {},
+    protocolBuilderCatalogs['pt-BR'] ?? {},
+    protocolValidationCatalogs['pt-BR'] ?? {},
+    protocolUtilitiesCatalogs['pt-BR'] ?? {},
+    ptBR,
   ),
 };

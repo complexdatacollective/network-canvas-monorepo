@@ -1,6 +1,7 @@
 import britishEnglishOverrides from '../../messages/en-GB.json';
 import englishMessages from '../../messages/en.json';
 import spanishMessages from '../../messages/es.json';
+import brazilianPortugueseMessages from '../../messages/pt-BR.json';
 import simplifiedChineseMessages from '../../messages/zh-Hans.json';
 import type { Locale } from './locales';
 
@@ -18,6 +19,7 @@ const messageSources = {
   'en-GB': { base: englishMessages, overrides: britishEnglishOverrides },
   'es': { base: spanishMessages },
   'zh-Hans': { base: simplifiedChineseMessages },
+  'pt-BR': { base: brazilianPortugueseMessages },
 } satisfies Record<Locale, MessageSource>;
 
 function isMessageCatalog(

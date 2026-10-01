@@ -2,6 +2,7 @@ import type { CatalogMessages } from '@codaco/app-i18n/locales';
 
 import enGbOverrides from './en-GB.json';
 import es from './es.json';
+import ptBR from './pt-BR.json';
 import zhHans from './zh-Hans.json';
 
 /**
@@ -21,4 +22,5 @@ export const frescoUiCatalogs: Readonly<Record<string, CatalogMessages>> = {
   'en-GB': enGbOverrides as CatalogMessages,
   es,
   'zh-Hans': zhHans,
+  'pt-BR': ptBR,
 };
