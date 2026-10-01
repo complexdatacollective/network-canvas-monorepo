@@ -174,7 +174,7 @@ export const siteNavigationMessages = {
     community: 'Comunidade',
     documentation: 'Documentação',
     protocolGallery: 'Galeria de Protocolos',
-    resources: 'Recursos',
+    resources: 'Materiais',
     software: 'Software',
     getStarted: 'Começar',
     openMenu: 'Abrir a navegação do site',
@@ -196,13 +196,13 @@ export const siteNavigationMessages = {
         name: 'Interviewer',
         action: 'Abrir o Interviewer',
         description:
-          'Conduza em campo entrevistas de redes envolventes, guiadas por quem entrevista, em qualquer navegador compatível.',
+          'Conduza em campo entrevistas envolventes sobre redes, guiadas por quem entrevista, em qualquer navegador compatível.',
       },
       interviewerClassic: {
         name: 'Interviewer Classic',
         action: 'Baixar o Interviewer Classic',
         description:
-          'Para estudos já em andamento no esquema 7 e fluxos de trabalho offline em computador ou tablet. Mantido para compatibilidade e correção de erros.',
+          'Para estudos consolidados no esquema 7 e fluxos de trabalho offline em computador ou tablet. Mantido para garantir a compatibilidade e corrigir bugs.',
       },
       fresco: {
         name: 'Fresco',

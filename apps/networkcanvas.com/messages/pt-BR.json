@@ -8,13 +8,13 @@
   },
   "Metadata": {
     "siteTitle": "Network Canvas",
-    "siteDescription": "O Network Canvas oferece software livre e de código aberto para a coleta de dados de redes, pensado para as necessidades tanto de quem pesquisa quanto de quem participa.",
+    "siteDescription": "O Network Canvas oferece software gratuito e de código aberto para a coleta de dados de redes, pensado para as necessidades tanto de quem pesquisa quanto de quem participa.",
     "getStartedTitle": "Começar",
     "getStartedDescription": "Escolha o aplicativo do Network Canvas certo para desenhar um protocolo ou coletar dados de redes."
   },
   "Hero": {
     "headline": "Simplificando a coleta de dados complexos de redes.",
-    "description": "O Network Canvas oferece software <strong>livre e de código aberto</strong> para a coleta de dados de redes, pensado para as necessidades tanto de quem pesquisa quanto de quem participa.",
+    "description": "O Network Canvas oferece software <strong>gratuito e de código aberto</strong> para a coleta de dados de redes, pensado para as necessidades tanto de quem pesquisa quanto de quem participa.",
     "getStarted": "Começar",
     "keepScrolling": "ou continue rolando a página para saber mais"
   },
@@ -110,7 +110,7 @@
   },
   "Institutions": {
     "heading": "Instituições",
-    "paragraph1": "O software está sendo desenvolvido por uma equipe de pesquisa e desenvolvimento sediada na Northwestern University e na University of Oxford, além de diversas pessoas contratadas externamente para o desenvolvimento. Agradecemos o financiamento <prior>anterior</prior> e <ongoing>em andamento</ongoing> dos National Institutes of Health, que torna este trabalho possível.",
+    "paragraph1": "O software está sendo desenvolvido por uma equipe de pesquisa e desenvolvimento sediada na Universidade Northwestern e na Universidade de Oxford, além de diversas pessoas contratadas externamente para o desenvolvimento. Agradecemos o financiamento <prior>anterior</prior> e <ongoing>em andamento</ongoing> dos National Institutes of Health, que torna este trabalho possível.",
     "paragraph2": "A propriedade intelectual e os direitos autorais associados ao software são controlados por uma organização sem fins lucrativos registrada, o Complex Data Collective, formada pela equipe principal do projeto.",
     "prior": "anterior",
     "ongoing": "em andamento"
@@ -352,7 +352,7 @@
         }
       },
       "fresco": {
-        "status": "Equipes grandes · Aplicação remota · Recomendado",
+        "status": "Equipes grandes · Coleta a distância · Recomendado",
         "description": "Para participantes que respondem às entrevistas a distância, no próprio navegador, com gestão centralizada do estudo e dos dados. O sandbox é um ambiente público de demonstração, não um lugar para realizar um estudo real.",
         "bestFor": {
           "remoteBrowser": "Participantes que respondem às entrevistas a distância, no próprio navegador",
@@ -397,8 +397,8 @@
     "definitions": {
       "pwa": "<dfn>Aplicativos web progressivos</dfn> são sites especialmente preparados que podem ser instalados no seu dispositivo e oferecem uma experiência parecida com a de um aplicativo nativo. Isso significa que eles têm um ícone em que você pode clicar para abri-los, têm armazenamento próprio e funcionam offline.",
       "protocolSchema": "Os esquemas de protocolo são as especificações técnicas que definem como os arquivos de protocolo são estruturados e interpretados pelos aplicativos. Eles garantem que os protocolos sejam compatíveis entre diferentes versões dos aplicativos e oferecem uma base para implementar novas funcionalidades e interfaces.",
-      "architectClassic": "O aplicativo original para computador, disponível para download, usado para desenhar protocolos do Network Canvas. Ele continua disponível para estudos em andamento e tem suporte completo, mas está em modo de manutenção e não vai receber novas funcionalidades. Baixe-o <link>aqui</link>.",
-      "interviewerClassic": "O aplicativo original para computador e tablet, disponível para download, usado para coletar dados de entrevistas. Ele continua disponível para estudos em andamento e tem suporte completo, mas está em modo de manutenção e não vai receber novas funcionalidades. Baixe-o <link>aqui</link>."
+      "architectClassic": "O aplicativo original para computador, disponível para download, usado para desenhar protocolos do Network Canvas. Ele continua disponível para estudos em andamento e tem suporte completo, mas está em modo de manutenção e não vai receber novas funcionalidades. Faça o download <link>aqui</link>.",
+      "interviewerClassic": "O aplicativo original para computador e tablet, disponível para download, usado para coletar dados de entrevistas. Ele continua disponível para estudos em andamento e tem suporte completo, mas está em modo de manutenção e não vai receber novas funcionalidades. Faça o download <link>aqui</link>."
     },
     "common": {
       "documentation": "Documentação"
@@ -434,7 +434,7 @@
       "architect": {
         "label": "Desenho de protocolos",
         "heading": "Conheça o novo Architect — desenhe protocolos no navegador",
-        "description": "Não há nada para instalar — basta abrir <link>architect.networkcanvas.com</link> e começar a criar. O Architect sempre executa automaticamente a versão mais recente. No site, instale-o no seu computador como um <pwa>PWA</pwa> para ter uma experiência parecida com a de um aplicativo nativo e controle local dos seus dados.",
+        "description": "Não há nada para instalar — basta abrir <link>architect.networkcanvas.com</link> e começar a criar. O Architect sempre executa automaticamente a versão mais recente. No site, instale o Architect no seu computador como um <pwa>PWA</pwa> para ter uma experiência parecida com a de um aplicativo nativo e controle local dos seus dados.",
         "iconAlt": "Ícone do aplicativo Architect",
         "screenshotAlt": "Editor de protocolos do Architect mostrando a linha do tempo do protocolo de exemplo",
         "bullets": {
@@ -448,7 +448,7 @@
       "interviewer": {
         "label": "Entrevistas presenciais",
         "heading": "Interviewer — realize entrevistas em qualquer lugar",
-        "description": "O Interviewer também foi redesenhado para o navegador: envie um protocolo em <link>interviewer.networkcanvas.com</link> e leve-o a campo sem instalar nada. Instale-o como um <pwa>PWA</pwa> para trabalhar offline — ele continua sendo a ferramenta ideal para estudos de redes presenciais, com apoio de quem entrevista.",
+        "description": "O Interviewer também foi redesenhado para o navegador: envie um protocolo em <link>interviewer.networkcanvas.com</link> e comece a usá-lo em campo sem instalar nada. Instale o Interviewer como um <pwa>PWA</pwa> para trabalhar offline — ele continua sendo a ferramenta ideal para estudos de redes presenciais, com apoio de quem entrevista.",
         "iconAlt": "Ícone do aplicativo Interviewer",
         "screenshotAlt": "Painel do Interviewer mostrando cartões de protocolos e uma ação para retomar uma entrevista",
         "bullets": {
@@ -460,9 +460,9 @@
         "classicNote": "O <interviewerClassic>Interviewer Classic</interviewerClassic> continua disponível para estudos em andamento. Assim como o <architectClassic>Architect Classic</architectClassic>, ele está apenas em modo de manutenção e não recebe novas funcionalidades."
       },
       "fresco": {
-        "label": "Entrevistas remotas autoaplicadas",
+        "label": "Entrevistas autoaplicadas a distância",
         "heading": "Fresco 4.0.0 — uma grande atualização",
-        "description": "A versão mais recente do Fresco é um lançamento enorme, que traz várias funcionalidades novas importantes. Pensado para entrevistas remotas autoaplicadas (mas também totalmente compatível com entrevistas presenciais), o Fresco é a opção sugerida para estudos com um grande número de participantes, com uma equipe de pesquisa grande ou que exigem uma solução centralizada de gestão de dados.",
+        "description": "A versão mais recente do Fresco é um lançamento enorme, que traz várias funcionalidades novas importantes. Pensado para entrevistas autoaplicadas a distância (mas também totalmente compatível com entrevistas presenciais), o Fresco é a opção sugerida para estudos com um grande número de participantes, com uma equipe de pesquisa grande ou que exigem uma solução centralizada de gestão de dados.",
         "iconAlt": "Ícone do aplicativo Fresco",
         "deploymentGuide": "Guia de implantação",
         "upgradeNote": "Quem usa o Fresco 3.x deve evitar atualizar no meio de um estudo. Não é possível voltar do Fresco 4.0.0 para a versão 3.x.",
@@ -473,7 +473,7 @@
           },
           "api": {
             "title": "API de dados segura",
-            "description": "Agora o Fresco oferece uma API segura e somente leitura para acesso programático aos dados do seu estudo, permitindo relatórios em tempo real, painéis e análises."
+            "description": "Agora o Fresco oferece uma API segura e somente leitura para acesso programático aos dados do seu estudo, permitindo relatórios em tempo real, painéis de visualização e análises."
           },
           "selfHosted": {
             "title": "Hospedagem própria completa",
@@ -552,7 +552,7 @@
         "details": {
           "0": "Adicione pessoas, preencha atributos das pessoas e das relações, desenhe vários tipos de relação e reorganize a rede à medida que a conversa avança.",
           "1": "Use seleção à mão livre, grupos, disposição automática, atalhos de teclado e as ações de desfazer e refazer para construir redes densas com eficiência.",
-          "2": "Use-o como um bloco de notas de redes conduzido pela equipe de pesquisa ou por quem entrevista, e não como uma tarefa autoaplicada passo a passo."
+          "2": "Use o Compositor de redes como um bloco de notas de redes conduzido pela equipe de pesquisa ou por quem entrevista, e não como uma tarefa autoaplicada passo a passo."
         }
       },
       "validation": {
@@ -598,7 +598,7 @@
       "protocolTemplates": {
         "shortName": "Modelos de protocolo",
         "name": "Modelos de protocolo",
-        "summary": "Comece com um protocolo fundamentado em pesquisa, em vez de uma linha do tempo vazia, e depois adapte-o ao seu estudo.",
+        "summary": "Comece com um protocolo fundamentado em pesquisa, em vez de uma linha do tempo vazia, e depois adapte esse protocolo ao seu estudo.",
         "details": {
           "0": "Conheça modelos para redes transnacionais, de saúde mental, de isolamento social, de influência comportamental, de cuidado e apoio, e de risco sexual ou ligado ao uso de drogas injetáveis.",
           "1": "Use o protocolo de exemplo geral para entender como as principais funcionalidades e técnicas do Network Canvas se encaixam.",
@@ -701,11 +701,11 @@
       "rows": {
         "interviewerClassic": {
           "platform": "Computador e tablet",
-          "note": "O <interviewerClassic>Interviewer Classic</interviewerClassic> executa o esquema 7 nativamente, mas não consegue abrir protocolos do esquema 8. Continue usando-o nos estudos do esquema 7 em andamento — ele segue com suporte e correções de bugs."
+          "note": "O <interviewerClassic>Interviewer Classic</interviewerClassic> executa o esquema 7 nativamente, mas não consegue abrir protocolos do esquema 8. Continue usando o Interviewer Classic nos estudos do esquema 7 em andamento — ele segue com suporte e correções de bugs."
         },
         "architectClassic": {
           "platform": "Computador",
-          "note": "O <architectClassic>Architect Classic</architectClassic> continua gerando protocolos do esquema 7, em modo de manutenção. Use-o apenas se você precisar continuar executando versões antigas do Interviewer (por exemplo, a 6.6.0)."
+          "note": "O <architectClassic>Architect Classic</architectClassic> continua gerando protocolos do esquema 7, em modo de manutenção. Use o Architect Classic apenas se você precisar continuar executando versões antigas do Interviewer (por exemplo, a 6.6.0)."
         },
         "frescoClassic": {
           "platform": "Navegador",

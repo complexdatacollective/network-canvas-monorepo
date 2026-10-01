@@ -13,7 +13,7 @@
   "protocolUtilities.constraint.invertedBounds": "O mínimo é maior que o máximo, então nenhuma resposta é permitida. Ajuste estes limites.",
   "protocolUtilities.constraint.minSelectedExceedsOptions": "A seleção mínima é maior que o número de opções disponíveis. Adicione opções ou reduza o mínimo.",
   "protocolUtilities.constraint.negativeSelectionMaximum": "Uma seleção máxima negativa não permite nenhuma resposta. Defina um máximo igual ou maior que zero.",
-  "protocolUtilities.constraint.negativeTextMaximum": "Um comprimento máximo de texto negativo não permite nenhuma resposta. Defina um máximo igual ou maior que zero.",
+  "protocolUtilities.constraint.negativeTextMaximum": "Um tamanho máximo de texto negativo não permite nenhuma resposta. Defina um máximo igual ou maior que zero.",
   "protocolUtilities.constraint.noSolution": "Nenhuma combinação de valores permitidos satisfaz todas estas regras. Revise as regras dos atributos listados.",
   "protocolUtilities.constraint.numberDateComparison": "Um número está sendo comparado com uma data. Use atributos de tipos compatíveis nesta comparação.",
   "protocolUtilities.constraint.oddDifferentFromCycle": "Há poucos valores permitidos para que todos os atributos exigidos sejam diferentes. Adicione valores permitidos ou remova uma regra conflitante.",
@@ -21,10 +21,10 @@
   "protocolUtilities.constraint.pinnedDifferentFromParity": "Os valores fixos e as regras que exigem respostas diferentes não podem ser todos satisfeitos. Altere um valor fixo ou uma comparação.",
   "protocolUtilities.constraint.pinnedEqualDifferentFrom": "Estes atributos precisam ser diferentes, mas as regras deles impõem o mesmo valor. Amplie um intervalo ou altere uma comparação.",
   "protocolUtilities.constraint.requiredEmptySelection": "A seleção máxima é zero, mas uma resposta é obrigatória. Permita pelo menos uma seleção ou torne a resposta opcional.",
-  "protocolUtilities.constraint.requiredEmptyText": "O comprimento máximo do texto é zero, mas uma resposta é obrigatória. Permita texto ou torne a resposta opcional.",
+  "protocolUtilities.constraint.requiredEmptyText": "O tamanho máximo do texto é zero, mas uma resposta é obrigatória. Permita texto ou torne a resposta opcional.",
   "protocolUtilities.constraint.sameAsGroupConflict": "Estes atributos precisam ter um mesmo valor, mas os valores permitidos ou as precisões de data deles são incompatíveis. Alinhe as regras e os controles de entrada deles.",
   "protocolUtilities.constraint.sharedBounds": "Estes atributos precisam ter um mesmo valor, mas os intervalos permitidos não se sobrepõem. Ajuste os intervalos ou a regra de igualdade.",
   "protocolUtilities.constraint.strictComparatorCycle": "Estes atributos fazem referência uns aos outros em um ciclo de comparações impossível. Altere uma comparação para romper o ciclo.",
-  "protocolUtilities.constraint.textGenerationLimit": "O comprimento mínimo do texto é maior que o tamanho que um valor gerado comporta. Reduza o comprimento mínimo.",
+  "protocolUtilities.constraint.textGenerationLimit": "O tamanho mínimo do texto é maior que o que um valor gerado comporta. Reduza o tamanho mínimo.",
   "protocolUtilities.constraint.uniqueEgo": "Valores únicos não são compatíveis com atributos de participante. Remova esta regra de validação."
 }
