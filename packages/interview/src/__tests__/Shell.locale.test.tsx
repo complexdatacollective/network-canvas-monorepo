@@ -345,7 +345,7 @@ describe('Shell built-in interface language', () => {
       within(language)
         .getAllByRole('option')
         .map((option) => option.getAttribute('value')),
-    ).toEqual(['__automatic', 'en', 'en-GB', 'es', 'zh-Hans']);
+    ).toEqual(['__automatic', 'en', 'en-GB', 'es', 'zh-Hans', 'nl']);
     await user.selectOptions(language, 'es');
     expect(onLocaleChange).toHaveBeenLastCalledWith('es');
     expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');

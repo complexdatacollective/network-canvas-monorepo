@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineAppLocales } from '../locales.ts';
+import { defineAppLocales, ecosystemLocales } from '../locales.ts';
 import { canonicalizeAppLocale, resolveAppLocale } from '../negotiate.ts';
 
 const registry = defineAppLocales([
@@ -113,6 +113,22 @@ describe('resolveAppLocale', () => {
     for (const requested of samples) {
       const { locale } = resolve({ requested });
       expect(registry.map((entry) => entry.locale)).toContain(locale);
+    }
+  });
+
+  it('negotiates Dutch from the Netherlands, Belgium and bare nl to nl', () => {
+    for (const requested of [
+      ['nl-NL', 'en'],
+      ['nl-BE', 'fr-BE', 'en'],
+      ['nl'],
+    ]) {
+      expect(
+        resolveAppLocale({
+          requested,
+          locales: ecosystemLocales,
+          defaultLocale: 'en',
+        }),
+      ).toEqual({ locale: 'nl', source: 'negotiated' });
     }
   });
 

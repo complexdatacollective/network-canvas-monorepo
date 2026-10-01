@@ -31,6 +31,12 @@ export const supportedSiteLocales = [
     englishName: 'Simplified Chinese',
     compactLabel: 'zh',
   },
+  {
+    locale: 'nl',
+    nativeName: 'Nederlands',
+    englishName: 'Dutch',
+    compactLabel: 'nl',
+  },
 ] as const satisfies readonly SiteLocaleDefinition[];
 
 export type SiteLocale = (typeof supportedSiteLocales)[number]['locale'];

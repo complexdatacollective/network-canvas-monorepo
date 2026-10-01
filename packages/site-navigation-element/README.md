@@ -32,7 +32,7 @@ of loading it from a CDN.
 | Attribute     | Values                                                                                                     | Default        | Notes                                                  |
 | ------------- | ---------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------ |
 | `active-item` | `home` \| `community` \| `documentation` \| `protocolGallery` \| `resources` \| `software` \| `getStarted` | unset          | Highlights the matching link (`aria-current="page"`).  |
-| `locale`      | `en-US` \| `en-GB` \| `es` \| `zh-Hans`                                                                    | `en-US`        | Selects the nav's translated copy.                     |
+| `locale`      | `en-US` \| `en-GB` \| `es` \| `zh-Hans` \| `nl`                                                            | `en-US`        | Selects the nav's translated copy.                     |
 | `skip-to-id`  | any element `id` on the host page                                                                          | `main-content` | Where the skip link jumps to. See **Skip link** below. |
 | `theme`       | `light` \| `dark` \| `auto`                                                                                | `auto`         | `auto` follows the page's `prefers-color-scheme`.      |
 
