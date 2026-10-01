@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols && pnpm next dev --port 3000",
     "build": "pnpm next build",
-    "postbuild": "pnpm next-sitemap && tsx ./scripts/protectEmailAddresses.ts",
+    "postbuild": "pnpm next-sitemap",
     "prebuild": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols",
     "copyProtocolDownloads": "tsx ./scripts/copyProtocolDownloads.ts",
     "writeSidebarJson": "tsx ./lib/writeSidebarJson.ts",
