@@ -780,6 +780,12 @@ jobs:
         id: dialog-exits
         continue-on-error: true
         run: pnpm check:dialog-exits
+      # Cloudflare's Email Address Obfuscation rewrites email-shaped text in the
+      # documentation site's served HTML, which breaks hydration (#2005).
+      - name: Check no documentation code block contains an email address
+        id: docs-emails
+        continue-on-error: true
+        run: pnpm check:docs-emails
       # Studio's ERD and README schema section are generated and committed. The
       # render is CPU-only — no database — so it belongs beside the other
       # artifact checks rather than in the server's vitest lane, where it
@@ -852,6 +858,7 @@ jobs:
           MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
           HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           DIALOG_EXITS_OUTCOME: ${{ steps.dialog-exits.outcome }}
+          DOCS_EMAILS_OUTCOME: ${{ steps.docs-emails.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
@@ -867,6 +874,7 @@ jobs:
             "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
             "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "dialog-exits=$DIALOG_EXITS_OUTCOME" \
+            "docs-emails=$DOCS_EMAILS_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
