@@ -122,4 +122,49 @@ export const siteNavigationMessages = {
       },
     },
   },
+  'zh-Hans': {
+    home: 'Network Canvas 首页',
+    navigationLabel: '主导航',
+    skipToContent: '跳到主要内容',
+    community: '社区',
+    documentation: '文档',
+    protocolGallery: '协议示例库',
+    resources: '资源',
+    software: '软件',
+    getStarted: '快速入门',
+    openMenu: '打开网站导航',
+    closeMenu: '关闭网站导航',
+    softwareLinks: {
+      architect: {
+        name: 'Architect',
+        action: '打开 Architect',
+        description:
+          '在浏览器中通过专为研究人员打造的可视化工作流程，设计精致的 Network Canvas 访谈协议。',
+      },
+      architectClassic: {
+        name: 'Architect Classic',
+        action: '获取 Architect Classic',
+        description:
+          '仅在您的研究必须保持与 Interviewer Classic 和架构 7 兼容时使用。',
+      },
+      interviewer: {
+        name: 'Interviewer',
+        action: '打开 Interviewer',
+        description:
+          '在任何受支持的浏览器中，于实地开展引人投入、由访谈员主导的网络访谈。',
+      },
+      interviewerClassic: {
+        name: 'Interviewer Classic',
+        action: '获取 Interviewer Classic',
+        description:
+          '适用于已建立的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。',
+      },
+      fresco: {
+        name: 'Fresco',
+        action: '试用 Fresco 沙盒',
+        description:
+          '通过一个基于浏览器的共享仪表板，协调远程网络访谈并管理研究数据。',
+      },
+    },
+  },
 } satisfies Record<SiteLocale, SiteNavigationMessages>;

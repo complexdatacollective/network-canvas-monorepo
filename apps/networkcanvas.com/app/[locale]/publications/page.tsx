@@ -37,6 +37,7 @@ export async function generateMetadata({
         'en-US': 'https://networkcanvas.com/en-US/publications',
         'en-GB': 'https://networkcanvas.com/en-GB/publications',
         'es': 'https://networkcanvas.com/es/publications',
+        'zh-Hans': 'https://networkcanvas.com/zh-Hans/publications',
       },
     },
   };

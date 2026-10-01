@@ -61,48 +61,56 @@ const publicationYear = z
 const newsRowSchema = z
   .object({
     id,
-    title_en: requiredText,
-    title_es: requiredText,
-    href: z.union([httpsUrl, internalPath]),
+    'title_en': requiredText,
+    'title_es': requiredText,
+    'title_zh-Hans': requiredText,
+    'href': z.union([httpsUrl, internalPath]),
   })
   .strict();
 
 const publicationRowSchema = z
   .object({
     id,
-    title_en: requiredText,
-    title_es: requiredText,
-    source_en: requiredText,
-    source_es: requiredText,
-    authors: requiredText,
-    href: httpsUrl,
-    year: publicationYear,
+    'title_en': requiredText,
+    'title_es': requiredText,
+    'title_zh-Hans': requiredText,
+    'source_en': requiredText,
+    'source_es': requiredText,
+    'source_zh-Hans': requiredText,
+    'authors': requiredText,
+    'href': httpsUrl,
+    'year': publicationYear,
   })
   .strict();
 
 const grantRowSchema = z
   .object({
     id,
-    title_en: requiredText,
-    title_es: requiredText,
-    pis_en: requiredText,
-    pis_es: requiredText,
-    description_en: requiredText,
-    description_es: requiredText,
-    logo: publicImage,
-    logo_alt_en: requiredText,
-    logo_alt_es: requiredText,
-    href: httpsUrl,
+    'title_en': requiredText,
+    'title_es': requiredText,
+    'title_zh-Hans': requiredText,
+    'pis_en': requiredText,
+    'pis_es': requiredText,
+    'pis_zh-Hans': requiredText,
+    'description_en': requiredText,
+    'description_es': requiredText,
+    'description_zh-Hans': requiredText,
+    'logo': publicImage,
+    'logo_alt_en': requiredText,
+    'logo_alt_es': requiredText,
+    'logo_alt_zh-Hans': requiredText,
+    'href': httpsUrl,
   })
   .strict();
 
 const teamMemberRowSchema = z
   .object({
     id,
-    name: requiredText,
-    institution_en: requiredText,
-    institution_es: requiredText,
-    photo: publicImage,
+    'name': requiredText,
+    'institution_en': requiredText,
+    'institution_es': requiredText,
+    'institution_zh-Hans': requiredText,
+    'photo': publicImage,
   })
   .strict();
 
@@ -165,8 +173,15 @@ async function parseCsv<Row extends { id: string }>(
   return rows;
 }
 
-function localized(locale: Locale, english: string, spanish: string): string {
-  return locale === 'es' ? spanish : english;
+function localized(
+  locale: Locale,
+  english: string,
+  spanish: string,
+  simplifiedChinese: string,
+): string {
+  if (locale === 'es') return spanish;
+  if (locale === 'zh-Hans') return simplifiedChinese;
+  return english;
 }
 
 export async function loadSiteContent(
@@ -183,30 +198,65 @@ export async function loadSiteContent(
   return {
     newsItems: newsRows.map((row) => ({
       id: row.id,
-      title: localized(locale, row.title_en, row.title_es),
+      title: localized(
+        locale,
+        row.title_en,
+        row.title_es,
+        row['title_zh-Hans'],
+      ),
       href: row.href,
     })),
     publications: publicationRows.map((row) => ({
       id: row.id,
-      title: localized(locale, row.title_en, row.title_es),
-      source: localized(locale, row.source_en, row.source_es),
+      title: localized(
+        locale,
+        row.title_en,
+        row.title_es,
+        row['title_zh-Hans'],
+      ),
+      source: localized(
+        locale,
+        row.source_en,
+        row.source_es,
+        row['source_zh-Hans'],
+      ),
       authors: row.authors,
       href: row.href,
       year: row.year,
     })),
     grants: grantRows.map((row) => ({
       id: row.id,
-      title: localized(locale, row.title_en, row.title_es),
-      pis: localized(locale, row.pis_en, row.pis_es),
-      description: localized(locale, row.description_en, row.description_es),
+      title: localized(
+        locale,
+        row.title_en,
+        row.title_es,
+        row['title_zh-Hans'],
+      ),
+      pis: localized(locale, row.pis_en, row.pis_es, row['pis_zh-Hans']),
+      description: localized(
+        locale,
+        row.description_en,
+        row.description_es,
+        row['description_zh-Hans'],
+      ),
       logo: row.logo,
-      logoAlt: localized(locale, row.logo_alt_en, row.logo_alt_es),
+      logoAlt: localized(
+        locale,
+        row.logo_alt_en,
+        row.logo_alt_es,
+        row['logo_alt_zh-Hans'],
+      ),
       href: row.href,
     })),
     coreTeam: teamRows.map((row) => ({
       id: row.id,
       name: row.name,
-      institution: localized(locale, row.institution_en, row.institution_es),
+      institution: localized(
+        locale,
+        row.institution_en,
+        row.institution_es,
+        row['institution_zh-Hans'],
+      ),
       photo: row.photo,
     })),
   };

@@ -96,12 +96,13 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, and Spanish static params', () => {
-    expect(locales).toEqual(['en-US', 'en-GB', 'es']);
+  it('generates US English, UK English, Spanish, and Simplified Chinese static params', () => {
+    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans']);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
       { locale: 'en-GB' },
       { locale: 'es' },
+      { locale: 'zh-Hans' },
     ]);
   });
 
