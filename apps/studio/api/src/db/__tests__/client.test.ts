@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { PgClient } from '@effect/sql-pg';
 import { assert, layer } from '@effect/vitest';
-import { Effect, Redacted, Result } from 'effect';
+import { Context, Effect, Layer, Redacted, Result } from 'effect';
 import { Reactivity } from 'effect/reactivity';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
@@ -14,6 +17,7 @@ import {
   testDb,
 } from '../../__tests__/support/database.ts';
 import { readEnv } from '../../env.ts';
+import { type DatabaseConfig, OwnerDatabase } from '../client.ts';
 import { isMissingRole, sqlState } from '../errors.ts';
 import {
   MaintenanceScope,
@@ -145,6 +149,84 @@ describe.skipIf(!testDb)('the three database clients', () => {
             ),
           );
           assert.strictEqual(pinned, TENANT_ROLES.app);
+        }),
+      );
+
+      it.effect('rereads its password file for every new connection', () =>
+        Effect.gen(function* () {
+          const harness = yield* TestDatabase;
+          const login = `pw_rotate_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+          const file = join(
+            mkdtempSync(join(tmpdir(), 'studio-password-')),
+            'password',
+          );
+          writeFileSync(file, 'one\n');
+          yield* harness.onOwner(
+            harness.owner.sql.unsafe(
+              `create role ${login} login password 'one'`,
+            ),
+          );
+          const url = new URL(testDb!.url);
+          url.username = login;
+          url.password = 'one';
+
+          const currentUser = (client: OwnerDatabase['Service']) =>
+            Effect.map(
+              client.sql<{ who: string }>`select current_user as who`,
+              (rows) => rows[0]?.who,
+            );
+          const terminate = harness.onOwner(
+            harness.owner
+              .sql`select pg_terminate_backend(pid) from pg_stat_activity where usename = ${login}`,
+          );
+
+          yield* Effect.gen(function* () {
+            const build = (config: DatabaseConfig) =>
+              Effect.map(
+                Layer.build(
+                  OwnerDatabase.layer({ ...config, maxConnections: 1 }),
+                ),
+                (context) => Context.get(context, OwnerDatabase),
+              );
+            const rereads = yield* build({ url: url.href, passwordFile: file });
+            const bootRead = yield* build({ url: url.href });
+            assert.strictEqual(yield* currentUser(rereads), login);
+            assert.strictEqual(yield* currentUser(bootRead), login);
+
+            yield* harness.onOwner(
+              harness.owner.sql.unsafe(`alter role ${login} password 'two'`),
+            );
+            writeFileSync(file, 'two\n');
+            yield* terminate;
+
+            const reconnected = (client: OwnerDatabase['Service']) =>
+              Effect.result(
+                currentUser(client).pipe(Effect.retry({ times: 3 })),
+              );
+            const rotated = yield* reconnected(rereads);
+            assert.isTrue(Result.isSuccess(rotated));
+            if (Result.isSuccess(rotated)) {
+              assert.strictEqual(rotated.success, login);
+            }
+            // The control: the password read once, at boot, is refused.
+            const stale = yield* reconnected(bootRead);
+            assert.isTrue(Result.isFailure(stale));
+            if (Result.isFailure(stale)) {
+              assert.strictEqual(sqlState(stale.failure), '28P01');
+            }
+          }).pipe(
+            Effect.scoped,
+            Effect.ensuring(
+              Effect.orDie(
+                Effect.andThen(
+                  terminate,
+                  harness.onOwner(
+                    harness.owner.sql.unsafe(`drop role if exists ${login}`),
+                  ),
+                ),
+              ),
+            ),
+          );
         }),
       );
     },

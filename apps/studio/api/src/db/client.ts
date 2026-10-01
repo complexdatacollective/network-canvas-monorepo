@@ -10,6 +10,7 @@ import type { SqlError } from 'effect/sql';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { Environment } from '../env.ts';
+import { readPasswordFile } from '../env/resolve.ts';
 
 // One `DATABASE_URL`, three identities, three service tags (#1927 §9).
 //
@@ -48,6 +49,8 @@ export type DatabaseConfig = {
   readonly searchPath?: string | undefined;
   /** Sent as the `statement_timeout` startup parameter, e.g. `'5s'`. */
   readonly statementTimeout?: string | undefined;
+  /** Reread for every new connection, so a rotated password needs no restart. */
+  readonly passwordFile?: string | undefined;
 };
 
 /** The role a given identity runs as; the owner is the connecting login. */
@@ -77,6 +80,9 @@ export type DatabaseService = {
 
 export type DrizzleDatabase = Effect.Success<ReturnType<typeof makeDrizzle>>;
 
+const passwordFrom = (passwordFile: string) =>
+  Effect.sync(() => Redacted.make(readPasswordFile(passwordFile)));
+
 /** 10 s: an unroutable host otherwise hangs until the OS gives up. */
 const CONNECT_TIMEOUT = '10 seconds';
 
@@ -89,6 +95,9 @@ const makeService = (
     const role = roleFor(identity);
     const sql = yield* PgClient.make({
       url: Redacted.make(config.url),
+      ...(config.passwordFile === undefined
+        ? {}
+        : { password: passwordFrom(config.passwordFile) }),
       maxConnections: config.maxConnections ?? defaultMaxConnections,
       connectTimeout: CONNECT_TIMEOUT,
       applicationName: config.applicationName ?? `studio-${identity}`,
@@ -131,7 +140,7 @@ export class Database extends Context.Service<Database, DatabaseService>()(
     Effect.flatMap(Environment, (env) =>
       env.db === undefined
         ? Effect.die(new Error('DATABASE_URL is not set'))
-        : Effect.succeed(Database.layer({ url: env.db.url })),
+        : Effect.succeed(Database.layer(env.db)),
     ),
   );
 }

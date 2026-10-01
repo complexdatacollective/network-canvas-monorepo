@@ -132,7 +132,7 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
 
   // Built for this command and released with it, like rotation's.
   const Maintenance = MaintenanceDatabase.layer({
-    url: db.url,
+    ...db,
     applicationName: 'studio-maintenance',
   });
   return yield* applyMaintenanceWindow(window).pipe(

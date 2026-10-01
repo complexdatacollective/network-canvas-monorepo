@@ -260,11 +260,13 @@ describe('the database password file', () => {
     return path;
   };
 
-  it('puts the file’s password into a URL that carries none', () => {
+  it('puts the file’s password into a URL that carries none, and keeps the file', () => {
+    const path = passwordFile('s3cret');
     vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/studio');
-    vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
+    vi.stubEnv('DATABASE_PASSWORD_FILE', path);
     expect(readEnv().db).toEqual({
       url: 'postgres://app:s3cret@localhost:5433/studio',
+      passwordFile: path,
     });
   });
 

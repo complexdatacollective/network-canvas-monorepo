@@ -90,7 +90,7 @@ const migrate = Effect.gen(function* () {
   yield* Console.log(`Network Canvas Studio migrate ${STUDIO_VERSION}`);
   const ddl = yield* readSchemaDdl;
 
-  const owner = yield* Layer.build(OwnerDatabase.layer({ url: db.url })).pipe(
+  const owner = yield* Layer.build(OwnerDatabase.layer(db)).pipe(
     Effect.catch((cause) => new MigrateFailed({ cause })),
   );
 

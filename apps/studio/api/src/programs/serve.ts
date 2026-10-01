@@ -196,7 +196,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Layer.provide(DeniedAttempts.layer),
     Layer.provide(RateLimiter.layer),
     Layer.provide(RateLimitStore.layer),
-    Layer.provide(Layer.orDie(ReadinessDatabase.layer('app', { url: db.url }))),
+    Layer.provide(Layer.orDie(ReadinessDatabase.layer('app', db))),
     // The application client and everything over it. `Jobs` is built above
     // `JobClock.layerApplication` so the skew against the database is measured
     // once, at boot, rather than per enqueue — the correction the

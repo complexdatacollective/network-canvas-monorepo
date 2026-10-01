@@ -72,7 +72,7 @@ try {
   printBootstrapToken(
     await Effect.runPromise(
       OwnerScope.open(issueBootstrapToken()).pipe(
-        Effect.provide(OwnerDatabase.layer({ url: env.db.url })),
+        Effect.provide(OwnerDatabase.layer(env.db)),
         Effect.scoped,
       ),
     ),

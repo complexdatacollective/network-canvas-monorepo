@@ -63,7 +63,7 @@ const rotateSecrets = Effect.gen(function* () {
   // for this command and released with it: nothing else in the process holds a
   // client that sees across teams.
   const Maintenance = MaintenanceDatabase.layer({
-    url: db.url,
+    ...db,
     applicationName: 'studio-rotate-secrets',
   });
 

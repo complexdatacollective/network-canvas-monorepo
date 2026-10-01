@@ -159,7 +159,7 @@ function workerWith(db: DbEnv) {
       // disagree about the database, role or search path. The
       // `ReadinessDatabase` beside it serves the schema gate and readiness.
       const QueueDatabase = MaintenanceDatabase.layer({
-        url: db.url,
+        ...db,
         applicationName: 'studio-worker',
       });
 
@@ -211,9 +211,7 @@ function workerWith(db: DbEnv) {
     // through it, so it closes after the job drain.
     Layer.provide(RateLimiter.layer),
     Layer.provide(RateLimitStore.layer),
-    Layer.provide(
-      Layer.orDie(ReadinessDatabase.layer('maintenance', { url: db.url })),
-    ),
+    Layer.provide(Layer.orDie(ReadinessDatabase.layer('maintenance', db))),
   );
 }
 
