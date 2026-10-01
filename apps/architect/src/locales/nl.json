@@ -763,7 +763,7 @@
   "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": "Geef dit type een naam voor het codeboek en de geëxporteerde gegevens.",
   "architect.typeEditor.typeEditor.nodeAppearance": "Uiterlijk van knooppunten",
   "architect.typeEditor.typeEditor.shape": "Vorm",
-  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Deze naam identificeert het knooppunttype in het codeboek en in je geëxporteerde gegevens. Voorbeelden zijn “Persoon”, “Plaats” of “Organisatie”.} other {Deze naam identificeert het relatietype in het codeboek en in je geëxporteerde gegevens. Voorbeelden zijn “Vrienden” of “Werkt samen met”.}}",
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Deze naam identificeert het knooppunttype in het codeboek en in je geëxporteerde gegevens. Voorbeelden zijn “Persoon”, “Plaats” of “Organisatie”.} other {Deze naam identificeert het relatietype in het codeboek en in je geëxporteerde gegevens. Voorbeelden zijn “Vrienden” of “Werkrelatie”.}}",
   "architect.typeEditor.typeEditor.typeColor": "Typekleur",
   "architect.typeEditor.typeEditor.typeIdentity": "Identiteit van het type",
   "architect.typeEditor.typeEditor.typeName": "Naam van het {entity, select, node {knooppunttype} other {relatietype}}",
