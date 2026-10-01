@@ -13,7 +13,7 @@
     "typecheck": "tsc --build --noEmit"
   },
   "dependencies": {
-    "@base-ui/react": "^1.4.0",
+    "@base-ui/react": "catalog:",
     "@codaco/app-i18n": "workspace:^"
   },
   "devDependencies": {

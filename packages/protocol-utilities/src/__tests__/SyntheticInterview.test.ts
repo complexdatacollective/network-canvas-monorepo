@@ -2094,8 +2094,8 @@ describe('validation rules on generated nodes', () => {
 
     expect(byName).toEqual([
       {
-        name: 'Mohammad Crist',
-        label: 'Mohammad',
+        name: 'Nikita Crist',
+        label: 'Nikita',
         age: 61,
         small: -44,
         active: true,
@@ -2105,8 +2105,8 @@ describe('validation rules on generated nodes', () => {
         position: { x: 0.1, y: 0.1 },
       },
       {
-        name: 'Laury Wisozk',
-        label: 'Maybelle',
+        name: 'Lilliana Wisozk',
+        label: 'Moises',
         age: 19,
         small: 8,
         active: false,
@@ -2116,8 +2116,8 @@ describe('validation rules on generated nodes', () => {
         position: { x: 0.27, y: 0.33 },
       },
       {
-        name: 'Clinton Leffler',
-        label: 'Esther',
+        name: 'Collin Leffler',
+        label: 'Emelia',
         age: 56,
         small: -26,
         active: true,
@@ -2127,8 +2127,8 @@ describe('validation rules on generated nodes', () => {
         position: { x: 0.44000000000000006, y: 0.56 },
       },
       {
-        name: 'Lynette Hilll',
-        label: 'Hannah',
+        name: 'Lola Hilll',
+        label: 'Georgianna',
         age: 51,
         small: -4,
         active: true,

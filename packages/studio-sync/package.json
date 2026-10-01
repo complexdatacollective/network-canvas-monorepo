@@ -30,16 +30,16 @@
   },
   "dependencies": {
     "@codaco/protocol-validation": "workspace:^",
-    "@noble/hashes": "^2.3.0",
+    "@noble/hashes": "^2.4.0",
     "drizzle-orm": "catalog:",
-    "pg": "^8.23.0",
+    "pg": "^8.23.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
-    "@types/pg": "^8.20.4",
+    "@types/pg": "^8.23.1",
     "drizzle-kit": "catalog:",
-    "fast-check": "^4.9.0",
+    "fast-check": "^4.10.2",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
