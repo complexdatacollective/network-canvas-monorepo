@@ -1,0 +1,801 @@
+{
+  "ThemeTranslations": {
+    "label": "色彩主題",
+    "triggerLabel": "色彩主題：{theme}",
+    "light": "淺色",
+    "dark": "深色",
+    "system": "跟隨系統"
+  },
+  "Metadata": {
+    "siteTitle": "Network Canvas",
+    "siteDescription": "Network Canvas 提供免費且開放原始碼的網絡調查軟體，並以研究人員與參與者雙方的需求為設計核心。",
+    "getStartedTitle": "開始使用",
+    "getStartedDescription": "選擇合適的 Network Canvas 應用程式，用來設計協定或蒐集網絡資料。"
+  },
+  "Hero": {
+    "headline": "讓複雜的網絡資料蒐集化繁為簡。",
+    "description": "Network Canvas 提供<strong>免費且開放原始碼</strong>的網絡調查軟體，並以研究人員與參與者雙方的需求為設計核心。",
+    "getStarted": "開始使用",
+    "keepScrolling": "或繼續往下捲動，深入瞭解"
+  },
+  "News": {
+    "label": "最新消息：",
+    "fullStory": "[閱讀全文]"
+  },
+  "Tools": {
+    "heading": "協助您進行研究的一系列工具",
+    "introduction": "我們為網絡研究提供完整的端對端工作流程，包含用於調查設計與進行訪談的應用程式。研究人員可以透過這些工具，輕鬆設計研究、蒐集並匯出網絡資料。",
+    "architect": {
+      "description": "在瀏覽器中以視覺化方式設計 Network Canvas 訪談的工具。Architect 讓領域專家能專注於研究的設計與執行，無須學習複雜的新技術。",
+      "action": "開啟 Architect",
+      "screenshotAlt": "顯示訪談設計的 Architect 協定編輯器"
+    },
+    "interviewer": {
+      "description": "在瀏覽器中於實地執行 Network Canvas 訪談的應用程式。Interviewer 為個人網絡訪談的各項資料蒐集任務，提供極簡且以參與者為中心的介面。",
+      "action": "開啟 Interviewer",
+      "screenshotAlt": "顯示可用 Network Canvas 協定的 Interviewer 首頁畫面"
+    },
+    "fresco": {
+      "description": "將 Network Canvas 訪談帶上網路！Fresco 讓研究人員能在網頁瀏覽器中進行 Network Canvas 訪談。",
+      "action": "試用 Fresco 沙箱",
+      "deployAction": "部署 Fresco",
+      "screenshotAlt": "顯示協定、參與者與訪談總數的 Fresco 儀表板"
+    }
+  },
+  "Video": {
+    "heading": "深入瞭解",
+    "description": "我們的目標是為研究社群打造一套高品質、免費、可安心用於研究且經得起時間考驗的工具。觀看我們的專案影片，瞭解我們打造 Network Canvas 的緣由，也歡迎造訪我們的 <channel>YouTube 頻道</channel>觀看更多影片。",
+    "channel": "YouTube 頻道",
+    "title": "什麼是 Network Canvas？",
+    "watchLabel": "觀看：什麼是 Network Canvas？"
+  },
+  "Principles": {
+    "heading": "設計原則",
+    "introduction": "所有 Network Canvas 軟體都以五項設計原則為基礎。這些原則源自我們的觀察與經驗，針對的是研究人員在設計與執行個人網絡研究時所面臨的問題。",
+    "ontologicalFlexibility": {
+      "title": "本體論上的彈性",
+      "paragraph1": "本軟體在設計上具備根本的本體論彈性。簡單來說，就是我們不會對您訪談的性質預設任何立場。",
+      "paragraph2": "研究人員可以自由定義訪談中的節點與關係、它們的屬性、資料蒐集任務的順序，以及向參與者說明這些任務的方式。"
+    },
+    "interviewerAssisted": {
+      "title": "面對面且由訪員協助",
+      "paragraph1": "我們相信，有受過訓練的訪員在場協助資料蒐集任務，能蒐集到品質更高的資料。",
+      "paragraph2": "因此，Network Canvas 工具的設計前提是：訪談在訪員在場的情況下進行、使用由訪員掌控的裝置，且訪員已受過引導訪談流程的專門訓練。"
+    },
+    "emphasisOnDesign": {
+      "title": "重視設計",
+      "paragraph1": "我們的軟體從頭開始設計，力求在視覺上吸引參與者，並盡可能減輕他們的負擔。",
+      "paragraph2": "我們極為重視設計，參考了人機互動（HCI）文獻與網絡分析社群的論文，打造出參與者容易理解的訪談體驗，以清晰、一致且富有觸感的互動引導資料蒐集。"
+    },
+    "endToEndWorkflow": {
+      "title": "端對端工作流程",
+      "paragraph1": "要簡化複雜結構資料的蒐集過程，不僅需要訪談工具，也需要設計這些訪談的工具。這些工具共同構成端對端的工作流程，降低蒐集網絡資料的成本（包括物質與技術成本）。",
+      "paragraph2": "重要的是，操作我們的工具不需要高深的技術知識。研究人員反而能專注於運用自身的專業知識，設計出有效的訪談體驗。"
+    },
+    "openSourceCommunity": {
+      "title": "開放原始碼、由社群驅動的開發",
+      "paragraph1": "要讓這項工作持續下去，關鍵在於學術界內外社群的意見與合作。因此，Network Canvas 工具可免費使用，且完全開放原始碼（以 GPL 第 3 版授權）。",
+      "paragraph2": "我們已建立由社群驅動的開發模式，並熱切鼓勵任何有興趣的第三方參與功能開發或做出其他貢獻。"
+    }
+  },
+  "Grants": {
+    "heading": "使用 Network Canvas 的研究計畫",
+    "introduction": "我們很自豪地說，Network Canvas 正積極應用於多項美國聯邦政府補助的研究計畫，橫跨多元的研究情境、機構與資助單位。",
+    "previous": "上一個計畫",
+    "next": "下一個計畫",
+    "show": "顯示第 {number} 個計畫"
+  },
+  "Publications": {
+    "heading": "使用 Network Canvas 的近期著作",
+    "carouselLabel": "近期著作輪播",
+    "introduction": "以下是最近 16 篇使用 Network Canvas 的著作。您也可以瀏覽<all>完整的著作清單</all>。",
+    "submission": "如果您希望在此展示您的著作，請在我們社群網站的<thread>討論串</thread>中留言告訴我們。",
+    "thread": "討論串"
+  },
+  "PublicationsPage": {
+    "metadata": {
+      "title": "研究著作",
+      "description": "運用 Network Canvas 工具蒐集與研究社會網絡資料的研究與學術成果。"
+    },
+    "heading": "使用 Network Canvas 的研究著作",
+    "citing": "關於引用 Network Canvas 的方式，請參閱我們<article>說明文件中的相關文章</article>。",
+    "submission": "如果您希望在此展示您的著作，請在我們社群網站的<thread>討論串</thread>中留言告訴我們。"
+  },
+  "Team": {
+    "heading": "核心團隊",
+    "introduction": "我們的專案團隊成員來自各種不同的學科與專業領域。"
+  },
+  "ScientificAdvisors": {
+    "heading": "科學顧問"
+  },
+  "Institutions": {
+    "heading": "機構",
+    "paragraph1": "本軟體由一支以西北大學與牛津大學為據點的研究人員與開發人員團隊開發，另有數位外部約聘開發人員參與。我們由衷感謝美國國家衛生研究院（NIH）<prior>過去</prior>與<ongoing>持續</ongoing>提供的經費補助，讓這項工作得以實現。",
+    "paragraph2": "本軟體相關的智慧財產權與著作權，由已登記立案的非營利組織 Complex Data Collective 掌管，其成員為本專案的核心人員。",
+    "prior": "過去",
+    "ongoing": "持續"
+  },
+  "WhatNext": {
+    "heading": "接下來呢？",
+    "documentation": {
+      "title": "想深入瞭解嗎？",
+      "body": "我們已建立詳盡的說明文件，涵蓋使用 Network Canvas 建立、部署與管理研究的各個面向。",
+      "action": "前往說明文件網站"
+    },
+    "community": {
+      "title": "需要協助嗎？",
+      "body": "我們最近也推出了社群網站，您可以在那裡提問、回報錯誤、分享您的成果，並向其他研究人員尋求協助。",
+      "action": "前往社群網站"
+    },
+    "keepInTouch": {
+      "title": "保持聯繫",
+      "body": "如果您想與本專案保持聯繫，並在第一時間得知活動與新版本發布的消息，歡迎加入我們的郵件清單，並在 Twitter 上追蹤我們。我們不會濫發郵件，這份清單只會用於重要公告。"
+    },
+    "collaboration": {
+      "title": "想要合作嗎？",
+      "body": "如果您有興趣進行正式的學術合作或顧問合作，請參閱我們說明文件中的相關文章。很遺憾，由於團隊規模小、人力有限，我們無法提供無償的顧問服務。",
+      "action": "探索合作方式"
+    }
+  },
+  "MailingList": {
+    "placeholder": "email@networkcanvas.com",
+    "emailLabel": "電子郵件地址",
+    "submit": "加入清單",
+    "success": "感謝您！我們會再與您聯繫。"
+  },
+  "Footer": {
+    "terms": "使用條款",
+    "privacy": "隱私權政策",
+    "copyright": "版權所有 Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "ProtocolGallery": {
+    "metadata": {
+      "title": "協定範例庫",
+      "description": "探索以 Network Canvas 建立的研究協定，包括研究摘要、編碼簿，以及可直接使用的協定檔案。"
+    },
+    "intro": {
+      "heading": "協定範例庫",
+      "introduction": "探索 Network Canvas 使用者所分享的研究協定。瞭解每項研究的設計方式、下載編碼簿與協定，或直接在瀏覽器中預覽訪談。",
+      "featured": "精選協定"
+    },
+    "collection": {
+      "heading": "探索收錄的協定",
+      "searchLabel": "搜尋協定",
+      "searchPlaceholder": "搜尋協定",
+      "clearSearch": "清除搜尋",
+      "clearFilters": "全部清除",
+      "resultsOfTotal": "顯示 {count} 個，共 {total, plural, =1 {# 個協定} other {# 個協定}}",
+      "filterLabel": "篩選協定",
+      "facets": {
+        "fields": "研究領域",
+        "edgeGeneration": "關係產生方式"
+      },
+      "sortLabel": "排序方式",
+      "sortOptions": {
+        "newest": "由新到舊",
+        "oldest": "由舊到新",
+        "titleAsc": "標題 A–Z",
+        "titleDesc": "標題 Z–A"
+      },
+      "emptyHeading": "找不到協定",
+      "emptyDescription": "請試著變更搜尋字詞或篩選條件。",
+      "openProtocol": "探索 {title}",
+      "viewDetails": "檢視"
+    },
+    "card": {
+      "edges": "關係",
+      "fields": "領域",
+      "added": "新增於 {date}"
+    },
+    "stages": {
+      "heading": "階段順序",
+      "waveTabs": "波次",
+      "count": "{count, plural, =1 {# 個階段} other {# 個階段}}",
+      "waves": "{count, plural, =1 {# 波} other {# 波}}",
+      "edgeStageCounts": {
+        "Sociogram": "{count, plural, =1 {# 個社會關係圖} other {# 個社會關係圖}}",
+        "DyadCensus": "{count, plural, =1 {# 個二元組普查} other {# 個二元組普查}}",
+        "TieStrengthCensus": "{count, plural, =1 {# 個關係強度普查} other {# 個關係強度普查}}",
+        "OneToManyDyadCensus": "{count, plural, =1 {# 個一對多二元組普查} other {# 個一對多二元組普查}}",
+        "NetworkComposer": "{count, plural, =1 {# 個網絡編輯器} other {# 個網絡編輯器}}"
+      }
+    },
+    "stageTypes": {
+      "AlterEdgeForm": "逐一他者關係表單",
+      "AlterForm": "逐一他者表單",
+      "Anonymisation": "匿名化介面",
+      "CategoricalBin": "類別分箱",
+      "DyadCensus": "二元組普查",
+      "EgoForm": "自我表單",
+      "FamilyPedigree": "家族譜系",
+      "Geospatial": "地理空間介面",
+      "Information": "資訊",
+      "NameGenerator": "名字產生器（使用表單）",
+      "NameGeneratorQuickAdd": "名字產生器（快速新增）",
+      "NameGeneratorRoster": "名冊資料名字產生器",
+      "Narrative": "敘事",
+      "NarrativePedigree": "敘事譜系",
+      "NetworkComposer": "網絡編輯器",
+      "OneToManyDyadCensus": "一對多二元組普查",
+      "OrdinalBin": "順序分箱",
+      "Sociogram": "社會關係圖",
+      "TieStrengthCensus": "關係強度普查"
+    },
+    "detail": {
+      "back": "返回範例庫",
+      "citation": "引用此著作",
+      "demonstrates": "此協定的示範重點",
+      "details": "研究資訊",
+      "studyPi": "計畫主持人",
+      "grantNumber": "計畫編號",
+      "contact": "協定聯絡人",
+      "methods": "關係產生方式",
+      "fields": "研究領域",
+      "population": "研究對象",
+      "usesRosters": "使用名冊",
+      "yes": "是",
+      "no": "否",
+      "clinicalTrials": "試驗登錄",
+      "publication": "DOI / 著作",
+      "dateAdded": "新增日期",
+      "viewPublication": "檢視著作",
+      "wave": "第 {wave} 波",
+      "preview": "預覽協定",
+      "downloadProtocol": "下載協定",
+      "viewCodebook": "編碼簿摘要"
+    },
+    "preview": {
+      "metadata": {
+        "title": "預覽：{name}"
+      },
+      "loading": "正在準備預覽…",
+      "finishConfirmation": "這只是預覽，不會儲存任何內容。結束後，這次的協定執行就會終止，之後您可以重新開始。",
+      "finishedHeading": "預覽已結束",
+      "finishedDescription": "訪談已結束，過程與參與者實際進行時完全相同。未儲存任何內容。",
+      "restart": "重新開始預覽",
+      "backToProtocol": "返回協定",
+      "errorHeading": "無法預覽此協定",
+      "errors": {
+        "unavailable": "無法下載協定檔案。請檢查您的網路連線，然後再試一次。",
+        "unreadable": "無法開啟協定檔案，檔案可能已損毀。",
+        "unsupported-version": "此協定使用了訪談引擎無法執行的架構版本。",
+        "invalid": "此協定驗證失敗，因此訪談引擎無法執行。"
+      },
+      "retry": "再試一次"
+    },
+    "submit": {
+      "heading": "提交您的協定",
+      "description": "請將您的 .netcanvas 檔案、編碼簿與引用資訊寄給我們，我們會審閱並考慮收錄至範例庫。",
+      "action": "以電子郵件寄送協定"
+    }
+  },
+  "GetStarted": {
+    "metadata": {
+      "title": "開始使用",
+      "description": "選擇合適的 Network Canvas 應用程式，用來設計協定或蒐集網絡資料。"
+    },
+    "intro": {
+      "heading": "選擇從哪裡開始",
+      "introduction": "請點選最符合您目前研究階段的卡片開始。",
+      "stages": {
+        "design": {
+          "label": "設計階段",
+          "title": "設計或建立訪談協定",
+          "accessibleName": "設計或建立訪談協定"
+        },
+        "collect": {
+          "label": "資料蒐集階段",
+          "title": "使用 Network Canvas 蒐集資料",
+          "accessibleName": "使用 Network Canvas 蒐集資料"
+        },
+        "learn": {
+          "label": "探索 Network Canvas",
+          "title": "深入瞭解本專案",
+          "accessibleName": "深入瞭解本專案（在新分頁中開啟說明文件）"
+        }
+      }
+    },
+    "sections": {
+      "design": {
+        "label": "設計階段",
+        "heading": "設計或建立協定",
+        "description": "使用瀏覽器版的 Architect 設計新研究，或在 Architect Classic 中繼續既有的研究。"
+      },
+      "collect": {
+        "label": "資料蒐集階段",
+        "heading": "蒐集資料",
+        "description": "依據您規劃蒐集資料的方式與地點，選擇 Interviewer、Fresco 或 Interviewer Classic。"
+      }
+    },
+    "shared": {
+      "bestFor": "最適合",
+      "downloadVersion": "下載 {version} 版",
+      "platformAccessibleName": "{app}（{platform}）",
+      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援架構 7 協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用架構 8，並包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始的架構 7 檔案。",
+      "schemaVersionLink": "瞭解架構版本"
+    },
+    "platforms": {
+      "appleSilicon": "Apple 晶片",
+      "appleIntel": "Intel 處理器",
+      "windows": "Windows",
+      "linux": "Linux",
+      "android": "Android"
+    },
+    "apps": {
+      "architect": {
+        "status": "建議新研究使用",
+        "description": "直接在瀏覽器中設計協定，無須安裝任何軟體，即可使用 Network Canvas 的所有最新功能。",
+        "bestFor": {
+          "newStudy": "展開新研究",
+          "latestFeatures": "運用所有最新功能設計協定",
+          "interviewerOrFresco": "搭配新版 Interviewer 或 Fresco 蒐集資料",
+          "upgradeClassic": "將 Architect Classic 建立的協定更新為使用最新功能"
+        },
+        "actions": {
+          "open": "開啟 Architect"
+        }
+      },
+      "interviewer": {
+        "status": "面對面 · 推薦",
+        "description": "在您掌控的裝置上進行由訪員協助的資料蒐集，並使用以 Network Canvas 所有最新功能建立的協定。",
+        "bestFor": {
+          "inPerson": "面對面進行的訪談",
+          "guided": "由受過訓練的訪員引導參與者",
+          "researcherDevice": "在研究人員掌控的裝置上蒐集資料",
+          "latestFeatures": "協定需要使用所有最新功能的研究"
+        },
+        "actions": {
+          "open": "開啟 Interviewer"
+        }
+      },
+      "fresco": {
+        "status": "大型團隊 · 遠端施測 · 推薦",
+        "description": "適用於參與者在自己的瀏覽器中遠端完成訪談，並提供集中式的研究與資料管理。沙箱是公開的示範環境，不適合用來執行正式研究。",
+        "bestFor": {
+          "remoteBrowser": "參與者在自己的瀏覽器中遠端完成訪談",
+          "centralManagement": "集中管理研究與參與者",
+          "sharedDashboard": "透過共用儀表板管理與匯出資料",
+          "selfHosted": "能夠部署並自行託管 Fresco 執行個體的團隊"
+        },
+        "actions": {
+          "sandbox": "Fresco 沙箱存取指南",
+          "deployment": "部署指南"
+        }
+      },
+      "architectClassic": {
+        "status": "Classic · 維護模式",
+        "description": "僅在您的研究必須與 Interviewer Classic 及架構 7 保持相容時使用。",
+        "bestFor": {
+          "classicCompatibility": "必須與 Interviewer Classic 保持相容的既有研究",
+          "editWithoutMigration": "必須在不移轉的情況下繼續編輯的架構 7 協定"
+        }
+      },
+      "interviewerClassic": {
+        "status": "Classic · 既有研究",
+        "description": "適用於既有的架構 7 研究，以及離線的桌上型電腦或平板電腦工作流程。持續維護以確保相容性並修正錯誤。",
+        "bestFor": {
+          "schema7Study": "仰賴架構 7 的既有研究",
+          "desktopTablet": "延續既有的桌上型電腦或平板電腦工作流程",
+          "offlineCollection": "需要舊版離線蒐集工作流程的研究"
+        }
+      }
+    }
+  },
+  "SummerUpdate": {
+    "metadata": {
+      "title": "隆重推出新一代 Network Canvas 應用程式",
+      "description": "認識重新設計的 Architect 與 Interviewer 應用程式、Fresco 4.0.0，以及全新的架構 8 協定格式。"
+    },
+    "hero": {
+      "heading": "<lead>隆重推出新一代</lead> <product><brand>Network Canvas</brand> <apps>應用程式</apps></product>",
+      "description": "這是設計、執行與管理 Network Canvas 訪談的一大躍進。本頁將說明有哪些<strong>改變</strong>、有哪些<strong>新功能</strong>，以及這些對您的工作<strong>代表什麼</strong>。",
+      "scrollCue": "繼續往下捲動，深入瞭解"
+    },
+    "definitions": {
+      "pwa": "<dfn>漸進式網頁應用程式</dfn>（PWA）是經過特別設計、可安裝在您裝置上的網站，能提供如同原生應用程式的體驗。也就是說，它們有可點選開啟的圖示、擁有自己的儲存空間，而且可以離線運作。",
+      "protocolSchema": "協定架構是一套技術規格，定義協定檔案的結構，以及應用程式解讀協定檔案的方式。協定架構確保協定能在不同版本的應用程式之間相容，並為實作新功能與新介面提供框架。",
+      "architectClassic": "最初推出、需下載安裝的桌面應用程式，用於設計 Network Canvas 協定。它仍可供進行中的研究使用，並獲得完整支援，但已進入維護模式，不會再新增功能。請<link>點此</link>下載。",
+      "interviewerClassic": "最初推出、需下載安裝的桌面與平板應用程式，用於蒐集訪談資料。它仍可供進行中的研究使用，並獲得完整支援，但已進入維護模式，不會再新增功能。請<link>點此</link>下載。"
+    },
+    "common": {
+      "documentation": "說明文件"
+    },
+    "overview": {
+      "label": "新功能",
+      "heading": "Architect 與 Interviewer：為瀏覽器全新打造",
+      "introduction": "我們將 <strong>Architect</strong> 與 <strong>Interviewer</strong> 重新設計為網站，也能在您的裝置上安裝為<pwa>漸進式網頁應用程式</pwa>。它們與 <strong>Fresco 4.0.0</strong> 共同組成統一、現代化的平台，建立在共通的技術基礎之上——三者皆支援全新的協定檔案格式<strong>架構 8</strong>。",
+      "benefits": {
+        "lowFriction": {
+          "title": "使用門檻低",
+          "description": "隨時在任何裝置上造訪 <architect>architect.networkcanvas.com</architect> 或 <interviewer>interviewer.networkcanvas.com</interviewer>，無須安裝任何軟體即可使用這些工具。"
+        },
+        "installation": {
+          "title": "在本機安裝應用程式",
+          "description": "您可以直接從瀏覽器將任一工具安裝為應用程式。它的使用方式就像裝置上的其他應用程式，而您的資料仍保留在本機，由您掌控。"
+        },
+        "updates": {
+          "title": "簡化的更新流程",
+          "description": "新版應用程式會自動保持最新狀態，持續取得最新功能與修正，讓您專注於研究，而不必費心管理軟體版本。"
+        },
+        "tablet": {
+          "title": "恢復支援平板電腦",
+          "description": "受限於應用程式商店的規定，Interviewer 已有數年無法在平板上使用；如今新版 Interviewer 應用程式再度可以在平板裝置（iPad 與 Android）上執行。"
+        }
+      },
+      "classic": {
+        "title": "那原本的桌面與平板應用程式呢？",
+        "description": "原本的桌面與平板應用程式現已更名為 <architectClassic>Architect Classic</architectClassic> 與 <interviewerClassic>Interviewer Classic</interviewerClassic>。它們仍可供進行中的研究使用，並獲得<strong>完整支援</strong>，但已進入維護模式，不會再新增功能。"
+      }
+    },
+    "apps": {
+      "architect": {
+        "label": "協定設計",
+        "heading": "認識全新的 Architect：在瀏覽器中設計協定",
+        "description": "無須安裝任何軟體，只要開啟 <link>architect.networkcanvas.com</link> 就能開始建立協定。Architect 一律會自動執行最新版本。進入網站後，您可以將它安裝到電腦上成為 <pwa>PWA</pwa>，享有近似原生應用程式的體驗，並在本機掌控您的資料。",
+        "iconAlt": "Architect 應用程式圖示",
+        "screenshotAlt": "顯示範例協定時間軸的 Architect 協定編輯器",
+        "bullets": {
+          "schema8": "建立<strong>架構 8</strong> 協定，支援所有新功能（詳見下方）",
+          "upgrades": "開啟並<strong>自動升級</strong>較舊的架構 7 協定",
+          "templates": "內含<strong>協定範本</strong>，協助您快速上手並避免常見錯誤"
+        },
+        "open": "開啟 Architect",
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> 仍可供需要繼續使用舊版 Interviewer（例如 6.6.0）的研究人員使用。它已進入維護模式（僅修正錯誤），並會繼續產生架構 7 協定。"
+      },
+      "interviewer": {
+        "label": "面對面訪談",
+        "heading": "Interviewer：隨時隨地進行訪談",
+        "description": "Interviewer 也已針對瀏覽器重新設計：在 <link>interviewer.networkcanvas.com</link> 上傳協定，無須安裝任何軟體即可部署。將它安裝為 <pwa>PWA</pwa> 即可支援離線工作流程——它依然是面對面、由訪員協助進行之網絡研究的理想工具。",
+        "iconAlt": "Interviewer 應用程式圖示",
+        "screenshotAlt": "顯示協定卡片與繼續訪談按鈕的 Interviewer 儀表板",
+        "bullets": {
+          "security": "全新進階安全機制：加密的資料儲存，以及匯出資料等敏感操作須經應用程式授權",
+          "schema8": "原生支援<strong>架構 8</strong>，並在您匯入既有的架構 7 協定時自動完成移轉",
+          "compatibility": "相容於所有桌上型電腦與平板裝置，包括 iPad 與 Android 平板電腦"
+        },
+        "open": "開啟 Interviewer",
+        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> 仍可供進行中的研究使用。它與 <architectClassic>Architect Classic</architectClassic> 一樣僅處於維護模式，不會獲得新功能。"
+      },
+      "fresco": {
+        "label": "遠端自填式訪談",
+        "heading": "Fresco 4.0.0：重大升級",
+        "description": "最新版的 Fresco 是一次大規模的發布，帶來多項重要的新功能。Fresco 專為遠端自填式訪談而設計（同時也完全適用於面對面訪談），若您的研究參與者眾多、研究團隊龐大，或需要集中式的資料管理方案，Fresco 會是我們建議的選擇。",
+        "iconAlt": "Fresco 應用程式圖示",
+        "deploymentGuide": "部署指南",
+        "upgradeNote": "Fresco 3.x 的使用者應避免在研究進行期間升級。Fresco 4.0.0 無法降級至 3.x。",
+        "cards": {
+          "multiUser": {
+            "title": "多使用者存取",
+            "description": "每位團隊成員都有自己的帳號，支援雙重驗證與通行金鑰，並保留系統中所有操作的完整稽核紀錄。"
+          },
+          "api": {
+            "title": "安全的資料 API",
+            "description": "Fresco 現在提供安全的唯讀 API，讓您以程式存取研究資料，支援即時報表、儀表板與分析。"
+          },
+          "selfHosted": {
+            "title": "可完全自行託管",
+            "description": "Fresco 現在可以完整安裝在您自己的伺服器上，或託管於您的私有雲，讓您完全掌控自己的資料。"
+          }
+        }
+      }
+    },
+    "features": {
+      "label": "架構 8",
+      "heading": "新介面與新功能",
+      "introduction": "新一代應用程式採用新的<definition>協定架構版本</definition>——架構 8，其中包含多種新的訪談介面與功能。如果您的研究需要其中任何一項，就必須使用新工具。選擇任一張卡片即可查看詳細內容。",
+      "documentationLink": "在說明文件中深入瞭解",
+      "previewAlt": "預覽：{name}",
+      "groups": {
+        "interfaces": "新的訪談介面",
+        "schema": "架構 8 功能",
+        "architect": "Architect",
+        "interviewer": "Interviewer",
+        "fresco": "Fresco 4.0.0"
+      },
+      "geospatial": {
+        "shortName": "地理空間",
+        "name": "地理空間介面",
+        "summary": "請參與者在互動式地圖上選取區域，藉此蒐集他者層級的位置資料。",
+        "details": {
+          "0": "使用 GeoJSON 檔案，定義可選取的人口普查區、郵遞區號、社區或自訂研究區域。",
+          "1": "選擇要隨每個人一併儲存的 GeoJSON 屬性欄位，讓回答在分析時可直接與空間資料合併。",
+          "2": "可選擇加入地址搜尋與大眾運輸脈絡資訊。Mapbox 服務在訪談期間需要網路連線。"
+        }
+      },
+      "anonymisation": {
+        "shortName": "匿名化",
+        "name": "匿名化介面",
+        "summary": "在參與者的裝置上加密所選的節點或關係屬性，讓參與者直接掌控敏感的識別資訊。",
+        "details": {
+          "0": "每位參與者自行建立用來保護所選資料的通關密語，應用程式絕不會儲存這組通關密語。",
+          "1": "研究人員無法解密受保護的值；匯出時，加密的屬性會以明確的標記取代。",
+          "2": "這是一項實驗性功能，適用於透過更強的隱私保障來建立信任、促進揭露的研究。"
+        }
+      },
+      "oneToMany": {
+        "shortName": "一對多二元組普查",
+        "name": "一對多二元組普查介面",
+        "summary": "在同一個畫面上建立從一位焦點人物到其他多人的關係，而不必逐一考量每一對組合。",
+        "details": {
+          "0": "當網絡中有可能與許多人有關係的核心人物時，即可使用此介面。",
+          "1": "蒐集一種或多種關係類型，並在整個任務中持續顯示焦點人物。",
+          "2": "決定每位焦點人物在考量完畢後，要回到清單中再進行一輪，還是從清單中移除。"
+        }
+      },
+      "familyPedigree": {
+        "shortName": "家族譜系",
+        "name": "家族譜系介面",
+        "summary": "透過專屬的視覺化工作流程，引導參與者建立複雜的家族結構。",
+        "details": {
+          "0": "同時建立家庭成員與彼此的關係，自動版面配置讓譜系在擴大時依然清晰易讀。",
+          "1": "呈現血緣、社會、收養、捐贈、代孕與伴侶關係，並蒐集每位家庭成員的屬性。",
+          "2": "可加入選用的疾病提名步驟，記錄哪些親屬罹患特定病症，以供日後視覺化呈現。"
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "敘事譜系",
+        "name": "敘事譜系介面",
+        "summary": "將先前完成的家族譜系，轉換為採用標準臨床譜系符號的唯讀視覺化圖表。",
+        "details": {
+          "0": "針對支援的遺傳模式，顯示一種或多種病症的罹病親屬與確定帶因者。",
+          "1": "若研究設計能在適當引導下進行解讀，可選擇顯示「有風險」等可能狀態。",
+          "2": "聚焦於特定一人的相關世系，並匯出可列印的快照。此視覺化圖表僅為輔助工具，並非診斷。"
+        }
+      },
+      "networkComposer": {
+        "shortName": "網絡編輯器",
+        "name": "網絡編輯器介面",
+        "summary": "在單一自由形式的畫布上，建立並編輯參與者完整的個人網絡。",
+        "details": {
+          "0": "新增人物、填寫人物與關係屬性、繪製多種關係類型，並隨著對話進展重新安排網絡的位置。",
+          "1": "運用套索選取、群組、自動版面配置、鍵盤快速鍵，以及復原或重做功能，有效率地建構密集的網絡。",
+          "2": "請將它視為由研究人員或訪員主導的網絡記事本，而非逐步進行的自填式任務。"
+        }
+      },
+      "validation": {
+        "shortName": "驗證",
+        "name": "更豐富的欄位驗證",
+        "summary": "直接在協定中表達答案之間的關係，讓表單能在訪談仍在進行時，就偵測出前後不一致的回答。",
+        "details": {
+          "0": "使用新的「大於變項」與「小於變項」規則，將數值回答與另一個變項相比較。",
+          "1": "將這些相對檢查與既有的必填、範圍、唯一性及跨欄位規則結合，界定您的研究可接受的答案。",
+          "2": "在部署前於 Architect 中預覽表單並測試邊界情況；相同的協定規則也會在 Interviewer 與 Fresco 中執行。"
+        }
+      },
+      "enhancedSkipLogic": {
+        "shortName": "強化的略過邏輯",
+        "name": "強化的略過邏輯",
+        "summary": "透過擴充的比較規則，並為每個略過的階段明確指定目的地，打造更精確的訪談路徑。",
+        "details": {
+          "0": "對文字回答使用「包含」與「不包含」，並在類別與順序規則中比對多個已選取的值。",
+          "1": "從下一個可用的階段繼續、向前跳至指定的後續階段，或直接前往訪談結束畫面。",
+          "2": "讓每個目的地都只會向前推進，使複雜的路徑可以預測，並避免在資料蒐集期間出現迴圈。"
+        }
+      },
+      "nodeShapes": {
+        "shortName": "節點形狀",
+        "name": "可設定的節點形狀",
+        "summary": "以形狀作為額外的視覺通道，讓不同類型的人物在密集的網絡介面中更容易區分。",
+        "details": {
+          "0": "為每種人物類型選擇圓形、正方形或菱形作為預設形狀。",
+          "1": "當視覺差異承載資料時，可依據類別、順序、布林值、數字或純量變項動態對應形狀。",
+          "2": "將形狀與顏色、大小搭配使用，讓重要類別不必仰賴單一視覺線索也能清楚辨識。"
+        }
+      },
+      "formHints": {
+        "shortName": "表單說明文字",
+        "name": "表單說明文字與驗證指引",
+        "summary": "在個別問題旁放上簡潔的說明，讓參與者在需要的地方即時獲得相關脈絡。",
+        "details": {
+          "0": "為表單欄位加入 Markdown 格式的說明文字，而不必加長階段的主要提示。",
+          "1": "用說明文字釐清預期的格式、較陌生的術語，或回答將如何解讀。",
+          "2": "可選擇顯示根據欄位驗證規則自動產生的指引，例如可接受的範圍或必填的回答。"
+        }
+      },
+      "protocolTemplates": {
+        "shortName": "協定範本",
+        "name": "協定範本",
+        "summary": "從具有研究基礎的協定著手，而不是從空白的時間軸開始，再依您的研究需求加以調整。",
+        "details": {
+          "0": "探索跨國、心理健康、社會孤立、行為影響、照護與支持，以及性行為或注射風險網絡的範本。",
+          "1": "使用通用的範例協定，瞭解 Network Canvas 的主要功能與技巧如何搭配運用。",
+          "2": "編輯每個階段、提示、變項與視覺選項；您調整後的協定會保留在瀏覽器的本機儲存空間中。"
+        }
+      },
+      "responsiveSvg": {
+        "shortName": "回應式 SVG 背景",
+        "name": "回應式 SVG 社會關係圖背景",
+        "summary": "建立社會關係圖背景，讓其中的區域、座標軸與標籤能同時適應直向與橫向的訪談畫布。",
+        "details": {
+          "0": "上傳 SVG，其中元素的位置會相對於可用的畫布來定位，而不是固定的像素格線。",
+          "1": "當參與者旋轉平板電腦或使用不同形狀的螢幕時，標籤依然清晰易讀，區域也會延伸至畫布邊緣。",
+          "2": "以提供的社會脈絡範本為起點，製作象限、獨立座標軸、類別或相互重疊的脈絡。"
+        }
+      },
+      "syntheticData": {
+        "shortName": "合成資料",
+        "name": "合成訪談資料",
+        "summary": "在招募參與者之前產生擬真的測試訪談，讓您檢查完整的資料工作流程，而不會讓參與者資料暴露於風險中。",
+        "details": {
+          "0": "一次最多建立 1,000 筆合成訪談，並檢查回答在研究表格與匯出檔案中的呈現方式。",
+          "1": "可選擇模擬參與者中途退出，並遵循協定的略過邏輯與網絡篩選條件。",
+          "2": "合成紀錄會另外標記，可批次移除，不會影響真實的訪談。"
+        }
+      },
+      "encryptionAtRest": {
+        "shortName": "靜態資料加密",
+        "name": "裝置上的靜態資料加密",
+        "summary": "只要您設定 Interviewer 的應用程式鎖定，即可保護儲存在裝置上的協定、訪談與設定。",
+        "details": {
+          "0": "在設定時選擇 PIN 碼、通關密語或支援的生物辨識方式；同一種驗證方式也會解鎖用來解密本機資料的金鑰。",
+          "1": "解密金鑰只會在 Interviewer 解鎖期間存放在記憶體中。重新載入、鎖定、關閉或達到閒置逾時，都會將金鑰移除。",
+          "2": "將這項應用程式層級的保護，與全裝置加密及定期匯出搭配使用，作為多層式資料安全計畫的一環。"
+        }
+      },
+      "authorisationChecks": {
+        "shortName": "授權檢查",
+        "name": "可設定的授權檢查",
+        "summary": "在敏感的工作流程關卡要求重新解鎖，而不只仰賴應用程式的整體閒置鎖定。",
+        "details": {
+          "0": "可個別設定在進入訪談、離開訪談返回儀表板，或匯出已蒐集的資料之前，要求重新驗證。",
+          "1": "使用已設定的 PIN 碼、通關密語或生物辨識方式，無須另外建立第二組憑證。",
+          "2": "Interviewer 鎖定時，協定名稱、訪談數量與已儲存的資料都會保持隱藏。"
+        }
+      },
+      "multiUser": {
+        "shortName": "多使用者",
+        "name": "多使用者管理",
+        "summary": "為每位研究人員提供個別的管理員帳號，而不是共用同一組儀表板憑證。",
+        "details": {
+          "0": "從設定中新增與移除多個管理員帳號；現有的每個帳號都具有同等的管理權限。",
+          "1": "選擇密碼驗證並可搭配 TOTP 雙重驗證保護，或使用通行金鑰進行免密碼登入。",
+          "2": "在共用的稽核活動紀錄中，將儀表板活動對應到使用者名稱，包括驗證、協定、匯出與帳號管理事件。"
+        }
+      },
+      "advancedExportFiltering": {
+        "shortName": "進階匯出篩選",
+        "name": "進階匯出篩選",
+        "summary": "即使大型研究的結果橫跨許多頁面，也能精確找出並匯出您需要的訪談。",
+        "details": {
+          "0": "在伺服器端依協定、日期、進度、網絡規模、匯出狀態或參與者識別碼，篩選完整的資料集。",
+          "1": "選取所有符合目前篩選條件的訪談，而不只是畫面上目前可見的列。",
+          "2": "在篩選後的結果中，匯出全部、已完成或尚未匯出的訪談，同時不影響其他無關的紀錄。"
+        }
+      },
+      "secureDataApi": {
+        "shortName": "安全的資料 API",
+        "name": "安全的訪談資料 API",
+        "summary": "透過具版本管理的唯讀 JSON API，將分析工具直接連接至 Fresco 部署。",
+        "details": {
+          "0": "在需要之前讓 API 保持停用，需要時再從已驗證的儀表板建立 Bearer 權杖。",
+          "1": "列出並擷取訪談網絡與協定中繼資料，且不公開任何可修改研究資料的端點。",
+          "2": "撤銷權杖、查看每個權杖的上次使用時間，並建立可重複使用的 R、Python、儀表板或報表工作流程。"
+        }
+      }
+    },
+    "compatibility": {
+      "label": "相容性",
+      "heading": "升級前須知",
+      "introduction": "<definition>協定架構版本</definition>決定了哪些應用程式能開啟特定的協定檔案——而本次發布最重要的變更就是<strong>架構 8</strong>。下表列出每個應用程式如何處理這兩種格式。選取任一列，即可查看實際運作上的詳細說明。",
+      "defaultNote": "選取上方任一列，即可查看這對您的協定檔案代表什麼。",
+      "groups": {
+        "classic": "目前（Classic）世代",
+        "new": "新世代"
+      },
+      "columns": {
+        "app": "應用程式",
+        "platform": "平台",
+        "schema7": "架構 7",
+        "schema8": "架構 8"
+      },
+      "statuses": {
+        "migrates": "移轉至 8",
+        "native": "原生支援",
+        "unsupported": "不支援"
+      },
+      "rowAccessibleName": "{app}，{platform}：架構 7 {schema7}；架構 8 {schema8}",
+      "rowAccessibleNameWithVersion": "{app} {version}，{platform}：架構 7 {schema7}；架構 8 {schema8}",
+      "rows": {
+        "interviewerClassic": {
+          "platform": "桌面與平板",
+          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> 原生執行架構 7，但無法開啟架構 8 協定。進行中的架構 7 研究可以繼續使用它——它仍受支援，並會持續修正錯誤。"
+        },
+        "architectClassic": {
+          "platform": "桌面",
+          "note": "<architectClassic>Architect Classic</architectClassic> 在維護模式下繼續產生架構 7 協定。僅在您需要繼續執行舊版 Interviewer（例如 6.6.0）時才使用。"
+        },
+        "frescoClassic": {
+          "platform": "瀏覽器",
+          "note": "Fresco 3.1.2 原生執行架構 7，但無法開啟架構 8 協定。請升級至 Fresco 4.0.0 以使用新格式。"
+        },
+        "interviewer": {
+          "platform": "瀏覽器與 PWA",
+          "note": "新版 Interviewer 原生開啟架構 8。開啟架構 7 協定時，會自動將它移轉至架構 8——而且是單向的。"
+        },
+        "architect": {
+          "platform": "瀏覽器與 PWA",
+          "note": "新版 Architect 可建立架構 8 協定，也能開啟並自動升級以 <architectClassic>Architect Classic</architectClassic> 建立的較舊架構 7 協定。"
+        },
+        "fresco": {
+          "platform": "瀏覽器",
+          "note": "Fresco 4.0.0 原生執行架構 8；上傳的架構 7 協定會自動移轉至架構 8——而且是單向的。"
+        }
+      },
+      "illustration": {
+        "schema": "架構",
+        "original": "原始檔"
+      },
+      "caution": {
+        "label": "注意",
+        "heading": "協定移轉是單向的。",
+        "description": "如果您在任何新世代應用程式中開啟架構 7 協定，它會自動升級為架構 8。之後您將無法再轉換回去，也無法在舊版應用程式中開啟。如果您要在 Architect 中修改協定，這點尤其重要，因為協定在儲存時就會升級為架構 8。",
+        "fileNote": "如果您需要繼續在 <interviewerClassic>Interviewer Classic</interviewerClassic>、<architectClassic>Architect Classic</architectClassic> 或 Fresco 3.x 中執行協定，請保留原始 <file>.netcanvas</file> 檔案的副本。"
+      },
+      "upgrade": {
+        "label": "該升級嗎？",
+        "heading": "何時應該升級？",
+        "newStudy": {
+          "label": "要展開新研究嗎？",
+          "heading": "使用新世代工具",
+          "description": "對於新研究，我們建議使用新工具：以 <strong>Architect</strong> 設計協定，並視您的需求，以 <strong>Fresco 4.0.0</strong> 或 <strong>Interviewer</strong> 部署訪談。"
+        },
+        "ongoing": {
+          "label": "研究正在進行中嗎？",
+          "heading": "不必急著升級！",
+          "description": "<interviewerClassic>Interviewer Classic</interviewerClassic> 與 <architectClassic>Architect Classic</architectClassic> 仍受支援，並會持續修正錯誤。請在適合您專案的時機升級，只是升級時請留意移轉是單向的。"
+        }
+      }
+    },
+    "resources": {
+      "label": "專案資源",
+      "heading": "全面改版的說明文件與全新的專案網站",
+      "introduction": "改變的不只是 Network Canvas 的應用程式。我們也重新設計了專案網站，並重新組織說明文件，讓您更容易瞭解這個平台、選擇合適的工具，並找到下一步。",
+      "documentation": {
+        "label": "專案說明文件",
+        "heading": "依研究工作流程編排的指引",
+        "description": "說明文件現在依您所處的研究階段編排：入門、設計協定、蒐集資料與分析結果。新的工作流程導覽與更新後的指南，讓您更容易找到下一步。",
+        "link": "探索說明文件",
+        "screenshotAlt": "重新設計的 Network Canvas 說明文件首頁"
+      },
+      "website": {
+        "label": "專案網站",
+        "heading": "networkcanvas.com 煥然一新",
+        "description": "重新設計的網站帶來更具表現力的視覺識別，並在 Network Canvas 生態系中規劃出更清楚的路徑，從瞭解平台的功能，到為您的研究選擇最合適的工具。",
+        "link": "探索新網站",
+        "screenshotAlt": "重新設計的 Network Canvas 網站首頁"
+      }
+    },
+    "destinations": {
+      "label": "開始使用",
+      "heading": "開始探索新世代工具",
+      "closing": "如果您有任何問題或遇到困難，<community>社群論壇</community>是聯繫我們，以及與其他使用這些工具的研究人員交流的最佳管道。希望這些新工具能為您的研究帶來實質的助益——我們的團隊由衷感謝社群提供的意見回饋，以及讓這項工作得以延續的長期支持。",
+      "architect": {
+        "title": "開啟 Architect",
+        "category": "設計協定",
+        "description": "直接在瀏覽器中建立、驗證與預覽架構 8 協定，協定庫保留在您的裝置本機。",
+        "detail": "architect.networkcanvas.com"
+      },
+      "interviewer": {
+        "title": "開啟 Interviewer",
+        "category": "面對面蒐集資料",
+        "description": "在桌上型電腦與平板上執行安全、可離線進行的訪談，再從同一個本機應用程式匯出已完成的訪談。",
+        "detail": "interviewer.networkcanvas.com"
+      },
+      "fresco": {
+        "title": "部署 Fresco 4.0.0",
+        "category": "遠端蒐集資料",
+        "description": "建置多使用者平台，支援遠端自填式研究、集中式資料管理與研究團隊。",
+        "detail": "部署指南"
+      },
+      "documentation": {
+        "title": "探索說明文件",
+        "category": "瞭解工作流程",
+        "description": "依循以任務為導向的指引，學習選擇工具、設計協定、蒐集資料，並瞭解每一種介面。",
+        "detail": "最新介面與功能"
+      }
+    }
+  }
+}

@@ -64,6 +64,7 @@ const newsRowSchema = z
     'title_en': requiredText,
     'title_es': requiredText,
     'title_zh-Hans': requiredText,
+    'title_zh-Hant': requiredText,
     'href': z.union([httpsUrl, internalPath]),
   })
   .strict();
@@ -74,9 +75,11 @@ const publicationRowSchema = z
     'title_en': requiredText,
     'title_es': requiredText,
     'title_zh-Hans': requiredText,
+    'title_zh-Hant': requiredText,
     'source_en': requiredText,
     'source_es': requiredText,
     'source_zh-Hans': requiredText,
+    'source_zh-Hant': requiredText,
     'authors': requiredText,
     'href': httpsUrl,
     'year': publicationYear,
@@ -89,16 +92,20 @@ const grantRowSchema = z
     'title_en': requiredText,
     'title_es': requiredText,
     'title_zh-Hans': requiredText,
+    'title_zh-Hant': requiredText,
     'pis_en': requiredText,
     'pis_es': requiredText,
     'pis_zh-Hans': requiredText,
+    'pis_zh-Hant': requiredText,
     'description_en': requiredText,
     'description_es': requiredText,
     'description_zh-Hans': requiredText,
+    'description_zh-Hant': requiredText,
     'logo': publicImage,
     'logo_alt_en': requiredText,
     'logo_alt_es': requiredText,
     'logo_alt_zh-Hans': requiredText,
+    'logo_alt_zh-Hant': requiredText,
     'href': httpsUrl,
   })
   .strict();
@@ -110,6 +117,7 @@ const teamMemberRowSchema = z
     'institution_en': requiredText,
     'institution_es': requiredText,
     'institution_zh-Hans': requiredText,
+    'institution_zh-Hant': requiredText,
     'photo': publicImage,
   })
   .strict();
@@ -178,9 +186,11 @@ function localized(
   english: string,
   spanish: string,
   simplifiedChinese: string,
+  traditionalChinese: string,
 ): string {
   if (locale === 'es') return spanish;
   if (locale === 'zh-Hans') return simplifiedChinese;
+  if (locale === 'zh-Hant') return traditionalChinese;
   return english;
 }
 
@@ -203,6 +213,7 @@ export async function loadSiteContent(
         row.title_en,
         row.title_es,
         row['title_zh-Hans'],
+        row['title_zh-Hant'],
       ),
       href: row.href,
     })),
@@ -213,12 +224,14 @@ export async function loadSiteContent(
         row.title_en,
         row.title_es,
         row['title_zh-Hans'],
+        row['title_zh-Hant'],
       ),
       source: localized(
         locale,
         row.source_en,
         row.source_es,
         row['source_zh-Hans'],
+        row['source_zh-Hant'],
       ),
       authors: row.authors,
       href: row.href,
@@ -231,13 +244,21 @@ export async function loadSiteContent(
         row.title_en,
         row.title_es,
         row['title_zh-Hans'],
+        row['title_zh-Hant'],
       ),
-      pis: localized(locale, row.pis_en, row.pis_es, row['pis_zh-Hans']),
+      pis: localized(
+        locale,
+        row.pis_en,
+        row.pis_es,
+        row['pis_zh-Hans'],
+        row['pis_zh-Hant'],
+      ),
       description: localized(
         locale,
         row.description_en,
         row.description_es,
         row['description_zh-Hans'],
+        row['description_zh-Hant'],
       ),
       logo: row.logo,
       logoAlt: localized(
@@ -245,6 +266,7 @@ export async function loadSiteContent(
         row.logo_alt_en,
         row.logo_alt_es,
         row['logo_alt_zh-Hans'],
+        row['logo_alt_zh-Hant'],
       ),
       href: row.href,
     })),
@@ -256,6 +278,7 @@ export async function loadSiteContent(
         row.institution_en,
         row.institution_es,
         row['institution_zh-Hans'],
+        row['institution_zh-Hant'],
       ),
       photo: row.photo,
     })),

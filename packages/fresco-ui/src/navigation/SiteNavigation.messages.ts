@@ -167,4 +167,49 @@ export const siteNavigationMessages = {
       },
     },
   },
+  'zh-Hant': {
+    home: 'Network Canvas 首頁',
+    navigationLabel: '主要導覽',
+    skipToContent: '跳至主要內容',
+    community: '社群',
+    documentation: '說明文件',
+    protocolGallery: '協定範例庫',
+    resources: '資源',
+    software: '軟體',
+    getStarted: '開始使用',
+    openMenu: '開啟網站導覽',
+    closeMenu: '關閉網站導覽',
+    softwareLinks: {
+      architect: {
+        name: 'Architect',
+        action: '開啟 Architect',
+        description:
+          '透過專為研究人員打造的視覺化工作流程，直接在瀏覽器中設計精緻的 Network Canvas 訪談協定。',
+      },
+      architectClassic: {
+        name: 'Architect Classic',
+        action: '取得 Architect Classic',
+        description:
+          '僅在您的研究必須與 Interviewer Classic 及架構 7 保持相容時使用。',
+      },
+      interviewer: {
+        name: 'Interviewer',
+        action: '開啟 Interviewer',
+        description:
+          '在任何支援的瀏覽器中，進行引人入勝、由訪員主導的實地網絡訪談。',
+      },
+      interviewerClassic: {
+        name: 'Interviewer Classic',
+        action: '取得 Interviewer Classic',
+        description:
+          '適用於既有的架構 7 研究，以及離線的桌上型電腦或平板電腦工作流程。持續維護以確保相容性並修正錯誤。',
+      },
+      fresco: {
+        name: 'Fresco',
+        action: '試用 Fresco 沙箱',
+        description:
+          '透過單一共用的瀏覽器儀表板，協調遠端網絡訪談並管理研究資料。',
+      },
+    },
+  },
 } satisfies Record<SiteLocale, SiteNavigationMessages>;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineAppLocales } from '../locales.ts';
+import { defineAppLocales, ecosystemLocales } from '../locales.ts';
 import { canonicalizeAppLocale, resolveAppLocale } from '../negotiate.ts';
 
 const registry = defineAppLocales([
@@ -124,5 +124,77 @@ describe('resolveAppLocale', () => {
         defaultLocale: 'fr',
       }),
     ).toThrow(/not in the registry/);
+  });
+});
+
+describe('Chinese script negotiation across the ecosystem registry', () => {
+  const resolveEcosystem = (input: {
+    stored?: string | null;
+    requested?: readonly string[];
+  }) =>
+    resolveAppLocale({
+      stored: input.stored,
+      requested: input.requested ?? [],
+      locales: ecosystemLocales,
+      defaultLocale: 'en',
+    });
+
+  it.each([
+    ['zh-TW', 'zh-Hant'],
+    ['zh-HK', 'zh-Hant'],
+    ['zh-MO', 'zh-Hant'],
+    ['zh-Hant', 'zh-Hant'],
+    ['zh-Hant-TW', 'zh-Hant'],
+    ['zh-CN', 'zh-Hans'],
+    ['zh-SG', 'zh-Hans'],
+    ['zh-Hans', 'zh-Hans'],
+    ['zh', 'zh-Hans'],
+  ])('matches a %s request to %s', (requested, expected) => {
+    expect(resolveEcosystem({ requested: [requested] }).locale).toBe(expected);
+  });
+
+  // A Hong Kong browser sends "zh-HK, zh". Best fit alone scores zh-HK as a
+  // regional miss against zh-Hant and lets the bare "zh" behind it win.
+  it.each([
+    [['zh-HK', 'zh'], 'zh-Hant'],
+    [['zh-MO', 'zh', 'en'], 'zh-Hant'],
+    [['zh-Hant-HK', 'zh'], 'zh-Hant'],
+    [['zh-TW', 'zh-CN'], 'zh-Hant'],
+    [['zh', 'zh-TW'], 'zh-Hans'],
+    [['zh-SG', 'zh-HK'], 'zh-Hans'],
+  ])('matches the browser list %j to %s', (requested, expected) => {
+    expect(resolveEcosystem({ requested }).locale).toBe(expected);
+  });
+
+  it('keeps an exactly declared regional Chinese tag', () => {
+    const regional = defineAppLocales([
+      { locale: 'en', label: 'English', direction: 'ltr' },
+      { locale: 'zh-Hans', label: '简体中文', direction: 'ltr' },
+      { locale: 'zh-TW', label: '繁體中文（台灣）', direction: 'ltr' },
+    ]);
+    expect(
+      resolveAppLocale({
+        stored: 'zh-TW',
+        requested: ['zh-CN'],
+        locales: regional,
+        defaultLocale: 'en',
+      }),
+    ).toEqual({ locale: 'zh-TW', source: 'stored' });
+    expect(
+      resolveAppLocale({
+        requested: ['zh-TW', 'zh'],
+        locales: regional,
+        defaultLocale: 'en',
+      }).locale,
+    ).toBe('zh-TW');
+  });
+
+  it('keeps a stored regional choice in its own script', () => {
+    expect(resolveEcosystem({ stored: 'zh-TW', requested: ['zh-CN'] })).toEqual(
+      { locale: 'zh-Hant', source: 'stored' },
+    );
+    expect(resolveEcosystem({ stored: 'zh-CN', requested: ['zh-TW'] })).toEqual(
+      { locale: 'zh-Hans', source: 'stored' },
+    );
   });
 });

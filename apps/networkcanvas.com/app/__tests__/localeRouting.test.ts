@@ -61,9 +61,34 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/zh-Hans/',
   },
   {
-    name: 'Taiwanese Chinese browser language best-fits Simplified Chinese',
-    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    name: 'Singaporean Chinese browser language',
+    headers: { 'accept-language': 'zh-SG,zh;q=0.9' },
     destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'unscripted Chinese browser language best-fits Simplified Chinese',
+    headers: { 'accept-language': 'zh' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Taiwanese Chinese browser language',
+    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Hong Kong Chinese browser language',
+    headers: { 'accept-language': 'zh-HK,zh;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Macanese Chinese browser language',
+    headers: { 'accept-language': 'zh-MO,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Traditional Chinese browser language',
+    headers: { 'accept-language': 'zh-Hant,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
   },
   {
     name: 'US English fallback',
@@ -111,13 +136,14 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, Spanish, and Simplified Chinese static params', () => {
-    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans']);
+  it('generates US English, UK English, Spanish, Simplified Chinese, and Traditional Chinese static params', () => {
+    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans', 'zh-Hant']);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
       { locale: 'en-GB' },
       { locale: 'es' },
       { locale: 'zh-Hans' },
+      { locale: 'zh-Hant' },
     ]);
   });
 
