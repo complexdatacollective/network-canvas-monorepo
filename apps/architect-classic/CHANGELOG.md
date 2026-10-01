@@ -1,5 +1,24 @@
 # network-canvas-architect
 
+## 6.6.3
+
+- **Fixed a path traversal weakness when importing protocols.** Importing a protocol file
+  (`.netcanvas`) used a ZIP extraction library with a known flaw: a specially crafted archive
+  could write files outside the folder it was being unpacked into. It has been replaced with a
+  maintained library that refuses these archives. Protocol files that contain links pointing
+  outside their own folder, or repeated file names, now fail to import instead of being
+  unpacked; ordinary protocols are unaffected.
+- **Updated Electron to 43.7.** This brings in the Chromium and Node.js fixes shipped since
+  Electron 43.0, including several security fixes for sandboxing and cross-origin file access.
+- **Fixed out-of-date results appearing in variable and asset lists.** When the data source for
+  a field changed quickly, a slow response for the old source could overwrite the newer one.
+  Only the latest request is used now.
+- **More reliable macOS signing.** The build tooling (electron-builder 26.16) unlocks the
+  signing keychain correctly, so macOS builds are signed and notarized consistently.
+- **Internal improvements.** Many editor panels (the variable picker, form sections, date
+  picker, sociogram prompt settings and others) now derive their state while rendering instead
+  of in a delayed update. Behaviour is unchanged.
+
 ## 6.6.2
 
 - **Fixed the variable picker opening behind the field editor.** Clicking "Select Variable" or

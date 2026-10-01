@@ -46,6 +46,22 @@ const ALLOWED_MISSING = new Map([
   ['electron-devtools-installer', 'dev-gated devDependency'],
 ]);
 
+// Requires that a specific dependency wraps in try/catch and tolerates being
+// absent. Unlike ALLOWED_MISSING these are scoped to the requiring package: a
+// missing `supports-color` is a packaging bug anywhere except inside `debug`,
+// which loads it only to colourise output when it happens to be installed.
+const OPTIONAL_REQUIRES = [
+  { specifier: 'supports-color', requiredBy: /(^|\/)node_modules\/debug\// },
+];
+
+function isOptionalRequire(specifier, relFile) {
+  const posixFile = relFile.split(path.sep).join('/');
+  return OPTIONAL_REQUIRES.some(
+    (optional) =>
+      optional.specifier === specifier && optional.requiredBy.test(posixFile),
+  );
+}
+
 // App renderer bundles are produced by Vite, which resolves every import at
 // build time; bare specifiers matched there are strings inside minified
 // output, not runtime requires. node_modules is never skipped.
@@ -240,6 +256,9 @@ function checkFile(asarRoot, absPath) {
         }
       }
     } catch (resolveError) {
+      if (isOptionalRequire(specifier, path.relative(asarRoot, absPath))) {
+        continue;
+      }
       failures.push({
         file: path.relative(asarRoot, absPath),
         specifier,
@@ -312,6 +331,7 @@ module.exports = {
   extractRelativePathLiterals,
   extractSpecifiers,
   isInsideAppPackage,
+  isOptionalRequire,
   shouldCheckSpecifier,
   stripCommentLines,
 };
