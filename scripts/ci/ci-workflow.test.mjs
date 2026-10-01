@@ -815,10 +815,13 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
     const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
 
     // A per-invocation flag would override the workflow's variable and drift
-    // from it, which is the arrangement #2023 replaced.
+    // from it, which is the arrangement #2023 replaced. The continuation group
+    // matters: these commands are routinely wrapped across `\`-continued
+    // lines, and `test:storybook` was written that way until this change, so a
+    // line-bounded pattern would miss the most likely way the flag comes back.
     assert.doesNotMatch(
       source,
-      /turbo run[^\n]*--concurrency/,
+      /turbo run(?:[^\n]*\\\n)*[^\n]*--concurrency/,
       `${file} passes --concurrency at a call site instead of setting TURBO_CONCURRENCY`,
     );
 
