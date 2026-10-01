@@ -44,11 +44,7 @@ catalog:
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
   '@effect/vitest': 4.0.0-rc.115
-  # Held on 10.5: 10.6 reorganised the en first-name data, which moves every
-  # seeded SyntheticInterview name and so every Storybook visual baseline.
-  # Take 10.6+ in its own PR that updates the pinned SyntheticInterview
-  # expectation and the baselines together.
-  '@faker-js/faker': ~10.5.0
+  '@faker-js/faker': ^10.6.0
   '@fontsource-variable/inclusive-sans': ^5.3.0
   '@fontsource-variable/nunito': ^5.3.0
   # App-i18n tooling: programmatic message extraction (guards + extract
