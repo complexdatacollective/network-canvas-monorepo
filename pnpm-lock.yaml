@@ -402,7 +402,7 @@ importers:
         specifier: 'catalog:'
         version: 1.63.0
       turbo:
-        specifier: ^2.11.5
+        specifier: 2.11.5
         version: 2.11.5
       typescript:
         specifier: 'catalog:'
