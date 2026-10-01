@@ -43,7 +43,7 @@ import {
   stateVariants,
   textSizeVariants,
 } from '../../../styles/controlVariants';
-import { compose, cva, cx } from '../../../utils/cva';
+import { cva, cx } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
 import { getInputState } from '../../utils/getInputState';
 import { omitWidgetOnlyAria } from '../../utils/omitWidgetOnlyAria';
@@ -186,13 +186,15 @@ const arrayFieldOwnVariants = cva({
   base: 'relative w-full min-w-0 flex-col overflow-hidden text-wrap',
 });
 
-const arrayFieldVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  arrayFieldOwnVariants,
-);
+const arrayFieldVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    arrayFieldOwnVariants,
+  ],
+});
 
 const itemVariants = cva({
   base: 'w-full rounded select-none',
@@ -498,11 +500,9 @@ export type ArrayFieldDragHandleProps = {
  * which is a pixel change, so it needs an E2E visual baseline regeneration
  * (see the `regenerating-e2e-visual-snapshots` skill).
  */
-const dragHandleVariants = compose(
-  heightVariants,
-  textSizeVariants,
-  proportionalLucideIconVariants,
-);
+const dragHandleVariants = cva({
+  composes: [heightVariants, textSizeVariants, proportionalLucideIconVariants],
+});
 
 /**
  * Pointer drag handle with an arrow-key equivalent, for any reorderable list.

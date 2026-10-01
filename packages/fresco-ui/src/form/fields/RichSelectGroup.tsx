@@ -14,7 +14,7 @@ import {
   stateVariants,
   textSizeVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -38,10 +38,9 @@ const richSelectGroupOwnVariants = cva({
   },
 });
 
-const richSelectGroupVariants = compose(
-  orientationVariants,
-  richSelectGroupOwnVariants,
-);
+const richSelectGroupVariants = cva({
+  composes: [orientationVariants, richSelectGroupOwnVariants],
+});
 
 // Individual option card variants
 const optionCardOwnVariants = cva({
@@ -92,11 +91,9 @@ const optionCardOwnVariants = cva({
   },
 });
 
-const optionCardVariants = compose(
-  groupSpacingVariants,
-  textSizeVariants,
-  optionCardOwnVariants,
-);
+const optionCardVariants = cva({
+  composes: [groupSpacingVariants, textSizeVariants, optionCardOwnVariants],
+});
 
 const indicatorOwnVariants = cva({
   base: cx(
@@ -114,13 +111,15 @@ const indicatorOwnVariants = cva({
   },
 });
 
-const indicatorVariants = compose(
-  smallSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  indicatorOwnVariants,
-);
+const indicatorVariants = cva({
+  composes: [
+    smallSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    indicatorOwnVariants,
+  ],
+});
 
 const descriptionVariants = cva({
   base: 'col-start-2 leading-snug text-pretty text-current/70',
