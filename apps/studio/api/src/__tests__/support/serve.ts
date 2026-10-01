@@ -2,8 +2,8 @@ import { createServer } from 'node:http';
 
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import { Clock, Context, Effect, Exit, Layer, Scope } from 'effect';
-import { HttpRouter, HttpServer } from 'effect/unstable/http';
-import * as NetAddress from 'effect/unstable/net/NetAddress';
+import { HttpRouter, HttpServer } from 'effect/http';
+import * as NetAddress from 'effect/net/NetAddress';
 
 import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 

@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import { Headers, HttpRouter, HttpServerRequest } from 'effect/unstable/http';
+import { Headers, HttpRouter, HttpServerRequest } from 'effect/http';
 
 import {
   CLIENT_SESSION_HEADER,

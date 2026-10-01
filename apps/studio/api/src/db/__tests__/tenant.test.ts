@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
 import { Cause, Effect, Exit, Option, Result } from 'effect';
-import type { SqlClient } from 'effect/unstable/sql';
+import type { SqlClient } from 'effect/sql';
 import { describe, test } from 'vitest';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';

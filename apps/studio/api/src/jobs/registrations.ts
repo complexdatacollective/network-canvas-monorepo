@@ -1,5 +1,5 @@
 import { type Cron, Effect, Layer, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { JOB_SCHEDULES, type JobQueueName } from '@codaco/studio-sync/jobs';
 

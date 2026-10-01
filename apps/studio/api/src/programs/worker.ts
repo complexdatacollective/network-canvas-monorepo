@@ -1,5 +1,5 @@
 import { Effect, Layer, Option, Ref, Schema } from 'effect';
-import { HttpRouter } from 'effect/unstable/http';
+import { HttpRouter } from 'effect/http';
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { DatabasePool } from '../db/database-pool.ts';

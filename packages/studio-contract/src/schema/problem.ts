@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect';
-import * as HttpApiSchema from 'effect/unstable/httpapi/HttpApiSchema';
+import * as HttpApiSchema from 'effect/http-api/HttpApiSchema';
 
 // One RFC 9457 "problem details" shape, shared by all three surfaces Studio
 // serves: the rpc plane, the participant plane, and the public `/api/v1`. A

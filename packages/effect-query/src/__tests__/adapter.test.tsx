@@ -23,7 +23,7 @@ import {
   RpcGroup,
   RpcMiddleware,
   RpcTest,
-} from 'effect/unstable/rpc';
+} from 'effect/rpc';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

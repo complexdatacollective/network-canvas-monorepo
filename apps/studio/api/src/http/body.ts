@@ -3,7 +3,7 @@ import {
   type HttpServerError,
   HttpServerRequest,
   HttpServerResponse,
-} from 'effect/unstable/http';
+} from 'effect/http';
 
 /** A request body that crossed the route's bound while it was being read. */
 export class BodyTooLarge extends Schema.TaggedError<BodyTooLarge>()(

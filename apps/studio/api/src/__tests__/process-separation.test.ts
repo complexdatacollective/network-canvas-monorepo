@@ -404,7 +404,7 @@ function distSpecifiers(source: string): string[] {
 }
 
 const SCALAR =
-  /\/effect\/dist\/unstable\/httpapi\/(?:HttpApiScalar|internal\/httpApiScalar)\.js$/;
+  /\/effect\/dist\/http-api\/(?:HttpApiScalar|internal\/httpApiScalar)\.js$/;
 
 describe('what each process loads through the packages it imports', () => {
   const loadsScalar = (entry: string) =>
@@ -413,7 +413,7 @@ describe('what each process loads through the packages it imports', () => {
   it('keeps the API reference page out of the worker', () => {
     // The page inlines a 3 MB bundle, and the worker serves no page. The
     // contract's shared problem schema used to reach it through
-    // `effect/unstable/httpapi`'s barrel, which every module that raises a
+    // `effect/http-api`'s barrel, which every module that raises a
     // contract error — the worker's included — loads.
     //
     // Mutation: import `HttpApiScalar` from the barrel in
@@ -440,8 +440,8 @@ const byName = (left: string, right: string): number =>
 const PROTOCOL_BUILDER_HOST =
   /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher)\.ts$/;
 
-/** Effect's `unstable/httpapi` barrel, which carries every HttpApi module. */
-const HTTPAPI_BARREL = /\/effect\/dist\/unstable\/httpapi\/index\.js$/;
+/** Effect’s `http-api` barrel, which carries every HttpApi module. */
+const HTTPAPI_BARREL = /\/effect\/dist\/http-api\/index\.js$/;
 
 describe('the protocol-builder host', () => {
   const hostModules = (entry: string) =>
@@ -484,7 +484,7 @@ describe('the protocol-builder host', () => {
     // `unstable/*` barrels, and the socket server under `/ws` is Effect's
     // Node platform's — nothing of Studio's imports `ws` itself.
     //
-    // Mutation: import anything from 'effect/unstable/httpapi' in
+    // Mutation: import anything from 'effect/http-api' in
     // src/protocol-builder/rpc.ts.
     expect(
       [...loadedModules('src/protocol-builder/rpc.ts')].filter((path) =>
@@ -654,8 +654,8 @@ describe('the web process', () => {
     // The matching negative — "and it carries no node-postgres" — is not true
     // of this process today, so it is not asserted here: `pg` still arrives
     // through db/pool.ts, db/database-pool.ts and http/health.ts, the
-    // readiness probes that stay on node-postgres while rc.115 cannot pin a
-    // role outside a transaction. better-auth left that list in stage 4, when
+    // readiness probes still on node-postgres. better-auth left that list in
+    // stage 4, when
     // `AuthService` put it on its sql-pg adapter (auth/adapter.ts). Asserting
     // the absence would fail; asserting the presence of the holders would pass
     // whatever else joined them. The negative is asserted

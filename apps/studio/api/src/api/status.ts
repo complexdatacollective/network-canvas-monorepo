@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect';
-import { HttpApiBuilder } from 'effect/unstable/httpapi';
+import { HttpApiBuilder } from 'effect/http-api';
 
 import { StudioApi } from '@codaco/studio-contract/api/v1';
 import { PublicInstanceStatus } from '@codaco/studio-contract/schema/status';

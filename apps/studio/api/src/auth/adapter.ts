@@ -10,7 +10,7 @@ import {
 import type { BetterAuthOptions, DBAdapter } from 'better-auth/types';
 import { getColumns, getTableName } from 'drizzle-orm';
 import { Predicate } from 'effect';
-import type { Statement } from 'effect/unstable/sql';
+import type { Statement } from 'effect/sql';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { SqlBridge } from './sql-bridge.ts';
@@ -120,7 +120,7 @@ function listOf(where: CleanedWhere): ReadonlyArray<unknown> {
  * as it does there: `lower()` for the equality family, `ilike` for patterns.
  *
  * An empty list is a constant rather than a bound array: `in ()` is a syntax
- * error, and rc.115 cannot infer a type for an empty array parameter.
+ * error, and the driver cannot infer a type for an empty array parameter.
  */
 function condition(sql: Sql, table: Table, where: CleanedWhere): Fragment {
   const column = sql(columnOf(table, where.field));
@@ -443,19 +443,14 @@ const customAdapter =
   };
 
 /**
- * A `timestamptz` decodes as epoch milliseconds on rc.115 and as a `Date` from
- * rc.116; better-auth wants a `Date` either way, which is also what the drizzle
- * adapter hands it. An `int8` decodes as a `bigint`, and better-auth's
+ * A `timestamptz` decodes as a `Date`, which is what better-auth wants and
+ * what the drizzle adapter hands it; a `date` field that arrives as text is
+ * parsed into one. An `int8` decodes as a `bigint`, and better-auth's
  * `number` fields — `rateLimit.lastRequest` is the one declared `bigint` — are
  * millisecond timestamps well inside a double's exact range.
  */
 const valueOut = (type: unknown, value: unknown): unknown => {
-  if (
-    type === 'date' &&
-    (Predicate.isNumber(value) || Predicate.isString(value))
-  ) {
-    return new Date(value);
-  }
+  if (type === 'date' && Predicate.isString(value)) return new Date(value);
   if (type === 'number' && Predicate.isBigInt(value)) return Number(value);
   return value;
 };

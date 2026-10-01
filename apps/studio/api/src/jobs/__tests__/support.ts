@@ -223,11 +223,10 @@ export type JobRow = {
   readonly last_error: string | null;
   readonly outcome: string | null;
   readonly dead_letter_of: string | null;
-  /** rc.115 decodes `timestamptz` as epoch milliseconds. */
-  readonly run_at: number;
-  readonly keep_until: number;
-  readonly locked_until: number | null;
-  readonly completed_at: number | null;
+  readonly run_at: Date;
+  readonly keep_until: Date;
+  readonly locked_until: Date | null;
+  readonly completed_at: Date | null;
 };
 
 export const readJobs = Effect.fnUntraced(function* (queue?: string) {
@@ -332,7 +331,7 @@ export type ScheduleRow = {
   readonly name: string;
   readonly cron: string;
   readonly queue: string;
-  readonly next_run_at: number;
+  readonly next_run_at: Date;
 };
 
 /** Every schedule row, by name, read as the owner like `readJobs`. */

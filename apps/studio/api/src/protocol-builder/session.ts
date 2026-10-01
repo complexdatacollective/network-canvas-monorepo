@@ -2,7 +2,7 @@
 // who cannot reach a protocol is refused exactly as for one that does not
 // exist, so this is no more an existence oracle than `studies.get`.
 import { Clock, Context, Effect, Layer, Option } from 'effect';
-import type * as Headers from 'effect/unstable/http/Headers';
+import type * as Headers from 'effect/http/Headers';
 
 import { ProtocolNotFound } from '@codaco/protocol-builder-core/contract/errors';
 import {

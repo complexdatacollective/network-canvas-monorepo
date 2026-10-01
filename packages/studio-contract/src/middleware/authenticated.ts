@@ -1,5 +1,5 @@
 import { Context, Schema } from 'effect';
-import { RpcMiddleware } from 'effect/unstable/rpc';
+import { RpcMiddleware } from 'effect/rpc';
 
 import { RateLimited, Unauthorized } from '../schema/errors.ts';
 import type { UserId } from '../schema/ids.ts';

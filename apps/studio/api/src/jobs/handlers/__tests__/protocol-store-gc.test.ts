@@ -266,10 +266,10 @@ describe.skipIf(!testDb)('the protocol store sweep on the native queue', () => {
       Effect.gen(function* () {
         // The other half of the misconfiguration, and the half the identity
         // check above cannot see: a maintenance `MaintenanceDatabase` whose login is not
-        // a member of the role. `set local role` refuses it one statement
-        // before the handler's own, and what this case pins is that the
-        // refusal still arrives as the diagnosis rather than as a bare
-        // `SqlError` about a statement no caller wrote.
+        // a member of the role. The role in its startup packet refuses it at
+        // connect, before the handler's statement runs, and what this case
+        // pins is that the refusal still arrives as the diagnosis rather than
+        // as a bare `SqlError` about a connection no caller opened.
         const { studioSchema } = yield* DeliveryHarness;
         const login = `gc_nomaint_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
         yield* Effect.orDie(

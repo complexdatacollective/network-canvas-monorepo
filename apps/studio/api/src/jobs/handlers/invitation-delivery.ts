@@ -1,6 +1,6 @@
 import type { Cause } from 'effect';
-import { DateTime, Effect, Exit, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import { Effect, Exit, Schema } from 'effect';
+import type { SqlError } from 'effect/sql';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
 
@@ -90,8 +90,7 @@ type DeliverableRow = {
   readonly role: TeamRole;
   readonly teamLabel: string;
   readonly inviterLabel: string;
-  /** rc.115 decodes `timestamptz` as epoch milliseconds. */
-  readonly expiresAt: number;
+  readonly expiresAt: Date;
   readonly terminal: boolean;
   readonly invitationStatus: string;
   readonly invitationIsLive: boolean;
@@ -243,9 +242,7 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
           const sent = yield* Effect.exit(
             mailer.sendTeamInvitation({
               email: delivery.email,
-              expiresAt: DateTime.toDate(
-                DateTime.makeUnsafe(delivery.expiresAt),
-              ),
+              expiresAt: delivery.expiresAt,
               invitationUrl: new URL(
                 `/invitations/${encodeURIComponent(delivery.invitationId)}`,
                 publicBaseUrl,

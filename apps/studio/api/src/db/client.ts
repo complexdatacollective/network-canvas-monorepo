@@ -4,8 +4,8 @@ import {
   make as makeDrizzle,
 } from 'drizzle-orm/effect-postgres';
 import { Context, Effect, Layer, Redacted } from 'effect';
-import { Reactivity } from 'effect/unstable/reactivity';
-import type { SqlError } from 'effect/unstable/sql';
+import { Reactivity } from 'effect/reactivity';
+import type { SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -21,19 +21,17 @@ import { Environment } from '../env.ts';
 // **One client value per identity per program.** `SqlClient` routes every
 // statement by the fiber's `TransactionConnection` service, and that service
 // is keyed per `PgClient` instance
-// (`effect/unstable/sql/SqlClient.ts` — `TransactionConnection(clientIdCounter++)`).
+// (`effect/sql/SqlClient.ts` — `TransactionConnection(clientIdCounter++)`).
 // A second client built for the same database therefore carries a *different*
 // key, so a statement issued through it inside another client's transaction
 // silently runs on its own connection — which would defeat the job queue's
 // enqueue atomicity without any error. `db/__tests__/tenant.test.ts` pins it.
 //
-// LIMITATION — fallback A (#1927 §20 Q6). `@effect/sql-pg` 4.0.0-rc.115 has no
-// `startupParameters`, so the role cannot be pinned the way a startup
-// parameter pins it (a startup parameter survives `RESET ROLE`). Until rc.116
-// the role is pinned with `set local role` as the first statement of every
-// transaction — see `db/tenant.ts` — which is weaker for a statement run
-// outside a transaction. `db/__tests__/raw-sql-policy.test.ts` bounds how many
-// of those there can be.
+// **The role is a startup parameter** (#1927 §20 Q6). Every physical
+// connection a client opens, pooled replacements included, sends its
+// identity's role in the startup packet, so every statement on it runs as that
+// role, inside a transaction or not, and `RESET ROLE` returns to it rather than
+// to the login. A login that may not assume the role is refused at connect.
 
 export type DatabaseIdentity = 'app' | 'maintenance' | 'owner';
 
@@ -42,17 +40,16 @@ export type DatabaseConfig = {
   readonly maxConnections?: number | undefined;
   readonly applicationName?: string | undefined;
   /**
-   * A schema to resolve unqualified names against, pinned per transaction. The
-   * production clients carry none — the server's connections deliberately do
-   * not — but the suites provision a scratch schema per file and every Studio
-   * table in it is unqualified. This is the `search_path` half of fallback A,
-   * which rc.116's `startupParameters` replaces.
+   * A schema to resolve unqualified names against, sent as the `search_path`
+   * startup parameter. The production clients carry none — the server's
+   * connections deliberately do not — but the suites provision a scratch
+   * schema per file and every Studio table in it is unqualified.
    */
   readonly searchPath?: string | undefined;
 };
 
 /** The role a given identity runs as; the owner is the connecting login. */
-export const roleFor = (identity: DatabaseIdentity): string | null => {
+const roleFor = (identity: DatabaseIdentity): string | null => {
   switch (identity) {
     case 'app':
       return TENANT_ROLES.app;
@@ -74,7 +71,6 @@ export type DatabaseService = {
   readonly identity: DatabaseIdentity;
   readonly sql: PgClient.PgClient;
   readonly db: DrizzleDatabase;
-  readonly searchPath: string | null;
 };
 
 export type DrizzleDatabase = Effect.Success<ReturnType<typeof makeDrizzle>>;
@@ -88,11 +84,18 @@ const makeService = (
   defaultMaxConnections: number,
 ) =>
   Effect.gen(function* () {
+    const role = roleFor(identity);
     const sql = yield* PgClient.make({
       url: Redacted.make(config.url),
       maxConnections: config.maxConnections ?? defaultMaxConnections,
       connectTimeout: CONNECT_TIMEOUT,
       applicationName: config.applicationName ?? `studio-${identity}`,
+      startupParameters: {
+        ...(role === null ? {} : { role }),
+        ...(config.searchPath === undefined
+          ? {}
+          : { search_path: config.searchPath }),
+      },
       // No `types` and no name transforms, deliberately: a transform would
       // break the job queue's and better-auth's column names.
     });
@@ -100,12 +103,7 @@ const makeService = (
       Effect.provideService(PgClient.PgClient, sql),
       Effect.provide(DefaultServices),
     );
-    return {
-      identity,
-      sql,
-      db,
-      searchPath: config.searchPath ?? null,
-    } satisfies DatabaseService;
+    return { identity, sql, db } satisfies DatabaseService;
   });
 
 /** The application's client: every transaction runs as the application role. */

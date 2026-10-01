@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { Context, Effect, Layer, Option } from 'effect';
-import type { Headers } from 'effect/unstable/http';
-import type { SqlError } from 'effect/unstable/sql';
+import type { Headers } from 'effect/http';
+import type { SqlError } from 'effect/sql';
 
 import type { SignInEmailJob } from '@codaco/studio-sync/jobs';
 
@@ -285,8 +285,7 @@ const readMemberships = Effect.fnUntraced(function* (
  * a command with domain work beside its job.
  *
  * Untenanted: a sign-in belongs to no team, and the queue's own tables carry
- * no tenant policy. The scope still pins the application role, which is the
- * half of it a bare statement outside a transaction would lose on rc.115.
+ * no tenant policy.
  */
 const enqueueSignInEmail = Effect.fn('auth.sendMagicLink')(
   function* (data: SignInEmailJob) {
@@ -336,10 +335,10 @@ const makeLive = Effect.gen(function* () {
   });
 
   /**
-   * The two membership reads, each in a pinned transaction of its own: on
-   * rc.115 a statement outside one runs as the connecting login rather than
-   * the application role. Nothing about either is a refusal the caller could
-   * act on, so a database failure is a defect.
+   * The two membership reads, each in an untenanted transaction of its own,
+   * since both are store reads that require `Transaction`. Nothing about
+   * either is a refusal the caller could act on, so a database failure is a
+   * defect.
    */
   const pinned = <A>(
     read: Effect.Effect<A, SqlError.SqlError, Transaction>,

@@ -97,19 +97,6 @@ type DeliveryRow = {
   uncertain_at: Date | null;
 };
 
-/** The same row as rc.115 decodes it: every `timestamptz` in epoch ms. */
-type StoredDeliveryRow = {
-  readonly attempt_count: number;
-  readonly failed_at: number | null;
-  readonly last_error: string | null;
-  readonly sent_at: number | null;
-  readonly suppressed_at: number | null;
-  readonly uncertain_at: number | null;
-};
-
-const dateOf = (ms: number | null): Date | null =>
-  ms === null ? null : new Date(ms);
-
 /** Studio's schema, the queue, an enqueue and a recording transport. */
 const suiteLayer = Layer.mergeAll(
   layerJobs,
@@ -236,7 +223,7 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
 
     const deliveryState = Effect.fnUntraced(function* (deliveryId: string) {
       const [row] = yield* Effect.orDie(
-        ownerRows<StoredDeliveryRow>(
+        ownerRows<DeliveryRow>(
           `SELECT attempt_count, failed_at, last_error, sent_at, suppressed_at,
                   uncertain_at
              FROM team_invitation_deliveries WHERE id = $1`,
@@ -244,15 +231,7 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         ),
       );
       if (!row) throw new Error(`no delivery row for ${deliveryId}`);
-      const state: DeliveryRow = {
-        attempt_count: row.attempt_count,
-        failed_at: dateOf(row.failed_at),
-        last_error: row.last_error,
-        sent_at: dateOf(row.sent_at),
-        suppressed_at: dateOf(row.suppressed_at),
-        uncertain_at: dateOf(row.uncertain_at),
-      };
-      return state;
+      return row;
     });
 
     const clearQueue = Effect.fnUntraced(function* () {

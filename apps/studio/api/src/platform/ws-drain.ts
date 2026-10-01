@@ -1,5 +1,5 @@
 import { Context, Effect, Latch, Layer, Ref, type Scope } from 'effect';
-import { HttpServer } from 'effect/unstable/http';
+import { HttpServer } from 'effect/http';
 
 // Draining the app WebSocket on shutdown.
 //

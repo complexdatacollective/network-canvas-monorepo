@@ -43,9 +43,9 @@ catalog:
   '@chromatic-com/storybook': ^5.2.1
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
-  '@effect/sql-pg': 4.0.0-rc.115
-  '@effect/platform-node': 4.0.0-rc.115
-  '@effect/vitest': 4.0.0-rc.115
+  '@effect/sql-pg': 4.0.0
+  '@effect/platform-node': 4.0.0
+  '@effect/vitest': 4.0.0
   '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
@@ -131,8 +131,9 @@ catalog:
   # requires.
   drizzle-kit: 1.0.0-rc.5-5935859
   drizzle-orm: 1.0.0-rc.5-5935859
-  # Pinned exactly: the `rc` dist-tag moves. Bumping is a chore PR of its own.
-  effect: 4.0.0-rc.115
+  # Pinned exactly, with every `@effect/*` entry above in lock-step. Bumping is
+  # a chore PR of its own.
+  effect: 4.0.0
   electron: ^43.0.0
   electron-builder: ^26.16.1
   electron-vite: ^6.0.0-beta.1
@@ -298,6 +299,14 @@ minimumReleaseAgeExclude:
   - '@changesets/errors@1.0.0'
   - '@changesets/get-dependents-graph@3.0.0'
   - '@changesets/git@4.0.0'
+  # Effect 4.0.0, published 2026-10-01 between 01:47Z and 03:11Z — excluded only
+  # so the upgrade could install before it ages out at 2026-10-02T03:12Z. Inert
+  # after that, and safe to delete in any passing sweep.
+  - 'effect@4.0.0'
+  - '@effect/platform-node@4.0.0'
+  - '@effect/platform-node-shared@4.0.0'
+  - '@effect/sql-pg@4.0.0'
+  - '@effect/vitest@4.0.0'
   - '@changesets/parse@1.0.0'
   - '@changesets/pre@3.0.0'
   - '@changesets/read@1.0.0'
@@ -331,3 +340,4 @@ patchedDependencies:
   # layout notices. `vitest/browser` is the same `page` object under the name
   # Vitest 5 serves. Drop this once the addon supports Vitest 5.
   '@storybook/addon-vitest@10.6.0': patches/@storybook__addon-vitest@10.6.0.patch
+  drizzle-orm@1.0.0-rc.5-5935859: patches/drizzle-orm@1.0.0-rc.5-5935859.patch

@@ -1,7 +1,7 @@
 import { and, eq, like, ne, sql, type SQL } from 'drizzle-orm';
 import { union, unionAll } from 'drizzle-orm/pg-core';
 import { Effect, Option, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';

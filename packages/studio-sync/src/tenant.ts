@@ -5,7 +5,7 @@ import type {
 import type { PgEffectTransaction } from 'drizzle-orm/pg-core/effect/session';
 import type { AnyRelations } from 'drizzle-orm/relations';
 import { Context } from 'effect';
-import type { SqlClient } from 'effect/unstable/sql';
+import type { SqlClient } from 'effect/sql';
 
 // The Effect tenancy seam (#1927 §9, §10).
 //

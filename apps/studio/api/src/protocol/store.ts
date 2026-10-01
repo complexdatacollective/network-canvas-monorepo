@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { Effect, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import {
   type CurrentProtocol,

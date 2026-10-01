@@ -1,5 +1,5 @@
 import { Effect, Option } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 import {
@@ -14,7 +14,6 @@ import {
   type DatabaseService,
   MaintenanceDatabase,
   OwnerDatabase,
-  roleFor,
 } from './client.ts';
 
 // `Transaction`, `TeamAccess` and its constructor are **defined in
@@ -60,34 +59,6 @@ export type ScopeOptions = {
    */
   readonly isolation?: IsolationLevel | undefined;
 };
-
-/**
- * `set local role` and `set local search_path`: the rc.115 stand-ins for the
- * two startup parameters rc.116 adds (fallback A, #1927 §20 Q6). Neither is a
- * bindable parameter — the role comes from a constant this codebase owns, and
- * the search path is checked against the same identifier rule the DDL is.
- */
-const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
-
-const pinSession = (
-  service: DatabaseService,
-): Effect.Effect<void, SqlError.SqlError> =>
-  Effect.gen(function* () {
-    const role = roleFor(service.identity);
-    if (role !== null) yield* service.sql.unsafe(`set local role ${role}`);
-    if (service.searchPath !== null) {
-      if (!IDENTIFIER.test(service.searchPath)) {
-        return yield* Effect.die(
-          new Error(
-            `invalid search path: ${JSON.stringify(service.searchPath)}`,
-          ),
-        );
-      }
-      yield* service.sql.unsafe(
-        `set local search_path to ${service.searchPath}`,
-      );
-    }
-  });
 
 /**
  * Dies when a scope would become a savepoint it cannot safely be. Read off the
@@ -158,9 +129,8 @@ const openOn = <A, E, R>(
       (tx) =>
         Effect.provideService(
           Effect.gen(function* () {
-            // Before anything reads: the role first, then the team, so no
-            // statement in the body can run unpinned or unstamped.
-            yield* pinSession(service);
+            // Before anything reads, so no statement in the body can run
+            // unstamped. The role is the connection's own (`client.ts`).
             if (teamId !== null) {
               yield* service.sql`select set_config(${TEAM_GUC}, ${teamId}, true)`;
             }
@@ -208,9 +178,7 @@ export const TenantScope = {
  * It is strictly weaker than a tenant scope rather than a way around one. The
  * team GUC is unset, and every tenant policy reads it through
  * `NULLIF(current_setting(…, true), '')`, so a statement here matches no team's
- * rows at all — what it can reach are the tables no tenant policy covers. What
- * it still does is pin the role and the search path, which a bare
- * statement outside a transaction does not (fallback A, #1927 §20 Q6).
+ * rows at all — what it can reach are the tables no tenant policy covers.
  */
 export const UntenantedScope = {
   open: <A, E, R>(
@@ -254,11 +222,12 @@ export const OwnerScope = {
  * undoable without losing the locks the outer transaction holds, and a
  * savepoint is exactly that — a subtransaction's rollback releases only the
  * locks taken inside it. Re-entering `TenantScope.open` would do the same
- * thing but would re-send `set local role` and the team GUC on every audited
- * command, two round trips that change nothing.
+ * thing but would re-send the team GUC on every audited command, a round trip
+ * that changes nothing.
  *
- * `SqlClient` names these `effect_sql_<depth>` and emits no `RELEASE` on
- * success, so a bulk loop must not open one per row.
+ * `SqlClient` names these `effect_sql_<depth>` and releases each one when it
+ * settles, so a bulk loop that opened one per row would pay two extra round
+ * trips per row.
  */
 export const savepoint = <A, E, R>(
   body: Effect.Effect<A, E, R>,

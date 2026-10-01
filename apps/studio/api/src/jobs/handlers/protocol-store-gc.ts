@@ -1,5 +1,5 @@
-import { Effect, Exit, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import { Effect, Exit, Redacted, Schema } from 'effect';
+import type { SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -23,9 +23,9 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 //
 // What the port did change, and had to:
 //
-//  - `rowCount` has no equivalent: rc.115 hands back the rows a statement
-//    returned, so each counted statement carries a `RETURNING` and the count
-//    is that array's length.
+//  - A statement hands back the rows it returned rather than a `rowCount`, so
+//    each counted statement carries a `RETURNING` and the count is that
+//    array's length.
 //  - `runNoAuditTenantTransaction` became `noAuditMaintenanceTransaction`
 //    (`audit/no-audit.ts`), which is the same registry check on the
 //    maintenance client. The four operation names are entries in
@@ -33,9 +33,8 @@ import type { HandledJob, JobOutcome } from '../worker.ts';
 //    applies: a fifth unaudited sweep cannot be added without saying in the
 //    registry why it emits nothing. They stay outside `audited` for the reason
 //    each entry gives — a sweep is not anybody's action.
-//  - The role assertion reads `current_user` inside a transaction rather than
-//    off the pool, and is a weaker check for it. What it still catches and
-//    what it no longer catches are spelled out above the assertion itself.
+//  - What the role assertion catches and what it cannot are spelled out above
+//    the assertion itself.
 
 export type GcResult = {
   manifestsDeleted: number;
@@ -180,45 +179,40 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
     commandRetryHorizonMs,
   );
 
-  // What this verifies and what it cannot. The scope pins the identity with
-  // `set local role` as its first statement (src/db/tenant.ts), so
-  // `current_user` here reads back the label this module wrote one statement
-  // earlier. That refuses a worker whose maintenance client was built from
-  // `Database.layer` — the misconfiguration the check exists for — but it
-  // cannot tell one maintenance client from another: a maintenance identity
-  // over the wrong login still
-  // passes, because `set local role` succeeds for any login that is a member
-  // of `studio_maintenance`, which rls.ts grants to the connecting login WITH
-  // SET TRUE. The original asserted against a role a startup parameter had
-  // negotiated (src/db/pool.ts), which no calling code could set; rc.116 adds
-  // `startupParameters` to @effect/sql-pg, and when it lands this statement
-  // moves back onto a bare connection, outside a transaction, and asserts that
-  // property again.
+  // What this verifies and what it cannot. The client sends its identity's
+  // role in every connection's startup packet (src/db/client.ts), so a bare
+  // `current_user` reads back the role the connection actually has. That
+  // refuses a worker whose maintenance client was built from `Database.layer`
+  // — the misconfiguration the check exists for — but it cannot tell one
+  // maintenance client from another: a maintenance identity over the wrong
+  // login still passes, because any login that is a member of
+  // `studio_maintenance`, which rls.ts grants to the connecting login WITH SET
+  // TRUE, may assume it.
   //
-  // A login that may *not* assume the role fails one statement earlier, inside
-  // the pin, so that failure is caught here and given the same diagnosis
-  // rather than an opaque `SqlError`: `42501` out of this transaction can only
-  // have come from `set local role`, since nothing else it runs — BEGIN, the
-  // search-path pin, `SELECT current_user` — needs a privilege at all.
+  // A login that may *not* assume the role is refused at connect with `42501`,
+  // before any statement runs, so that failure is caught here and given the
+  // same diagnosis rather than an opaque `SqlError`. No connection exists to
+  // ask who it is, so the login is named from the client's own URL.
   const identity = yield* Effect.exit(
-    MaintenanceScope.open(
-      Effect.flatMap(
-        Transaction,
-        ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
-      ),
+    MaintenanceDatabase.use(
+      ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
     ),
   );
   if (Exit.isFailure(identity)) {
     if (exitSqlState(identity) !== INSUFFICIENT_PRIVILEGE) {
       return yield* Effect.failCause(identity.cause);
     }
-    // Outside a transaction, where the absent `set local role` is the point:
-    // this answers with the connecting login, which is the identity that could
-    // not become the maintenance role and so the one to name.
-    const login = yield* MaintenanceDatabase.use(
-      ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
-    ).pipe(Effect.catch(() => Effect.succeed([])));
-    return yield* new GcRoleError({ role: login[0]?.role ?? '' });
+    const login = yield* MaintenanceDatabase.use(({ sql }) =>
+      Effect.succeed(
+        sql.config.username ??
+          (sql.config.url === undefined
+            ? ''
+            : decodeURIComponent(
+                new URL(Redacted.value(sql.config.url)).username,
+              )),
+      ),
+    );
+    return yield* new GcRoleError({ role: login });
   }
   const role = identity.value[0]?.role ?? '';
   if (role !== TENANT_ROLES.maintenance) {

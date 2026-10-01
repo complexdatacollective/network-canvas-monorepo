@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type { StudyCounts } from '@codaco/studio-contract/schema/study';
 

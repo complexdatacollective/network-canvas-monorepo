@@ -1,6 +1,6 @@
 import { EffectDrizzleQueryError } from 'drizzle-orm/effect-core';
 import { Cause, Effect, Predicate } from 'effect';
-import { SqlError } from 'effect/unstable/sql';
+import { SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 

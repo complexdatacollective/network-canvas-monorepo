@@ -17,7 +17,7 @@
 // scope rather than because a caller remembered to pass one client.
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type {
   Presence,

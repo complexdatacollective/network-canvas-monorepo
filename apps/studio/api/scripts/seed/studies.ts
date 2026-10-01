@@ -8,7 +8,7 @@
 // trigger).
 import { faker } from '@faker-js/faker';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
 

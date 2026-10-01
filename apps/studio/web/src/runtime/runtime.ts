@@ -7,17 +7,17 @@ import {
   Schema,
   type Scope,
 } from 'effect';
-import * as FetchHttpClient from 'effect/unstable/http/FetchHttpClient';
-import type * as Headers from 'effect/unstable/http/Headers';
-import * as HttpClient from 'effect/unstable/http/HttpClient';
-import * as HttpClientError from 'effect/unstable/http/HttpClientError';
-import * as HttpClientRequest from 'effect/unstable/http/HttpClientRequest';
-import type * as HttpClientResponse from 'effect/unstable/http/HttpClientResponse';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import type * as RpcClientError from 'effect/unstable/rpc/RpcClientError';
-import type * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as Socket from 'effect/unstable/socket/Socket';
+import * as FetchHttpClient from 'effect/http/FetchHttpClient';
+import type * as Headers from 'effect/http/Headers';
+import * as HttpClient from 'effect/http/HttpClient';
+import * as HttpClientError from 'effect/http/HttpClientError';
+import * as HttpClientRequest from 'effect/http/HttpClientRequest';
+import type * as HttpClientResponse from 'effect/http/HttpClientResponse';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import type * as RpcClientError from 'effect/rpc/RpcClientError';
+import type * as RpcGroup from 'effect/rpc/RpcGroup';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as Socket from 'effect/socket/Socket';
 
 import {
   ProtocolBuilderGroup,
@@ -399,12 +399,11 @@ function hostSocketUrl(): string {
 /**
  * The protocol builder's host, over `/ws`.
  *
- * `retryTransientErrors` is off. With it on, a ping timeout — which the
- * protocol classifies as a transient `SocketOpenError` — reconnects the socket
- * underneath an in-flight call and an open stream without ever failing them,
- * so both hang for good. Off, both fail with `RpcClientError`, and the
- * package's channel ladder owns resuming the stream. The socket reconnects
- * either way; nothing is replayed.
+ * `retryTransientErrors` is off, so a socket that cannot open fails the
+ * in-flight call and the open stream with `RpcClientError` rather than holding
+ * them across the reconnect, and the package's channel ladder owns resuming
+ * the stream. A ping timeout is a `SocketReadError`, which fails them either
+ * way. The socket reconnects regardless; nothing is replayed.
  */
 export class HostClient extends Context.Service<
   HostClient,

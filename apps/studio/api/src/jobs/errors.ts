@@ -3,9 +3,8 @@ import { Cause, Exit, Option, Predicate } from 'effect';
 // Reading a SQLSTATE back out of an Effect failure. `@effect/sql-pg` classifies
 // a driver error into a `SqlError` reason — `LockTimeoutError`,
 // `AuthorizationError` and so on — but the reasons are coarser than the codes
-// the queue and the delivery handler act on, and the reason for `55P03` on
-// rc.115 is `UnknownError`. The original driver error is still in the cause
-// chain, so the code is read off that, the way
+// the queue and the delivery handler act on. The original driver error is
+// still in the cause chain, so the code is read off that, the way
 // `src/__tests__/support/postgres.ts` reads it today.
 //
 // #1927 §9 plans `sqlState(error)` as a stage-3 helper over drizzle's wrapper

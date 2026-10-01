@@ -1,9 +1,5 @@
 import { Effect, Option, Schema } from 'effect';
-import {
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from '../audit/better-auth-policy.ts';
 import { AuthService } from '../auth/service.ts';

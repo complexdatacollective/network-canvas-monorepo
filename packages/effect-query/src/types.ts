@@ -5,7 +5,7 @@ import type {
   UseMutationOptions,
   UseQueryOptions,
 } from '@tanstack/react-query';
-import type { Rpc, RpcClientError } from 'effect/unstable/rpc';
+import type { Rpc, RpcClientError } from 'effect/rpc';
 
 type RpcFor<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> = Rpc.ExtractTag<
   Rpcs,

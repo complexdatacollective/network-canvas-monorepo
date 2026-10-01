@@ -25,13 +25,13 @@ import {
   Scope,
   Stream,
 } from 'effect';
-import * as FetchHttpClient from 'effect/unstable/http/FetchHttpClient';
-import * as HttpClient from 'effect/unstable/http/HttpClient';
-import * as HttpClientRequest from 'effect/unstable/http/HttpClientRequest';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import type { RpcClientError } from 'effect/unstable/rpc/RpcClientError';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as Socket from 'effect/unstable/socket/Socket';
+import * as FetchHttpClient from 'effect/http/FetchHttpClient';
+import * as HttpClient from 'effect/http/HttpClient';
+import * as HttpClientRequest from 'effect/http/HttpClientRequest';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import type { RpcClientError } from 'effect/rpc/RpcClientError';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as Socket from 'effect/socket/Socket';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -1357,7 +1357,7 @@ describe.skipIf(!testDb || !env.auth)(
       for (const path of ['/ws', '/WS', '//ws', '/ws/', '/%77s']) {
         observed[path] = String(await upgradeAt(path));
       }
-      // Observed on rc.115: every folded or percent-encoded spelling reaches
+      // Every folded or percent-encoded spelling reaches
       // the mount it names, an encoded slash is one path segment and so no
       // route at all, and `/rpc` stays `StudioRpcs`'. The maintenance gate is
       // global, so none of these spellings is a way around it.

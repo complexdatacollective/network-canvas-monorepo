@@ -65,7 +65,7 @@ class MaintenanceFailed extends Schema.TaggedError<MaintenanceFailed>()(
  * never less.
  */
 const MaintenanceReason = Schema.String.check(
-  Schema.isLengthBetween(1, 280),
+  Schema.isBetweenLength(1, 280),
   Schema.isPattern(/\S/),
 );
 

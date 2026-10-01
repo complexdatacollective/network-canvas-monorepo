@@ -1,6 +1,6 @@
 import { Effect, Layer } from 'effect';
-import { FetchHttpClient } from 'effect/unstable/http';
-import { Otlp } from 'effect/unstable/observability';
+import { FetchHttpClient } from 'effect/http';
+import { Otlp } from 'effect/observability';
 
 import { Environment } from '../env.ts';
 import { STUDIO_VERSION } from '../version.ts';

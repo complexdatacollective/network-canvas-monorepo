@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Cause, Effect, Exit, Option, Predicate } from 'effect';
-import { type Headers, HttpServerRequest } from 'effect/unstable/http';
+import { type Headers, HttpServerRequest } from 'effect/http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TeamId } from '@codaco/studio-contract/schema/ids';

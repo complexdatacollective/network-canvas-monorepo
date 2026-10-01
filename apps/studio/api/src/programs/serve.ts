@@ -1,5 +1,5 @@
 import { Cause, Effect, Layer } from 'effect';
-import { HttpRouter, HttpServer } from 'effect/unstable/http';
+import { HttpRouter, HttpServer } from 'effect/http';
 
 import { createStudio, type Studio } from '../app.ts';
 import { DeniedAttempts } from '../audit/denial-rate-limit.ts';

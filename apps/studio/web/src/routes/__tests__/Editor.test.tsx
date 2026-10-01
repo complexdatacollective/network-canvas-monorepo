@@ -1303,12 +1303,13 @@ describe('the socket the editor opens', () => {
   });
 
   /**
-   * No close code is a signal. A deploy closes the socket with no status code
-   * (1005) and a killed container or a dropped network with none at all
-   * (1006); both are a blip the researcher must not notice, and neither is the
-   * end of their session — only `closeStudioEditorSessions()` is.
+   * No close code is a signal. A deploy closes the socket with 1000, a proxy
+   * may close it with no status code (1005), and a killed container or a
+   * dropped network closes it with none at all (1006); each is a blip the
+   * researcher must not notice, and none is the end of their session — only
+   * `closeStudioEditorSessions()` is.
    */
-  it.each([1005, 1006] as const)(
+  it.each([1000, 1005, 1006] as const)(
     'keeps editing across a %i close, and hears what changed during it',
     async (code) => {
       renderEditor();

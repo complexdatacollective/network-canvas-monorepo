@@ -4,7 +4,7 @@ import {
   HttpEffect,
   HttpRouter,
   HttpServerResponse,
-} from 'effect/unstable/http';
+} from 'effect/http';
 
 /**
  * How a `/rpc` handler puts a cookie on the HTTP response it is answering.

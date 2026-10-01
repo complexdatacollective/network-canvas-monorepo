@@ -1,9 +1,5 @@
 import { Context, Effect, Layer, Option } from 'effect';
-import {
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 import { Database } from '../../db/client.ts';
 import { migrationLockHeld } from '../../db/readiness.ts';
@@ -128,9 +124,8 @@ export class MaintenanceTriggers extends Context.Service<
    * The web process's: the lock probe on the application client and the
    * schema verdict the process already reads for `/readyz`.
    *
-   * The lock probe is a bare statement, outside any scope, so on rc.115 it
-   * runs as the connecting login rather than the application role (fallback A,
-   * `db/client.ts`). That is harmless here: `pg_locks` and `pg_database` are
+   * The lock probe is a bare statement, outside any scope, and runs as the
+   * application role the client connects as. `pg_locks` and `pg_database` are
    * readable by every role, and the probe reads nothing of Studio's.
    */
   static readonly layer: Layer.Layer<

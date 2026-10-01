@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import { HttpRouter, HttpServerResponse } from 'effect/unstable/http';
+import { HttpRouter, HttpServerResponse } from 'effect/http';
 
 import { ProblemJson } from '../middleware/problem-json.ts';
 import { RequestIdLive } from '../middleware/request-id.ts';

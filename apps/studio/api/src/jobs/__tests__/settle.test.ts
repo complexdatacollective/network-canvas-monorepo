@@ -82,7 +82,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             assert.strictEqual(yield* first.reapExpired, 1);
             const [returned] = yield* readJobs('invitation-delivery');
             assert.strictEqual(returned?.state, 'created');
-            yield* TestClock.setTime(returned!.run_at);
+            yield* TestClock.setTime(returned!.run_at.getTime());
 
             // A second worker takes the second attempt and finishes it. Its
             // outcome differs from the first's, so the assertion below can
@@ -138,7 +138,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             assert.strictEqual(yield* first.reapExpired, 1);
             const [returned] = yield* readJobs('invitation-delivery');
             assert.strictEqual(returned?.state, 'created');
-            yield* TestClock.setTime(returned!.run_at);
+            yield* TestClock.setTime(returned!.run_at.getTime());
 
             const secondRunning = yield* Effect.gen(function* () {
               const other = yield* JobWorker;
@@ -226,7 +226,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             assert.strictEqual(yield* first.reapExpired, 1);
             const [returned] = yield* readJobs('invitation-delivery');
             assert.strictEqual(returned?.state, 'created');
-            yield* TestClock.setTime(returned!.run_at);
+            yield* TestClock.setTime(returned!.run_at.getTime());
 
             const second = yield* drainWith('invitation-delivery', () =>
               Effect.succeed<JobOutcome>('completed'),
@@ -341,7 +341,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           assert.strictEqual(row?.locked_until, null);
           assert.strictEqual(row?.last_error, LEASE_EXPIRED);
           assert.strictEqual(
-            row?.run_at,
+            row?.run_at.getTime(),
             DateTime.toDate(
               DateTime.addDuration(now, Duration.seconds(delay)),
             ).getTime(),
@@ -349,7 +349,10 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           // Said twice on purpose: a reaper that wrote `run_at = now` would
           // retry a handler that hangs every time at its own cadence, throwing
           // away the ladder `invitation-delivery` declares.
-          assert.notStrictEqual(row?.run_at, DateTime.toDate(now).getTime());
+          assert.notStrictEqual(
+            row?.run_at.getTime(),
+            DateTime.toDate(now).getTime(),
+          );
         }).pipe(Effect.provide(jobsLayer)),
     );
 
@@ -385,7 +388,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           assert.deepStrictEqual(handed, [{ attempt: 1, finalAttempt: false }]);
 
           const [retried] = yield* readJobs('invitation-delivery');
-          yield* TestClock.setTime(retried!.run_at);
+          yield* TestClock.setTime(retried!.run_at.getTime());
 
           const second = yield* worker.drainOnce('invitation-delivery');
           assert.strictEqual(second._tag, 'failed');
@@ -440,7 +443,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           );
           assert.strictEqual(yield* first.reapExpired, 1);
           const [returned] = yield* readJobs('invitation-delivery');
-          yield* TestClock.setTime(returned!.run_at);
+          yield* TestClock.setTime(returned!.run_at.getTime());
 
           const secondRunning = yield* Effect.gen(function* () {
             const other = yield* JobWorker;

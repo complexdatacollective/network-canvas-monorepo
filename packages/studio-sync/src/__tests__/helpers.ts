@@ -10,7 +10,7 @@ import {
   make as makeDrizzle,
 } from 'drizzle-orm/effect-postgres';
 import { Context, Effect, Layer, ManagedRuntime, Redacted } from 'effect';
-import { Reactivity } from 'effect/unstable/reactivity';
+import { Reactivity } from 'effect/reactivity';
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';

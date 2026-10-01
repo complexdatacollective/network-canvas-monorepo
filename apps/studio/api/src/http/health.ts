@@ -1,5 +1,5 @@
 import { Cause, Duration, Effect, type Layer, Record } from 'effect';
-import { HttpRouter, HttpServerResponse } from 'effect/unstable/http';
+import { HttpRouter, HttpServerResponse } from 'effect/http';
 import type pg from 'pg';
 
 import { checkSchema, type SchemaState } from '../db/schema.ts';

@@ -1,5 +1,5 @@
 import { Context, Schema } from 'effect';
-import * as RpcMiddleware from 'effect/unstable/rpc/RpcMiddleware';
+import * as RpcMiddleware from 'effect/rpc/RpcMiddleware';
 
 /**
  * Who is calling a protocol-builder procedure, as the host resolved it.

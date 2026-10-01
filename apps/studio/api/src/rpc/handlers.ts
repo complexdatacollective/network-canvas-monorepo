@@ -1,5 +1,5 @@
 import { Layer } from 'effect';
-import type { Rpc, RpcGroup } from 'effect/unstable/rpc';
+import type { Rpc, RpcGroup } from 'effect/rpc';
 
 import type { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 

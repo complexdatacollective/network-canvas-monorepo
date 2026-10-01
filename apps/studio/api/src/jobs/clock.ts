@@ -110,25 +110,25 @@ export function skewWarning(skew: number): string | null {
  * One measurement of `select now()` against the local clock, in milliseconds:
  * positive when the database is ahead of this process.
  *
- * Read inside a transaction because that is the only place the identity's
- * role is pinned, and `now()` inside a transaction is the transaction's start
- * time — which is what pg-boss's `getTime()` plan reads too, and is the same
- * instant every statement of a job's own transaction will see.
+ * Read inside a transaction because `now()` inside a transaction is the
+ * transaction's start time — which is what pg-boss's `getTime()` plan reads
+ * too, and is the same instant every statement of a job's own transaction will
+ * see.
  */
 const DATABASE_NOW = Effect.flatMap(
   Transaction,
-  ({ sql }) => sql<{ at: number }>`SELECT now() AS at`,
+  ({ sql }) => sql<{ at: Date }>`SELECT now() AS at`,
 );
 
 const measureSkew = Effect.fnUntraced(function* <R>(
   onScope: (
     read: typeof DATABASE_NOW,
-  ) => Effect.Effect<ReadonlyArray<{ at: number }>, unknown, R>,
+  ) => Effect.Effect<ReadonlyArray<{ at: Date }>, unknown, R>,
 ) {
   const before = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
   const rows = yield* onScope(DATABASE_NOW);
   const after = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
-  const databaseMillis = rows[0]?.at;
+  const databaseMillis = rows[0]?.at.getTime();
   if (databaseMillis === undefined) {
     return yield* Effect.fail(
       new Error('the database answered `select now()` with no row'),
@@ -141,7 +141,7 @@ const makeLayer = <R>(
   config: JobClockConfig,
   onScope: (
     read: typeof DATABASE_NOW,
-  ) => Effect.Effect<ReadonlyArray<{ at: number }>, unknown, R>,
+  ) => Effect.Effect<ReadonlyArray<{ at: Date }>, unknown, R>,
 ): Layer.Layer<never, never, R> =>
   Layer.effect(
     JobClockKey,
