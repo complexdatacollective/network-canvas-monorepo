@@ -125,7 +125,7 @@ const ReduxDecorator = (
   );
   return (
     <Provider store={store}>
-      <div className="relative flex h-[400px] w-[700px] items-end justify-end bg-slate-900 p-6">
+      <div className="bg-background relative flex h-[400px] w-[700px] items-end justify-end p-6">
         <Story />
       </div>
     </Provider>
