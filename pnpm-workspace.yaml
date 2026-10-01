@@ -123,7 +123,7 @@ catalog:
   # `cx` config option stays in lock-step with what `cva` was built against.
   clsx: ^2.1.1
   csvtojson: ^2.0.14
-  dotenv: ^17.4.2
+  dotenv: ^18.0.4
   # Pinned to the 1.0 RC, exactly (the rc dist-tag moves): stable drizzle-kit
   # 0.31.x `push` silently drops RLS policy USING/WITH CHECK expressions, which
   # #1249's tenancy layer depends on. Keep both in lock-step; unpin to a normal
