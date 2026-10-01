@@ -90,6 +90,21 @@ const element = (name: string) =>
   `<${name}\\b${ATTRIBUTES}>[\\s\\S]*?<\\/${name}\\s*>`;
 
 /**
+ * A CDATA section, which is real character data inside foreign content — an
+ * `<svg>` or `<math>` subtree — rather than the bogus comment it would be in
+ * ordinary HTML. Its text is literal, so a marker placed within one shows up to
+ * the reader as SVG text; it is matched whole and wrapped from outside like the
+ * raw-text elements.
+ *
+ * It must precede the generic tag alternative, which otherwise ends the "tag"
+ * at the first `>` inside the section — legal there — and reads the remainder
+ * as ordinary text. Chromium confirms both halves: markers inserted inside
+ * appear in `textContent` with no comment nodes created, while wrapping from
+ * outside leaves the text identical to the untouched baseline.
+ */
+const CDATA_SECTION = '<!\\[CDATA\\[[\\s\\S]*?\\]\\]>';
+
+/**
  * Everything that is not a text run, in one alternation: the opaque elements
  * above, `<script>`/`<style>` with their contents, comments, and tags.
  *
@@ -104,6 +119,7 @@ const TOKEN = new RegExp(
     element('style'),
     ...OPAQUE_TEXT_ELEMENTS.map(element),
     '<!--[\\s\\S]*?-->',
+    CDATA_SECTION,
     `<[a-zA-Z/!?]${ATTRIBUTES}>`,
   ].join('|'),
   'gi',
@@ -135,6 +151,27 @@ const OPAQUE_OPENING = new RegExp(
  */
 const PLAINTEXT_OPENING = /^<plaintext\b/i;
 
+/**
+ * A newline directly after a `<pre>` or `<listing>` start tag is swallowed by
+ * the HTML parser, and React compensates by emitting an extra one so the drop
+ * leaves the value it rendered: `<pre>{'\nx'}</pre>` is served as
+ * `<pre>\n\nx</pre>` and parses back to `\nx`.
+ *
+ * An opt-out comment placed before that run would become the first node after
+ * the start tag, so the parser drops nothing and the element keeps both
+ * newlines — a text mismatch of exactly the kind this pass exists to prevent.
+ * Chromium: markers inside give `"\n\nfoo@example.com"` where React's tree
+ * expects `"\nfoo@example.com"`.
+ *
+ * So the opening marker goes after that first newline instead. The element is
+ * not wrapped from outside, because `<pre>` is ordinary markup rather than a
+ * raw-text element — its children are real elements, and treating it as opaque
+ * would stop the walk descending into the highlighted spans where the export's
+ * addresses actually live. `<textarea>` shares the newline rule but is already
+ * wrapped from outside as raw text, which preserves it.
+ */
+const PREFORMATTED_OPENING = /^<(?:pre|listing)\b/i;
+
 type Token =
   /** A text run: what the CDN rewrites, and what the opt-out has to cover. */
   | { kind: 'text'; value: string }
@@ -147,6 +184,7 @@ type Token =
 
 const classify = (value: string): Token => {
   if (value.startsWith('<!--')) return { kind: 'comment', value };
+  if (value.startsWith('<![CDATA[')) return { kind: 'opaque', value };
   if (OPAQUE_OPENING.test(value)) return { kind: 'opaque', value };
   return { kind: 'other', value };
 };
@@ -174,11 +212,23 @@ const tokenize = (html: string): Token[] => {
  * closed by real comment tokens, so the marker text inside a script or a string
  * cannot be mistaken for one.
  */
-const mapRewritableRuns = (html: string, map: (run: string) => string) => {
+const mapRewritableRuns = (
+  html: string,
+  map: (run: string, afterPreformattedStart: boolean) => string,
+) => {
   let output = '';
   let protectedRegion = false;
+  let afterPreformattedStart = false;
 
   for (const token of tokenize(html)) {
+    // Carry the previous token's verdict for this run, and compute the next
+    // one from the current token. Any intervening token — a comment included —
+    // already occupies the position the newline would have been dropped from,
+    // so only a run directly after the start tag is affected.
+    const runFollowsPreformattedStart = afterPreformattedStart;
+    afterPreformattedStart =
+      token.kind === 'other' && PREFORMATTED_OPENING.test(token.value);
+
     if (token.kind === 'other' && PLAINTEXT_OPENING.test(token.value)) {
       throw new Error(
         'cannot be protected: <plaintext> swallows the rest of the document as ' +
@@ -196,7 +246,7 @@ const mapRewritableRuns = (html: string, map: (run: string) => string) => {
       output += token.value;
       continue;
     }
-    output += map(token.value);
+    output += map(token.value, runFollowsPreformattedStart);
   }
   return output;
 };
@@ -222,9 +272,12 @@ export const protectEmailAddresses = (
   html: string,
 ): { html: string; protectedRuns: number } => {
   let protectedRuns = 0;
-  const output = mapRewritableRuns(html, (run) => {
+  const output = mapRewritableRuns(html, (run, afterPreformattedStart) => {
     if (!EMAIL_SHAPED.test(run)) return run;
     protectedRuns += 1;
+    if (afterPreformattedStart && run.startsWith('\n')) {
+      return `\n${EMAIL_OFF_OPEN}${run.slice(1)}${EMAIL_OFF_CLOSE}`;
+    }
     return `${EMAIL_OFF_OPEN}${run}${EMAIL_OFF_CLOSE}`;
   });
   return { html: output, protectedRuns };

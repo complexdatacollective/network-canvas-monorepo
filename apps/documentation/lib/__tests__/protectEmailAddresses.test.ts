@@ -260,6 +260,63 @@ describe('protectEmailAddresses', () => {
     );
   });
 
+  // A CDATA section is character data in foreign content, not the bogus comment
+  // it would be in ordinary HTML, so it is wrapped from outside like raw text.
+  // The generic tag arm used to end at the `>` inside it and read the remainder
+  // as text, putting the opening marker into the section.
+  it('wraps an svg CDATA section from outside', () => {
+    const html = '<svg><text><![CDATA[1 > foo@example.com]]></text></svg>';
+
+    expect(findUnprotectedEmailText(html)).toEqual(['foo@example.com']);
+    expect(protectEmailAddresses(html).html).toBe(
+      `<svg><text>${EMAIL_OFF_OPEN}<![CDATA[1 > foo@example.com]]>${EMAIL_OFF_CLOSE}</text></svg>`,
+    );
+  });
+
+  it('leaves a CDATA section with no address alone', () => {
+    const html = '<svg><text><![CDATA[1 > 0]]></text></svg>';
+
+    expect(protectEmailAddresses(html).protectedRuns).toBe(0);
+    expect(protectEmailAddresses(html).html).toBe(html);
+  });
+
+  // The parser drops a newline directly after `<pre>`/`<listing>`, and React
+  // emits a second one to survive that. The opening marker has to go after it,
+  // or the parser drops nothing and the element keeps a newline React did not
+  // render.
+  it('places the marker after the newline a pre start tag makes significant', () => {
+    expect(protectEmailAddresses('<pre>\n\nfoo@example.com</pre>').html).toBe(
+      `<pre>\n${EMAIL_OFF_OPEN}\nfoo@example.com${EMAIL_OFF_CLOSE}</pre>`,
+    );
+    expect(
+      protectEmailAddresses('<listing>\n\nfoo@example.com</listing>').html,
+    ).toBe(
+      `<listing>\n${EMAIL_OFF_OPEN}\nfoo@example.com${EMAIL_OFF_CLOSE}</listing>`,
+    );
+  });
+
+  it('only moves the marker for the run the start tag makes significant', () => {
+    // No leading newline, a newline that is not the first node, a newline
+    // inside a child element, and an element with no such parser rule: all
+    // wrap normally. Moving the marker in these cases would be its own bug.
+    expect(protectEmailAddresses('<pre>foo@example.com</pre>').html).toBe(
+      `<pre>${EMAIL_OFF_OPEN}foo@example.com${EMAIL_OFF_CLOSE}</pre>`,
+    );
+    expect(
+      protectEmailAddresses('<pre><!--x-->\nfoo@example.com</pre>').html,
+    ).toBe(
+      `<pre><!--x-->${EMAIL_OFF_OPEN}\nfoo@example.com${EMAIL_OFF_CLOSE}</pre>`,
+    );
+    expect(
+      protectEmailAddresses('<pre><code>\nfoo@example.com</code></pre>').html,
+    ).toBe(
+      `<pre><code>${EMAIL_OFF_OPEN}\nfoo@example.com${EMAIL_OFF_CLOSE}</code></pre>`,
+    );
+    expect(protectEmailAddresses('<p>\nfoo@example.com</p>').html).toBe(
+      `<p>${EMAIL_OFF_OPEN}\nfoo@example.com${EMAIL_OFF_CLOSE}</p>`,
+    );
+  });
+
   it('does not refuse marker text inside a script or a raw-text element', () => {
     // The refusal reads tokens, like everything else here: only a real start
     // tag counts. Deciding this from the raw text would fail the build on a
@@ -279,6 +336,71 @@ describe('protectEmailAddresses', () => {
 
     expect(protectEmailAddresses(html).html).toBe(
       `<pre data-format="plaintext">${EMAIL_OFF_OPEN}you@example.com${EMAIL_OFF_CLOSE}</pre>`,
+    );
+  });
+});
+
+/**
+ * The correctness condition of the whole pass, asserted directly: wrapping must
+ * not change the document the browser parses. Comment nodes are excluded from
+ * `textContent`, so an opt-out that lands where it belongs is invisible here,
+ * and one that lands anywhere the parser reads differently is not.
+ *
+ * This exists because eight rounds of review found the same class of bug —
+ * markers inserted where the parser does not treat them as comments — one
+ * element at a time. A guard on the property catches the next one without
+ * anybody having to think of it first. jsdom is parse5, and was checked to
+ * reproduce both subtle rules this covers: it drops the newline after `<pre>`
+ * (and keeps both when a comment precedes it), and reads `<![CDATA[` inside
+ * `<svg>` as character data.
+ */
+describe('protectEmailAddresses parse equivalence', () => {
+  const parsedText = (html: string) =>
+    new DOMParser().parseFromString(
+      `<!doctype html><html><body>${html}</body></html>`,
+      'text/html',
+    ).body.textContent;
+
+  // Each entry is markup as React would serve it.
+  const SHAPES: Record<string, string> = {
+    'a plain paragraph': '<p>Mail foo@example.com now</p>',
+    // React emits the doubled newline so the parser's drop leaves one.
+    'pre whose text starts with a newline': '<pre>\n\nfoo@example.com</pre>',
+    'listing whose text starts with a newline':
+      '<listing>\n\nfoo@example.com</listing>',
+    'pre with no leading newline': '<pre>foo@example.com</pre>',
+    "pre > code, the export's own shape":
+      '<pre><code>\nfoo@example.com</code></pre>',
+    'pre whose first node is already a comment':
+      '<pre><!--x-->\nfoo@example.com</pre>',
+    'textarea whose value starts with a newline':
+      '<textarea>\n\nfoo@example.com</textarea>',
+    'svg CDATA holding a > before the address':
+      '<svg><text><![CDATA[1 > foo@example.com]]></text></svg>',
+    'a quoted attribute holding a >':
+      '<div title="1 > 0">foo@example.com</div>',
+    'an iframe fallback': '<iframe>Contact foo@example.com</iframe>',
+    'a script repeating the address':
+      '<script>var a = "foo@example.com"</script><p>foo@example.com</p>',
+  };
+
+  it.each(Object.entries(SHAPES))(
+    'leaves the parsed text unchanged: %s',
+    (_label, html) => {
+      expect(parsedText(protectEmailAddresses(html).html)).toBe(
+        parsedText(html),
+      );
+    },
+  );
+
+  it('would catch a marker the parser does not read as a comment', () => {
+    // Guards the guard: the same comparison fails for a deliberately wrong
+    // placement, so a passing suite above is not vacuous.
+    const broken =
+      '<pre><!--email_off-->\n\nfoo@example.com<!--/email_off--></pre>';
+
+    expect(parsedText(broken)).not.toBe(
+      parsedText('<pre>\n\nfoo@example.com</pre>'),
     );
   });
 });
