@@ -13,28 +13,8 @@ import { TracingLive } from '../platform/tracing.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
-// The image's fifth entry: `studio-api maintenance on [reason…]` and
-// `studio-api maintenance off` (#1901). It flips `deployment_state`'s flag and
-// exits; the web process's gate and the worker's pause read the flag within a
-// second of each other (`platform/maintenance-state.ts`). It is the only way to
-// set it: there is no procedure and no token for it, and the deploy script
-// (#1910) runs this same command over its forced-command key.
-//
-// The write runs as the maintenance role, the only one granted `UPDATE` on the
-// row (`db/deployment-state.ts`). The role is pinned by this command's own
-// client rather than by whichever service runs it, which is why
-// `docker compose run --rm --no-deps api maintenance on` is correct even though
-// the `api` service serves as the application role.
-//
-// A one-shot `Effect` like `migrate`: `NodeRuntime.runMain`'s teardown turns
-// the outcome into the exit code — 0 once the row says what was asked, 1 for a
-// refusal or a failed write, 130 for a signal — and a refusal is printed as the
-// one sentence an operator acts on (`programs/command.ts`). The deploy script
-// branches on exactly those three (#1910).
-
 const USAGE = 'Usage: studio-api maintenance on [reason…] | off';
 
-/** A refusal before anything is touched: a message for whoever typed the command. */
 class MaintenanceRefused extends Schema.TaggedError<MaintenanceRefused>()(
   'MaintenanceRefused',
   { reason: Schema.String },
@@ -44,7 +24,6 @@ class MaintenanceRefused extends Schema.TaggedError<MaintenanceRefused>()(
   }
 }
 
-/** A write that did not complete, reported by its own message. */
 class MaintenanceFailed extends Schema.TaggedError<MaintenanceFailed>()(
   'MaintenanceFailed',
   { cause: Schema.Defect() },
@@ -57,19 +36,14 @@ class MaintenanceFailed extends Schema.TaggedError<MaintenanceFailed>()(
 }
 
 /**
- * The reason as `deployment_state_reason_check` will take it: 1 to 280
- * characters, not all whitespace. Refused here, with a sentence, rather than
- * by the database as a bare `23514`. JavaScript counts UTF-16 units where
- * Postgres counts characters and `\S` knows more whitespace than
- * `[:space:]`, so this refuses a little more than the constraint does and
- * never less.
+ * JavaScript counts UTF-16 units where Postgres counts characters, so this
+ * refuses a little more than `deployment_state_reason_check` and never less.
  */
 const MaintenanceReason = Schema.String.check(
   Schema.isBetweenLength(1, 280),
   Schema.isPattern(/\S/),
 );
 
-/** What the arguments ask for: `on` with an optional reason, or `off`. */
 export const parseMaintenanceArguments = Effect.fnUntraced(function* (
   args: ReadonlyArray<string>,
 ): Effect.fn.Return<MaintenanceWindow, MaintenanceRefused> {
@@ -95,7 +69,6 @@ export const parseMaintenanceArguments = Effect.fnUntraced(function* (
   return { maintenance: true, reason };
 });
 
-/** The row as it now stands, as the operator reads it. */
 const describeState = (state: DeploymentState): string =>
   state.maintenance
     ? state.reason === null
@@ -103,11 +76,6 @@ const describeState = (state: DeploymentState): string =>
       : `Maintenance mode is on: ${state.reason}`
     : 'Maintenance mode is off.';
 
-/**
- * Writes the window on the maintenance client and prints the row as written.
- * Separate from the program so a suite can run it against its own scratch
- * schema, and against the application client to show that role is refused.
- */
 export const applyMaintenanceWindow = Effect.fn('maintenance.apply')(function* (
   window: MaintenanceWindow,
 ) {
@@ -130,7 +98,6 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
 
   yield* Console.log(`Network Canvas Studio maintenance ${STUDIO_VERSION}`);
 
-  // Built for this command and released with it, like rotation's.
   const Maintenance = MaintenanceDatabase.layer({
     ...db,
     applicationName: 'studio-maintenance',
@@ -141,7 +108,6 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
   );
 });
 
-/** The command over its arguments, with the environment decoded once at its root. */
 export const MaintenanceProgram = (args: ReadonlyArray<string>) =>
   maintenance(args).pipe(
     Effect.provide(

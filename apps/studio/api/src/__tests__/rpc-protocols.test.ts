@@ -1,7 +1,3 @@
-// #1257's visibility rule across the whole protocol surface: a protocol line
-// is reachable only through a study the caller can see, so what `studies.list`
-// omits and `studies.get` refuses cannot be read, leased, or edited through the
-// protocol behind it either.
 import { randomUUID } from 'node:crypto';
 
 import { Effect, Option } from 'effect';
@@ -64,11 +60,9 @@ function researcher(slug: string, role: string): Researcher {
   };
 }
 
-/** The two team roles #1257 separates, in one team. */
 const ADMIN = researcher('admin', 'owner');
 const MEMBER = researcher('member', 'member');
 
-/** One study, and the protocol line `studies.create` gave it. */
 type CreatedStudy = {
   studyId: StudyId;
   protocolId: ProtocolId;
@@ -78,16 +72,9 @@ type CreatedStudy = {
 describe.skipIf(!testDb)('the protocol RPC surface', () => {
   let database: TestDatabaseRuntime;
   let clients: Map<Researcher, RpcTestClient>;
-  /**
-   * The protocol-builder host, driven in process: it is not on the rpc plane
-   * this file's other clients call.
-   */
   let builder: ProtocolBuilderTestClient;
-  /** A study the Member holds a study-role grant on. */
   let granted: CreatedStudy;
-  /** A study of the same team that nobody granted the Member. */
   let ungranted: CreatedStudy;
-  /** A protocol line no study references: the Admin-only case. */
   let orphan: { protocolId: ProtocolId; draftId: DraftId };
 
   const asClient = (who: Researcher) => {
@@ -155,9 +142,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       });
       clients.set(who, await createRpcClient(studio));
     }
-    // One host for both researchers: a lock one of them holds has to be
-    // visible to the other, which is what makes a refusal mean anything. Each
-    // call names its caller, so the memberships are answered per user.
     builder = await createProtocolBuilderClient(
       createStudio(readEnv(), {
         auth: authServiceStub({
@@ -174,8 +158,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
 
     granted = await createStudy('Granted study');
     ungranted = await createStudy('Ungranted study');
-    // The maintenance role is the one that may write a fixture row across
-    // teams without a pinned tenant.
     await database.run(
       MaintenanceScope.open(
         Effect.flatMap(Transaction, ({ sql }) =>
@@ -222,8 +204,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       [granted.protocolId, ungranted.protocolId, orphan.protocolId].toSorted(),
     );
 
-    // The Member's own list is the answer `studies.list` gives them, read
-    // through the other tier: one study, one line.
     const forMember = await asClient(MEMBER).call(
       asClient(MEMBER).rpc('protocols.list', { teamId: TEAM_ID }),
     );
@@ -243,10 +223,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
     );
     expect(opened.protocol.id).toBe(granted.protocolId);
 
-    // Three ways to be unable to reach a line, one answer: a line behind a
-    // study this Member holds no grant on, a line no study references at all,
-    // and a line that does not exist. Distinguishing them would make the
-    // protocol surface the existence oracle `studies.get` refuses to be.
     const refusals: { protocolId: ProtocolId; draftId: DraftId }[] = [
       { protocolId: ungranted.protocolId, draftId: ungranted.draftId },
       { protocolId: orphan.protocolId, draftId: orphan.draftId },
@@ -269,10 +245,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       ),
     );
 
-    // The same rule on the editing surface. The protocol-builder host takes no
-    // teamId — it derives the tenant from the caller's own memberships — so it
-    // answers in its own words, and the words have to be the same for a line
-    // this Member holds no grant on as for a protocol id nobody ever made.
     await Promise.all(
       [ungranted.protocolId, randomUUID()].map((protocolId) =>
         expectRpcFailure(
@@ -303,8 +275,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       'Forbidden',
     );
 
-    // Read back through the Admin, who can see the line: the refusal has to
-    // mean the draft is untouched, not merely that the Member was told no.
     const draft = await asClient(ADMIN).call(
       asClient(ADMIN).rpc('protocols.draft', {
         teamId: TEAM_ID,
@@ -315,9 +285,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
     expect(draft.sections.stageOrder).toEqual({ stages: [] });
     expect(draft.sections[`stage:${stageId}`]).toBeUndefined();
 
-    // The same edit on the line they were granted goes through, so the refusal
-    // above is about the study behind the line rather than about the procedure
-    // being closed to Members altogether.
     const grantedStageId = StageId.make(randomUUID());
     await asClient(MEMBER).call(
       asClient(MEMBER).rpc('protocols.addInformationStage', {
@@ -338,8 +305,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
   });
 
   it('refuses protocol creation by a team Member', async () => {
-    // A line created here belongs to no study, so nobody but an Admin or Owner
-    // could ever reach it — the rule `studies.create` already applies.
     const input = {
       teamId: TEAM_ID,
       name: 'Must not be created',
@@ -366,8 +331,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       ),
     ).toHaveLength(0);
 
-    // The same request from an Admin creates the line, so the refusal is the
-    // role and not the input.
     await expect(
       asClient(ADMIN).call(asClient(ADMIN).rpc('protocols.create', input)),
     ).resolves.toEqual({

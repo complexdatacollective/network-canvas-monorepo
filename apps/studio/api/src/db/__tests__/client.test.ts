@@ -26,16 +26,6 @@ import {
   unsafeMakeTeamAccess,
 } from '../tenant.ts';
 
-// One `DATABASE_URL`, three identities (#1927 section 9). What the three
-// clients differ in is the role their transactions run as, and nothing else
-// asserts that: `roleFor` is a pure function, so only a connection can say
-// whether the role was pinned on the server.
-//
-// `session_user` is the oracle rather than a spelled-out login name. It is the
-// role the connection authenticated as and the startup role never changes it,
-// so `current_user <> session_user` is the pin having happened, on whatever
-// machine and under whatever login the suite runs.
-
 const TEAM = unsafeMakeTeamAccess('team-identity', 'owner');
 
 type Identity = { readonly current: string; readonly session: string };
@@ -55,8 +45,6 @@ describe.skipIf(!testDb)('the three database clients', () => {
         Effect.gen(function* () {
           const identity = yield* TenantScope.open(TEAM, identityQuery);
           assert.strictEqual(identity?.current, TENANT_ROLES.app);
-          // The pin is what moved it off the connecting login; without the
-          // startup role both would read the same.
           assert.notStrictEqual(identity?.current, identity?.session);
         }),
       );
@@ -80,23 +68,11 @@ describe.skipIf(!testDb)('the three database clients', () => {
             ),
           );
           assert.strictEqual(identity?.current, identity?.session);
-          // Named explicitly as well: "unchanged" would also hold if the two
-          // had both been moved to a tenant role.
           assert.notStrictEqual(identity?.current, TENANT_ROLES.app);
           assert.notStrictEqual(identity?.current, TENANT_ROLES.maintenance);
         }),
       );
 
-      // The role is a startup parameter (`client.ts`), so a role the database
-      // does not have is refused at connect, before the body's first
-      // statement.
-      //
-      // The absent role is named *from* the application role rather than
-      // being it: Postgres roles are cluster-wide, so `studio_app` cannot be
-      // made to not exist for one connection while every other suite in the
-      // run is connecting as it. The derived name reaches the same refusal —
-      // a 22023 whose message names a tenant role — which is the whole of
-      // what `isMissingRole` reads.
       it.effect('refuse a connection whose role the database lacks', () =>
         Effect.gen(function* () {
           const harness = yield* TestDatabase;
@@ -130,8 +106,6 @@ describe.skipIf(!testDb)('the three database clients', () => {
             assert.isTrue(isMissingRole(refused.failure));
           }
 
-          // The row the refused body would have written is not there, which is
-          // what "nothing in the body can run" means.
           const rows = yield* harness.onOwner(
             harness.owner.sql<{
               id: string;
@@ -139,9 +113,6 @@ describe.skipIf(!testDb)('the three database clients', () => {
           );
           assert.deepStrictEqual(rows, []);
 
-          // The control: the same connection with the role the database does
-          // have succeeds, so the refusal above is the missing role and not
-          // the connection itself.
           const pinned = yield* connectingAs(TENANT_ROLES.app, (sql) =>
             Effect.map(
               sql<{ current: string }>`select current_user as current`,
@@ -208,7 +179,6 @@ describe.skipIf(!testDb)('the three database clients', () => {
             if (Result.isSuccess(rotated)) {
               assert.strictEqual(rotated.success, login);
             }
-            // The control: the password read once, at boot, is refused.
             const stale = yield* reconnected(bootRead);
             assert.isTrue(Result.isFailure(stale));
             if (Result.isFailure(stale)) {
@@ -233,10 +203,6 @@ describe.skipIf(!testDb)('the three database clients', () => {
   );
 });
 
-// The harness sets its `search_path` as a startup parameter through
-// `DatabaseConfig`, never through `options` on the connection string:
-// `env/resolve.ts` refuses a `DATABASE_URL` that carries one, because the same
-// parameter could also set the role every client depends on.
 describe('a DATABASE_URL that carries pg options', () => {
   const BASE = 'postgres://postgres:spike@127.0.0.1:54318/studio_dev';
 

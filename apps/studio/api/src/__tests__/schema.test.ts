@@ -66,16 +66,11 @@ describe('fingerprint constant', () => {
     expect(readManifestScripts()).toHaveProperty('sync-fingerprint');
   });
 
-  // The fingerprint is the only thing that would notice a column added to the
-  // queue's tables or a widened grant, and the boot check is what keeps a
-  // worker off a database whose queue is not the shape this build claims.
   it('covers the job schema and its grants', async () => {
     const jobStatements = renderJobStatements();
     expect(jobStatements).toContain(jobSchemaSql(JOB_SCHEMA));
     expect(jobStatements).toContain(jobSchemaGrantsSql(JOB_SCHEMA));
 
-    // And they are inside the hash rather than merely rendered beside it: the
-    // same fingerprint computed over the public statements alone differs.
     const publicOnly = createHash('sha256')
       .update((await renderSchemaStatements()).join('\n'))
       .digest('hex');
@@ -421,13 +416,6 @@ async function withScratch<
   }
 }
 
-/**
- * A scratch schema of its own for one case, dropped afterwards.
- *
- * `checkSchema` is the node-postgres verdict, so it is read through the
- * harness's application-role pool — the role the schema gate reads it as —
- * while fixtures and oracles go through the owner.
- */
 async function withTestDatabase(
   run: (database: TestDatabaseRuntime) => Promise<void>,
 ): Promise<void> {
@@ -439,12 +427,6 @@ async function withTestDatabase(
   }
 }
 
-/**
- * Everything one schema holds, by kind and name: tables and indexes, the
- * functions, and the triggers that are not a constraint's own. Enough to tell
- * two installations of the same DDL apart, and named rather than counted so a
- * difference reads as which object is missing.
- */
 async function nativeSchemaCatalogue(
   pool: pg.Pool,
   schema: string,
@@ -589,11 +571,6 @@ describe.skipIf(!testDb)('schema verification', () => {
     });
   });
 
-  // A scratch schema is what forty or so suites take for a deployed database,
-  // so everything a schema application installs outside `public` has to be
-  // there too — the queue's schema above all. Read through `jobSchema`
-  // rather than by rebuilding the name here, because that field is what a
-  // suite builds a client against.
   it('provisions the job schema beside the scratch schema', async () => {
     await withTestDatabase(async (database) => {
       const tables = await database.run(
@@ -609,30 +586,16 @@ describe.skipIf(!testDb)('schema verification', () => {
     });
   });
 
-  // Two drivers install that schema — node-postgres for the two callers that
-  // apply a schema, `@effect/sql-pg` for a caller that already owns a
-  // client — and the only thing keeping them the same schema is that they
-  // send the same split statements. Proved by installing through the Effect path into a sibling
-  // and comparing the catalogue, because a difference here would not surface
-  // until a worker claimed a job against a table it had created itself. In a
-  // scratch database, because `applySchema` is the node-postgres installer
-  // and the scratch-schema harness installs its sibling through the Effect
-  // driver.
   it('installs the same schema through the Effect path', async () => {
     await withScratch(createScratchDatabase, async (pool, scratch) => {
       await applySchema(pool);
       const throughNodePostgres = await nativeSchemaCatalogue(pool, JOB_SCHEMA);
-      // Not merely equal: both non-empty, so a catalogue query that returned
-      // nothing would not read as agreement.
       expect(throughNodePostgres.length).toBeGreaterThan(0);
 
       const sibling = `${JOB_SCHEMA}_effect`;
       try {
         await Effect.runPromise(
           MaintenanceScope.open(installJobSchemaEffect(sibling)).pipe(
-            // The install needs the connecting login, and the scope reads the
-            // maintenance tag: the owner client goes in under it, the way the
-            // job suites' `asOwner` does (src/jobs/__tests__/support.ts).
             Effect.provide(
               Layer.effect(MaintenanceDatabase, OwnerDatabase).pipe(
                 Layer.provide(
@@ -657,15 +620,12 @@ describe.skipIf(!testDb)('schema verification', () => {
 
   it('reports a never-provisioned database as absent', async () => {
     await withTestDatabase(async (database) => {
-      // The harness provisions on open, so the schema is emptied back to the
-      // state it was created in before the pool reads it.
       const { schema } = database.harness;
       await database.run(ownerAffected(`drop schema ${schema} cascade`));
       await database.run(ownerAffected(`create schema ${schema}`));
       await database.run(
         ownerAffected(`grant usage on schema ${schema} to ${TENANT_ROLES.app}`),
       );
-      // A schema the pool could not see into would read as absent too.
       expect(
         await database.run(
           ownerRows<{ usable: boolean }>(
@@ -866,10 +826,6 @@ describe.skipIf(!testDb)('schema application', () => {
       expect(names).toContain('jobs');
       expect(names).toContain('job_schedules');
 
-      // The division of labour the queue is built on: the application may
-      // create a job and read back the id its insert returns, and nothing else
-      // — not a payload, not a queue name, and nothing that would let it
-      // claim, retry or delete one.
       const privileges = await pool.query<Record<string, boolean>>(
         `select
            has_schema_privilege('studio_app', $1, 'USAGE') as app_schema,
@@ -906,23 +862,17 @@ describe.skipIf(!testDb)('schema application', () => {
   it('leaves an installed job schema and the jobs in it alone', async () => {
     await withScratch(createScratchDatabase, async (pool, scratch) => {
       await applySchema(pool);
-      // Enqueued as the application role, which is the half the owner pool
-      // cannot answer for: a reapply that dropped and rebuilt the schema would
-      // take the grants with it, and this row with them.
       const queued = await enqueueSweepAsApplication(scratch.db);
 
       const again = await applySchema(pool);
       expect(again.statements).toEqual([]);
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });
 
-      // The DDL is idempotent, so a second apply reapplies it over the live
-      // tables rather than replacing them — and the queued job is still there.
       const jobs = await pool.query<{ id: string; queue: string }>(
         `select id, queue from ${JOB_SCHEMA}.jobs`,
       );
       expect(jobs.rows).toEqual([{ id: queued, queue: 'protocol-store-gc' }]);
 
-      // And the schema still enqueues afterwards: the grants survived too.
       await enqueueSweepAsApplication(scratch.db);
       const after = await pool.query<{ count: string }>(
         `select count(*)::text from ${JOB_SCHEMA}.jobs`,

@@ -1,15 +1,3 @@
-// The rollup tables are maintained by application code rather than by a
-// database trigger (design S6), so the agreement between `session_stats`,
-// `session_degree_hist` and the rows they summarize is a property this suite
-// has to prove rather than one the database enforces.
-//
-// Every case therefore carries its own oracle: the counts are read before the
-// refresh as well as after, so a `refreshSessionProjections` that stopped
-// writing — or that wrote the wrong distribution — cannot pass as "no error".
-//
-// The oracle reads go through the drizzle builder on the connecting login's
-// own transaction rather than through raw statements, for symmetry with the
-// store suites.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -41,27 +29,18 @@ const { interviewSessions, participants, studies, studyWaves } = STUDY_TABLES;
 const TEAM = 'team-a';
 const ACCESS = unsafeMakeTeamAccess(TEAM, 'owner');
 
-/** A second tenant, for the one case that asks what a cross-team sweep sees. */
 const OTHER_TEAM = 'team-b';
 
-/** The protocol line every fixture wave pins, one per team. */
 const PROTOCOL_ID = '2f9d4c11-6b0e-4a3f-8c17-9d5b4e2a1c08';
 const VERSION_ID = 'c7b1e5a4-33d2-4f68-9a0c-1e8b7d6f5a42';
 const OTHER_PROTOCOL_ID = '6a0f8e37-5c92-41bd-b4e3-7f2a90c5d183';
 const OTHER_VERSION_ID = 'd41b6f09-8a72-4c35-91e6-0b3f8d7c2a56';
 
-/** The protocol line and version ids belonging to one team. */
 const lineFor = (team: string) =>
   team === TEAM
     ? { protocolId: PROTOCOL_ID, versionId: VERSION_ID }
     : { protocolId: OTHER_PROTOCOL_ID, versionId: OTHER_VERSION_ID };
 
-/**
- * One transaction as the connecting login, carrying the `Transaction` service
- * the builder needs. There is no `OwnerScope` — the owner is not a tenant
- * identity and stamps no team — so the fixtures and the oracles open it here,
- * pinning the same search path `TestDatabase.onOwner` does.
- */
 const ownerScope = <A, E, R>(body: Effect.Effect<A, E, R>) =>
   Effect.flatMap(TestDatabase, ({ owner, schema }) =>
     owner.db.transaction((tx) =>
@@ -77,7 +56,6 @@ const ownerScope = <A, E, R>(body: Effect.Effect<A, E, R>) =>
     ),
   );
 
-/** The team and the protocol line the fixtures hang off. Idempotent. */
 const seed = Effect.fnUntraced(function* (team: string = TEAM) {
   const { protocolId, versionId } = lineFor(team);
   const harness = yield* TestDatabase;
@@ -90,8 +68,7 @@ const seed = Effect.fnUntraced(function* (team: string = TEAM) {
                                values (${protocolId}, ${team}, 'protocol')
                                on conflict (id) do nothing`;
       // `manifest` is jsonb and this is a RAW statement, so the value is a
-      // JSON string; through the builder it would be a plain object and
-      // stringifying it here would double-encode.
+      // JSON string.
       yield* harness.owner.sql`insert into protocol_versions
                                  (id, protocol_id, team_id, version_number,
                                   version_hash, manifest, schema_version,
@@ -104,7 +81,6 @@ const seed = Effect.fnUntraced(function* (team: string = TEAM) {
   );
 });
 
-/** A study, a wave, a participant and an in-progress session for them. */
 const newSession = Effect.fnUntraced(function* (team: string = TEAM) {
   const { protocolId, versionId } = lineFor(team);
   const studyId = randomUUID();
@@ -114,10 +90,6 @@ const newSession = Effect.fnUntraced(function* (team: string = TEAM) {
   yield* ownerScope(
     Effect.gen(function* () {
       const { tx } = yield* Transaction;
-      // The study names the protocol line and the wave pins its version:
-      // `study_waves_version_own_line` refuses a pin whose study has no line,
-      // and `interview_sessions_version_wave_pin` refuses a session under a
-      // wave that pins nothing.
       yield* tx.insert(studies).values({
         id: studyId,
         teamId: team,
@@ -179,7 +151,6 @@ const addEdge = (
     ),
   );
 
-/** The call under test, in a tenant transaction exactly as production runs it. */
 const refresh = (sessionId: string) =>
   TenantScope.open(
     ACCESS,
@@ -225,10 +196,7 @@ const readDegrees = (sessionId: string) =>
     ),
   ).pipe(Effect.orDie);
 
-/**
- * The truth the projections are supposed to agree with. `::int` on both:
- * `count(*)` is a bigint, which the codec decodes as a JavaScript `bigint`.
- */
+/** `::int` on both: `count(*)` is a bigint. */
 const readActualCounts = (sessionId: string) =>
   ownerScope(
     Effect.flatMap(Transaction, ({ tx }) =>
@@ -261,16 +229,12 @@ describe.skipIf(!testDb)('session projections', () => {
           Effect.gen(function* () {
             yield* seed();
             const sessionId = yield* newSession();
-            // a-b, b-c over four nodes: degrees a=1, b=2, c=1, d=0.
             for (const node of ['a', 'b', 'c', 'd']) {
               yield* addNode(sessionId, node);
             }
             yield* addEdge(sessionId, 'a', 'b');
             yield* addEdge(sessionId, 'b', 'c');
 
-            // The oracle: nothing maintains these tables but the call below,
-            // so before it there is no row at all. A trigger doing the work
-            // would fail here.
             expect(yield* readStats(sessionId)).toBeUndefined();
             expect(yield* readDegrees(sessionId)).toEqual({});
 
@@ -286,7 +250,6 @@ describe.skipIf(!testDb)('session projections', () => {
 
             const degrees = yield* readDegrees(sessionId);
             expect(degrees).toEqual({ 0: 1, 1: 2, 2: 1 });
-            // Every node is counted exactly once, isolates included.
             expect(Object.values(degrees).reduce((a, b) => a + b, 0)).toBe(
               actual.nodes,
             );
@@ -309,9 +272,6 @@ describe.skipIf(!testDb)('session projections', () => {
 
             yield* addEdge(sessionId, 'c', 'd');
 
-            // The stale window is the oracle for the second half: the write
-            // alone does not maintain the projection, so a caller that forgets
-            // the refresh ships wrong numbers rather than an error.
             expect(yield* readStats(sessionId)).toMatchObject({
               nodeCount: 4,
               edgeCount: 2,
@@ -326,8 +286,6 @@ describe.skipIf(!testDb)('session projections', () => {
               nodeCount: 4,
               edgeCount: 3,
             });
-            // a=1, b=2, c=2, d=1: the degree-0 bucket is gone rather than left
-            // behind, which is what the delete-then-reinsert exists for.
             expect(yield* readDegrees(sessionId)).toEqual({ 1: 2, 2: 2 });
           }).pipe(Effect.orDie),
       );
@@ -363,16 +321,10 @@ describe.skipIf(!testDb)('session projections', () => {
               nodeCount: 0,
               edgeCount: 0,
             });
-            // No node has a degree, so the histogram is empty — the counts check
-            // on `session_degree_hist` forbids a zero-node bucket.
             expect(yield* readDegrees(sessionId)).toEqual({});
           }).pipe(Effect.orDie),
       );
 
-      // The bulk path, which is the reason the three statements take a SET of
-      // sessions rather than one: the ids are bound as one array parameter, so
-      // the statement text is the same shape whether it names one session or
-      // three hundred.
       it.effect('refreshes a whole set of sessions in one pass', () =>
         Effect.gen(function* () {
           yield* seed();
@@ -395,18 +347,10 @@ describe.skipIf(!testDb)('session projections', () => {
 
           expect(yield* readDegrees(first)).toEqual({ 0: 1 });
           expect(yield* readDegrees(second)).toEqual({ 1: 2 });
-          // Named sessions only: a set that widened to every session of the
-          // team would have built this one too.
           expect(yield* readStats(untouched)).toBeUndefined();
         }).pipe(Effect.orDie),
       );
 
-      // The DELETE carries an explicit team predicate as well as running under
-      // row-level security, and the predicate is the half that matters here:
-      // the bulk path (the synthetic-data seed) runs as an identity the
-      // policies do not constrain, so a delete keyed on the session alone
-      // would reach across the tenant boundary the first time two teams'
-      // sessions were refreshed in one run.
       it.effect(
         'leaves another team\u2019s rollups alone when RLS is not in the way',
         () =>
@@ -420,7 +364,6 @@ describe.skipIf(!testDb)('session projections', () => {
             yield* addNode(theirs, 'b', OTHER_TEAM);
             yield* addEdge(theirs, 'a', 'b', OTHER_TEAM);
 
-            // Both rollups built, each in its own tenant scope.
             yield* refresh(mine);
             yield* TenantScope.open(
               unsafeMakeTeamAccess(OTHER_TEAM, 'owner'),
@@ -431,8 +374,6 @@ describe.skipIf(!testDb)('session projections', () => {
             );
             expect(yield* readDegrees(theirs)).toEqual({ 1: 2 });
 
-            // Now the sweep: a maintenance scope stamps no team, so the policies
-            // step aside and only the statement's own predicate is left.
             yield* MaintenanceScope.open(
               refreshSessionProjections({ teamId: TEAM, sessionId: mine }),
             );

@@ -1,12 +1,3 @@
-// The template tables' database-enforced promises: the gallery metadata row's
-// vetted licence and kind sets, a published version's immutability, and the pin
-// set that makes a template's content garbage-collection-safe by construction —
-// including the insert-frozen rule that stops a pin appearing after the version
-// that names it was frozen.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger
-// — so a guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -38,7 +29,6 @@ type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
 const hex64 = () => randomBytes(32).toString('hex');
 
-/** One committed section document per team, for the pin set's foreign key. */
 const sectionOf: Record<string, string> = {
   [TEAM_A]: hex64(),
   [TEAM_B]: hex64(),
@@ -95,11 +85,6 @@ const newVersion = Effect.fnUntraced(function* (
   return row.id as string;
 });
 
-/**
- * Publication as the command layer performs it: the version row and every
- * pin it names in one transaction, which is the only window the
- * insert-frozen trigger admits.
- */
 const publish = Effect.fnUntraced(function* (
   templateId: string,
   pins: readonly Row[],
@@ -119,7 +104,6 @@ const publish = Effect.fnUntraced(function* (
   return version.id as string;
 });
 
-/** Both teams, each holding one committed section. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) =>
     Effect.andThen(
@@ -145,7 +129,6 @@ describe.skipIf(!testDb)('template schema', () => {
              FROM templates WHERE id = $1`,
             [id],
           );
-          // The badge is review-granted, so a template never arrives curated.
           expect(rows[0]).toEqual({
             license: 'CC-BY-4.0',
             curated: false,
@@ -298,8 +281,6 @@ describe.skipIf(!testDb)('template schema', () => {
               ownerInsert('template_versions', versionRow(templateId)),
             );
             expect(renumbered.state).toBe('23505');
-            // Re-publishing identical content under a new number is refused
-            // too: the manifest hash identifies what the version resolves to.
             const republished = yield* refusalOf(
               ownerInsert(
                 'template_versions',
@@ -447,9 +428,6 @@ describe.skipIf(!testDb)('template schema', () => {
           const templateId = yield* newTemplate();
           const versionId = randomUUID();
 
-          // Referential integrity bypasses row-level security, so the
-          // composite key is what keeps a template's content inside its own
-          // tenant.
           const refused = yield* refusalOf(
             publish(
               templateId,

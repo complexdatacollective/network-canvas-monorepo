@@ -1,13 +1,3 @@
-// The experiment module's database-enforced promises: the variant list and
-// lifecycle checks on an experiment, the element-level proof that makes the
-// list a list of arms, one sticky assignment per subject, the composite
-// foreign keys that keep an assignment and its exposures inside one team, and
-// the sidecar triggers that make an assignment and an exposure unrewritable
-// and undeletable while leaving the erasure delete path open.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger
-// — so a guard that stopped firing cannot pass as "no error".
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -42,12 +32,10 @@ const THREE_VARIANTS = JSON.stringify([
   { key: 'treatment_b', weight: 1 },
 ]);
 
-/** One experiment per team, so cross-team pins have a target. */
 const experimentOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
 };
-/** One assignment per team, for the exposure pins. */
 const assignmentOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -109,25 +97,20 @@ const newExposure = (
   return Effect.as(ownerInsert('experiment_exposures', row), row.id as string);
 };
 
-/** An assignment of a participant subject, which erasure can reach. */
 const newParticipantAssignment = (participantId: string) =>
   newAssignment(experimentOf[TEAM_A] as string, {
     subject_kind: 'participant',
     subject_id: participantId,
   });
 
-/** What a refused statement said, every message down the chain joined. */
 const refusalMessage = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.map(refusalOf(effect), (refused) => refused.message);
 
-/** Both teams, a running experiment and an assignment each, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) =>
     Effect.gen(function* () {
       yield* insertTeam(teamId);
       const experimentId = experimentOf[teamId] as string;
-      // Running, so the fixture assignment and the exposures the cases
-      // below add lie within the experiment's lifetime.
       yield* ownerInsert(
         'experiments',
         experimentRow({
@@ -272,9 +255,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
         }),
       );
 
-      // `experiments_variants_check` sees an array of the right length and
-      // stops. Every shape below satisfies it, and every one of them would
-      // corrupt the randomiser that reads the list as a set of arms.
       it.effect.each<
         readonly [label: string, variants: string, message: string]
       >([
@@ -435,7 +415,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
               [id, variants],
             );
 
-          // A draft is still being designed.
           expect(yield* setVariants(THREE_VARIANTS)).toBe(1);
           yield* ownerAffected(
             `UPDATE experiments SET state = 'running', started_at = now() WHERE id = $1`,
@@ -445,8 +424,7 @@ describe.skipIf(!testDb)('experiment schema', () => {
             'the variants of an experiment that has started are immutable',
           );
           // Two BEFORE UPDATE triggers watch this column and fire in name
-          // order, so a started experiment is refused as immutable rather
-          // than critiqued for the contents of a list it may not carry anyway.
+          // order, so a started experiment is refused as immutable.
           expect(
             yield* refusalMessage(
               setVariants(JSON.stringify([{ key: 'control', weight: 0 }])),
@@ -454,7 +432,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
           ).toContain(
             'the variants of an experiment that has started are immutable',
           );
-          // Everything else about a running experiment still moves.
           expect(
             yield* ownerAffected(
               `UPDATE experiments SET state = 'stopped', stopped_at = now() WHERE id = $1`,
@@ -476,8 +453,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
             const refused =
               'an experiment that has started cannot return to draft or move its start';
 
-            // Back to draft, start cleared: the walk-back that would let the
-            // variants be rewritten under existing assignments.
             expect(
               yield* refusalMessage(
                 ownerAffected(
@@ -494,7 +469,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
                 ),
               ),
             ).toContain(refused);
-            // Stopping is the one transition left.
             expect(
               yield* ownerAffected(
                 `UPDATE experiments SET state = 'stopped', stopped_at = now() WHERE id = $1`,
@@ -517,7 +491,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
             state: '23505',
             constraint: 'experiments_team_id_key_unique',
           });
-          // The key is namespaced by team, so another team may reuse it.
           expect(
             yield* ownerInsert(
               'experiments',
@@ -576,9 +549,8 @@ describe.skipIf(!testDb)('experiment schema', () => {
 
       it.effect('allows one assignment per subject per experiment', () =>
         Effect.gen(function* () {
-          // This case exercises subject uniqueness, so use one explicit
-          // lifetime instead of comparing the host clock with PostgreSQL's
-          // default now().
+          // One explicit lifetime instead of comparing the host clock with
+          // PostgreSQL's default now().
           const startedAt = new Date('2026-01-01T00:00:00Z');
           const experimentId = yield* newExperiment({
             state: 'running',
@@ -607,8 +579,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
               'experiment_assignments_experiment_id_subject_kind_subject_id_un',
           });
 
-          // The subject is (kind, id): the same opaque id under another kind
-          // is a different subject and may be assigned independently.
           expect(
             yield* ownerInsert(
               'experiment_assignments',
@@ -618,7 +588,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
               }),
             ),
           ).toBe(1);
-          // As is the same subject in another experiment.
           const otherId = yield* newExperiment({
             state: 'running',
             started_at: startedAt,
@@ -697,10 +666,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
           const participantId = randomUUID();
           const id = yield* newParticipantAssignment(participantId);
 
-          // Immutability stops at UPDATE on purpose: participant erasure has
-          // to be able to remove a subject's assignment outright. It presents
-          // the marker to say so, and the marker names this assignment's own
-          // subject.
           expect(
             yield* erasing(
               TEAM_A,
@@ -734,9 +699,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
               subject_id: subjectId,
             });
 
-            // Without this, deleting and reinserting is a way round the
-            // sticky assignment the unique key and the immutability trigger
-            // exist to keep.
             expect(
               yield* refusalMessage(
                 ownerAffected(
@@ -778,8 +740,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
 
       it.effect('refuses a marker that names a subject of another kind', () =>
         Effect.gen(function* () {
-          // A researcher's assignment belongs to no participant, so no
-          // erasure may reach it however the marker is spelled.
           const subjectId = randomUUID();
           const id = yield* newAssignment(experimentOf[TEAM_A] as string, {
             subject_kind: 'user',
@@ -931,7 +891,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
                 }),
               ),
             ).toContain("an experiment's exposures lie within its lifetime");
-            // Inside the span, both ends inclusive.
             expect(
               yield* newExposure(experimentId, assignmentId, {
                 occurred_at: stoppedAt,
@@ -1013,9 +972,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
             const assignmentId = assignmentOf[TEAM_A] as string;
             const otherExperimentId = yield* newExperiment();
 
-            // The assignment is `control` on `experimentId`. Filed under another
-            // experiment of the same team, or under another arm, the exposure
-            // would be counted where its subject was never assigned.
             expect(
               yield* refusalOf(newExposure(otherExperimentId, assignmentId)),
             ).toMatchObject({
@@ -1073,8 +1029,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
             assignmentOf[TEAM_A] as string,
           );
 
-          // The exposure trigger reuses the assignment guard's function, so
-          // it raises the assignment message.
           expect(
             yield* refusalMessage(
               ownerAffected(
@@ -1092,10 +1046,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
           const assignmentId = yield* newParticipantAssignment(participantId);
           yield* newExposure(experimentOf[TEAM_A] as string, assignmentId);
 
-          // An exposure carries no subject of its own, so the marker is proven
-          // through the assignment it was logged against — and the exposures
-          // must go first, because the composite key holds the assignment in
-          // place while any of them survive.
           expect(
             yield* erasing(
               TEAM_A,
@@ -1116,9 +1066,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
               assignmentOf[TEAM_A] as string,
             );
 
-            // Deleting the exposures is the first half of re-rolling an
-            // assignment: the composite key only holds the assignment while
-            // they exist.
             expect(
               yield* refusalMessage(
                 ownerAffected(
@@ -1167,7 +1114,6 @@ describe.skipIf(!testDb)('experiment schema', () => {
           ).toContain(
             'experiment exposures are deleted only by an audited erasure or the maintenance purge',
           );
-          // ...and the same marker reaches its own participant's exposures.
           yield* newExposure(experimentOf[TEAM_A] as string, assignmentId);
           expect(
             yield* erasing(

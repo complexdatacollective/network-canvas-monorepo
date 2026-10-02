@@ -1,18 +1,3 @@
-// The web/worker split is structural, not conventional (#1895): "neither
-// process may do the other's work" is only true if neither process can. What a
-// module graph reaches is what a process loads, so the five entrypoints are
-// checked against each other here rather than against a habit.
-//
-// The runtime half of the same rule is proved elsewhere: the grants suite
-// (src/jobs/__tests__/grants.test.ts) shows the application role refused
-// a claim with 42501, so even a web process that did load the worker could not
-// execute a job.
-//
-// Since stage 1 of the Effect 4 migration (#1927) each entry is a one-line
-// file over a program in src/programs/, and the graph is read from the entry
-// — so the program, the shell it composes and every service it wires are what
-// is inspected, the same way the bundler sees them (vite.config.ts names the
-// same five files as its entries).
 import { readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
@@ -32,21 +17,6 @@ const SERVER_ROOT = resolve(
 
 const REPO_ROOT = resolve(SERVER_ROOT, '..', '..', '..');
 
-/**
- * Every module specifier in a file, through the tokenizer rather than a
- * regular expression: a specifier named in a comment or inside a string
- * cannot add to the graph, and a real one cannot hide from it.
- *
- * All three forms that reach a module, because a graph that followed only the
- * first would report a process as free of what it loads by either of the
- * others: `from 'x'` for a static import or re-export, `import 'x'` for a
- * side-effect import, which has no `from` at all, and `import('x')` for a
- * dynamic one — the form a lazily loaded transport or router would arrive by.
- * `from` is a contextual keyword, so what identifies it is a `from`
- * immediately followed by a string literal, which no expression produces;
- * `import` is reserved, so a literal after it, or after its opening
- * parenthesis, is always a specifier.
- */
 function moduleSpecifiers(source: string): string[] {
   const tokens = sourceTokens(source);
   const literalAt = (index: number): string | undefined => {
@@ -70,17 +40,10 @@ function moduleSpecifiers(source: string): string[] {
 }
 
 type ModuleGraph = {
-  /** Server-relative paths of every module the entry statically reaches. */
   modules: Set<string>;
-  /** Every package the entry statically reaches, at any depth. */
   packages: Set<string>;
 };
 
-/**
- * Relative specifiers only, which is enough: a package cannot import its way
- * back into this source tree, so following them reaches every module of ours
- * the entry loads.
- */
 function moduleGraph(entry: string): ModuleGraph {
   const modules = new Set<string>();
   const packages = new Set<string>();
@@ -111,11 +74,6 @@ function reached(
   return names.filter((name) => modules.has(name) || packages.has(name));
 }
 
-/**
- * Everything that runs a job rather than creating one: the worker itself, the
- * list of what this deployment works, and the handlers that do the work. Only
- * the worker process may reach any of it.
- */
 const JOB_EXECUTION = [
   'src/jobs/worker.ts',
   'src/jobs/registrations.ts',
@@ -125,7 +83,6 @@ const JOB_EXECUTION = [
   'src/jobs/handlers/denied-attempts-summary.ts',
 ];
 
-/** The five bundle entries (vite.config.ts), one process or command each, and the program each is a shell over. */
 const ENTRIES = {
   'src/index.ts': './programs/serve.ts',
   'src/worker.ts': './programs/worker.ts',
@@ -136,13 +93,6 @@ const ENTRIES = {
 
 describe('the import inventory', () => {
   it('follows every form one module reaches another by', () => {
-    // The inventory above is only as complete as this: a specifier it does
-    // not follow is a module the graph reports as unreached, which is how a
-    // process could load the mail transport or the HTTP app and still pass.
-    //
-    // Mutation: drop the `import` half of `moduleSpecifiers` (follow `from`
-    // alone, as it did before) and the side-effect and dynamic specifiers
-    // below go missing.
     expect(
       moduleSpecifiers(
         [
@@ -167,9 +117,6 @@ describe('the import inventory', () => {
 
 describe('every entry', () => {
   it('is one file over its program', () => {
-    // D8: the bundle entries stay one file each, because this test — and the
-    // bundler — read the graph from them. The only module an entry names is
-    // its program; everything the process is lives there.
     for (const [entry, program] of Object.entries(ENTRIES)) {
       const relativeSpecifiers = moduleSpecifiers(
         readFileSync(resolve(SERVER_ROOT, entry), 'utf8'),
@@ -179,12 +126,8 @@ describe('every entry', () => {
   });
 
   it('reaches @effect/platform-node by subpath only', () => {
-    // The package's barrel imports its Redis module, and `redis` is
-    // deliberately not installed (pnpm-workspace.yaml makes the peer
-    // optional so a second Redis client stays out of the image): a bare
-    // `from '@effect/platform-node'` fails at boot with
-    // ERR_MODULE_NOT_FOUND. Mutation: import `NodeRuntime` from the barrel in
-    // any entry.
+    // The package's barrel imports its Redis module, and `redis` is deliberately
+    // not installed, so a bare `from '@effect/platform-node'` fails at boot.
     for (const entry of Object.keys(ENTRIES)) {
       const { packages } = moduleGraph(entry);
       expect(packages.has('@effect/platform-node'), entry).toBe(false);
@@ -195,12 +138,6 @@ describe('every entry', () => {
     }
   });
   it('reaches no Hono, no oRPC and no WebSocket library of its own', () => {
-    // Every surface is the Effect router's (#1927 stage 9): the Hono residue
-    // and its bridge are gone, oRPC left with stage 8, and the one WebSocket
-    // server is the one @effect/platform-node brings. By package prefix, so a
-    // subpath import cannot pass for the package's absence.
-    //
-    // Mutation: import `hono` in src/http/router.ts.
     const foreign = (name: string) =>
       /^(?:hono|ws)(?:\/|$)/.test(name) || /^@(?:hono|orpc)\//.test(name);
     for (const entry of Object.keys(ENTRIES)) {
@@ -210,11 +147,6 @@ describe('every entry', () => {
     }
   });
   it('imports no zod from its own modules', () => {
-    // zod still arrives through @codaco/protocol-validation and
-    // @codaco/studio-sync/section-validation, whose zod schemas are
-    // protocol-validation's; what this refuses is a schema of Studio's own.
-    //
-    // Mutation: import `zod` in src/audit/events.ts.
     const zod = (name: string) => /^zod(?:\/|$)/.test(name);
     for (const entry of Object.keys(ENTRIES)) {
       expect([...moduleGraph(entry).packages].filter(zod), entry).toEqual([]);
@@ -233,12 +165,6 @@ describe('the worker process', () => {
   });
 
   it('serves nothing but the health routes', () => {
-    // It does serve HTTP — the loopback health listener a container
-    // healthcheck polls (#1897) — so "binds no port" is not the reading. What
-    // stays true is that it holds none of Studio's surfaces: loading the
-    // router or the RPC router would not make it answer a
-    // request by itself, but it is how one arrives a refactor later, and the
-    // import is the observable half of "this process serves no user".
     expect(
       reached(graph, [
         'src/app.ts',
@@ -250,17 +176,12 @@ describe('the worker process', () => {
         '@codaco/studio-contract/api/v1',
         '@orpc/server',
         'hono',
-        // The WebSocket server is the web process's; nothing upgrades here.
         'ws',
       ]),
     ).toEqual([]);
   });
 
   it('answers the healthcheck from a module that reaches no surface', () => {
-    // The positive half: the routes it does serve come from
-    // src/http/health.ts, whose own graph is checked below, on Effect's Node
-    // server. Without this, "no app" would also be satisfied by a worker that
-    // had quietly stopped answering at all.
     expect(
       reached(graph, [
         'src/http/health.ts',
@@ -270,34 +191,16 @@ describe('the worker process', () => {
   });
 
   it('is the process that holds the mail transport', () => {
-    // The other half of the split: sends happen here, so this graph must
-    // reach the transport where the web process's must not.
     expect(
       reached(graph, ['src/mail/live.ts', 'src/mail/smtp.ts', 'nodemailer']),
     ).toEqual(['src/mail/live.ts', 'src/mail/smtp.ts', 'nodemailer']);
   });
 
   it('is the process that executes jobs', () => {
-    // The worker claims, settles, reaps, sweeps retention and ticks the cron;
-    // the registrations are the list of what this deployment runs, and the
-    // handlers are the work itself.
     expect(reached(graph, JOB_EXECUTION)).toEqual(JOB_EXECUTION);
   });
 
   it('builds no auth provider at all', () => {
-    // A tightening, not a loosening (#1927 §12): the worker used to construct
-    // a better-auth instance only to reach the secrets wrapper, and since
-    // stage 4 the auth layers are serve-only. Nothing the worker does signs
-    // anybody in, so neither better-auth, its plugins and adapters, nor any
-    // of Studio's own auth modules may be in its graph — a type import
-    // included, since the graph follows those too and one is how the rest
-    // would arrive a refactor later.
-    //
-    // The positive half is the web process's graph below, which reaches all
-    // of it, so this cannot be satisfied by the modules being gone.
-    //
-    // Mutation: import `SessionPrincipal` from src/auth/service.ts in
-    // src/audit/denial-summary.ts.
     const isBetterAuth = (name: string) =>
       name === 'better-auth' ||
       name.startsWith('better-auth/') ||
@@ -322,22 +225,12 @@ describe('the worker process', () => {
   });
 
   it('is the process that holds the maintenance TeamAccess', () => {
-    // The positive half of the web process's case below, so that "the web
-    // process cannot reach it" is not satisfied by the module being gone.
     expect(reached(graph, ['src/jobs/team-access.ts'])).toEqual([
       'src/jobs/team-access.ts',
     ]);
   });
 });
 
-/**
- * The graph above stops at a package's name, which is enough to keep a
- * process from reaching a package of its own accord and blind to what a
- * package it may reach loads in turn. This one follows the packages that are
- * Studio's own (`@codaco/*`, their source) and Effect's (its `dist`), through
- * their runtime imports only — a type-only import loads nothing — so a module
- * the process would actually evaluate is in it wherever it comes from.
- */
 function loadedModules(entry: string): Set<string> {
   const loaded = new Set<string>();
   const pending = [realpathSync(resolve(SERVER_ROOT, entry))];
@@ -367,7 +260,6 @@ function loadedModules(entry: string): Set<string> {
   return loaded;
 }
 
-/** `moduleSpecifiers` without `import type` and `export type`. */
 function runtimeSpecifiers(source: string): string[] {
   const tokens = sourceTokens(source);
   const specifiers: string[] = [];
@@ -397,11 +289,6 @@ function runtimeSpecifiers(source: string): string[] {
   return specifiers;
 }
 
-/**
- * A published package's compiled output has its static imports and
- * re-exports one to a line at the top level, which is all this reads; the
- * tokenizer is kept for source that a person wrote.
- */
 function distSpecifiers(source: string): string[] {
   return [
     ...source.matchAll(
@@ -418,24 +305,14 @@ describe('what each process loads through the packages it imports', () => {
     [...loadedModules(entry)].some((path) => SCALAR.test(path));
 
   it('keeps the API reference page out of the worker', () => {
-    // The page inlines a 3 MB bundle, and the worker serves no page. The
-    // contract's shared problem schema used to reach it through
-    // `effect/http-api`'s barrel, which every module that raises a
-    // contract error — the worker's included — loads.
-    //
-    // Mutation: import `HttpApiScalar` from the barrel in
-    // src/programs/worker.ts.
     expect(loadsScalar('src/worker.ts')).toBe(false);
   });
 
   it('keeps it out of the health routes both processes mount', () => {
-    // Mutation: import `HttpApiScalar` from the barrel in src/http/health.ts.
     expect(loadsScalar('src/http/health.ts')).toBe(false);
   });
 
   it('loads it in the web process, which serves the page', () => {
-    // The positive half, so that the two above cannot pass because the walk
-    // stopped short of Effect's own modules.
     expect(loadsScalar('src/index.ts')).toBe(true);
   });
 });
@@ -443,11 +320,9 @@ describe('what each process loads through the packages it imports', () => {
 const byName = (left: string, right: string): number =>
   left === right ? 0 : left < right ? -1 : 1;
 
-/** The protocol-builder host's modules: its mounts and its per-process state. */
 const PROTOCOL_BUILDER_HOST =
   /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher)\.ts$/;
 
-/** Effect’s `http-api` barrel, which carries every HttpApi module. */
 const HTTPAPI_BARREL = /\/effect\/dist\/http-api\/index\.js$/;
 
 describe('the protocol-builder host', () => {
@@ -458,13 +333,6 @@ describe('the protocol-builder host', () => {
       .toSorted(byName);
 
   it('is loaded by the web process alone', () => {
-    // Its lease keeper renews on a fiber of its own and its fan-out holds
-    // every open editor's queue, so a process that loaded it is one layer
-    // away from running either. The worker and the one-shot commands serve
-    // no editor.
-    //
-    // Mutation: import src/protocol-builder/leases.ts from
-    // src/programs/worker.ts.
     for (const entry of [
       'src/worker.ts',
       'src/migrate.ts',
@@ -473,7 +341,6 @@ describe('the protocol-builder host', () => {
     ]) {
       expect(hostModules(entry), entry).toEqual([]);
     }
-    // The positive half, so that the walk cannot pass by stopping short.
     expect(hostModules('src/index.ts')).toEqual(
       [
         'src/protocol-builder/handlers.ts',
@@ -487,12 +354,6 @@ describe('the protocol-builder host', () => {
   });
 
   it('reaches Effect rpc by subpath, and no WebSocket library of its own', () => {
-    // The mounts import the rpc and socket modules they use, not the
-    // `unstable/*` barrels, and the socket server under `/ws` is Effect's
-    // Node platform's — nothing of Studio's imports `ws` itself.
-    //
-    // Mutation: import anything from 'effect/http-api' in
-    // src/protocol-builder/rpc.ts.
     expect(
       [...loadedModules('src/protocol-builder/rpc.ts')].filter((path) =>
         HTTPAPI_BARREL.test(path),
@@ -506,11 +367,6 @@ describe('the health routes', () => {
   const graph = moduleGraph('src/http/health.ts');
 
   it('reach neither the app nor the RPC router', () => {
-    // Both processes mount these routes, so this module is the one place a
-    // surface could reach the worker without naming it. Its graph is checked
-    // directly rather than through the worker's, so a future health check that
-    // imported the app would fail here with the reason rather than as a
-    // puzzling entry in the worker's inventory.
     expect(
       reached(graph, [
         'src/app.ts',
@@ -532,11 +388,6 @@ describe('the migrate process', () => {
   const graph = moduleGraph('src/migrate.ts');
 
   it('carries no drizzle-kit into the image', () => {
-    // The invariant the whole design of `studio-api migrate` rests on (#1909):
-    // drizzle-kit is a development dependency and the image installs
-    // production dependencies only, so a bundle that reached it would fail at
-    // import in the container rather than here. The DDL it executes is
-    // rendered at build time instead, by scripts/render-schema-ddl.ts.
     expect(
       reached(graph, [
         'drizzle-kit',
@@ -547,7 +398,6 @@ describe('the migrate process', () => {
   });
 
   it('serves nothing', () => {
-    // A one-shot: it connects, applies, and exits.
     expect(
       reached(graph, [
         'src/app.ts',
@@ -560,14 +410,6 @@ describe('the migrate process', () => {
   });
 
   it('applies the schema on the Effect driver, with no node-postgres pool', () => {
-    // The schema, the stamp and the bootstrap token all go through one
-    // `OwnerDatabase` client. `pg` itself is still in this graph, but only as
-    // `import type` in db/schema.ts and jobs/install.ts, whose node-postgres
-    // `checkSchema`, `stampFingerprint` and `installJobSchema` are
-    // scripts/apply.ts's — erased from the bundle, and not something this walk
-    // can tell from a runtime import, so it is not asserted either way.
-    //
-    // Mutation: import src/db/pool.ts from src/programs/migrate.ts.
     expect(
       reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
     ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
@@ -581,7 +423,6 @@ describe('the web process', () => {
   const graph = moduleGraph('src/index.ts');
 
   it('serves through the Effect router', () => {
-    // The positive half of the shell: the process is the Effect server.
     expect(
       reached(graph, [
         'src/http/router.ts',
@@ -602,47 +443,20 @@ describe('the web process', () => {
   });
 
   it('loads nothing that executes a job', () => {
-    // The web process may create a job and nothing else. Reaching the worker,
-    // its registrations or any handler would put the claim loop one call away
-    // in a process whose role cannot execute one anyway — and would carry the
-    // handlers' own dependencies (the mail transport, the rate-limit store)
-    // with them.
     expect(reached(graph, JOB_EXECUTION)).toEqual([]);
   });
 
   it('holds no mail transport', () => {
-    // "The web process holds no mail transport" (#1895) as a property of the
-    // build rather than of the wiring: with nodemailer out of the graph there
-    // is no transport to construct, whatever an entrypoint asks for. The
-    // `Mailer` tag itself (src/mail/mailer.ts) may travel — it is
-    // implementation-free — but the selector and the transport may not.
-    //
-    // Mutation: import src/mail/live.ts from src/programs/serve.ts.
     expect(
       reached(graph, ['src/mail/live.ts', 'src/mail/smtp.ts', 'nodemailer']),
     ).toEqual([]);
   });
 
   it('cannot re-key the database while it is serving it', () => {
-    // Rotation rewrites every stored secret under a maintenance identity, in
-    // batches, and is something a person runs once (#1900). A web process that
-    // could reach it is one refactor from doing it on a request; it is an
-    // entry of its own instead (src/rotate-secrets.ts, below).
     expect(reached(graph, ['src/secrets/rotate.ts'])).toEqual([]);
   });
 
   it('creates jobs through the one enqueue', () => {
-    // The positive half, so that "no worker" cannot be satisfied by having no
-    // queue at all. `Jobs.enqueue` renders its statement through
-    // `src/jobs/insert.ts` and sends it on the caller's own `Transaction` —
-    // the same module and the same statement the worker sends.
-    //
-    // This case used to assert the opposite of the one below it: that the web
-    // process reached `src/jobs/client.ts`, a node-postgres twin, and reached
-    // no `@effect/sql-pg` at all. #1927 stage 3 moved every command onto the
-    // Effect data layer, so the twin is deleted and the driver is exactly what
-    // this process runs on. What is asserted instead is that the enqueue is
-    // the *only* part of the queue it reaches — which is the case below.
     expect(reached(graph, ['src/jobs/jobs.ts', 'src/jobs/insert.ts'])).toEqual([
       'src/jobs/jobs.ts',
       'src/jobs/insert.ts',
@@ -650,15 +464,6 @@ describe('the web process', () => {
   });
 
   it('runs its commands on the Effect driver', () => {
-    // The driver half of the enqueue case above, and the reason it is only a
-    // positive one. #1927 stage 3 moved every command onto `@effect/sql-pg`,
-    // so this is now the client the process's own work runs on.
-    //
-    // Nor a node-postgres pool: `pg` arrives only as `import type` from the
-    // scripts' helpers in db/schema.ts and jobs/install.ts, which the build
-    // erases.
-    //
-    // Mutation: drop `@effect/sql-pg` from src/db/client.ts.
     expect(
       reached(graph, ['@effect/sql-pg', 'drizzle-orm/effect-postgres']),
     ).toEqual(['@effect/sql-pg', 'drizzle-orm/effect-postgres']);
@@ -668,15 +473,6 @@ describe('the web process', () => {
   });
 
   it('cannot mint a TeamAccess without a membership check', () => {
-    // `maintenanceTeamAccess` (src/jobs/team-access.ts) is the constructor
-    // that proves nothing, because the worker acts as the deployment rather
-    // than as a member (#1927 §10). Every mint this process holds has just
-    // looked up a membership (src/db/__tests__/team-access-policy.test.ts
-    // lists them); this one reaching it would be a tenant transaction one
-    // call away from any request. `audit/denial-summary.ts` is its one
-    // importer outside the job handlers, so it is named too.
-    //
-    // Mutation: import src/jobs/team-access.ts from src/programs/serve.ts.
     expect(
       reached(graph, [
         'src/jobs/team-access.ts',
@@ -686,26 +482,14 @@ describe('the web process', () => {
   });
 
   it('carries the queue’s schema installer nowhere near it', () => {
-    // Creating a job is all of the queue this process may hold. The installer
-    // belongs to the migrate command and the worker's own boot, and a web
-    // container that could reach it is one call away from creating the queue's
-    // tables under the application role.
-    //
-    // Mutation: import src/jobs/install.ts from src/programs/serve.ts.
     expect(reached(graph, ['src/jobs/install.ts'])).toEqual([]);
   });
 });
 
-// The maintenance command (#1901): the one writer of the `deployment_state`
-// flag both long-running processes read. It connects, flips one row as the
-// maintenance role, and exits — so it reaches the row's store and the
-// maintenance client, and none of what either process runs.
 describe('the maintenance process', () => {
   const graph = moduleGraph('src/maintenance.ts');
 
   it('writes the flag through the deployment-state store', () => {
-    // The positive half: every negative below would also hold for an entry
-    // that had stopped writing anything at all.
     expect(
       reached(graph, [
         'src/db/deployment-state.ts',
@@ -720,12 +504,6 @@ describe('the maintenance process', () => {
   });
 
   it('serves nothing and runs no job', () => {
-    // Neither the HTTP surface — the maintenance gate included, which is the
-    // web process's reader of the flag, not its writer — nor the job worker
-    // and its gate, which is the worker's.
-    //
-    // Mutation: import src/http/middleware/maintenance.ts or
-    // src/jobs/maintenance.ts from src/programs/maintenance.ts.
     expect(
       reached(graph, [
         'src/app.ts',
@@ -744,8 +522,6 @@ describe('the maintenance process', () => {
   });
 
   it('holds no mail transport, no rotation and no better-auth', () => {
-    // It sends nothing, re-keys nothing and signs nobody in: the flag is the
-    // whole of what it touches.
     expect(
       reached(graph, [
         'src/mail/live.ts',
@@ -759,35 +535,22 @@ describe('the maintenance process', () => {
   });
 
   it('carries no node-postgres', () => {
-    // Like rotation, a command written on the Effect driver from the start:
-    // no pool, and no `pg` even as a type.
     expect(
       reached(graph, ['pg', 'drizzle-orm/node-postgres', 'src/db/pool.ts']),
     ).toEqual([]);
   });
 });
 
-// The fifth entry, and the other side of "the web process cannot re-key the
-// database while it is serving it" above: the rotation is a process of its own
-// (#1900), so the separation runs both ways — the web process cannot reach the
-// rotation, and the rotation loads neither the HTTP surface nor the job
-// worker.
 describe('the rotation process', () => {
   const graph = moduleGraph('src/rotate-secrets.ts');
 
   it('is the process that re-keys the stored secrets', () => {
-    // The positive half: "the web process cannot reach the rotation" would be
-    // satisfiable by nothing reaching it at all.
     expect(reached(graph, ['src/secrets/rotate.ts'])).toEqual([
       'src/secrets/rotate.ts',
     ]);
   });
 
   it('is the entry already clear of node-postgres', () => {
-    // Unlike the web, worker and migrate graphs, it carries no `import type`
-    // of `pg` either.
-    //
-    // Mutation: import src/db/pool.ts from src/programs/rotate-secrets.ts.
     expect(reached(graph, ['@effect/sql-pg'])).toEqual(['@effect/sql-pg']);
     expect(
       reached(graph, ['pg', 'drizzle-orm/node-postgres', 'src/db/pool.ts']),
@@ -795,9 +558,6 @@ describe('the rotation process', () => {
   });
 
   it('serves nothing and runs no job', () => {
-    // It runs to completion and exits under the maintenance role. An HTTP
-    // surface or the job worker in this graph is how a command becomes a
-    // second server one refactor later.
     expect(
       reached(graph, [
         'src/app.ts',
@@ -813,12 +573,6 @@ describe('the rotation process', () => {
 });
 
 describe('the image', () => {
-  /**
-   * Only what the assertion below reads: the snapshots section, each entry's
-   * dependency names. Decoded rather than cast, so a lockfile shape pnpm
-   * changes fails here with the path rather than as `undefined` somewhere
-   * below.
-   */
   const Lockfile = Schema.Struct({
     snapshots: Schema.Record(
       Schema.String,
@@ -830,7 +584,6 @@ describe('the image', () => {
     ),
   });
 
-  /** The lockfile snapshot of `@effect/platform-node`, whatever its resolution suffix. */
   function platformNodeSnapshot() {
     const lockfile = Schema.decodeUnknownSync(Lockfile)(
       parseYaml(readFileSync(resolve(REPO_ROOT, 'pnpm-lock.yaml'), 'utf8')),
@@ -849,12 +602,8 @@ describe('the image', () => {
 
   it('carries one Redis client', () => {
     // `@effect/platform-node` declares `redis` as a hard peer for a cluster
-    // module Studio never imports. With `autoInstallPeers` pnpm installs a
-    // hard peer regardless of `peerDependencyRules.ignoreMissing`, and it
-    // would reach the image beside ioredis (the rate-limit store's client).
-    // pnpm-workspace.yaml makes the peer optional through
-    // `packageExtensions`; this is what says it worked. Mutation: remove that
-    // extension and reinstall.
+    // module Studio never imports; pnpm-workspace.yaml makes the peer optional
+    // through `packageExtensions`.
     expect(
       Object.keys(platformNodeSnapshot().dependencies ?? {}),
     ).not.toContain('redis');

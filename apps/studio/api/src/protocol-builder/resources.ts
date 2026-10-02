@@ -27,7 +27,6 @@ import type { ObjectStore } from '../storage/object-store.ts';
 
 type Descriptor = typeof ResourceDescriptorSchema.Type;
 type Failure = typeof ResourceGatewayFailureSchema.Type;
-/** Exported so the handlers can fill a committed API key's value in (#1900). */
 export type Inspection = typeof ResourceInspectionSchema.Type;
 type Preview = typeof ResourcePreviewSchema.Type;
 type StageRequest = (typeof StageResourceInputSchema.Type)['request'];
@@ -152,11 +151,8 @@ const planPromotion = Effect.fnUntraced(function* (
         resourceId,
       );
     }
-    // An object store that is unreachable is the researcher's situation
-    // rather than the host's: the contract has a retryable failure for it,
-    // and reaching the generic error boundary instead would tell an editor
-    // that has staged a file to give up on a promotion it could make a
-    // minute later.
+    // An unreachable object store gets the contract's retryable failure rather
+    // than the generic error boundary.
     const stored = yield* Effect.exit(
       store.put(
         entry.bytes,
@@ -445,7 +441,6 @@ class StagedResourceRegistry {
     return this.#byEdit.get(key)?.resources;
   }
 
-  /** Every owner with an edit open. */
   owners(): ReadonlySet<string> {
     return new Set([...this.#byEdit.values()].map((edit) => edit.owner));
   }
@@ -492,17 +487,9 @@ type OpenEdit = {
   touchedAt: number;
 };
 
-/**
- * This process's staged imports, as the handlers reach them.
- *
- * Process-local by design, like the imports themselves: a staged file lives in
- * this process's memory until the submit that promotes it or the cancel that
- * drops it, so the registry is one per server and outlives every connection.
- */
 export class StagedImports extends Context.Service<
   StagedImports,
   {
-    /** This edit's staging area, opened now if it has none yet. */
     readonly for: (
       key: string,
       owner: string,
@@ -511,10 +498,6 @@ export class StagedImports extends Context.Service<
       key: string,
     ) => Effect.Effect<StagedResources | undefined>;
     readonly touch: (prefix: string) => Effect.Effect<void>;
-    /**
-     * Drops what every owner idle since `before` was holding, unless
-     * `connected` says it still has a channel.
-     */
     readonly expire: (
       before: number,
       connected: (owner: string) => Effect.Effect<boolean>,

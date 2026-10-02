@@ -1,13 +1,3 @@
-// The study tier's reads, and the one predicate they share.
-//
-// #1257's visibility rule is written once — `studyVisibleToCallerSql` — and
-// embedded by `studies.list` and `studies.get` alike. The rule is only worth
-// having in one place if the statements that embed it cannot disagree, so the
-// central case here is a BOUNDARY ROW: one study the caller holds no grant on,
-// asked about through both statements under both visibilities, against an
-// explicit expected answer. A list that omitted it while the get returned it
-// would be the hole the shared fragment exists to close, and it would be
-// invisible to a suite that tested each statement on its own.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -29,21 +19,17 @@ import { getStudy, listStudies, type StudyVisibility } from '../store.ts';
 
 const MEMBER = 'user-member';
 
-/** A team Member: sees only the studies they hold a grant on. */
 const asMember: StudyVisibility = {
   actorUserId: MEMBER,
   seesEveryStudy: false,
 };
-/** A team Admin or Owner: sees every study the team owns. */
 const asAdmin: StudyVisibility = {
   actorUserId: MEMBER,
   seesEveryStudy: true,
 };
 
 type Fixture = {
-  /** The caller's own team, fresh per case so one case cannot see another's. */
   access: TeamAccess;
-  /** A second team, to prove the tenant boundary rather than assume it. */
   otherAccess: TeamAccess;
   granted: string;
   ungranted: string;
@@ -52,17 +38,6 @@ type Fixture = {
   newestDraftId: string;
 };
 
-/**
- * Two studies in one team — one the Member holds a grant on, one they do not —
- * a third in another team, and a protocol line with two drafts so "the newest"
- * is a choice rather than the only row.
- *
- * Its own pair of teams per case, because the suite's layer is shared: a fixed
- * team id would let one case's studies show up in another's list.
- *
- * Written as the connecting login, which bypasses the row-level security
- * policies but not the triggers: exactly the fixture tool these cases want.
- */
 const seed = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
   const teamId = `team-${randomUUID().slice(0, 8)}`;
@@ -87,8 +62,8 @@ const seed = Effect.fnUntraced(function* () {
       }
       yield* sql`insert into protocols (id, team_id, name)
                  values (${protocolId}, ${teamId}, 'A protocol')`;
-      // A raw statement, so the jsonb value is a JSON string: through the
-      // builder it would be a plain object and stringifying would double-encode.
+      // A raw statement, so the jsonb value is a JSON string: through the builder
+      // stringifying would double-encode.
       yield* sql`insert into protocol_versions
                    (id, protocol_id, team_id, version_number, version_hash,
                     manifest, schema_version, source_manifest_hash)
@@ -105,8 +80,6 @@ const seed = Effect.fnUntraced(function* () {
                    values (${draftId}, ${teamId}, ${protocolId}, ${createdAt})`;
       }
 
-      // `created_at` is explicit so "newest first" is a fact about the rows
-      // rather than about how fast the fixture ran.
       yield* sql`insert into studies (id, team_id, name, protocol_id, created_at)
                  values (${ungranted}, ${teamId}, 'Unreachable', ${protocolId},
                          '2026-03-01T00:00:00Z')`;
@@ -121,8 +94,6 @@ const seed = Effect.fnUntraced(function* () {
                  values (${randomUUID()}, ${teamId}, ${granted}, ${MEMBER},
                          'coordinator', 'user-admin')`;
 
-      // One wave, one participant and one session on the reachable study, so
-      // the counts have something other than zero to report.
       yield* sql`insert into study_waves
                    (id, study_id, team_id, wave_number, protocol_version_id)
                  values (${waveId}, ${granted}, ${teamId}, 1, ${versionId})`;
@@ -179,11 +150,6 @@ describe.skipIf(!testDb)('the study store', () => {
         }).pipe(Effect.orDie),
       );
 
-      // The shared-fragment case. Both statements are asked about the same
-      // boundary row under the same visibility, and both answers are compared
-      // with the answer the rule requires — so a fragment that drifted in one
-      // statement fails here whichever way it drifted, and the case cannot
-      // pass by having both statements agree on the wrong answer.
       it.effect('makes the list and the get agree on a boundary row', () =>
         Effect.gen(function* () {
           const fixture = yield* seed();
@@ -224,16 +190,12 @@ describe.skipIf(!testDb)('the study store', () => {
       it.effect('cannot reach another team’s study at all', () =>
         Effect.gen(function* () {
           const fixture = yield* seed();
-          // Even as a team Admin: the predicate names this transaction's team,
-          // and the policy refuses the row behind it.
           expect(
             yield* TenantScope.open(
               fixture.access,
               getStudy(fixture.foreign, asAdmin),
             ),
           ).toBeNull();
-          // And the study is really there, read from its own team — so the
-          // null above is the boundary, not an empty database.
           expect(
             yield* TenantScope.open(
               fixture.otherAccess,
@@ -255,10 +217,6 @@ describe.skipIf(!testDb)('the study store', () => {
         }).pipe(Effect.orDie),
       );
 
-      // `count(*)` is a bigint through this driver. Without the `::int` the
-      // numbers would arrive as JavaScript `bigint`s — which compare unequal
-      // to any number and throw the moment anything adds to them — so the
-      // assertion is on the type as well as on the value.
       it.effect('counts waves and participants as numbers, not bigints', () =>
         Effect.gen(function* () {
           const fixture = yield* seed();
@@ -271,8 +229,6 @@ describe.skipIf(!testDb)('the study store', () => {
           expect(typeof granted?.waveCount).toBe('number');
           expect(typeof granted?.participantCount).toBe('number');
           expect(granted).toMatchObject({ waveCount: 1, participantCount: 1 });
-          // A study with neither still lists, which is what the correlated
-          // subqueries buy over a join and a group.
           expect(ungranted).toMatchObject({
             waveCount: 0,
             participantCount: 0,
@@ -302,8 +258,6 @@ describe.skipIf(!testDb)('the study store', () => {
       it.effect('answers nothing for a study this team does not have', () =>
         Effect.gen(function* () {
           const fixture = yield* seed();
-          // Undefined rather than four zeroes: the study's existence and its
-          // counts are one answer.
           expect(
             yield* TenantScope.open(
               fixture.access,

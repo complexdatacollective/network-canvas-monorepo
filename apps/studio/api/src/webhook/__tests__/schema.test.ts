@@ -1,13 +1,3 @@
-// The webhook module's database-enforced promises: the https-only callback
-// URL, the bounded event filter, the disable/failure bookkeeping, the
-// Standard Webhooks dedup key, the composite foreign keys that keep a
-// subscription and its deliveries inside one team, and the two sidecar
-// triggers that freeze a queued delivery's payload and addressing and admit a
-// delivery only for an active subscription that asks for its event type.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger
-// — so a guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -31,12 +21,10 @@ const TEAM_B = 'team-b';
 
 type Row = Record<string, unknown>;
 
-/** One study per team, for the optional study-scoped subscription pin. */
 const studyOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
 };
-/** One subscription per team, so cross-team delivery pins have a target. */
 const subscriptionOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -73,7 +61,6 @@ const newDelivery = (subscriptionId: string, overrides: Row = {}) => {
   return Effect.as(ownerInsert('webhook_deliveries', row), row.id as string);
 };
 
-/** Both teams, with a study and a subscription each, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) =>
     Effect.gen(function* () {
@@ -142,9 +129,8 @@ describe.skipIf(!testDb)('webhook schema', () => {
         ],
         [
           'no event filter at all',
-          // The array literal node-postgres sent for `[]`: the driver cannot
-          // infer an element type for an empty array, but binds a string
-          // untyped, so the backend reads this as the column's `text[]`.
+          // The driver cannot infer an element type for an empty array, but
+          // binds a string untyped, so the backend reads this as `text[]`.
           { event_types: '{}' },
           'webhook_subscriptions_event_types_check',
         ],
@@ -246,13 +232,10 @@ describe.skipIf(!testDb)('webhook schema', () => {
           const secret = randomBytes(60);
           const id = yield* newSubscription({ secret_ciphertext: secret });
 
-          // A verifier could be stored as a digest; a signing key cannot,
-          // because every outgoing request has to reproduce it.
           const rows = yield* ownerRows<{ secret_ciphertext: Uint8Array }>(
             `SELECT secret_ciphertext FROM webhook_subscriptions WHERE id = $1`,
             [id],
           );
-          // `bytea` decodes as a plain `Uint8Array`; compare the bytes.
           expect(Buffer.from(rows[0]?.secret_ciphertext ?? [])).toEqual(secret);
         }),
       );
@@ -278,8 +261,6 @@ describe.skipIf(!testDb)('webhook schema', () => {
             ),
           ).toBe(1);
 
-          // Re-enabling has to clear the marker, or a disabled row and an
-          // active one become indistinguishable in the worklist.
           const activeAlone = yield* refusalOf(
             ownerAffected(
               `UPDATE webhook_subscriptions SET state = 'active' WHERE id = $1`,
@@ -481,8 +462,6 @@ describe.skipIf(!testDb)('webhook schema', () => {
                 'webhook_deliveries_subscription_id_webhook_id_unique',
             });
 
-            // The dedup key is the subscriber's, so the same id may
-            // legitimately reach a different subscriber.
             const other = yield* newSubscription();
             expect(
               yield* ownerInsert(
@@ -584,8 +563,6 @@ describe.skipIf(!testDb)('webhook schema', () => {
             );
             expect(claimed).toEqual([{ team_id: TEAM_B }]);
 
-            // The application role, stamped with team A, cannot see the row
-            // at all.
             const invisible = yield* tenantRows(
               TEAM_A,
               `SELECT id FROM webhook_deliveries WHERE id = $1`,
@@ -616,9 +593,6 @@ describe.skipIf(!testDb)('webhook schema', () => {
       );
     });
 
-    // The key proves the subscription is the team's and stops there. These two
-    // are what makes the queued delivery one the subscriber actually asked for,
-    // and the payload trigger above then freezes whatever gets in.
     describe('webhook_deliveries_subscription_wants_event', () => {
       it.effect('refuses a delivery queued for a disabled subscription', () =>
         Effect.gen(function* () {
@@ -648,7 +622,6 @@ describe.skipIf(!testDb)('webhook schema', () => {
           expect(refused.message).toContain(
             'the subscription does not ask for consent.withdrawn events',
           );
-          // Every type in the filter is admitted, not just the first.
           expect(
             yield* newDelivery(id, { event_type: 'participant.enrolled' }),
           ).toMatch(UUID);

@@ -31,18 +31,6 @@ import {
   updateJob,
 } from './support.ts';
 
-// The window between a claim and its settle, and what has to be true inside
-// it. A handler runs *outside* the claim's transaction — that is deliberate,
-// because holding a transaction open across a network call is how a pool
-// starves — so the expiry reaper can return the row and a second worker can
-// claim it while the first attempt is still running. Every case below drives
-// that sequence with two real workers against one real Postgres, in virtual
-// time, and asks what the row says afterwards.
-//
-// Also here: when the reaper returns a row at all and what it writes when it
-// does (the ladder, not a bare `run_at = now`), and that a stopping worker
-// claims nothing.
-
 const db = await reachableDb();
 
 describe.skipIf(!db)('settling against the attempt that owns the row', () => {
@@ -51,7 +39,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
 
     const jobsLayer = layerJobs;
 
-    /** Claims the one queued delivery and holds the handler inside it. */
     const holdDelivery = (
       worker: JobWorker['Service'],
       started: Deferred.Deferred<void>,
@@ -74,8 +61,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             const first = yield* JobWorker;
             const running = yield* holdDelivery(first, started, held);
 
-            // The lease runs out while the handler is still going and the
-            // reaper puts the row back: nothing tells the running handler.
             yield* TestClock.adjust(
               Duration.seconds(DELIVERY.expireInSeconds + 1),
             );
@@ -84,9 +69,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             assert.strictEqual(returned?.state, 'created');
             yield* TestClock.setTime(returned!.run_at.getTime());
 
-            // A second worker takes the second attempt and finishes it. Its
-            // outcome differs from the first's, so the assertion below can
-            // only be satisfied by the row still being the second's.
             const second = yield* drainWith('invitation-delivery', () =>
               Effect.succeed<JobOutcome>('suppressed'),
             );
@@ -99,11 +81,7 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           const [row] = yield* readJobs('invitation-delivery');
           assert.strictEqual(row?.state, 'completed');
           assert.strictEqual(row?.attempts, 2);
-          // The second attempt said `suppressed` and the first would have said
-          // `completed`: this is the row the running attempt wrote, not the
-          // stale one's.
           assert.strictEqual(row?.outcome, 'suppressed');
-          // And the first attempt's step says it wrote nothing.
           assert.strictEqual(stale._tag, 'idle');
         }).pipe(Effect.provide(jobsLayer)),
     );
@@ -125,13 +103,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             const first = yield* JobWorker;
             const running = yield* holdDelivery(first, firstStarted, firstHeld);
 
-            // The reap-then-reclaim the cases above build, stopped one step
-            // earlier: the second attempt is *still running* when the first
-            // settles, so the row is `active` under a later attempt rather
-            // than terminal under it. That is the only state in which the
-            // `attempts` half of the fence is what turns the stale write away
-            // — everywhere else `state` has already moved past `active` and
-            // would refuse it on its own.
             yield* TestClock.adjust(
               Duration.seconds(DELIVERY.expireInSeconds + 1),
             );
@@ -154,10 +125,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             assert.strictEqual(claimed?.state, 'active');
             assert.strictEqual(claimed?.attempts, 2);
 
-            // The first attempt finishes and settles. Its handler answered
-            // `completed`, so an unfenced success would mark a job another
-            // worker is still sending as done — and the second attempt's own
-            // settle would then find nothing left to write.
             yield* Deferred.succeed(firstHeld, undefined);
             const answered = yield* Fiber.join(running);
 
@@ -167,7 +134,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             assert.strictEqual(untouched?.outcome, null);
             assert.strictEqual(untouched?.completed_at, null);
 
-            // And the running attempt still lands, on the row that is its own.
             yield* Deferred.succeed(secondHeld, undefined);
             const settled = yield* Fiber.join(secondRunning);
             assert.strictEqual(settled._tag, 'settled');
@@ -180,10 +146,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           assert.strictEqual(row?.attempts, 2);
           assert.strictEqual(row?.outcome, 'suppressed');
 
-          // A settle that wrote nothing is the one thing in this window an
-          // operator can see: the row says nothing about it, and without the
-          // line a worker that had silently stopped settling anything would
-          // look exactly like one with nothing to do.
           assert.deepStrictEqual(logs.lines, [
             {
               level: 'Warn',
@@ -200,11 +162,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
         Effect.gen(function* () {
           yield* clear;
           const jobId = yield* enqueueDelivery();
-          // Claimed as a last attempt, so the first worker's own settle would
-          // take the failing leg and write the dead-letter copy. The row's
-          // ladder is reopened straight afterwards, so the reaper returns it
-          // rather than failing it — the first worker settles by the policy it
-          // froze at claim time, which is what freezing it is for.
           yield* updateJob(jobId, 'retry_limit = 0');
 
           const held = yield* Deferred.make<void>();
@@ -239,9 +196,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
 
           const rows = yield* readJobs();
           const original = rows.find((row) => row.id === jobId);
-          // Not `created` and not `failed`: an unfenced failure would have put
-          // a row a second worker had already completed back on the queue for
-          // a third claim, or ended it under the first attempt's own ladder.
           assert.strictEqual(original?.state, 'completed');
           assert.strictEqual(original?.attempts, 2);
           assert.deepStrictEqual(
@@ -277,9 +231,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
         const original = rows.find((row) => row.id === jobId);
         assert.strictEqual(original?.state, 'failed');
         assert.strictEqual(original?.last_error, LEASE_EXPIRED);
-        // The copy #1307's manual re-send works from. An expiry that skipped
-        // it would leave the queue an operator watches empty for a delivery
-        // that has genuinely run out of attempts.
         const copy = rows.find(
           (row) => row.queue === 'invitation-delivery-dead-letter',
         );
@@ -301,24 +252,18 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
 
           yield* Effect.gen(function* () {
             const worker = yield* JobWorker;
-            // A handler that outlives its lease: held open, so the case can
-            // move virtual time past the expiry while the attempt runs.
             const running = yield* holdDelivery(worker, started, held);
 
             const [claimed] = yield* readJobs('invitation-delivery');
             assert.strictEqual(claimed?.state, 'active');
             assert.strictEqual(claimed?.attempts, 1);
 
-            // Not yet: the lease has not run out, and a reaper that took the
-            // row here would cut every in-flight attempt short.
             yield* TestClock.adjust(
               Duration.seconds(DELIVERY.expireInSeconds - 1),
             );
             assert.strictEqual(yield* worker.reapExpired, 0);
 
             yield* TestClock.adjust(Duration.seconds(2));
-            // The same draw as the standalone formula below: the reaper asks
-            // `Random` once per row it settles.
             const reaped = yield* worker.reapExpired.pipe(
               Random.withSeed(SEED),
             );
@@ -335,8 +280,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           const now = yield* DateTime.now;
           const [row] = yield* readJobs('invitation-delivery');
           assert.strictEqual(row?.state, 'created');
-          // Counted at claim time, so a handler that hangs every time still
-          // walks the ladder rather than looping forever.
           assert.strictEqual(row?.attempts, 1);
           assert.strictEqual(row?.locked_until, null);
           assert.strictEqual(row?.last_error, LEASE_EXPIRED);
@@ -346,9 +289,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
               DateTime.addDuration(now, Duration.seconds(delay)),
             ).getTime(),
           );
-          // Said twice on purpose: a reaper that wrote `run_at = now` would
-          // retry a handler that hangs every time at its own cadence, throwing
-          // away the ladder `invitation-delivery` declares.
           assert.notStrictEqual(
             row?.run_at.getTime(),
             DateTime.toDate(now).getTime(),
@@ -360,12 +300,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
       Effect.gen(function* () {
         yield* clear;
         const jobId = yield* enqueueDelivery();
-        // One retry left, so attempt 1 is not the last and attempt 2 is. The
-        // boundary is the whole of it: `finalAttempt` is what makes
-        // `invitation-delivery`'s handler stamp `failed_at` on the delivery
-        // row, a terminal mark the queue must agree with. Off by one and the
-        // row says an invitation failed for good while an attempt is still
-        // owed.
         yield* updateJob(jobId, 'retry_limit = 1');
 
         yield* Effect.gen(function* () {
@@ -405,15 +339,12 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
         yield* clear;
         yield* enqueueDelivery();
 
-        // No `work()` call at all: a replica that does not work this queue.
         const step = yield* onWorker((worker) =>
           worker.drainOnce('invitation-delivery'),
         );
 
         assert.strictEqual(step._tag, 'idle');
         const [row] = yield* readJobs('invitation-delivery');
-        // The claim spent an attempt; putting the row back gives it back, so a
-        // replica without the handler costs the job nothing.
         assert.strictEqual(row?.state, 'created');
         assert.strictEqual(row?.attempts, 0);
         assert.strictEqual(row?.locked_until, null);
@@ -435,9 +366,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           const first = yield* JobWorker;
           const running = yield* holdDelivery(first, firstStarted, firstHeld);
 
-          // The reap-then-reclaim every case in this file builds: the lease
-          // runs out, the reaper puts the row back, a second worker takes the
-          // second attempt and is still running it.
           yield* TestClock.adjust(
             Duration.seconds(DELIVERY.expireInSeconds + 1),
           );
@@ -454,11 +382,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           assert.strictEqual(claimed?.state, 'active');
           assert.strictEqual(claimed?.attempts, 2);
 
-          // The write the first attempt's worker would make if it had claimed
-          // from a queue it registers no handler for. Run directly because
-          // `drainOnce` claims and puts back in the same breath, with no seam
-          // a case could suspend it at — the statement is the real one, and
-          // the row underneath it is the real reclaimed row.
           const answered = yield* asMaintenance(
             MaintenanceScope.open(returnToQueue(schema, jobId, 1)),
           );
@@ -475,9 +398,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           'the stale attempt reported putting back a row it no longer owned',
         );
         const [row] = yield* readJobs('invitation-delivery');
-        // Unfenced, this write resurrects a job the second worker is running:
-        // `created` again with its ladder wound back an attempt, which fans the
-        // send out rather than merely repeating it.
         assert.strictEqual(row?.state, 'completed');
         assert.strictEqual(row?.attempts, 2);
       }).pipe(Effect.provide(jobsLayer)),
@@ -498,9 +418,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
             }),
           );
 
-          // Read inside the permit, not only by the poll fiber: a fiber that
-          // passed the fiber's own check and then waited for a permit must
-          // still not claim.
           yield* worker.setFetching(false);
           const stopped = yield* worker.drainOnce('invitation-delivery');
           assert.strictEqual(stopped._tag, 'idle');
@@ -509,8 +426,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           assert.strictEqual(waiting?.state, 'created');
           assert.strictEqual(waiting?.attempts, 0);
 
-          // The positive half, so the negative one cannot be vacuous: the same
-          // worker, the same job, fetching back on.
           yield* worker.setFetching(true);
           const claimed = yield* worker.drainOnce('invitation-delivery');
           assert.strictEqual(claimed._tag, 'settled');
@@ -521,9 +436,6 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
   });
 });
 
-// The stop window, which only exists in real time: it is made of a poll fiber
-// and a finalizer racing for the same semaphore permit, and `TestClock` would
-// decide that race by fiat.
 describe.skipIf(!db)('claiming during a graceful stop', () => {
   layer(layerQueueHarness(db!), { excludeTestServices: true })(
     'with the queue installed',
@@ -531,7 +443,6 @@ describe.skipIf(!db)('claiming during a graceful stop', () => {
       const jobsLayer = layerJobs;
       const clear = clearQueue;
 
-      /** Long enough for a woken poll fiber to reach the semaphore. */
       const SETTLE = Duration.millis(200);
 
       it.effect('claims nothing a stop is already under way for', () =>
@@ -543,9 +454,6 @@ describe.skipIf(!db)('claiming during a graceful stop', () => {
           const deliveryStarted = yield* Deferred.make<void>();
           const signInRan = yield* Deferred.make<void>();
 
-          // One permit for the whole worker, so the delivery handler below
-          // holds the only one and every other drain has to queue behind it —
-          // including the stop finalizer, which takes every permit.
           const running = yield* Effect.forkChild(
             Effect.gen(function* () {
               const worker = yield* JobWorker;
@@ -578,22 +486,15 @@ describe.skipIf(!db)('claiming during a graceful stop', () => {
           const delivery = yield* enqueueDelivery();
           yield* Deferred.await(deliveryStarted);
 
-          // Enqueued while the permit is held, so the sign-in poll fiber wakes
-          // on the notification, enters `drainOnce`, and parks on the
-          // semaphore — a waiter registered *before* the stop begins.
           const signIn = yield* enqueue('sign-in-email', {
             email: 'someone@example.test',
             url: 'https://studio.example.test/magic',
           });
           yield* Effect.sleep(SETTLE);
 
-          // Now stop. The finalizer sets `fetching = false` and queues for the
-          // permit behind that parked drain.
           yield* Deferred.succeed(startClosing, undefined);
           yield* Effect.sleep(SETTLE);
 
-          // Releasing the delivery hands the permit to the parked drain, which
-          // is inside the stop window and must claim nothing.
           yield* Deferred.succeed(heldDelivery, undefined);
           yield* Fiber.join(running);
 

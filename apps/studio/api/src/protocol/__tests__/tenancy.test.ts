@@ -1,6 +1,3 @@
-// Cross-team isolation at the application layer: identical content dedupes per
-// team, reads cannot cross the boundary, and GC in one team never collects
-// another's rows.
 import { randomUUID } from 'node:crypto';
 
 import { and, eq } from 'drizzle-orm';
@@ -54,11 +51,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
   const inB = <A, E>(body: Effect.Effect<A, E, Transaction>) =>
     inTeam('team-b', body);
 
-  /**
-   * The sweep: an Effect over the maintenance client
-   * (`src/jobs/handlers/protocol-store-gc.ts`), which the harness pins to the
-   * scratch schema.
-   */
   const sweep = () => store.run(gcProtocolStore(GC_OPTS));
 
   beforeAll(async () => {
@@ -126,8 +118,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
     const { protocolId } = await inA(
       createProtocol('team-a', cipher, { protocol: baseProtocol() }),
     );
-    // A team Admin's visibility, so what this asserts is the team boundary
-    // rather than #1257's within-team rule (rpc-protocols.test.ts covers that).
     const seesEverything = {
       actorUserId: 'tenancy-user',
       seesEveryStudy: true,
@@ -138,13 +128,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
     expect(listedInB.map((p) => p.id)).not.toContain(protocolId);
   });
 
-  /**
-   * `reachableByCaller` is one exported fragment precisely so the two
-   * statements that ask "may this caller open this line" cannot answer
-   * differently. This is the boundary row that would catch it if they did: a
-   * line reachable only through a study the caller holds a grant on, and the
-   * same line with the grant gone.
-   */
   it('the list and the reachability probe agree on a boundary row', async () => {
     const { protocolId } = await inA(
       createProtocol('team-a', cipher, { protocol: baseProtocol() }),
@@ -160,10 +143,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
       seesEveryStudy: false,
     };
 
-    // The three readings of the one fragment: the list, the probe, and a
-    // statement written here out of `reachableByCaller` itself. If the
-    // fragment ever stopped saying what the two store statements embed, the
-    // third would disagree with them on this row.
     const throughTheFragment = Effect.gen(function* () {
       const { tx } = yield* Transaction;
       const rows = yield* tx
@@ -186,8 +165,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
         inA(throughTheFragment),
       ]);
 
-    // No grant: the line is behind a study the member cannot see, so both
-    // statements must refuse it.
     const [withoutGrant, reachableWithoutGrant, fragmentWithoutGrant] =
       await asked();
     expect(withoutGrant.map((row) => row.id)).not.toContain(protocolId);
@@ -208,8 +185,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
   });
 
   it('GC of one team never collects another\u2019s identical-content sections', async () => {
-    // Content unique to this test, identical in both teams, so A's copy
-    // becomes unreferenced on discard while B's stays pinned by its draft.
     const shared = { ...baseProtocol(), name: 'GC Shared' };
     const a = await inA(createProtocol('team-a', cipher, { protocol: shared }));
     const b = await inB(createProtocol('team-b', cipher, { protocol: shared }));
@@ -230,10 +205,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
   });
 
   it('collects rows belonging to a team with no teams row', async () => {
-    // The sync tables carry team_id without a foreign key into teams, and the
-    // sync path never requires one to exist — so GC has to enumerate tenants
-    // from the tables it sweeps. Enumerating from teams would strand these
-    // rows permanently.
     const inGhost = <A, E>(body: Effect.Effect<A, E, Transaction>) =>
       inTeam('team-ghost', body);
     const sync = makeTestSyncServer();
@@ -256,7 +227,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
     );
     await inGhost(expireLease(draftId, 'settings'));
 
-    // Reached through `drafts`: the superseded manifest is collectable.
     await sweep();
     const manifests = await store.rows(
       `SELECT seq::text AS seq FROM manifests WHERE draft_id = $1 ORDER BY seq`,
@@ -264,8 +234,6 @@ describe.skipIf(!storeDb)('team isolation', () => {
     );
     expect(manifests).toEqual([{ seq: '1' }]);
 
-    // Discarding the draft leaves the team present only in `sections`, the
-    // other half of the enumeration.
     await inGhost(discardDraft('team-ghost', draftId));
     await sweep();
     await store.run(ageQuarantine('team-ghost'));

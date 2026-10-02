@@ -1,17 +1,3 @@
-// The token module's database-enforced promises: the scope/study
-// biconditional, the secret and prefix formats, the composite foreign key that
-// keeps a token's study inside its own team, and the sidecar trigger that fixes
-// a token's authority at issue while leaving custodianship reassignable and
-// revocation one-way.
-//
-// API tokens are team-owned service tokens: there is no owner column and no
-// intersection with a user's live RBAC. What a token may do is read from its
-// own `scope_kind`, `study_id`, `access_level` and `includes_pii`, which is
-// precisely why the trigger below freezes all four.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger
-// — so a guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -34,12 +20,9 @@ const TEAM_B = 'team-b';
 
 type Row = Record<string, unknown>;
 
-/** A well-formed sha256 hex digest; the check only ever looks at the shape. */
 const hash = () => randomBytes(32).toString('hex');
-/** The non-secret display prefix, e.g. `ncs_live_a1b2c3d4`. */
 const prefix = () => `ncs_live_${randomBytes(4).toString('hex')}`;
 
-/** One study per team, for the study-scoped tokens. */
 const studyOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -69,7 +52,6 @@ const newToken = (overrides: Row = {}) => {
   return Effect.as(ownerInsert('api_tokens', row), row.id as string);
 };
 
-/** Both teams and a study each, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) =>
     Effect.andThen(insertTeam(teamId), newStudy(teamId, studyOf[teamId])),
@@ -267,9 +249,6 @@ describe.skipIf(!testDb)('api token schema', () => {
 
     it.effect('holds every column of a token authority immutable', () =>
       Effect.gen(function* () {
-        // A study-scoped token, so `study_id` can be moved to another valid
-        // study in the same team: the trigger, not the scope check or the
-        // foreign key, must be what refuses it.
         const tokenId = yield* newToken({
           scope_kind: 'study',
           study_id: studyOf[TEAM_A],
@@ -303,9 +282,6 @@ describe.skipIf(!testDb)('api token schema', () => {
       Effect.gen(function* () {
         const tokenId = yield* newToken();
 
-        // Reassigning the custodian when a researcher leaves is the whole
-        // point of the column, so it sits deliberately outside the immutable
-        // set.
         expect(
           yield* ownerAffected(
             `UPDATE api_tokens SET custodian_user_id = 'user-successor'
@@ -336,7 +312,6 @@ describe.skipIf(!testDb)('api token schema', () => {
       Effect.gen(function* () {
         const tokenId = yield* newToken();
 
-        // Revoking once is the write the trigger exists to admit.
         expect(
           yield* ownerAffected(
             `UPDATE api_tokens
@@ -348,10 +323,6 @@ describe.skipIf(!testDb)('api token schema', () => {
         for (const assignment of [
           `revoked_at = now()`,
           `revoked_at = NULL, revoked_by_user_id = NULL`,
-          // The accountable name freezes with the timestamp. Left out, it
-          // stays rewritable on a revoked token, and
-          // api_tokens_revocation_check only keeps the pair non-null — so it
-          // could be reassigned to anyone.
           `revoked_by_user_id = 'user-someone-else'`,
         ]) {
           const refused = yield* refusalOf(

@@ -30,33 +30,14 @@ export type EnqueuedInvitationDelivery = {
 };
 
 /**
- * The tolerance the two `expires_at` comparisons below are made under.
- *
- * `expires_at` is a `timestamptz`, which Postgres keeps to microseconds, and
- * the value a caller carries back in has been through a JavaScript `Date`,
- * which reaches milliseconds. An equality test would therefore fail on a row
- * the caller just wrote; a millisecond of tolerance is what closes that gap
- * without widening it to anything an attacker could aim at — two invitations
- * to the same address a millisecond apart do not exist, because the unique
- * index on `invitation_id` admits one row per invitation in the first place.
+ * `timestamptz` keeps microseconds and a JavaScript `Date` milliseconds, so
+ * an equality test would fail on a row the caller just wrote.
  */
 const EXPIRY_TOLERANCE_SECONDS = 0.001;
 
 /**
- * Adds delivery to the same transaction that creates the invitation and its
- * audit event.
- *
- * `INSERT … SELECT` rather than `INSERT … VALUES`: every column of the queued
- * payload is read out of the just-created invitation row under the predicate
- * below, so a caller cannot queue a different recipient, a different role or a
- * longer lifetime than the row it claims to be delivering. The label columns
- * are the only two the caller supplies, and they are the audit context the
- * combinator owns rather than anything the caller chose.
- *
- * `.returning()` is what tells a queued row from a refused one: `ON CONFLICT
- * DO NOTHING` and a predicate that matches no invitation both write nothing,
- * and without it the builder answers with the driver's result object either
- * way.
+ * `INSERT … SELECT`: every queued column is read out of the invitation row, so
+ * a caller cannot queue a different recipient, role or lifetime.
  */
 export const enqueueInvitationDelivery: (
   input: EnqueueInvitationDeliveryInput,
@@ -104,11 +85,6 @@ export const enqueueInvitationDelivery: (
     const row = inserted[0];
     if (row !== undefined) return row;
 
-    // `ON CONFLICT DO NOTHING` returns no row for two different reasons, and
-    // only one of them is benign: a command retry meeting the already-durable
-    // row it wrote last time, or an invitation that does not match the payload
-    // at all. The re-read below tells them apart by checking every queued field,
-    // so a retry is reusable and a mismatch is not.
     const existing = yield* tx
       .select({
         deliveryId: invitationDeliveries.id,
@@ -131,9 +107,6 @@ export const enqueueInvitationDelivery: (
       );
     const reused = existing[0];
     if (reused !== undefined) return reused;
-    // Not a failure the caller could act on: it means the invitation this was
-    // asked to deliver is not the row the command just wrote, which is a bug in
-    // the command rather than a condition of the request.
     return yield* Effect.die(
       new Error(
         'invitation delivery enqueue did not match a live pending invitation',

@@ -2,16 +2,6 @@ import { Context, Effect, Layer, Schema } from 'effect';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
 
-// What Studio can send, and nothing about how. The transport lives in
-// src/mail/smtp.ts and the choice between them in src/mail/live.ts, so that
-// this module — the one every handler and every test imports — pulls in no
-// nodemailer, no sockets and no configuration.
-
-/**
- * No transport at all. A supported state rather than a refusal (#1895): the
- * worker leaves the mail queues unworked and says so, and this is what a send
- * attempted anyway answers with.
- */
 export class MailNotConfigured extends Schema.TaggedError<MailNotConfigured>()(
   'MailNotConfigured',
   { what: Schema.Literals(['sign-in email', 'invitation']) },
@@ -21,13 +11,6 @@ export class MailNotConfigured extends Schema.TaggedError<MailNotConfigured>()(
   }
 }
 
-/**
- * The transport refused the send. The message is the transport's own, because
- * that is what lands in the job row's `last_error` and what an operator reads —
- * nodemailer's `Greeting never received` among them. The queue reads it through
- * `deepestMessage` (src/jobs/errors.ts), which walks the cause chain for
- * exactly this getter.
- */
 export class MailFailed extends Schema.TaggedError<MailFailed>()('MailFailed', {
   cause: Schema.Defect(),
 }) {
@@ -61,7 +44,6 @@ export class Mailer extends Context.Service<
     ) => Effect.Effect<void, MailFailed | MailNotConfigured>;
   }
 >()('@studio/Mailer') {
-  /** The development sign-in and invitation loops: the link goes to the log. */
   static readonly layerConsole: Layer.Layer<Mailer> = Layer.succeed(
     Mailer,
     Mailer.of({
@@ -72,7 +54,6 @@ export class Mailer extends Context.Service<
     }),
   );
 
-  /** No transport configured. Every send fails, naming what it could not send. */
   static readonly layerRefuse: Layer.Layer<Mailer> = Layer.succeed(
     Mailer,
     Mailer.of({

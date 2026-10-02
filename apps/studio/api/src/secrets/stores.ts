@@ -15,93 +15,35 @@ import {
 } from './cipher.ts';
 import { SecretsCipher } from './services.ts';
 
-// Every place a secret is stored, as one entry each (#1900). The boot check
-// and the rotation command both walk this list rather than naming tables
-// themselves, so a new store is added in one place and is immediately both
-// verified at boot and rotated — the failure a registry exists to prevent is a
-// store that rotation forgets and that therefore pins an old key forever.
-//
 // Every statement here runs inside the caller's transaction, which must be a
-// MAINTENANCE one: the tenant tables force row-level security, so any other
-// role sees only the team its transaction named, and a check that saw one
-// team's rows would pass while another team's key was missing.
-//
-// Every span carries `sqlErrorsOnly`, and that is not decoration here more
-// than anywhere else — it is the module the unwrap exists for. The drizzle
-// builder re-raises a statement failure with the query text AND every bind
-// parameter interpolated into its own message, and the bind parameters of
-// these statements are sealed ciphertext and token material. Unwrapping to the
-// `SqlError` underneath keeps the SQLSTATE and leaves the parameter dump out.
+// MAINTENANCE one: the tenant tables force row-level security.
+// Every span carries `sqlErrorsOnly`: the drizzle wrapper interpolates every
+// bind parameter, here sealed ciphertext, into its message.
 
 const { account } = AUTH_TABLES;
 const { webhookSubscriptions } = WEBHOOK_TABLES;
 const { protocolAssetKeys } = PROTOCOL_TABLES;
 
-/**
- * Opens one stored secret with the given cipher, throwing the cipher's own
- * `SecretUnreadableError` when it will not open. What `probe` hands the boot
- * check, so that each store keeps the knowledge of which identity its rows are
- * sealed under and which open function reads them.
- */
 export type SecretOpener = (cipher: SecretsCipherApi) => string;
 
 export type SecretStore = {
-  /** The table, which is what the rotation's counts are keyed and printed by. */
   name: string;
   /**
-   * Distinct key ids the stored rows were sealed under, exactly as stored. Ids
-   * that no keyring could hold are INCLUDED: the boot check counts them (never
-   * printing the text, which came out of a column), because dropping them made
-   * a database of rows nothing can open pass the check that exists to catch
-   * exactly that.
+   * Exactly as stored: ids no keyring could hold are included, so the boot
+   * check counts them.
    */
   keyIdsInUse: Effect.Effect<string[], SqlError.SqlError, Transaction>;
-  /**
-   * One stored secret sealed under `keyId`, ready to open, or none when this
-   * store has none. The boot check opens one per (store, key id) so that a
-   * keyring naming the right ids under the WRONG material is refused before
-   * the deployment serves anything.
-   */
   probe(
     keyId: string,
   ): Effect.Effect<Option.Option<SecretOpener>, SqlError.SqlError, Transaction>;
-  /**
-   * Re-seals up to `batchSize` rows that are not under the current key and
-   * returns how many were changed; zero means this store is finished. Seals
-   * with the process's own `SecretsCipher`, never one a caller hands in. Runs
-   * inside the caller's transaction, and takes the rows it works with
-   * `FOR UPDATE SKIP LOCKED` so a second runner (or a request writing the same
-   * row) never waits on it.
-   *
-   * The loop opens no nested scope. A savepoint per row would be
-   * `SAVEPOINT effect_sql_<depth>` on the same connection with no `RELEASE` on
-   * success, so a batch of a hundred rows would leave a hundred subtransactions
-   * standing until the transaction ended.
-   */
   rotateBatch(
     batchSize: number,
   ): Effect.Effect<number, SqlError.SqlError, SecretsCipher | Transaction>;
-  /**
-   * How many rows are still not under `currentKeyId`. The rotation's
-   * postcondition: a batch returning zero means "nothing I could take", not
-   * "nothing left" — `FOR UPDATE SKIP LOCKED` steps over a row another session
-   * holds — so the loop ending is not proof the store is done.
-   */
   remaining(
     currentKeyId: string,
   ): Effect.Effect<number, SqlError.SqlError, Transaction>;
 };
 
-/**
- * Adds the row to a re-sealing failure. The row's id is not a secret and is
- * the only thing that turns "a stored secret could not be read" into something
- * an operator can act on; the cipher's own message never carries more.
- *
- * Thrown rather than failed: a value that will not open under the key it names
- * is a defect (src/secrets/cipher.ts), and a throw inside these generators is
- * exactly that — it aborts the batch, nothing commits, and a person looks at
- * the row.
- */
 function reseal<T>(what: string, act: () => T): T {
   try {
     return act();
@@ -114,15 +56,8 @@ function reseal<T>(what: string, act: () => T): T {
 }
 
 /**
- * The single row a re-sealing UPDATE must have changed.
- *
- * `.returning()` is not decoration: a write without it answers with the
- * driver's own result object, which is typed as a row array and is not one —
- * so `rows.length` would be `undefined` and every check on it vacuous. With
- * it, a re-seal whose predicate stopped naming the row it locked is a refusal
- * rather than a batch that reports `n` rows re-sealed and changes nothing.
- *
- * `what` is the row's identifiers, never its contents.
+ * Without `.returning()`, `rows.length` would be `undefined` and every check on
+ * it vacuous.
  */
 function oneUpdatedRow(
   what: string,
@@ -173,8 +108,6 @@ const webhookSubscriptionsStore: SecretStore = {
       .limit(1);
     const row = rows[0];
     if (row === undefined) return Option.none();
-    // `bytea` decodes as a `Uint8Array` rather than as node's `Buffer`, which
-    // is exactly the wider shape `StoredSecret` names.
     return Option.some((cipher: SecretsCipherApi) =>
       cipher.openWebhookSecret(
         { teamId: row.teamId, subscriptionId: row.id },
@@ -219,8 +152,6 @@ const webhookSubscriptionsStore: SecretStore = {
             keyId: row.keyId,
           }),
         );
-        // `updated_at` is deliberately left alone: rotation changes how a row
-        // is stored, not when the subscription was last changed by anyone.
         const updated = yield* tx
           .update(webhookSubscriptions)
           .set({
@@ -237,13 +168,6 @@ const webhookSubscriptionsStore: SecretStore = {
   ),
 };
 
-/**
- * better-auth's `account` table, whose three token columns hold
- * `studio-secret:<keyId>:<base64url>` strings rather than a ciphertext and a
- * key id of their own (better-auth types them as `text`). `split_part(col, ':',
- * 2)` reads the same id `parseOAuthTokenKeyId` does, because a key id can
- * never contain a `:`.
- */
 const OAUTH_COLUMNS = [
   'accessToken',
   'refreshToken',
@@ -252,28 +176,12 @@ const OAUTH_COLUMNS = [
 
 const SEALED_PREFIX_PATTERN = 'studio-secret:%';
 
-/** Which of the three columns a probed token came out of. */
 const ProbedColumn = Schema.Literals(OAUTH_COLUMNS);
 const decodeProbedColumn = Schema.decodeUnknownSync(ProbedColumn);
 
 /**
- * "This row holds a token that is not sealed under the current key", as one
- * predicate every statement that needs it is written from.
- *
- * `left(col, length) <> prefix` rather than `NOT LIKE prefix || '%'`: a key id
- * may contain `_`, which LIKE reads as "any one character", so a LIKE would
- * call a neighbouring key id current and leave its rows behind. It also picks
- * up a PLAINTEXT token, which carries no prefix at all — a row whose only
- * token was written around the auth adapter used to match nothing and was
- * walked past, leaving rotation to report success with plaintext at rest.
- * Selected here, it reaches `reseal`, which refuses it.
- *
- * A function returning `SQL` rather than a string of `$1`/`$2` placeholders:
- * the string form left every embedding statement to bind the prefix and its
- * length itself, in that order, and a statement that bound them in another
- * order still compiled. `remaining` and `rotateBatch` now cannot disagree
- * about which rows are behind, which is what
- * `__tests__/rotate.test.ts`'s boundary case pins.
+ * `left(col, length) <> prefix` rather than `NOT LIKE`: a key id may contain
+ * `_`, which LIKE reads as any one character.
  */
 export function notUnderCurrentKeySql(currentKeyId: string): SQL {
   const prefix = sealedOAuthTokenPrefix(currentKeyId);
@@ -286,16 +194,10 @@ export function notUnderCurrentKeySql(currentKeyId: string): SQL {
   );
 }
 
-/** One column's contribution to the distinct key ids `account` holds. */
 const accountKeyIdsOf = (
   tx: Transaction['Service']['tx'],
   column: OAuthTokenColumn,
 ) =>
-  // Only rows that carry the sealed prefix: a plaintext token has no key id to
-  // report, and the read path refuses it wherever it is used. `split_part`
-  // answers `''` rather than null for a value with nothing between the two
-  // colons, and that empty id is kept — a key id no keyring could hold is
-  // exactly what the boot check counts.
   tx
     .selectDistinct({
       keyId: sql<string>`split_part(${account[column]}, ':', 2)`.as('keyId'),
@@ -303,7 +205,6 @@ const accountKeyIdsOf = (
     .from(account)
     .where(like(account[column], SEALED_PREFIX_PATTERN));
 
-/** One column's contribution to the probe: any row sealed under `prefix`. */
 const accountProbeOf = (
   tx: Transaction['Service']['tx'],
   column: OAuthTokenColumn,
@@ -324,8 +225,7 @@ const accountStore: SecretStore = {
 
   keyIdsInUse: Effect.fn('secrets.stores.account.keyIdsInUse')(function* () {
     const { tx } = yield* Transaction;
-    // UNION, not UNION ALL: one id present in two columns is one id in use,
-    // and the boot check counts what this returns.
+    // UNION, not UNION ALL: one id present in two columns is one id in use.
     const rows = yield* union(
       accountKeyIdsOf(tx, 'accessToken'),
       accountKeyIdsOf(tx, 'refreshToken'),
@@ -369,9 +269,6 @@ const accountStore: SecretStore = {
     batchSize: number,
   ) {
     const cipher = yield* SecretsCipher;
-    // A row is behind when ANY of its tokens is, and every token present is
-    // then re-sealed — so a row always carries one key id across its three
-    // columns, whatever order better-auth wrote them in.
     const { tx } = yield* Transaction;
     const rows = yield* tx
       .select({
@@ -391,10 +288,7 @@ const accountStore: SecretStore = {
       const resealed = (column: OAuthTokenColumn): string | null => {
         const stored = row[column];
         if (stored === null) return null;
-        // A plaintext token in one of these columns is a fault, not a value to
-        // encrypt on the way past: sealing it here would hide the write that
-        // bypassed the auth adapter. The batch fails, nothing commits, and a
-        // person looks at the row.
+        // A plaintext token is a fault, not a value to encrypt on the way past.
         return reseal(`account ${row.id} ${column}`, () =>
           cipher.resealOAuthToken(
             {
@@ -406,8 +300,6 @@ const accountStore: SecretStore = {
           ),
         );
       };
-      // `updatedAt` is left alone: better-auth's own writes own that column,
-      // and a session's freshness has nothing to do with which key holds it.
       const updated = yield* tx
         .update(account)
         .set({
@@ -423,12 +315,6 @@ const accountStore: SecretStore = {
   }, sqlErrorsOnly),
 };
 
-/**
- * The sealed `value` of an `apikey` protocol asset, one row per asset of one
- * protocol. Unlike the other two stores its identity is the whole primary key
- * — a key is bound to the team, the protocol AND the asset — so every
- * statement here carries all three.
- */
 const protocolAssetKeysStore: SecretStore = {
   name: 'protocol_asset_keys',
 
@@ -512,8 +398,6 @@ const protocolAssetKeysStore: SecretStore = {
             keyId: row.keyId,
           }),
         );
-        // `updated_at`, as in the other two stores, records when a researcher
-        // last changed the key — not when a deployment last re-keyed it.
         const updated = yield* tx
           .update(protocolAssetKeys)
           .set({ ciphertext: resealed.ciphertext, keyId: resealed.keyId })
@@ -533,11 +417,6 @@ const protocolAssetKeysStore: SecretStore = {
   ),
 };
 
-/**
- * The three places Studio stores a secret. Adding a fourth means adding an
- * entry here and nothing else: the boot check and the rotation command both
- * walk this list.
- */
 export const SECRET_STORES: readonly SecretStore[] = [
   webhookSubscriptionsStore,
   accountStore,

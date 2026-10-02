@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-// The tenancy spine end to end through the RPC boundary: explicit teamId input
-// → membership check → TenantScope → team-scoped rows.
 import { Effect, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -37,9 +35,6 @@ import {
 
 const redis = await reachableRedis(REDIS_DATABASES.rpcPlane);
 
-// The payloads are branded, so a test builds its identifiers through the
-// contract's own schemas rather than passing bare strings — which is also what
-// proves the bounds the boundary enforces are the ones these ids satisfy.
 const TEAM_A = TeamId.make('team-a');
 const TEAM_B = TeamId.make('team-b');
 const protocolId = () => ProtocolId.make(randomUUID());
@@ -73,10 +68,6 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
         [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
       ),
     );
-    // A team Admin throughout: this file is about the tenancy spine, and the
-    // protocol surface is addressed by lines no study owns, which #1257's rule
-    // shows to an Admin or Owner alone (rpc-protocols.test.ts is where that
-    // rule is asserted).
     for (const teamId of ['team-a', 'team-b']) {
       await database.run(
         ownerAffected(
@@ -209,12 +200,6 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
   it.skipIf(!redis)(
     'refuses a caller who has spent their per-user budget, with the interval to wait',
     async () => {
-      // The per-user call limit (#1909) is charged by the `Authenticated`
-      // middleware since stage 4 (#1932 §3), before the team-opening helper
-      // runs, and it reaches the client as the contract's `RateLimited` on an
-      // ordinary procedure, not only on `team.acceptInvitation`. This case is
-      // what proves the move kept the refusal. A fresh user id per run,
-      // because the bucket is keyed by it and the window outlives the test.
       const userId = `budget-${randomUUID()}`;
       const limits = await openRateLimitStore(redis);
       const limited = await createRpcClient(
@@ -239,9 +224,6 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
         ),
       );
       try {
-        // `studies.list` rather than `protocols.list`: it opens the same team
-        // scope through the same helper, and reads through a store that needs
-        // no secrets cipher, which this cut-down environment has none of.
         const list = () => limited.rpc('studies.list', { teamId: TEAM_A });
         await limited.call(list());
         await limited.call(list());

@@ -52,7 +52,6 @@ const { sections } = SYNC_TABLES;
 
 describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   let store: StoreSchema;
-  /** One team-stamped transaction on the Effect application client. */
   let run: <A, E>(
     body: Effect.Effect<A, E, Transaction>,
     options?: ScopeOptions,
@@ -145,11 +144,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   it('reads protocol draft metadata without loading section documents', async () => {
     const { protocolId, draftId } = await create(baseProtocol());
 
-    // The mechanism changed with the port: the store is module functions now,
-    // so there is no instance method to spy on. The invariant is the same one
-    // and pinned harder — the metadata read is made in a transaction in which
-    // every section row of the team has been deleted, which `getDraftSections`
-    // could not survive. The transaction then fails, so nothing is kept.
     let metadata: unknown;
     let sectionsFailed: boolean | undefined;
     const exit = await runExit(
@@ -164,8 +158,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           protocolId,
           draftId,
         );
-        // The same transaction cannot read a draft's documents any more, so
-        // the read above demonstrably made no attempt to.
         sectionsFailed = Exit.isFailure(
           yield* Effect.exit(getDraftSections(TEST_TEAM_ID, draftId)),
         );
@@ -176,7 +168,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(metadata).toMatchObject({ id: protocolId, draftId });
     expect(sectionsFailed).toBe(true);
 
-    // And the delete went with the rolled-back transaction.
     expect(await run(getDraftDocument(TEST_TEAM_ID, draftId))).toEqual(
       baseProtocol(),
     );
@@ -231,9 +222,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       ],
     };
 
-    // The commit runs in the caller's transaction now rather than opening one
-    // of its own, so a caller that fails takes the commit with it — which is
-    // what the rolled-back scope below asserts.
     let firstAttempt: boolean | undefined;
     const rolledBack = await runExit(
       Effect.gen(function* () {
@@ -537,7 +525,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       }),
     );
 
-    // The pending moveItem describes indices of the pre-insertion list.
     await expect(
       run(
         sync.commit({
@@ -593,9 +580,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const sync = makeTestSyncServer();
     const lease = await run(sync.acquire(draftId, 'settings', 'commit-tab'));
 
-    // The blocker is one owner transaction held open across the steps below:
-    // it takes the row lock, writes a newer head once the case has read the
-    // current one, and commits only when the case says so.
     const locked = Promise.withResolvers<void>();
     const headRead = Promise.withResolvers<{
       headSeq: bigint;
@@ -643,8 +627,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         );
       }),
     );
-    // A blocker that fails rejects the step the case is waiting on, rather
-    // than leaving it to hang until the timeout.
     const step = (gate: Promise<void>) => Promise.race([gate, blocker]);
 
     await step(locked.promise);
@@ -751,8 +733,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         }),
       ),
     ).rejects.toThrow(LeaseRejectedError);
-    // `resume` reads twice and refuses to do it outside one snapshot, so its
-    // scope names the isolation level the caller is now responsible for.
     await expect(
       run(sync.resume(draftId, 'editor-tab'), {
         isolation: 'repeatable read',
@@ -783,8 +763,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   });
 
   describe('API-key assets (#1900)', () => {
-    // Not Mapbox-token shaped, so `pnpm check:mapbox-tokens` does not read it
-    // as a committed access token; see the guard's own comment.
+    // Not Mapbox-token shaped, so `pnpm check:mapbox-tokens` does not flag it.
     const KEY = 'map-key-not-a-real-key';
 
     function protocolWithKey(): CurrentProtocol {
@@ -829,8 +808,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     it('never writes the key into any section row', async () => {
       await create(protocolWithKey());
 
-      // The whole table, because a key must not be at rest in any revision of
-      // any section — not only in the manifest the draft happens to point at.
       const docs = await store.rows<{ doc: string }>(
         `SELECT doc::text AS doc FROM sections`,
       );
@@ -839,8 +816,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     });
 
     it('still refuses an import whose apikey asset has no value', async () => {
-      // Stripping must not become a way to smuggle an invalid manifest past
-      // the write-time section validation.
       await expect(
         create({
           ...baseProtocol(),
@@ -862,9 +837,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     });
 
     it('refuses a sync commit that would write a key into the assets section', async () => {
-      // The client route for a key is `resources.stage`, which promotes it
-      // through the host and seals it. A commit carrying one is refused rather
-      // than stripped, so the editor is told instead of silently losing it.
       const { draftId } = await create(baseProtocol());
       const sync = createProtocolSyncServer();
       const lease = await run(sync.acquire(draftId, 'assets', 'tab-1'));
@@ -894,8 +866,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     });
 
     it('admits a sync commit that writes a file asset', async () => {
-      // The refusal has to be about keys, not about the assets section: a
-      // researcher adding a geojson through the same path must still work.
       const { draftId } = await create(baseProtocol());
       const sync = createProtocolSyncServer();
       const lease = await run(sync.acquire(draftId, 'assets', 'tab-2'));
@@ -925,11 +895,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     });
 
     it('admits a sync commit on the assets section of a protocol with a sealed key', async () => {
-      // The stored manifest carries the key entry WITHOUT its value, and
-      // schema 8 requires an `apikey` asset to have one. Validating the merged
-      // section as it is stored therefore refused every later edit of the
-      // assets section — adding a geojson beside a promoted key — with an
-      // issue at [mapKey, value] that no client could ever satisfy.
       const { draftId } = await create(protocolWithKey());
       const sync = createProtocolSyncServer();
       const lease = await run(sync.acquire(draftId, 'assets', 'tab-3'));
@@ -957,9 +922,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         ),
       ).resolves.toBeDefined();
 
-      // And the commit did not put the key back: the merged document the
-      // validator saw carried a placeholder, which is never written. The whole
-      // table, because the commit wrote a new revision of the section.
       const docs = await store.rows<{ doc: string }>(
         `SELECT doc::text AS doc FROM sections`,
       );

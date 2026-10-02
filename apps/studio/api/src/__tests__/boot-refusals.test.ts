@@ -1,7 +1,3 @@
-// How the long-running processes refuse to start, as an operator reads it: the
-// same one sentence the one-shot commands print (src/programs/command.ts),
-// with no runtime report around it and no stack, and exit 1. A process that
-// broke rather than refused still prints its stack.
 import { randomUUID } from 'node:crypto';
 
 import { Console, Effect, Exit } from 'effect';
@@ -21,7 +17,6 @@ import { testKeyringEntry } from './support/secrets.ts';
 
 const db = await reachableDb();
 
-/** drizzle-kit push against a fresh database, and it shares the CI runner. */
 const APPLY_TIMEOUT_MS = 180_000;
 
 const ENTRYPOINTS = [
@@ -29,14 +24,8 @@ const ENTRYPOINTS = [
   ['the worker', 'src/worker.ts'],
 ] as const;
 
-/** A line of a stack trace, which no refusal may carry. */
 const STACK_FRAME = /^\s+at /m;
 
-/**
- * The deployment's environment rather than this suite's: the committed
- * `.env.development` the child would otherwise inherit makes the schema gate
- * wait instead of refuse.
- */
 async function refusalOf(
   entry: string,
   overrides: Record<string, string>,
@@ -60,9 +49,6 @@ async function refusalOf(
 
 describe.each(ENTRYPOINTS)('%s refusing to start', (_name, entry) => {
   it('prints an environment it cannot read as the one sentence, and exits 1', async () => {
-    // Mutation: drop `reportingRefusals` and `disableErrorReporting` from the
-    // entry — the sentence arrives inside `ERROR (#1): EnvironmentInvalid: …`
-    // with its stack.
     const { code, output } = await refusalOf(entry, {
       STUDIO_SECRETS_KEY: testKeyringEntry('boot-1'),
       STUDIO_SECRETS_KEY_FILE: '/run/secrets/studio_secrets_key',
@@ -97,7 +83,6 @@ describe.skipIf(!db)('refusing a database', () => {
     applied = await createScratchDatabase(db);
     await applySchema(applied.pool);
     await seedTeam(applied.pool, 'team-boot-refusal');
-    // One secret under a key id no keyring below carries.
     await applied.pool.query(
       `INSERT INTO webhook_subscriptions
          (id, team_id, url, event_types, secret_ciphertext, secret_key_id, created_by_user_id)
@@ -140,7 +125,6 @@ describe.skipIf(!db)('refusing a database', () => {
 });
 
 describe('a process that broke rather than refused', () => {
-  /** What `reportingRefusals` writes to stderr for an effect's outcome. */
   const reported = async <A, E>(
     effect: Effect.Effect<A, E>,
   ): Promise<string[]> => {

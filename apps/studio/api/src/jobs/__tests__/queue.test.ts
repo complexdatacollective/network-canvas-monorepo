@@ -48,15 +48,6 @@ import {
   updateJob,
 } from './support.ts';
 
-// Everything the queue does on its own: the retry ladder, dead-lettering,
-// singletons, the expiry reaper, retention, depths, and the graceful stop.
-// Every one of them runs in virtual time against a real Postgres, which is
-// possible only because the queue asks `Clock` for the time and passes it to
-// the database as a parameter (see worker.ts).
-//
-// What a *settle* has to be true of — the fence around a late attempt, the
-// ladder the reaper writes, and a claim during a stop — is `settle.test.ts`.
-
 const db = await reachableDb();
 
 describe.skipIf(!db)('the native queue', () => {
@@ -65,12 +56,10 @@ describe.skipIf(!db)('the native queue', () => {
 
     const jobsLayer = layerJobs;
 
-    /** One step of the delivery queue, with `handler` behind it. */
     const drainDelivery = (
       handler: (attempt: number) => Effect.Effect<JobOutcome, unknown>,
     ) => drainWith('invitation-delivery', (job) => handler(job.attempt));
 
-    /** A replica whose clock runs five minutes fast. */
     const SKEW = Duration.minutes(5);
 
     const skewedJobs = Layer.unwrap(
@@ -86,10 +75,6 @@ describe.skipIf(!db)('the native queue', () => {
       () =>
         Effect.gen(function* () {
           yield* clear;
-          // Enqueued "now" by a process whose clock is five minutes fast, so the
-          // row's `run_at` is five minutes ahead of everyone else's now. This is
-          // the hazard an app-clock queue has and pg-boss's database-clock one
-          // does not, and the reason `JobClock.layer` exists.
           yield* Effect.provide(
             Effect.flatMap(Jobs, (jobs) =>
               asApp(
@@ -108,9 +93,6 @@ describe.skipIf(!db)('the native queue', () => {
           );
           assert.strictEqual(unskewed._tag, 'idle');
 
-          // The positive half: a worker reading the *same* clock claims it at
-          // once, which is what a measured correction buys — both processes
-          // agree on what "now" is, whatever their hardware clocks say.
           const agreeing = yield* Effect.gen(function* () {
             const worker = yield* JobWorker;
             yield* worker.work('invitation-delivery', () =>
@@ -124,9 +106,6 @@ describe.skipIf(!db)('the native queue', () => {
 
     it.effect('corrects the clock against the database’s own now()', () =>
       Effect.gen(function* () {
-        // Virtual time starts at the epoch, so an uncorrected clock is fifty-odd
-        // years behind the database. `JobClock.layer` measures that difference
-        // at build and adds it back, which is the whole of the correction.
         const virtual = yield* DateTime.now;
         assert.isBelow(DateTime.toEpochMillis(virtual), 1000);
 
@@ -136,7 +115,6 @@ describe.skipIf(!db)('the native queue', () => {
             JobClock.layer({ clockMonitorInterval: Duration.hours(1) }),
           ),
         );
-        // Against the real wall clock, which is what the database's is.
         assert.isBelow(
           Math.abs(DateTime.toEpochMillis(corrected) - Date.now()),
           5_000,
@@ -174,10 +152,6 @@ describe.skipIf(!db)('the native queue', () => {
       Effect.gen(function* () {
         yield* clear;
         const jobId = yield* enqueueDelivery();
-        // What a redeploy that narrowed the queue's `retryLimit` to zero would
-        // leave behind — except that it would leave the *old* value on the row
-        // and the new one in the declaration, which is the direction that
-        // matters: the declaration says seven, the row says none.
         yield* updateJob(jobId, 'retry_limit = 0');
         assert.strictEqual(DELIVERY.retryLimit, 7);
 
@@ -185,15 +159,12 @@ describe.skipIf(!db)('the native queue', () => {
           Effect.fail(new Error('SMTP temporarily unavailable')),
         );
 
-        // A queue that read its declaration here would have retried.
         assert.strictEqual(step._tag, 'failed');
         const rows = yield* readJobs();
         assert.strictEqual(
           rows.find((row) => row.id === jobId)?.state,
           'failed',
         );
-        // And the dead-letter copy carries the *target* queue's policy, frozen
-        // at copy time.
         const dead = resolvedQueue('invitation-delivery-dead-letter');
         const copy = rows.find(
           (row) => row.queue === 'invitation-delivery-dead-letter',
@@ -215,8 +186,6 @@ describe.skipIf(!db)('the native queue', () => {
 
         yield* Effect.gen(function* () {
           const worker = yield* JobWorker;
-          // Held open, because the settle nulls `locked_until`: the lease only
-          // exists while the attempt is running.
           const running = yield* claimAndHold(worker, 'invitation-delivery', {
             started,
             held,
@@ -249,13 +218,9 @@ describe.skipIf(!db)('the native queue', () => {
         const retrying = step as Extract<JobStep, { _tag: 'retrying' }>;
         assert.strictEqual(retrying.attempt, 1);
 
-        // The same draw, from the same seed: `drainOnce` asks `Random` once.
         const delay = yield* backoffSeconds(DELIVERY, 1).pipe(
           Random.withSeed(SEED),
         );
-        // Between half and all of retryDelay * 2^1 — the bound the formula
-        // guarantees whatever the seed, asserted beside the exact value so a
-        // changed seed cannot quietly make the exact check vacuous.
         assert.isAtLeast(delay, DELIVERY.retryDelay);
         assert.isAtMost(delay, DELIVERY.retryDelay * 2);
 
@@ -271,7 +236,6 @@ describe.skipIf(!db)('the native queue', () => {
         assert.strictEqual(row?.last_error, 'SMTP temporarily unavailable');
         assert.strictEqual(row?.locked_until, null);
 
-        // And the job is not claimable until virtual time reaches it.
         const tooEarly = yield* drainDelivery(() =>
           Effect.succeed<JobOutcome>('completed'),
         );
@@ -290,14 +254,12 @@ describe.skipIf(!db)('the native queue', () => {
         yield* clear;
         const jobId = yield* enqueueDelivery();
 
-        // Walk the whole ladder: eight attempts for a limit of seven.
         let last: JobStep = { _tag: 'idle' };
         for (let attempt = 1; attempt <= DELIVERY.retryLimit + 1; attempt++) {
           last = yield* drainDelivery(() =>
             Effect.fail(new Error('permanent SMTP failure')),
           ).pipe(Random.withSeed(SEED));
           if (last._tag === 'retrying') {
-            // The ladder's own delay, taken from the row rather than guessed.
             const [row] = yield* readJobs('invitation-delivery');
             yield* TestClock.setTime(row!.run_at.getTime());
           }
@@ -326,10 +288,6 @@ describe.skipIf(!db)('the native queue', () => {
       Effect.gen(function* () {
         yield* clear;
         const jobs = yield* Jobs;
-        // `singleton` is a limit on how many may be *active*, not on how many
-        // may exist: pg-boss's own `job_i2` indexes `WHERE state = 'active'`
-        // and its `send` inserts a second `created` row happily. Both are
-        // accepted here too.
         const first = yield* asApp(
           MaintenanceScope.open(jobs.enqueue('denied-attempts-summary', {})),
         );
@@ -339,8 +297,6 @@ describe.skipIf(!db)('the native queue', () => {
         assert.notStrictEqual(first, second);
         const queued = yield* readJobs('denied-attempts-summary');
         assert.strictEqual(queued.length, 2);
-        // The marker the partial index arbitrates over is on the row, because
-        // an index cannot read a declaration.
         assert.deepStrictEqual(
           queued.map((row) => row.policy),
           ['singleton', 'singleton'],
@@ -363,10 +319,6 @@ describe.skipIf(!db)('the native queue', () => {
             'created',
           ]);
 
-          // And the waiting one is not claimable while the first is active —
-          // asked of a second worker with an instant handler, as a second
-          // replica is, so a guard that failed to hold would answer `settled`
-          // rather than hanging on this suite's held one.
           const blocked = yield* drainWith('denied-attempts-summary', () =>
             Effect.succeed<JobOutcome>('completed'),
           );
@@ -376,7 +328,6 @@ describe.skipIf(!db)('the native queue', () => {
           const settled = yield* Fiber.join(running);
           assert.strictEqual(settled._tag, 'settled');
 
-          // Now it is: the limit was on the active row, not on the queue.
           const next = yield* worker.drainOnce('denied-attempts-summary');
           assert.strictEqual(next._tag, 'settled');
         }).pipe(Effect.provide(layerWorker()));
@@ -404,8 +355,6 @@ describe.skipIf(!db)('the native queue', () => {
         );
         assert.isString(first);
 
-        // Refused, not a no-op and not a unique violation: the caller's
-        // transaction survives and the failure is typed.
         const second = yield* Effect.exit(
           asApp(
             MaintenanceScope.open(
@@ -428,8 +377,6 @@ describe.skipIf(!db)('the native queue', () => {
           'JobRefused',
         );
 
-        // The transaction the refusal happened in still commits its own work:
-        // a unique violation would have poisoned it.
         const survived = yield* asApp(
           MaintenanceScope.open(
             Effect.gen(function* () {
@@ -453,7 +400,6 @@ describe.skipIf(!db)('the native queue', () => {
           1,
         );
 
-        // A standard queue is unaffected: two jobs, no key.
         yield* enqueueDelivery('66666666-6666-4666-8666-666666666666');
         yield* enqueueDelivery('77777777-7777-4777-8777-777777777777');
         assert.strictEqual((yield* readJobs('invitation-delivery')).length, 2);
@@ -464,16 +410,10 @@ describe.skipIf(!db)('the native queue', () => {
       Effect.gen(function* () {
         yield* clear;
         const { schema } = yield* QueueHarness;
-        // Two full batches and a short one, so the case can tell a bounded
-        // pass from an unbounded one by how the work was divided rather than
-        // only by how much of it got done.
         const rows = EXPIRY_BATCH_SIZE * 2 + 50;
         yield* asOwner(
           Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
             sql.unsafe(
-              // Claimed attempts whose lease ran out at the epoch, which is
-              // where this suite's virtual clock starts. Flat retry delay so
-              // the ladder needs no `Random` draw per row.
               `INSERT INTO ${schema}.jobs
                  (queue, payload, state, policy, attempts, retry_limit,
                   retry_delay, retry_backoff, retry_delay_max,
@@ -505,10 +445,6 @@ describe.skipIf(!db)('the native queue', () => {
           'a pass left some of the backlog unsettled',
         );
 
-        // `xmin` is the transaction that last wrote each row, so the sizes of
-        // its groups are the sizes of the reaper's transactions. One group of
-        // every row is the unbounded pass this replaced: a single transaction
-        // holding a lock on the whole backlog.
         const transactions = yield* asOwner(
           Effect.flatMap(
             MaintenanceDatabase,
@@ -531,8 +467,6 @@ describe.skipIf(!db)('the native queue', () => {
     it.effect('deletes terminal rows and jobs nothing ever claimed', () =>
       Effect.gen(function* () {
         yield* clear;
-        // sign-in-email: retention 600 s, deletion 60 s — the queue whose
-        // whole point is that its payload does not outlive the link.
         const signIn = resolvedQueue('sign-in-email');
         yield* enqueue('sign-in-email', {
           email: 'someone@example.test',
@@ -551,7 +485,6 @@ describe.skipIf(!db)('the native queue', () => {
             const step = yield* worker.drainOnce('sign-in-email');
             assert.strictEqual(step._tag, 'settled');
 
-            // Nothing is due yet.
             assert.strictEqual(yield* worker.deleteExpired, 0);
 
             yield* TestClock.adjust(
@@ -564,7 +497,6 @@ describe.skipIf(!db)('the native queue', () => {
               [abandoned],
             );
 
-            // And the one nothing ever claimed, once its keep_until passes.
             yield* TestClock.adjust(Duration.seconds(signIn.retentionSeconds));
             assert.strictEqual(yield* worker.deleteExpired, 1);
             assert.deepStrictEqual(yield* readJobs('sign-in-email'), []);
@@ -619,11 +551,6 @@ describe.skipIf(!db)('the native queue', () => {
     it.effect('says out loud that an outcome was uncertain', () => {
       const logs = collectLeveledLogs();
       return Effect.gen(function* () {
-        // Nothing sets a minimum log level, so Effect's own default of `Info`
-        // decides what a deployment sees: a line written at debug is not
-        // written at all. That is the whole of this case — an `uncertain`
-        // outcome is the one a person has to look at, and it used to be logged
-        // beside the two that are the queue working.
         yield* clear;
         yield* enqueueDelivery('cccccccc-3333-4333-8333-cccccccccccc');
         yield* drainDelivery(() =>
@@ -666,8 +593,6 @@ describe.skipIf(!db)('the native queue', () => {
         );
         assert.strictEqual(retrying._tag, 'retrying');
 
-        // The same failure on a job with no retries left. One line per job,
-        // and the only difference between them is what is left to happen.
         yield* clear;
         const lost = yield* enqueueDelivery(
           'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
@@ -678,10 +603,6 @@ describe.skipIf(!db)('the native queue', () => {
         );
         assert.strictEqual(failed._tag, 'failed');
 
-        // Which level the line is written at is the difference between an
-        // operator noticing mail that will never be sent and not noticing it:
-        // an attempt that will run again is the queue working, and one that
-        // will not is a delivery someone has to re-send by hand (#1307).
         assert.deepStrictEqual(logs.lines, [
           {
             level: 'Warn',
@@ -699,14 +620,9 @@ describe.skipIf(!db)('the native queue', () => {
       Effect.gen(function* () {
         yield* clear;
         const { schema } = yield* QueueHarness;
-        // A row written by an older release or by hand; the enqueue path
-        // could not produce it.
         yield* asOwner(
           Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
             sql.unsafe(
-              // Timestamps at the epoch, not \`now()\`: the claim compares
-              // \`run_at\` against the *virtual* clock, which is where every
-              // other row in this suite was written too.
               `INSERT INTO ${schema}.jobs
                  (queue, payload, state, attempts, run_at, keep_until, created_at)
                VALUES ('invitation-delivery', '{"deliveryId":"not-a-uuid"}'::jsonb,
@@ -721,8 +637,6 @@ describe.skipIf(!db)('the native queue', () => {
         );
         assert.strictEqual(step._tag, 'dead');
         const [row] = yield* readJobs('invitation-delivery');
-        // Not retried and not dead-lettered: no attempt can fix it, and the
-        // copy would only carry the same payload somewhere else.
         assert.strictEqual(row?.state, 'dead');
         assert.strictEqual(row?.attempts, 1);
       }).pipe(Effect.provide(jobsLayer)),
@@ -730,21 +644,11 @@ describe.skipIf(!db)('the native queue', () => {
   });
 });
 
-// The graceful stop, which only a forked worker has: the two cases below let
-// a real scope close while a handler is still running. What a *stopping*
-// worker may claim is settle.test.ts's; that fetching is what stops it is
-// there too.
 describe.skipIf(!db)('the worker’s background fibers', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
     const jobsLayer = layerJobs;
     const clear = clearQueue;
 
-    /**
-     * A worker whose layer scope closes the moment `startClosing` is
-     * completed, so a case can hold the shutdown still and watch it: the
-     * body's return is what closes the layer, and the returned fiber does not
-     * finish until every finalizer has.
-     */
     const workerUntil = (
       startClosing: Deferred.Deferred<void>,
       handler: Effect.Effect<JobOutcome>,
@@ -790,8 +694,6 @@ describe.skipIf(!db)('the worker’s background fibers', () => {
         yield* Deferred.await(started);
         yield* Deferred.succeed(startClosing, undefined);
 
-        // The stop is under way and must not have returned: an in-flight
-        // handler holds it. A stop that cut the handler off would finish here.
         yield* TestClock.adjust(Duration.seconds(5));
         assert.strictEqual(running.pollUnsafe(), undefined);
         assert.isFalse(yield* Deferred.isDone(interrupted));
@@ -832,12 +734,9 @@ describe.skipIf(!db)('the worker’s background fibers', () => {
         yield* TestClock.adjust(Duration.seconds(24));
         assert.strictEqual(running.pollUnsafe(), undefined);
 
-        // Past the window the scope interrupts what is left, which is the
-        // only reason a container's stop is bounded at all.
         yield* TestClock.adjust(Duration.seconds(2));
         yield* Fiber.join(running);
         assert.isTrue(yield* Deferred.isDone(interrupted));
-        // Left `active`; the expiry reaper is what returns it.
         const [row] = yield* readJobs('invitation-delivery');
         assert.strictEqual(row?.state, 'active');
       }).pipe(Effect.provide(jobsLayer)),

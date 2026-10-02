@@ -59,8 +59,6 @@ describe('GET /api/v1/status', () => {
 
 describe('an answer the server cannot encode', () => {
   it('is the server’s fault: 500, not the 400 a bad request gets', async () => {
-    // A row whose name is not a string, which the database's own column type
-    // rules out and only a defect could produce.
     const corrupt: unknown = {
       name: 42,
       ownerUserId: null,

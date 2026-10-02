@@ -1,14 +1,3 @@
-// The study spine's database-enforced promises: every CHECK, the composite
-// foreign keys that prove same-study membership, and the sidecar triggers that
-// make a closed study read-only, a live study's participation mode and go-live
-// record final, a wave's identity fixed, every version pin a version of the
-// study's own protocol line, a finalized session immutable, and a participant
-// delete possible only under the audited erasure marker or the maintenance
-// purge.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger
-// — so a guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -38,19 +27,11 @@ const TEAM_B: Team = 'team-b';
 type Row = Record<string, unknown>;
 
 /**
- * One rejection case: the label the test title reads, the row override that
- * provokes the rejection, and the constraint Postgres must name.
- *
- * A tuple rather than an object because the title is interpolated with `%s`,
- * which prints the label whole — a `$property` substitution is truncated at
- * forty characters, and several of these labels are longer than that.
+ * A tuple because the title is interpolated with `%s`: a `$property`
+ * substitution is truncated at forty characters.
  */
 type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
-/**
- * `ownerRows`, decoded, so the two cases that read an instant through a raw
- * statement say what the driver hands back rather than trusting it.
- */
 const ownerDecoded = <S extends Schema.ConstraintDecoder<unknown>>(
   schema: S,
   text: string,
@@ -62,12 +43,6 @@ const ownerDecoded = <S extends Schema.ConstraintDecoder<unknown>>(
   );
 };
 
-/**
- * One protocol line per team and one published version of it, named up front so
- * the row builders below can reach them: `study_waves_version_own_line` refuses
- * a pin whose study has no line, and `interview_sessions_version_wave_pin`
- * refuses a session under a wave that pins nothing.
- */
 const protocolOf: Record<Team, string> = {
   'team-a': randomUUID(),
   'team-b': randomUUID(),
@@ -164,7 +139,6 @@ const newSession = Effect.fnUntraced(function* (
   return row.id as string;
 });
 
-/** Another published version of `protocolId`, inside TEAM_A. */
 const newVersion = Effect.fnUntraced(function* (
   protocolId: string,
   versionNumber: number,
@@ -183,11 +157,6 @@ const newVersion = Effect.fnUntraced(function* (
   return versionId;
 });
 
-/**
- * A second protocol line in TEAM_A, with one published version. The
- * team-scoped composite keys admit its version anywhere the team's own does,
- * so it is the fixture every "same team, wrong line" case needs.
- */
 const newProtocolLine = Effect.fnUntraced(function* () {
   const protocolId = randomUUID();
   yield* ownerInsert('protocols', {
@@ -198,7 +167,6 @@ const newProtocolLine = Effect.fnUntraced(function* () {
   return { protocolId, versionId: yield* newVersion(protocolId, 1) };
 });
 
-/** A study with one wave and one participant, all open. */
 const newTrio = Effect.fnUntraced(function* () {
   const studyId = yield* newStudy();
   return {
@@ -215,14 +183,6 @@ const closeStudy = (studyId: string) =>
     [studyId],
   );
 
-/**
- * Finalizes a session the only way the database now admits: the flip to
- * `completed` and the session's snapshot in one transaction. The deferred
- * `interview_sessions_completion_snapshot` weighs the pair at commit, and
- * `session_snapshots_insert_at_finalization` refuses the snapshot in any
- * other transaction — so a study-module fixture that needs a finalized
- * session has to write the network module's row too.
- */
 const finalize = (sessionId: string) =>
   Effect.flatMap(TestDatabase, (harness) =>
     harness.onOwner(
@@ -248,10 +208,6 @@ const finalize = (sessionId: string) =>
     ),
   );
 
-/**
- * The suite's `beforeAll`, as a layer: it runs once when the scratch schema is
- * built, which is what the node-postgres suite's `beforeAll` did.
- */
 const seed = Effect.flatMap(TestDatabase, (harness) =>
   harness.onOwner(
     Effect.forEach(TEAMS, (teamId) =>
@@ -404,8 +360,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 }),
               ),
             ).toBe(1);
-            // Past draft without the go-live record that the mode freeze guards:
-            // the evidence cannot be omitted by the transition that creates it.
             expect(
               (yield* refusalOf(
                 ownerInsert('studies', studyRow({ state: 'live' })),
@@ -457,8 +411,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 "a study's protocol line cannot change while a wave still pins a version",
               );
 
-              // The command layer clears every pin before it retargets a Draft;
-              // with the pins gone the same write lands.
               yield* ownerAffected(
                 `UPDATE study_waves SET protocol_version_id = NULL WHERE id = $1`,
                 [waveId],
@@ -513,7 +465,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 "a study's first go-live is recorded once and never rewritten",
               );
 
-              // The rest of the lifecycle still moves, and leaves both alone.
               expect(
                 yield* ownerAffected(
                   `UPDATE studies SET state = 'paused', paused_at = now() WHERE id = $1`,
@@ -539,10 +490,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
           'leaves a study that has never gone live free to choose its mode',
           () =>
             Effect.gen(function* () {
-              // The freeze is evidence-driven: without `went_live_at` there is
-              // no collected data for a mode change to reinterpret, and setting
-              // the timestamp for the first time is how a study goes live at
-              // all.
               const studyId = yield* newStudy();
 
               expect(
@@ -609,7 +556,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               )).message,
             ).toContain('closed studies are read-only');
 
-            // `updated_at` is on the allowed list, and the row stays closed.
             expect(
               yield* ownerAffected(
                 `UPDATE studies SET updated_at = now() WHERE id = $1`,
@@ -651,8 +597,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
           'refuses a rewrite of the close timestamp while the study stays closed',
           () =>
             Effect.gen(function* () {
-              // `closed_at` is on the allowlist only so the reopen below can
-              // clear it.
               const studyId = yield* newStudy();
               yield* closeStudy(studyId);
               const closedAtRow = Schema.Struct({ closed_at: Schema.Date });
@@ -716,9 +660,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
             yield* ownerAffected(`ALTER TABLE studies ADD COLUMN probe text`);
             yield* Effect.ensuring(
               Effect.gen(function* () {
-                // The positive control: the same write on an open study
-                // succeeds, so the rejection below is the trigger and not the
-                // new column itself.
                 expect(
                   yield* ownerAffected(
                     `UPDATE studies SET probe = 'x' WHERE id = $1`,
@@ -792,10 +733,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
 
         it.effect('leaves the wave cap to the command layer', () =>
           Effect.gen(function* () {
-            // MAX_WAVES_PER_STUDY is a domain cap, not a database one. Nothing
-            // here refuses the wave past it, so the command that counts is the
-            // only thing between a study and its fifty-first wave; a CHECK added
-            // later must update this case rather than silently subsume it.
             const studyId = yield* newStudy();
             expect(
               yield* ownerInsert(
@@ -809,10 +746,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
         it.effect('refuses a wave whose team disagrees with its study', () =>
           Effect.gen(function* () {
             const studyId = yield* newStudy({ team_id: TEAM_A });
-            // The pin is dropped so the key to `studies` is the only one this
-            // row can violate; with team B's wave carrying team A's version,
-            // the key to `protocol_versions` would fail too and either could
-            // report.
             const refusal = yield* refusalOf(
               ownerInsert(
                 'study_waves',
@@ -854,8 +787,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               const refused =
                 "a wave's protocol version must belong to its study's protocol line";
 
-              // The team-scoped key admits the version; only the study's own
-              // `protocol_id` says it belongs to a different line.
               expect(
                 (yield* refusalOf(
                   ownerInsert(
@@ -865,7 +796,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 )).message,
               ).toContain(refused);
 
-              // Re-pinning a wave is proven the same way.
               const waveId = yield* newWave(studyId);
               expect(
                 (yield* refusalOf(
@@ -876,8 +806,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 )).message,
               ).toContain(refused);
 
-              // A Draft with no line yet pins nothing at all, and a wave that
-              // pins nothing is the state every Draft wave starts in.
               const draftId = yield* newStudy({ protocol_id: null });
               expect(
                 (yield* refusalOf(ownerInsert('study_waves', waveRow(draftId))))
@@ -913,7 +841,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               ).toContain('wave identity is immutable');
             }
 
-            // Everything else about an open study's wave stays editable.
             expect(
               yield* ownerAffected(
                 `UPDATE study_waves SET name = 'Baseline' WHERE id = $1`,
@@ -959,7 +886,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 )).message,
               ).toContain('closed studies are read-only');
 
-              // The purge itself is the one write the guard lets through.
               expect(
                 yield* maintenanceAffected(
                   `DELETE FROM study_waves WHERE id = $1`,
@@ -967,8 +893,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 ),
               ).toBe(1);
 
-              // And an open study's wave is still the application role's to
-              // delete.
               const openStudyId = yield* newStudy();
               const openWaveId = yield* newWave(openStudyId);
               expect(
@@ -1013,7 +937,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 'a study holding participants cannot become anonymous',
               );
 
-              // Without a cohort the draft is still free to choose.
               const emptyId = yield* newStudy();
               expect(
                 yield* ownerAffected(
@@ -1039,10 +962,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
             expect(rows[0]).toEqual({
               timezone: 'UTC',
               enrolled_at: null,
-              // A managed study need not hold a contact detail, so every one of
-              // them is nullable; the attribute bag is not, because a reader
-              // indexes into it and an absent bag and an empty one are the same
-              // thing.
               email: null,
               phone: null,
               name: null,
@@ -1107,9 +1026,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
           }),
         );
 
-        // The contact columns are plain since #1900, and what the database still
-        // holds is the shape every reader depends on: one normalised spelling of
-        // an address, so an equality lookup finds the row it should.
         it.effect.each<CheckCase>([
           [
             'an email that is not lower-cased',
@@ -1205,8 +1121,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
           }),
         );
 
-        // Partial, so the anonymous studies that hold no participants and the
-        // managed ones that hold no address cost nothing to carry.
         it.effect.each<readonly [name: string, column: string]>([
           ['participants_team_id_study_id_email_idx', 'email'],
           ['participants_team_id_study_id_phone_idx', 'phone'],
@@ -1322,9 +1236,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
             const { studyId, waveId } = yield* newTrio();
             const sessionId = yield* newSession(studyId, waveId);
 
-            // `holder_epoch` is a bigint, which this driver decodes as a
-            // JavaScript `bigint`; rendered as text it reads the way the
-            // node-postgres suite read it.
             const rows = yield* ownerRows<Row>(
               `SELECT status, delivery_mode, current_stage_index, current_stage_id,
                       stage_metadata, ego_attributes, ego_secure_attributes,
@@ -1446,7 +1357,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               const studyB = yield* newStudy();
               const participantB = yield* newParticipant(studyB);
 
-              // Naming study A leaves the participant unfindable...
               const namingA = yield* refusalOf(
                 ownerInsert(
                   'interview_sessions',
@@ -1457,7 +1367,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               expect(namingA.detail).toContain(
                 'is not present in table "participants"',
               );
-              // ...and naming study B leaves the wave unfindable.
               const namingB = yield* refusalOf(
                 ownerInsert(
                   'interview_sessions',
@@ -1483,8 +1392,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
           Effect.gen(function* () {
             const studyId = yield* newStudy();
             const waveId = yield* newWave(studyId);
-            // A second version of the study's OWN line: the team-scoped key
-            // admits it, and only the wave's pin says the session never ran it.
             const secondVersionId = yield* newVersion(protocolOf[TEAM_A], 2);
             const refused =
               'an interview session must pin the protocol version its wave pins';
@@ -1500,7 +1407,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               )).message,
             ).toContain(refused);
 
-            // A wave that pins nothing takes no sessions at all.
             const unpinnedWaveId = yield* newWave(studyId, {
               wave_number: 2,
               protocol_version_id: null,
@@ -1514,8 +1420,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               )).message,
             ).toContain(refused);
 
-            // The session copies the wave's pin, and keeps its copy when the
-            // wave moves on: that is the whole reason it carries one.
             const sessionId = yield* newSession(studyId, waveId);
             expect(
               yield* ownerAffected(
@@ -1560,9 +1464,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               const refused =
                 "an interview session's link must open its own wave for its own participant";
 
-              // All four links are the team's, so the key admits them; the
-              // session must open this wave for this participant, or for any
-              // visitor.
               expect(
                 (yield* refusalOf(
                   newSession(studyId, waveId, {
@@ -1596,9 +1497,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 participant_id: participantId,
                 link_id: ownLink,
               });
-              // A live session is never rebound to another link, nor cut loose
-              // from its own: the originating link is part of the session's
-              // identity.
               expect(
                 (yield* refusalOf(
                   ownerAffected(
@@ -1619,7 +1517,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               ).toContain(
                 'interview session identity and version pin are immutable',
               );
-              // An anonymous visitor through the open link.
               expect(
                 yield* newSession(studyId, waveId, { link_id: openLink }),
               ).toMatch(/^[0-9a-f-]{36}$/);
@@ -1663,7 +1560,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               )).constraint,
             ).toBe('interview_sessions_wave_id_participant_id_idx');
 
-            // The index is partial, so anonymous sessions are unlimited.
             expect(
               yield* ownerInsert(
                 'interview_sessions',
@@ -1689,8 +1585,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               });
               const bystander = yield* newParticipant(studyId);
 
-              // Finalizing is itself an ordinary update — paired with the
-              // snapshot the deferred completion guard requires of it.
               yield* finalize(sessionId);
 
               expect(
@@ -1724,9 +1618,6 @@ describe.skipIf(!testDb)('study spine schema', () => {
               ).toContain(
                 'interview sessions are deleted only by an audited erasure or the maintenance purge',
               );
-              // Bottom-up, the order every delete path follows: the snapshot the
-              // finalization had to write is the session's child, and no key
-              // cascades.
               yield* erasing(
                 TEAM_A,
                 participantId,

@@ -11,10 +11,6 @@ import type { RateLimiter } from '../rate-limit/limiter.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { withSecretsAdapter } from './secrets-adapter.ts';
 
-// The only module that builds a better-auth instance (#1245). Three siblings
-// take narrower pieces: adapter.ts its adapter factory, secrets-adapter.ts its
-// adapter types, scripts/seed/teams.ts its password hasher.
-
 /**
  * The sign-in endpoints whose per-address limit Studio sets rather than
  * leaving to better-auth's own defaults. better-auth strips its base path
@@ -37,7 +33,6 @@ function scopeForAuthKey(key: string): string {
   return SIGN_IN_PATHS.has(path) ? 'sign_in_address' : 'better_auth';
 }
 
-/** Runs an Effect that needs nothing, for a promise-shaped caller. */
 type RunEffect = <A>(effect: Effect.Effect<A>) => Promise<A>;
 
 /**
@@ -83,32 +78,13 @@ export type SendMagicLink = (input: {
   url: string;
 }) => Promise<void>;
 
-/** A database adapter as `betterAuth({ database })` takes one. */
 export type AuthDatabaseAdapter = (options: BetterAuthOptions) => DBAdapter;
 
 export type BetterAuthDeps = {
   readonly env: AuthEnv;
-  /**
-   * The database adapter, taken from the caller so the instance does not
-   * decide which client it runs on: `auth/adapter.ts`'s over the application
-   * client, or the drizzle adapter the better-auth CLI generates a schema
-   * from. Composed under the secrets wrapper here either way.
-   */
   readonly adapter: AuthDatabaseAdapter;
   readonly cipher: SecretsCipherApi;
   readonly sendMagicLink: SendMagicLink;
-  /**
-   * Where sign-in attempts are counted, and how better-auth's promise
-   * callbacks run it. Absent means this instance enforces no limit of its own:
-   * the auth CLI's configuration and the suites that are not about limiting
-   * construct one that way. Every server process passes one.
-   *
-   * The runner travels with the limiter so that neither can be passed without
-   * the other: it runs the limiter over the services of the program that built
-   * this instance, so a denial logs through that program's logger. With
-   * `Effect.runPromise` instead it would log through the default one, as
-   * plain text among the program's JSON.
-   */
   readonly limits?:
     | { readonly limiter: RateLimiter['Service']; readonly run: RunEffect }
     | undefined;
@@ -293,8 +269,4 @@ export function isEmailTaken(error: unknown): boolean {
   );
 }
 
-/**
- * A refusal better-auth answered on purpose, as opposed to a failure: its own
- * `APIError`, whatever the code. A sign-in reads every one of them the same.
- */
 export const isRefusal = (error: unknown): boolean => isAPIError(error);

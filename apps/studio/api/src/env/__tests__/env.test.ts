@@ -21,15 +21,8 @@ import {
 } from '../development.ts';
 import { resolve } from '../resolve.ts';
 
-// The suite starts from the same environment `pnpm dev` gets — the committed
-// .env.development — and stubs away from it.
-//
-// vitest.config.ts loads that file too, but `process.loadEnvFile` never
-// overwrites a variable that is already set, so a shell that exports its own
-// `DATABASE_URL` (as every run of the server suites against a scratch Postgres
-// does) would otherwise leak into cases that assert the committed defaults.
-// So every variable the file names is stubbed back to its committed value
-// before each case, and `afterEach` puts the real environment back.
+// `process.loadEnvFile` never overwrites a variable that is already set, so
+// every variable .env.development names is stubbed back before each case.
 
 const COMMITTED = parseEnv(
   readFileSync(
@@ -310,9 +303,7 @@ describe('the database password file', () => {
   });
 
   it('refuses a socket URL with no host to hold the password', () => {
-    // The WHATWG password setter does nothing on an empty host, so this would
-    // otherwise connect without the password and fail as an authentication
-    // error nowhere near the cause.
+    // The WHATWG password setter does nothing on an empty host.
     vi.stubEnv('DATABASE_URL', 'postgres:///studio?host=/var/run/postgresql');
     vi.stubEnv('DATABASE_PASSWORD_FILE', passwordFile('s3cret'));
     expect(() => readEnv()).toThrow(/names no host to attach the password to/);
@@ -631,10 +622,6 @@ describe('the pinned role', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', '');
 
-    // node-postgres reads all three; `@effect/sql-pg` parses the string with
-    // `new URL`, and every statement on a client built from one of these fails
-    // with "Invalid connection URL". Refused at boot instead, naming the
-    // spelling that works.
     for (const url of [
       '/var/run/postgresql studio_dev',
       'host=/var/run/postgresql dbname=studio_dev',
@@ -650,8 +637,6 @@ describe('the pinned role', () => {
   it('refuses an sslmode the server’s database client does not accept', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', '');
-    // `prefer` is libpq's default and node-postgres takes it; the Effect
-    // client refuses it without an explicit `ssl` option.
     vi.stubEnv('DATABASE_URL', 'postgres://u@db.example/studio?sslmode=prefer');
     expect(() => readEnv()).toThrow(/sslmode=prefer/);
     vi.stubEnv(

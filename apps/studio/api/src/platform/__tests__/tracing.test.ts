@@ -8,11 +8,6 @@ import { FetchHttpClient } from 'effect/http';
 import { Environment, readEnv } from '../../env.ts';
 import { TracingLive } from '../tracing.ts';
 
-// Whether anything is exported is the whole behaviour here, so the oracle is a
-// collector: a real `node:http` sink that records what arrives. An assertion
-// about the layer's shape would pass for a layer that built an exporter and
-// posted nothing, and for one that posted to the wrong place.
-
 type Sink = {
   readonly url: string;
   readonly requests: { method: string; path: string }[];
@@ -49,11 +44,6 @@ const environment = (
   telemetryEndpoint: string | undefined,
 ) => Layer.succeed(Environment, { ...readEnv(), telemetry, telemetryEndpoint });
 
-/**
- * One log record emitted under the layer, and then the scope closed — the
- * exporter flushes what it has batched on shutdown, so by the time this
- * returns the sink has seen whatever was going to be sent.
- */
 const emitUnder = (
   telemetry: boolean,
   telemetryEndpoint: string | undefined,
@@ -71,8 +61,6 @@ const withSink = <A>(use: (sink: Sink) => Effect.Effect<A>): Effect.Effect<A> =>
   );
 
 describe('TracingLive', () => {
-  // Mutation: post to `baseUrl` rather than letting Otlp append its paths →
-  // the recorded path is not `/v1/logs`.
   it.live('exports logs to the configured collector', () =>
     withSink((sink) =>
       Effect.gen(function* () {
@@ -87,8 +75,6 @@ describe('TracingLive', () => {
     ),
   );
 
-  // Mutation: drop the `!env.telemetry` half of the gate → the opt-out stops
-  // working and the sink records the export anyway.
   it.live('exports nothing when the instance has opted out', () =>
     withSink((sink) =>
       Effect.gen(function* () {
@@ -98,16 +84,6 @@ describe('TracingLive', () => {
     ),
   );
 
-  // Mutation: fall back to a default endpoint when none is configured (say
-  // `env.telemetryEndpoint ?? 'http://127.0.0.1:4318'`) → the layer is no
-  // longer `Layer.empty`, and a deployment that configured nothing would open
-  // connections. The sink cannot see that, because its URL never reaches the
-  // layer — so the observable here is `fetch` itself: the exporter's client
-  // reads it from the `FetchHttpClient.Fetch` reference at request time, and a
-  // recording one provided around the program counts every call whatever the
-  // URL. The positive control below is the same recorder seeing the export
-  // when an endpoint is set, so a recorder that recorded nothing would fail
-  // there rather than pass here.
   it.live('builds no exporter at all without an endpoint', () =>
     Effect.gen(function* () {
       const calls: string[] = [];

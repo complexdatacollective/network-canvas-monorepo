@@ -6,31 +6,10 @@ import { deepestMessage } from '../db/errors.ts';
 import { databaseAlive } from '../db/readiness.ts';
 import { checkSchemaEffect, type SchemaState } from '../db/schema.ts';
 
-// The two health routes, shared by both processes (#1897, #1909). The web
-// process mounts them on its own listener; the worker serves them on a
-// loopback listener of its own, because a container healthcheck is the only
-// reader a process that answers no request otherwise can have.
-//
-// It deliberately imports neither src/app.ts nor the RPC router: the worker
-// reaches this module, and src/__tests__/process-separation.test.ts holds that
-// graph to what a process which runs jobs may load.
-
-/**
- * What a check reports when it did not fail. `degraded` is for a dependency
- * whose loss changes behaviour without making the process unfit to serve —
- * the Valkey limiter, which fails open.
- */
 export type CheckVerdict = 'ok' | 'degraded';
 
-/** Succeeding is the verdict; failing — with anything — is `failed`, with the message as reason. */
 export type HealthCheck = Effect.Effect<CheckVerdict, unknown>;
 
-/**
- * The checks this process runs, named. A check that does not apply — the
- * object store on a deployment that configures none — is left out rather than
- * reported: an unconfigured surface refuses by design, and reporting it as
- * failed would make a deployment that never wanted one permanently unready.
- */
 export type HealthChecks = Readonly<Record<string, HealthCheck>>;
 
 export type ReadinessStatus = 'ok' | 'degraded' | 'failing';
@@ -40,27 +19,14 @@ export type Readiness = {
   checks: Record<string, string>;
 };
 
-/**
- * Each check gets a second. A readiness probe has a deadline of its own, and a
- * check that hangs on a wedged socket must report the reason rather than let
- * the probe time out with nothing to say — a timed-out probe names no failing
- * dependency, which is the whole point of answering at all.
- */
 const CHECK_TIMEOUT_MS = 1000;
 
-/** One line, bounded: this ends up in a container runtime's status output. */
 function reasonOf(error: unknown): string {
   const message = deepestMessage(error) ?? String(error);
   const single = message.replaceAll(/\s+/g, ' ').trim();
   return single.length > 200 ? `${single.slice(0, 197)}...` : single;
 }
 
-/**
- * The bound is `Effect.timeoutOrElse`, which *interrupts* the check it gave up
- * on. The promise race this replaces had to attach a no-op `catch` to the
- * losing attempt so that a late rejection was not unhandled; there is nothing
- * left pending to reject here, so no such guard is needed.
- */
 const runCheck = Effect.fnUntraced(function* (check: HealthCheck) {
   return yield* check.pipe(
     Effect.timeoutOrElse({
@@ -74,18 +40,10 @@ const runCheck = Effect.fnUntraced(function* (check: HealthCheck) {
   );
 });
 
-/** Can this process reach the database, as the role it runs as? */
 export function databaseCheck(sql: SqlClient.SqlClient): HealthCheck {
   return Effect.as(databaseAlive(sql), 'ok' satisfies CheckVerdict);
 }
 
-/**
- * Is the database this build's? Both processes refuse a stale schema at boot
- * (src/platform/schema-gate.ts), but the development lane waits instead of
- * exiting, and a database can be recreated under a running process — so
- * readiness has to say so rather than infer it from the process still being
- * alive.
- */
 export function schemaCheck(
   read: Effect.Effect<SchemaState, unknown>,
 ): HealthCheck {
@@ -102,19 +60,12 @@ export function schemaCheck(
   );
 }
 
-/**
- * `schemaCheck` over a fresh read, for the worker, whose listener binds before
- * its schema gate exists.
- */
 export function schemaCheckOn(sql: SqlClient.SqlClient): HealthCheck {
   return schemaCheck(checkSchemaEffect(sql));
 }
 
 export const readiness: (checks: HealthChecks) => Effect.Effect<Readiness> =
   Effect.fnUntraced(function* (checks: HealthChecks) {
-    // Concurrently: the budget is a second for the probe, not a second per
-    // dependency, and a serial run would let one slow check hide the next one's
-    // failure behind the runtime's own deadline.
     const results = yield* Effect.all(
       Record.map(checks, (check) => runCheck(check)),
       { concurrency: 'unbounded' },
@@ -130,13 +81,6 @@ export const readiness: (checks: HealthChecks) => Effect.Effect<Readiness> =
     return { status, checks: results };
   });
 
-/**
- * `/healthz` is liveness and says nothing about dependencies: a process that
- * answers it is running, which is what a container runtime restarts on.
- * `/readyz` is what a deployment reads before it sends traffic, and what names
- * the failing dependency when it will not. 503 only for `failing` — a degraded
- * process still serves.
- */
 export function HealthRoutes(
   checks: HealthChecks,
 ): Layer.Layer<never, never, HttpRouter.HttpRouter> {

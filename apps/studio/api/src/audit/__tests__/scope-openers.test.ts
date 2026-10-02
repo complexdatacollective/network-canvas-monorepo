@@ -14,13 +14,6 @@ import {
 } from '../../__tests__/support/source-spans.ts';
 import { sourceTokens } from '../../__tests__/support/source-tokens.ts';
 
-// The other half of the no-audit registry (`audit/transaction-policy.ts`).
-// That registry names the transactions opened through `noAuditTransaction` /
-// `noAuditMaintenanceTransaction`, and `audit/policy.ts` names every `audited`
-// command; a scope opened directly goes through neither, so it is pinned here
-// instead — each with the reason it needs no audit event (a read, the queue's
-// own bookkeeping, a row that belongs to no team). Tests are not inventoried.
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER_ROOT = resolve(HERE, '../../..');
 const REPO_ROOT = resolve(SERVER_ROOT, '../../..');
@@ -33,28 +26,12 @@ const SCOPES = new Set([
   'savepoint',
 ]);
 
-/**
- * The modules that are the mechanism rather than a caller: `db/tenant.ts`
- * declares the scopes, and `audit/audited.ts` / `audit/no-audit.ts` are the two
- * seams the audit policies already cover — every `audited` command is named in
- * `audit/policy.ts`, every `noAuditTransaction` operation in
- * `audit/transaction-policy.ts`. `withTransaction` is collected in these too.
- */
 const MECHANISM = new Set([
   'apps/studio/api/src/db/tenant.ts',
   'apps/studio/api/src/audit/audited.ts',
   'apps/studio/api/src/audit/no-audit.ts',
 ]);
 
-/**
- * Every way `source` opens a transaction other than through the two audit
- * seams, by the `Effect.fn` it sits in (`null` outside one) and the opener:
- * `TenantScope.open`, `MaintenanceScope.openTenant` and so on, `savepoint`,
- * `withTransaction` — the `SqlClient`'s own, which would open one without the
- * scope's team stamp — and drizzle's `.transaction(`, which delegates to it. A scope named without a member (handed
- * on, aliased, destructured) is `TenantScope` alone, and a renaming import is
- * counted where it is, so a call under another name cannot go unseen.
- */
 function openers(
   source: string,
   { scopes }: { scopes: boolean },
@@ -84,7 +61,6 @@ function openers(
     if (!scopes || !SCOPES.has(token.raw)) continue;
     if (inClause && tokens[index + 1]?.raw !== 'as') continue;
     if (tokens[index - 1]?.kind === SyntaxKind.ConstKeyword) continue;
-    // A property of something else (`open.savepoint`) is not the scope.
     if (tokens[index - 1]?.kind === SyntaxKind.DotToken) continue;
     const member =
       !inClause &&
@@ -122,14 +98,6 @@ function inventory(): Map<string, number> {
 
 const SERVER = 'apps/studio/api';
 
-/**
- * Every transaction opened other than through `audited` or
- * `noAuditTransaction` / `noAuditMaintenanceTransaction`, and why it needs
- * neither. Keyed by file, the `Effect.fn` it sits in where there is one, and
- * the opener; the count is how many times it is named there. Exact in both
- * directions: a new direct opener fails until it is listed here with its
- * reason, and an entry whose opener has gone fails until it is removed.
- */
 const OPENERS: Record<string, { count: number; why: string }> = {
   [`${SERVER}/src/db/tenant.ts › transaction`]: {
     count: 2,

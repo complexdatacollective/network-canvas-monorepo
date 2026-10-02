@@ -1,6 +1,3 @@
-// What Studio can send, without a transport under it: the two refusals name
-// what they could not send, and the development loop puts the link in the log
-// rather than sending it.
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, type Layer, Logger } from 'effect';
 
@@ -21,7 +18,6 @@ const INVITATION: TeamInvitationInput = {
   teamLabel: 'Fieldwork',
 };
 
-/** Every line a program logged, as the message alone. */
 function capturingLogger(lines: string[]): Layer.Layer<never> {
   return Logger.layer([
     Logger.make(({ message }: Logger.Options<unknown>) => {

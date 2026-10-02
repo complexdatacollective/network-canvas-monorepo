@@ -18,14 +18,7 @@
 // attacks and cannot share a number.
 //
 // This file imports nothing. The limiter reads it to build keys and log lines
-// (src/rate-limit/limiter.ts); the surfaces that enforce a scope name it by
-// its `RateLimitScope` — the HTTP route middleware
-// (src/http/middleware/rate-limit.ts), the auth mount's per-email sign-in
-// check (src/http/auth-mount.ts), the rpc plane
-// (src/rate-limit/enforce.ts), which the protocol-builder host charges too
-// (src/protocol-builder/session.ts); and better-auth's own sign-in limit takes
-// its numbers from `sign_in_address` (src/auth/better-auth.ts). None of those
-// may import each other.
+// (src/rate-limit/limiter.ts).
 
 /** How many calls the window allows, and how long the window is. */
 export type RateLimitRule = { max: number; windowMs: number };
@@ -83,10 +76,7 @@ export const RATE_LIMITS = {
   // Five calls a second suits an analysis script paging through results and
   // leaves the instance responsive to everyone else.
   public_api: { max: 300, windowMs: 1 * MINUTE },
-  // The API reference page is a few hundred kilobytes compressed and a person
-  // reads it, cached, a few times an hour; thirty a minute from one address is
-  // far past that, and keeps the page from being an amplifier at the public
-  // limit's rate. Charged on top of `public_api`.
+  // Charged on top of `public_api`.
   api_docs: { max: 30, windowMs: 1 * MINUTE },
   // A tab opens one socket and reopens it when the network drops, so thirty a
   // minute absorbs a flapping connection while stopping a reconnect loop from

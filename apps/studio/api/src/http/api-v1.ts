@@ -15,33 +15,18 @@ import { API_V1_PATH, StudioApi } from '@codaco/studio-contract/api/v1';
 import { type StatusApiDeps, StatusApiHandlers } from '../api/status.ts';
 import { clientAddress, httpRateLimit } from './middleware/rate-limit.ts';
 
-/** The router every route below registers on, with `API_V1_PATH` in front. */
 const Mounted = Layer.effect(
   HttpRouter.HttpRouter,
   Effect.map(HttpRouter.HttpRouter, (router) => router.prefixed(API_V1_PATH)),
 );
 
-/**
- * Every method on every path under `/api/v1` that is no route — the bare
- * prefix included — answers here rather than falling through to the
- * router's own 404, so that it is charged against the same limit as a real
- * one. The empty 404 becomes problem JSON in `ProblemJson`.
- *
- * `HEAD` is one of those methods: the router's fallback from `HEAD` to a `GET`
- * route only runs when nothing matches `HEAD` at all, and this does.
- */
 const Unmatched = HttpRouter.use((router) =>
   router.add('*', '/*', HttpServerResponse.empty({ status: 404 })),
 );
 
 /**
- * The reference page is the same few megabytes on every request until the
- * next deploy, so it is compressed, cacheable for an hour, and revalidated
- * with an ETag: a repeat view costs a 304 rather than the page.
- *
  * The ETag is weak because the compressed and uncompressed representations
- * share it, and is computed once per response object — the page is built once
- * per process and handed out as the same object every time.
+ * share it.
  */
 const DOCS_CACHE_CONTROL = 'public, max-age=3600';
 
@@ -87,29 +72,8 @@ const CachedDocs = HttpRouter.middleware(
 );
 
 /**
- * The public data API — a separate surface from the SPA's RPC, per the
- * 2026-08-11 decision on #1248 — served as an `HttpApi`, with its OpenAPI
- * document at `/api/v1/openapi.json` and a Scalar reference at
- * `/api/v1/docs`, all behind the `public_api` limit, and the page behind
- * `api_docs` as well.
- *
- * Paths match the way every Effect route does (`RouterConfig`'s defaults):
- * case-insensitively, with repeated slashes collapsed, a trailing slash
- * ignored and anything after a `;` dropped, so `/API/v1//status` is
- * `/api/v1/status`. Dot segments are not resolved: `/api/v1/./status` is no
- * route. Every alias is charged against the same limit.
- *
- * The reference page loads Scalar's bundle inline and its own fonts not at
- * all, so a researcher's browser fetches nothing from a third party to render
- * it.
- *
- * Limited per client address, and deliberately not per `Authorization` header
- * (#1909). There is no token plane yet — the principal resolution answers any
- * Authorization header with no principal until #1899 builds one — so a header
- * is an unvalidated string, and keying on it would let an anonymous caller
- * mint a fresh bucket per request by rotating the value, which is the address
- * limit doing nothing at all. When a token is validated the key becomes its
- * resolved id, which cannot be minted.
+ * Limited per client address, deliberately not per `Authorization` header: an
+ * unvalidated header would let a caller mint a fresh bucket per request.
  */
 export const ApiV1Routes = (deps: StatusApiDeps) =>
   Layer.mergeAll(

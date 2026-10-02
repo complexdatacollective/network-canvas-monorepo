@@ -10,12 +10,6 @@ import { STUDIO_VERSION } from './version.ts';
 // separation decided 2026-08-11 on #1248, the surfaces share this layer and
 // nothing else: no surface is generated from another.
 
-/**
- * The status document exactly as the `status` procedure declares it
- * (`@codaco/studio-contract`'s `schema/status.ts`) — the schema's decoded
- * `Type`, so this file cannot describe a document the boundary would refuse to
- * encode.
- */
 export type InstanceStatus = ContractInstanceStatus;
 
 /**

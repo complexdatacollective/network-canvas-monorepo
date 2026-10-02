@@ -37,23 +37,10 @@ const REPO_ROOT = resolve(
   '../../../../../..',
 );
 
-/**
- * A value whose properties can be read: an object, an array or a callable,
- * never null. `Predicate.isObjectKeyword` is that check — better-auth's
- * endpoints are functions carrying `path` and `options`, so the walk below
- * needs the callable case. The refinement adds the index signature the callers read through.
- */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Predicate.isObjectKeyword(value);
 }
 
-/**
- * The default `toSorted()` ordering, spelled out: every inventory compared
- * below is sorted by the same total order, so each comparison is about its
- * contents alone. `toSorted()` with no argument sorts by the string form of
- * each element, which is what this is for the string arrays here — stating it
- * is what keeps the two sides of a comparison provably ordered alike.
- */
 function byName(left: string, right: string): number {
   if (left === right) return 0;
   return left < right ? -1 : 1;
@@ -195,15 +182,6 @@ function tenantBoundaryAccesses(source: string): TenantBoundaryAccess[] {
   return accesses;
 }
 
-/**
- * The two seams that open a registered no-audit transaction, and which
- * argument names the operation.
- *
- * `runNoAuditTenantTransaction` took the handle first and the operation
- * second; `noAuditTransaction` / `noAuditMaintenanceTransaction`
- * (`audit/no-audit.ts`) take the operation first, because the access they take
- * beside it is a branded token rather than a database handle.
- */
 const NO_AUDIT_SEAMS = ['noAuditTransaction', 'noAuditMaintenanceTransaction'];
 
 function noAuditOperations(source: string): string[] {
@@ -222,8 +200,6 @@ function noAuditOperations(source: string): string[] {
         argumentDepth--;
         if (argumentDepth === 0) break;
       }
-      // The first argument, and only the first: an operation read from any
-      // later position would let a caller name one it does not run under.
       if (token.raw === ',' && argumentDepth === 1) break;
       if (argumentDepth === 1 && token.kind === SyntaxKind.StringLiteral) {
         operations.push(token.value);
@@ -234,15 +210,6 @@ function noAuditOperations(source: string): string[] {
   return operations;
 }
 
-/**
- * Everything wrong with one classification of `tags`, as sentences.
- *
- * Read and mutation are the two halves of one partition, so the invariant has
- * four ways to break and each is named separately: a tag in both halves, a tag
- * in neither, and an entry in either half that nothing serves. Comparing the
- * two key lists instead would see only the last two, and only when they do not
- * cancel out.
- */
 function classificationProblems(
   tags: readonly string[],
   reads: ReadonlySet<string>,
@@ -274,13 +241,6 @@ function classificationProblems(
 }
 
 describe('audit mutation policy', () => {
-  /**
-   * Every procedure the two planes serve, as the rpc plane names them: the
-   * SPA's group and the protocol-builder group behind `/ws` and
-   * `/rpc/protocol-builder`, through the contract's own `StudioStreams`
-   * re-export. A tag added to either group without a classification fails
-   * here, not at runtime.
-   */
   const servedTags = (): string[] => [
     ...StudioRpcs.requests.keys(),
     ...StudioStreams.requests.keys(),
@@ -297,11 +257,6 @@ describe('audit mutation policy', () => {
   });
 
   it('names every way a classification can be wrong', () => {
-    // The oracle for the case above, run against an inventory that is wrong in
-    // all four ways at once. Without it, comparing two sorted key lists would
-    // pass for a surface where one tag is in both halves and another in
-    // neither: the lengths match and so do the contents once the duplicate
-    // collapses. Each line here is a mutation that must not survive.
     expect(
       classificationProblems(
         ['both.ways', 'neither.way', 'a.read', 'a.write'],
@@ -352,9 +307,6 @@ describe('audit mutation policy', () => {
       trustedProxies: undefined,
       socialProviders: {},
     };
-    // The server's own adapter, over a bridge that refuses every statement:
-    // the inventory is read off the configured plugin, so building the
-    // instance must not need a database, and this proves it does not.
     const unreachable = (): Promise<never> =>
       Promise.reject(new Error('the route inventory reads no database'));
     const bridge: SqlBridge = {
@@ -496,21 +448,9 @@ describe('audit mutation policy', () => {
         }));
       }
     }
-    // The two executors are `db/tenant.ts`'s, since #1927 stage 3.
-    // `audit/command.ts` and `audit/transaction.ts` used to be them, each
-    // opening a transaction on a `TenantDb` handle a caller passed in; both
-    // are deleted. `audited` (`audit/audited.ts`) and `noAuditTransaction`
-    // (`audit/no-audit.ts`) now go through the scopes, which take a branded
-    // `TeamAccess` and read their client from a service — so there is exactly
-    // one module left that opens a transaction at all, and a third call
-    // appearing anywhere else is what this case is for.
     expect(actual).toEqual({
       'apps/studio/api/src/db/tenant.ts': [
-        // `openOn`: the root of every scope — `TenantScope`, `OwnerScope`,
-        // `MaintenanceScope` and the untenanted one all share it.
         { member: 'transaction', form: 'call', line: 0 },
-        // `savepoint`: the nested transaction `audited` runs its body in, on
-        // the connection the outer scope already holds.
         { member: 'transaction', form: 'call', line: 0 },
       ],
       // Not a tenant transaction: this is better-auth's own adapter handing
@@ -521,10 +461,6 @@ describe('audit mutation policy', () => {
       'apps/studio/api/src/auth/secrets-adapter.ts': [
         { member: 'transaction', form: 'call', line: 0 },
       ],
-      // Not a tenant transaction either: the sql-pg adapter's
-      // `transaction` config handing better-auth's callback to the bridge,
-      // which opens an untenanted scope on the auth tables — no tenant table
-      // has a better-auth model.
       'apps/studio/api/src/auth/adapter.ts': [
         { member: 'transaction', form: 'call', line: 0 },
       ],

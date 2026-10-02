@@ -20,23 +20,6 @@ import type { JobStep } from '../../worker.ts';
 import { signInEmail } from '../sign-in-email.ts';
 import { layerRecordingMailer, RecordedMail } from './support.ts';
 
-// `src/jobs/__tests__/sign-in-email-handler.test.ts`, ported to the native
-// queue. Its cases are the same four facts — a queued link is sent once and
-// the job completes, a refused send walks the queue's own ladder, the last
-// attempt is the end of it because this queue has no dead letter, and a
-// payload the queue does not declare never reaches the transport — with two
-// differences that are the port's, not the handler's:
-//
-//  - Its "works no mail queue without a transport" case is about the worker's
-//    registration, which `src/jobs/registrations.ts` decides and
-//    `src/jobs/__tests__/registrations.test.ts` owns. What is left of it here
-//    is the fact the registration exists to avoid: with no transport the
-//    attempt fails like any other, and the reason lands on the row.
-//  - Its "woken by the notify rather than by its poll" case is the worker's,
-//    not the handler's: W1's notify.test.ts owns it.
-//
-// Everything below runs in virtual time against a real Postgres.
-
 const db = await reachableDb();
 
 const MAGIC_LINK = {
@@ -44,10 +27,8 @@ const MAGIC_LINK = {
   url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
 };
 
-/** What the queue declares: three attempts in all, 5s doubling to a 60s cap. */
 const SIGN_IN = resolvedQueue('sign-in-email');
 
-/** A pinned seed, so the jittered backoff below has one answer. */
 const SEED = 'effect-native-jobs-sign-in';
 
 const REFUSAL = 'SMTP refused the recipient';
@@ -64,7 +45,6 @@ describe.skipIf(!db)('the sign-in email handler', () => {
 
       const enqueue = enqueueJob('sign-in-email', MAGIC_LINK);
 
-      /** One claim-run-settle step with the handler registered. */
       const drain = drainWith('sign-in-email', signInEmail);
 
       const refuse = Effect.flatMap(RecordedMail, (mail) =>
@@ -108,16 +88,10 @@ describe.skipIf(!db)('the sign-in email handler', () => {
             const first = yield* drain.pipe(Random.withSeed(SEED));
             assert.strictEqual(first._tag, 'retrying');
 
-            // That the delay is exactly `backoffSeconds` of the row's frozen
-            // ladder is `__tests__/queue.test.ts`'s claim, on the queue that
-            // declares no cap. What is this queue's own is the rung below: it
-            // is the one declaring a `retryDelayMax`, so it is the only place
-            // the cap is ever between the doubling and the row.
             const [afterFirst] = yield* readJobs('sign-in-email');
             assert.strictEqual(afterFirst?.attempts, 1);
             assert.strictEqual(afterFirst?.last_error, REFUSAL);
 
-            // Not claimable until virtual time reaches the delay.
             assert.strictEqual((yield* drain)._tag, 'idle');
             yield* TestClock.setTime(afterFirst!.run_at.getTime());
 
@@ -125,8 +99,6 @@ describe.skipIf(!db)('the sign-in email handler', () => {
             assert.strictEqual(second._tag, 'retrying');
             const [afterSecond] = yield* readJobs('sign-in-email');
             assert.strictEqual(afterSecond?.attempts, 2);
-            // The cap the queue declares, which the second rung is well inside:
-            // doubling from five seconds reaches sixty only after several more.
             const secondDelay =
               (afterSecond!.run_at.getTime() -
                 DateTime.toEpochMillis(yield* DateTime.now)) /
@@ -139,10 +111,6 @@ describe.skipIf(!db)('the sign-in email handler', () => {
             assert.strictEqual(third._tag, 'failed');
             const failed = third as Extract<JobStep, { _tag: 'failed' }>;
             assert.strictEqual(failed.attempt, SIGN_IN.retryLimit + 1);
-            // A sign-in link is useless by the time anyone could act on a
-            // dead-lettered copy, so the queue names no dead letter and there is
-            // nowhere for a copy to go. Both halves: the step says it made none,
-            // and the whole table still holds only this job.
             assert.strictEqual(failed.deadLetter, null);
             const rows = yield* readJobs();
             assert.strictEqual(rows.length, 1);
@@ -159,12 +127,6 @@ describe.skipIf(!db)('the sign-in email handler', () => {
           yield* clear;
           yield* enqueue;
 
-          // Registering the queue without a transport is what
-          // `src/jobs/registrations.ts` exists to avoid (#1895): the worker
-          // leaves the mail queues unworked rather than burning the ladder
-          // while an operator is still setting SMTP up. This is the handler
-          // half — a send attempted anyway is an ordinary failed attempt, and
-          // the reason an operator reads is on the row.
           const step = yield* drain.pipe(Effect.provide(Mailer.layerRefuse));
           assert.strictEqual(step._tag, 'retrying');
           const [row] = yield* readJobs('sign-in-email');
@@ -183,10 +145,6 @@ describe.skipIf(!db)('the sign-in email handler', () => {
           yield* clear;
           const jobId = yield* enqueue;
           const { schema } = yield* QueueHarness;
-          // A row an older release or a hand edit left behind: the enqueue
-          // validated on the way in, so this is the only way to make one. The
-          // payload alone is rewritten, in place, rather than a row being
-          // fabricated — the columns beside it are the enqueue's own.
           yield* asOwner(
             Effect.flatMap(
               MaintenanceDatabase,
@@ -198,9 +156,6 @@ describe.skipIf(!db)('the sign-in email handler', () => {
           );
 
           const step = yield* drain;
-          // The decode is the worker's (#1927 §11), so the job is killed
-          // rather than retried — no ladder can make a malformed address
-          // deliverable — and the handler never ran.
           assert.strictEqual(step._tag, 'dead');
           const [row] = yield* readJobs('sign-in-email');
           assert.strictEqual(row?.state, 'dead');

@@ -1,8 +1,3 @@
-// `openSession` and `HostSessionLive`: who may reach a protocol through the
-// protocol-builder host, and what it costs them. Driven through the handlers
-// in process, so each case is the gate a real call meets — the middleware,
-// the budget checks and the membership probe — with nothing but the transport
-// taken away.
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -55,7 +50,6 @@ const RESEARCHER: SessionPrincipal = {
   sessionId: 'pb-session-cookie-session',
 };
 
-/** A member who can see only the protocols of studies they hold a grant on. */
 const MEMBER: SessionPrincipal = {
   ...RESEARCHER,
   userId: 'pb-session-member',
@@ -77,11 +71,8 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
   let reachable: string;
   let elsewhere: string;
   let nothingOpen: string;
-  /** What the gate did, in order: budget charges and membership reads. */
   const steps: string[] = [];
-  /** Scopes the recording limiter refuses. */
   const spent = new Set<string>();
-  /** The role `listMemberships` answers for `MEMBER`, whatever the row says. */
   const staleRoles = new Map<string, 'owner' | 'member'>();
   let client: ProtocolBuilderTestClient;
 
@@ -160,7 +151,6 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
 
     const studio = createStudio(resolveEnv({ NODE_ENV: 'test' }), {
       auth: authServiceStub({
-        // The session a request's cookie resolves to: only the researcher's.
         getSession: (headers) =>
           Effect.succeed(
             headers.cookie === 'session=researcher'
@@ -199,14 +189,10 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
 
   it('refuses a caller with no principal as HostUnauthorized', async () => {
     steps.length = 0;
-    // No cookie a session resolves to.
-    // Mutation: let `HostSessionLive` call the handler without a principal →
-    // the call dies in `openSession` instead of failing with this tag.
     await expectRpcFailure(
       listAs({ headers: { cookie: 'session=stranger' } }, reachable),
       'HostUnauthorized',
     );
-    // Refused before anything was charged or read.
     expect(steps).toEqual([]);
   });
 
@@ -227,8 +213,6 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
       listAs({ principal: RESEARCHER }, randomUUID()),
       'ProtocolNotFound',
     );
-    // The same answer field for field, so neither tells the caller which it
-    // was.
     expect({ ...foreign, protocolId: '' }).toEqual({
       ...missing,
       protocolId: '',
@@ -237,8 +221,6 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
   });
 
   it('answers a reachable protocol with nothing open to edit as not found', async () => {
-    // Mutation: fail a reachable protocol with no draft as `SectionNotFound`
-    // (or anything but `ProtocolNotFound`) → this names the wrong tag.
     await expectRpcFailure(
       listAs({ principal: RESEARCHER }, nothingOpen),
       'ProtocolNotFound',
@@ -251,15 +233,12 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
       { principal: RESEARCHER },
       client.rpc('ListSections', { protocolId: reachable }),
     );
-    // Mutation: charge `rpc_team` before the memberships are read → the
-    // order below changes.
     expect(steps).toEqual([
       `rpc_user:${RESEARCHER.userId}`,
       `memberships:${RESEARCHER.userId}`,
       `rpc_team:${OWN_TEAM}`,
     ]);
 
-    // A protocol the caller cannot reach charges no team at all.
     steps.length = 0;
     await expectRpcFailure(
       listAs({ principal: RESEARCHER }, elsewhere),
@@ -278,8 +257,7 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
       const exit = await listAs({ principal: RESEARCHER }, reachable);
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isSuccess(exit)) return;
-      // Not one of the group's declared errors: `RateLimited` is not on the
-      // contract (#1927 §20 Q11), so it is a defect the client cannot name.
+      // `RateLimited` is not on the contract, so it is a defect.
       expect(Option.isNone(Cause.findErrorOption(exit.cause))).toBe(true);
       expect(steps).toEqual([`rpc_user:${RESEARCHER.userId}`]);
     } finally {
@@ -288,9 +266,6 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
   });
 
   it('decides a write on the role locked in its transaction, not the one the session read', async () => {
-    // The member holds no grant on the study behind this protocol, so it is
-    // not theirs to edit — but `listMemberships` answers `owner`, the role
-    // they held a moment ago, and the session gate believes it.
     staleRoles.set(MEMBER.userId, 'owner');
     try {
       const sections = await client.call(
@@ -298,8 +273,6 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
         client.rpc('ListSections', { protocolId: reachable }),
       );
       expect(sections.sectionIds).toContain('stageOrder');
-      // Mutation: drop `requireProtocol` from `acquireLock` → the lease is
-      // taken on the stale role.
       await expectRpcFailure(
         client.callExit(
           { principal: MEMBER },

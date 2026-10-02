@@ -1,12 +1,3 @@
-// The token half of first-run bootstrap (#1909): what the schema step writes
-// into the installation row, what it prints, and — the property the whole
-// scheme rests on — that the row never holds the value it printed.
-//
-// Which identity runs which statement is half of what is asserted here, and
-// the scopes are how the suite picks one: every case that means "the
-// application role may not do this" opens `UntenantedScope`, and every case
-// that means "maintenance may not" opens `MaintenanceScope` — the same seams
-// production uses.
 import { assert, layer } from '@effect/vitest';
 import { Cause, Effect, Exit } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
@@ -32,7 +23,6 @@ import {
   readInstallation,
 } from '../bootstrap.ts';
 
-/** The SQLSTATE a refusal carries, or undefined when nothing was refused. */
 const refusal = (exit: Exit.Exit<unknown, unknown>): string | undefined =>
   Exit.isFailure(exit) ? sqlState(Cause.squash(exit.cause)) : undefined;
 
@@ -40,7 +30,6 @@ const INSUFFICIENT_PRIVILEGE = '42501';
 const CHECK_VIOLATION = '23514';
 const RAISE_EXCEPTION = 'P0001';
 
-/** One statement as the application role, which is what `/setup` is served as. */
 const asApplication = (statement: string) =>
   UntenantedScope.open(
     Effect.flatMap(Transaction, ({ sql }) => sql.unsafe(statement)),
@@ -48,17 +37,12 @@ const asApplication = (statement: string) =>
 
 describe.skipIf(!testDb)('the bootstrap token', () => {
   layer(TestDatabaseLive)('over a provisioned schema', (suite) => {
-    /** Each case starts from the state a freshly applied database is in. */
     const fresh = Effect.gen(function* () {
       const harness = yield* TestDatabase;
       yield* harness.onOwner(harness.owner.sql`delete from installation`);
       return harness;
     });
 
-    /**
-     * The row as the database holds it. `bootstrap_token_issued_at` is read as
-     * a boolean: "there is an issue time" is what every case here means by it.
-     */
     const storedRow = Effect.fnUntraced(function* () {
       const harness = yield* TestDatabase;
       const rows = yield* harness.onOwner(
@@ -85,7 +69,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
       return id;
     });
 
-    /** The schema step's own call: the connecting login, in one transaction. */
     const issue = OwnerScope.open(issueBootstrapToken());
 
     suite.effect('creates the installation row and arms it', () =>
@@ -111,14 +94,10 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
         if (outcome.kind !== 'issued') throw new Error('expected a token');
 
         const stored = (yield* storedRow())?.bootstrap_token_hash ?? null;
-        // The stored value is not the token, is not derivable by reading it,
-        // and is the hash the verifier computes. A hash function swapped for
-        // the identity function fails all three.
         assert.notStrictEqual(stored, outcome.token);
         assert.notInclude(stored ?? '', outcome.token);
         assert.strictEqual(stored, hashBootstrapToken(outcome.token));
         assert.match(stored ?? '', /^[0-9a-f]{64}$/);
-        // 32 CSPRNG bytes, base64url.
         assert.match(outcome.token, /^[A-Za-z0-9_-]{43}$/);
         assert.isTrue(bootstrapTokenMatches(outcome.token, stored));
         assert.isFalse(bootstrapTokenMatches(`${outcome.token}x`, stored));
@@ -137,8 +116,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
           const second = yield* issue;
           if (second.kind !== 'issued') throw new Error('expected a token');
 
-          // A lost token is recoverable by running the schema step again — and
-          // the one it replaces stops working, which is what makes that safe.
           assert.notStrictEqual(second.token, first.token);
           const secondHash = (yield* storedRow())?.bootstrap_token_hash ?? null;
           assert.notStrictEqual(secondHash, firstHash);
@@ -175,9 +152,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
         const harness = yield* fresh;
         yield* issue;
         const ownerId = yield* seedUser('owner-2');
-        // The constraint, not the command: re-arming a live instance is
-        // refused by the database, so no later write can reopen first-run
-        // setup.
         const claimed = yield* Effect.exit(
           harness.onOwner(
             harness.owner
@@ -207,9 +181,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
       () =>
         Effect.gen(function* () {
           yield* fresh;
-          // The application role serves `/setup`, so it may UPDATE the row — but
-          // it must not be able to create one, which is what arming an instance
-          // is.
           assert.strictEqual(
             refusal(
               yield* Effect.exit(
@@ -235,8 +206,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
             ),
             INSUFFICIENT_PRIVILEGE,
           );
-          // Maintenance reads it: readiness and garbage collection run as that
-          // role.
           assert.isNotNull(yield* MaintenanceScope.open(readInstallation()));
         }),
     );
@@ -248,9 +217,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
           yield* fresh;
           yield* issue;
           const ownerId = yield* seedUser('owner-3');
-          // Claiming the instance is the application's own legitimate write, so
-          // it has to go through the application role for this case to mean
-          // anything.
           yield* asApplication(
             `update installation
               set owner_user_id = '${ownerId}',
@@ -264,9 +230,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
             ownerId,
           );
 
-          // Table-level UPDATE is column-blind, so the grant alone would let the
-          // web process return the instance to first-run state and then set
-          // itself up again. Both halves of that are refused in the database.
           assert.strictEqual(
             refusal(
               yield* Effect.exit(
@@ -288,14 +251,11 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
             RAISE_EXCEPTION,
           );
 
-          // Nothing moved, and the instance is still owned by the same account.
           assert.deepStrictEqual(yield* OwnerScope.open(readInstallation()), {
             name: 'Owned',
             ownerUserId: ownerId,
             bootstrapTokenHash: null,
           });
-          // The login is unaffected — but an owned instance still issues
-          // nothing, so the two refusals together are what close the loop.
           assert.deepStrictEqual(yield* issue, { kind: 'owned' });
         }),
     );
@@ -303,8 +263,6 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
     suite.effect('lets the login re-arm an instance nobody has claimed', () =>
       Effect.gen(function* () {
         yield* fresh;
-        // The other side of the trigger: the schema step connects as the
-        // login, whose writes are exactly what first-run bootstrap depends on.
         const first = yield* issue;
         if (first.kind !== 'issued') throw new Error('expected a token');
         assert.strictEqual((yield* issue).kind, 'issued');
@@ -332,8 +290,6 @@ describe('the printed block', () => {
   };
 
   it('names the token, where it is spent, and that it is shown once', () => {
-    // Printing is the token's only channel, so what the block says is part of
-    // the contract an operator follows.
     const block = printed(
       { kind: 'issued', token: 'a-token' },
       'https://studio.example.org/',
@@ -352,8 +308,6 @@ describe('the printed block', () => {
   });
 
   it('prints nothing for an owned instance', () => {
-    // Every later deploy runs the schema step again; an instance somebody owns
-    // has no token, and must not print a line suggesting otherwise.
     expect(printed({ kind: 'owned' })).toBe('');
   });
 });

@@ -1,31 +1,3 @@
-// The only writer of `session_stats` and `session_degree_hist`.
-//
-// The projections are maintained by application code rather than by a database
-// trigger, deliberately (design S6). The reasons, in order:
-//
-//  1. The ADR already assigns the responsibility to this layer: Postgres
-//     materializes nodes and edges into relational projection tables *in the
-//     same transaction* as the document write, and the network module is
-//     already the single module that owns every such write.
-//  2. A row-level trigger would fire once per node and per edge rather than
-//     once per commit — a categorically worse cost profile than the two to
-//     three milliseconds per session commit the three statements below were
-//     measured at. A statement-level trigger would recompute twice for a delta
-//     that touches nodes and edges in separate statements.
-//  3. This codebase's triggers carry promises that must survive application
-//     bugs — immutability, tenancy, closedness. A stale rollup is a
-//     correctness bug a recompute repairs, not a safety breach, and the
-//     data-rights work already requires a recompute path that must exist as
-//     application code regardless.
-//  4. The projections are per-session, so participant erasure's recompute is
-//     "delete the erased participant's rollup rows" — no aggregate is rebuilt
-//     at all. That property only holds because the projection grain is the
-//     session.
-//
-// The obligation this creates is met by two tests: `__tests__/boundary.test.ts`
-// pins `src/network/` as the only importer of these tables, and
-// `__tests__/projections.test.ts` asserts the rollups agree with `nodes` and
-// `edges` after every call — and fails when the call is removed.
 import { and, eq, inArray } from 'drizzle-orm';
 import { Effect } from 'effect';
 import type { SqlError } from 'effect/sql';
@@ -36,23 +8,6 @@ import { NETWORK_TABLES } from './schema.ts';
 
 const { sessionDegreeHist } = NETWORK_TABLES;
 
-/**
- * The degree distribution of every named session.
- *
- * Raw rather than built: one lateral row per node carrying that node's degree,
- * from a correlated derived table over a UNION ALL of both edge endpoints,
- * grouped by the outer session. `CROSS JOIN LATERAL` over a correlated
- * subquery is not something the builder can render, and neither is the
- * `INSERT … SELECT` around it.
- *
- * `count(*) = 0` nodes are kept, which is what makes the histogram sum to the
- * node count.
- *
- * `$1` is the team and `$2` the session ids, bound as one array rather than
- * spliced: a bare interpolation would flatten the list into the statement text
- * and change its shape with the number of sessions. Reads no timestamp or date
- * column, and returns no rows.
- */
 const DEGREE_HISTOGRAM_SQL = `INSERT INTO session_degree_hist (team_id, session_id, degree, node_count)
    SELECT s.team_id, s.id, d.degree, count(*)::int
    FROM interview_sessions s
@@ -71,19 +26,6 @@ const DEGREE_HISTOGRAM_SQL = `INSERT INTO session_degree_hist (team_id, session_
    WHERE s.team_id = $1 AND s.id = ANY($2::uuid[])
    GROUP BY s.team_id, s.id, d.degree`;
 
-/**
- * The per-session counts, upserted.
- *
- * Raw rather than built for two reasons at once: it is an `INSERT … SELECT`
- * over a join, and its conflict action reads `excluded.*` — neither of which
- * the builder can render.
- *
- * `computed_at` is written by `statement_timestamp()` in the database rather
- * than from a JavaScript `Date`, so the column records when the projection was
- * computed by the transaction that changed the graph.
- *
- * `$1` is the team and `$2` the session ids. Returns no rows.
- */
 const SESSION_STATS_SQL = `INSERT INTO session_stats (team_id, session_id, study_id, wave_id, wave_number,
                              participant_id, node_count, edge_count, computed_at)
    SELECT s.team_id, s.id, s.study_id, s.wave_id, w.wave_number, s.participant_id,
@@ -99,22 +41,8 @@ const SESSION_STATS_SQL = `INSERT INTO session_stats (team_id, session_id, study
          computed_at = excluded.computed_at`;
 
 /**
- * The same recompute over a set of sessions of one team, in the same three
- * statements: the bulk paths (a seed, an import) write hundreds of sessions
- * per transaction, and three round trips per session was most of what they
- * spent.
- *
- * Runs inside the caller's transaction — it requires one rather than opening
- * one — for the reason this module exists: the projections are only correct if
- * they commit with the write that changed the graph.
- *
  * The delete and the reinsert must be separate statements: data-modifying CTEs
- * share one snapshot, so a delete-then-reinsert of the same keys cannot be a
- * single statement. And they are three statements for the whole set rather
- * than three per session. `SqlClient` names a nested transaction
- * `SAVEPOINT effect_sql_<depth>` and emits no `RELEASE` on success, so a bulk
- * path that opened a scope per row would leave one savepoint per session
- * standing for the length of the transaction.
+ * share one snapshot.
  */
 export const refreshProjectionsForSessions: (ids: {
   teamId: string;
@@ -126,9 +54,6 @@ export const refreshProjectionsForSessions: (ids: {
   const { tx, sql } = yield* Transaction;
   const sessionIds = [...ids.sessionIds];
 
-  // Built. No `.returning()`: nothing reads the outcome — every degree row for
-  // these sessions is about to be rewritten — so there is no branch a
-  // miscounted result could invert.
   yield* tx
     .delete(sessionDegreeHist)
     .where(
@@ -142,7 +67,6 @@ export const refreshProjectionsForSessions: (ids: {
   yield* sql.unsafe(SESSION_STATS_SQL, [ids.teamId, sessionIds]);
 }, sqlErrorsOnly);
 
-/** Recomputes one session's rollups from its rows, inside the caller's transaction. */
 export const refreshSessionProjections: (ids: {
   teamId: string;
   sessionId: string;

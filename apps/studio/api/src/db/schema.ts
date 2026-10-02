@@ -272,18 +272,8 @@ export function schemaProblemMessage(
 }
 
 /**
- * `checkSchema` and `stampFingerprint`, as Effects on a client.
- *
- * Both shapes exist on purpose and neither is a wrapper of the other. The
- * node-postgres pair above is what `scripts/apply.ts`, `apply-schema.ts` and
- * `db-reset.ts` run: drizzle-kit's `pushSchema` takes a node-postgres handle
- * and has no Effect driver, so a checkout lane without node-postgres is not
- * available at any price. The Effect pair below is what the deployed
- * `studio-api migrate` runs, because that process carries no `pg` at all.
- *
- * They read and write the same two statements. `db/__tests__/migrate.test.ts`
- * applies through the Effect pair and reads the result back through the
- * node-postgres `checkSchema`, so both are held to the same databases.
+ * Not a wrapper of the node-postgres pair above: drizzle-kit's `pushSchema`
+ * needs node-postgres, and the deployed `studio-api migrate` carries no `pg`.
  */
 export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
   client: SqlClient.SqlClient,

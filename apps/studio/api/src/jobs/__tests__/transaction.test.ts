@@ -14,34 +14,8 @@ import {
   readJobs,
 } from './support.ts';
 
-// The transaction guarantee, which is the queue's reason to exist: a domain
-// change and the job it schedules are committed together or not at all.
-//
-// Three oracles, in order of strength:
-//
-//  1. Invisibility. While the caller's transaction is still open, a *second*
-//     connection cannot see the job row. This is what "in the transaction"
-//     means, and nothing weaker proves it: a job written on a pool connection
-//     of its own would be visible immediately.
-//  2. Rollback and commit. Failing the body leaves zero domain rows and zero
-//     job rows; succeeding leaves one and one.
-//  3. The same backend. A trigger on the jobs table records the
-//     `pg_backend_pid()` of whichever backend ran the job insert, and it equals
-//     the pid the domain insert returned — measured while a second connection
-//     holds a different pid, so the equality is not an artefact of a pool that
-//     only ever had one connection open.
-//
-// And the type-level half: `Jobs.enqueue` outside a transaction does not
-// compile, which is the only reason the three above can be the whole story.
-
 const db = await reachableDb();
 
-/**
- * The recording layer never issues a statement, so the `Transaction` it is
- * handed carries a statement client and a builder handle that nothing calls.
- * Reaching for either throws, which is the honest shape: a recorded enqueue
- * that ran SQL would not be recording.
- */
 const refuse = () => {
   throw new Error('the recording enqueue must not issue a statement');
 };
@@ -56,13 +30,6 @@ const NO_TX: Transaction['Service']['tx'] = new Proxy(
   { get: refuse },
 );
 
-/**
- * A payload with a field the queue forbids, built without a cast. TypeScript's
- * excess-property check only fires on a fresh object literal, so a value that
- * reached the call through a variable carries the extra field happily — which
- * is exactly the shape a row written by an older release would have, and the
- * reason `onExcessProperty: 'error'` exists at all.
- */
 const withExcessField = Object.assign(
   { deliveryId: '44444444-4444-4444-8444-444444444444' },
   { teamId: 'a-team' },
@@ -135,7 +102,6 @@ describe.skipIf(!db)('the transaction guarantee', () => {
               return yield* jobs.enqueue('invitation-delivery', { deliveryId });
             });
 
-          // Rollback: the body fails after both writes.
           const rolledBack = yield* Effect.exit(
             asApp(
               MaintenanceScope.open(
@@ -149,7 +115,6 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           assert.strictEqual(yield* countDomainRows(), 0);
           assert.deepStrictEqual(yield* readJobs(), []);
 
-          // Commit: the same body, allowed to finish.
           const jobId = yield* asApp(MaintenanceScope.open(write('committed')));
           assert.strictEqual(yield* countDomainRows(), 1);
           const queued = yield* readJobs();
@@ -165,19 +130,10 @@ describe.skipIf(!db)('the transaction guarantee', () => {
       'hides the job from every other connection until the commit',
       () =>
         Effect.gen(function* () {
-          // The domain table is set up for the symmetry with the case above
-          // rather than written to: what this case is about is where the job
-          // insert went, and a domain row would only be a second thing to
-          // clear between cases.
           yield* withDomainTable;
           const jobs = yield* Jobs;
           const deliveryId = '22222222-2222-4222-8222-222222222222';
 
-          // The oracle that cannot be satisfied by an enqueue on a connection
-          // of its own: read-committed means an uncommitted row is invisible
-          // to every other backend, so a second connection seeing zero rows
-          // while the first is mid-transaction is proof of where the insert
-          // went. The owner client is a different pool entirely.
           const insideCount = yield* asApp(
             MaintenanceScope.open(
               Effect.gen(function* () {
@@ -204,10 +160,6 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           const jobs = yield* Jobs;
           const deliveryId = '33333333-3333-4333-8333-333333333333';
 
-          // Read from inside the job insert itself: the trigger runs on the
-          // backend that executed the statement, whichever connection that
-          // was. A pid read back through the transaction's own client would
-          // only ever name the transaction's backend.
           const probe = [
             `CREATE TABLE ${schema}.jobs_pid_probe (pid int NOT NULL)`,
             `CREATE FUNCTION ${schema}.record_job_pid() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$ BEGIN INSERT INTO ${schema}.jobs_pid_probe (pid) VALUES (pg_backend_pid()); RETURN NEW; END $$`,
@@ -240,10 +192,6 @@ describe.skipIf(!db)('the transaction guarantee', () => {
                     ['pid probe'],
                   );
                   yield* jobs.enqueue('invitation-delivery', { deliveryId });
-                  // A different pool, checked out while this transaction
-                  // still holds its connection: if the two pids compared
-                  // below were equal only because one connection existed,
-                  // this would equal them too.
                   const other = yield* asOwner(
                     Effect.flatMap(
                       MaintenanceDatabase,
@@ -290,11 +238,7 @@ describe.skipIf(!db)('the transaction guarantee', () => {
     suite.effect('does not offer an enqueue outside a transaction', () =>
       Effect.gen(function* () {
         const jobs = yield* Jobs;
-        // The type-level half of the guarantee. `Effect.runSync` demands
-        // `R = never`; `enqueue` leaves `Transaction` in `R`, and nothing but
-        // a scope (src/db/tenant.ts) provides it. If this ever compiles, the
-        // unused `@ts-expect-error` is itself an error, so the probe cannot
-        // rot into a comment.
+        // An unused `@ts-expect-error` is itself an error, so the probe cannot rot.
         const outsideTransaction = () =>
           // @ts-expect-error -- Jobs.enqueue requires Transaction
           Effect.runSync(jobs.enqueue('protocol-store-gc', {}));
@@ -311,9 +255,6 @@ describe.skipIf(!db)('the transaction guarantee', () => {
           const refused = yield* Effect.exit(
             asApp(
               MaintenanceScope.open(
-                // `Schema.Struct` would strip `teamId` silently without
-                // `onExcessProperty: 'error'`, and the job would reach the
-                // table with a field the payload policy forbids.
                 jobs.enqueue('invitation-delivery', withExcessField),
               ),
             ),
@@ -326,10 +267,6 @@ describe.skipIf(!db)('the transaction guarantee', () => {
   });
 });
 
-// The recording layer is the alternative `Jobs` implementation the domain
-// suites use (#1927 §4). It needs no database, so it needs no harness — but it
-// must keep the same two promises the live one makes, or a command tested
-// under it would be tested against a weaker contract than it ships with.
 describe('the recording enqueue', () => {
   it.effect('records what the live layer would have inserted', () =>
     Effect.gen(function* () {
@@ -368,8 +305,6 @@ describe('the recording enqueue', () => {
           Transaction.of({ tx: NO_TX, sql: NO_SQL, teamId: null }),
         ),
       );
-      // A defect, as under the live layer: a command that built its own
-      // payload wrongly has nothing useful to do about it.
       assert.isTrue(Exit.isFailure(refused));
       assert.deepStrictEqual(store.recorded, []);
     }).pipe(Effect.provide(Jobs.layerRecording)),

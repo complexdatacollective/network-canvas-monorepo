@@ -8,18 +8,8 @@ import {
   type TeamInvitationInput,
 } from '../../../mail/mailer.ts';
 
-// What the handler suites need beyond `__tests__/support.ts` (which owns the
-// scratch schema, the three identities and the worker layer): a transport.
-//
-// The first draft carried a `Mailer` of its own inside the handler module; the
-// handlers now take stage 1's (src/mail/mailer.ts), so the recording transport
-// moves here — a test double belongs beside the tests rather than beside the
-// production service. Both sends are recorded by one layer because a case
-// about one of them is usually also asserting that the other stayed untouched.
-
 export type MailBehaviour<Input> = (
   input: Input,
-  /** 1 on the first send of this kind, so a case can answer differently. */
   call: number,
 ) => Effect.Effect<void, MailFailed | MailNotConfigured>;
 
@@ -32,7 +22,6 @@ export type RecordedMailShape = {
   readonly setMagicLinkBehaviour: (
     behaviour: MailBehaviour<MagicLinkInput>,
   ) => Effect.Effect<void>;
-  /** Forgets what was sent, so a later assertion counts this case's sends. */
   readonly clear: Effect.Effect<void>;
 };
 
@@ -41,12 +30,6 @@ export class RecordedMail extends Context.Service<
   RecordedMailShape
 >()('@studio/jobs/test/RecordedMail') {}
 
-/**
- * A transport that records and answers however a case tells it to. The
- * behaviour is settable rather than fixed at construction so a case can make
- * one send hang while the next succeeds, which is what the duplicate-send
- * cases need.
- */
 export const layerRecordingMailer: Layer.Layer<Mailer | RecordedMail> =
   Layer.effectContext(
     Effect.sync(() => {
@@ -60,9 +43,6 @@ export const layerRecordingMailer: Layer.Layer<Mailer | RecordedMail> =
         Mailer,
         Mailer.of({
           sendTeamInvitation: (input) =>
-            // Suspended so the record is written when the send runs rather
-            // than when the effect is built, which is what makes a case's
-            // "one send has started" wait mean anything.
             Effect.suspend(() => {
               invitations.push(input);
               return invitationBehaviour(input, invitations.length);

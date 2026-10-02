@@ -7,10 +7,7 @@ import { startStudioServer } from '../../__tests__/support/serve.ts';
 import { createStudio } from '../../app.ts';
 import { readEnv } from '../../env.ts';
 
-// `/api/v1` over a real socket, with every path sent exactly as written: how
-// an unusual path matches is decided by the router, and `fetch` would
-// normalise the path before the router ever saw it. What each of these is
-// charged is in src/__tests__/rate-limit-routes.test.ts.
+// Over a real socket: `fetch` would normalise the path before the router saw it.
 
 let server: Awaited<ReturnType<typeof startStudioServer>>;
 
@@ -25,10 +22,6 @@ const get = (path: string, headers?: Record<string, string>) =>
   rawRequest(server.origin, path, { headers });
 
 describe('which paths are /api/v1/status', () => {
-  // The router's defaults (maintainer's ruling on #1999, I1): matching is
-  // case-insensitive, repeated slashes collapse, a trailing slash and a `;`
-  // suffix are ignored, and percent-encoded letters are decoded. These are
-  // aliases of the real routes, not misses.
   it.each([
     '/api/v1/status',
     '/api/v1//status',

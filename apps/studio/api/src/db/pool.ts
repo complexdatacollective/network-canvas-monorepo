@@ -12,9 +12,6 @@ import type { DbEnv } from '../env.ts';
 // exhausted. A bounded wait turns that into a fast, repeatable failure.
 const CONNECTION_TIMEOUT_MS = 10_000;
 
-// The node-postgres pools the scripts use; the server's processes run on the
-// Effect clients (`client.ts`). The application pool starts every session as
-// the application role, sent as a startup parameter.
 /** What a caller may vary; the identity and the timeout are not negotiable. */
 export type PoolLimits = {
   /**

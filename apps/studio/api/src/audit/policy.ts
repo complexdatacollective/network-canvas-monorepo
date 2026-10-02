@@ -3,29 +3,8 @@ export type AuditPolicy =
   | { kind: 'denied-only'; reason: string }
   | { kind: 'none'; reason: string };
 
-/**
- * A procedure, named the way the rpc plane names it: an `RpcGroup`'s request
- * tag. `StudioRpcs`' tags are the oRPC contract's old dotted paths, so theirs
- * are unchanged; the protocol-builder group's are its own flat PascalCase tags
- * (`Submit`, `ResourcesStage`), because that group is the core's, shared with
- * Architect, rather than Studio's.
- */
 export type RpcTag = string;
 
-/**
- * The procedures that read and write nothing, so the mutation registry says
- * nothing about them.
- *
- * It lives here rather than in the test that used to hold it because the
- * invariant is about the two together: **every request tag is either in this
- * set or has a policy below, and none is in both.** Kept apart, a tag could be
- * dropped from the walk and added here in the same change without either half
- * noticing; kept together, the set equality the test asserts in both directions
- * is over one declaration.
- *
- * `WatchProtocol` is a subscription rather than a write: it
- * observes revisions, locks and presence, and changes nothing it observes.
- */
 export const AUDIT_READ_TAGS: ReadonlySet<RpcTag> = new Set<RpcTag>([
   'status',
   'me',
@@ -102,8 +81,6 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   },
 } as const satisfies Record<RpcTag, AuditPolicy>;
 
-// Mutations that are not rpc procedures at all, so they are keyed by what they
-// are rather than by a tag.
 export const NON_RPC_MUTATION_AUDIT_POLICIES = {
   'better-auth.identity-and-session': {
     kind: 'none',

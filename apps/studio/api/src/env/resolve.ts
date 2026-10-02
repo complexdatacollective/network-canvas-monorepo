@@ -17,7 +17,6 @@ export type S3Env = {
 
 export type DbEnv = {
   url: string;
-  /** `DATABASE_PASSWORD_FILE`, which the Effect clients reread per connection. */
   passwordFile?: string | undefined;
 };
 
@@ -86,11 +85,6 @@ export type StudioEnv = {
    * and its opt-out exist before the first version that could report.
    */
   telemetry: boolean;
-  /**
-   * The OTLP/HTTP collector logs, traces and metrics are exported to (#1897).
-   * Undefined is the off switch that costs nothing: no endpoint, no exporter.
-   * `telemetry` being false turns the export off even where one is set.
-   */
   telemetryEndpoint: string | undefined;
   deploymentMode: DeploymentMode;
   /** Only the seed command reads it; unset means the development password. */
@@ -168,10 +162,6 @@ export function isLocalDatabase(url: string): boolean {
  * `postgres://user:pass@/db?options=…` — a connection string pg accepts, and
  * one a hosting provider's socket configuration produces — which the guard
  * used to tolerate rather than refuse.
- *
- * Two formats carry no `options` by construction — the bare socket form
- * (`/var/run/postgresql studio_dev`) and a libpq keyword DSN — and pass this
- * guard; `assertClientCanParse` below refuses both for another reason.
  */
 function assertPinnedRoleSurvives(url: string): void {
   // Not caught: a string this throws on is one pg would throw on too, at the
@@ -186,14 +176,11 @@ function assertPinnedRoleSurvives(url: string): void {
   );
 }
 
-/** The Unix-socket spelling both drivers read, with a host to hold a password. */
 const SOCKET_URL_EXAMPLE =
   'postgres://studio@localhost/studio?host=/var/run/postgresql';
 
 /**
- * The `sslmode` values `@effect/sql-pg` accepts without an explicit `ssl`
- * option, which Studio's clients never pass (`PgConnection.ts` `parseUrl`).
- * `prefer` and `allow` — libpq's defaults — are refused by the client.
+ * The `sslmode` values `@effect/sql-pg` accepts without an explicit `ssl` option.
  */
 const CLIENT_SSL_MODES = new Set([
   'disable',
@@ -202,18 +189,6 @@ const CLIENT_SSL_MODES = new Set([
   'verify-full',
 ]);
 
-/**
- * Refuses a connection string the server's own database client would refuse
- * at its first statement, while node-postgres — still under better-auth and the
- * readiness probe — would accept it and leave the process half working.
- *
- * `@effect/sql-pg` parses `DATABASE_URL` with `new URL`, so what node-postgres
- * also accepts — a bare socket path (`/var/run/postgresql studio_dev`), a libpq
- * keyword DSN, and an authority carrying credentials but no host
- * (`postgres://user@/db`) — fails with "Invalid connection URL"; so does an
- * `sslmode` outside `CLIENT_SSL_MODES`. Refused here instead, at boot, with the
- * spelling that works.
- */
 function assertClientCanParse(url: string): void {
   let parsed: URL | undefined;
   try {
@@ -239,10 +214,8 @@ function assertClientCanParse(url: string): void {
 }
 
 /**
- * The password a `DATABASE_PASSWORD_FILE` holds. Trailing newlines only are
- * stripped, as the Postgres image's own `POSTGRES_PASSWORD_FILE` reader does,
- * so a file written with a shell redirection sets the same password on both
- * sides.
+ * Trailing newlines only are stripped, as the Postgres image's own
+ * `POSTGRES_PASSWORD_FILE` reader does.
  */
 export function readPasswordFile(passwordFile: string): string {
   let contents: string;
@@ -265,12 +238,6 @@ export function readPasswordFile(passwordFile: string): string {
   return password;
 }
 
-/**
- * The effective connection string, with the file secret's password folded in
- * as it read at boot, for the node-postgres scripts. The Effect clients reread
- * the file for every new connection instead (`DbEnv.passwordFile`), so a
- * rotated password reaches them without a restart.
- */
 function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
   const url = raw.DATABASE_URL;
   const passwordFile = raw.DATABASE_PASSWORD_FILE;

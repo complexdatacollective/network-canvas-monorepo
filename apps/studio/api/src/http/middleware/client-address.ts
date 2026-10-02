@@ -22,14 +22,12 @@ import { Environment } from '../../env.ts';
 // control, and replacing it would mean patching a code path that its own
 // tests, not Studio's, hold to this behaviour.
 //
-// `HttpMiddleware.xForwardedHeaders` is deliberately not used: it replaces the
-// peer with the *first* entry of the header, which is the one value in the
-// chain a client writes for itself.
+// `HttpMiddleware.xForwardedHeaders` is deliberately not used: it takes the
+// *first* entry of the header, which a client writes for itself.
 
 /** What a request whose peer address cannot be read is counted against. */
 export const UNKNOWN_ADDRESS = 'unknown';
 
-/** The address this request is limited against, for the routes behind it. */
 export class ClientAddress extends Context.Service<ClientAddress, string>()(
   '@studio/ClientAddress',
 ) {}
@@ -109,10 +107,6 @@ function isTrusted(list: BlockList, address: string): boolean {
 /**
  * The address this request is rate-limited against.
  *
- * @param peerAddress the socket peer, absent where the transport exposes none — an
- * in-process request in the suites, or an adapter with no connection. Every
- * such request shares one bucket, which is the safe direction.
- * @param forwarded the raw `X-Forwarded-For` header, if any.
  * @param trustedProxies from `createTrustedProxies`; without it the forwarded
  * header is never read, whatever the request claims.
  */
@@ -145,12 +139,6 @@ export function resolveClientAddress(
   return peer;
 }
 
-/**
- * Resolves the address once, for every route. The trusted list is parsed at
- * layer build rather than per request: it comes from the environment and
- * cannot change while the process runs, and parsing it here is also what makes
- * its one warning appear once at boot instead of once per request.
- */
 export const ClientAddressLive = HttpRouter.middleware<{
   provides: ClientAddress;
 }>()(

@@ -87,10 +87,8 @@ export type DeniedAuditReservation =
   | {
       readonly admitted: true;
       /**
-       * Waited on rather than fired and forgotten: the in-flight slot has to
-       * be back, and a confirmed denial counted, before the next request asks
-       * — or a caller making permitted calls in sequence would run itself out
-       * of capacity, and one making denied calls in sequence would never reach
+       * Waited on rather than fired and forgotten, or a caller making denied calls
+       * in sequence would never reach
        * the cap.
        */
       readonly complete: (outcome: 'denied' | 'other') => Effect.Effect<void>;
@@ -210,7 +208,6 @@ export type DeniedAttemptsOptions = {
   readonly keyPrefix?: string;
 };
 
-/** Who is attempting what, where: one window's identity, less its start. */
 export type DeniedAttemptInput = {
   readonly actorId: string;
   readonly teamId: string;
@@ -232,11 +229,8 @@ const make = Effect.fnUntraced(function* (options: DeniedAttemptsOptions) {
     });
 
   /**
-   * What a reservation nothing counted answers with. Its `complete` does
-   * nothing on purpose: there is no slot of its own to give back, and running
-   * `COMPLETE_SCRIPT` anyway would decrement a counter some other request's
-   * reservation incremented — freeing that request's slot while it is still in
-   * flight, once for every such admission during an outage.
+   * Its `complete` does nothing on purpose: running `COMPLETE_SCRIPT` would
+   * decrement a counter some other request's reservation incremented.
    */
   const uncounted: DeniedAuditReservation = {
     admitted: true,
@@ -246,7 +240,6 @@ const make = Effect.fnUntraced(function* (options: DeniedAttemptsOptions) {
   const reserve = Effect.fn('DeniedAttempts.reserve')(function* (
     input: DeniedAttemptInput,
   ): Effect.fn.Return<DeniedAuditReservation> {
-    // No store at all is the same posture as a store that cannot be reached.
     if (!store.configured) return uncounted;
     const now = yield* Clock.currentTimeMillis;
     const key = keyAt(input, now);
@@ -265,14 +258,8 @@ const make = Effect.fnUntraced(function* (options: DeniedAttemptsOptions) {
     // `unavailable` marker instead, and that — like anything else this cannot
     // read — admits, which is the direction a broken defence must fail in.
     if (reply === 0) return { admitted: false, reason: 'rate_limited' };
-    // And only a literal 1 is a slot the script counted, which is the only
-    // kind `complete` may give back. So a reserve whose script ran but whose
-    // reply timed out leaves its slot in `inflight` until the key's TTL: the
-    // accepted cost of never decrementing a slot this request did not
-    // provably take.
     if (reply !== 1) return uncounted;
 
-    // Idempotent, because a future edit must not be able to close one twice.
     const completed = yield* Ref.make(false);
     return {
       admitted: true,
@@ -296,63 +283,30 @@ const make = Effect.fnUntraced(function* (options: DeniedAttemptsOptions) {
   });
 });
 
-/**
- * A fixed window per (actor, team, operation), aligned to the clock rather
- * than started by the first denial. Alignment is what puts the window boundary
- * in the key, which is what lets a new window start without touching the
- * previous one's suppression record — so nothing has to roll a window over,
- * and the summary job never races a live request for the same hash.
- *
- * The window is chosen from the calling process's clock, not Valkey's, because
- * the key has to be known before the round trip. Two API containers whose
- * clocks differ by less than the window still agree on it almost always, and
- * when they do not the cost is one extra summary event, not a lost one. The
- * clock is Effect's `Clock`, read in the caller's fiber, so a suite moves a
- * window boundary with `TestClock` rather than through a seam in this module.
- */
 export class DeniedAttempts extends Context.Service<
   DeniedAttempts,
   {
     readonly reserve: (
       input: DeniedAttemptInput,
     ) => Effect.Effect<DeniedAuditReservation>;
-    /** The key a reservation made now would use; the suites read it back. */
     readonly keyFor: (input: DeniedAttemptInput) => Effect.Effect<string>;
   }
 >()('@studio/DeniedAttempts') {
-  /** Other bounds, or a key space of its own, for a suite. */
   static readonly layerWith = (
     options: DeniedAttemptsOptions,
   ): Layer.Layer<DeniedAttempts, never, RateLimitStore> =>
     Layer.effect(DeniedAttempts, make(options));
 
-  /** The bounds every deployment runs, over the process's store. */
   static readonly layer: Layer.Layer<DeniedAttempts, never, RateLimitStore> =
     DeniedAttempts.layerWith({});
 }
 
 /**
- * The window, as the one combinator every audited command wraps itself in.
+ * The slot is taken before the command opens any transaction, so a spent
+ * window refuses without touching the database.
  *
- * The order it fixes is the whole point of the limiter: the slot is taken
- * **before** the command opens any transaction, so once a window's allowance
- * is spent a further denial is refused without the database being touched at
- * all — and a caller who can produce denials on demand cannot queue unbounded
- * permanent rows behind the team's audit lock.
- *
- * `refusal` is what a suppressed attempt answers with, and every caller passes
- * the refusal the command would have given anyway. Answering differently would
- * make the audit log's own suppression observable from outside, which is
- * exactly what an attacker probing the cap would look for.
- *
- * `isDenial` decides what spends the allowance. Only a confirmed denial does:
- * a success, a conflict, a database failure and an interrupt all give the
- * in-flight slot back without counting, because the window bounds how many
- * permanent denial rows one actor can cause and nothing else. The settlement
- * runs on the `Exit`, so it happens on every path out — which is what the two
- * `complete` calls in a `try` and a `catch` used to arrange by hand — and an
- * interrupt that arrives while the reservation is still in flight waits for it
- * and then returns the slot.
+ * `refusal` must be the refusal the command would have given anyway, or the
+ * suppression becomes observable from outside.
  */
 export const reservedDenial: <A, E, E2, R>(
   input: {
@@ -374,10 +328,6 @@ export const reservedDenial: <A, E, E2, R>(
   ) {
     const principal = yield* Principal;
     const attempts = yield* DeniedAttempts;
-    // Acquired uninterruptibly: once Valkey has counted the slot in flight, the
-    // release below is registered before an interrupt can land, so an
-    // interrupted request gives its slot back rather than holding it until the
-    // window's key expires (#1927 §10).
     return yield* Effect.acquireUseRelease(
       attempts.reserve({
         actorId: principal.userId,
@@ -388,12 +338,7 @@ export const reservedDenial: <A, E, E2, R>(
         reservation.admitted ? command : Effect.fail(input.refusal()),
       (reservation, exit) =>
         reservation.admitted
-          ? // Waited on rather than fired and forgotten: the in-flight slot
-            // has to be back, and a confirmed denial counted, before the next
-            // request asks — or a caller making permitted calls in sequence
-            // would run itself out of capacity, and one making denied calls in
-            // sequence would never reach the cap.
-            reservation.complete(
+          ? reservation.complete(
               Exit.isFailure(exit) && input.isDenial(Cause.squash(exit.cause))
                 ? 'denied'
                 : 'other',

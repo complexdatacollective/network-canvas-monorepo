@@ -20,18 +20,6 @@ import {
   MaintenanceTriggers,
 } from '../middleware/maintenance.ts';
 
-// The web process's maintenance gate (#1901), on the test clock: the flag is a
-// real `deployment_state` row in a scratch schema, written the way `studio-api
-// maintenance` writes it and read the way the serve program reads it
-// (`MaintenanceState.layer`, the application role). The lock and schema
-// triggers are stood in by references a case flips, because their subject here
-// is what the gate does with an answer; the probes themselves are
-// `db/__tests__/readiness.test.ts`'s.
-//
-// Behind the gate is a catch-all that counts every request it serves, so
-// "and runs nothing" is a number rather than an absence.
-
-/** The paths a closed instance must refuse: every surface, and near misses of the two it must not. */
 const REFUSED = [
   '/rpc',
   '/ws',
@@ -48,7 +36,6 @@ const REFUSED = [
 type Triggers = {
   readonly lock: MutableRef.MutableRef<boolean>;
   readonly schema: MutableRef.MutableRef<SchemaState>;
-  /** How many times the schema trigger was actually asked. */
   readonly schemaReads: MutableRef.MutableRef<number>;
 };
 
@@ -66,7 +53,6 @@ const probesOf = (control: Triggers) => ({
   }),
 });
 
-/** Everything the gate stands in front of, counting what it serves. */
 const Surface = (served: MutableRef.MutableRef<number>) =>
   HttpRouter.use((router) =>
     router.add(
@@ -86,12 +72,6 @@ type Answer = {
   readonly body: unknown;
 };
 
-/**
- * The stack in `http/router.ts`'s order — the gate first, then the health
- * routes, then everything else — with readiness reading the same triggers the
- * gate does, as the serve program wires it. Returns a way to issue a request
- * and read what came back.
- */
 const openStack = Effect.fnUntraced(function* (
   served: MutableRef.MutableRef<number>,
 ) {
@@ -136,7 +116,6 @@ const REFUSAL = {
   body: { title: 'Down for maintenance', status: 503 },
 };
 
-/** Enters or leaves the window as the command does, on the maintenance role. */
 const flag = (maintenance: boolean, reason: string | null = null) =>
   MaintenanceScope.open(
     setMaintenance(
@@ -144,17 +123,11 @@ const flag = (maintenance: boolean, reason: string | null = null) =>
     ),
   );
 
-/** One second of the cache, and the millisecond that ends it. */
 const justUnderTheTtl = TestClock.adjust(Duration.millis(999));
 const pastTheTtl = TestClock.adjust(Duration.millis(2));
 
 describe.skipIf(!testDb)('the maintenance gate', () => {
   layer(TestDatabaseLive)('over a real deployment_state row', (suite) => {
-    /**
-     * The gate over the serve program's flag and stand-in triggers, built per
-     * case so no cache outlives it; the flag is put back however the case
-     * ends, because the scratch schema is shared.
-     */
     const withGate = <A, E, R>(
       control: Triggers,
       body: Effect.Effect<A, E, R>,
@@ -183,14 +156,12 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
             for (const path of REFUSED) {
               assert.deepStrictEqual(yield* request(path), REFUSAL, path);
             }
-            // A write is refused like a read: nothing behind the gate is asked.
             assert.deepStrictEqual(
               yield* request('/rpc', { method: 'POST', body: '{}' }),
               REFUSAL,
             );
             assert.strictEqual(MutableRef.get(served), 0);
 
-            // Liveness is untouched, byte for byte, query string or not.
             for (const path of ['/healthz', '/healthz?probe=1']) {
               assert.deepStrictEqual(
                 yield* request(path),
@@ -203,8 +174,6 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
                 path,
               );
             }
-            // Readiness answers — it is exempt — and fails naming maintenance
-            // and the operator's reason, with or without a query string.
             for (const path of ['/readyz', '/readyz?verbose']) {
               assert.deepStrictEqual(
                 yield* request(path),
@@ -223,7 +192,6 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
                 path,
               );
             }
-            // The flag decided it: the later triggers were never asked.
             assert.strictEqual(MutableRef.get(control.schemaReads), 0);
           }),
         );
@@ -263,10 +231,8 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
             const request = yield* openStack(served);
             assert.strictEqual((yield* request('/rpc')).status, 503);
 
-            // `maintenance off` has committed, and the row says so...
             yield* flag(false);
             assert.isFalse((yield* readDeploymentState()).maintenance);
-            // ...but the gate answers from the reading it took, for a second.
             assert.strictEqual((yield* request('/rpc')).status, 503);
             yield* justUnderTheTtl;
             assert.strictEqual((yield* request('/rpc')).status, 503);
@@ -276,8 +242,6 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
             assert.strictEqual((yield* request('/rpc')).status, 200);
             assert.strictEqual(MutableRef.get(served), 1);
 
-            // And the other way: a window opened under a fresh reading waits
-            // out that reading too.
             yield* flag(true, 'Again');
             assert.strictEqual((yield* request('/rpc')).status, 200);
             yield* TestClock.adjust(Duration.millis(1001));
@@ -303,12 +267,9 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
               status: 'failing',
               checks: { maintenance: 'failed: a schema migration is running' },
             });
-            // The lock decided it: the schema, which a migration's DDL holds, is
-            // not read behind it.
             assert.strictEqual(MutableRef.get(control.schemaReads), 0);
             assert.strictEqual((yield* request('/healthz')).status, 200);
 
-            // The migration finishes: open again once the reading expires.
             MutableRef.set(control.lock, false);
             yield* TestClock.adjust(Duration.millis(1001));
             assert.strictEqual((yield* request('/rpc')).status, 200);
@@ -357,11 +318,6 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
 });
 
 describe('a flag that cannot be read', () => {
-  // The flag read's failure modes, on stand-ins for the row. A failed or hung
-  // read answers the last flag it read — off, before any — so it neither
-  // invents a window nor forgets one it saw, and no request waits on it for
-  // longer than the reading's half-second bound.
-
   type Mode = 'on' | 'off' | 'fails' | 'hangs';
 
   const rowFor = (maintenance: boolean): DeploymentState => ({
@@ -393,7 +349,6 @@ describe('a flag that cannot be read', () => {
       Effect.scoped,
     );
 
-  /** A request that may have to wait out the bound, on the test clock. */
   const boundedBy = <A, E, R>(request: Effect.Effect<A, E, R>) =>
     Effect.gen(function* () {
       const pending = yield* Effect.forkChild(request);
@@ -427,7 +382,6 @@ describe('a flag that cannot be read', () => {
           });
           assert.strictEqual(MutableRef.get(served), 0);
 
-          // Readable again, and off: the gate follows it.
           MutableRef.set(mode, 'off');
           yield* TestClock.adjust(Duration.millis(1001));
           assert.strictEqual((yield* request('/rpc')).status, 200);
@@ -463,10 +417,8 @@ describe('a flag that cannot be read', () => {
       Effect.gen(function* () {
         const request = yield* openStack(served);
         const pending = yield* Effect.forkChild(request('/rpc'));
-        // Just short of the bound the request is still waiting on the read...
         yield* TestClock.adjust(Duration.millis(499));
         assert.isUndefined(pending.pollUnsafe());
-        // ...and at the bound it is answered without it.
         yield* TestClock.adjust(Duration.millis(1));
         assert.strictEqual((yield* Fiber.join(pending)).status, 200);
       }),

@@ -334,8 +334,6 @@ describe.skipIf(!testDb)('OAuth tokens sealed inside the auth adapter', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     if (!database) throw new Error('the scratch schema was not provisioned');
     if (!bridge) throw new Error('the bridge was not built');
-    // The bridge the transaction runs on, kept so the raw row can be read on
-    // the transaction's own connection: nothing outside it could see the row.
     const outer = bridge;
     let open: SqlBridge | undefined;
     const watched: SqlBridge = {
@@ -404,11 +402,6 @@ describe.skipIf(!testDb)('OAuth tokens sealed inside the auth adapter', () => {
   });
 
   it('re-seals a row created in the same transaction when its identity moves inside it', async () => {
-    // The update path reads the row before it writes (a partial update
-    // carries neither the identity nor the untouched tokens). Inside a
-    // transaction that read has to go through the transaction's own adapter:
-    // the row below exists nowhere else yet, so a read on any other
-    // connection finds nothing and the update is silently dropped.
     const ctx = await contextFor(testCipher());
     const email = `${randomUUID()}@example.com`;
     const accountId = randomUUID();
