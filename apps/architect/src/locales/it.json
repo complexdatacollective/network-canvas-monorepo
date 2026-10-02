@@ -763,7 +763,7 @@
   "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": "Dai a questo tipo un nome per il codebook e per i dati esportati.",
   "architect.typeEditor.typeEditor.nodeAppearance": "Aspetto del nodo",
   "architect.typeEditor.typeEditor.shape": "Forma",
-  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Questo nome identifica il tipo di nodo nel codebook e nei dati esportati. Alcuni esempi potrebbero essere «Persona», «Luogo» o «Organizzazione».} other {Questo nome identifica il tipo di legame nel codebook e nei dati esportati. Alcuni esempi potrebbero essere «Amicizia» o «Collaborazione».}}",
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Questo nome identifica il tipo di nodo nel codebook e nei dati esportati. Alcuni esempi potrebbero essere «Persona», «Luogo» o «Organizzazione».} other {Questo nome identifica il tipo di legame nel codebook e nei dati esportati. Alcuni esempi potrebbero essere «Amicizia» o «Colleghi».}}",
   "architect.typeEditor.typeEditor.typeColor": "Colore del tipo",
   "architect.typeEditor.typeEditor.typeIdentity": "Identità del tipo",
   "architect.typeEditor.typeEditor.typeName": "Nome del tipo di {entity, select, node {nodo} other {legame}}",

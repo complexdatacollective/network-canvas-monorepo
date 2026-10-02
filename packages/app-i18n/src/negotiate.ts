@@ -1,5 +1,7 @@
 import { match } from '@formatjs/intl-localematcher';
 
+import { toScriptMatchingTag } from '@codaco/shared-consts';
+
 import type { AppLocale } from './locales.ts';
 
 /** Canonicalizes a BCP 47 tag; undefined for malformed or empty input. */
@@ -12,6 +14,13 @@ export function canonicalizeAppLocale(value: string): string | undefined {
     return undefined;
   }
 }
+
+/**
+ * Chinese tags are matched by script (see `toScriptMatchingTag`), unless the
+ * registry declares the exact tag.
+ */
+const forMatching = (canonical: string, declared: readonly string[]): string =>
+  declared.includes(canonical) ? canonical : toScriptMatchingTag(canonical);
 
 /**
  * A default `match` can hand back that no registry could ever contain:
@@ -38,9 +47,14 @@ const matchStored = (
 ): string | undefined => {
   const canonical = canonicalizeAppLocale(stored);
   if (canonical === undefined) return undefined;
-  const fitted = match([canonical], [...declared], NO_FIT, {
-    algorithm: 'best fit',
-  });
+  const fitted = match(
+    [forMatching(canonical, declared)],
+    [...declared],
+    NO_FIT,
+    {
+      algorithm: 'best fit',
+    },
+  );
   return declared.includes(fitted) ? fitted : undefined;
 };
 
@@ -77,9 +91,9 @@ export function resolveAppLocale(input: {
   const requested: string[] = [];
   for (const value of input.requested) {
     const canonical = canonicalizeAppLocale(value);
-    if (canonical !== undefined && !requested.includes(canonical)) {
-      requested.push(canonical);
-    }
+    if (canonical === undefined) continue;
+    const tag = forMatching(canonical, declared);
+    if (!requested.includes(tag)) requested.push(tag);
   }
 
   if (requested.length > 0) {

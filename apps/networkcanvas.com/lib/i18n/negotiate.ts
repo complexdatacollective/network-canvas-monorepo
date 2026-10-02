@@ -1,5 +1,7 @@
 import { match } from '@formatjs/intl-localematcher';
 
+import { toScriptMatchingTag } from '@codaco/shared-consts';
+
 import { defaultLocale, isLocale, locales, type Locale } from './locales.ts';
 
 function canonicalizeLocale(value: string) {
@@ -13,7 +15,8 @@ function canonicalizeLocale(value: string) {
 export function negotiateLocale(requested: readonly string[]): Locale {
   const canonical = requested
     .map((entry) => canonicalizeLocale(entry.trim()))
-    .filter((entry): entry is string => entry !== undefined);
+    .filter((entry): entry is string => entry !== undefined)
+    .map(toScriptMatchingTag);
   const matched = match(canonical, locales, defaultLocale, {
     algorithm: 'best fit',
   });
