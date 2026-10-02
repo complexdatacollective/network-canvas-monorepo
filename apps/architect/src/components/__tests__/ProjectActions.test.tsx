@@ -88,7 +88,7 @@ vi.mock('~/utils/protocolLibrary', () => ({
 
 const protocol: CurrentProtocol = {
   name: 'Test',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: {
     node: {},
@@ -222,7 +222,7 @@ describe('<ProjectActions />', () => {
       id: 'protocol-1',
       name: 'Test',
       protocol,
-      schemaVersion: 8,
+      schemaVersion: 9,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       sourceRef: { kind: 'sample', id: 'sample' },
@@ -366,7 +366,7 @@ describe('<ProjectActions />', () => {
       id: 'protocol-1',
       name: 'Test',
       protocol,
-      schemaVersion: 8,
+      schemaVersion: 9,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       sourceRef: { kind: 'sample', id: 'sample' },

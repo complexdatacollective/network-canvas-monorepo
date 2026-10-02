@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { CodebookNameSchema } from '@codaco/shared-consts';
+
 import migrationV3toV4 from '../migration.ts';
 
 describe('Migration V3 to V4', () => {
@@ -29,63 +31,74 @@ describe('Migration V3 to V4', () => {
     return current;
   }
 
-  describe('variable name sanitization', () => {
-    it('replaces spaces with underscores in variable names', () => {
-      const protocol = makeProtocol({
-        codebook: {
-          node: {
-            person: {
-              name: 'Person',
-              variables: {
-                v1: { name: 'first name' },
-              },
+  const migrateVariableName = (name: string) => {
+    const protocol = makeProtocol({
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            variables: {
+              v1: { name },
             },
           },
-          edge: {},
-          ego: { name: 'ego' },
         },
-      });
-
-      const migrated = migrationV3toV4.migrate(protocol, {});
-      expect(
-        getNestedValue(
-          migrated.codebook,
-          'node',
-          'person',
-          'variables',
-          'v1',
-          'name',
-        ),
-      ).toBe('first_name');
+        edge: {},
+        ego: { name: 'ego' },
+      },
     });
 
-    it('removes special characters from variable names', () => {
-      const protocol = makeProtocol({
-        codebook: {
-          node: {
-            person: {
-              name: 'Person',
-              variables: {
-                v1: { name: 'var!@#$name' },
-              },
-            },
-          },
-          edge: {},
-          ego: { name: 'ego' },
-        },
-      });
+    const migrated = migrationV3toV4.migrate(protocol, {});
+    return getNestedValue(
+      migrated.codebook,
+      'node',
+      'person',
+      'variables',
+      'v1',
+      'name',
+    );
+  };
 
-      const migrated = migrationV3toV4.migrate(protocol, {});
-      expect(
-        getNestedValue(
-          migrated.codebook,
-          'node',
-          'person',
-          'variables',
-          'v1',
-          'name',
-        ),
-      ).toBe('varname');
+  describe('variable name sanitization', () => {
+    it.each([
+      ['first name'],
+      ['var!@#$name'],
+      ['namé'],
+      ['naïve'],
+      ['名前'],
+      ['اسم'],
+    ])('keeps %s, which is already a valid name', (name) => {
+      expect(migrateVariableName(name)).toBe(name);
+    });
+
+    it.each([
+      ['  first name ', 'first name'],
+      ['first\tname', 'first name'],
+      ['first\r\n\r\nname', 'first name'],
+      ['na\u0007me', 'name'],
+      ['name\u0000', 'name'],
+      ['na\uFFFEme\uFFFF', 'name'],
+      ['\u0007 name', 'name'],
+      ['nam\u0065\u0301', 'namé'],
+      ['bad\uD800surrogate', 'bad\uFFFDsurrogate'],
+    ])('tidies %j to %j', (name, expected) => {
+      expect(migrateVariableName(name)).toBe(expected);
+    });
+
+    it('names an attribute after its id when nothing of its name is left', () => {
+      expect(migrateVariableName(' \t\u0007 ')).toBe('v1');
+    });
+
+    it('produces names that schema 9 accepts', () => {
+      for (const name of [
+        ' \u0085padded\u0085 ',
+        'mixed\u0000\u001F\u007F\u009Fcontrols',
+        'cafe\u0301',
+        '\uFEFFbom',
+      ]) {
+        expect(CodebookNameSchema.safeParse(migrateVariableName(name))).toEqual(
+          expect.objectContaining({ success: true }),
+        );
+      }
     });
 
     it('preserves allowed characters (letters, numbers, . _ - :)', () => {
@@ -127,8 +140,8 @@ describe('Migration V3 to V4', () => {
               name: 'Person',
               variables: {
                 v1: { name: 'my var' },
-                v2: { name: 'my!var' },
-                v3: { name: 'my@var' },
+                v2: { name: 'my var ' },
+                v3: { name: 'my\tvar' },
               },
             },
           },
@@ -165,9 +178,7 @@ describe('Migration V3 to V4', () => {
         ),
       ];
 
-      expect(names).toContain('my_var');
-      expect(names).toContain('myvar');
-      expect(names).toContain('myvar2');
+      expect(names).toEqual(['my var', 'my var2', 'my var3']);
     });
   });
 
@@ -184,6 +195,8 @@ describe('Migration V3 to V4', () => {
                   options: [
                     { label: 'Option A', value: 'hello world' },
                     { label: 'Option B', value: 'foo!bar' },
+                    { label: 'Option C', value: ' größer\u0000 ' },
+                    { label: 'Option D', value: 3 },
                   ],
                 },
               },
@@ -205,8 +218,12 @@ describe('Migration V3 to V4', () => {
       ) as Array<{
         value: string;
       }>;
-      expect(options.at(0)?.value).toBe('hello_world');
-      expect(options.at(1)?.value).toBe('foobar');
+      expect(options.map((option) => option.value)).toEqual([
+        'hello world',
+        'foo!bar',
+        'größer',
+        3,
+      ]);
     });
 
     it('deduplicates option values with numerical suffixes', () => {
@@ -220,7 +237,7 @@ describe('Migration V3 to V4', () => {
                   name: 'category',
                   options: [
                     { label: 'A', value: 'a b' },
-                    { label: 'B', value: 'a!b' },
+                    { label: 'B', value: ' a b' },
                   ],
                 },
               },
@@ -242,9 +259,126 @@ describe('Migration V3 to V4', () => {
       ) as Array<{
         value: string;
       }>;
-      const values = options.map((o) => o.value);
-      expect(values).toContain('a_b');
-      expect(values).toContain('ab');
+      expect(options.map((o) => o.value)).toEqual(['a b', 'a b2']);
+    });
+  });
+
+  describe('rules that compare against a changed option value', () => {
+    const rule = (
+      type: string,
+      attribute: string,
+      value: unknown,
+      entityType?: string,
+    ) => ({
+      id: `${type}-${attribute}`,
+      type,
+      options: {
+        ...(entityType && { type: entityType }),
+        attribute,
+        operator: 'EXACTLY',
+        value,
+      },
+    });
+
+    const categorical = (values: unknown[]) => ({
+      name: 'category',
+      type: 'categorical',
+      options: values.map((value) => ({ label: String(value), value })),
+    });
+
+    const protocol = makeProtocol({
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            variables: {
+              closeness: categorical(['very close ', 'close', 'close ']),
+            },
+          },
+          place: {
+            name: 'Place',
+            variables: { closeness: categorical(['very close ', 'far']) },
+          },
+        },
+        edge: {
+          knows: {
+            name: 'knows',
+            variables: { how: categorical(['work\u0000', 'school']) },
+          },
+        },
+        ego: {
+          name: 'ego',
+          variables: { mood: categorical([' happy', 'sad']) },
+        },
+      },
+      stages: [
+        {
+          id: 'filtered',
+          filter: {
+            join: 'OR',
+            rules: [
+              rule('alter', 'closeness', 'very close ', 'person'),
+              rule('alter', 'closeness', 'close ', 'person'),
+              rule('alter', 'closeness', ['close', 'very close '], 'person'),
+              rule('edge', 'how', 'work\u0000', 'knows'),
+              rule('alter', 'closeness', 'very close ', 'missing'),
+            ],
+          },
+          skipLogic: {
+            action: 'SHOW',
+            filter: { rules: [rule('ego', 'mood', ' happy')] },
+          },
+          panels: [
+            {
+              id: 'panel',
+              filter: {
+                rules: [rule('alter', 'closeness', 'very close ', 'place')],
+              },
+            },
+            { id: 'unfiltered' },
+          ],
+        },
+        { id: 'plain', type: 'Information' },
+      ],
+    });
+
+    const migrated = migrationV3toV4.migrate(protocol, {});
+    const stage = getNestedValue(migrated.stages, '0');
+    const ruleValues = (...path: string[]) =>
+      (
+        getNestedValue(stage, ...path, 'rules') as {
+          options: { value: unknown };
+        }[]
+      ).map(({ options }) => options.value);
+
+    it('renames the value in stage filter rules of the same attribute', () => {
+      expect(ruleValues('filter')).toEqual([
+        'very close',
+        // The second "close" option was suffixed, but a rule naming "close "
+        // meant the option whose value that was.
+        'close2',
+        ['close', 'very close'],
+        'work',
+        // No such entity type, so the rule is not about this attribute.
+        'very close ',
+      ]);
+    });
+
+    it('renames the value in skip logic and panel filter rules', () => {
+      expect(ruleValues('skipLogic', 'filter')).toEqual(['happy']);
+      expect(ruleValues('panels', '0', 'filter')).toEqual(['very close']);
+    });
+
+    it('leaves the rest of the stages as they were', () => {
+      expect(getNestedValue(stage, 'filter', 'join')).toBe('OR');
+      expect(getNestedValue(stage, 'skipLogic', 'action')).toBe('SHOW');
+      expect(getNestedValue(stage, 'panels', '1')).toEqual({
+        id: 'unfiltered',
+      });
+      expect(getNestedValue(migrated.stages, '1')).toEqual({
+        id: 'plain',
+        type: 'Information',
+      });
     });
   });
 
@@ -253,7 +387,7 @@ describe('Migration V3 to V4', () => {
       const protocol = makeProtocol({
         codebook: {
           node: {
-            t1: { name: 'My Type!' },
+            t1: { name: ' My Type!\n' },
           },
           edge: {},
           ego: { name: 'ego' },
@@ -262,7 +396,7 @@ describe('Migration V3 to V4', () => {
 
       const migrated = migrationV3toV4.migrate(protocol, {});
       expect(getNestedValue(migrated.codebook, 'node', 't1', 'name')).toBe(
-        'My_Type',
+        'My Type!',
       );
     });
 
@@ -271,7 +405,7 @@ describe('Migration V3 to V4', () => {
         codebook: {
           node: {},
           edge: {
-            e1: { name: 'knows well' },
+            e1: { name: 'kennt\tgut' },
           },
           ego: { name: 'ego' },
         },
@@ -279,7 +413,7 @@ describe('Migration V3 to V4', () => {
 
       const migrated = migrationV3toV4.migrate(protocol, {});
       expect(getNestedValue(migrated.codebook, 'edge', 'e1', 'name')).toBe(
-        'knows_well',
+        'kennt gut',
       );
     });
   });
@@ -290,7 +424,7 @@ describe('Migration V3 to V4', () => {
         codebook: {
           node: {
             t1: { name: 'my type' },
-            t2: { name: 'my!type' },
+            t2: { name: 'my type ' },
           },
           edge: {},
           ego: { name: 'ego' },
@@ -302,8 +436,7 @@ describe('Migration V3 to V4', () => {
         getNestedValue(migrated.codebook, 'node', 't1', 'name'),
         getNestedValue(migrated.codebook, 'node', 't2', 'name'),
       ];
-      expect(names).toContain('my_type');
-      expect(names).toContain('mytype');
+      expect(names).toEqual(['my type', 'my type2']);
     });
   });
 

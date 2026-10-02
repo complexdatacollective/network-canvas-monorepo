@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { CodebookIdSchema } from '@codaco/shared-consts';
+
 import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
 import {
   findExclusiveVariableConflicts,
@@ -598,13 +600,20 @@ const unknownRenderingFor = (
   return new Set([...bucket].filter((id) => !written.has(id)));
 };
 
-const ProtocolSchema = z
+/**
+ * The protocol document schema 8 and schema 9 share, short of the
+ * `schemaVersion` each adds for itself: `ProtocolSchemaV8` below and
+ * `schemas/9/schema.ts`. The two differ only in the names a variable may
+ * have, and this tree carries schema 9's rule; schema 8 adds its own back as
+ * a refinement. Never parsed on its own, since a document without a version
+ * is not a protocol.
+ */
+export const VersionlessProtocolSchema = z
   .strictObject({
     name: z.string().min(1),
     description: z.string().optional(),
     experiments: ExperimentsSchema.optional(),
     lastModified: z.string().datetime().optional(),
-    schemaVersion: z.literal(8),
     codebook: CodebookSchema,
     assetManifest: z.record(z.string(), assetSchema).optional(),
     stages: z.array(stageSchema).superRefine((stages, ctx) => {
@@ -620,12 +629,12 @@ const ProtocolSchema = z
     }),
   })
   .superRefine((protocol, ctx) => {
-    // Use ProtocolSchema (captured by closure) to walk the schema tree and
-    // validate all entity-attribute references. ProtocolSchema is guaranteed
-    // to be assigned by the time this callback runs (safeParse is called after
+    // Use VersionlessProtocolSchema (captured by closure) to walk the schema
+    // tree and validate all entity-attribute references. It is guaranteed to
+    // be assigned by the time this callback runs (safeParse is called after
     // module initialization completes).
     const hits = collectEntityAttributeReferencesFromSchema(
-      ProtocolSchema,
+      VersionlessProtocolSchema,
       protocol,
     );
     for (const issue of validateReferences(protocol.codebook, hits)) {
@@ -1389,6 +1398,47 @@ const ProtocolSchema = z
       }
     }
   });
+
+// Schema 8 restricts a variable's name to the codebook id alphabet. Schema 9
+// lifted that, but a version 8 document is still held to it: every host that
+// reads version 8 was written against it, and output must not be labelled 8
+// once it holds a name only 9 can carry.
+const rejectSchema9VariableNames = (
+  codebook: Codebook,
+  ctx: z.RefinementCtx,
+) => {
+  const records = [
+    ...Object.entries(codebook.node ?? {}).map(([type, { variables }]) => ({
+      path: ['codebook', 'node', type, 'variables'],
+      variables,
+    })),
+    ...Object.entries(codebook.edge ?? {}).map(([type, { variables }]) => ({
+      path: ['codebook', 'edge', type, 'variables'],
+      variables,
+    })),
+    {
+      path: ['codebook', 'ego', 'variables'],
+      variables: codebook.ego?.variables,
+    },
+  ];
+  for (const { path, variables } of records) {
+    for (const [variableId, variable] of Object.entries(variables ?? {})) {
+      if (!CodebookIdSchema.safeParse(variable.name).success) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Attribute name "${variable.name}" is not allowed in schema version 8, which accepts only the letters a–z and A–Z, digits, and the symbols . _ - :`,
+          path: [...path, variableId, 'name'],
+        });
+      }
+    }
+  }
+};
+
+const ProtocolSchema = VersionlessProtocolSchema.safeExtend({
+  schemaVersion: z.literal(8),
+}).superRefine((protocol, ctx) =>
+  rejectSchema9VariableNames(protocol.codebook, ctx),
+);
 
 export type ProtocolSchemaV8 = z.infer<typeof ProtocolSchema>;
 

@@ -1,6 +1,5 @@
 import type { Codebook } from '../schemas/8/schema.ts';
 import { VARIABLE_REFERENCE_VALIDATIONS } from '../schemas/8/variables/validation.ts';
-import type { Protocol } from '../schemas/index.ts';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,
@@ -79,9 +78,9 @@ export const validateReferences = (
   return issues;
 };
 
-export const validateEntityAttributeReferences = (
-  protocol: Protocol<8>,
-): ReferenceIssue[] =>
+export const validateEntityAttributeReferences = (protocol: {
+  codebook: Codebook;
+}): ReferenceIssue[] =>
   validateReferences(
     protocol.codebook,
     collectEntityAttributeReferences(protocol),

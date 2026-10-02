@@ -41,7 +41,7 @@ vi.mock('~/templates/source-authoring', () => ({
 
 const protocol: CurrentProtocol = {
   name: 'Test Protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: {},
 };

@@ -411,7 +411,7 @@ const panelSource = (
  *
  * The source's KIND is judged here for the same reason. The picker refuses a
  * resource of the wrong kind when one is CHOSEN, but a stage authored
- * elsewhere never went through the picker, and `ProtocolSchemaV8` says nothing
+ * elsewhere never went through the picker, and the protocol schema says nothing
  * about a panel's `dataSource` kind — it checks a `NameGeneratorRoster`'s and
  * stops there. So a panel pointing at an image, a recording or a map layer
  * saves, and the interview tells the participant the external data is

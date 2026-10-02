@@ -26,7 +26,7 @@ describe('Sociogram placement selectors', () => {
       importedAt: '2026-08-12T00:00:00.000Z',
       assets: [],
       name: 'Test protocol',
-      schemaVersion: 8,
+      schemaVersion: 9,
       codebook: {
         node: {
           person: {

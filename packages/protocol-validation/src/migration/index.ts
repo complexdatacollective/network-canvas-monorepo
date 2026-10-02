@@ -50,6 +50,7 @@ import type { z } from 'zod';
 
 import type ProtocolSchemaV7 from '../schemas/7/schema.ts';
 import type ProtocolSchemaV8 from '../schemas/8/schema.ts';
+import type ProtocolSchemaV9 from '../schemas/9/schema.ts';
 import type { SchemaVersion } from '../schemas/index.ts';
 import {
   MigrationNotPossibleError,
@@ -61,6 +62,7 @@ import {
 type ProtocolTypeMap = {
   7: z.infer<typeof ProtocolSchemaV7>;
   8: z.infer<typeof ProtocolSchemaV8>;
+  9: z.infer<typeof ProtocolSchemaV9>;
 };
 
 export type ProtocolDocument<V extends SchemaVersion> =

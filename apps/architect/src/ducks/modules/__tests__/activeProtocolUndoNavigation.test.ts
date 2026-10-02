@@ -20,7 +20,7 @@ const setPath = (path: string) => window.history.replaceState({}, '', path);
 const baseProtocol: CurrentProtocol = {
   name: 'Orig',
   description: 'd',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},

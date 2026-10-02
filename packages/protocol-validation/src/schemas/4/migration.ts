@@ -1,3 +1,5 @@
+import { normalizeCodebookName } from '@codaco/shared-consts';
+
 import {
   createMigration,
   type ProtocolDocument,
@@ -20,7 +22,26 @@ type Prompt = {
   additionalAttributes?: AdditionalAttribute[];
   [key: string]: unknown;
 };
-type Stage = { prompts?: Prompt[]; [key: string]: unknown };
+type Rule = {
+  type?: unknown;
+  options?: {
+    type?: unknown;
+    attribute?: unknown;
+    value?: unknown;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+type Filter = { rules?: Rule[]; [key: string]: unknown };
+type Stage = {
+  prompts?: Prompt[];
+  filter?: Filter;
+  skipLogic?: { filter?: Filter; [key: string]: unknown };
+  panels?: { filter?: Filter; [key: string]: unknown }[];
+  [key: string]: unknown;
+};
+// Old option value to new, per attribute, keyed by `ruleScope`.
+type OptionValueRenames = Map<string, Map<unknown, unknown>>;
 
 const setProps = (
   props: Record<string, unknown>,
@@ -47,14 +68,28 @@ const getNextSafeValue = (
   return getNextSafeValue(value, existing, inc + 1);
 };
 
-const getSafeValue = (value: unknown, existing: string[] = []): unknown => {
+// Makes a name `CodebookNameSchema` accepts while keeping every letter, digit,
+// space and symbol. Tabs and line breaks separate words, so they become
+// spaces; other control characters and the noncharacters U+FFFE and U+FFFF are
+// dropped. A name left empty takes `fallback`, the record id.
+const getSafeValue = (
+  value: unknown,
+  existing: string[] = [],
+  fallback?: string,
+): unknown => {
   if (typeof value !== 'string') {
     return value;
   }
-  const safeValue = value
-    .replace(/[\s]+/g, '_')
-    .replace(/[^a-zA-Z0-9._:-]+/g, '');
-  return getNextSafeValue(safeValue, existing);
+  const safeValue = normalizeCodebookName(
+    value
+      .toWellFormed()
+      .replace(/[\t\n\v\f\r]+/g, ' ')
+      .replace(/[\p{Cc}\uFFFE\uFFFF]/gu, ''),
+  );
+  return getNextSafeValue(
+    safeValue === '' && fallback ? fallback : safeValue,
+    existing,
+  );
 };
 
 const getNames = (obj: NamedRecord = {}): string[] =>
@@ -79,12 +114,13 @@ const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] => {
 
 const migrateVariable = (
   variable: VariableRecord[string],
+  variableId: string,
   acc: VariableRecord = {},
 ): VariableRecord[string] =>
   setProps(
     {
       options: migrateOptionValues(variable.options),
-      name: getSafeValue(variable.name, getNames(acc)),
+      name: getSafeValue(variable.name, getNames(acc), variableId),
     },
     variable as unknown as Record<string, unknown>,
   ) as unknown as VariableRecord[string];
@@ -94,15 +130,19 @@ const migrateVariables = (variables: VariableRecord = {}): VariableRecord => {
   for (const variableId of Object.keys(variables)) {
     const variable = variables[variableId];
     if (!variable) continue;
-    result[variableId] = migrateVariable(variable, result);
+    result[variableId] = migrateVariable(variable, variableId, result);
   }
   return result;
 };
 
-const migrateType = (type: TypeEntry, acc: TypesRecord = {}): TypeEntry =>
+const migrateType = (
+  type: TypeEntry,
+  typeId?: string,
+  acc: TypesRecord = {},
+): TypeEntry =>
   setProps(
     {
-      name: getSafeValue(type.name, getNames(acc)),
+      name: getSafeValue(type.name, getNames(acc), typeId),
       variables: migrateVariables(type.variables),
     },
     type as unknown as Record<string, unknown>,
@@ -113,9 +153,78 @@ const migrateTypes = (types: TypesRecord = {}): TypesRecord => {
   for (const typeId of Object.keys(types)) {
     const type = types[typeId];
     if (!type) continue;
-    result[typeId] = migrateType(type, result);
+    result[typeId] = migrateType(type, typeId, result);
   }
   return result;
+};
+
+// Filter and skip logic rules compare against option values, so a value this
+// migration changes is changed in the rules that name it too. A rule is scoped
+// by its own `type` ('alter' | 'edge' | 'ego') and, for alters and edges, the
+// entity type in `options.type`.
+const ruleScope = (
+  ruleType: unknown,
+  entityType: unknown,
+  attribute: unknown,
+) =>
+  JSON.stringify([ruleType, ruleType === 'ego' ? null : entityType, attribute]);
+
+const collectOptionValueRenames = (
+  scopes: {
+    ruleType: string;
+    entityType?: string;
+    before?: TypeEntry;
+    after?: TypeEntry;
+  }[],
+): OptionValueRenames => {
+  const renames: OptionValueRenames = new Map();
+  for (const { ruleType, entityType, before, after } of scopes) {
+    for (const [variableId, variable] of Object.entries(
+      before?.variables ?? {},
+    )) {
+      const migratedOptions = after?.variables?.[variableId]?.options ?? [];
+      const changed: Map<unknown, unknown> = new Map();
+      // Only an option value's first occurrence is renamed: a later duplicate
+      // gets a suffix, and rules naming the value meant the first.
+      const seen = new Set<unknown>();
+      (variable.options ?? []).forEach(({ value }, index) => {
+        if (seen.has(value)) return;
+        seen.add(value);
+        const migratedValue = migratedOptions[index]?.value;
+        if (migratedValue !== value) changed.set(value, migratedValue);
+      });
+      if (changed.size > 0) {
+        renames.set(ruleScope(ruleType, entityType, variableId), changed);
+      }
+    }
+  }
+  return renames;
+};
+
+const renameRuleValues = (
+  filter: Filter,
+  renames: OptionValueRenames,
+): Filter => {
+  if (!Array.isArray(filter.rules)) return filter;
+  return {
+    ...filter,
+    rules: filter.rules.map((rule) => {
+      const renamed = renames.get(
+        ruleScope(rule.type, rule.options?.type, rule.options?.attribute),
+      );
+      if (!renamed || !rule.options) return rule;
+      const rename = (value: unknown) =>
+        renamed.has(value) ? renamed.get(value) : value;
+      const { value } = rule.options;
+      return {
+        ...rule,
+        options: {
+          ...rule.options,
+          value: Array.isArray(value) ? value.map(rename) : rename(value),
+        },
+      };
+    }),
+  };
 };
 
 const migratePrompt = (prompt: Prompt): Prompt => {
@@ -140,13 +249,45 @@ const migrateStage = (stage: Stage): Stage => ({
   ),
 });
 
-const migrateStages = (stages: Stage[] = []): Stage[] =>
-  stages.map((stage) => (stage.prompts ? migrateStage(stage) : stage));
+const renameStageRuleValues = (
+  stage: Stage,
+  renames: OptionValueRenames,
+): Stage => {
+  const { filter, skipLogic, panels } = stage;
+  return {
+    ...stage,
+    ...(filter && { filter: renameRuleValues(filter, renames) }),
+    ...(skipLogic?.filter && {
+      skipLogic: {
+        ...skipLogic,
+        filter: renameRuleValues(skipLogic.filter, renames),
+      },
+    }),
+    ...(Array.isArray(panels) && {
+      panels: panels.map((panel) =>
+        panel.filter
+          ? { ...panel, filter: renameRuleValues(panel.filter, renames) }
+          : panel,
+      ),
+    }),
+  };
+};
 
-const notes = `- Automatically rename **attribute names** and **ordinal/categorical values** to meet stricter requirements. Only letters, numbers, and the symbols \`.\`, \`_\`, \`-\`, \`:\` will be permitted. Spaces will be replaced with underscore characters (\`_\`), and any other symbols will be removed. Attributes that meet these requirements already **will not be modified**.
-- Add a numerical suffix (\`attribute1\`, \`attribute2\`, etc.) to any attributes or categorical/ordinal values that clash as a result of these changes.
-- Rename node and edge types to ensure they are unique, and conform to the same requirements as attribute names. Names that clash will get a numerical suffix, as above.
-- **NOTE:** If you are using external network data, you must ensure that you update your column headings manually to meet the same requirements regarding attribute names outlined above. See our revised [documentation on attribute naming](https://documentation.networkcanvas.com/reference/variable-naming/).
+const migrateStages = (
+  stages: Stage[] = [],
+  renames: OptionValueRenames,
+): Stage[] =>
+  stages.map((stage) => {
+    const migrated = stage.prompts ? migrateStage(stage) : stage;
+    return renames.size > 0
+      ? renameStageRuleValues(migrated, renames)
+      : migrated;
+  });
+
+const notes = `- Tidy **attribute names** and **ordinal/categorical values**: spaces at the start or end are removed, tabs and line breaks become spaces, and other invisible control characters are removed. Letters from any language, numbers, spaces and punctuation are kept. Attributes and values that already meet these requirements **will not be modified**. Filter and skip logic rules that use a changed value are updated to match.
+- Add a numerical suffix (\`attribute2\`, \`attribute3\`, etc.) to any attributes or categorical/ordinal values that clash as a result of these changes.
+- Rename node and edge types to ensure they are unique, and tidy them in the same way as attribute names. Names that clash will get a numerical suffix, as above.
+- **NOTE:** If you are using external network data, its column headings must match your attribute names. If this migration changes an attribute name, update the matching column heading yourself.
 - Remove any non-boolean 'additional attributes' from prompts. It was necessary to simplify this feature, and so only boolean attribute types will be supported moving forwards. Any non-boolean attributes you created that will be removed by this migration will remain in your codebook, but will be marked 'unused'. You should review and remove these manually, or replace them with equivalent boolean attributes.`;
 
 const migrationV3toV4 = createMigration({
@@ -157,17 +298,40 @@ const migrationV3toV4 = createMigration({
   migrate: (doc) => {
     const codebook = doc.codebook as Record<string, unknown>;
     const stages = doc.stages as Stage[];
+    const nodeTypes = codebook.node as TypesRecord | undefined;
+    const edgeTypes = codebook.edge as TypesRecord | undefined;
+    const egoType = codebook.ego as TypeEntry | undefined;
+
+    const migratedNodeTypes = migrateTypes(nodeTypes);
+    const migratedEdgeTypes = migrateTypes(edgeTypes);
+    const migratedEgoType = egoType ? migrateType(egoType) : undefined;
 
     const newCodebook = setProps(
       {
-        node: migrateTypes(codebook.node as TypesRecord),
-        edge: migrateTypes(codebook.edge as TypesRecord),
-        ego: codebook.ego ? migrateType(codebook.ego as TypeEntry) : undefined,
+        node: migratedNodeTypes,
+        edge: migratedEdgeTypes,
+        ego: migratedEgoType,
       },
       codebook,
     );
 
-    const newStages = migrateStages(stages);
+    const renames = collectOptionValueRenames([
+      ...Object.entries(nodeTypes ?? {}).map(([entityType, before]) => ({
+        ruleType: 'alter',
+        entityType,
+        before,
+        after: migratedNodeTypes[entityType],
+      })),
+      ...Object.entries(edgeTypes ?? {}).map(([entityType, before]) => ({
+        ruleType: 'edge',
+        entityType,
+        before,
+        after: migratedEdgeTypes[entityType],
+      })),
+      { ruleType: 'ego', before: egoType, after: migratedEgoType },
+    ]);
+
+    const newStages = migrateStages(stages, renames);
 
     return {
       ...doc,

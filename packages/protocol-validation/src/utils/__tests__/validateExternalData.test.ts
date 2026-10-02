@@ -173,23 +173,21 @@ describe('validateExternalData', () => {
       expect(result).toBe(false);
     });
 
-    it('should return error message for names with spaces', () => {
-      const invalidNames = ['first name', 'last name'];
-
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
-      expect(result).toContain('first name');
-      expect(result).toContain('last name');
+    it('should allow spaces inside names', () => {
+      expect(validateNames(['first name', 'last name'])).toBe(false);
     });
 
-    it('should return error message for names with special characters', () => {
-      const invalidNames = ['name!', 'age@', 'data#field'];
+    it('should allow punctuation and symbols', () => {
+      expect(validateNames(['name!', 'age@', 'data#field', 'a/b (c)'])).toBe(
+        false,
+      );
+    });
 
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
-      expect(result).toContain('name!');
-      expect(result).toContain('age@');
-      expect(result).toContain('data#field');
+    it('should return error message for names that start or end with a space', () => {
+      const result = validateNames([' first name', 'last name ']);
+      expect(result).toBe(
+        'Attribute name not allowed (" first name", "last name "). Names must not be empty, start or end with a space, or contain control characters.',
+      );
     });
 
     it('should allow underscores', () => {
@@ -237,34 +235,38 @@ describe('validateExternalData', () => {
       expect(result).toBe(false);
     });
 
-    it('should reject names starting with numbers if they contain invalid characters', () => {
-      const invalidNames = ['1name!', '2field@'];
-
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
-    });
-
     it('should identify only invalid names in mixed array', () => {
       const mixedNames = [
         'validName',
-        'invalid name',
+        'invalid\tname',
         'anotherValid',
-        'bad@name',
+        'bad name ',
       ];
 
       const result = validateNames(mixedNames);
       expect(result).toContain('Attribute name not allowed');
-      expect(result).toContain('invalid name');
-      expect(result).toContain('bad@name');
+      expect(result).toContain('"invalid\\tname"');
+      expect(result).toContain('"bad name "');
       expect(result).not.toContain('validName');
       expect(result).not.toContain('anotherValid');
     });
 
-    it('should reject unicode characters', () => {
-      const invalidNames = ['namé', 'naïve', '名前'];
+    it('should allow letters from any language', () => {
+      expect(validateNames(['namé', 'naïve', '名前', 'имя', 'اسم'])).toBe(
+        false,
+      );
+    });
 
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
+    it.each([
+      ['a tab', 'first\tname'],
+      ['a line break', 'first\nname'],
+      ['a null character', 'name\u0000'],
+      ['a C1 control character', 'name\u0085'],
+      ['a noncharacter', 'name\uFFFE'],
+      ['a lone surrogate', 'name\uD800'],
+      ['a decomposed accent', 'nam\u0065\u0301'],
+    ])('should reject a name with %s', (_description, name) => {
+      expect(validateNames([name])).toContain('Attribute name not allowed');
     });
 
     it('should reject empty string', () => {

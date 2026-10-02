@@ -102,7 +102,7 @@ const payload = {
     hash: 'stable-original-hash',
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Protocol name stays literal',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
     stages: [

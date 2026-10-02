@@ -182,7 +182,7 @@ vi.mock('../../lib/api.ts', () => ({
             // session: this file renders every route, and the editor's leased
             // session belongs to `Editor.test.tsx`.
             sections: {
-              settings: { name: fixtures.PROTOCOL.name, schemaVersion: 8 },
+              settings: { name: fixtures.PROTOCOL.name, schemaVersion: 9 },
               stageOrder: { stages: [] },
             },
           }),

@@ -40,7 +40,7 @@ const NODE_TYPE_ID = 'node-type-1';
 const protocol = (name = 'Kinship Study'): CurrentProtocol =>
   ({
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     assetManifest: {},
     codebook: {

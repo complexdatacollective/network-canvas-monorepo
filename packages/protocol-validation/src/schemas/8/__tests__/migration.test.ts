@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
-import type { Protocol } from '../../index.ts';
+import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
@@ -6444,7 +6444,7 @@ describe('Migration V7 to V8', () => {
       const migrated = migrateProtocol(alterFormTestProtocol(), undefined, {
         name: 'alter-form-test',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
   });
 });

@@ -11,6 +11,7 @@ import {
   detectSchemaVersion,
   extractProtocolFromZip,
   getMigrationInfo,
+  getProtocolFileErrorKind,
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
@@ -90,8 +91,14 @@ export async function installPreviewProtocol(
       });
       migrated = true;
     }
-  } catch {
-    return { ok: false, reason: 'invalid' };
+  } catch (cause) {
+    return {
+      ok: false,
+      reason:
+        getProtocolFileErrorKind(cause) === 'newerVersion'
+          ? 'unsupported-version'
+          : 'invalid',
+    };
   }
 
   const versioned = VersionedProtocolSchema.safeParse(document);
