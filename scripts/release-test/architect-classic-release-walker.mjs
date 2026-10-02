@@ -86,24 +86,6 @@ const SCHEMA_8 = fixture(
   'rt-schema8.netcanvas',
 );
 
-// Uncaught exceptions that predate the 6.6.3 release (present on the main
-// build it was cut from) and leave the feature working. Reported as notes,
-// not failures, so a pass still means "nothing new broke"; remove an entry
-// when its fix lands.
-const KNOWN_PAGE_ERRORS = [
-  {
-    pattern: /^index\.html#\/session\/.*fs:rmdir.*ENOENT/,
-    reason:
-      'the Interviewer preview window rejects when it removes a protocols temp folder that does not exist (the preview still renders)',
-  },
-  {
-    pattern:
-      /^index\.html#\/summary: (window\.electronAPI\.ipc\.send is not a function|Cannot read properties of undefined \(reading 'getVersion'\)|window\.electronAPI\[namespace\]\[method\] is not a function)/,
-    reason:
-      'the printable summary window calls electronAPI methods its preload does not expose (the summary still renders and saves as a PDF)',
-  },
-];
-
 const readProtocol = async (file) => {
   const zip = await JSZip.loadAsync(fs.readFileSync(file));
   return JSON.parse(await zip.file('protocol.json').async('string'));
@@ -594,17 +576,12 @@ async function walk(driver, page, pageErrors) {
     };
   });
 
-  const unknown = [...new Set(pageErrors)].filter(
-    (e) => !KNOWN_PAGE_ERRORS.some(({ pattern }) => pattern.test(e)),
-  );
-  for (const { pattern, reason } of KNOWN_PAGE_ERRORS) {
-    if (pageErrors.some((e) => pattern.test(e)))
-      run.note(`known issue: ${reason}`);
-  }
   run.record(
     'no uncaught renderer exceptions',
-    unknown.length === 0,
-    unknown.length ? unknown.slice(0, 8).join(' | ') : undefined,
+    pageErrors.length === 0,
+    pageErrors.length
+      ? [...new Set(pageErrors)].slice(0, 8).join(' | ')
+      : undefined,
   );
   const unexpected = (await dialogLog(app)).filter((d) => d.kind === 'error');
   if (unexpected.length) {
