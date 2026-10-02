@@ -156,35 +156,41 @@ describe('splitValidation — native mapping', () => {
     await expect(isRejected({ positiveNumber: true }, 5)).resolves.toBe(false);
   });
 
-  it('maps allowedVariableName onto pattern, preserving the exact message', async () => {
-    const { nativeProps } = splitValidation(
-      { allowedVariableName: 'option value' },
+  it('routes codebookName through custom, with no native pattern', async () => {
+    const { nativeProps, custom } = splitValidation(
+      { codebookName: true },
       'f',
     );
 
-    expect(nativeProps.pattern).toEqual({
-      regex: '^[a-zA-Z0-9._\\-:]+$',
-      errorMessage:
-        'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
-      hint: 'Use only letters, numbers and the symbols ._-:',
-    });
-
-    await expect(
-      isRejected({ allowedVariableName: 'option value' }, 'has spaces'),
-    ).resolves.toBe(true);
-    await expect(
-      isRejected({ allowedVariableName: 'option value' }, 'a_valid-value.1'),
-    ).resolves.toBe(false);
+    expect(nativeProps).toEqual({});
+    expect(custom).toBeDefined();
   });
 
-  it('defaults the pattern subject name when allowedNMToken is passed a flag', () => {
-    // `allowedNMToken: true` previously interpolated `true` into the message.
-    expect(
-      splitValidation({ allowedNMToken: true }, 'f').nativeProps.pattern
-        ?.errorMessage,
-    ).toBe(
-      'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
-    );
+  it.each(['友人', 'amigo cercano', 'Collègue', 'a_valid-value.1'])(
+    'accepts the name %s',
+    async (name) => {
+      await expect(isRejected({ codebookName: true }, name)).resolves.toBe(
+        false,
+      );
+    },
+  );
+
+  it('rejects a name with a control character, in the exact words researchers read', async () => {
+    await expect(
+      runCustom({ codebookName: true }, 'two\tcolumns'),
+    ).resolves.toEqual([
+      'This can’t contain tabs, line breaks or other control characters',
+    ]);
+    await expect(
+      isRejected({ codebookName: true }, 'line\nbreak'),
+    ).resolves.toBe(true);
+  });
+
+  it('reports only that a name is required when it is empty or spaces, never a second error', async () => {
+    const validation = { required: true, codebookName: true };
+
+    await expect(isRejected(validation, '   ')).resolves.toBe(true);
+    await expect(runCustom({ codebookName: true }, '   ')).resolves.toEqual([]);
   });
 
   it('routes a numeric bound with an author message through custom so the message survives', async () => {

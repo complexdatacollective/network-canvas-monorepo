@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -15,8 +15,16 @@ vi.mock('@codaco/fresco-ui/form/fields/IconPicker', () => ({
 vi.mock('../ShapePicker', () => ({ ShapePickerControl: () => null }));
 vi.mock('../ShapeVariableMapping', () => ({ default: () => null }));
 
+const existingCodebook = vi.hoisted(
+  (): {
+    current: {
+      node: Record<string, { name: string }>;
+      edge: Record<string, { name: string }>;
+    };
+  } => ({ current: { node: {}, edge: {} } }),
+);
 vi.mock('~/selectors/protocol', () => ({
-  getCodebook: () => ({ node: {}, edge: {} }),
+  getCodebook: () => existingCodebook.current,
 }));
 vi.mock('~/ducks/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
@@ -55,6 +63,10 @@ const messagesFor = (name: string) => {
  * name a variable name.
  */
 describe('<TypeEditor /> name validation', () => {
+  beforeEach(() => {
+    existingCodebook.current = { node: {}, edge: {} };
+  });
+
   it('groups controls in untitled Sections', () => {
     const { container } = renderTypeEditor('node');
 
@@ -90,41 +102,66 @@ describe('<TypeEditor /> name validation', () => {
     });
   });
 
-  it('names a node type name as such when the characters are wrong', async () => {
+  it('refuses a node type name with a control character, naming nothing about letters or symbols', async () => {
     renderTypeEditor('node');
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Node type name' }), {
-      target: { value: 'Not a valid name!' },
+      target: { value: 'Close\tfriend' },
     });
     submit();
 
     await waitFor(() => {
       expect(messagesFor('name')).toEqual([
-        'Not a valid node type name. Only letters, numbers and the symbols ._-: are supported',
+        'This can’t contain tabs, line breaks or other control characters',
       ]);
     });
   });
 
-  it('names an edge type name as such when the characters are wrong', async () => {
+  it('refuses an edge type name with a control character', async () => {
     renderTypeEditor('edge');
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Edge type name' }), {
-      target: { value: 'Works With!' },
+      target: { value: 'Works\u0000With' },
     });
     submit();
 
     await waitFor(() => {
       expect(messagesFor('name')).toEqual([
-        'Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported',
+        'This can’t contain tabs, line breaks or other control characters',
       ]);
     });
   });
 
-  it('accepts a valid name', async () => {
+  it('refuses a name that another type already has, ignoring case and composition', async () => {
+    existingCodebook.current = {
+      node: { a: { name: 'Collègue' } },
+      edge: { b: { name: 'Works With' } },
+    };
     renderTypeEditor('node');
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Node type name' }), {
-      target: { value: 'Person' },
+      target: { value: 'COLLE\u0300GUE ' },
+    });
+    submit();
+
+    await waitFor(() => {
+      expect(messagesFor('name')).toEqual(['"COLLÈGUE" is already in use']);
+    });
+  });
+
+  it.each([
+    'Person',
+    'Close friend',
+    'amigo cercano',
+    'Collègue',
+    '友人',
+    'Works With (at the office)',
+    'Parent/guardian',
+  ])('accepts the name %s', async (name) => {
+    renderTypeEditor('node');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Node type name' }), {
+      target: { value: name },
     });
     submit();
 

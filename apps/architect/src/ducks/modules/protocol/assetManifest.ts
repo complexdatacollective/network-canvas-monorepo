@@ -425,8 +425,9 @@ const errorMessages = defineMessages({
   names: {
     id: 'architect.resourceImport.names',
     defaultMessage:
-      'Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.',
-    description: 'Researcher-facing Architect control or feedback.',
+      'Some column headers in this file can’t be used as attribute names. A header can’t be empty, can’t start or end with a space, and can’t contain tabs, line breaks or other control characters. Fix the headers, then import the file again.',
+    description:
+      'Error shown when a network file (CSV or JSON) is added as a resource and one of its attribute names, taken from the column headers, is not allowed. Any script, spaces and punctuation are allowed inside a name.',
   },
   columns: {
     id: 'architect.resourceImport.columns',

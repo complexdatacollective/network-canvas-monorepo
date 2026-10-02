@@ -142,3 +142,73 @@ describe('VariableSpotlight', () => {
     expect(shouldPropagateBlur).toHaveBeenCalled();
   });
 });
+
+describe('VariableSpotlight attribute names', () => {
+  beforeAll(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  const renderSpotlight = (onCreateOption = vi.fn()) => {
+    render(
+      <Provider store={mockStore}>
+        <VariableSpotlight
+          open
+          onOpenChange={noop}
+          onSelect={noop}
+          entity="node"
+          type="person"
+          onCreateOption={onCreateOption}
+          options={[{ value: 'name', label: 'Name', type: 'text' }]}
+        />
+      </Provider>,
+    );
+    return screen.getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+  };
+
+  it.each([
+    ['amigo cercano', 'amigo cercano'],
+    ['Collègue', 'Collègue'],
+    ['友人', '友人'],
+    ['  Colle\u0300gue ', 'Collègue'],
+  ])('offers to create %j as %j', (typed, named) => {
+    const onCreateOption = vi.fn();
+    const search = renderSpotlight(onCreateOption);
+
+    fireEvent.change(search, { target: { value: typed } });
+    expect(
+      screen.getByText(`Create new attribute called "${named}".`),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(search, { key: 'Enter' });
+    expect(onCreateOption).toHaveBeenCalledWith(named);
+  });
+
+  it('offers nothing to create from a term of only spaces', () => {
+    const onCreateOption = vi.fn();
+    const search = renderSpotlight(onCreateOption);
+
+    fireEvent.change(search, { target: { value: '   ' } });
+    fireEvent.keyDown(search, { key: 'Enter' });
+
+    expect(screen.queryByText(/Create new attribute called/)).toBeNull();
+    expect(screen.queryByText(/Cannot create attribute named/)).toBeNull();
+    expect(onCreateOption).not.toHaveBeenCalled();
+  });
+
+  it('explains why a term with a control character cannot be created', () => {
+    const onCreateOption = vi.fn();
+    const search = renderSpotlight(onCreateOption);
+
+    fireEvent.change(search, { target: { value: 'bad\tname' } });
+    fireEvent.keyDown(search, { key: 'Enter' });
+
+    expect(
+      screen.getByText(
+        /^Cannot create attribute named ".*": This can’t contain tabs, line breaks or other control characters\.$/,
+      ),
+    ).toBeInTheDocument();
+    expect(onCreateOption).not.toHaveBeenCalled();
+  });
+});

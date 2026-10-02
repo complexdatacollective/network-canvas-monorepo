@@ -608,8 +608,8 @@
     "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
   },
   "architect.codebook.error.invalidName": {
-    "defaultMessage": "Attribute name contains no valid characters",
-    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+    "defaultMessage": "An attribute name can’t contain tabs, line breaks or other control characters.",
+    "description": "Actionable codebook write refusal for an attribute name that contains an invisible control character. Any script, spaces and punctuation are allowed in an attribute name."
   },
   "architect.codebook.error.missingAttribute": {
     "defaultMessage": "Attribute \"{id}\" does not exist",
@@ -947,17 +947,17 @@
     "defaultMessage": "Technical details (English)",
     "description": "Introduces technical error details in the application error dialog. The error message itself is a diagnostic."
   },
-  "architect.fieldValidation.invalidName": {
-    "defaultMessage": "Not a valid {name}. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Error for a technical name containing unsupported characters. Name identifies the field."
+  "architect.exportColumnConflict.layoutColumn": {
+    "defaultMessage": "{clashesWith, select, reserved {A layout attribute is exported as one column for each coordinate, and the column “{column}” is a built-in column in exported data. Choose a different name.} option {A layout attribute is exported as one column for each coordinate, and the column “{column}” is already used by the option “{siblingOption}” of the attribute “{sibling}”. Choose a different name.} other {A layout attribute is exported as one column for each coordinate, and the column “{column}” is already used by the attribute “{sibling}”. Choose a different name.}}",
+    "description": "Validation error below the field where a researcher names a layout attribute, which stores a position on a canvas: exported data (CSV and GraphML files) has one column for each coordinate, and one of them would have the same name as another column. Text inside curly quotes is a name the researcher typed or a fixed column name; keep it exactly as given."
   },
-  "architect.fieldValidation.name": {
-    "defaultMessage": "attribute name",
-    "description": "Default subject name used by the technical-name validation error."
+  "architect.exportColumnConflict.nameColumn": {
+    "defaultMessage": "{clashesWith, select, reserved {Exported data already includes a built-in column named “{reservedColumn}”, so an attribute can’t use this name.} option {Exported data already includes the column “{siblingColumn}” for the option “{siblingOption}” of the attribute “{sibling}”, so an attribute can’t use this name.} layout {Exported data already includes the column “{siblingColumn}” for the position of the layout attribute “{sibling}”, so an attribute can’t use this name.} other {Exported data already includes the column “{siblingColumn}” for the attribute “{sibling}”, so an attribute can’t use this name.}}",
+    "description": "Validation error below the field where a researcher names an attribute: exported data (CSV and GraphML files) would get two columns with the same name. Text inside curly quotes is a name the researcher typed or a fixed column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate."
   },
-  "architect.fieldValidation.nameHint": {
-    "defaultMessage": "Use only letters, numbers and the symbols ._-:",
-    "description": "Hint for researcher-authored technical names that must be valid XML names."
+  "architect.exportColumnConflict.optionColumn": {
+    "defaultMessage": "{clashesWith, select, reserved {The option “{optionValue}” would be exported to a column named “{column}”, which is a built-in column in exported data. Change the option’s value or the attribute’s name.} option {The option “{optionValue}” would be exported to the column “{column}”, which the option “{siblingOption}” of the attribute “{sibling}” already uses. Change the option’s value or the attribute’s name.} layout {The option “{optionValue}” would be exported to the column “{column}”, which the layout attribute “{sibling}” already uses for its position. Change the option’s value or the attribute’s name.} other {The option “{optionValue}” would be exported to the column “{column}”, which the attribute “{sibling}” already uses. Change the option’s value or the attribute’s name.}}",
+    "description": "Validation error below the list of options of a categorical attribute: exported data (CSV and GraphML files) has a column for each option, and this option’s column would have the same name as another column. Text inside curly quotes is a name or value the researcher typed or a fixed column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate."
   },
   "architect.fieldValidation.required": {
     "defaultMessage": "This field is required.",
@@ -997,14 +997,6 @@
   },
   "architect.final.components.Timeline.skipDestinationGuards.untitledStage": {
     "defaultMessage": "Untitled stage",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.final.components.TypeEditor.TypeEditor.edgeName": {
-    "defaultMessage": "edge type name",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.final.components.TypeEditor.TypeEditor.nodeName": {
-    "defaultMessage": "node type name",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.final.components.VariablePill.required": {
@@ -1050,10 +1042,6 @@
   "architect.form.arrayFields.option.noValue": {
     "defaultMessage": "No value",
     "description": "Visible text in components / Form / arrayFields / Option."
-  },
-  "architect.form.arrayFields.option.optionValue": {
-    "defaultMessage": "option value",
-    "description": "Subject of the invalid option-value identifier guidance."
   },
   "architect.form.arrayFields.option.removeOption": {
     "defaultMessage": "Remove option",
@@ -1755,10 +1743,6 @@
     "defaultMessage": "Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.",
     "description": "Validation for an ordinal or categorical attribute option list."
   },
-  "architect.optionValidation.optionValue": {
-    "defaultMessage": "option value",
-    "description": "Validation for an ordinal or categorical attribute option list."
-  },
   "architect.optionValidation.uniqueLabels": {
     "defaultMessage": "Every option needs a unique label.",
     "description": "Validation for an ordinal or categorical attribute option list."
@@ -2380,8 +2364,8 @@
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.resourceImport.names": {
-    "defaultMessage": "Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.",
-    "description": "Researcher-facing Architect control or feedback."
+    "defaultMessage": "Some column headers in this file can’t be used as attribute names. A header can’t be empty, can’t start or end with a space, and can’t contain tabs, line breaks or other control characters. Fix the headers, then import the file again.",
+    "description": "Error shown when a network file (CSV or JSON) is added as a resource and one of its attribute names, taken from the column headers, is not allowed. Any script, spaces and punctuation are allowed inside a name."
   },
   "architect.resourceImport.replacementType": {
     "defaultMessage": "This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.",
@@ -3057,7 +3041,7 @@
   },
   "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": {
     "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Works With\".}}",
-    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data."
+    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. A type name can be any text: spaces and any script are allowed. Translate the example names naturally, as a researcher working in the target language would name a kind of person, place, organization or relationship, even if that makes them several words long."
   },
   "architect.typeEditor.typeEditor.typeColor": {
     "defaultMessage": "Type color",
@@ -3231,10 +3215,6 @@
     "defaultMessage": "Protocol changed while upgrading",
     "description": "The title text in utils / storedProtocolAdmission."
   },
-  "architect.validation.attributeName": {
-    "defaultMessage": "attribute name",
-    "description": "Default subject in the invalid identifier guidance."
-  },
   "architect.validation.dateIsNotValidValue1": {
     "defaultMessage": "Date is not valid ({value1})",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
@@ -3267,9 +3247,9 @@
     "defaultMessage": "{min, plural, one {Must be # character or more} other {Must be # characters or more}}",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
   },
-  "architect.validation.notAValidNameOnly": {
-    "defaultMessage": "Not a valid {name}. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  "architect.validation.nameHasControlCharacters": {
+    "defaultMessage": "This can’t contain tabs, line breaks or other control characters",
+    "description": "Validation error shown below a field where a researcher types the name of a node type, edge type, attribute or option value. Any script, spaces and punctuation are allowed in these names; only invisible control characters (such as a tab or a line break) are refused."
   },
   "architect.validation.notAValidRegularExpression": {
     "defaultMessage": "Not a valid regular expression.",

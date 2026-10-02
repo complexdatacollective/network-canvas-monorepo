@@ -14,9 +14,10 @@ const errorMessages = defineMessages({
   },
   invalidName: {
     id: 'architect.codebook.error.invalidName',
-    defaultMessage: 'Attribute name contains no valid characters',
+    defaultMessage:
+      'An attribute name can’t contain tabs, line breaks or other control characters.',
     description:
-      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+      'Actionable codebook write refusal for an attribute name that contains an invisible control character. Any script, spaces and punctuation are allowed in an attribute name.',
   },
   duplicateName: {
     id: 'architect.codebook.error.duplicateName',
@@ -46,7 +47,7 @@ const errorMessages = defineMessages({
   },
 });
 import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
-import { find, get, has, isEmpty, omit } from 'es-toolkit/compat';
+import { find, get, has, omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
 import type {
@@ -57,6 +58,11 @@ import type {
   Variable,
   VariablePropertyKey,
 } from '@codaco/protocol-validation';
+import {
+  CodebookNameSchema,
+  normalizeCodebookName,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import type { RootState } from '~/ducks/store';
 import {
@@ -67,7 +73,6 @@ import { getIsUsed } from '~/selectors/codebook/isUsed';
 import { getEdgeIndex, getNodeIndex, utils } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 import prune from '~/utils/prune';
-import safeName from '~/utils/safeName';
 
 import { deleteStage } from './deleteStage';
 import { getNextCategoryColor } from './utils/helpers';
@@ -120,6 +125,33 @@ const defaultTypeTemplate: Partial<EntityDefinition> = {
   variables: {},
 };
 
+// Names are saved normalized (`normalizeCodebookName`), whatever the editor
+// that wrote them let through.
+const normalizedName = (name: unknown) =>
+  typeof name === 'string' ? { name: normalizeCodebookName(name) } : {};
+
+// Only categorical and ordinal options carry text a researcher typed; a boolean
+// variable's options are true and false.
+const withNormalizedOptionValues = (
+  configuration: Partial<Variable>,
+): Partial<Variable> => {
+  if (
+    (configuration.type !== 'categorical' &&
+      configuration.type !== 'ordinal') ||
+    !Array.isArray(configuration.options)
+  ) {
+    return configuration;
+  }
+  return {
+    ...configuration,
+    options: configuration.options.map((option) =>
+      typeof option.value === 'string'
+        ? { ...option, value: normalizeCodebookName(option.value) }
+        : option,
+    ),
+  };
+};
+
 // Async thunks
 export const createTypeAsync = createAppAsyncThunk(
   'codebook/createTypeAsync',
@@ -137,6 +169,7 @@ export const createTypeAsync = createAppAsyncThunk(
       configuration: {
         ...defaultTypeTemplate,
         ...configuration,
+        ...normalizedName(get(configuration, 'name')),
       },
     };
 
@@ -159,7 +192,14 @@ export const updateTypeAsync = createAppAsyncThunk(
     },
     { dispatch },
   ) => {
-    const payload: UpdateTypePayload = { entity, type, configuration };
+    const payload: UpdateTypePayload = {
+      entity,
+      type,
+      configuration: {
+        ...configuration,
+        ...normalizedName(get(configuration, 'name')),
+      },
+    };
     dispatch(codebookSlice.actions.updateType(payload));
     return { type, entity };
   },
@@ -180,7 +220,10 @@ export const createEdgeAsync = createAppAsyncThunk(
     const payload: CreateTypePayload<EdgeDefinition> = {
       entity,
       type,
-      configuration: { ...configuration },
+      configuration: {
+        ...configuration,
+        ...normalizedName(configuration.name),
+      },
     };
 
     if (color) {
@@ -202,7 +245,9 @@ export const createVariableAsync = createAppAsyncThunk(
     }: { entity: Entity; type?: string; configuration: Partial<Variable> },
     { dispatch, getState },
   ) => {
-    if (!configuration.name) {
+    const name = normalizeCodebookName(configuration.name ?? '');
+
+    if (name === '') {
       throw new Error(createMessageError(errorMessages.missingName));
     }
 
@@ -210,27 +255,26 @@ export const createVariableAsync = createAppAsyncThunk(
       throw new Error(createMessageError(errorMessages.missingType));
     }
 
-    const safeConfiguration = prune({
-      ...configuration,
-      name: safeName(configuration.name),
-    }) as Variable;
-
-    if (isEmpty(safeConfiguration.name)) {
+    if (!CodebookNameSchema.safeParse(name).success) {
       throw new Error(createMessageError(errorMessages.invalidName));
     }
+
+    const safeConfiguration = prune({
+      ...withNormalizedOptionValues(configuration),
+      name,
+    }) as Variable;
 
     const state = getState();
     const variables = getVariablesForSubject(state, { entity, type });
     const variableNameExists = Object.values(variables).some(
-      ({ name }) => name === safeConfiguration.name,
+      (existing) =>
+        normalizeForComparison(existing.name) === normalizeForComparison(name),
     );
 
     // We can't use same variable name twice.
     if (variableNameExists) {
       throw new Error(
-        createMessageError(errorMessages.duplicateName, {
-          name: safeConfiguration.name,
-        }),
+        createMessageError(errorMessages.duplicateName, { name }),
       );
     }
 
@@ -289,7 +333,10 @@ const updateVariableAsync = createAppAsyncThunk(
 
     const payload: UpdateVariablePayload = {
       variable,
-      configuration: prune(configuration),
+      configuration: prune({
+        ...configuration,
+        ...normalizedName(get(configuration, 'name')),
+      }),
       replaceProperties,
     };
 
