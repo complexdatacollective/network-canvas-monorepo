@@ -114,6 +114,13 @@ export {
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.
+export { readRosterCsv } from './utils/readRosterCsv.ts';
+export {
+  findRosterCharacterProblems,
+  type RosterCharacterProblem,
+  type RosterCharacterReport,
+  type RosterFormat,
+} from './utils/rosterCharacters.ts';
 export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,

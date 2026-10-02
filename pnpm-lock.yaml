@@ -2570,9 +2570,6 @@ importers:
       concaveman:
         specifier: ^2.0.0
         version: 2.0.0
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       d3-force:
         specifier: ^3.0.0
         version: 3.0.0
@@ -3071,6 +3068,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
+      csvtojson:
+        specifier: 'catalog:'
+        version: 2.0.14
       jszip:
         specifier: 'catalog:'
         version: 3.10.2
