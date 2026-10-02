@@ -29,11 +29,12 @@ import { toCanonicalText } from '@codaco/shared-consts';
 import OptionLabelField from '../../fields/OptionLabelField.tsx';
 import {
   cellIssues,
-  invalidVariableName,
+  invalidOptionValue,
   isDuplicatedInColumn,
+  optionExportColumnIssue,
   optionLabelIssues,
   requiredCell,
-  variableNameSubjects,
+  type OptionExportColumns,
 } from './cellRules.ts';
 import {
   isOptionComplete,
@@ -132,13 +133,18 @@ const OptionLabelControl = OptionLabelField as ComponentType<
 >;
 
 /** What an option's VALUE cell complains about. */
-const valueIssues = (value: unknown, rows: readonly OptionValue[]) =>
+const valueIssues = (
+  value: unknown,
+  rows: readonly OptionValue[],
+  exportColumns: OptionExportColumns | undefined,
+) =>
   cellIssues(
     requiredCell(value),
     isDuplicatedInColumn(rows, 'value', value)
       ? createMessageError(messages.duplicateValueRow)
       : undefined,
-    invalidVariableName(value, variableNameSubjects.optionValue),
+    invalidOptionValue(value),
+    optionExportColumnIssue(value, exportColumns),
   );
 
 const isNumberLike = (value: string) =>
@@ -165,6 +171,8 @@ export type OptionsContextValue = {
   rows: readonly OptionValue[];
   /** The array field itself is reporting an error (minTwoOptions et al). */
   showArrayError: boolean;
+  /** Where each value would be exported, when the list knows its attribute. */
+  exportColumns: OptionExportColumns | undefined;
 };
 
 export const OptionsContext = createContext<OptionsContextValue | null>(null);
@@ -201,7 +209,8 @@ export default function Option({
   deleteTriggerRef,
 }: ArrayFieldItemProps<OptionValue>) {
   const intl = useAppIntl();
-  const { arrayName, rows, showArrayError } = useOptionsContext();
+  const { arrayName, rows, showArrayError, exportColumns } =
+    useOptionsContext();
   const { hasEdited, markEdited } = useEditedCells();
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
@@ -227,7 +236,7 @@ export default function Option({
   // been asked to finish — which is the only way a blank row hears about
   // itself, since nothing in it has been touched.
   const labelErrors = optionLabelIssues(item.label, rows);
-  const valueErrors = valueIssues(item.value, rows);
+  const valueErrors = valueIssues(item.value, rows, exportColumns);
   const showLabelErrors =
     (hasEdited('label') || forceShowErrors) && labelErrors.length > 0;
   const showValueErrors =

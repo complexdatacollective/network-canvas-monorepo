@@ -383,14 +383,14 @@ describe("a name generator's prompts", () => {
    * A row is handed a variable id or nothing, so it cannot carry a refusal —
    * and a create that quietly did nothing leaves the researcher pressing the
    * button again. So the refusal is shown, and it says what the researcher has
-   * to change: the name they typed has a space in it, and the codebook stores
-   * names that become XML element names and CSV column headers.
+   * to change: the name they typed would be exported to a column that another
+   * attribute's option already has.
    *
-   * The exact sentence the row cell, the entity editor and the request builder
-   * all use for that rule (`allowedNameMessage`), rather than the schema's own
-   * words — an `InvalidCodebookDraftError` says "the variable draft is
-   * invalid", which is written for whoever reads a log and names nothing the
-   * researcher can act on.
+   * The exact sentence the picker's create row, the pill rename and the
+   * codebook write all use for that rule (`exportColumnRefusals`), rather than
+   * the schema's own words — an `InvalidCodebookDraftError` says "the variable
+   * draft is invalid", which is written for whoever reads a log and names
+   * nothing the researcher can act on.
    *
    * And the name stays in the box. The refusal is ABOUT the name they typed,
    * so it is the one thing they need in front of them to act on it.
@@ -407,19 +407,19 @@ describe("a name generator's prompts", () => {
     );
     const window = await openPicker(harness, dialog);
     const box = searchBox(window);
-    await harness.user.type(box, 'nominated early');
+    await harness.user.type(box, 'contactType_call');
 
     // Said on the row that would have created it, which is switched off rather
     // than offering a write the codebook is going to refuse.
     const refused = within(window).getByRole('option', {
-      name: 'Cannot create attribute named “nominated early”: only letters, numbers and the symbols ._-: can be used in a name',
+      name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
     await harness.user.click(refused);
 
     // The name stays in the box: the refusal is ABOUT that name, and it is the
     // one thing the researcher needs in front of them to act on it.
-    expect(box).toHaveValue('nominated early');
+    expect(box).toHaveValue('contactType_call');
 
     // And the row is still holding nothing. Read with the window dismissed,
     // because the window takes the surface underneath it out of the

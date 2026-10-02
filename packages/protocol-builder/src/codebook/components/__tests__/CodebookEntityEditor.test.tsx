@@ -296,40 +296,84 @@ describe('CodebookEntityEditor', () => {
     ).toHaveLength(1);
   });
 
-  it('accepts periods in a schema-valid entity name', async () => {
+  it.each([
+    'Person.v2',
+    'Works With',
+    '友人',
+    'amigo cercano',
+    'Collègue',
+    'Person/Place',
+    'Person&Place',
+  ])('accepts the entity name %j', async (typed) => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderUpdateEditor(onSubmit);
 
     const name = screen.getByRole('textbox', { name: 'Node type name' });
     await user.clear(name);
-    await user.type(name, 'Person.v2');
+    await user.type(name, typed);
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      ...NODE_DOCUMENT,
+      name: typed,
+    });
   });
 
-  it.each(['Person Type', 'Person/Place', 'Person&Place'])(
-    'rejects the export-unsafe entity name %s',
-    async (invalidName) => {
-      const user = userEvent.setup();
-      const onSubmit = vi.fn<SubmitEntity>(async () => applied());
-      renderUpdateEditor(onSubmit);
+  it('saves an entity name trimmed and in canonical form', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
 
-      const name = screen.getByRole('textbox', { name: 'Node type name' });
-      await user.clear(name);
-      await user.type(name, invalidName);
-      await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, `  ${'Collègue'.normalize('NFD')}  `);
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
-      expect(onSubmit).not.toHaveBeenCalled();
-      expect(
-        screen.getByText(
-          'Not a valid node type name. Only letters, numbers and the symbols ._-: are supported',
-        ),
-      ).toBeInTheDocument();
-      expect(name).toHaveValue(invalidName);
-    },
-  );
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      ...NODE_DOCUMENT,
+      name: 'Collègue',
+    });
+  });
+
+  it.each([
+    ['a tab', 'Person\tType'],
+    ['a nul', `Person${String.fromCharCode(0)}Type`],
+  ])('rejects an entity name holding %s', async (_, invalidName) => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    fireEvent.change(name, { target: { value: invalidName } });
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        'A node type name cannot contain line breaks, tabs or other control characters.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('asks for a name where the name is only spaces', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, '   ');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Enter a type name.')).toBeInTheDocument();
+    expect(
+      screen.queryByText(/cannot contain line breaks/u),
+    ).not.toBeInTheDocument();
+  });
 
   it('rejects a canonically equivalent entity name', async () => {
     const user = userEvent.setup();

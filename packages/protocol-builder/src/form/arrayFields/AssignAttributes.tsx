@@ -137,7 +137,7 @@ const makeCrossClassPicks =
 
 /**
  * Every array-level rule this editor needs, as one object to SPREAD onto the
- * owning `<Field>` — the `Options.tsx` `optionsValidation` idiom,
+ * owning `<Field>` — the `Options.tsx` `optionsValidationFor` idiom,
  * so a call site cannot keep some and drop others.
  *
  * A factory rather than a constant because the cross-class rule has to close

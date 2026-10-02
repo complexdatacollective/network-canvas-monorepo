@@ -5,7 +5,7 @@ import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import { readMessage } from '../../../testing/i18n.ts';
 import { makeAssignAttributesValidation } from '../AssignAttributes.tsx';
 import { makeMultiSelectValidation } from '../MultiSelect.tsx';
-import { optionsValidation } from '../Options.tsx';
+import { optionsValidationFor } from '../Options.tsx';
 
 /**
  * What the field would report for this whole array, as the researcher reads
@@ -37,8 +37,9 @@ async function arrayIssue(
   return message === undefined ? undefined : readMessage(message);
 }
 
-describe('optionsValidation', () => {
-  const issue = (value: unknown) => arrayIssue(optionsValidation.custom, value);
+describe('optionsValidationFor', () => {
+  const issue = (value: unknown) =>
+    arrayIssue(optionsValidationFor().custom, value);
 
   it('accepts a complete, unambiguous list', async () => {
     await expect(
@@ -104,20 +105,55 @@ describe('optionsValidation', () => {
     ).resolves.toBe('Every option needs a unique label.');
   });
 
-  it('refuses a value that cannot become an export column', async () => {
+  it('refuses a value holding a control character', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes please' },
+        { label: 'Yes', value: 'yes\tplease' },
         { label: 'No', value: 'no' },
       ]),
-    ).resolves.toMatch(/Not a valid option value/);
+    ).resolves.toBe(
+      'Cannot contain line breaks, tabs or other control characters',
+    );
+  });
+
+  it.each(['yes please', '友人', 'amigo cercano', 'Collègue', 'a.b [1]'])(
+    'accepts the value %j, in whatever script or punctuation it is written',
+    async (value) => {
+      await expect(
+        issue([
+          { label: 'Yes', value },
+          { label: 'No', value: 'no' },
+        ]),
+      ).resolves.toBeUndefined();
+    },
+  );
+
+  it('refuses a value that would export to a column the export already writes', async () => {
+    const withSibling = optionsValidationFor({
+      entity: 'node',
+      name: 'foo',
+      type: 'categorical',
+      siblings: [{ name: 'foo_bar', type: 'text' }],
+    });
+    await expect(
+      arrayIssue(withSibling.custom, [
+        { label: 'Bar', value: 'bar' },
+        { label: 'Baz', value: 'baz' },
+      ]),
+    ).resolves.toMatch(/foo_bar/);
+    await expect(
+      arrayIssue(withSibling.custom, [
+        { label: 'Qux', value: 'qux' },
+        { label: 'Baz', value: 'baz' },
+      ]),
+    ).resolves.toBeUndefined();
   });
 
   it('says what is missing before it says the missing part is malformed', async () => {
     // Both rules fail here. A blank row should be told what it needs, not
     // lectured about the characters in the value it does not have.
     await expect(
-      issue([{ label: 'Yes' }, { label: 'No', value: 'no thanks' }]),
+      issue([{ label: 'Yes' }, { label: 'No', value: 'no\tthanks' }]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
 });
