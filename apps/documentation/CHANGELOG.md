@@ -1,5 +1,32 @@
 # @codaco/documentation
 
+## 0.6.1
+
+### Patch Changes
+
+- The documentation search window now uses DocSearch 5, Algolia's refreshed
+  search interface, with an improved results layout and better accessibility.
+  Searching, the section badges on results and the keyboard shortcut work as
+  before.
+- Update third-party dependencies to their latest minor and patch releases, including Base UI 1.8, DocSearch 4.7, next-intl 4.14, Motion 13.4, Lucide 1.49 and PostHog.
+- The two DOI links on "Citing the Software" now resolve.
+
+  Both were written as `https://doi:10.xxxx/…` rather than `https://doi.org/10.xxxx/…`.
+  That address cannot be parsed as a URL — the part after `https://` reads as a
+  host named `doi` on port `10` — so the Network Science citation link went
+  nowhere and threw an error when the page tried to prefetch it, and the Social
+  Networks citation displayed an address no reader could follow. Both now point at
+  doi.org, matching the other citations on the page.
+
+- The documentation site now honours the operating-system "reduce motion"
+  setting.
+
+  Motion is off by default in the animation library the site uses, so until now
+  headings, paragraphs and sidebar items animated into place for every reader,
+  including those who had asked their device for less movement. Those elements
+  now arrive already in position for those readers, with only gentle fades
+  retained.
+
 ## 0.6.0
 
 ### Minor Changes
