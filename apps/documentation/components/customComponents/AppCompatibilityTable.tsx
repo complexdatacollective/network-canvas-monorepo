@@ -63,21 +63,21 @@ const GROUPS: Group[] = [
     schema: 9,
     rows: [
       {
-        app: 'Interviewer',
+        app: 'Interviewer 9.x.x',
         platform: 'Desktop & tablet',
         schema7: 'migrate',
         schema8: 'migrate',
         schema9: 'native',
       },
       {
-        app: 'Architect',
+        app: 'Architect 9.x.x',
         platform: 'Browser',
         schema7: 'migrate',
         schema8: 'migrate',
         schema9: 'native',
       },
       {
-        app: 'Fresco 4.x.x',
+        app: 'Fresco 5.x.x',
         platform: 'Browser',
         schema7: 'migrate',
         schema8: 'migrate',

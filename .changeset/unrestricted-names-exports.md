@@ -1,6 +1,6 @@
 ---
-'@codaco/interviewer': minor
-'fresco': minor
+'@codaco/interviewer': major
+'fresco': major
 ---
 
 Exported data keeps every answer when names use any language, and tells you

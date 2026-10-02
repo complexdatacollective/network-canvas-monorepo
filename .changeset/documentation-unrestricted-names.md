@@ -12,4 +12,6 @@ Dictionary explain how export files and GraphML attributes are named, why some
 CSV values start with an apostrophe, what happens when characters are removed
 from GraphML files or columns are renamed, and how to open the UTF-8 CSV files
 correctly in Excel, R and Python. The compatibility table and other pages that
-named schema 8 as the latest version now refer to schema 9.
+named schema 8 as the latest version now refer to schema 9, and name the
+releases that run it: Architect 9.0, Fresco 5.0 and Interviewer 9.0. The Fresco
+upgrade guide has a section on upgrading to 5.0.0.

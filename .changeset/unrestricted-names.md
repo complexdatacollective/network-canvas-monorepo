@@ -1,8 +1,8 @@
 ---
 '@codaco/interview': major
-'@codaco/architect': minor
-'@codaco/interviewer': minor
-'fresco': minor
+'@codaco/architect': major
+'@codaco/interviewer': major
+'fresco': major
 ---
 
 Names in a protocol can now be written in any language. Node types, edge types,
