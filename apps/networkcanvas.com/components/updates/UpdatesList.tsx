@@ -168,7 +168,6 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
               pressed={app === filter}
               onPressedChange={() => showUpdates(query, filter)}
               size="lg"
-              pressedTone="primary"
               uppercase={false}
             >
               {filter === 'all' ? t('filter.all') : appName(filter)}

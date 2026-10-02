@@ -27,8 +27,7 @@ import Tag from '@codaco/fresco-ui/Tag';
 \`\`\`
 
 Props: \`color\` (palette name for the dot), \`pressed\` + \`onPressedChange\`
-(interactive toggle), \`pressedTone\` (\`text\` default, \`primary\` for the
-brand colour), \`light\` (muted display tone), \`uppercase\` (set false
+(interactive toggle), \`light\` (muted display tone), \`uppercase\` (set false
 for labels whose own casing carries meaning), \`disabled\`, \`size\` (\`md\`
 default, \`sm\` for dense filter rows, \`lg\` beside a full-height control
 such as a search field), plus any button attributes.
@@ -89,15 +88,6 @@ export const Sizes: Story = {
       </Tag>
     </div>
   ),
-};
-
-export const PrimaryPressed: Story = {
-  args: {
-    pressed: true,
-    pressedTone: 'primary',
-    uppercase: false,
-    onPressedChange: () => undefined,
-  },
 };
 
 export const FilterGroup: Story = {
