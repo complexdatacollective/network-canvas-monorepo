@@ -19,6 +19,12 @@ several columns, as described below. In GraphML files, each variable is declared
 with a `<key>` element whose `attr.name` is the variable name and whose
 `attr.type` tells analysis software how to parse the values.
 
+Column names in CSV files are written exactly as the names appear in your
+codebook, including spaces, punctuation and letters from any language. GraphML
+attribute names can't contain spaces or most punctuation, so in GraphML those
+characters are replaced with `_`, and the name as written is kept in the key's
+`<desc>` element. See [Column names](#column-names) below.
+
 For the overall file structure—which files an export produces and how they link
 together—see [Data Export](/en/analyze-data/data-export). This page focuses on
 how individual values are encoded.
@@ -48,9 +54,15 @@ A text variable becomes one CSV column named after the variable, containing the
 participant's response as entered. Values containing a comma, a quotation mark,
 or a line break are wrapped in double quotes (with internal quotes doubled),
 following standard CSV rules. As a safeguard against spreadsheet formula
-injection, any value beginning with `=`, `+`, `-`, `@`, or a tab character is
-prefixed with a single quote (`'`) so spreadsheet applications treat it as
-literal text. In GraphML, text values are exported with `attr.type="string"`.
+injection, any text value beginning with `=`, `+`, `-`, `@`, a tab, or a
+carriage return is prefixed with a single quote (`'`) so spreadsheet
+applications treat it as literal text. Numbers and column headers are never
+prefixed. See
+[Why some values start with an apostrophe](/en/analyze-data/data-export#why-some-values-start-with-an-apostrophe)
+to remove the prefix in R or Python. In GraphML, text values are exported with
+`attr.type="string"` and are never prefixed, but characters that XML can't
+store are removed (see
+[Characters removed from GraphML files](/en/analyze-data/data-export#characters-removed-from-graphml-files)).
 
 ### Number
 
@@ -87,11 +99,12 @@ selected and `false` otherwise. If the participant never answered the
 question, every option column contains `false` in CSV.
 
 In GraphML, the same expansion happens: one `<key>` per option with
-`attr.type="boolean"` and `attr.name` set to `variable_name_optionValue`. The
-machine-readable `id` of each key is the variable's internal identifier
-followed by a hash of the option value (key ids must be XML NMTOKENs, which
-arbitrary option values are not). If the participant never answered, no values
-are written for any of the option keys.
+`attr.type="boolean"` and `attr.name` set to `variable_name_optionValue`, with
+any spaces or punctuation that GraphML attribute names can't hold replaced by
+`_` (see [Column names](#column-names)). The machine-readable `id` of each key
+is the variable's internal identifier followed by a hash of the option value
+(key ids must be XML NMTOKENs, which arbitrary option values are not). If the
+participant never answered, no values are written for any of the option keys.
 
 ### Scalar
 
@@ -157,6 +170,40 @@ the files together:
   values in the alter files), `networkCanvasEgoUUID`, `networkCanvasUUID`, and
   the permanent endpoint identifiers `networkCanvasSourceUUID` and
   `networkCanvasTargetUUID`.
+
+## Column names
+
+CSV column headers use each name exactly as it appears in your codebook. In
+GraphML, `attr.name` must be a valid XML name token (NMTOKEN): letters from any
+language, digits, and the symbols `.`, `-`, `_` and `:` are allowed, but spaces
+and most other punctuation are not. The GraphML export replaces each character
+that isn't allowed with `_`, and keeps the name as written in a `<desc>` element
+inside the key:
+
+```xml
+<key id="…" attr.name="contact_frequency__per_week_" attr.type="string" for="node">
+  <desc>contact frequency (per week)</desc>
+</key>
+```
+
+A `<desc>` element is only written when `attr.name` differs from the name in
+your codebook.
+
+Architect refuses names that would give two variables the same column. In a
+protocol created before that check, two variables can still produce the same
+column name in one file, for example a variable named `support_emotional` and
+a categorical variable `support` with the option `emotional`. The export never
+merges such columns. Built-in columns such as `nodeID` always keep their names,
+the variable that comes first in your codebook keeps the name, and each later
+one is renamed with the first free suffix of `_2`, `_3`, and so on. The export
+shows a warning when this happens. Names that differ only in capitalization,
+such as `Age` and `age`, are not renamed. The same suffixes are used when two
+names become the same in GraphML after spaces and punctuation are replaced, as
+with `close friend` and `close_friend`.
+
+See
+[Names that would clash in exported data](/en/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)
+for the clashes Architect prevents.
 
 ## Missing values
 
