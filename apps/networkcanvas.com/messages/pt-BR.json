@@ -1,0 +1,801 @@
+{
+  "ThemeTranslations": {
+    "label": "Tema de cores",
+    "triggerLabel": "Tema de cores: {theme}",
+    "light": "Claro",
+    "dark": "Escuro",
+    "system": "Sistema"
+  },
+  "Metadata": {
+    "siteTitle": "Network Canvas",
+    "siteDescription": "O Network Canvas oferece software gratuito e de código aberto para a coleta de dados de redes, pensado para as necessidades tanto de quem pesquisa quanto de quem participa.",
+    "getStartedTitle": "Começar",
+    "getStartedDescription": "Escolha o aplicativo do Network Canvas certo para desenhar um protocolo ou coletar dados de redes."
+  },
+  "Hero": {
+    "headline": "Simplificando a coleta de dados complexos de redes.",
+    "description": "O Network Canvas oferece software <strong>gratuito e de código aberto</strong> para a coleta de dados de redes, pensado para as necessidades tanto de quem pesquisa quanto de quem participa.",
+    "getStarted": "Começar",
+    "keepScrolling": "ou continue rolando a página para saber mais"
+  },
+  "News": {
+    "label": "Últimas notícias:",
+    "fullStory": "[Notícia completa]"
+  },
+  "Tools": {
+    "heading": "Uma seleção de ferramentas para facilitar sua pesquisa",
+    "introduction": "Oferecemos um fluxo de trabalho completo, de ponta a ponta, para pesquisas sobre redes, com aplicativos para desenhar o instrumento de coleta e para realizar entrevistas. Com essas ferramentas, a equipe de pesquisa pode planejar, coletar e exportar dados de redes com facilidade.",
+    "architect": {
+      "description": "Uma ferramenta que funciona no navegador para desenhar visualmente entrevistas do Network Canvas. O Architect permite que especialistas no tema se concentrem no desenho e na implementação do estudo, sem precisar aprender tecnologias novas e complexas.",
+      "action": "Abrir o Architect",
+      "screenshotAlt": "Editor de protocolos do Architect mostrando o desenho de uma entrevista"
+    },
+    "interviewer": {
+      "description": "Um aplicativo que funciona no navegador para aplicar entrevistas do Network Canvas em campo. O Interviewer oferece interfaces minimalistas e centradas em participantes para todas as tarefas de coleta de dados de uma entrevista sobre redes pessoais.",
+      "action": "Abrir o Interviewer",
+      "screenshotAlt": "Tela inicial do Interviewer mostrando os protocolos do Network Canvas disponíveis"
+    },
+    "fresco": {
+      "description": "Levando as entrevistas do Network Canvas para a web! O Fresco permite que equipes de pesquisa realizem entrevistas do Network Canvas em um navegador.",
+      "action": "Experimentar o sandbox do Fresco",
+      "deployAction": "Implantar o Fresco",
+      "screenshotAlt": "Painel do Fresco mostrando os totais de protocolos, participantes e entrevistas"
+    }
+  },
+  "Video": {
+    "heading": "Saiba mais",
+    "description": "Nosso objetivo é criar um conjunto de ferramentas para a comunidade de pesquisa que seja de alta qualidade, gratuito, seguro para a pesquisa e feito para durar. Assista ao vídeo do projeto para saber por que criamos o Network Canvas e visite nosso <channel>canal no YouTube</channel> para ver mais vídeos.",
+    "channel": "canal no YouTube",
+    "title": "O que é o Network Canvas?",
+    "watchLabel": "Assistir: O que é o Network Canvas?"
+  },
+  "Principles": {
+    "heading": "Princípios de design",
+    "introduction": "Todo o software do Network Canvas se apoia em um conjunto de cinco princípios de design. Esses princípios vêm das nossas observações e experiências com os problemas enfrentados por quem deseja desenhar e realizar pesquisas sobre redes pessoais.",
+    "ontologicalFlexibility": {
+      "title": "Flexibilidade ontológica",
+      "paragraph1": "O software foi projetado com uma flexibilidade ontológica fundamental. Em termos simples, isso significa que não pressupomos nada sobre a natureza da sua entrevista.",
+      "paragraph2": "A equipe de pesquisa tem liberdade para definir os nós e os laços das entrevistas, os atributos deles, a sequência das tarefas de coleta de dados e a forma como essas tarefas são explicadas à pessoa participante."
+    },
+    "interviewerAssisted": {
+      "title": "Presencial e com apoio de quem entrevista",
+      "paragraph1": "Acreditamos que a presença de uma pessoa entrevistadora treinada, capaz de facilitar a tarefa de coleta de dados, permite coletar dados de maior qualidade.",
+      "paragraph2": "Por isso, as ferramentas do Network Canvas foram projetadas partindo do pressuposto de que as entrevistas acontecem na presença de quem entrevista, em um dispositivo controlado por essa pessoa, e de que ela recebeu treinamento específico para conduzir o processo de entrevista."
+    },
+    "emphasisOnDesign": {
+      "title": "Ênfase no design",
+      "paragraph1": "Nosso software foi projetado desde a base para ser o mais visualmente envolvente possível e exigir o menor esforço possível de participantes.",
+      "paragraph2": "Levamos o design extremamente a sério e nos baseamos na literatura de interação humano-computador (IHC), além de artigos da comunidade de análise de redes, para criar uma experiência de entrevista simples de entender para participantes, com interações claras, consistentes e táteis guiando a coleta de dados."
+    },
+    "endToEndWorkflow": {
+      "title": "Fluxo de trabalho de ponta a ponta",
+      "paragraph1": "Simplificar o processo de coleta de dados estruturais complexos exige não apenas uma ferramenta de entrevista, mas também uma ferramenta para desenhar essas entrevistas. Juntas, essas ferramentas oferecem um fluxo de trabalho de ponta a ponta que reduz os custos (materiais e técnicos) da coleta de dados de redes.",
+      "paragraph2": "É importante destacar que nossas ferramentas não exigem um alto grau de conhecimento técnico para serem usadas. Pelo contrário, elas permitem que a equipe de pesquisa se concentre em usar o próprio conhecimento do tema para desenhar uma experiência de entrevista eficaz."
+    },
+    "openSourceCommunity": {
+      "title": "Desenvolvimento de código aberto orientado pela comunidade",
+      "paragraph1": "A contribuição e a colaboração da comunidade, dentro e fora da academia, são fundamentais para sustentar esse esforço. Por isso, as ferramentas do Network Canvas são de uso gratuito e totalmente de código aberto (licenciadas sob a GPL versão 3).",
+      "paragraph2": "Implementamos um programa de desenvolvimento orientado pela comunidade e queremos muito incentivar o desenvolvimento de funcionalidades ou outras contribuições de quaisquer terceiros interessados."
+    }
+  },
+  "Grants": {
+    "heading": "Projetos financiados que usam o Network Canvas",
+    "introduction": "Temos orgulho de dizer que o Network Canvas está sendo usado ativamente em vários projetos com financiamento federal nos Estados Unidos, em uma ampla variedade de contextos de pesquisa, instituições e agências de fomento.",
+    "previous": "Projeto anterior",
+    "next": "Próximo projeto",
+    "show": "Mostrar projeto {number}"
+  },
+  "Publications": {
+    "heading": "Publicações recentes que usam o Network Canvas",
+    "carouselLabel": "Carrossel de publicações recentes",
+    "introduction": "Estas são as 16 publicações mais recentes que usam o Network Canvas. Veja a <all>lista completa de publicações</all>.",
+    "submission": "Se você quiser divulgar sua publicação aqui, avise-nos com uma mensagem no <thread>tópico</thread> do nosso site da comunidade.",
+    "thread": "tópico"
+  },
+  "PublicationsPage": {
+    "metadata": {
+      "title": "Publicações",
+      "description": "Pesquisas e trabalhos acadêmicos que usam as ferramentas do Network Canvas para coletar e estudar dados de redes sociais."
+    },
+    "heading": "Publicações que usam o Network Canvas",
+    "citing": "Para saber como citar o Network Canvas, consulte nosso <article>artigo na documentação</article>.",
+    "submission": "Se você quiser divulgar sua publicação aqui, avise-nos com uma mensagem no <thread>tópico</thread> do nosso site da comunidade."
+  },
+  "Team": {
+    "heading": "Equipe principal",
+    "introduction": "A equipe do projeto reúne pessoas de diversas disciplinas e especialidades."
+  },
+  "ScientificAdvisors": {
+    "heading": "Conselho científico"
+  },
+  "Institutions": {
+    "heading": "Instituições",
+    "paragraph1": "O software está sendo desenvolvido por uma equipe de pesquisa e desenvolvimento sediada na Universidade Northwestern e na Universidade de Oxford, além de diversas pessoas contratadas externamente para o desenvolvimento. Agradecemos o financiamento <prior>anterior</prior> e <ongoing>em andamento</ongoing> dos National Institutes of Health, que torna este trabalho possível.",
+    "paragraph2": "A propriedade intelectual e os direitos autorais associados ao software são controlados por uma organização sem fins lucrativos registrada, o Complex Data Collective, formada pela equipe principal do projeto.",
+    "prior": "anterior",
+    "ongoing": "em andamento"
+  },
+  "WhatNext": {
+    "heading": "E agora?",
+    "documentation": {
+      "title": "Quer saber mais?",
+      "body": "Criamos uma documentação abrangente, que cobre todos os aspectos de criar, implantar e gerenciar um estudo com o Network Canvas.",
+      "action": "Visitar o site de documentação"
+    },
+    "community": {
+      "title": "Precisa de ajuda?",
+      "body": "Também lançamos recentemente um site da comunidade, onde você pode fazer perguntas, relatar bugs, compartilhar seu trabalho e receber ajuda de outras pessoas pesquisadoras.",
+      "action": "Visitar o site da comunidade"
+    },
+    "keepInTouch": {
+      "title": "Mantenha contato",
+      "body": "Se você quiser acompanhar o projeto e saber de eventos e lançamentos assim que acontecerem, convidamos você a entrar na nossa lista de e-mails e a nos seguir no Twitter. Respeitamos sua caixa de entrada e só vamos usar essa lista para anúncios importantes."
+    },
+    "collaboration": {
+      "title": "Quer colaborar?",
+      "body": "Se você tem interesse em uma colaboração acadêmica formal ou de consultoria, consulte nosso artigo da documentação sobre o assunto. Infelizmente, não podemos oferecer consultorias não remuneradas por causa da capacidade limitada de uma equipe pequena.",
+      "action": "Conhecer as opções de colaboração"
+    }
+  },
+  "MailingList": {
+    "placeholder": "email@networkcanvas.com",
+    "emailLabel": "Endereço de e-mail",
+    "submit": "Entrar na lista",
+    "success": "Agradecemos! Entraremos em contato."
+  },
+  "Footer": {
+    "terms": "Termos de uso",
+    "privacy": "Política de privacidade",
+    "copyright": "Copyright Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "ProtocolGallery": {
+    "metadata": {
+      "title": "Galeria de Protocolos",
+      "description": "Conheça protocolos de pesquisa criados com o Network Canvas, com resumos dos estudos, livros de códigos e arquivos de protocolo prontos para usar."
+    },
+    "intro": {
+      "heading": "Galeria de Protocolos",
+      "introduction": "Conheça protocolos compartilhados por equipes de pesquisa que usam o Network Canvas. Veja como cada estudo foi desenhado, baixe o livro de códigos e o protocolo ou pré-visualize a entrevista no seu navegador.",
+      "featured": "Protocolo em destaque"
+    },
+    "collection": {
+      "heading": "Explore a coleção",
+      "searchLabel": "Buscar protocolos",
+      "searchPlaceholder": "Buscar protocolos",
+      "clearSearch": "Limpar busca",
+      "clearFilters": "Limpar tudo",
+      "resultsOfTotal": "{count} de {total, plural, =1 {# protocolo} other {# protocolos}}",
+      "filterLabel": "Filtrar protocolos",
+      "facets": {
+        "fields": "Área de estudo",
+        "edgeGeneration": "Geração de laços"
+      },
+      "sortLabel": "Ordenar por",
+      "sortOptions": {
+        "newest": "Mais recentes",
+        "oldest": "Mais antigos primeiro",
+        "titleAsc": "Título A–Z",
+        "titleDesc": "Título Z–A"
+      },
+      "emptyHeading": "Nenhum protocolo encontrado",
+      "emptyDescription": "Tente mudar a busca ou o filtro.",
+      "openProtocol": "Explorar {title}",
+      "viewDetails": "Ver"
+    },
+    "card": {
+      "edges": "Laços",
+      "fields": "Áreas",
+      "added": "Adicionado em {date}"
+    },
+    "stages": {
+      "heading": "Sequência de etapas",
+      "waveTabs": "Ondas",
+      "count": "{count, plural, =1 {# etapa} other {# etapas}}",
+      "waves": "{count, plural, =1 {# onda} other {# ondas}}",
+      "edgeStageCounts": {
+        "Sociogram": "{count, plural, =1 {# sociograma} other {# sociogramas}}",
+        "DyadCensus": "{count, plural, =1 {# censo de díades} other {# censos de díades}}",
+        "TieStrengthCensus": "{count, plural, =1 {# censo de força dos laços} other {# censos de força dos laços}}",
+        "OneToManyDyadCensus": "{count, plural, =1 {# censo de díades de um para muitos} other {# censos de díades de um para muitos}}",
+        "NetworkComposer": "{count, plural, =1 {# compositor de redes} other {# compositores de redes}}"
+      }
+    },
+    "stageTypes": {
+      "AlterEdgeForm": "Formulário por laço entre alters",
+      "AlterForm": "Formulário por alter",
+      "Anonymisation": "Interface de anonimização",
+      "CategoricalBin": "Classificação categórica",
+      "DyadCensus": "Censo de díades",
+      "EgoForm": "Formulário do ego",
+      "FamilyPedigree": "Heredograma familiar",
+      "Geospatial": "Interface geoespacial",
+      "Information": "Informação",
+      "NameGenerator": "Gerador de nomes (com formulários)",
+      "NameGeneratorQuickAdd": "Gerador de nomes (adição rápida)",
+      "NameGeneratorRoster": "Gerador de nomes a partir de lista",
+      "Narrative": "Narrativa",
+      "NarrativePedigree": "Heredograma narrativo",
+      "NetworkComposer": "Compositor de redes",
+      "OneToManyDyadCensus": "Censo de díades de um para muitos",
+      "OrdinalBin": "Classificação ordinal",
+      "Sociogram": "Sociograma",
+      "TieStrengthCensus": "Censo de força dos laços"
+    },
+    "detail": {
+      "back": "Voltar à galeria",
+      "citation": "Citar esta publicação",
+      "demonstrates": "O que este protocolo demonstra",
+      "details": "Detalhes do estudo",
+      "studyPi": "Coordenação do estudo",
+      "grantNumber": "Número do financiamento",
+      "contact": "Contato do protocolo",
+      "methods": "Geração de laços",
+      "fields": "Área(s)",
+      "population": "População",
+      "usesRosters": "Usa listas",
+      "yes": "Sim",
+      "no": "Não",
+      "clinicalTrials": "Registro do ensaio clínico",
+      "publication": "DOI / publicação",
+      "dateAdded": "Data de inclusão",
+      "viewPublication": "Ver publicação",
+      "wave": "Onda {wave}",
+      "preview": "Pré-visualizar protocolo",
+      "downloadProtocol": "Baixar protocolo",
+      "viewCodebook": "Resumo do livro de códigos"
+    },
+    "preview": {
+      "metadata": {
+        "title": "Pré-visualização: {name}"
+      },
+      "loading": "Preparando a pré-visualização…",
+      "finishConfirmation": "Esta é uma pré-visualização, então nada é salvo. Concluir encerra esta execução do protocolo, e você pode iniciá-la novamente depois.",
+      "finishedHeading": "Pré-visualização concluída",
+      "finishedDescription": "A entrevista foi concluída exatamente como seria para uma pessoa participante. Nada foi salvo.",
+      "restart": "Iniciar a pré-visualização novamente",
+      "backToProtocol": "Voltar ao protocolo",
+      "errorHeading": "Não é possível pré-visualizar este protocolo",
+      "errors": {
+        "unavailable": "Não foi possível baixar o arquivo do protocolo. Verifique sua conexão e tente novamente.",
+        "unreadable": "Não foi possível abrir o arquivo do protocolo. Ele pode estar corrompido.",
+        "unsupported-version": "Este protocolo usa uma versão de esquema que o mecanismo de entrevistas não consegue executar.",
+        "invalid": "O protocolo não passou na validação, então o mecanismo de entrevistas não consegue executá-lo."
+      },
+      "retry": "Tentar novamente"
+    },
+    "submit": {
+      "heading": "Envie seu protocolo",
+      "description": "Envie para nós seu arquivo .netcanvas, o livro de códigos e a citação, e vamos avaliá-lo para inclusão na galeria.",
+      "action": "Enviar seu protocolo por e-mail"
+    }
+  },
+  "GetStarted": {
+    "metadata": {
+      "title": "Começar",
+      "description": "Escolha o aplicativo do Network Canvas certo para desenhar um protocolo ou coletar dados de redes."
+    },
+    "intro": {
+      "heading": "Escolha por onde começar",
+      "introduction": "Para começar, clique no cartão que melhor descreve a fase em que sua pesquisa está.",
+      "stages": {
+        "design": {
+          "label": "Fase de desenho",
+          "title": "Desenhar ou criar um protocolo de entrevista",
+          "accessibleName": "Desenhar ou criar um protocolo de entrevista"
+        },
+        "collect": {
+          "label": "Fase de coleta de dados",
+          "title": "Coletar dados com o Network Canvas",
+          "accessibleName": "Coletar dados com o Network Canvas"
+        },
+        "learn": {
+          "label": "Conhecendo o Network Canvas",
+          "title": "Saber mais sobre o projeto",
+          "accessibleName": "Saber mais sobre o projeto — abre a documentação em uma nova aba"
+        }
+      }
+    },
+    "sections": {
+      "design": {
+        "label": "Fase de desenho",
+        "heading": "Desenhar ou criar um protocolo",
+        "description": "Desenhe um novo estudo no Architect, que funciona no navegador, ou continue um estudo existente no Architect Classic."
+      },
+      "collect": {
+        "label": "Fase de coleta de dados",
+        "heading": "Coletar dados",
+        "description": "Escolha o Interviewer, o Fresco ou o Interviewer Classic de acordo com como e onde você pretende coletar os dados."
+      }
+    },
+    "shared": {
+      "bestFor": "Ideal para",
+      "downloadVersion": "Baixar a versão {version}",
+      "platformAccessibleName": "{platform} para {app}",
+      "schemaVersionInfo": "O Architect Classic e o Interviewer Classic são compatíveis com protocolos do esquema 7. As versões do Architect, do Interviewer e do Fresco que funcionam no navegador usam o esquema 8, que inclui as funcionalidades mais recentes. A atualização de um protocolo é irreversível, então mantenha o arquivo original do esquema 7 se você ainda precisar dos aplicativos Classic.",
+      "schemaVersionLink": "Saiba mais sobre as versões de esquema"
+    },
+    "platforms": {
+      "appleSilicon": "Apple Silicon",
+      "appleIntel": "Apple Intel",
+      "windows": "Windows",
+      "linux": "Linux",
+      "android": "Android"
+    },
+    "apps": {
+      "architect": {
+        "status": "Recomendado para novos estudos",
+        "description": "Desenhe protocolos no navegador, sem instalar nada, usando todas as funcionalidades mais recentes do Network Canvas.",
+        "bestFor": {
+          "newStudy": "Começar um novo estudo",
+          "latestFeatures": "Desenhar protocolos com todas as funcionalidades mais recentes",
+          "interviewerOrFresco": "Coletar dados com o novo Interviewer ou com o Fresco",
+          "upgradeClassic": "Atualizar um protocolo criado no Architect Classic para usar as funcionalidades mais recentes"
+        },
+        "actions": {
+          "open": "Abrir o Architect"
+        }
+      },
+      "interviewer": {
+        "status": "Presencial · Recomendado",
+        "description": "Faça a coleta de dados com apoio de quem entrevista, em um dispositivo que você controla, usando protocolos criados com todas as funcionalidades mais recentes do Network Canvas.",
+        "bestFor": {
+          "inPerson": "Entrevistas realizadas presencialmente",
+          "guided": "Uma pessoa entrevistadora treinada guiando a pessoa participante",
+          "researcherDevice": "Coleta de dados em um dispositivo controlado pela equipe de pesquisa",
+          "latestFeatures": "Estudos que usam protocolos com todas as funcionalidades mais recentes"
+        },
+        "actions": {
+          "open": "Abrir o Interviewer"
+        }
+      },
+      "fresco": {
+        "status": "Equipes grandes · Coleta a distância · Recomendado",
+        "description": "Para participantes que respondem às entrevistas a distância, no próprio navegador, com gestão centralizada do estudo e dos dados. O sandbox é um ambiente público de demonstração, não um lugar para realizar um estudo real.",
+        "bestFor": {
+          "remoteBrowser": "Participantes que respondem às entrevistas a distância, no próprio navegador",
+          "centralManagement": "Gestão centralizada do estudo e de participantes",
+          "sharedDashboard": "Gerenciar e exportar dados a partir de um painel compartilhado",
+          "selfHosted": "Equipes que conseguem implantar e hospedar uma instância do Fresco"
+        },
+        "actions": {
+          "sandbox": "Guia de acesso ao sandbox do Fresco",
+          "deployment": "Guia de implantação"
+        }
+      },
+      "architectClassic": {
+        "status": "Classic · Modo de manutenção",
+        "description": "Use apenas quando seu estudo precisar continuar compatível com o Interviewer Classic e o esquema 7.",
+        "bestFor": {
+          "classicCompatibility": "Um estudo existente que precisa continuar compatível com o Interviewer Classic",
+          "editWithoutMigration": "Um protocolo do esquema 7 que precisa continuar sendo editado sem migração"
+        }
+      },
+      "interviewerClassic": {
+        "status": "Classic · Estudos existentes",
+        "description": "Para estudos consolidados no esquema 7 e fluxos de trabalho offline em computador ou tablet. Mantido para garantir a compatibilidade e corrigir bugs.",
+        "bestFor": {
+          "schema7Study": "Um estudo consolidado que depende do esquema 7",
+          "desktopTablet": "Manter um fluxo de trabalho existente em computador ou tablet",
+          "offlineCollection": "Estudos que exigem o fluxo de trabalho antigo de coleta offline"
+        }
+      }
+    }
+  },
+  "SummerUpdate": {
+    "metadata": {
+      "title": "Apresentamos a nova geração de aplicativos do Network Canvas",
+      "description": "Conheça os aplicativos Architect e Interviewer redesenhados, o Fresco 4.0.0 e o novo formato de protocolo do esquema 8."
+    },
+    "hero": {
+      "heading": "<lead>Apresentamos a nova geração de</lead> <product><apps>aplicativos do</apps> <brand>Network Canvas</brand></product>",
+      "description": "Um grande avanço para desenhar, aplicar e gerenciar entrevistas do Network Canvas. Esta página mostra o que está <strong>mudando</strong>, o que há de <strong>novo</strong> e o que isso <strong>significa</strong> para o seu trabalho.",
+      "scrollCue": "Continue rolando a página para saber mais"
+    },
+    "definitions": {
+      "pwa": "<dfn>Aplicativos web progressivos</dfn> são sites especialmente preparados que podem ser instalados no seu dispositivo e oferecem uma experiência parecida com a de um aplicativo nativo. Isso significa que eles têm um ícone em que você pode clicar para abri-los, têm armazenamento próprio e funcionam offline.",
+      "protocolSchema": "Os esquemas de protocolo são as especificações técnicas que definem como os arquivos de protocolo são estruturados e interpretados pelos aplicativos. Eles garantem que os protocolos sejam compatíveis entre diferentes versões dos aplicativos e oferecem uma base para implementar novas funcionalidades e interfaces.",
+      "architectClassic": "O aplicativo original para computador, disponível para download, usado para desenhar protocolos do Network Canvas. Ele continua disponível para estudos em andamento e tem suporte completo, mas está em modo de manutenção e não vai receber novas funcionalidades. Faça o download <link>aqui</link>.",
+      "interviewerClassic": "O aplicativo original para computador e tablet, disponível para download, usado para coletar dados de entrevistas. Ele continua disponível para estudos em andamento e tem suporte completo, mas está em modo de manutenção e não vai receber novas funcionalidades. Faça o download <link>aqui</link>."
+    },
+    "common": {
+      "documentation": "Documentação"
+    },
+    "overview": {
+      "label": "Novidades",
+      "heading": "Architect e Interviewer, repensados para o navegador",
+      "introduction": "Redesenhamos o <strong>Architect</strong> e o <strong>Interviewer</strong> como sites que também podem ser instalados no seu dispositivo como <pwa>aplicativos web progressivos</pwa>. Junto com o <strong>Fresco 4.0.0</strong>, eles formam uma plataforma unificada e moderna, construída sobre uma base técnica comum — e os três são compatíveis com um novo formato de arquivo de protocolo, o <strong>esquema 8</strong>.",
+      "benefits": {
+        "lowFriction": {
+          "title": "Uso sem complicações",
+          "description": "Acesse <architect>architect.networkcanvas.com</architect> ou <interviewer>interviewer.networkcanvas.com</interviewer> em qualquer dispositivo, a qualquer momento — e use as ferramentas sem instalar nada."
+        },
+        "installation": {
+          "title": "Instalação local do aplicativo",
+          "description": "Instale qualquer uma das ferramentas como aplicativo diretamente pelo navegador. Ela funciona como um aplicativo comum no seu dispositivo, e você mantém o controle local dos seus dados."
+        },
+        "updates": {
+          "title": "Atualizações simplificadas",
+          "description": "Os novos aplicativos são mantidos atualizados automaticamente com as funcionalidades e correções mais recentes, para que você possa se concentrar na pesquisa em vez de gerenciar versões de software."
+        },
+        "tablet": {
+          "title": "Suporte a tablets de volta",
+          "description": "O novo aplicativo Interviewer volta a funcionar em tablets (iPad e Android), depois de vários anos indisponível por causa de restrições das lojas de aplicativos."
+        }
+      },
+      "classic": {
+        "title": "E os aplicativos originais para computador e tablet?",
+        "description": "Os aplicativos originais para computador e tablet agora se chamam <architectClassic>Architect Classic</architectClassic> e <interviewerClassic>Interviewer Classic</interviewerClassic>. Eles continuam disponíveis para estudos em andamento e têm <strong>suporte completo</strong>, mas estão em modo de manutenção e não vão receber novas funcionalidades."
+      }
+    },
+    "apps": {
+      "architect": {
+        "label": "Desenho de protocolos",
+        "heading": "Conheça o novo Architect — desenhe protocolos no navegador",
+        "description": "Não há nada para instalar — basta abrir <link>architect.networkcanvas.com</link> e começar a criar. O Architect sempre executa automaticamente a versão mais recente. No site, instale o Architect no seu computador como um <pwa>PWA</pwa> para ter uma experiência parecida com a de um aplicativo nativo e controle local dos seus dados.",
+        "iconAlt": "Ícone do aplicativo Architect",
+        "screenshotAlt": "Editor de protocolos do Architect mostrando a linha do tempo do protocolo de exemplo",
+        "bullets": {
+          "schema8": "Cria protocolos do <strong>esquema 8</strong> com todas as novas funcionalidades (veja abaixo)",
+          "upgrades": "Abre e <strong>atualiza automaticamente</strong> protocolos antigos do esquema 7",
+          "templates": "Inclui <strong>modelos de protocolo</strong>, pensados para ajudar você a começar rápido e evitar erros comuns"
+        },
+        "open": "Abrir o Architect",
+        "classicNote": "O <architectClassic>Architect Classic</architectClassic> continua disponível para quem precisa continuar usando versões antigas do Interviewer (por exemplo, a 6.6.0). Ele está em modo de manutenção — apenas correções de bugs — e continua gerando protocolos do esquema 7."
+      },
+      "interviewer": {
+        "label": "Entrevistas presenciais",
+        "heading": "Interviewer — realize entrevistas em qualquer lugar",
+        "description": "O Interviewer também foi redesenhado para o navegador: envie um protocolo em <link>interviewer.networkcanvas.com</link> e comece a usá-lo em campo sem instalar nada. Instale o Interviewer como um <pwa>PWA</pwa> para trabalhar offline — ele continua sendo a ferramenta ideal para estudos de redes presenciais, com apoio de quem entrevista.",
+        "iconAlt": "Ícone do aplicativo Interviewer",
+        "screenshotAlt": "Painel do Interviewer mostrando cartões de protocolos e uma ação para retomar uma entrevista",
+        "bullets": {
+          "security": "Nova segurança avançada: armazenamento de dados criptografado e autorização do aplicativo para ações sensíveis, como exportar dados",
+          "schema8": "Compatível nativamente com o <strong>esquema 8</strong>, e migra automaticamente todos os protocolos existentes do esquema 7 quando você os importa",
+          "compatibility": "Compatível com todos os computadores e tablets, incluindo iPads e tablets Android"
+        },
+        "open": "Abrir o Interviewer",
+        "classicNote": "O <interviewerClassic>Interviewer Classic</interviewerClassic> continua disponível para estudos em andamento. Assim como o <architectClassic>Architect Classic</architectClassic>, ele está apenas em modo de manutenção e não recebe novas funcionalidades."
+      },
+      "fresco": {
+        "label": "Entrevistas autoaplicadas a distância",
+        "heading": "Fresco 4.0.0 — uma grande atualização",
+        "description": "A versão mais recente do Fresco é um lançamento enorme, que traz várias funcionalidades novas importantes. Pensado para entrevistas autoaplicadas a distância (mas também totalmente compatível com entrevistas presenciais), o Fresco é a opção sugerida para estudos com um grande número de participantes, com uma equipe de pesquisa grande ou que exigem uma solução centralizada de gestão de dados.",
+        "iconAlt": "Ícone do aplicativo Fresco",
+        "deploymentGuide": "Guia de implantação",
+        "upgradeNote": "Quem usa o Fresco 3.x deve evitar atualizar no meio de um estudo. Não é possível voltar do Fresco 4.0.0 para a versão 3.x.",
+        "cards": {
+          "multiUser": {
+            "title": "Acesso multiusuário",
+            "description": "Cada pessoa da equipe tem a própria conta, com autenticação de dois fatores, suporte a chaves de acesso e um registro de auditoria completo de todas as ações realizadas no sistema."
+          },
+          "api": {
+            "title": "API de dados segura",
+            "description": "Agora o Fresco oferece uma API segura e somente leitura para acesso programático aos dados do seu estudo, permitindo relatórios em tempo real, painéis de visualização e análises."
+          },
+          "selfHosted": {
+            "title": "Hospedagem própria completa",
+            "description": "Agora o Fresco pode ser instalado inteiramente nos seus próprios servidores ou hospedado na sua nuvem privada, dando a você controle total sobre seus dados."
+          }
+        }
+      }
+    },
+    "features": {
+      "label": "Esquema 8",
+      "heading": "Novas interfaces e funcionalidades",
+      "introduction": "Esta nova geração de aplicativos introduz uma nova <definition>versão do esquema de protocolo</definition>, o esquema 8, que inclui várias novas interfaces e funcionalidades de entrevista. Se o seu estudo precisa de alguma delas, você vai precisar usar as novas ferramentas. Escolha qualquer cartão para ver os detalhes.",
+      "documentationLink": "Explorar na documentação",
+      "previewAlt": "Pré-visualização de {name}",
+      "groups": {
+        "interfaces": "Novas interfaces de entrevista",
+        "schema": "Funcionalidades do esquema 8",
+        "architect": "Architect",
+        "interviewer": "Interviewer",
+        "fresco": "Fresco 4.0.0"
+      },
+      "geospatial": {
+        "shortName": "Geoespacial",
+        "name": "Interface geoespacial",
+        "summary": "Colete dados de localização de cada alter pedindo que participantes selecionem uma área em um mapa interativo.",
+        "details": {
+          "0": "Defina setores censitários, CEPs, bairros ou regiões de estudo personalizadas que podem ser selecionados, usando um arquivo GeoJSON.",
+          "1": "Escolha qual propriedade do GeoJSON é salva com cada pessoa, para que a resposta já esteja pronta para ser combinada com dados espaciais durante a análise.",
+          "2": "Opcionalmente, adicione busca de endereços e informações de transporte público. Os serviços do Mapbox exigem conexão com a internet durante a entrevista."
+        }
+      },
+      "anonymisation": {
+        "shortName": "Anonimização",
+        "name": "Interface de anonimização",
+        "summary": "Dê a participantes controle direto sobre identificadores sensíveis, criptografando no próprio dispositivo atributos selecionados de nós ou laços.",
+        "details": {
+          "0": "Cada participante cria a frase secreta usada para proteger os dados selecionados, e essa frase secreta nunca é armazenada pelo aplicativo.",
+          "1": "A equipe de pesquisa não consegue descriptografar os valores protegidos; nas exportações, os atributos criptografados são substituídos por um marcador claro.",
+          "2": "Esta é uma funcionalidade experimental para estudos em que garantias de privacidade mais fortes podem favorecer a confiança e o compartilhamento de informações."
+        }
+      },
+      "oneToMany": {
+        "shortName": "Censo de díades de um para muitos",
+        "name": "Interface de censo de díades de um para muitos",
+        "summary": "Crie laços entre uma pessoa focal e várias outras pessoas na mesma tela, em vez de avaliar cada par separadamente.",
+        "details": {
+          "0": "Use quando uma rede tiver figuras centrais que provavelmente se relacionam com muitas outras pessoas.",
+          "1": "Colete um ou mais tipos de relação mantendo a pessoa focal visível durante toda a tarefa.",
+          "2": "Decida se cada pessoa focal volta para a lista para uma nova rodada ou é removida depois de ter sido avaliada."
+        }
+      },
+      "familyPedigree": {
+        "shortName": "Heredograma familiar",
+        "name": "Interface de heredograma familiar",
+        "summary": "Guie participantes na construção de uma estrutura familiar complexa em um fluxo de trabalho visual dedicado.",
+        "details": {
+          "0": "Crie familiares e relações ao mesmo tempo, com uma disposição automática que mantém o heredograma legível à medida que ele cresce.",
+          "1": "Represente relações biológicas, sociais, adotivas, de doação, de gestação de substituição e de casal, e colete atributos de cada familiar.",
+          "2": "Adicione um passo opcional de nomeação de doenças para registrar quais familiares são afetados por condições específicas, para visualização posterior."
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "Heredograma narrativo",
+        "name": "Interface de heredograma narrativo",
+        "summary": "Transforme um heredograma familiar anterior em uma visualização somente leitura que usa a notação clínica padrão de heredogramas.",
+        "details": {
+          "0": "Mostre os familiares afetados e as pessoas portadoras confirmadas de uma ou mais condições, nos padrões de herança compatíveis.",
+          "1": "Opcionalmente, exiba possíveis situações de risco quando o estudo for desenhado para uma interpretação com a orientação adequada.",
+          "2": "Destaque a linhagem que deu origem a uma pessoa e exporte um instantâneo para impressão. A visualização é um apoio, não um diagnóstico."
+        }
+      },
+      "networkComposer": {
+        "shortName": "Compositor de redes",
+        "name": "Interface de compositor de redes",
+        "summary": "Construa e edite toda a rede pessoal de uma pessoa participante em uma única tela livre.",
+        "details": {
+          "0": "Adicione pessoas, preencha atributos das pessoas e das relações, desenhe vários tipos de relação e reorganize a rede à medida que a conversa avança.",
+          "1": "Use seleção à mão livre, grupos, disposição automática, atalhos de teclado e as ações de desfazer e refazer para construir redes densas com eficiência.",
+          "2": "Use o Compositor de redes como um bloco de notas de redes conduzido pela equipe de pesquisa ou por quem entrevista, e não como uma tarefa autoaplicada passo a passo."
+        }
+      },
+      "validation": {
+        "shortName": "Validação",
+        "name": "Validação de campos mais completa",
+        "summary": "Expresse relações entre respostas diretamente no protocolo, para que os formulários detectem respostas inconsistentes enquanto a entrevista ainda está em andamento.",
+        "details": {
+          "0": "Compare uma resposta numérica com a de outro atributo usando as novas regras “Maior que outro atributo” e “Menor que outro atributo”.",
+          "1": "Combine essas verificações relativas com as regras já existentes de resposta obrigatória, intervalo, valor único e comparação entre campos para descrever as respostas que seu estudo aceita.",
+          "2": "Pré-visualize o formulário no Architect e teste casos-limite antes da implantação; as mesmas regras do protocolo são aplicadas no Interviewer e no Fresco."
+        }
+      },
+      "enhancedSkipLogic": {
+        "shortName": "Lógica de salto aprimorada",
+        "name": "Lógica de salto aprimorada",
+        "summary": "Crie percursos de entrevista mais precisos, com regras de comparação ampliadas e destinos explícitos para cada etapa pulada.",
+        "details": {
+          "0": "Use “contém” e “não contém” com respostas de texto e compare vários valores selecionados em regras categóricas e ordinais.",
+          "1": "Continue na próxima etapa disponível, avance para uma etapa posterior escolhida ou siga diretamente para a tela final da entrevista.",
+          "2": "Todos os destinos apontam sempre para a frente, o que torna previsíveis os percursos complexos e evita ciclos durante a coleta de dados."
+        }
+      },
+      "nodeShapes": {
+        "shortName": "Formas dos nós",
+        "name": "Formas de nós configuráveis",
+        "summary": "Use a forma como um canal visual adicional, para distinguir com mais facilidade diferentes tipos de pessoas em interfaces de redes densas.",
+        "details": {
+          "0": "Escolha círculos, quadrados ou losangos como forma padrão para cada tipo de pessoa.",
+          "1": "Associe formas dinamicamente a variáveis categóricas, ordinais, booleanas, numéricas ou escalares quando a distinção visual representar dados.",
+          "2": "Combine forma, cor e tamanho para que categorias importantes continuem legíveis sem depender de um único sinal visual."
+        }
+      },
+      "formHints": {
+        "shortName": "Dicas de formulário",
+        "name": "Dicas de formulário e orientações de validação",
+        "summary": "Coloque orientações concisas ao lado de uma pergunta específica, dando contexto a participantes exatamente onde precisam.",
+        "details": {
+          "0": "Adicione a um campo de formulário uma dica formatada em Markdown sem alongar a pergunta principal da etapa.",
+          "1": "Use dicas para esclarecer formatos esperados, termos pouco conhecidos ou como uma resposta será interpretada.",
+          "2": "Se quiser, mostre orientações automáticas derivadas das regras de validação do campo, como intervalos aceitos ou respostas obrigatórias."
+        }
+      },
+      "protocolTemplates": {
+        "shortName": "Modelos de protocolo",
+        "name": "Modelos de protocolo",
+        "summary": "Comece com um protocolo fundamentado em pesquisa, em vez de uma linha do tempo vazia, e depois adapte esse protocolo ao seu estudo.",
+        "details": {
+          "0": "Conheça modelos para redes transnacionais, de saúde mental, de isolamento social, de influência comportamental, de cuidado e apoio, e de risco sexual ou ligado ao uso de drogas injetáveis.",
+          "1": "Use o protocolo de exemplo geral para entender como as principais funcionalidades e técnicas do Network Canvas se encaixam.",
+          "2": "Edite cada etapa, pergunta, variável e escolha visual; seus protocolos adaptados continuam armazenados localmente no seu navegador."
+        }
+      },
+      "responsiveSvg": {
+        "shortName": "Fundos SVG responsivos",
+        "name": "Fundos SVG responsivos para sociogramas",
+        "summary": "Crie fundos de sociograma cujas regiões, eixos e rótulos se adaptam à tela da entrevista tanto na orientação retrato quanto na paisagem.",
+        "details": {
+          "0": "Envie um SVG cujos elementos são posicionados em relação à tela disponível, e não a uma grade fixa de pixels.",
+          "1": "Mantenha os rótulos legíveis e as regiões estendidas até as bordas da tela quando participantes girarem o tablet ou usarem uma tela de outro formato.",
+          "2": "Use o modelo de contexto social incluído como ponto de partida para quadrantes, eixos independentes, categorias ou contextos sobrepostos."
+        }
+      },
+      "syntheticData": {
+        "shortName": "Dados sintéticos",
+        "name": "Dados sintéticos de entrevistas",
+        "summary": "Gere entrevistas de teste realistas antes do recrutamento para examinar todo o fluxo de dados sem colocar em risco os dados de participantes.",
+        "details": {
+          "0": "Crie até 1.000 entrevistas sintéticas de uma vez e veja como as respostas aparecem nas tabelas e exportações do estudo.",
+          "1": "Simule, se quiser, a desistência de participantes; a geração respeita a lógica de salto e os filtros de rede do protocolo.",
+          "2": "Os registros sintéticos são marcados separadamente e podem ser removidos em lote sem afetar entrevistas reais."
+        }
+      },
+      "encryptionAtRest": {
+        "shortName": "Criptografia em repouso",
+        "name": "Criptografia em repouso no dispositivo",
+        "summary": "Proteja os protocolos, as entrevistas e as configurações armazenados no dispositivo sempre que você configurar um bloqueio do aplicativo no Interviewer.",
+        "details": {
+          "0": "Escolha um PIN, uma frase secreta ou um método biométrico compatível durante a configuração; a mesma autenticação desbloqueia a chave usada para descriptografar os dados locais.",
+          "1": "A chave de descriptografia fica apenas na memória enquanto o Interviewer está desbloqueado. Recarregar, bloquear ou fechar o aplicativo, ou atingir o tempo limite de inatividade, remove a chave.",
+          "2": "Use essa proteção no nível do aplicativo junto com a criptografia completa do dispositivo e exportações regulares, como parte de um plano de segurança de dados em camadas."
+        }
+      },
+      "authorisationChecks": {
+        "shortName": "Verificações de autorização",
+        "name": "Verificações de autorização configuráveis",
+        "summary": "Exija um novo desbloqueio em pontos sensíveis do fluxo de trabalho, em vez de depender apenas do bloqueio geral do aplicativo por inatividade.",
+        "details": {
+          "0": "Exija, de forma independente, uma nova autenticação antes de entrar em uma entrevista, de sair dela para o painel ou de exportar os dados coletados.",
+          "1": "Use o PIN, a frase secreta ou o método biométrico já configurado, sem criar um segundo conjunto de credenciais.",
+          "2": "Mantenha ocultos os nomes dos protocolos, as contagens de sessões e os dados armazenados sempre que o Interviewer estiver bloqueado."
+        }
+      },
+      "multiUser": {
+        "shortName": "Multiusuário",
+        "name": "Administração multiusuário",
+        "summary": "Dê a cada pessoa da equipe de pesquisa uma conta de administração própria, em vez de compartilhar um único conjunto de credenciais do painel.",
+        "details": {
+          "0": "Adicione e remova várias contas de administração nas configurações; todas as contas atuais têm o mesmo acesso administrativo.",
+          "1": "Escolha a autenticação por senha, com proteção opcional de dois fatores por TOTP, ou use chaves de acesso para entrar sem senha.",
+          "2": "Veja a atividade do painel atribuída a cada nome de usuário no registro de auditoria compartilhado, incluindo eventos de autenticação, de protocolos, de exportação e de gerenciamento de contas."
+        }
+      },
+      "advancedExportFiltering": {
+        "shortName": "Filtragem avançada de exportações",
+        "name": "Filtragem avançada de exportações",
+        "summary": "Encontre e exporte exatamente as entrevistas de que você precisa, mesmo quando um estudo grande ocupa muitas páginas de resultados.",
+        "details": {
+          "0": "Filtre no servidor por protocolo, data, progresso, tamanho da rede, situação da exportação ou identificador de participante, em todo o conjunto de dados.",
+          "1": "Selecione todas as entrevistas que correspondem aos filtros ativos, e não apenas as linhas visíveis na tela.",
+          "2": "Exporte todas as entrevistas, só as concluídas ou só as ainda não exportadas dentro do conjunto filtrado, sem alterar registros não relacionados."
+        }
+      },
+      "secureDataApi": {
+        "shortName": "API de dados segura",
+        "name": "API segura de dados de entrevistas",
+        "summary": "Conecte ferramentas de análise diretamente a uma instância do Fresco por meio de uma API JSON versionada e somente leitura.",
+        "details": {
+          "0": "Mantenha a API desativada até precisar dela e então crie tokens de acesso do tipo bearer no painel autenticado.",
+          "1": "Liste e obtenha redes de entrevistas e metadados de protocolos sem expor nenhum endpoint capaz de alterar os dados do estudo.",
+          "2": "Revogue tokens, veja quando cada token foi usado pela última vez e crie fluxos de trabalho reproduzíveis em R ou Python, ou para painéis de visualização e relatórios."
+        }
+      }
+    },
+    "compatibility": {
+      "label": "Compatibilidade",
+      "heading": "O que saber antes de atualizar",
+      "introduction": "As <definition>versões do esquema de protocolo</definition> determinam quais aplicativos conseguem abrir um determinado arquivo de protocolo — e a mudança mais importante deste lançamento é o <strong>esquema 8</strong>. A tabela abaixo mostra exatamente como cada aplicativo lida com os dois formatos. Selecione uma linha para ver o que isso significa na prática.",
+      "defaultNote": "Selecione qualquer linha acima para ver o que ela significa para seus arquivos de protocolo.",
+      "groups": {
+        "classic": "Geração atual (“Classic”)",
+        "new": "Nova geração"
+      },
+      "columns": {
+        "app": "Aplicativo",
+        "platform": "Plataforma",
+        "schema7": "Esquema 7",
+        "schema8": "Esquema 8"
+      },
+      "statuses": {
+        "migrates": "Migra para o 8",
+        "native": "Nativo",
+        "unsupported": "Sem suporte"
+      },
+      "rowAccessibleName": "{app}, {platform}: esquema 7, {schema7}; esquema 8, {schema8}",
+      "rowAccessibleNameWithVersion": "{app} {version}, {platform}: esquema 7, {schema7}; esquema 8, {schema8}",
+      "rows": {
+        "interviewerClassic": {
+          "platform": "Computador e tablet",
+          "note": "O <interviewerClassic>Interviewer Classic</interviewerClassic> executa o esquema 7 nativamente, mas não consegue abrir protocolos do esquema 8. Continue usando o Interviewer Classic nos estudos do esquema 7 em andamento — ele segue com suporte e correções de bugs."
+        },
+        "architectClassic": {
+          "platform": "Computador",
+          "note": "O <architectClassic>Architect Classic</architectClassic> continua gerando protocolos do esquema 7, em modo de manutenção. Use o Architect Classic apenas se você precisar continuar executando versões antigas do Interviewer (por exemplo, a 6.6.0)."
+        },
+        "frescoClassic": {
+          "platform": "Navegador",
+          "note": "O Fresco 3.1.2 executa o esquema 7 nativamente, mas não abre protocolos do esquema 8. Atualize para o Fresco 4.0.0 para usar o novo formato."
+        },
+        "interviewer": {
+          "platform": "Navegador e PWA",
+          "note": "O novo Interviewer abre o esquema 8 nativamente. Abrir um protocolo do esquema 7 faz com que ele seja migrado para o esquema 8 automaticamente — e de forma irreversível."
+        },
+        "architect": {
+          "platform": "Navegador e PWA",
+          "note": "O novo Architect cria protocolos do esquema 8 e também abre e atualiza automaticamente protocolos antigos do esquema 7 criados no <architectClassic>Architect Classic</architectClassic>."
+        },
+        "fresco": {
+          "platform": "Navegador",
+          "note": "O Fresco 4.0.0 executa o esquema 8 nativamente; protocolos do esquema 7 enviados a ele são migrados para o esquema 8 automaticamente — e de forma irreversível."
+        }
+      },
+      "illustration": {
+        "schema": "ESQUEMA",
+        "original": "ORIGINAL"
+      },
+      "caution": {
+        "label": "Atenção",
+        "heading": "A migração de protocolos é irreversível.",
+        "description": "Se você abrir um protocolo do esquema 7 em qualquer aplicativo da nova geração, ele será atualizado automaticamente para o esquema 8. Depois disso, não será possível convertê-lo de volta nem abri-lo nos aplicativos antigos. Isso é especialmente importante se você fizer alterações em um protocolo no Architect, pois ele será atualizado para o esquema 8 quando você o salvar.",
+        "fileNote": "Mantenha uma cópia do arquivo <file>.netcanvas</file> original se você precisar continuar a usá-lo no <interviewerClassic>Interviewer Classic</interviewerClassic>, no <architectClassic>Architect Classic</architectClassic> ou no Fresco 3.x."
+      },
+      "upgrade": {
+        "label": "Vale a pena atualizar?",
+        "heading": "Quando você deve atualizar?",
+        "newStudy": {
+          "label": "Vai começar um estudo novo?",
+          "heading": "Use a nova geração",
+          "description": "Para estudos novos, recomendamos as novas ferramentas: use o <strong>Architect</strong> para desenhar seu protocolo e realize as entrevistas com o <strong>Fresco 4.0.0</strong> ou com o <strong>Interviewer</strong>, de acordo com suas necessidades."
+        },
+        "ongoing": {
+          "label": "Tem um estudo em andamento?",
+          "heading": "Não há pressa!",
+          "description": "O <interviewerClassic>Interviewer Classic</interviewerClassic> e o <architectClassic>Architect Classic</architectClassic> ainda têm suporte e vão continuar recebendo correções de bugs. Atualize quando for melhor para o seu projeto — só tenha em mente que a migração é irreversível."
+        }
+      }
+    },
+    "resources": {
+      "label": "Materiais do projeto",
+      "heading": "Documentação reformulada e um novo site do projeto",
+      "introduction": "Os aplicativos não são a única parte do Network Canvas que mudou. Também redesenhamos o site do projeto e reorganizamos a documentação para facilitar a compreensão da plataforma, a escolha das ferramentas certas e a descoberta do seu próximo passo.",
+      "documentation": {
+        "label": "Documentação do projeto",
+        "heading": "Orientações organizadas em torno do seu fluxo de trabalho de pesquisa",
+        "description": "A documentação agora está estruturada de acordo com a fase em que sua pesquisa está: primeiros passos, desenho de protocolos, coleta de dados e análise de resultados. A nova navegação por fluxo de trabalho e os guias atualizados tornam o próximo passo mais fácil de encontrar.",
+        "link": "Explorar a documentação",
+        "screenshotAlt": "A página inicial redesenhada da documentação do Network Canvas"
+      },
+      "website": {
+        "label": "Site do projeto",
+        "heading": "Um visual totalmente novo para o networkcanvas.com",
+        "description": "O site redesenhado traz uma identidade visual mais expressiva e caminhos mais claros pelo ecossistema do Network Canvas, desde conhecer o que a plataforma pode fazer até escolher as melhores ferramentas para o seu estudo.",
+        "link": "Explorar o novo site",
+        "screenshotAlt": "A página inicial redesenhada do site do Network Canvas"
+      }
+    },
+    "destinations": {
+      "label": "Primeiros passos",
+      "heading": "Comece a explorar a nova geração",
+      "closing": "Se você tiver dúvidas ou encontrar problemas, o <community>fórum da comunidade</community> é o melhor lugar para falar conosco e se conectar com outras pessoas que fazem pesquisa com essas ferramentas. Esperamos que essas novas ferramentas façam uma diferença real na sua pesquisa — nossa equipe é muito grata pelo retorno da comunidade e pelo apoio contínuo que torna este trabalho possível.",
+      "architect": {
+        "title": "Abrir o Architect",
+        "category": "Desenhar protocolos",
+        "description": "Crie, valide e pré-visualize protocolos do esquema 8 diretamente no navegador, com uma biblioteca local de protocolos que fica no seu dispositivo.",
+        "detail": "architect.networkcanvas.com"
+      },
+      "interviewer": {
+        "title": "Abrir o Interviewer",
+        "category": "Coletar presencialmente",
+        "description": "Realize entrevistas seguras, que funcionam offline, em computador e tablet, e depois exporte as sessões concluídas pelo mesmo aplicativo local.",
+        "detail": "interviewer.networkcanvas.com"
+      },
+      "fresco": {
+        "title": "Implantar o Fresco 4.0.0",
+        "category": "Coletar a distância",
+        "description": "Configure a plataforma multiusuário para estudos autoaplicados a distância, gestão centralizada de dados e equipes de pesquisa.",
+        "detail": "guia de implantação"
+      },
+      "documentation": {
+        "title": "Explorar a documentação",
+        "category": "Conhecer o fluxo de trabalho",
+        "description": "Siga orientações focadas em tarefas para escolher ferramentas, desenhar protocolos, coletar dados e entender cada interface.",
+        "detail": "interfaces e funcionalidades mais recentes"
+      }
+    }
+  }
+}

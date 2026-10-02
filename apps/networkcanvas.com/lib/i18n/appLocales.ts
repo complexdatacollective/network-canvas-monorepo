@@ -13,6 +13,11 @@ const directions = {
   'en-GB': 'ltr',
   'es': 'ltr',
   'zh-Hans': 'ltr',
+  'zh-Hant': 'ltr',
+  'de': 'ltr',
+  'nl': 'ltr',
+  'pt-BR': 'ltr',
+  'it': 'ltr',
 } as const satisfies Record<Locale, 'ltr' | 'rtl'>;
 
 export const siteAppLocales = defineAppLocales(
@@ -34,6 +39,17 @@ export const siteAppCatalogs: Readonly<Record<Locale, CatalogMessages>> = {
     commonCatalogs['zh-Hans'] ?? {},
     frescoUiCatalogs['zh-Hans'] ?? {},
   ),
+  'zh-Hant': mergeCatalogs(
+    commonCatalogs['zh-Hant'] ?? {},
+    frescoUiCatalogs['zh-Hant'] ?? {},
+  ),
+  'de': mergeCatalogs(commonCatalogs.de ?? {}, frescoUiCatalogs.de ?? {}),
+  'nl': mergeCatalogs(commonCatalogs.nl ?? {}, frescoUiCatalogs.nl ?? {}),
+  'pt-BR': mergeCatalogs(
+    commonCatalogs['pt-BR'] ?? {},
+    frescoUiCatalogs['pt-BR'] ?? {},
+  ),
+  'it': mergeCatalogs(commonCatalogs.it ?? {}, frescoUiCatalogs.it ?? {}),
 };
 
 export function getLocaleDirection(locale: Locale) {

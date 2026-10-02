@@ -17,9 +17,14 @@ import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { frescoLocales } from '~/i18n/locales';
 import { frescoCatalogs } from '~/src/locales/catalogs';
+import de from '~/src/locales/de.json';
 import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
+import italian from '~/src/locales/it.json';
+import nl from '~/src/locales/nl.json';
+import ptBR from '~/src/locales/pt-BR.json';
 import zhHans from '~/src/locales/zh-Hans.json';
+import zhHant from '~/src/locales/zh-Hant.json';
 
 const root = resolve(import.meta.dirname, '../../..');
 const sourceDirectories = [
@@ -37,6 +42,11 @@ const en = JSON.parse(
 const localesDir = resolve(root, 'src/locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
+const deSources = readTranslationSources(localesDir, 'de');
+const nlSources = readTranslationSources(localesDir, 'nl');
+const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
+const italianSources = readTranslationSources(localesDir, 'it');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Fresco researcher message catalogs', () => {
@@ -57,6 +67,11 @@ describe('Fresco researcher message catalogs', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+      'it',
     ]);
     for (const { locale } of frescoLocales) {
       expect(ecosystemLocales.map((entry) => entry.locale)).toContain(locale);
@@ -70,6 +85,26 @@ describe('Fresco researcher message catalogs', () => {
 
   it('requires complete Simplified Chinese and matching ICU arguments and rich text tags', () => {
     expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
+  });
+
+  it('requires complete Traditional Chinese and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, zhHant, zhHantSources)).toEqual([]);
+  });
+
+  it('requires complete German and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, de, deSources)).toEqual([]);
+  });
+
+  it('requires complete Dutch and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, nl, nlSources)).toEqual([]);
+  });
+
+  it('requires complete Brazilian Portuguese and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, ptBR, ptBRSources)).toEqual([]);
+  });
+
+  it('requires complete Italian and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, italian, italianSources)).toEqual([]);
   });
 
   it('keeps British English sparse with only reviewed differences', () => {

@@ -61,9 +61,104 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/zh-Hans/',
   },
   {
-    name: 'Taiwanese Chinese browser language best-fits Simplified Chinese',
-    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    name: 'Singaporean Chinese browser language',
+    headers: { 'accept-language': 'zh-SG,zh;q=0.9' },
     destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'unscripted Chinese browser language best-fits Simplified Chinese',
+    headers: { 'accept-language': 'zh' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Taiwanese Chinese browser language',
+    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Hong Kong Chinese browser language',
+    headers: { 'accept-language': 'zh-HK,zh;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Macanese Chinese browser language',
+    headers: { 'accept-language': 'zh-MO,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Traditional Chinese browser language',
+    headers: { 'accept-language': 'zh-Hant,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Germany German browser language',
+    headers: { 'accept-language': 'de-DE,de;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'Austrian German browser language',
+    headers: { 'accept-language': 'de-AT,de;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'Swiss German browser language',
+    headers: { 'accept-language': 'de-CH,de;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'bare German browser language',
+    headers: { 'accept-language': 'de' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'Netherlands Dutch browser language',
+    headers: { 'accept-language': 'nl-NL,nl;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/nl/',
+  },
+  {
+    name: 'Belgian Dutch browser language',
+    headers: { 'accept-language': 'nl-BE,nl;q=0.9,fr-BE;q=0.8,en;q=0.7' },
+    destination: 'http://localhost/nl/',
+  },
+  {
+    name: 'bare Dutch browser language',
+    headers: { 'accept-language': 'nl' },
+    destination: 'http://localhost/nl/',
+  },
+  {
+    name: 'Brazilian Portuguese browser language',
+    headers: { 'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'bare Portuguese browser language best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'European Portuguese browser language best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt-PT' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'European Portuguese with a Portuguese fallback best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt-PT,pt;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'Italian browser language',
+    headers: { 'accept-language': 'it-IT,it;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/it/',
+  },
+  {
+    name: 'Swiss Italian browser language',
+    headers: { 'accept-language': 'it-CH,it;q=0.9' },
+    destination: 'http://localhost/it/',
+  },
+  {
+    name: 'bare Italian browser language',
+    headers: { 'accept-language': 'it' },
+    destination: 'http://localhost/it/',
   },
   {
     name: 'US English fallback',
@@ -111,13 +206,28 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, Spanish, and Simplified Chinese static params', () => {
-    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans']);
+  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, Brazilian Portuguese, and Italian static params', () => {
+    expect(locales).toEqual([
+      'en-US',
+      'en-GB',
+      'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+      'it',
+    ]);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
       { locale: 'en-GB' },
       { locale: 'es' },
       { locale: 'zh-Hans' },
+      { locale: 'zh-Hant' },
+      { locale: 'de' },
+      { locale: 'nl' },
+      { locale: 'pt-BR' },
+      { locale: 'it' },
     ]);
   });
 

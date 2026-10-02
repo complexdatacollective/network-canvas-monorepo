@@ -121,7 +121,7 @@ const messages = defineMessages({
   nameHint: {
     id: 'protocolBuilder.codebookEntity.nameHint',
     defaultMessage:
-      '{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be "Person", "Place", or "Organization".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be "Friends" or "Works With".} other {This name identifies the ego definition in the codebook and exported data.}}',
+      '{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be "Person", "Place", or "Organization".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be "Friends" or "Colleagues".} other {This name identifies the ego definition in the codebook and exported data.}}',
     description:
       'Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names: translate them into natural type names in your language. Spaces, accented letters and any script are allowed in a type name.',
   },

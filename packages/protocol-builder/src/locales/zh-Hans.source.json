@@ -226,7 +226,7 @@
   "protocolBuilder.codebookEntity.issuesListLabel": "Codebook issues",
   "protocolBuilder.codebookEntity.issuesTitle": "Some codebook data could not be displayed",
   "protocolBuilder.codebookEntity.manageEgoAttributes": "Manage attributes",
-  "protocolBuilder.codebookEntity.nameHint": "{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be \"Person\", \"Place\", or \"Organization\".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be \"Friends\" or \"Works With\".} other {This name identifies the ego definition in the codebook and exported data.}}",
+  "protocolBuilder.codebookEntity.nameHint": "{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be \"Person\", \"Place\", or \"Organization\".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be \"Friends\" or \"Colleagues\".} other {This name identifies the ego definition in the codebook and exported data.}}",
   "protocolBuilder.codebookEntity.nameInvalid": "{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}",
   "protocolBuilder.codebookEntity.nameLabel": "{entity, select, node {Node type name} other {Edge type name}}",
   "protocolBuilder.codebookEntity.namePlaceholder": "{entity, select, node {Enter a name for this node type...} other {Enter a name for this edge type...}}",
