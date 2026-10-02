@@ -31,6 +31,11 @@ const OPTION_NAMES: Record<string, RegExp> = {
   'en-GB': /^English \(UK\)/,
   'es': /^Español/,
   'zh-Hans': /^简体中文/,
+  'zh-Hant': /^繁體中文/,
+  'de': /^Deutsch/,
+  'nl': /^Nederlands/,
+  'pt-BR': /^Português \(Brasil\)/,
+  'it': /^Italiano/,
   'fr': /^Français/,
 };
 
@@ -62,6 +67,11 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
     /^English \(UK\)$/,
     /^Español$/,
     /^简体中文$/,
+    /^繁體中文$/,
+    /^Deutsch$/,
+    /^Nederlands$/,
+    /^Português \(Brasil\)$/,
+    /^Italiano$/,
     /^Français$/,
   ]);
   await expect(options.first()).toHaveAttribute('aria-selected', 'true');

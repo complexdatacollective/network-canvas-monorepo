@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { supportedLocales } from '~/lib/i18n/locales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
+import de from '~/messages/de.json';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
 import fr from '~/messages/fr.json';
+import italian from '~/messages/it.json';
+import nl from '~/messages/nl.json';
+import ptBR from '~/messages/pt-BR.json';
 import zhHans from '~/messages/zh-Hans.json';
+import zhHant from '~/messages/zh-Hant.json';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -35,6 +40,11 @@ function messageTokens(text: string): string[] {
 const translatedCatalogs = [
   ['Spanish', es],
   ['Simplified Chinese', zhHans],
+  ['Traditional Chinese', zhHant],
+  ['German', de],
+  ['Dutch', nl],
+  ['Brazilian Portuguese', ptBR],
+  ['Italian', italian],
   ['French', fr],
 ] as const;
 

@@ -28,6 +28,11 @@ const LOCALES: readonly SiteNavigationLocale[] = [
   'en-GB',
   'es',
   'zh-Hans',
+  'zh-Hant',
+  'de',
+  'nl',
+  'pt-BR',
+  'it',
   'fr',
 ];
 const THEMES = ['light', 'dark', 'auto'] as const;

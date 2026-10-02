@@ -64,7 +64,7 @@ describe('device administration language', () => {
     ['en-GB', ['es'], 'en-GB'],
     ['es-AR', ['en-US'], 'es'],
     ['bad_tag', ['es-ES'], 'es'],
-    ['de', ['es'], 'es'],
+    ['ja', ['es'], 'es'],
     [null, ['ja-JP'], 'en'],
     [null, [], 'en'],
   ] as const)(

@@ -80,9 +80,11 @@ and unnamed-attribute labels reactive without duplicating their translations.
 Mount `AppI18nProvider` with the active locale, supported registry, and merged
 messages. Its `onLocaleChange` callback delegates persistence to the host;
 `null` means automatic negotiation. `resolveAppLocale` handles canonicalization,
-best-fit browser matching, and the explicit English fallback. HTTP hosts can
-obtain ordered requested tags using `parseAcceptLanguage` from the root
-`@codaco/protocol-validation` export.
+best-fit browser matching, and the explicit English fallback. Chinese requests
+are matched by script, so `zh-TW`, `zh-HK` and `zh-MO` select `zh-Hant` and
+`zh`, `zh-CN` and `zh-SG` select `zh-Hans`, even when a generic `zh` follows a
+regional tag in the browser list. HTTP hosts can obtain ordered requested tags
+using `parseAcceptLanguage` from the root `@codaco/protocol-validation` export.
 
 The outer provider manages document `lang` and `dir`. An embedded participant
 interview or preview has an independent provider with `manageDocument={false}`

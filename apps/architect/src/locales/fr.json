@@ -763,7 +763,7 @@
   "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": "Nommez ce type pour le livre de codes et les données exportées.",
   "architect.typeEditor.typeEditor.nodeAppearance": "Apparence des nœuds",
   "architect.typeEditor.typeEditor.shape": "Forme",
-  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Ce nom identifie le type de nœud dans le livre de codes et dans vos exportations de données. Par exemple : « Personne », « Lieu » ou « Organisation ».} other {Ce nom identifie le type de lien dans le livre de codes et dans vos exportations de données. Par exemple : « Proches » ou « TravailleAvec ».}}",
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {Ce nom identifie le type de nœud dans le livre de codes et dans vos exportations de données. Par exemple : « Personne », « Lieu » ou « Organisation ».} other {Ce nom identifie le type de lien dans le livre de codes et dans vos exportations de données. Par exemple : « Proches » ou « Collaborateurs ».}}",
   "architect.typeEditor.typeEditor.typeColor": "Couleur du type",
   "architect.typeEditor.typeEditor.typeIdentity": "Identité du type",
   "architect.typeEditor.typeEditor.typeName": "{entity, select, node {Nom du type de nœud} other {Nom du type de lien}}",

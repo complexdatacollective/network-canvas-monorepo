@@ -135,7 +135,7 @@ describe('CodebookEntityEditor', () => {
       subject: { entity: 'edge', type: 'friends' } as const,
       document: { name: 'Friends', color: 'edge-color-seq-1', variables: {} },
       nameLabel: 'Edge type name',
-      example: '"Friends" or "Works With"',
+      example: '"Friends" or "Colleagues"',
       placeholder: 'Enter a name for this edge type...',
       colorLabel: 'Edge color',
       colorHint: 'Choose a color for this edge type.',

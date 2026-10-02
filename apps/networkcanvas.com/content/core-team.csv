@@ -1,9 +1,9 @@
-id,name,institution_en,institution_es,institution_zh-Hans,institution_fr,photo
-kate-banner,Kate Banner,Northwestern University,Universidad Northwestern,西北大学,Université Northwestern,/images/team/kate-banner.png
-michelle-birkett,Michelle Birkett,Northwestern University,Universidad Northwestern,西北大学,Université Northwestern,/images/team/michelle-birkett.png
-caden-buckhalt,Caden Buckhalt,Northwestern University,Universidad Northwestern,西北大学,Université Northwestern,/images/team/caden-buckhalt.jpg
-noshir-contractor,Noshir Contractor,Northwestern University,Universidad Northwestern,西北大学,Université Northwestern,/images/team/noshir-contractor.jpg
-bernie-hogan,Bernie Hogan,University of Oxford,Universidad de Oxford,牛津大学,Université d’Oxford,/images/team/bernie-hogan.png
-patrick-janulis,Patrick Janulis,Northwestern University,Universidad Northwestern,西北大学,Université Northwestern,/images/team/patrick-janulis.jpg
-joshua-melville,Joshua Melville,Northwestern University,Universidad Northwestern,西北大学,Université Northwestern,/images/team/joshua-melville.jpg
-gregory-phillips-ii,Gregory Phillips II,Northwestern University,Universidad Northwestern,西北大学,Université Northwestern,/images/team/gregory-phillips.jpg
+id,name,institution_en,institution_es,institution_zh-Hans,institution_zh-Hant,institution_de,institution_nl,institution_pt-BR,institution_it,institution_fr,photo
+kate-banner,Kate Banner,Northwestern University,Universidad Northwestern,西北大学,西北大學,Northwestern University,Northwestern University,Universidade Northwestern,Northwestern University,Université Northwestern,/images/team/kate-banner.png
+michelle-birkett,Michelle Birkett,Northwestern University,Universidad Northwestern,西北大学,西北大學,Northwestern University,Northwestern University,Universidade Northwestern,Northwestern University,Université Northwestern,/images/team/michelle-birkett.png
+caden-buckhalt,Caden Buckhalt,Northwestern University,Universidad Northwestern,西北大学,西北大學,Northwestern University,Northwestern University,Universidade Northwestern,Northwestern University,Université Northwestern,/images/team/caden-buckhalt.jpg
+noshir-contractor,Noshir Contractor,Northwestern University,Universidad Northwestern,西北大学,西北大學,Northwestern University,Northwestern University,Universidade Northwestern,Northwestern University,Université Northwestern,/images/team/noshir-contractor.jpg
+bernie-hogan,Bernie Hogan,University of Oxford,Universidad de Oxford,牛津大学,牛津大學,University of Oxford,Universiteit van Oxford,Universidade de Oxford,Università di Oxford,Université d’Oxford,/images/team/bernie-hogan.png
+patrick-janulis,Patrick Janulis,Northwestern University,Universidad Northwestern,西北大学,西北大學,Northwestern University,Northwestern University,Universidade Northwestern,Northwestern University,Université Northwestern,/images/team/patrick-janulis.jpg
+joshua-melville,Joshua Melville,Northwestern University,Universidad Northwestern,西北大学,西北大學,Northwestern University,Northwestern University,Universidade Northwestern,Northwestern University,Université Northwestern,/images/team/joshua-melville.jpg
+gregory-phillips-ii,Gregory Phillips II,Northwestern University,Universidad Northwestern,西北大学,西北大學,Northwestern University,Northwestern University,Universidade Northwestern,Northwestern University,Université Northwestern,/images/team/gregory-phillips.jpg
