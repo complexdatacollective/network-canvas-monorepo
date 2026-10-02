@@ -8,6 +8,7 @@ import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales'
 import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
+import fr from './fr.json';
 import it from './it.json';
 import nl from './nl.json';
 import ptBR from './pt-BR.json';
@@ -81,5 +82,13 @@ export const architectCatalogs: Readonly<
     protocolValidationCatalogs.it ?? {},
     protocolUtilitiesCatalogs.it ?? {},
     it,
+  ),
+  'fr': mergeCatalogs(
+    commonCatalogs.fr ?? {},
+    frescoUiCatalogs.fr ?? {},
+    protocolBuilderCatalogs.fr ?? {},
+    protocolValidationCatalogs.fr ?? {},
+    protocolUtilitiesCatalogs.fr ?? {},
+    fr,
   ),
 };

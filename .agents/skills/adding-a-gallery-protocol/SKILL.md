@@ -58,7 +58,7 @@ missing, stale, or hand-edited. Never type into a derived column.
    asserts it equals the checked-in file, so a stale CSV fails here rather than
    in the Netlify build. Then `pnpm --filter networkcanvas.com dev` and open
    `/en-US/protocol-gallery/` and the new detail page (`en-US`, `en-GB`, `es`,
-   `zh-Hans`, `zh-Hant`, `de`, `nl`, `pt-BR` and `it` are the generated locales; there is no bare `en` route, and locally
+   `zh-Hans`, `zh-Hant`, `de`, `nl`, `pt-BR`, `it` and `fr` are the generated locales; there is no bare `en` route, and locally
    there is no edge function to negotiate one).
 
 5. **Commit the CSV together with the assets.** A row whose asset is missing
@@ -128,7 +128,7 @@ csv().fromString(fs.readFileSync('content/protocol-gallery.csv','utf8')).then(ro
 - **Translations**, for the row itself: authored cells are rendered as written
   and are not translated. The one exception is stage-type names, which come from
   `ProtocolGallery.stageTypes.<StageType>` in `messages/en.json`,
-  `messages/es.json`, `messages/zh-Hans.json`, `messages/zh-Hant.json`, `messages/de.json`, `messages/nl.json`, `messages/pt-BR.json` and `messages/it.json`. Every
+  `messages/es.json`, `messages/zh-Hans.json`, `messages/zh-Hant.json`, `messages/de.json`, `messages/nl.json`, `messages/pt-BR.json`, `messages/it.json` and `messages/fr.json`. Every
   stage type the current schema defines has an entry today; if a protocol
   introduces one that does not, add it to every catalog — the message-parity test requires every
   translated catalog's keys to match English.

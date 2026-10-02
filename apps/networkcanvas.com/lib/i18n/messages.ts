@@ -2,6 +2,7 @@ import germanMessages from '../../messages/de.json';
 import britishEnglishOverrides from '../../messages/en-GB.json';
 import englishMessages from '../../messages/en.json';
 import spanishMessages from '../../messages/es.json';
+import frenchMessages from '../../messages/fr.json';
 import italianMessages from '../../messages/it.json';
 import dutchMessages from '../../messages/nl.json';
 import brazilianPortugueseMessages from '../../messages/pt-BR.json';
@@ -28,6 +29,7 @@ const messageSources = {
   'nl': { base: dutchMessages },
   'pt-BR': { base: brazilianPortugueseMessages },
   'it': { base: italianMessages },
+  'fr': { base: frenchMessages },
 } satisfies Record<Locale, MessageSource>;
 
 function isMessageCatalog(

@@ -43,6 +43,7 @@ export async function generateMetadata({
         'nl': 'https://networkcanvas.com/nl/publications',
         'pt-BR': 'https://networkcanvas.com/pt-BR/publications',
         'it': 'https://networkcanvas.com/it/publications',
+        'fr': 'https://networkcanvas.com/fr/publications',
       },
     },
   };

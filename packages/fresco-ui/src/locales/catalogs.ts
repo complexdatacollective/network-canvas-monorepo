@@ -3,6 +3,7 @@ import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import de from './de.json';
 import enGbOverrides from './en-GB.json';
 import es from './es.json';
+import fr from './fr.json';
 import it from './it.json';
 import nl from './nl.json';
 import ptBR from './pt-BR.json';
@@ -31,4 +32,5 @@ export const frescoUiCatalogs: Readonly<Record<string, CatalogMessages>> = {
   nl,
   'pt-BR': ptBR,
   it,
+  fr,
 };

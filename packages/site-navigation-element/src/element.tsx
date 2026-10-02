@@ -33,6 +33,7 @@ const LOCALES: readonly SiteNavigationLocale[] = [
   'nl',
   'pt-BR',
   'it',
+  'fr',
 ];
 const THEMES = ['light', 'dark', 'auto'] as const;
 type Theme = (typeof THEMES)[number];

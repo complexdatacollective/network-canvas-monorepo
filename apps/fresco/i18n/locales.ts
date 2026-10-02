@@ -12,6 +12,7 @@ export const frescoLocales = defineAppLocales([
   { locale: 'nl', label: 'Nederlands', direction: 'ltr' },
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
   { locale: 'it', label: 'Italiano', direction: 'ltr' },
+  { locale: 'fr', label: 'Français', direction: 'ltr' },
 ] as const);
 export type FrescoLocale = (typeof frescoLocales)[number]['locale'];
 export const localeMirrorCookie = 'fresco.locale';
