@@ -86,6 +86,17 @@ describe('optionsValidationFor', () => {
     ).resolves.toBe('Every option needs both a label and a value.');
   });
 
+  it('treats a value of nothing but spaces as missing', async () => {
+    // The value is saved trimmed, so the codebook write would refuse it as
+    // incomplete; the array has to say so before the save is attempted.
+    await expect(
+      issue([
+        { label: 'Yes', value: '   ' },
+        { label: 'No', value: 'no' },
+      ]),
+    ).resolves.toBe('Every option needs both a label and a value.');
+  });
+
   it('refuses two options that export as the same answer', async () => {
     await expect(
       issue([
@@ -94,6 +105,23 @@ describe('optionsValidationFor', () => {
       ]),
     ).resolves.toBe('Every option needs a unique value.');
   });
+
+  it.each([
+    ['a number and the same number as text', 1, '1'],
+    ['a value and the same value with a trailing space', 'yes', 'yes '],
+  ])(
+    'refuses two options whose values are %s',
+    async (_case, first, second) => {
+      // Each pair is stored, and exported, as one value: the codebook write
+      // compares them that way, so the array has to as well.
+      await expect(
+        issue([
+          { label: 'Yes', value: first },
+          { label: 'Affirmative', value: second },
+        ]),
+      ).resolves.toBe('Every option needs a unique value.');
+    },
+  );
 
   it('refuses two options that read as the same choice', async () => {
     await expect(

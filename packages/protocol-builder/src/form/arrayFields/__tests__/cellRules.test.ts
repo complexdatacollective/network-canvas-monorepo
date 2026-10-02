@@ -4,6 +4,7 @@ import { readMessage } from '../../../testing/i18n.ts';
 import {
   invalidOptionValue,
   isDuplicatedInColumn,
+  isSameOptionValue,
   optionExportColumnIssue,
   requiredCell,
 } from '../cellRules.ts';
@@ -79,6 +80,38 @@ describe('isDuplicatedInColumn', () => {
         [{ label: PRECOMPOSED }, { label: 'Alex' }],
         'label',
         PRECOMPOSED,
+      ),
+    ).toBe(false);
+  });
+
+  it('reads option values as they will be stored when given isSameOptionValue', () => {
+    // `1` and `"1"` export to one column, and `"yes "` is stored as `"yes"`,
+    // so the codebook write refuses each pair; the row has to say so first.
+    expect(
+      isDuplicatedInColumn([{ value: 1 }, { value: '1' }], 'value', 1),
+    ).toBe(false);
+    expect(
+      isDuplicatedInColumn(
+        [{ value: 1 }, { value: '1' }],
+        'value',
+        1,
+        isSameOptionValue,
+      ),
+    ).toBe(true);
+    expect(
+      isDuplicatedInColumn(
+        [{ value: 'yes' }, { value: 'yes ' }],
+        'value',
+        'yes',
+        isSameOptionValue,
+      ),
+    ).toBe(true);
+    expect(
+      isDuplicatedInColumn(
+        [{ value: 'yes' }, { value: 'no' }],
+        'value',
+        'yes',
+        isSameOptionValue,
       ),
     ).toBe(false);
   });

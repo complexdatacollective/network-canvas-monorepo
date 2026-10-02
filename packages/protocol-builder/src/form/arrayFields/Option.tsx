@@ -31,6 +31,7 @@ import {
   cellIssues,
   invalidOptionValue,
   isDuplicatedInColumn,
+  isSameOptionValue,
   optionExportColumnIssue,
   optionLabelIssues,
   requiredCell,
@@ -140,7 +141,7 @@ const valueIssues = (
 ) =>
   cellIssues(
     requiredCell(value),
-    isDuplicatedInColumn(rows, 'value', value)
+    isDuplicatedInColumn(rows, 'value', value, isSameOptionValue)
       ? createMessageError(messages.duplicateValueRow)
       : undefined,
     invalidOptionValue(value),

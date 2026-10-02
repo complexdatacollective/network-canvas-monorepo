@@ -17,10 +17,29 @@ import { exportColumnRefusals } from '../../fields/variableNameRules.ts';
  * spelling of the same text are the same answer, so they are the same value
  * here too. See `@codaco/shared-consts`' `canonical-text`.
  */
-export const isSameAnswer = (left: unknown, right: unknown) =>
+const isSameAnswer = (left: unknown, right: unknown) =>
   typeof left === 'string' && typeof right === 'string'
     ? normalizeForComparison(left) === normalizeForComparison(right)
     : isEqual(left, right);
+
+const optionValueKey = (value: unknown) =>
+  typeof value === 'string' || typeof value === 'number'
+    ? normalizeForComparison(normalizeCodebookName(String(value)))
+    : undefined;
+
+/**
+ * Whether two option values are one value, compared the way the codebook write
+ * compares them: as they will be stored (`normalizeCodebookName`), as text, and
+ * as `isSameAnswer` compares text. The values `1` and `"1"` export to the same
+ * column, and `"a "` is stored as `"a"`, so each pair is one value.
+ */
+export const isSameOptionValue = (left: unknown, right: unknown) => {
+  const leftKey = optionValueKey(left);
+  const rightKey = optionValueKey(right);
+  return leftKey === undefined || rightKey === undefined
+    ? isEqual(left, right)
+    : leftKey === rightKey;
+};
 
 /**
  * A cell's own complaints.
@@ -67,11 +86,15 @@ export const requiredCell = (value: unknown): string | undefined =>
  * Emptiness is `requiredCell`'s business, and it is the same emptiness: two
  * rows that have both been left blank are not a clash to report. `0` and
  * `false` ARE answers, and two rows holding either genuinely do clash.
+ *
+ * `isSame` is what makes two cells one answer; option values pass
+ * `isSameOptionValue`.
  */
 export const isDuplicatedInColumn = (
   rows: readonly unknown[],
   column: string,
   value: unknown,
+  isSame: (left: unknown, right: unknown) => boolean = isSameAnswer,
 ): boolean => {
   if (isUnanswered(value)) return false;
 
@@ -79,7 +102,7 @@ export const isDuplicatedInColumn = (
     (row) =>
       typeof row === 'object' &&
       row !== null &&
-      isSameAnswer(Reflect.get(row, column), value),
+      isSame(Reflect.get(row, column), value),
   ).length;
 
   return matches >= 2;

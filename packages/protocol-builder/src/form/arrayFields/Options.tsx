@@ -12,7 +12,7 @@ import { hasDuplicateOptionLabels } from '@codaco/shared-consts';
 import { minimumOptionsMessage } from '../../codebook/editing.ts';
 import {
   invalidOptionValue,
-  isSameAnswer,
+  isSameOptionValue,
   optionExportColumnIssue,
   type OptionExportColumns,
 } from './cellRules.ts';
@@ -82,12 +82,12 @@ const completeOptions = (value: unknown) =>
     : undefined;
 
 /**
- * Compared exactly as the rows compare themselves (`isSameAnswer`), so the
- * array and its rows never disagree about which entries clash.
+ * Compared exactly as the rows compare themselves (`isSameOptionValue`), so
+ * the array and its rows never disagree about which entries clash.
  */
 const hasDuplicates = (values: unknown[]) =>
   values.some((value, index) =>
-    values.slice(index + 1).some((other) => isSameAnswer(value, other)),
+    values.slice(index + 1).some((other) => isSameOptionValue(value, other)),
   );
 
 const readOptions = (value: unknown): Record<string, unknown>[] =>
