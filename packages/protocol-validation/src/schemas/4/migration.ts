@@ -4,6 +4,7 @@ import {
   createMigration,
   type ProtocolDocument,
 } from '../../migration/index.ts';
+import type { SchemaVersion } from '../index.ts';
 
 type OptionEntry = { value: unknown; [key: string]: unknown };
 type VariableRecord = Record<
@@ -67,37 +68,57 @@ const getNextSafeValue = (
   return getNextSafeValue(value, existing, inc + 1);
 };
 
-// Makes a name `CodebookNameSchema` accepts while keeping every letter, digit,
-// space and symbol. Tabs and line breaks separate words, so they become
-// spaces; other control characters and the noncharacters U+FFFE and U+FFFF are
-// dropped. A name left empty takes `fallback`, the record id.
+type NameRule = (value: string) => string;
+
+// What `CodebookNameSchema` accepts: every letter, digit, space and symbol is
+// kept. Tabs and line breaks separate words, so they become spaces; other
+// control characters and the noncharacters U+FFFE and U+FFFF are dropped.
+const tidyName: NameRule = (value) =>
+  normalizeCodebookName(
+    value
+      .toWellFormed()
+      .replace(/[\t\n\v\f\r]+/g, ' ')
+      .replace(/[\p{Cc}\uFFFE\uFFFF]/gu, ''),
+  );
+
+// The rule schemas 4 to 8 hold names to: whitespace becomes an underscore and
+// anything outside `[a-zA-Z0-9._:-]` is removed.
+const restrictName: NameRule = (value) =>
+  value.replace(/[\s]+/g, '_').replace(/[^a-zA-Z0-9._:-]+/g, '');
+
+// Schema 9 is the first to accept a name in any script, so a migration that
+// stops short of it applies the older rule.
+const nameRuleFor = (targetVersion: SchemaVersion | undefined): NameRule =>
+  targetVersion === undefined || targetVersion >= 9 ? tidyName : restrictName;
+
+// A name left empty takes `fallback`, the record id.
 const getSafeValue = (
   value: unknown,
+  rule: NameRule,
   existing: string[] = [],
   fallback?: string,
 ): unknown => {
   if (typeof value !== 'string') {
     return value;
   }
-  const safeValue = normalizeCodebookName(
-    value
-      .toWellFormed()
-      .replace(/[\t\n\v\f\r]+/g, ' ')
-      .replace(/[\p{Cc}\uFFFE\uFFFF]/gu, ''),
-  );
+  const safeValue = rule(value);
   return getNextSafeValue(
     safeValue === '' && fallback ? fallback : safeValue,
     existing,
   );
 };
 
-const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] => {
+const migrateOptionValues = (
+  rule: NameRule,
+  options: OptionEntry[] = [],
+): OptionEntry[] => {
   const result: OptionEntry[] = [];
   for (const { value, ...rest } of options) {
     result.push({
       ...rest,
       value: getSafeValue(
         value,
+        rule,
         result.map((o) => String(o.value)),
       ),
     });
@@ -106,14 +127,15 @@ const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] => {
 };
 
 const migrateVariable = (
+  rule: NameRule,
   variable: VariableRecord[string],
   variableId: string,
   takenNames: string[] = [],
 ): VariableRecord[string] =>
   setProps(
     {
-      options: migrateOptionValues(variable.options),
-      name: getSafeValue(variable.name, takenNames, variableId),
+      options: migrateOptionValues(rule, variable.options),
+      name: getSafeValue(variable.name, rule, takenNames, variableId),
     },
     variable as unknown as Record<string, unknown>,
   ) as unknown as VariableRecord[string];
@@ -134,24 +156,32 @@ const migrateEntries = <T extends { name: string }>(
   return Object.fromEntries(migrated);
 };
 
-const migrateVariables = (variables: VariableRecord = {}): VariableRecord =>
-  migrateEntries(variables, migrateVariable);
+const migrateVariables = (
+  rule: NameRule,
+  variables: VariableRecord = {},
+): VariableRecord =>
+  migrateEntries(variables, (variable, variableId, takenNames) =>
+    migrateVariable(rule, variable, variableId, takenNames),
+  );
 
 const migrateType = (
+  rule: NameRule,
   type: TypeEntry,
   typeId?: string,
   takenNames: string[] = [],
 ): TypeEntry =>
   setProps(
     {
-      name: getSafeValue(type.name, takenNames, typeId),
-      variables: migrateVariables(type.variables),
+      name: getSafeValue(type.name, rule, takenNames, typeId),
+      variables: migrateVariables(rule, type.variables),
     },
     type as unknown as Record<string, unknown>,
   ) as unknown as TypeEntry;
 
-const migrateTypes = (types: TypesRecord = {}): TypesRecord =>
-  migrateEntries(types, migrateType);
+const migrateTypes = (rule: NameRule, types: TypesRecord = {}): TypesRecord =>
+  migrateEntries(types, (type, typeId, takenNames) =>
+    migrateType(rule, type, typeId, takenNames),
+  );
 
 // Filter and skip logic rules compare against option values, so a value this
 // migration changes is changed in the rules that name it too. A rule is scoped
@@ -279,7 +309,7 @@ const migrateStages = (
       : migrated;
   });
 
-const notes = `- Tidy **attribute names** and **ordinal/categorical values**: spaces at the start or end are removed, tabs and line breaks become spaces, and other invisible control characters are removed. Letters from any language, numbers, spaces and punctuation are kept. Attributes and values that already meet these requirements **will not be modified**. Filter and skip logic rules that use a changed value are updated to match.
+const notes = `- Tidy **attribute names** and **ordinal/categorical values**: spaces at the start or end are removed, tabs and line breaks become spaces, and other invisible control characters are removed. Letters from any language, numbers, spaces and punctuation are kept. Attributes and values that already meet these requirements **will not be modified**. Filter and skip logic rules that use a changed value are updated to match. A protocol migrated only as far as schema 8 or earlier is held to the older rule instead: spaces become underscores, and anything other than the letters a–z and A–Z, digits, and the symbols \`.\`, \`_\`, \`-\`, \`:\` is removed.
 - Add a numerical suffix (\`attribute2\`, \`attribute3\`, etc.) to any attributes or categorical/ordinal values that clash as a result of these changes.
 - Rename node and edge types to ensure they are unique, and tidy them in the same way as attribute names. Names that clash will get a numerical suffix, as above.
 - **NOTE:** If you are using external network data, its column headings must match your attribute names. If this migration changes an attribute name, update the matching column heading yourself.
@@ -290,16 +320,17 @@ const migrationV3toV4 = createMigration({
   to: 4,
   dependencies: {},
   notes,
-  migrate: (doc) => {
+  migrate: (doc, _dependencies, targetVersion) => {
+    const rule = nameRuleFor(targetVersion);
     const codebook = doc.codebook as Record<string, unknown>;
     const stages = doc.stages as Stage[];
     const nodeTypes = codebook.node as TypesRecord | undefined;
     const edgeTypes = codebook.edge as TypesRecord | undefined;
     const egoType = codebook.ego as TypeEntry | undefined;
 
-    const migratedNodeTypes = migrateTypes(nodeTypes);
-    const migratedEdgeTypes = migrateTypes(edgeTypes);
-    const migratedEgoType = egoType ? migrateType(egoType) : undefined;
+    const migratedNodeTypes = migrateTypes(rule, nodeTypes);
+    const migratedEdgeTypes = migrateTypes(rule, edgeTypes);
+    const migratedEgoType = egoType ? migrateType(rule, egoType) : undefined;
 
     const newCodebook = setProps(
       {

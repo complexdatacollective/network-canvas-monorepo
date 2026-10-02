@@ -39,6 +39,9 @@ Schema 9:
   breaks into spaces, removes other control characters, trims the result, and
   falls back to the record's ID when nothing is left. Filter, skip logic and
   panel rules that refer to an option value it changed are updated to match.
+  A migration to schema 7 or 8 still applies the old rule, which those schemas
+  enforce: each migration step now receives the target version as a third
+  argument to `migrate`.
 
 Participant data files (rosters):
 

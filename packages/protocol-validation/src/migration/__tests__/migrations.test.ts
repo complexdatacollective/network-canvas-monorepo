@@ -354,6 +354,51 @@ describe('Protocol Migrations', () => {
       expect(person?.variables?.var2?.name).toBe('名前');
     });
 
+    it('holds a v3 protocol migrated to schema 8 to the older name rule', () => {
+      const v3Protocol = {
+        schemaVersion: 3,
+        codebook: {
+          node: {
+            person: {
+              name: 'My Type',
+              color: 'node-color-seq-1',
+              variables: {
+                var1: { name: 'First name', type: 'text' },
+                var2: { name: '名前', type: 'text' },
+                var3: {
+                  name: 'closeness',
+                  type: 'categorical',
+                  options: [
+                    { label: 'Close friend', value: 'close friend' },
+                    { label: 'Colleague', value: 'colleague' },
+                  ],
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      };
+
+      const migrated = migrateProtocol(v3Protocol, 8, {
+        name: 'Test Protocol',
+      });
+      expect(migrated.schemaVersion).toBe(8);
+      const person = migrated.codebook.node?.person;
+      expect(person?.name).toBe('My_Type');
+      expect(person?.variables?.var1?.name).toBe('First_name');
+      expect(person?.variables?.var2?.name).toBe('var2');
+      const closeness = person?.variables?.var3;
+      expect(
+        closeness && 'options' in closeness ? closeness.options : undefined,
+      ).toEqual([
+        { label: 'Close friend', value: 'close_friend' },
+        { label: 'Colleague', value: 'colleague' },
+      ]);
+    });
+
     it('migrates a v5 protocol with old NameGenerator types to the current version', () => {
       const v5Protocol = {
         schemaVersion: 5,

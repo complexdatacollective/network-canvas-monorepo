@@ -82,7 +82,16 @@ export type ProtocolMigration<
   to: To;
   notes?: string;
   dependencies: Deps;
-  migrate: (doc: ProtocolDocument<From>, deps: Deps) => ProtocolDocument<To>;
+  /**
+   * `targetVersion` is the version the whole chain is migrating to. A step
+   * whose output depends on it reads it; it is absent when a step is run on
+   * its own.
+   */
+  migrate: (
+    doc: ProtocolDocument<From>,
+    deps: Deps,
+    targetVersion?: SchemaVersion,
+  ) => ProtocolDocument<To>;
 };
 
 /**
@@ -99,7 +108,11 @@ export function createMigration<
   to: To;
   notes?: string;
   dependencies: Deps;
-  migrate: (doc: ProtocolDocument<From>, deps: Deps) => ProtocolDocument<To>;
+  migrate: (
+    doc: ProtocolDocument<From>,
+    deps: Deps,
+    targetVersion?: SchemaVersion,
+  ) => ProtocolDocument<To>;
 }): ProtocolMigration<From, To, Deps> {
   return config;
 }
@@ -166,9 +179,10 @@ export class MigrationChain {
     document: ProtocolDocument<From>,
     migration: ProtocolMigration<From, To, Record<string, unknown>>,
     dependencies: Record<string, unknown>,
+    targetVersion: SchemaVersion,
   ): ProtocolDocument<To> {
     try {
-      const result = migration.migrate(document, dependencies);
+      const result = migration.migrate(document, dependencies, targetVersion);
       return result;
     } catch (cause) {
       // Kept on `cause`: this wrapper is indistinguishable from a protocol
@@ -213,7 +227,12 @@ export class MigrationChain {
         throw new MigrationNotPossibleError(currentVersion, targetVersion);
       }
 
-      current = this.executeStep(current, migration, dependencies);
+      current = this.executeStep(
+        current,
+        migration,
+        dependencies,
+        targetVersion,
+      );
       currentVersion = migration.to;
     }
 

@@ -34,7 +34,7 @@ describe('Migration V3 to V4', () => {
     return current;
   }
 
-  const migrateVariableName = (name: string) => {
+  const migrateVariableName = (name: string, targetVersion?: 8 | 9) => {
     const protocol = makeProtocol({
       codebook: {
         node: {
@@ -50,7 +50,7 @@ describe('Migration V3 to V4', () => {
       },
     });
 
-    const migrated = migrationV3toV4.migrate(protocol, {});
+    const migrated = migrationV3toV4.migrate(protocol, {}, targetVersion);
     return getNestedValue(
       migrated.codebook,
       'node',
@@ -85,6 +85,22 @@ describe('Migration V3 to V4', () => {
       ['bad\uD800surrogate', 'bad\uFFFDsurrogate'],
     ])('tidies %j to %j', (name, expected) => {
       expect(migrateVariableName(name)).toBe(expected);
+    });
+
+    it.each([
+      ['first name', 'first_name'],
+      ['var!@#$name', 'varname'],
+      ['namé', 'nam'],
+      ['名前', 'v1'],
+    ])(
+      'restricts %j to %j when migrating only as far as schema 8',
+      (name, expected) => {
+        expect(migrateVariableName(name, 8)).toBe(expected);
+      },
+    );
+
+    it('keeps names whole when migrating to schema 9', () => {
+      expect(migrateVariableName('first name', 9)).toBe('first name');
     });
 
     it('names an attribute after its id when nothing of its name is left', () => {
