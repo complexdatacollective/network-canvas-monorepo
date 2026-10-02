@@ -63,7 +63,11 @@ const readCsvNetwork = async (assetId: string): Promise<Network> => {
 
   let nodes: Network['nodes'];
   try {
-    const rows = await csv({ checkColumn: true }).fromString(data);
+    // `flatKeys`: a column header is a name, and a name may contain `.` or
+    // `[`, which csvtojson would otherwise read as a path into a nested object.
+    const rows = await csv({ checkColumn: true, flatKeys: true }).fromString(
+      data,
+    );
     nodes = rows.map((attributes) => ({ attributes })) as Network['nodes'];
   } catch (e: unknown) {
     const error = e as CodedError;
@@ -131,7 +135,7 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
     let nodes: Network['nodes'];
     try {
       const rows = await csvModule
-        .default({ checkColumn: true })
+        .default({ checkColumn: true, flatKeys: true })
         .fromString(text);
       duplicateCount = countDuplicateRows(rows);
       nodes = rows.map((attributes) => ({ attributes })) as Network['nodes'];

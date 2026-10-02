@@ -42,7 +42,7 @@ const messages = defineMessages({
     defaultMessage:
       '{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be "Person", "Place", or "Organization".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be "Friends" or "Works With".}}',
     description:
-      'Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data.',
+      'Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. A type name can be any text: spaces and any script are allowed. Translate the example names naturally, as a researcher working in the target language would name a kind of person, place, organization or relationship, even if that makes them several words long.',
   },
   enterANameForThisType: {
     id: 'architect.typeEditor.typeEditor.enterANameForThisType',
@@ -106,19 +106,6 @@ const messages = defineMessages({
     description: 'The hint text in components / TypeEditor / TypeEditor.',
   },
 });
-const finalMessages = defineMessages({
-  nodeName: {
-    id: 'architect.final.components.TypeEditor.TypeEditor.nodeName',
-    defaultMessage: 'node type name',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-  edgeName: {
-    id: 'architect.final.components.TypeEditor.TypeEditor.edgeName',
-    defaultMessage: 'edge type name',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-});
-
 const DEFAULT_NODE_ICON = 'add-a-person';
 const DEFAULT_NODE_SHAPE: NodeShape = 'circle';
 
@@ -202,14 +189,7 @@ const TypeEditor = ({
           initialValue={initialValues.name}
           validation={{
             required: true,
-            // Names the subject, so the message reads "Not a valid node type
-            // name" rather than the mapper's default "variable name" — this
-            // field is not a variable. Whole strings, one per branch, rather
-            // than an interpolated `${entity} type name`.
-            allowedNMToken:
-              entity === 'node'
-                ? intl.formatMessage(finalMessages.nodeName)
-                : intl.formatMessage(finalMessages.edgeName),
+            codebookName: true,
             uniqueByList: existingTypes,
           }}
           placeholder={intl.formatMessage(messages.enterANameForThisType, {

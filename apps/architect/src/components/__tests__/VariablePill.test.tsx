@@ -19,6 +19,20 @@ const codebook = {
       variables: {
         'node-subject': { name: 'subject_var', type: 'text' },
         'node-taken': { name: 'taken_var', type: 'text' },
+        'node-colour': {
+          name: 'colour',
+          type: 'categorical',
+          options: [{ label: 'Red', value: 'red' }],
+        },
+        'node-pos': { name: 'pos', type: 'layout' },
+        'node-warm-dark': { name: 'warm_dark', type: 'text' },
+        'node-spot-x': { name: 'spot_x', type: 'text' },
+        'node-shade': {
+          name: 'shade',
+          type: 'categorical',
+          options: [{ label: 'Dark', value: 'dark' }],
+        },
+        'node-canvas': { name: 'canvas', type: 'layout' },
       },
     },
   },
@@ -38,6 +52,20 @@ const variableFixtures = {
     entity: 'node' as const,
     entityType: 'person',
     type: 'text',
+  },
+  'node-shade': {
+    uuid: 'node-shade',
+    name: 'shade',
+    entity: 'node' as const,
+    entityType: 'person',
+    type: 'categorical',
+  },
+  'node-canvas': {
+    uuid: 'node-canvas',
+    name: 'canvas',
+    entity: 'node' as const,
+    entityType: 'person',
+    type: 'layout',
   },
 };
 
@@ -71,11 +99,13 @@ vi.mock('~/selectors/codebook', async (importOriginal) => {
 });
 
 const { ConnectedVariablePill, VariablePill } = await import('../VariablePill');
+const { updateVariableByUUID } =
+  await import('~/ducks/modules/protocol/codebook');
 
-const startEditing = async (uuid: string) => {
+const startEditing = async (uuid: keyof typeof variableFixtures) => {
   render(<ConnectedVariablePill animated editable uuid={uuid} />);
   const pill = screen.getByRole('button', {
-    name: 'Edit attribute name: subject_var',
+    name: `Edit attribute name: ${variableFixtures[uuid].name}`,
   });
   fireEvent.click(pill);
 
@@ -201,6 +231,127 @@ describe('ConnectedVariablePill', () => {
     fireEvent.change(input, { target: { value: 'subject_var' } });
 
     expect(screen.queryByText(/is already in use/)).not.toBeInTheDocument();
+  });
+
+  describe('names in any script', () => {
+    it.each([
+      ['amigo cercano', 'amigo cercano'],
+      ['友人', '友人'],
+      ['Collègue', 'Collègue'],
+      // Padding and a decomposed accent are tidied as the name is saved.
+      ['  Colle\u0300gue ', 'Collègue'],
+    ])('saves %j as %j', async (typed, saved) => {
+      const input = await startEditing('node-subject');
+      fireEvent.change(input, { target: { value: typed } });
+
+      expect(screen.queryByTestId('variable-name-field-error')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+      expect(updateVariableByUUID).toHaveBeenLastCalledWith('node-subject', {
+        name: saved,
+      });
+    });
+
+    it('refuses a name with a control character', async () => {
+      const input = await startEditing('node-subject');
+      fireEvent.change(input, { target: { value: 'bad\tname' } });
+
+      expect(
+        await screen.findByText(
+          'This can’t contain tabs, line breaks or other control characters',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Save Changes' }),
+      ).toBeDisabled();
+    });
+
+    it('refuses a name of nothing but spaces', async () => {
+      const input = await startEditing('node-subject');
+      fireEvent.change(input, { target: { value: '   ' } });
+
+      expect(
+        await screen.findByText('You must enter an attribute name'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Save Changes' }),
+      ).toBeDisabled();
+    });
+
+    it('treats a name that differs only in case or composition as taken', async () => {
+      const input = await startEditing('node-subject');
+      fireEvent.change(input, { target: { value: 'TAKEN_VAR ' } });
+
+      expect(
+        await screen.findByText('"TAKEN_VAR" is already in use'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('export columns', () => {
+    const expectRefused = async (
+      uuid: keyof typeof variableFixtures,
+      name: string,
+      message: string,
+    ) => {
+      const input = await startEditing(uuid);
+      fireEvent.change(input, { target: { value: name } });
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Save Changes' }),
+      ).toBeDisabled();
+    };
+
+    it('refuses a name that is a column of a sibling categorical attribute’s option', async () => {
+      await expectRefused(
+        'node-subject',
+        'colour_red',
+        'Exported data already includes the column “colour_red” for the option “red” of the attribute “colour”, so an attribute can’t use this name.',
+      );
+    });
+
+    it('refuses a name that is a column of a sibling layout attribute', async () => {
+      await expectRefused(
+        'node-subject',
+        'pos_x',
+        'Exported data already includes the column “pos_x” for the position of the layout attribute “pos”, so an attribute can’t use this name.',
+      );
+    });
+
+    it('refuses a name for a categorical attribute whose option column a sibling already has', async () => {
+      await expectRefused(
+        'node-shade',
+        'warm',
+        'The option “dark” would be exported to the column “warm_dark”, which the attribute “warm_dark” already uses. Change the option’s value or the attribute’s name.',
+      );
+    });
+
+    it('refuses a name for a layout attribute whose coordinate column a sibling already has', async () => {
+      await expectRefused(
+        'node-canvas',
+        'spot',
+        'A layout attribute is exported as one column for each coordinate, and the column “spot_x” is already used by the attribute “spot_x”. Choose a different name.',
+      );
+    });
+
+    it('refuses a name that is a built-in column of the exported file', async () => {
+      await expectRefused(
+        'node-subject',
+        'networkCanvasEgoUUID',
+        'Exported data already includes a built-in column named “networkCanvasEgoUUID”, so an attribute can’t use this name.',
+      );
+    });
+
+    it('lets a name through that only resembles a sibling’s column', async () => {
+      const input = await startEditing('node-subject');
+      fireEvent.change(input, { target: { value: 'colour red' } });
+
+      expect(screen.queryByTestId('variable-name-field-error')).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Save Changes' }),
+      ).toBeEnabled();
+    });
   });
 });
 

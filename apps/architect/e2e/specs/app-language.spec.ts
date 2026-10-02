@@ -320,7 +320,6 @@ test('formats printed attribute order and updates linked-list grammar live while
   seed,
   context,
 }) => {
-  // These authored names satisfy the protocol's ASCII NMTOKEN contract.
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
   const protocol = CurrentProtocolSchema.parse({
