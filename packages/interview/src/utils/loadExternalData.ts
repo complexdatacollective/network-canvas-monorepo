@@ -39,6 +39,8 @@ type ExternalNode = Record<string, unknown> & {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+// Built with Object.fromEntries, which defines own properties: assigning a
+// column called `__proto__` onto a plain object would set its prototype instead.
 const parseExternalAttributes = (
   value: unknown,
 ): Record<string, VariableValue> => {
@@ -46,15 +48,17 @@ const parseExternalAttributes = (
     throw new TypeError('External node attributes must be an object.');
   }
 
-  const attributes: Record<string, VariableValue> = {};
-
-  for (const [name, attributeValue] of Object.entries(value)) {
-    if (attributeValue !== null && attributeValue !== undefined) {
-      attributes[name] = VariableValueSchema.parse(attributeValue);
-    }
-  }
-
-  return attributes;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        ([, attributeValue]) =>
+          attributeValue !== null && attributeValue !== undefined,
+      )
+      .map(([name, attributeValue]) => [
+        name,
+        VariableValueSchema.parse(attributeValue),
+      ]),
+  );
 };
 
 const parseExternalNode = (value: unknown): ExternalNode => {
@@ -92,10 +96,47 @@ const parseExternalNetwork = (value: unknown): { nodes: ExternalNode[] } => {
   return { nodes: nodes.map(parseExternalNode) };
 };
 
+const columnName = (header: readonly unknown[], index: number) => {
+  const name = header[index];
+  return typeof name === 'string' && name !== '' ? name : `field${index + 1}`;
+};
+
+/**
+ * Reads each row as an array of cells and pairs it with the header ourselves.
+ * csvtojson's JSON output builds each row by assigning to a plain object, which
+ * silently drops a `__proto__` column, and treats a dot in a header as nesting
+ * unless `flatKeys` is set. A researcher's variable name may be any text, so a
+ * column must keep exactly the name it was given.
+ *
+ * Mirrors the JSON output otherwise: a blank header is named `field<n>`, and
+ * blank lines are not rows.
+ */
+const parseCSVRows = async (data: string) => {
+  const converter = csv({ output: 'csv' }).fromString(data);
+  const rows: unknown[] = await converter;
+  const header = converter.parseRuntime.headers ?? [];
+
+  return rows.flatMap((row) => {
+    if (!Array.isArray(row)) {
+      throw new TypeError('CSV rows must be arrays of cells.');
+    }
+
+    if (row.length === 0) {
+      return [];
+    }
+
+    return [
+      Object.fromEntries(
+        row.map((cell: unknown, index) => [columnName(header, index), cell]),
+      ),
+    ];
+  });
+};
+
 const CSVToJSONNetworkFormat = async (
   data: string,
 ): Promise<ExternalNode[]> => {
-  const network: unknown[] = await csv({ flatKeys: true }).fromString(data);
+  const network = await parseCSVRows(data);
 
   return network.map((entry) => ({
     [entityAttributesProperty]: parseExternalAttributes(entry),
@@ -143,18 +184,14 @@ export const makeVariableUUIDReplacer =
     // it was parsed for, keeping primary keys unique within a single network.
     const uuid = `${subjectType}_${hash({ node, index })}`;
 
-    const attributes: NcNode[EntityAttributesProperty] = {};
-
-    for (const [attributeKey, attributeValue] of Object.entries(
-      node[entityAttributesProperty] ?? {},
-    )) {
-      const variableId =
-        getParentKeyByNameValue(
-          codebookDefinition?.variables ?? {},
-          attributeKey,
-        ) ?? attributeKey;
-      attributes[variableId] = attributeValue;
-    }
+    const attributes: NcNode[EntityAttributesProperty] = Object.fromEntries(
+      Object.entries(node[entityAttributesProperty] ?? {}).map(
+        ([attributeKey, attributeValue]) => [
+          getParentKeyByNameValue(codebookDefinition?.variables, attributeKey),
+          attributeValue,
+        ],
+      ),
+    );
 
     return {
       type: subjectType,
