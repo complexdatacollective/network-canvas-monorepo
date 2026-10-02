@@ -7,7 +7,7 @@ android {
         applicationId "org.codaco.NetworkCanvasInterviewer6"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 6060200
         versionName "6.6.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
