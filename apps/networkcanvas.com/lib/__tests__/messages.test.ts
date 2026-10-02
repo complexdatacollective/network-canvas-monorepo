@@ -8,6 +8,7 @@ import en from '~/messages/en.json';
 import es from '~/messages/es.json';
 import nl from '~/messages/nl.json';
 import zhHans from '~/messages/zh-Hans.json';
+import zhHant from '~/messages/zh-Hant.json';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -36,6 +37,7 @@ function messageTokens(text: string): string[] {
 const translatedCatalogs = [
   ['Spanish', es],
   ['Simplified Chinese', zhHans],
+  ['Traditional Chinese', zhHant],
   ['German', de],
   ['Dutch', nl],
 ] as const;

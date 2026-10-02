@@ -92,6 +92,7 @@ describe('the Storybook language control', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'zh-Hant',
       'de',
       'nl',
       'en-XA',

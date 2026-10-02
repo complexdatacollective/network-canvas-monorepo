@@ -10,6 +10,7 @@ import enGb from './en-GB.json';
 import es from './es.json';
 import nl from './nl.json';
 import zhHans from './zh-Hans.json';
+import zhHant from './zh-Hant.json';
 
 /** Static imports include every production locale in installed/offline builds. */
 export const architectCatalogs: Readonly<
@@ -38,6 +39,14 @@ export const architectCatalogs: Readonly<
     protocolValidationCatalogs['zh-Hans'] ?? {},
     protocolUtilitiesCatalogs['zh-Hans'] ?? {},
     zhHans,
+  ),
+  'zh-Hant': mergeCatalogs(
+    commonCatalogs['zh-Hant'] ?? {},
+    frescoUiCatalogs['zh-Hant'] ?? {},
+    protocolBuilderCatalogs['zh-Hant'] ?? {},
+    protocolValidationCatalogs['zh-Hant'] ?? {},
+    protocolUtilitiesCatalogs['zh-Hant'] ?? {},
+    zhHant,
   ),
   'de': mergeCatalogs(
     commonCatalogs.de ?? {},

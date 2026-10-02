@@ -1,0 +1,6 @@
+{
+  "networkExporters.stage.fetching": "正在擷取訪談資料…",
+  "networkExporters.stage.formatting": "正在整理訪談資料格式…",
+  "networkExporters.stage.generating": "正在產生檔案…",
+  "networkExporters.stage.outputting": "正在寫入輸出檔案…"
+}

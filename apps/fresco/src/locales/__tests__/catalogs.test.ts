@@ -22,6 +22,7 @@ import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
 import nl from '~/src/locales/nl.json';
 import zhHans from '~/src/locales/zh-Hans.json';
+import zhHant from '~/src/locales/zh-Hant.json';
 
 const root = resolve(import.meta.dirname, '../../..');
 const sourceDirectories = [
@@ -39,6 +40,7 @@ const en = JSON.parse(
 const localesDir = resolve(root, 'src/locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
 const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
@@ -61,6 +63,7 @@ describe('Fresco researcher message catalogs', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'zh-Hant',
       'de',
       'nl',
     ]);
@@ -76,6 +79,10 @@ describe('Fresco researcher message catalogs', () => {
 
   it('requires complete Simplified Chinese and matching ICU arguments and rich text tags', () => {
     expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
+  });
+
+  it('requires complete Traditional Chinese and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, zhHant, zhHantSources)).toEqual([]);
   });
 
   it('requires complete German and matching ICU arguments and rich text tags', () => {

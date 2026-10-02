@@ -28,6 +28,7 @@ const LOCALES: readonly SiteNavigationLocale[] = [
   'en-GB',
   'es',
   'zh-Hans',
+  'zh-Hant',
   'de',
   'nl',
 ];

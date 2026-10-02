@@ -5,6 +5,7 @@ import enGb from './en-GB.json';
 import es from './es.json';
 import nl from './nl.json';
 import zhHans from './zh-Hans.json';
+import zhHant from './zh-Hant.json';
 
 /** Package-owned researcher copy, merged by localized authoring hosts. */
 export const protocolBuilderCatalogs: Readonly<
@@ -13,6 +14,7 @@ export const protocolBuilderCatalogs: Readonly<
   'en-GB': enGb,
   es,
   'zh-Hans': zhHans,
+  'zh-Hant': zhHant,
   de,
   nl,
 };

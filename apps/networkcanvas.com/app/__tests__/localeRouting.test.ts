@@ -61,9 +61,34 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/zh-Hans/',
   },
   {
-    name: 'Taiwanese Chinese browser language best-fits Simplified Chinese',
-    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    name: 'Singaporean Chinese browser language',
+    headers: { 'accept-language': 'zh-SG,zh;q=0.9' },
     destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'unscripted Chinese browser language best-fits Simplified Chinese',
+    headers: { 'accept-language': 'zh' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Taiwanese Chinese browser language',
+    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Hong Kong Chinese browser language',
+    headers: { 'accept-language': 'zh-HK,zh;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Macanese Chinese browser language',
+    headers: { 'accept-language': 'zh-MO,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Traditional Chinese browser language',
+    headers: { 'accept-language': 'zh-Hant,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
   },
   {
     name: 'Germany German browser language',
@@ -146,13 +171,22 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, Spanish, Simplified Chinese, German, and Dutch static params', () => {
-    expect(locales).toEqual(['en-US', 'en-GB', 'es', 'zh-Hans', 'de', 'nl']);
+  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, and Dutch static params', () => {
+    expect(locales).toEqual([
+      'en-US',
+      'en-GB',
+      'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+    ]);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
       { locale: 'en-GB' },
       { locale: 'es' },
       { locale: 'zh-Hans' },
+      { locale: 'zh-Hant' },
       { locale: 'de' },
       { locale: 'nl' },
     ]);

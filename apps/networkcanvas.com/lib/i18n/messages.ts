@@ -4,6 +4,7 @@ import englishMessages from '../../messages/en.json';
 import spanishMessages from '../../messages/es.json';
 import dutchMessages from '../../messages/nl.json';
 import simplifiedChineseMessages from '../../messages/zh-Hans.json';
+import traditionalChineseMessages from '../../messages/zh-Hant.json';
 import type { Locale } from './locales';
 
 type MessageCatalog = {
@@ -20,6 +21,7 @@ const messageSources = {
   'en-GB': { base: englishMessages, overrides: britishEnglishOverrides },
   'es': { base: spanishMessages },
   'zh-Hans': { base: simplifiedChineseMessages },
+  'zh-Hant': { base: traditionalChineseMessages },
   'de': { base: germanMessages },
   'nl': { base: dutchMessages },
 } satisfies Record<Locale, MessageSource>;

@@ -25,6 +25,7 @@ import enGb from '../en-GB.json';
 import es from '../es.json';
 import nl from '../nl.json';
 import zhHans from '../zh-Hans.json';
+import zhHant from '../zh-Hant.json';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const source = JSON.parse(
@@ -33,6 +34,7 @@ const source = JSON.parse(
 const localesDir = join(src, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
 const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
@@ -53,6 +55,10 @@ describe('the complete administration catalog', () => {
   it('ships full Simplified Chinese with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, zhHans, zhHansSources)).toEqual([]);
   });
+  it('ships full Traditional Chinese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, zhHant, zhHantSources)).toEqual([]);
+  });
+
   it('ships full German with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, de, deSources)).toEqual([]);
   });
@@ -86,6 +92,7 @@ describe('the complete administration catalog', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'zh-Hant',
       'de',
       'nl',
     ]);
