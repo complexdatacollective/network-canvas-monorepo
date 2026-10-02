@@ -105,8 +105,8 @@ const run = createRun({
 // --- fixtures ---------------------------------------------------------------
 
 // Protocol files imported through each platform's file picker. Copied to
-// short, distinctive names: the installed protocol takes its name from the
-// file, and the Android picker matches files by visible label.
+// short names (rt7.netcanvas …): the installed protocol takes its name from
+// the file, and the iOS Files grid truncates longer names past telling apart.
 const DOCS_PROTOCOLS = 'packages/protocols/documentation/protocols';
 // One file per schema version the app supports (config.js
 // APP_SUPPORTED_SCHEMA_VERSIONS: 4–7; older ones are migrated on import), plus
@@ -116,27 +116,27 @@ const DOCS_PROTOCOLS = 'packages/protocols/documentation/protocols';
 const IMPORT_FIXTURES = [
   {
     source: `${DOCS_PROTOCOLS}/HBH-PS-v21(9-15-22).netcanvas`,
-    name: 'rt-schema7',
+    name: 'rt7',
     schemaVersion: 7,
   },
   {
     source: `${DOCS_PROTOCOLS}/Sample Protocol v3.netcanvas`,
-    name: 'rt-schema6',
+    name: 'rt6',
     schemaVersion: 6,
   },
   {
     source: `${DOCS_PROTOCOLS}/SB21_workshop_protocol_1.netcanvas`,
-    name: 'rt-schema5',
+    name: 'rt5',
     schemaVersion: 5,
   },
   {
     source: `${DOCS_PROTOCOLS}/Public Health Demo Protocol.netcanvas`,
-    name: 'rt-schema4',
+    name: 'rt4',
     schemaVersion: 4,
   },
   {
     source: 'packages/protocols/e2e/interviewer-e2e/interviewer-e2e.netcanvas',
-    name: 'rt-schema8',
+    name: 'rt8',
     schemaVersion: 8,
     refused: 'not compatible with this version',
   },
@@ -173,11 +173,26 @@ const SAMPLE = {
 
 // --- persisted-state oracle ---------------------------------------------------
 
-const STATE = `(() => {
-  const raw = localStorage.getItem('persist:networkCanvas6');
+// Desktop persists to localStorage; Capacitor builds persist through
+// localforage to IndexedDB (database networkCanvas6, store redux_store).
+const STATE = `(async () => {
+  let raw = localStorage.getItem('persist:networkCanvas6');
+  if (!raw && window.indexedDB) {
+    raw = await new Promise((resolve) => {
+      const open = indexedDB.open('networkCanvas6');
+      open.onerror = () => resolve(null);
+      open.onsuccess = () => {
+        const db = open.result;
+        if (!db.objectStoreNames.contains('redux_store')) { db.close(); resolve(null); return; }
+        const req = db.transaction('redux_store').objectStore('redux_store').get('persist:networkCanvas6');
+        req.onsuccess = () => { db.close(); resolve(req.result ?? null); };
+        req.onerror = () => { db.close(); resolve(null); };
+      };
+    });
+  }
   if (!raw) return null;
-  const root = JSON.parse(raw);
-  const slice = (key) => { try { return JSON.parse(root[key]); } catch { return null; } };
+  const root = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const slice = (key) => { try { return typeof root[key] === 'string' ? JSON.parse(root[key]) : root[key]; } catch { return null; } };
   return {
     protocols: Object.values(slice('installedProtocols') || {}).map((p) => ({ name: p.name, schemaVersion: p.schemaVersion })),
     sessions: Object.values(slice('sessions') || {}).map((s) => ({
@@ -262,8 +277,49 @@ async function androidPlatform() {
     throw new SetupError(`${pkg} is not installed on ${device.serial()}`);
   await device.shell(`pm clear ${pkg}`);
   await device.shell(`am start -W -n ${pkg}/.MainActivity`);
+  // Native UI (the system file picker, Android's own tips) is driven through
+  // adb: a UI Automator dump locates the target, `input tap` presses it. This
+  // keeps the run to adb alone (Playwright's selector API needs an extra
+  // driver APK on the device).
+  const uiNodes = async () => {
+    await device.shell('uiautomator dump /sdcard/rt-ui.xml');
+    const xml = (await device.shell('cat /sdcard/rt-ui.xml')).toString();
+    return [...xml.matchAll(/<node [^>]*>/g)].map(([node]) => {
+      const attr = (name) =>
+        node.match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? '';
+      const [x1, y1, x2, y2] = (
+        attr('bounds').match(/\d+/g) ?? [0, 0, 0, 0]
+      ).map(Number);
+      return {
+        text: attr('text'),
+        desc: attr('content-desc'),
+        x: (x1 + x2) / 2,
+        y: (y1 + y2) / 2,
+      };
+    });
+  };
+  // Waits for the screen to settle before reading it and after tapping:
+  // coordinates read mid-animation (the picker's drawer slides in) land on
+  // whatever slides under them.
+  const uiTap = async (predicate, label, timeout = 15_000) => {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 1_000));
+      const node = (await uiNodes()).find(predicate);
+      if (node) {
+        await device.shell(
+          `input tap ${Math.round(node.x)} ${Math.round(node.y)}`,
+        );
+        await new Promise((r) => setTimeout(r, 1_000));
+        return node;
+      }
+    }
+    throw new Error(`${label} not found on screen`);
+  };
   // Android shows an immersive-mode tip over the app on first launch.
-  await device.tap({ text: 'Got it' }, { timeout: 5_000 }).catch(() => {});
+  await uiTap((n) => n.text === 'Got it', 'immersive-mode tip', 6_000).catch(
+    () => {},
+  );
   const webview = await device.webView({ pkg }, { timeout: 30_000 });
   const page = await webview.page();
   const driver = playwrightDriver(page, { artifactsDir });
@@ -285,14 +341,23 @@ async function androidPlatform() {
         `am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file://${remote}`,
       );
       await driver.eval(`__rt.click(__rt.byText('Import From File'))`);
-      await device.wait(
-        { pkg: 'com.google.android.documentsui' },
-        { timeout: 15_000 },
-      );
-      // The picker opens on Recent; pushed files only list under Downloads.
-      await device.tap({ desc: 'Show roots' }, { timeout: 10_000 });
-      await device.tap({ text: 'Downloads' }, { timeout: 10_000 });
-      await device.tap({ textContains: fixture.name }, { timeout: 15_000 });
+      // The picker reopens wherever it was last left, so find the file with
+      // its search (which covers every location) rather than by navigating.
+      try {
+        await uiTap((n) => n.desc === 'Search', 'the file picker');
+        await device.shell(`input text ${fixture.name}`);
+        await device.shell('input keyevent 66');
+        await uiTap(
+          (n) => n.text === `${fixture.name}.netcanvas`,
+          `${fixture.name}.netcanvas in the search results`,
+        );
+      } catch (error) {
+        // Leave the picker so the next import starts from the app.
+        await driver.screenshot(`android-picker-${fixture.name}`);
+        await device.shell('input keyevent 4');
+        await device.shell('input keyevent 4');
+        throw error;
+      }
       return true;
     },
     async exportZip(trigger) {
@@ -354,9 +419,18 @@ async function connectWebKit(port, urlPrefix) {
   const ready = new Promise((resolve) => {
     ws.addEventListener('message', (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.method === 'Target.targetCreated') {
+      // Embedded frames are announced as targets too (and destroyed when the
+      // stage changes); commands must go to the page.
+      if (
+        msg.method === 'Target.targetCreated' &&
+        msg.params.targetInfo.type === 'page' &&
+        !msg.params.targetInfo.isProvisional
+      ) {
         target = msg.params.targetInfo.targetId;
         resolve();
+      }
+      if (msg.method === 'Target.didCommitProvisionalTarget') {
+        target = msg.params.newTargetId;
       }
       if (msg.method === 'Target.dispatchMessageFromTarget') {
         const inner = JSON.parse(msg.params.message);
@@ -380,17 +454,30 @@ async function connectWebKit(port, urlPrefix) {
       ),
     ),
   ]);
+  // A reply can be lost when the simulator re-announces the page's target
+  // (later commands go to the new one), so every command has a deadline: a
+  // lost reply fails its step instead of hanging the run.
   const send = (method, params = {}) =>
-    new Promise((resolve) => {
+    new Promise((resolve, reject) => {
       id += 1;
-      pending.set(id, resolve);
+      const messageId = id;
+      const timer = setTimeout(() => {
+        pending.delete(messageId);
+        reject(
+          new Error(`WebKit inspector did not answer ${method} within 20s`),
+        );
+      }, 20_000);
+      pending.set(messageId, (reply) => {
+        clearTimeout(timer);
+        resolve(reply);
+      });
       ws.send(
         JSON.stringify({
           id: 100_000 + id,
           method: 'Target.sendMessageToTarget',
           params: {
             targetId: target,
-            message: JSON.stringify({ id, method, params }),
+            message: JSON.stringify({ id: messageId, method, params }),
           },
         }),
       );
@@ -424,14 +511,21 @@ async function iosPlatform() {
   const udid = args.device ?? Object.values(booted.devices).flat()[0]?.udid;
   if (!udid)
     throw new SetupError('no booted iOS simulator (xcrun simctl boot <udid>)');
-  const bundleId = 'org.codaco.NetworkCanvasInterviewer6';
+  // The iOS bundle id is the Xcode project's own (it differs from Android's
+  // applicationId); read it from the built app, or the project when attaching.
+  const pbx = fs.readFileSync(
+    path.join(appDir, 'ios/App/App.xcodeproj/project.pbxproj'),
+    'utf8',
+  );
+  let bundleId = pbx.match(/PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/)?.[1];
   if (args.phase === 'journey') {
-    if (!args['app-path'])
+    if (!args['app-path']) {
       throw new SetupError(
         '--app-path <App.app> is required for the iOS journey',
       );
+    }
     const appPath = path.resolve(args['app-path']);
-    const plistId = (
+    bundleId = (
       await execFile('plutil', [
         '-extract',
         'CFBundleIdentifier',
@@ -439,13 +533,12 @@ async function iosPlatform() {
         path.join(appPath, 'Info.plist'),
       ])
     ).stdout.trim();
-    if (plistId !== bundleId)
-      throw new SetupError(`unexpected bundle id ${plistId}`);
     await simctl('terminate', udid, bundleId).catch(() => {});
     await simctl('uninstall', udid, bundleId).catch(() => {});
     await simctl('install', udid, appPath);
     await simctl('launch', udid, bundleId);
   }
+
   const socket = fs
     .readdirSync('/private/var/tmp')
     .filter((d) => d.startsWith('com.apple.launchd.'))
@@ -607,7 +700,7 @@ async function journey(p) {
       );
       const s = await waitFor(
         driver,
-        `(() => { const s = ${STATE}; return s?.protocols.some((p) => p.name === '${SAMPLE.name}') ? s : null; })()`,
+        `(async () => { const s = await ${STATE}; return s?.protocols.some((p) => p.name === '${SAMPLE.name}') ? s : null; })()`,
         { label: 'sample protocol persisted' },
       );
       const sample = s.protocols.find((x) => x.name === SAMPLE.name);
@@ -618,8 +711,24 @@ async function journey(p) {
     },
   );
 
+  // A journey that fails part-way can leave the app inside a session or an
+  // overlay; the next journey starts from the start screen regardless, so one
+  // failure does not hide the others.
+  const toStartScreen = async () => {
+    await driver
+      .eval(
+        `(() => { if (!location.hash.startsWith('#/start')) location.hash = '#/start'; return true; })()`,
+      )
+      .catch(() => {});
+    await waitFor(driver, `Boolean(__rt.byText('Install sample protocol'))`, {
+      timeout: 15_000,
+      label: 'start screen',
+    }).catch(() => run.note('could not return to the start screen'));
+  };
+
   if (installed) {
     await conductInterview(driver, check, waitOrError);
+    await toStartScreen();
     await exportSession(p, check, waitOrError);
   } else {
     run.note(
@@ -627,6 +736,7 @@ async function journey(p) {
     );
   }
 
+  await toStartScreen();
   await importProtocols(p, check, waitOrError, state);
 
   for (const c of p.finalChecks()) run.record(c.check, c.ok, c.note);
@@ -808,7 +918,7 @@ async function conductInterview(driver, check, waitOrError) {
     );
     await waitFor(
       driver,
-      `(() => { const s = ${STATE}; return (s?.sessions.find((x) => x.caseId === '${caseId}')?.edges ?? 0) >= 1; })()`,
+      `(async () => { const s = await ${STATE}; return (s?.sessions.find((x) => x.caseId === '${caseId}')?.edges ?? 0) >= 1; })()`,
       { timeout: 10_000, label: 'edge persisted' },
     );
   });
@@ -822,7 +932,7 @@ async function conductInterview(driver, check, waitOrError) {
     });
     const s = await waitFor(
       driver,
-      `(() => { const s = ${STATE}; const x = s?.sessions.find((y) => y.caseId === '${caseId}'); return x?.finishedAt ? x : null; })()`,
+      `(async () => { const s = await ${STATE}; const x = s?.sessions.find((y) => y.caseId === '${caseId}'); return x?.finishedAt ? x : null; })()`,
       { label: 'session persisted as finished' },
     );
     const ok = s.nodes === SAMPLE.nodeNames.length && s.edges === 1;
@@ -876,7 +986,7 @@ async function exportSession(p, check, waitOrError) {
       );
       await waitFor(
         driver,
-        `(() => { const s = ${STATE}; return s?.sessions.find((x) => x.caseId === '${caseId}')?.exportedAt; })()`,
+        `(async () => { const s = await ${STATE}; return s?.sessions.find((x) => x.caseId === '${caseId}')?.exportedAt; })()`,
         { label: 'exportedAt persisted' },
       );
     });
@@ -986,7 +1096,7 @@ async function importProtocols(p, check, waitOrError, state) {
         );
         const s = await waitFor(
           driver,
-          `(() => { const s = ${STATE}; return s && s.protocols.length > ${before} ? s : null; })()`,
+          `(async () => { const s = await ${STATE}; return s && s.protocols.length > ${before} ? s : null; })()`,
           {
             label: 'protocol persisted',
           },

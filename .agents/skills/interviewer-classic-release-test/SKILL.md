@@ -32,7 +32,8 @@ input, or Windows/Linux packages.
 
 Run from the checkout of the release candidate (the release PR's branch, or
 `main` for a health check) with `pnpm install` done and network access. Run the
-platforms one at a time; each takes 5–10 minutes after its build. Use a fresh
+platforms one at a time; after its build, desktop takes about 2 minutes,
+iOS about 3 plus the manual steps, and Android 10–15 (its picker is slow). Use a fresh
 artifacts directory in your scratchpad per run, run walkers in the background
 and wait for them — never predict a result.
 
@@ -65,10 +66,13 @@ sys.boot_completed` to print 1.
 2. Build: `node scripts/release-test/classic-release-build.mjs --app interviewer --platform android`.
 3. Walk: `node scripts/release-test/interviewer-classic-release-walker.mjs --platform android --app-path apps/interviewer-classic/android/app/build/outputs/apk/debug/app-debug.apk --artifacts <dir>`.
 
-The walker installs the APK, clears its data, drives the system file picker
-with UI Automator selectors, and reads the export from the app's cache before
-dismissing the share sheet. The debug build is used because only it exposes the
-WebView to automation; it ships the same web bundle as release.
+The walker installs the APK, clears its data, and drives the WebView through
+Playwright's Android support. The system file picker is driven with adb alone
+(a UI Automator dump to find a control, `input tap` to press it, the picker's
+search to find each file), so no extra driver is installed on the device. The
+export is read from the app's cache before the share sheet is dismissed. The
+debug build is used because only it exposes the WebView to automation; it
+ships the same web bundle as release.
 
 ## iOS
 
@@ -84,16 +88,22 @@ landscape-only).
 4. The Files picker and the share sheet are native UI no script reaches, so
    the walker leaves them as `manual` entries in `result.json`, with exact
    instructions. Perform each with the simulator tool (Claude Code: the iOS
-   simulator control; take a screenshot before every tap — the app is
-   landscape-only, so on an iPad in portrait its UI appears rotated and tap
-   coordinates must follow the rotated layout):
+   simulator control). Take a screenshot before every tap and again a few
+   seconds after it: the simulator applies taps late, and the page can still be
+   scrolling. The app is landscape-only, so on an iPad in portrait its UI
+   appears rotated and tap coordinates follow the rotated layout; "Import From
+   File" is near the end of the start screen, reached by swiping the page.
    - `ios-save-to-files`: the export's share sheet is open — Save to Files →
-     On My iPad → Save. Confirm the zip landed (the walker already checked its
-     contents) and that the session card then shows an export time.
-   - `ios-import-from-files`: the walker staged the protocol files in Files →
-     On My iPad. Import each through "Import From File", then run the walker
-     again with `--platform ios --phase verify-imports --artifacts <new dir>`,
-     which checks the installed protocols without reinstalling the app.
+     On My iPad → Save. Confirm the zip landed in the Files storage folder (the
+     walker already checked its contents) and that the session card then shows
+     an export time.
+   - `ios-import-from-files`: the walker staged `rt7`, `rt6`, `rt5`, `rt4` and
+     `rt8` `.netcanvas` files in Files → On My iPad. Import each through
+     "Import From File": the first four must show "Protocol installed
+     successfully"; `rt8` (schema 8) must be refused with the "failed
+     validation" dialog (dismiss it with OK). Then run the walker again with
+     `--platform ios --phase verify-imports --artifacts <new dir>`, which
+     reads the installed protocols from the app without reinstalling it.
      Record each manual step's outcome yourself; it is part of the verdict.
 
 ## Report

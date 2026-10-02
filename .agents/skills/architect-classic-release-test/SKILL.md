@@ -40,7 +40,7 @@ shell commands and run the same way.)
    node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
    ```
 
-3. **Walk the app** (8–12 minutes; run it in the background and wait for it —
+3. **Walk the app** (about 10 minutes; run it in the background and wait for it —
    never predict its result). Use a fresh artifacts directory in your
    scratchpad:
 
@@ -81,7 +81,10 @@ Read `<artifacts>/result.json` (`steps`, `failures`, `notes`) and lead with the
 verdict:
 
 - **Ready** — the build, the package verification and the walker (exit 0) all
-  passed.
+  passed. Relay any `known issue:` notes: they are uncaught exceptions that
+  predate this release and leave the feature working (listed with reasons in
+  the walker's `KNOWN_PAGE_ERRORS`), reported so they stay visible without
+  failing every run.
 - **Not ready** — any failed check. List each failure with its note and the
   `fail-*.png` screenshot under the artifacts directory. A failure the walker
   reports with "app reported: …" is the app's own error dialog — quote it.
