@@ -624,6 +624,98 @@ describe('useSessionMutations — export flow lifecycle', () => {
     });
   });
 
+  it('raises a toast for each kind of warning after a successful save, kept until dismissed', async () => {
+    const warnings = [
+      {
+        kind: 'xml-illegal-characters',
+        sessionId: 's1',
+        caseId: 'P-7',
+        variables: ['Nickname'],
+        caseIdChanged: false,
+      },
+      {
+        kind: 'column-renamed',
+        protocolName: 'Friendship study',
+        format: 'csv',
+        entity: 'node',
+        entityTypeName: 'Person',
+        variable: 'nodeID',
+        column: 'nodeID',
+        renamedTo: 'nodeID_2',
+      },
+    ];
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+        warnings,
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    saveBlob.mockResolvedValue({ saved: true });
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+    await act(async () => {
+      await result.current.handleShareReady();
+    });
+
+    expect(result.current.exportFlow.phase).toBe('idle');
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: renderedMessage('Export complete') }),
+    );
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Some characters were removed from the GraphML files',
+        timeout: 0,
+      }),
+    );
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Some columns were given new names',
+        timeout: 0,
+      }),
+    );
+    expect(toastAdd).toHaveBeenCalledTimes(3);
+  });
+
+  it('raises no warning toast when a save is cancelled', async () => {
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+        warnings: [
+          {
+            kind: 'column-renamed',
+            protocolName: 'Friendship study',
+            format: 'csv',
+            entity: 'ego',
+            variable: 'caseId',
+            column: 'caseId',
+            renamedTo: 'caseId_2',
+          },
+        ],
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    saveBlob.mockResolvedValue({ saved: false });
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+    await act(async () => {
+      await result.current.handleShareReady();
+    });
+
+    expect(result.current.exportFlow.phase).toBe('ready');
+    expect(toastAdd).not.toHaveBeenCalled();
+  });
+
   it('a refresh failure after a successful save does not resurrect the save flow', async () => {
     saveBlob.mockResolvedValue({ saved: true });
     const failingReload = vi.fn().mockRejectedValue(new Error('reload failed'));

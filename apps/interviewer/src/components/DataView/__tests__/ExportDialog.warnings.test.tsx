@@ -84,3 +84,60 @@ describe('the warning in the export dialog about characters removed from GraphML
     ).toBeNull();
   });
 });
+
+describe('the warnings in the export dialog about renamed columns and protocol text', () => {
+  it('shows one alert for each kind of warning, listing what each affected', () => {
+    render(
+      view(
+        readyFlow([
+          {
+            kind: 'column-renamed',
+            protocolName: 'Friendship study',
+            format: 'csv',
+            entity: 'node',
+            entityTypeName: 'Person',
+            variable: 'nodeID',
+            column: 'nodeID',
+            renamedTo: 'nodeID_2',
+          },
+          {
+            kind: 'xml-illegal-characters-in-protocol',
+            protocolName: 'Friendship study',
+            text: 'protocol-name',
+            original: 'Friendship study',
+          },
+          {
+            kind: 'xml-illegal-characters',
+            sessionId: 's1',
+            caseId: 'P-7',
+            variables: ['Nickname'],
+            caseIdChanged: false,
+          },
+        ]),
+      ),
+    );
+
+    const alerts = screen.getAllByRole('status');
+    expect(alerts).toHaveLength(3);
+    expect(alerts[0]).toHaveTextContent(
+      'Some characters were removed from the GraphML files',
+    );
+    expect(alerts[1]).toHaveTextContent(
+      'Some characters were removed from protocol text in the GraphML files',
+    );
+    expect(
+      within(alerts[1]!)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['The protocol name “Friendship study”']);
+    expect(alerts[2]).toHaveTextContent('Some columns were given new names');
+    expect(alerts[2]).toHaveTextContent(/so that no answers are lost/i);
+    expect(
+      within(alerts[2]!)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'In the CSV files of Friendship study, the Person column “nodeID” was written as “nodeID_2”.',
+    ]);
+  });
+});

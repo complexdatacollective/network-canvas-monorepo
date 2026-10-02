@@ -111,9 +111,45 @@ describe('runBatchedExport', () => {
       () => undefined,
     );
 
-    expect(warnings.map((warning) => warning.sessionId)).toEqual([
-      'first',
-      'second',
+    expect(warnings).toEqual([warningFor('first'), warningFor('second')]);
+  });
+
+  it('keeps one of each warning about the protocol, which every batch reports', async () => {
+    const ids = Array.from(
+      { length: EXPORT_BATCH_SIZE + 1 },
+      (_, i) => `id${i}`,
+    );
+    const renamed: ExportWarning = {
+      kind: 'column-renamed',
+      protocolName: 'Study',
+      format: 'csv',
+      entity: 'node',
+      entityTypeName: 'Person',
+      variable: 'nodeID',
+      column: 'nodeID',
+      renamedTo: 'nodeID_2',
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        fileBatch('a.txt', [1], [], [warningFor('first'), renamed]),
+      )
+      .mockResolvedValueOnce(
+        fileBatch('b.txt', [2], [], [renamed, warningFor('second')]),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { warnings } = await runBatchedExport(
+      ids,
+      exportOptions,
+      new AbortController().signal,
+      () => undefined,
+    );
+
+    expect(warnings).toEqual([
+      warningFor('first'),
+      renamed,
+      warningFor('second'),
     ]);
   });
 

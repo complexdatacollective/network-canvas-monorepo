@@ -5,22 +5,19 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import {
-  exportStageMessages,
-  exportWarningMessages,
-  formatXmlCharacterWarnings,
-} from '@codaco/network-exporters/messages';
+import { exportStageMessages } from '@codaco/network-exporters/messages';
 import { ExternalLink } from '~/components/ExternalLink';
 import { APP_VERSION } from '~/lib/appVersion';
 import { saveAction, type SaveAction } from '~/lib/files/download';
 
+import { ExportWarningAlerts } from './ExportWarnings';
 import type { ExportFlow } from './useSessionMutations';
 
 /** Every phase that has a dialog to show — anything but `idle`. */
@@ -423,25 +420,7 @@ export function ExportDialog({
             })}
           </Alert>
         )}
-        {shown.warnings.length > 0 && (
-          <Alert variant="warning" className="mt-4">
-            <AlertTitle>
-              {intl.formatMessage(exportWarningMessages.xmlCharactersTitle)}
-            </AlertTitle>
-            <AlertDescription>
-              {intl.formatMessage(
-                exportWarningMessages.xmlCharactersDescription,
-              )}
-            </AlertDescription>
-            <ul className="mt-2 list-disc ps-5 text-sm">
-              {formatXmlCharacterWarnings(intl, shown.warnings).map(
-                (line, index) => (
-                  <li key={shown.warnings[index]?.sessionId}>{line}</li>
-                ),
-              )}
-            </ul>
-          </Alert>
-        )}
+        <ExportWarningAlerts warnings={shown.warnings} />
       </>
     );
   }

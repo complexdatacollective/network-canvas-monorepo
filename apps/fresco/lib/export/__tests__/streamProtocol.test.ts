@@ -104,6 +104,41 @@ describe('consumeBatchStream', () => {
     expect(result.warnings).toEqual([warning]);
   });
 
+  it('returns every kind of warning from the complete event', async () => {
+    const warnings = [
+      {
+        kind: 'xml-illegal-characters-in-protocol',
+        protocolName: 'Study',
+        text: 'node-type-name',
+        original: 'Per\u0001son',
+      },
+      {
+        kind: 'column-renamed',
+        protocolName: 'Study',
+        format: 'csv',
+        entity: 'node',
+        entityTypeName: 'Person',
+        variable: 'nodeID',
+        column: 'nodeID',
+        renamedTo: 'nodeID_2',
+      },
+      {
+        kind: 'column-renamed',
+        protocolName: 'Study',
+        format: 'graphml',
+        entity: 'ego',
+        variable: 'label',
+        column: 'label',
+        renamedTo: 'label_2',
+      },
+    ] as const;
+    const result = await consumeBatchStream(
+      streamOf([{ type: 'complete', warnings: [...warnings] }]),
+      () => undefined,
+    );
+    expect(result.warnings).toEqual(warnings);
+  });
+
   it('returns no warnings when the complete event has none', async () => {
     const result = await consumeBatchStream(
       streamOf([{ type: 'complete', failedSessionIds: [] }]),

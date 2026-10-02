@@ -1,29 +1,20 @@
 'use client';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  exportWarningMessages,
-  formatXmlCharacterWarnings,
-} from '@codaco/network-exporters/messages';
-import type { ExportWarning } from '@codaco/network-exporters/output';
+import type { ExportWarningGroup } from '@codaco/network-exporters/messages';
 
 type ExportWarningToastContentProps = {
-  warnings: readonly ExportWarning[];
+  group: ExportWarningGroup;
 };
 
 export default function ExportWarningToastContent({
-  warnings,
+  group,
 }: ExportWarningToastContentProps) {
-  const intl = useAppIntl();
-
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <p>
-        {intl.formatMessage(exportWarningMessages.xmlCharactersDescription)}
-      </p>
+      <p>{group.description}</p>
       <ul className="list-disc ps-5">
-        {formatXmlCharacterWarnings(intl, warnings).map((line, index) => (
-          <li key={warnings[index]?.sessionId}>{line}</li>
+        {group.items.map(({ key, text }) => (
+          <li key={key}>{text}</li>
         ))}
       </ul>
     </div>
