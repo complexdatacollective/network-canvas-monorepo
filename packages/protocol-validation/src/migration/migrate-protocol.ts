@@ -5,18 +5,21 @@ import migrationV4toV5 from '../schemas/5/migration.ts';
 import migrationV5toV6 from '../schemas/6/migration.ts';
 import migrationV6toV7 from '../schemas/7/migration.ts';
 import migrationV7toV8 from '../schemas/8/migration.ts';
+import migrationV8toV9 from '../schemas/9/migration.ts';
 import {
   CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
-  CurrentProtocolSchema,
+  type Protocol,
   type SchemaVersion,
   SchemaVersionSchema,
+  type VersionedProtocol,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
 import {
   MigrationResultInvalidError,
   SchemaVersionDetectionError,
   ValidationError,
+  VersionMismatchError,
 } from './errors.ts';
 import { type ProtocolDocument, protocolMigrations } from './index.ts';
 
@@ -27,31 +30,49 @@ protocolMigrations.register(migrationV4toV5);
 protocolMigrations.register(migrationV5toV6);
 protocolMigrations.register(migrationV6toV7);
 protocolMigrations.register(migrationV7toV8);
+protocolMigrations.register(migrationV8toV9);
+
+/** The versions a document can be validated at, and so migrated to. */
+type ValidatedSchemaVersion = VersionedProtocol['schemaVersion'];
 
 export function detectSchemaVersion(document: unknown): SchemaVersion {
+  let coerced: unknown;
   try {
     const rawVersion = (document as { schemaVersion?: unknown })?.schemaVersion;
 
     // Handle v1 string schemaVersion ("1" -> 1)
-    const coerced =
-      typeof rawVersion === 'string' ? Number(rawVersion) : rawVersion;
-
-    const partial = SchemaVersionSchema.safeParse(coerced);
-
-    if (partial.success) {
-      return partial.data;
-    }
-    throw new SchemaVersionDetectionError();
+    coerced = typeof rawVersion === 'string' ? Number(rawVersion) : rawVersion;
   } catch {
     throw new SchemaVersionDetectionError();
   }
+
+  const partial = SchemaVersionSchema.safeParse(coerced);
+  if (partial.success) {
+    return partial.data;
+  }
+  // A version this build has never heard of, but that a later one would
+  // recognise, is a file made by newer software — not a file without a version.
+  if (Number.isInteger(coerced) && Number(coerced) > CURRENT_SCHEMA_VERSION) {
+    throw new VersionMismatchError(Number(coerced), CURRENT_SCHEMA_VERSION);
+  }
+  throw new SchemaVersionDetectionError();
 }
 
 export function migrateProtocol(
   document: unknown,
-  targetVersion: SchemaVersion = CURRENT_SCHEMA_VERSION,
+  targetVersion?: typeof CURRENT_SCHEMA_VERSION,
+  dependencies?: Record<string, unknown>,
+): CurrentProtocol;
+export function migrateProtocol<V extends ValidatedSchemaVersion>(
+  document: unknown,
+  targetVersion: V,
+  dependencies?: Record<string, unknown>,
+): Protocol<V>;
+export function migrateProtocol(
+  document: unknown,
+  targetVersion: ValidatedSchemaVersion = CURRENT_SCHEMA_VERSION,
   dependencies: Record<string, unknown> = {},
-): CurrentProtocol {
+): VersionedProtocol {
   const detectedVersion = detectSchemaVersion(document);
 
   // Only pre-validate versions that have Zod schemas (7+)
@@ -78,20 +99,24 @@ export function migrateProtocol(
     dependencies,
   );
 
-  // Validate the migrated document. This checks against the CURRENT schema
-  // whatever `targetVersion` asked for, which is harmless only because every
-  // registered migration targets the current version, so the two are always
-  // the same document shape. Adding a schema version past the current one
-  // makes that false — a caller migrating to an intermediate version would
-  // have its perfectly valid output rejected here — so a new version must
-  // bring per-target-version validation with it.
-  const postValidationResult = CurrentProtocolSchema.safeParse(migrated);
+  // Validated against the schema of the version it was migrated to, which the
+  // version-discriminated union picks from the document's own `schemaVersion`.
+  // That field is written by the migration steps, so it is checked against the
+  // target too: a step that forgot to set it would otherwise be validated
+  // against its input's rules.
+  const postValidationResult = VersionedProtocolSchema.safeParse(migrated);
   if (!postValidationResult.success) {
     // Not a `ValidationError`: the input passed its own version's checks above,
     // so this says a migration of ours returned something invalid. Hosts use
     // the distinction to decide what belongs in exception tracking.
     throw new MigrationResultInvalidError(
       `Migration resulted in invalid protocol: ${postValidationResult.error.message}`,
+      targetVersion,
+    );
+  }
+  if (postValidationResult.data.schemaVersion !== targetVersion) {
+    throw new MigrationResultInvalidError(
+      `Migration to version ${targetVersion} resulted in a version ${postValidationResult.data.schemaVersion} protocol`,
       targetVersion,
     );
   }
@@ -116,23 +141,38 @@ export function getMigrationInfo(
 export type MigrationInfo = ReturnType<typeof getMigrationInfo>;
 export type MigrationNote = MigrationInfo['notes'][number];
 
-export class ProtocolMigrator {
-  private cache = new Map<string, CurrentProtocol>();
+type MigratorOptions = {
+  cacheKey?: string;
+  dependencies?: Record<string, unknown>;
+};
 
+export class ProtocolMigrator {
+  private cache = new Map<string, VersionedProtocol>();
+
+  migrate(
+    document: unknown,
+    options?: MigratorOptions & {
+      targetVersion?: typeof CURRENT_SCHEMA_VERSION;
+    },
+  ): Promise<CurrentProtocol>;
+  migrate<V extends ValidatedSchemaVersion>(
+    document: unknown,
+    options: MigratorOptions & { targetVersion: V },
+  ): Promise<Protocol<V>>;
   async migrate(
     document: unknown,
-    options?: {
-      cacheKey?: string;
-      targetVersion?: SchemaVersion;
-      dependencies?: Record<string, unknown>;
-    },
-  ): Promise<CurrentProtocol> {
-    const { cacheKey, targetVersion, dependencies } = options || {};
+    options: MigratorOptions & { targetVersion?: ValidatedSchemaVersion } = {},
+  ): Promise<VersionedProtocol> {
+    const {
+      cacheKey,
+      targetVersion = CURRENT_SCHEMA_VERSION,
+      dependencies,
+    } = options;
 
-    if (cacheKey && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (cached) return cached;
-    }
+    // A cached result is only the answer for the version it was migrated to.
+    const cached =
+      cacheKey === undefined ? undefined : this.cache.get(cacheKey);
+    if (cached?.schemaVersion === targetVersion) return cached;
 
     const migrated = migrateProtocol(document, targetVersion, dependencies);
 

@@ -68,9 +68,10 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
 // Interface-owned value sets that are part of the current schema's contract.
-// They live in the schema version directory and are copied — never shared —
-// when a new version directory is created, so a host always reads the set the
-// version it targets defines.
+// They live in the schema version directory, so a host always reads the set
+// the version it targets defines. Schema 9 changed only variable names and
+// builds on the `schemas/8` tree, so these are its sets too; a version that
+// changes one copies the directory rather than sharing it.
 export {
   BIOLOGICAL_SEX_OPTIONS,
   BIOLOGICAL_SEX_VALUES,

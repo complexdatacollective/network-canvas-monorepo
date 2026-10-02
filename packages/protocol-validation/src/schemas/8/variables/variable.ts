@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { CodebookIdSchema } from '@codaco/shared-consts';
+import { CodebookIdSchema, CodebookNameSchema } from '@codaco/shared-consts';
 
 import {
   findDuplicateName,
@@ -163,9 +163,11 @@ export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 export type VariableOption = VariableOptions[number];
 export type VariableOptionValue = VariableOption['value'];
 
-// Variable Schema
+// Variable Schema. The name is the rule from schema 9 on; a version 8
+// document is still held to the narrower `CodebookIdSchema` by the schema-8
+// protocol's own refinement (`../schema.ts`).
 const baseVariableSchema = z.strictObject({
-  name: CodebookIdSchema,
+  name: CodebookNameSchema,
   encrypted: z.boolean().optional(),
   // Marks a variable whose options an interface owns and the researcher may not
   // edit (e.g. a FamilyPedigree biological-sex/relationship-type/gamete-role

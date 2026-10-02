@@ -4,7 +4,10 @@ import migrationV1toV2 from '../../schemas/2/migration.ts';
 import migrationV2toV3 from '../../schemas/3/migration.ts';
 import migrationV4toV5 from '../../schemas/5/migration.ts';
 import migrationV6toV7 from '../../schemas/7/migration.ts';
-import { VersionedProtocolSchema } from '../../schemas/index.ts';
+import {
+  CURRENT_SCHEMA_VERSION,
+  VersionedProtocolSchema,
+} from '../../schemas/index.ts';
 import { SchemaVersionDetectionError } from '../errors.ts';
 import { MigrationChain, type ProtocolDocument } from '../index.ts';
 import {
@@ -24,6 +27,11 @@ describe('Protocol Migrations', () => {
     it('detects version 8', () => {
       const doc = { schemaVersion: 8 };
       expect(detectSchemaVersion(doc)).toBe(8);
+    });
+
+    it('detects version 9', () => {
+      const doc = { schemaVersion: 9 };
+      expect(detectSchemaVersion(doc)).toBe(9);
     });
 
     it('detects versions 1 through 6', () => {
@@ -94,11 +102,11 @@ describe('Protocol Migrations', () => {
       experiments: undefined,
     };
 
-    it('migrates from v7 to v8', () => {
+    it('migrates from v7 to the current version', () => {
       const migrated = migrateProtocol(v7Doc, undefined, {
         name: 'Test Protocol',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(migrated).toHaveProperty('experiments');
     });
 
@@ -158,7 +166,7 @@ describe('Protocol Migrations', () => {
         dependencies: { name: 'Test Protocol' },
       });
 
-      expect(result.schemaVersion).toBe(8);
+      expect(result.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
 
     it('can clear all cache', async () => {
@@ -183,8 +191,8 @@ describe('Protocol Migrations', () => {
         dependencies: { name: 'Test Protocol' },
       });
 
-      expect(result3.schemaVersion).toBe(8);
-      expect(result4.schemaVersion).toBe(8);
+      expect(result3.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+      expect(result4.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(result3).not.toBe(result4); // Different instances
     });
   });
@@ -262,7 +270,7 @@ describe('Protocol Migrations', () => {
       const migrated = migrateProtocol(minimalV7Doc, undefined, {
         name: 'Test Protocol',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(migrated).toHaveProperty('experiments');
     });
 
@@ -289,7 +297,7 @@ describe('Protocol Migrations', () => {
   });
 
   describe('full migration chain', () => {
-    it('migrates a v1 protocol to v8', () => {
+    it('migrates a v1 protocol to the current version', () => {
       const v1Protocol = {
         schemaVersion: 1,
         codebook: {
@@ -311,12 +319,12 @@ describe('Protocol Migrations', () => {
       const migrated = migrateProtocol(v1Protocol, undefined, {
         name: 'Test Protocol',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(migrated).toHaveProperty('experiments');
       expect(migrated.name).toBe('Test Protocol');
     });
 
-    it('migrates a v3 protocol with dirty names to v8', () => {
+    it('migrates a v3 protocol with dirty names to the current version', () => {
       const v3Protocol = {
         schemaVersion: 3,
         codebook: {
@@ -325,7 +333,8 @@ describe('Protocol Migrations', () => {
               name: 'My Type',
               color: 'node-color-seq-1',
               variables: {
-                var1: { name: 'first name', type: 'text' },
+                var1: { name: ' first\tname ', type: 'text' },
+                var2: { name: '名前', type: 'text' },
               },
             },
           },
@@ -338,10 +347,14 @@ describe('Protocol Migrations', () => {
       const migrated = migrateProtocol(v3Protocol, undefined, {
         name: 'Test Protocol',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+      const person = migrated.codebook.node?.person;
+      expect(person?.name).toBe('My Type');
+      expect(person?.variables?.var1?.name).toBe('first name');
+      expect(person?.variables?.var2?.name).toBe('名前');
     });
 
-    it('migrates a v5 protocol with old NameGenerator types to v8', () => {
+    it('migrates a v5 protocol with old NameGenerator types to the current version', () => {
       const v5Protocol = {
         schemaVersion: 5,
         codebook: {
@@ -381,7 +394,7 @@ describe('Protocol Migrations', () => {
       const migrated = migrateProtocol(v5Protocol, undefined, {
         name: 'Test Protocol',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       // NameGeneratorAutoComplete should have been converted to NameGeneratorRoster by v5→v6
       const stage = migrated.stages[0];
       expect(stage).toBeDefined();
@@ -406,7 +419,7 @@ describe('Protocol Migrations', () => {
       expect(versionsWithNotes).toContain(8);
     });
 
-    it('migrates a v1 protocol with string schemaVersion to v8', () => {
+    it('migrates a v1 protocol with string schemaVersion to the current version', () => {
       const v1Protocol = {
         schemaVersion: '1',
         codebook: {
@@ -420,7 +433,7 @@ describe('Protocol Migrations', () => {
       const migrated = migrateProtocol(v1Protocol, undefined, {
         name: 'Test Protocol',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
   });
 

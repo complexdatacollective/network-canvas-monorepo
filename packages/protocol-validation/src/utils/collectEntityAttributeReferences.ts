@@ -11,15 +11,16 @@ import {
   type SubjectResolution,
 } from '../schemas/8/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
-// The CURRENT protocol schema, imported from its own module rather than
-// through `../schemas/index.ts`. This module and the schema module are
-// mutually recursive, and `../schemas/index.ts` sits in the middle: it
-// evaluates `const CurrentProtocolSchema = ProtocolSchemaV8` at module scope,
-// which under that cycle runs before the schema module has finished
-// initialising. Importing the schema module directly gives a live binding
-// resolved at call time instead, so the walk works whichever module the
-// consumer entered through.
-import CurrentProtocolSchema from '../schemas/8/schema.ts';
+// The document tree every current-generation schema version is built from,
+// imported from its own module rather than through `../schemas/index.ts`.
+// This module and the schema module are mutually recursive, and
+// `../schemas/index.ts` sits in the middle: it evaluates
+// `const CurrentProtocolSchema = ProtocolSchemaV9` at module scope, which
+// under that cycle runs before the schema module has finished initialising.
+// Importing the schema module directly gives a live binding resolved at call
+// time instead, so the walk works whichever module the consumer entered
+// through. Its references sit at the same paths in schema 8 and schema 9.
+import { VersionlessProtocolSchema } from '../schemas/8/schema.ts';
 import {
   getStageReferenceSite,
   registeredStageReferenceSites,
@@ -459,7 +460,10 @@ export const collectEntityAttributeReferencesFromSchema = (
 export const collectEntityAttributeReferences = (
   protocol: unknown,
 ): EntityAttributeReferenceHit[] =>
-  collectEntityAttributeReferencesFromSchema(CurrentProtocolSchema, protocol);
+  collectEntityAttributeReferencesFromSchema(
+    VersionlessProtocolSchema,
+    protocol,
+  );
 
 /**
  * Every codebook node/edge TYPE referenced by a protocol, discovered from the
@@ -489,7 +493,7 @@ export const collectEntityTypeReferencesFromSchema = (
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  collectEntityTypeReferencesFromSchema(CurrentProtocolSchema, protocol);
+  collectEntityTypeReferencesFromSchema(VersionlessProtocolSchema, protocol);
 
 /**
  * Every `assetManifest` entry referenced by a protocol, discovered from the
@@ -507,7 +511,7 @@ export const collectEntityTypeReferences = (
 export const collectAssetReferences = (
   protocol: unknown,
 ): AssetReferenceHit[] =>
-  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
+  walk(VersionlessProtocolSchema, protocol, [], rootContext(protocol))
     .filter(isAssetHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -526,7 +530,7 @@ export const collectAssetReferences = (
 export const collectStageReferences = (
   protocol: unknown,
 ): StageReferenceHit[] =>
-  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
+  walk(VersionlessProtocolSchema, protocol, [], rootContext(protocol))
     .filter(isStageHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -543,6 +547,6 @@ export const collectStageReferences = (
 export const declaredStageReferenceSites = (): string[] => {
   // Referenced so the schema module cannot be tree-shaken away from a consumer
   // that only asks this question; every tag registers as that module loads.
-  void CurrentProtocolSchema;
+  void VersionlessProtocolSchema;
   return registeredStageReferenceSites();
 };
