@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import {
   CodebookIdSchema,
@@ -33,6 +34,38 @@ describe('CodebookIdSchema', () => {
   it.each(['', 'close friend', '友人', 'a#b'])('refuses %j', (id) => {
     expect(CodebookIdSchema.safeParse(id).success).toBe(false);
   });
+
+  it('refuses __proto__, saying why', () => {
+    const result = CodebookIdSchema.safeParse('__proto__');
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe('An id cannot be __proto__');
+  });
+
+  // Other Object.prototype names are ordinary own keys to every copy a
+  // codebook goes through, so nothing about them is lost.
+  it.each(['constructor', 'prototype', 'toString', 'hasOwnProperty'])(
+    'accepts %j, which a record keyed by it keeps through parsing and copying',
+    (id) => {
+      expect(CodebookIdSchema.safeParse(id).success).toBe(true);
+
+      const parsed = z
+        .record(CodebookIdSchema, z.object({ name: z.string() }))
+        .parse(JSON.parse(`{"${id}": {"name": "kept"}}`));
+
+      for (const copy of [
+        parsed,
+        { ...parsed },
+        Object.assign({}, parsed),
+        structuredClone(parsed),
+      ]) {
+        expect(Object.hasOwn(copy, id)).toBe(true);
+        expect(Object.getOwnPropertyDescriptor(copy, id)?.value).toEqual({
+          name: 'kept',
+        });
+      }
+    },
+  );
 });
 
 describe('CodebookNameSchema', () => {
