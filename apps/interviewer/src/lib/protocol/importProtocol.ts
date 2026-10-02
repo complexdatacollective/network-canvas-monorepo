@@ -14,7 +14,6 @@ import {
   missingAssetsError,
   type SchemaVersion,
   validateProtocol,
-  VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { messageFailure, type LocalizedMessage } from '~/i18n/messageResult';
@@ -217,16 +216,7 @@ async function importParsedProtocol(
     }
   }
 
-  const versionedProtocol = VersionedProtocolSchema.safeParse(migratedDocument);
-  if (!versionedProtocol.success) {
-    return importFailure(
-      'validation-failed',
-      { descriptor: messages.invalidProtocol },
-      formatValidationIssues(versionedProtocol.error.issues),
-    );
-  }
-
-  const validation = await validateProtocol(versionedProtocol.data);
+  const validation = await validateProtocol(migratedDocument);
   if (!validation.success) {
     return importFailure(
       'validation-failed',

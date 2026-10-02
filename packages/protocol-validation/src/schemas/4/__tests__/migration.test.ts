@@ -16,6 +16,9 @@ describe('Migration V3 to V4', () => {
     ...overrides,
   });
 
+  const isObject = (value: unknown): value is object =>
+    typeof value === 'object' && value !== null;
+
   function getNestedValue(obj: unknown, ...keys: string[]): unknown {
     let current = obj;
     for (const key of keys) {
@@ -617,6 +620,29 @@ describe('Migration V3 to V4', () => {
         'person',
       ) as Record<string, unknown>;
       expect(person).not.toHaveProperty('variables');
+    });
+
+    // A plain object assigned a `__proto__` key takes the value as its
+    // prototype, losing the entry; it must stay an entry, still counted when
+    // names are made unique, so validation can refuse the id.
+    it.each([
+      ['a type', ['node'], 'Person2'],
+      ['a variable', ['node', 'person', 'variables'], 'first'],
+    ])('keeps %s whose id is __proto__ as an entry', (_, path, name) => {
+      const protocol = makeProtocol({
+        codebook: JSON.parse(
+          '{"node":{"person":{"name":"Person","variables":{"__proto__":{"name":"first"},"v1":{"name":"first"}}},"__proto__":{"name":"Person"}},"edge":{},"ego":{"name":"ego"}}',
+        ),
+      });
+
+      const migrated = migrationV3toV4.migrate(protocol, {});
+      const record = getNestedValue(migrated.codebook, ...path);
+
+      expect(isObject(record) && Object.hasOwn(record, '__proto__')).toBe(true);
+      expect(isObject(record) && Object.getPrototypeOf(record)).toBe(
+        Object.prototype,
+      );
+      expect(getNestedValue(record, '__proto__', 'name')).toBe(name);
     });
   });
 });

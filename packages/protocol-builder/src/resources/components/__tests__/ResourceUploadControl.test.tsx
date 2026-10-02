@@ -82,6 +82,48 @@ describe('ResourceUploadControl', () => {
       expect(stage).not.toHaveBeenCalled();
     });
 
+    it('is put in the same words when the host is the one that refuses it', async () => {
+      const user = userEvent.setup();
+      const host = createResourceHost();
+      // A host reads the bytes it is given, which can differ from what this
+      // control read: it answers with a code and a place, not a sentence.
+      const stage = vi.fn(async () => ({
+        status: 'failed' as const,
+        failure: {
+          reason: 'invalid-content' as const,
+          message: 'the roster holds a character an export cannot carry',
+          retryable: false,
+          detail: {
+            code: 'roster-characters' as const,
+            problem: {
+              kind: 'cell' as const,
+              row: 4,
+              column: 'notes',
+              character: 'U+0008',
+            },
+            total: 3,
+          },
+        },
+      }));
+      const onStaged = vi.fn();
+      renderInResourceContext(
+        withResourceProcedures(host.client, { stage }),
+        host.protocolId,
+        <ResourceUploadControl kind="network" onStaged={onStaged} />,
+      );
+
+      await user.upload(
+        screen.getByLabelText(CHOOSE_FILE),
+        new File(['name,notes\nAlice,ok\n'], 'roster.csv'),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Row 4 of the “notes” column contains a character that can’t be used (U+0008). Delete it from the file, then import the file again. The same problem appears in 2 other places in the file.',
+      );
+      expect(stage).toHaveBeenCalledTimes(1);
+      expect(onStaged).not.toHaveBeenCalled();
+    });
+
     it('is not what a tab or a line break inside a quoted cell is', async () => {
       const { onStaged } = await chooseRoster(
         'name,notes\r\nAlice,"one\ttwo"\r\nBob,"line one\r\nline two"\r\n',

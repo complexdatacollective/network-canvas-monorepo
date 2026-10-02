@@ -4,6 +4,7 @@ import {
   type RosterCharacterProblem,
 } from '@codaco/protocol-validation';
 
+import type { ResourceGatewayFailure } from '../types.ts';
 import { fileExtension } from './resourceKinds.ts';
 
 const messages = defineMessages({
@@ -99,4 +100,21 @@ export async function rosterCharacterRefusal(
   );
   const [first] = problems;
   return first === undefined ? undefined : problemMessage(first, total - 1);
+}
+
+/**
+ * A host's refusal of a roster in this package's own words, when the host said
+ * which character it found and where rather than writing a sentence: the
+ * researcher reads the same refusal the upload control gives, in their own
+ * language, whichever side found the character.
+ */
+export function withRosterCharacterMessage(
+  failure: ResourceGatewayFailure,
+): ResourceGatewayFailure {
+  const { detail } = failure;
+  if (detail?.code !== 'roster-characters') return failure;
+  return {
+    ...failure,
+    message: problemMessage(detail.problem, detail.total - 1),
+  };
 }

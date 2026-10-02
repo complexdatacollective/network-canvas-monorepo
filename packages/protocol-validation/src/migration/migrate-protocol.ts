@@ -15,6 +15,8 @@ import {
   type VersionedProtocol,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
+import { findPrototypeCodebookKeys } from '../validation/prototypeCodebookKeys.ts';
+import { formatProtocolValidationIssues } from '../validation/validate-protocol.ts';
 import {
   MigrationResultInvalidError,
   SchemaVersionDetectionError,
@@ -74,6 +76,16 @@ export function migrateProtocol(
   dependencies: Record<string, unknown> = {},
 ): VersionedProtocol {
   const detectedVersion = detectSchemaVersion(document);
+
+  // Every schema parse below would drop a `__proto__` codebook id unseen, so
+  // the document is checked for one at every version, before any of them.
+  const prototypeKeyIssues = findPrototypeCodebookKeys(document);
+  if (prototypeKeyIssues.length > 0) {
+    throw new ValidationError(
+      `Invalid protocol document for version ${detectedVersion}: ${formatProtocolValidationIssues(prototypeKeyIssues)}`,
+      detectedVersion,
+    );
+  }
 
   // Only pre-validate versions that have Zod schemas (7+)
   if (detectedVersion >= 7) {

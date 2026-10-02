@@ -195,11 +195,67 @@ export const ResourceFailureReasonSchema = z.enum([
   'unsupported-kind',
 ]);
 
+const PositionSchema = z.number().int().positive();
+
+/**
+ * Where a roster holds a character no export can carry, placed the way the
+ * researcher finds it in their own file: rows and lines count from 1 and a CSV
+ * header is row 1, a column name is placed by its position from 1 at the left,
+ * and nodes count from 1 in the order the file lists them. `character` is the
+ * code point written as `U+0007`.
+ */
+const RosterCharacterProblemSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('columnName'),
+    column: PositionSchema,
+    character: z.string(),
+  }),
+  z.object({
+    kind: z.literal('cell'),
+    row: PositionSchema,
+    column: z.string(),
+    character: z.string(),
+  }),
+  z.object({
+    kind: z.literal('attributeName'),
+    node: PositionSchema,
+    character: z.string(),
+  }),
+  z.object({
+    kind: z.literal('attributeValue'),
+    node: PositionSchema,
+    attribute: z.string(),
+    character: z.string(),
+  }),
+  z.object({
+    kind: z.literal('line'),
+    line: PositionSchema,
+    character: z.string(),
+  }),
+]);
+
+/**
+ * What a host found wrong with the content, as a code and a place rather than
+ * a sentence, so the editor can say it in the researcher's own language. The
+ * failure's `message` is still there, for a client that does not know the
+ * code.
+ */
+const ResourceFailureDetailSchema = z.discriminatedUnion('code', [
+  z.object({
+    code: z.literal('roster-characters'),
+    /** The first place in the file, in file order. */
+    problem: RosterCharacterProblemSchema,
+    /** How many places in the file have the problem, the first included. */
+    total: PositionSchema,
+  }),
+]);
+
 export const ResourceGatewayFailureSchema = z.object({
   reason: ResourceFailureReasonSchema,
   message: z.string(),
   retryable: z.boolean(),
   resourceId: z.string().optional(),
+  detail: ResourceFailureDetailSchema.optional(),
 });
 
 export function resourceResult<TData extends z.ZodType>(data: TData) {

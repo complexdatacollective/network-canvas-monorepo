@@ -16,7 +16,6 @@ import {
   loadNetcanvasArchive,
   migrateProtocol,
   validateProtocol,
-  VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 
 /**
@@ -101,9 +100,7 @@ export async function installPreviewProtocol(
     };
   }
 
-  const versioned = VersionedProtocolSchema.safeParse(document);
-  if (!versioned.success) return { ok: false, reason: 'invalid' };
-  const validation = await validateProtocol(versioned.data);
+  const validation = await validateProtocol(document);
   if (
     !validation.success ||
     validation.data.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
