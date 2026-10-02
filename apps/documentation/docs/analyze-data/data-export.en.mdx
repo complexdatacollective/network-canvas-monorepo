@@ -108,7 +108,7 @@ ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID
 
 #### Why some values start with an apostrophe
 
-Spreadsheet programs treat a cell that starts with `=`, `+`, `-` or `@` as a formula, and can run it when the file is opened. To protect anyone who opens your data in a spreadsheet, the CSV export adds an apostrophe (`'`) to the start of any text answer that begins with `=`, `+`, `-`, `@`, a tab, or a carriage return. For example, the answer `-5 degrees` is written as `'-5 degrees`. Numbers, `true`/`false` values and column headers are never changed, and GraphML files don't get the apostrophe.
+Spreadsheet programs treat a cell that starts with `=`, `+`, `-` or `@` as a formula, and can run it when the file is opened. To protect anyone who opens your data in a spreadsheet, the CSV export adds an apostrophe (`'`) to the start of any text value, such as an answer or a case ID, that begins with `=`, `+`, `-`, `@`, a tab, or a carriage return. For example, the answer `-5 degrees` is written as `'-5 degrees`. Numbers, `true`/`false` values and column headers never get the apostrophe, and neither do GraphML files.
 
 Analysis software reads the apostrophe as part of the text. To remove it from a text column, remove a leading apostrophe only where it is followed by one of those characters:
 
@@ -208,11 +208,14 @@ GraphML requires each attribute name (`attr.name`) to be a valid XML name token:
 </key>
 ```
 
-Names that are already valid, such as `close_friend` or `género`, are written unchanged, without a `<desc>` element. If two names become the same after this replacement, as `close friend` and `close_friend` would, one of them gets a `_2` suffix. See [Column names that clash](#column-names-that-clash).
+Names that are already valid, such as `close_friend` or `género`, are written unchanged, without a `<desc>` element. Replacing characters like this doesn't give a warning. If two names become the same after this replacement, as `close friend` and `close_friend` would, the name that was already valid keeps it, and the other gets a `_2` suffix and a warning. See [Column names that clash](#column-names-that-clash).
 
 #### Characters removed from GraphML files
 
-XML, the format GraphML is built on, can't store some invisible control characters, such as the null character. Tabs and line breaks are fine. These characters can end up in an answer when a participant pastes text copied from other software. When an answer contains one, the GraphML export removes it and shows a warning titled "Some characters were removed from the GraphML files". The warning lists each affected interview by its case ID, with the variables whose answers lost characters. The list can include "Case ID" if the case ID itself contained such a character. Fresco shows the warning in a notification that stays on screen until you close it, and Interviewer shows it in the export dialog.
+XML, the format GraphML is built on, can't store some invisible control characters, such as the null character. Tabs and line breaks are fine. These characters can end up in an answer when a participant pastes text copied from other software. The GraphML export removes them, and shows a warning (see [Export warnings](#export-warnings)):
+
+- When an answer contains one, the warning is titled "Some characters were removed from the GraphML files". It lists each affected interview by its case ID, or by its session ID if it has no case ID, with the variables whose answers lost characters. The list includes "Case ID" if the case ID itself contained such a character.
+- When the protocol's own text contains one, in the protocol's name, a node or edge type's name, or a column name such as a variable's name, the warning is titled "Some characters were removed from protocol text in the GraphML files". Because these characters are invisible, it names each one by its Unicode code point, such as U+0007.
 
 CSV files keep every answer exactly as it was entered, so use the CSV export if you need the original text.
 
@@ -249,15 +252,30 @@ Node and edge type names are used as written in your codebook, in any language, 
 
 ### Column names that clash
 
-Architect refuses names that would give two variables the same column in exported data (see [Names that would clash in exported data](/en/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)). Protocols created before Architect made this check can still contain such names: for example, a variable named `support_emotional` alongside a categorical variable `support` with the option `emotional`.
+Architect refuses names that would give two variables the same column in exported data (see [Names that would clash in exported data](/en/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)). Protocols created before Architect made this check can still contain such names: for example, a variable named `support_emotional` alongside a categorical variable `support` with the option `emotional`. A roster column that isn't a variable in your codebook can also have the same name as a variable's column. In GraphML files, two different names can become the same once spaces and punctuation are replaced, as described in [GraphML attribute names](#graphml-attribute-names).
 
-The export never merges two variables into one column. When two columns in the same file would have the same name:
+The export never merges two columns into one. When two columns in the same file would have the same name:
 
 - built-in columns, such as `nodeID` or `networkCanvasUUID`, always keep their names
 - the variable that comes first in your codebook keeps the name
-- each later variable's column is renamed with the first free suffix of `_2`, `_3`, and so on, such as `support_emotional_2`
+- each later column is renamed with the first free suffix of `_2`, `_3`, and so on, such as `support_emotional_2`
 
-The export shows a warning when it renames a column. Names that differ only in capitalization, such as `Age` and `age`, are not renamed.
+Names that differ only in capitalization, such as `Age` and `age`, are not renamed. When the export renames a column, it shows a warning titled "Some columns were given new names", which lists each renamed column, the file format, and the name it was written as (see [Export warnings](#export-warnings)).
+
+### Export warnings
+
+An export can finish with warnings about changes it made to your data. The export still succeeds. There are three kinds of warning, each with its own title:
+
+| Warning                                                                | What happened                                                                                                                                    |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| "Some characters were removed from the GraphML files"                  | Some answers contained characters that GraphML can't store. See [Characters removed from GraphML files](#characters-removed-from-graphml-files). |
+| "Some characters were removed from protocol text in the GraphML files" | The protocol's own text, such as its name or a node type's name, contained such characters.                                                      |
+| "Some columns were given new names"                                    | Two columns in the same file would have had the same name. See [Column names that clash](#column-names-that-clash).                              |
+
+Each warning lists exactly what was affected. Where you see the warnings depends on the app:
+
+- **Fresco** shows each kind of warning in its own notification, which stays on screen until you close it.
+- **Interviewer** shows the warnings in the export dialog, when the file is ready to save. After you save the file, it shows them again in notifications that stay on screen until you close them.
 
 ## Export options
 
@@ -622,12 +640,12 @@ G.edges(data=True)   # edges with their attributes
 
 **Problem: A warning says characters were removed from the GraphML files**
 
-- **Cause:** Some answers contained invisible control characters that GraphML can't store
+- **Cause:** Some answers, or the protocol's own text, contained invisible control characters that GraphML can't store
 - **Solution:** The CSV files keep those answers unchanged. See [Characters removed from GraphML files](#characters-removed-from-graphml-files)
 
-**Problem: A column name ends in `_2`**
+**Problem: A warning says some columns were given new names**
 
-- **Cause:** Two variables in an older protocol would have written the same column, so the export renamed one of them
+- **Cause:** Two columns in the same file would have had the same name, so the export renamed one of them with a suffix such as `_2`. This can happen with variable names in an older protocol, with a roster column that isn't a variable, or in GraphML files, when two names become the same once spaces and punctuation are replaced
 - **Solution:** See [Column names that clash](#column-names-that-clash)
 
 **Problem: Missing variables in export**
