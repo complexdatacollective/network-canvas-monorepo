@@ -1,5 +1,24 @@
 # @codaco/background-creator
 
+## 1.0.2
+
+### Patch Changes
+
+- 56e16d0: Update third-party dependencies to their latest minor and patch releases, including Base UI 1.8, React Aria Components 1.21, Tiptap 3.31.4, Mapbox GL 3.32, Motion 13.4, Lucide 1.49, the Inclusive Sans and Nunito variable fonts 5.3, PostHog, Prisma 7.10 and Electron 43.7.
+- 0ee7d8a: File drop areas are updated to a newer version of the upload component. A file can now be pasted onto a focused drop area, the hidden file picker carries an accessible label, and dropping a file onto a drop area that is busy or disabled no longer opens it in a new browser tab. Dropping several files where only one is expected still opens nothing.
+- 78e0a46: The Background Creator now honours the operating-system "reduce motion"
+  setting.
+
+  Motion is off by default in the animation library it uses, so the preference
+  reached only the one component that had been written to ask for it. Movement in
+  the shared interface components — dialogs, menus and overlays — now settles into
+  place without travelling for anyone who has asked their device for less
+  movement, while gentle fades are kept.
+
+- Updated dependencies ([08fd0f7](https://github.com/complexdatacollective/network-canvas-monorepo/commit/08fd0f7dc2c1a7b757b2caf64ae68aacaaf31572), [e6f137b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e6f137b276214e418748bc027afcad797f817ad2), [ee4ad52](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ee4ad52b14e081d25f883d9d170454932749d5ab), [bff61d5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bff61d58f17fbb7b021e6591da9575ed4c12cc16), [62617a9](https://github.com/complexdatacollective/network-canvas-monorepo/commit/62617a9c21d7e6e200adc162417090a522fac1e6), [5b12f3b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5b12f3b977d4244c398301541d978d825f53ea13), [f32135f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f32135fd036f07157198728377dfdbeb30dff747), [56e16d0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/56e16d0de03049200559dbf6bf07671689e4d99b), [16b1178](https://github.com/complexdatacollective/network-canvas-monorepo/commit/16b11782aa5f22fb3efbe55f46612d37c5bbb827), [76722bb](https://github.com/complexdatacollective/network-canvas-monorepo/commit/76722bb9d8f3d3e7e5eca94e802f48584ef37e8a), [e5f6a9a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e5f6a9ac0760f4a67ba353996b43327a5d1b0855))
+  - @codaco/fresco-ui@8.0.0
+  - @codaco/tailwind-config@1.5.1
+
 ## 1.0.1
 
 ### Patch Changes

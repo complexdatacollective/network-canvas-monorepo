@@ -1,5 +1,104 @@
 # @codaco/fresco-ui
 
+## 8.0.0
+
+### Major Changes
+
+- 16b1178: The `DataTable` components now run on TanStack Table v9. The `@tanstack/react-table` peer dependency moves from `^8.21.3` to `^9.2.4`.
+
+  **Breaking:** tables rendered through `DataTable`, `DataTableColumnHeader`, `DataTablePagination`, `DataTableToolbar`, `DataTableFacetedFilter`, `DataTableFloatingBar` and `SelectAllHeader` must now be built with the shared feature set from the new `@codaco/fresco-ui/DataTable/features` subpath:
+
+  ```tsx
+  import { useTable } from '@tanstack/react-table';
+  import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
+
+  const table = useTable({ features: dataTableFeatures, data, columns });
+  ```
+
+  v9 installs only the APIs of registered features, and its table type is tied to its feature set, so the components take a `Table<DataTableFeatures, TData>`. `dataTableFeatures` registers sorting, column and global filtering, pagination, row selection and column visibility with their client-side row models. A table that does not paginate, sort or filter in the browser — because its rows arrive already processed, or because it shows every row — sets `manualPagination`, `manualSorting` or `manualFiltering`, which skips that row model as leaving it out did in v8.
+
+  Other changes for consumers:
+
+  - `StrictColumnDef` now requires `sortFn` (v9's name for `sortingFn`) on every sortable column, and the new `DataTableColumnDef<TData>` names a column definition for these tables.
+  - Column `meta` (`filterType`, `filterConfig`, `className`) is typed per table through `dataTableFeatures` instead of a global `ColumnMeta` declaration merge, and the exported `DataTableColumnMeta` type describes it. Remove any `declare module '@tanstack/react-table'` augmentation that copied it.
+  - The custom filter functions in `DataTable/filters/filterFns` take a v9 `Row<TFeatures, TData>`.
+  - Built-in filters and sorts named by string resolve against the registered set: `includesString`, `inNumberRange`, `inDateRange`, `equals`, `weakEquals`, `arrIncludes` and `arrIncludesSome` for filters; `alphanumeric`, `basic`, `datetime`, `text` and `textCaseSensitive` for sorts.
+
+### Minor Changes
+
+- 08fd0f7: Brazilian Portuguese (Português (Brasil), `pt-BR`) is now available as an
+  interface language in Architect, Interviewer and Fresco, alongside English,
+  Spanish and Simplified Chinese. Choose it from the language setting, or let it
+  be selected automatically when your browser prefers Portuguese. The built-in
+  interview controls participants see are translated too; protocol content keeps
+  the language it was written in.
+- ee4ad52: Dutch (Nederlands, `nl`) is now available as an interface language in
+  Architect, Interviewer and Fresco. Choose it from the language setting, or let
+  it be selected automatically when your browser prefers Dutch, whether from the
+  Netherlands or Belgium. The built-in interview controls participants see are
+  translated too; protocol content keeps the language it was written in.
+- bff61d5: French (Français, `fr`) is now available as an interface language in
+  Architect, Interviewer and Fresco, alongside English, Spanish and Simplified
+  Chinese. Choose it from the language setting, or let it be selected
+  automatically when your browser prefers French — including Canadian, Belgian
+  and Swiss French. The built-in interview controls participants see are
+  translated too; protocol content keeps the language it was written in.
+- 62617a9: German (Deutsch, `de`) is now available as an interface language in Architect,
+  Interviewer and Fresco, alongside English, Spanish and Simplified Chinese.
+  Choose it from the language setting, or let it be selected automatically when
+  your browser prefers German, including the Austrian and Swiss variants. The
+  built-in interview controls participants see are translated too; protocol
+  content keeps the language it was written in.
+- 5b12f3b: Italian (Italiano, `it`) is now available as an interface language in
+  Architect, Interviewer and Fresco. Choose it from the language setting, or let
+  it be selected automatically when your browser prefers Italian. The built-in
+  interview controls participants see are translated too; protocol content keeps
+  the language it was written in.
+- f32135f: Simplified Chinese (简体中文, `zh-Hans`) is now available as an interface
+  language in Architect, Interviewer and Fresco, alongside English and Spanish.
+  Choose it from the language setting, or let it be selected automatically when
+  your browser prefers Chinese. The built-in interview controls participants see
+  are translated too; protocol content keeps the language it was written in.
+- e5f6a9a: Traditional Chinese (繁體中文, `zh-Hant`) is now available as an interface
+  language in Architect, Interviewer and Fresco, written in Taiwan-standard
+  vocabulary. Choose it from the language setting, or let it be selected
+  automatically: browsers set to Chinese for Taiwan, Hong Kong or Macau now get
+  Traditional Chinese instead of Simplified Chinese, while other Chinese browser
+  languages still get Simplified Chinese. The built-in interview controls
+  participants see are translated too; protocol content keeps the language it
+  was written in.
+
+  Chinese browser languages are now matched by script rather than by region.
+  `resolveAppLocale` in `@codaco/app-i18n` maps each Chinese tag to its script
+  first, so Hong Kong (`zh-HK`) and Macau (`zh-MO`) resolve to Traditional
+  Chinese even when the browser also sends a generic `zh`, which previously won
+  Simplified Chinese. `@codaco/shared-consts` exports the rule as
+  `toScriptMatchingTag`, which the website uses too. A registry that declares a
+  regional Chinese tag such as `zh-TW` exactly still receives that tag.
+
+### Patch Changes
+
+- e6f137b: Update `cva` to 1.0.0-beta.12. The `compose` helper exported from
+  `@codaco/fresco-ui/utils/cva` is now deprecated, because cva 1.0.0-beta.11
+  removed it upstream: use `cva({ composes: [a, b] })` instead. `compose` keeps
+  working as before, including each composed component falling back to its own
+  `defaultVariants`. Rendered class names are unchanged.
+- 56e16d0: Update third-party dependencies to their latest minor and patch releases, including Base UI 1.8, React Aria Components 1.21, Tiptap 3.31.4, Mapbox GL 3.32, Motion 13.4, Lucide 1.49, the Inclusive Sans and Nunito variable fonts 5.3, PostHog, Prisma 7.10 and Electron 43.7.
+- 76722bb: An expanded stack of notifications no longer runs off the top of the screen.
+  When several tall notifications are open at once, such as Fresco's persistent
+  export warnings, hovering the stack (or pressing F6) used to push the oldest
+  ones out of sight, where they could be neither read nor dismissed.
+
+  The expanded stack now shows only the notifications that fit on screen, and a
+  "2 more notifications" label above it counts the rest. Dismissing a
+  notification brings the next hidden one into view, and dismissing it from the
+  keyboard moves focus there. Hidden notifications are skipped by Tab and by
+  screen readers, which can still read the count. The label is translated into
+  every supported language.
+
+- Updated dependencies ([08fd0f7](https://github.com/complexdatacollective/network-canvas-monorepo/commit/08fd0f7dc2c1a7b757b2caf64ae68aacaaf31572), [ee4ad52](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ee4ad52b14e081d25f883d9d170454932749d5ab), [489bf51](https://github.com/complexdatacollective/network-canvas-monorepo/commit/489bf5173aad4d29e79c6a2a29d018223e369031), [bff61d5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bff61d58f17fbb7b021e6591da9575ed4c12cc16), [62617a9](https://github.com/complexdatacollective/network-canvas-monorepo/commit/62617a9c21d7e6e200adc162417090a522fac1e6), [5b12f3b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5b12f3b977d4244c398301541d978d825f53ea13), [f32135f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f32135fd036f07157198728377dfdbeb30dff747), [e5f6a9a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e5f6a9ac0760f4a67ba353996b43327a5d1b0855))
+  - @codaco/app-i18n@0.3.0
+
 ## 7.0.0
 
 ### Major Changes
