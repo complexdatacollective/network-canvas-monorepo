@@ -267,7 +267,7 @@ describe('Codebook in-use status and Used In content agree', () => {
 });
 
 // A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
-// (`VariableNameSchema`, which keys the node/edge and variable records alike),
+// (`CodebookIdSchema`, which keys the node/edge and variable records alike),
 // so a dot inside one is legal protocol content. Joining a reference path into
 // a dotted string and splitting it apart again cannot round-trip that: the
 // display used to read the first fragment of the id and, finding no codebook

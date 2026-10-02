@@ -2,8 +2,8 @@ import csv from 'csvtojson';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import {
+  CodebookIdSchema,
   entityAttributesProperty,
-  VariableNameSchema,
   VariableValueSchema,
 } from '@codaco/shared-consts';
 
@@ -86,7 +86,7 @@ const EMPTY_ROSTER = createMessageError(resourceFailureMessages.rosterEmpty);
  * The attribute names a roster may carry, which are the variable names the
  * protocol will hold.
  *
- * {@link VariableNameSchema} is the rule the runtime and the protocol format
+ * {@link CodebookIdSchema} is the rule the runtime and the protocol format
  * already apply — NMTOKEN-compatible, because variable names reach XML-based
  * exports — and it is used rather than restated so a name the protocol format
  * learns to accept is one this gateway learns to accept. A spreadsheet's own
@@ -98,7 +98,7 @@ function unusableAttributeName(
   names: readonly string[],
 ): RosterProblem | undefined {
   for (const name of names) {
-    if (VariableNameSchema.safeParse(name).success) continue;
+    if (CodebookIdSchema.safeParse(name).success) continue;
     return unusableRoster(
       createMessageError(resourceFailureMessages.rosterAttributeNameUnusable, {
         name,

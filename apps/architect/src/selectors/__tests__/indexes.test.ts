@@ -335,7 +335,7 @@ describe('indexes selectors', () => {
 
   describe('getVariableUsageHits()', () => {
     // A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
-    // (`VariableNameSchema`), so these ids are legal protocol content.
+    // (`CodebookIdSchema`), so these ids are legal protocol content.
     const dottedIdState = (): RootState =>
       getMockState({
         activeProtocol: {

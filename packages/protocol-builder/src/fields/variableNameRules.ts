@@ -1,8 +1,8 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import {
+  CodebookIdSchema,
   normalizeForComparison,
-  VariableNameSchema,
 } from '@codaco/shared-consts';
 
 const messages = defineMessages({
@@ -64,7 +64,7 @@ export const variableNameRefusal = (
   ) {
     return intl.formatMessage(messages.nameTaken);
   }
-  if (!VariableNameSchema.safeParse(typed).success) {
+  if (!CodebookIdSchema.safeParse(typed).success) {
     return intl.formatMessage(messages.nameInvalid);
   }
   return undefined;

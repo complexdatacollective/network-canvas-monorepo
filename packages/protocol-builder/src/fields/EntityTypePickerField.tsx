@@ -686,7 +686,7 @@ function EntityTypeCodebookControls({
    * hold different definition types, and one indexed by a union is a union of
    * maps nothing can be read out of without narrowing it again. Each map is
    * carried with its kind for the same reason the name is judged across both:
-   * a record key belongs to ONE map, and `VariableNameSchema`'s alphabet is
+   * a record key belongs to ONE map, and `CodebookIdSchema`'s alphabet is
    * the protocol author's, so a codebook may legally key a node and an edge
    * the same. Excluded by id alone, editing that node would take the edge's
    * name out of the collision list too, and the rename would be refused by

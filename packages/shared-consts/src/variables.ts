@@ -1,7 +1,60 @@
 import { z } from 'zod';
 
-// Constants for repeated values
-export const VariableNameSchema = z.string().regex(/^[a-zA-Z0-9._:-]+$/); // TODO: think about using branding here
+import { toCanonicalText } from './canonical-text.ts';
+
+/**
+ * The rule for codebook record keys — the ids node types, edge types and
+ * variables are stored under — and for any other internal identifier that has
+ * to stay in the same alphabet. Never the rule for text a researcher types:
+ * that is `CodebookNameSchema`.
+ */
+export const CodebookIdSchema = z.string().regex(/^[a-zA-Z0-9._:-]+$/); // TODO: think about using branding here
+
+// Unicode category Cc: U+0000–U+001F and U+007F–U+009F.
+const CONTROL_CHARACTER = /\p{Cc}/u;
+
+// U+FFFE and U+FFFF are the only noncharacters XML 1.0's `Char` production
+// excludes; the supplementary-plane ones are legal XML and stay allowed.
+const XML_EXCLUDED_NONCHARACTERS = [0xfffe, 0xffff].map((codeUnit) =>
+  String.fromCharCode(codeUnit),
+);
+
+/**
+ * The rule for a name a researcher types: an entity type's name, a variable's
+ * name, an option's value. Any script, spaces and punctuation are allowed.
+ *
+ * What it refuses is exactly what XML 1.0 cannot carry (lone surrogates,
+ * U+FFFE, U+FFFF, and every C0 control but tab, line feed and carriage
+ * return), plus every Cc control including those three, so a valid name is
+ * written into a GraphML attribute value unchanged: a parser normalises tab
+ * and line breaks in attribute values to spaces. Leading or trailing
+ * whitespace and non-NFC spellings are refused rather than repaired; editors
+ * apply `normalizeCodebookName` as the name is written.
+ */
+export const CodebookNameSchema = z
+  .string()
+  .min(1, { message: 'A name cannot be empty' })
+  .refine((value) => value === value.trim(), {
+    message: 'A name cannot start or end with whitespace',
+  })
+  .refine((value) => value === value.normalize('NFC'), {
+    message: 'A name must be in Unicode normalization form C (NFC)',
+  })
+  .refine((value) => value.isWellFormed(), {
+    message: 'A name cannot contain a lone surrogate',
+  })
+  .refine(
+    (value) =>
+      !CONTROL_CHARACTER.test(value) &&
+      !XML_EXCLUDED_NONCHARACTERS.some((character) =>
+        value.includes(character),
+      ),
+    { message: 'A name cannot contain control characters, U+FFFE or U+FFFF' },
+  );
+
+/** The form a typed name is stored in: NFC, then trimmed. */
+export const normalizeCodebookName = (value: string): string =>
+  toCanonicalText(value).trim();
 
 // TODO: Should be with protocol definitions.
 

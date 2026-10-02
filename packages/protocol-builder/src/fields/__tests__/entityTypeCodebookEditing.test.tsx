@@ -249,7 +249,7 @@ describe('making and changing a codebook type from the control that names it', (
    * A rename is judged against the other map's names as firmly as its own.
    *
    * Node and edge types share ONE namespace, and a record key belongs to one
-   * map — `VariableNameSchema`'s alphabet is the protocol author's, so an
+   * map — `CodebookIdSchema`'s alphabet is the protocol author's, so an
    * imported codebook may legally key a node type and an edge type the same.
    * A collision list that dropped the edited entry by id alone would drop the
    * OTHER map's entry with it, and the rename would be taken by the field and

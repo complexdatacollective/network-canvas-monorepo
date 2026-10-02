@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { VariableNameSchema } from '@codaco/shared-consts';
+import { CodebookIdSchema } from '@codaco/shared-consts';
 
 import {
   findDuplicateName,
@@ -17,8 +17,8 @@ import {
 
 export const CodebookSchema = z
   .strictObject({
-    node: z.record(VariableNameSchema, NodeDefinitionSchema).optional(),
-    edge: z.record(VariableNameSchema, EdgeDefinitionSchema).optional(),
+    node: z.record(CodebookIdSchema, NodeDefinitionSchema).optional(),
+    edge: z.record(CodebookIdSchema, EdgeDefinitionSchema).optional(),
     ego: EgoDefinitionSchema.optional(),
   })
   .superRefine((codebook, ctx) => {

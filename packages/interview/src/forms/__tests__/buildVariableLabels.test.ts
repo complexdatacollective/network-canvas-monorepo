@@ -42,7 +42,7 @@ describe('buildVariableLabels', () => {
     ).toEqual({ age: 'Age' });
   });
 
-  // `VariableNameSchema` is `/^[a-zA-Z0-9._:-]+$/`, so `__proto__` is a valid
+  // `CodebookIdSchema` is `/^[a-zA-Z0-9._:-]+$/`, so `__proto__` is a valid
   // codebook variable id. Accumulating onto a plain object drops the caption on
   // `Object.prototype`'s setter, and the lookup then answers `Object.prototype`
   // — which a participant reads as `[object Object]` in the hint that is meant

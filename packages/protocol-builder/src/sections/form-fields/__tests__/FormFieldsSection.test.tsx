@@ -2854,7 +2854,7 @@ describe('a row whose codebook section goes', () => {
  * is spelled with.
  *
  * Attribute record keys are the researcher's, not this package's:
- * `VariableNameSchema` accepts letters, digits and `._:-`, and the uuids this
+ * `CodebookIdSchema` accepts letters, digits and `._:-`, and the uuids this
  * section mints are only what IT creates — an imported protocol, or one
  * written by hand, may key an attribute anything that regex allows. So the
  * create option's value has to be something no attribute can ever be called,

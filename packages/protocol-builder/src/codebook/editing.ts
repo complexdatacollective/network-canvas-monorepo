@@ -8,9 +8,9 @@ import {
   VariableSchema,
 } from '@codaco/protocol-validation';
 import {
+  CodebookIdSchema,
   hasDuplicateOptionLabels,
   normalizeForComparison,
-  VariableNameSchema,
 } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -395,7 +395,7 @@ const categoricalOptionIssue = (
 
   if (
     variable.options.some(
-      ({ value }) => !VariableNameSchema.safeParse(String(value)).success,
+      ({ value }) => !CodebookIdSchema.safeParse(String(value)).success,
     )
   ) {
     return Object.freeze({

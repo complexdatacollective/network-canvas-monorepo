@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { VariableNameSchema } from '@codaco/shared-consts';
+import { CodebookIdSchema } from '@codaco/shared-consts';
 
 import {
   findDuplicateName,
@@ -165,7 +165,7 @@ export type VariableOptionValue = VariableOption['value'];
 
 // Variable Schema
 const baseVariableSchema = z.strictObject({
-  name: VariableNameSchema,
+  name: CodebookIdSchema,
   encrypted: z.boolean().optional(),
   // Marks a variable whose options an interface owns and the researcher may not
   // edit (e.g. a FamilyPedigree biological-sex/relationship-type/gamete-role
@@ -580,19 +580,19 @@ const checkDuplicateVariableNames = <T extends Record<string, Variable>>(
   }
 };
 export const VariablesSchema = z
-  .record(VariableNameSchema, VariableSchema)
+  .record(CodebookIdSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncryptedOnNonTextNode)
   .superRefine(rejectValidationContradictions);
 
 export const EdgeVariablesSchema = z
-  .record(VariableNameSchema, VariableSchema)
+  .record(CodebookIdSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Edge'))
   .superRefine(rejectValidationContradictions);
 
 export const EgoVariablesSchema = z
-  .record(VariableNameSchema, VariableSchema)
+  .record(CodebookIdSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Ego'))
   .superRefine(rejectEgoUnique)

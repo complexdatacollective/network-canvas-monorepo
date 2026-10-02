@@ -170,7 +170,7 @@ function localContradictions(
   return found;
 }
 
-// Only ever used to join VARIABLE IDS, which `VariableNameSchema`
+// Only ever used to join VARIABLE IDS, which `CodebookIdSchema`
 // (@codaco/shared-consts) restricts to /^[a-zA-Z0-9._:-]+$/ — no NUL, so those
 // keys cannot collide. Unrestricted user data (categorical option values) is
 // never joined on it; see the categorical arm of `pinnedValue`.

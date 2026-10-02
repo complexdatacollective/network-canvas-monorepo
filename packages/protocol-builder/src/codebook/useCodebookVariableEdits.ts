@@ -9,7 +9,7 @@ import {
   VARIABLE_TYPE_COMPONENTS,
   type VariableType,
 } from '@codaco/protocol-validation';
-import { VariableNameSchema } from '@codaco/shared-consts';
+import { CodebookIdSchema } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
@@ -252,7 +252,7 @@ const draftIssueMessage = (
     if (controlIsNotOffered(draft)) {
       return intl.formatMessage(messages.unsupportedControl);
     }
-    if (!VariableNameSchema.safeParse(draft.name).success) {
+    if (!CodebookIdSchema.safeParse(draft.name).success) {
       return intl.formatMessage(messages.nameInvalid);
     }
   }

@@ -34,7 +34,7 @@ export const INVENTED_TYPE_NOTICE = defineMessages({
  * replaces it with the created attribute's own id before the row is committed.
  *
  * Spelled with a `#`, which is the whole of why this value and not another
- * one. An attribute's record key is the researcher's — `VariableNameSchema` is
+ * one. An attribute's record key is the researcher's — `CodebookIdSchema` is
  * `/^[a-zA-Z0-9._:-]+$/`, and the uuids this package mints are only what IT
  * creates, so an imported or hand-written protocol may key an attribute
  * anything that regex allows. A sentinel inside that alphabet is a name the

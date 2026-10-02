@@ -33,8 +33,8 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 import {
+  CodebookIdSchema,
   normalizeForComparison,
-  VariableNameSchema,
 } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -353,7 +353,7 @@ const validateFields = (
   const name = stringValue(draft.name);
   if (name.trim() === '') {
     errors.name = createMessageError(messages.nameRequired);
-  } else if (!VariableNameSchema.safeParse(name).success) {
+  } else if (!CodebookIdSchema.safeParse(name).success) {
     errors.name = createMessageError(messages.nameInvalid, {
       entity: subject.entity,
     });

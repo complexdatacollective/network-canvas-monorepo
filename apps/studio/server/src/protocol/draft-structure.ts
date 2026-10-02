@@ -1,6 +1,6 @@
 import type pg from 'pg';
 
-import { VariableNameSchema } from '@codaco/shared-consts';
+import { CodebookIdSchema } from '@codaco/shared-consts';
 import {
   type SectionDoc,
   contentHash,
@@ -326,7 +326,7 @@ export type CodebookEntityRef =
 
 function entitySectionId(ref: CodebookEntityRef): string {
   if (ref.entity === 'ego') return sectionId({ kind: 'codebookEgo' });
-  if (!VariableNameSchema.safeParse(ref.typeId).success) {
+  if (!CodebookIdSchema.safeParse(ref.typeId).success) {
     throw new DraftStructureError(
       `codebook ${ref.entity} type id ${ref.typeId} is not a valid identifier`,
     );
