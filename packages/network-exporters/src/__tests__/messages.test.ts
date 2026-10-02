@@ -209,4 +209,36 @@ describe('the warnings shown after an export', () => {
       'In the CSV files of Friendship study, the ego column “networkCanvasCaseID” was written as “networkCanvasCaseID_2”.',
     ]);
   });
+
+  it('names the protocol without the characters the GraphML files could not hold', () => {
+    const bell = String.fromCharCode(0x7);
+    const protocolName = `Friendship${bell} study`;
+    const warnings: ExportWarning[] = [
+      {
+        kind: 'xml-illegal-characters-in-protocol',
+        protocolName,
+        text: 'protocol-name',
+        name: 'Friendship study',
+        removed: ['U+0007'],
+      },
+      {
+        kind: 'xml-illegal-characters-in-protocol',
+        protocolName,
+        text: 'node-type-name',
+        name: 'Person',
+        removed: ['U+0001'],
+      },
+      renamed({ protocolName }),
+    ];
+
+    expect(itemsOf(warnings)).toEqual([
+      'The protocol name “Friendship study”, with U+0007 removed',
+      'The node type name “Person” in Friendship study, with U+0001 removed',
+      'In the CSV files of Friendship study, the Person column “nodeID” was written as “nodeID_2”.',
+    ]);
+    // The raw name still tells this protocol's warnings from another's.
+    expect(
+      itemsOf([...warnings, renamed({ protocolName: 'Friendship study' })]),
+    ).toHaveLength(4);
+  });
 });

@@ -1,5 +1,6 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import { stripXmlIllegalCharacters } from '@codaco/shared-consts';
 
 import type { ExportEvent } from './events';
 import {
@@ -164,7 +165,7 @@ const formatWarningItem = (intl: IntlShape, warning: ExportWarning): string => {
         text: PROTOCOL_TEXT_SELECTORS[warning.text],
         name: warning.name,
         characters: intl.formatList(warning.removed, { type: 'conjunction' }),
-        protocolName: warning.protocolName,
+        protocolName: stripXmlIllegalCharacters(warning.protocolName),
       });
     case 'column-renamed':
       return intl.formatMessage(
@@ -173,7 +174,7 @@ const formatWarningItem = (intl: IntlShape, warning: ExportWarning): string => {
           : exportWarningMessages.columnRenamedFromVariableItem,
         {
           format: warning.format,
-          protocolName: warning.protocolName,
+          protocolName: stripXmlIllegalCharacters(warning.protocolName),
           entity: warning.entity,
           entityTypeName: warning.entityTypeName ?? '',
           column: warning.column,
