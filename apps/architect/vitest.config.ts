@@ -145,6 +145,9 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/react/shallow',
             '@codaco/fresco-ui > zustand/shallow',
             '@codaco/fresco-ui > zustand/vanilla',
+            // `readRosterCsv` loads it with a dynamic import, which the
+            // scanner never follows.
+            '@codaco/protocol-validation > csvtojson',
             '@codaco/interview > concaveman',
             '@codaco/interview > html-to-image',
             '@codaco/interview > ohash',
