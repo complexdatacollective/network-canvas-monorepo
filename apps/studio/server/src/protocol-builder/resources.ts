@@ -17,6 +17,7 @@ import {
   type ResourcePreviewSchema,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import { findRosterCharacterProblems } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
@@ -72,6 +73,36 @@ function failure(
       message,
       retryable: reason === 'unavailable' || reason === 'promotion-failed',
       ...(resourceId === undefined ? {} : { resourceId }),
+    },
+  };
+}
+
+/**
+ * A roster holding a character no export can carry, refused with where the
+ * first one is; `undefined` when it holds none.
+ *
+ * Answered with a code and a place rather than a sentence, so the editor words
+ * it in the researcher's own language; the message is only for a client that
+ * does not know the code. The format is decided by the file's extension, as
+ * the editor decides it.
+ */
+async function rosterCharacterFailure(
+  bytes: Blob,
+  source: string,
+): Promise<ResourceOutcome<never> | undefined> {
+  const { problems, total } = await findRosterCharacterProblems(
+    await bytes.text(),
+    /\.csv$/i.test(source) ? 'csv' : 'json',
+  );
+  const [problem] = problems;
+  if (problem === undefined) return undefined;
+  return {
+    status: 'failed',
+    failure: {
+      reason: 'invalid-content',
+      message: 'the roster holds a character an export cannot carry',
+      retryable: false,
+      detail: { code: 'roster-characters', problem, total },
     },
   };
 }
@@ -142,6 +173,11 @@ export class StagedResources {
     return [...this.#staged.values()].map((entry) => entry.descriptor);
   }
 
+  #stagedFor(key: string): StagedEntry | undefined {
+    const id = this.#byRequest.get(key);
+    return id === undefined ? undefined : this.#staged.get(id);
+  }
+
   /**
    * Idempotent in the request id, so an uncertain retry stages once.
    *
@@ -150,14 +186,12 @@ export class StagedResources {
    * the pickers an editor has open: a secret answered with an earlier upload's
    * descriptor is a resource the submit cannot promote.
    */
-  stage(
+  async stage(
     requestId: string,
     request: StageRequest,
-  ): ResourceOutcome<{ descriptor: Descriptor }> {
+  ): Promise<ResourceOutcome<{ descriptor: Descriptor }>> {
     const key = `${request.kind}\u0000${requestId}`;
-    const existingId = this.#byRequest.get(key);
-    const existing =
-      existingId === undefined ? undefined : this.#staged.get(existingId);
+    const existing = this.#stagedFor(key);
     if (existing !== undefined) {
       return { status: 'ok', data: { descriptor: existing.descriptor } };
     }
@@ -177,6 +211,22 @@ export class StagedResources {
         'too-large',
         `this deployment stores at most ${MAX_UPLOAD_BYTES} bytes per resource`,
       );
+    }
+    if (request.kind === 'content' && request.contentKind === 'network') {
+      // Read here as well as in the editor, because a caller need not be the
+      // editor: a roster holding a character no export can carry would
+      // otherwise be found when the data is exported, long after the
+      // researcher could still choose a corrected file.
+      const refused = await rosterCharacterFailure(
+        request.bytes,
+        request.source,
+      );
+      if (refused !== undefined) return refused;
+      // A retry of this request can have staged it while the file was read.
+      const raced = this.#stagedFor(key);
+      if (raced !== undefined) {
+        return { status: 'ok', data: { descriptor: raced.descriptor } };
+      }
     }
     const id = this.#mintId();
     const entry: StagedEntry =
