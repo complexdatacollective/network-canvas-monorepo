@@ -24,6 +24,7 @@ export default function StudioLocaleSwitcher() {
       options={locales}
       value={preference}
       automaticLocale={automaticLocale}
+      searchable
       // No submit: the choice IS the action, and it takes effect on the spot.
       // `null` is the automatic entry, a stored answer of its own.
       onChange={setLocale}
