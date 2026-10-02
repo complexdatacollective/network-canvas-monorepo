@@ -1,10 +1,10 @@
-import csv from 'csvtojson';
-
 import { createMessageError } from '@codaco/app-i18n/messages';
 import {
-  CodebookNameSchema,
+  isUsableExternalAttributeName,
+  readRosterCsv,
+} from '@codaco/protocol-validation';
+import {
   entityAttributesProperty,
-  normalizeCodebookName,
   VariableValueSchema,
 } from '@codaco/shared-consts';
 
@@ -84,24 +84,20 @@ function unusableRoster(reason: string): RosterProblem {
 const EMPTY_ROSTER = createMessageError(resourceFailureMessages.rosterEmpty);
 
 /**
- * The attribute names a roster may carry, which are the variable names the
- * protocol will hold.
+ * The attribute names a roster may carry: names an interview can match to a
+ * variable.
  *
- * {@link CodebookNameSchema} is the rule the protocol format applies to a
- * variable name — any script, spaces and punctuation, but nothing the export
- * formats cannot carry — and it is used rather than restated so a name the
- * protocol format learns to accept is one this gateway learns to accept. It is
- * asked of the name as it will be stored, so a heading with a stray space
- * round it is usable. A roster that only fails at export time is one the
- * researcher cannot connect to the file they chose weeks earlier.
+ * {@link isUsableExternalAttributeName} is the rule Architect's import applies
+ * too, so a file one accepts is a file the other accepts. A heading with a
+ * stray space round it is refused rather than trimmed: the interview matches
+ * the heading as written, so a trimmed name here would point the stage at a
+ * column the interview cannot pair with any variable.
  */
 function unusableAttributeName(
   names: readonly string[],
 ): RosterProblem | undefined {
   for (const name of names) {
-    if (CodebookNameSchema.safeParse(normalizeCodebookName(name)).success) {
-      continue;
-    }
+    if (isUsableExternalAttributeName(name)) continue;
     return unusableRoster(
       createMessageError(resourceFailureMessages.rosterAttributeNameUnusable, {
         name,
@@ -136,55 +132,36 @@ function isCsvRoster(content: RosterContent): boolean {
 
 /**
  * A CSV roster is one node per row, its columns that node's attributes, and no
- * edges — Architect's own reading of the same file, through the same parser.
- * `checkColumn` comes with it: a row carrying more or fewer values than the
- * header names is content the researcher has to fix, not a row to silently
- * keep half of.
- *
- * `flatKeys` is what the interview runtime reads the same file with. Without
- * it the parser folds a column called `home.city` into a nested object, so
- * this would report a variable named `home` the roster does not have — and
- * give it a value no attribute may hold, refusing the very file the interview
- * loads without complaint.
+ * edges — read with the interview's own reader, which Architect's import uses
+ * too, so the columns listed here are the ones the interview holds and a row
+ * is numbered as a spreadsheet numbers it. A row carrying more or fewer values
+ * than the header names is content the researcher has to fix, not a row to
+ * silently keep half of.
  */
 async function parseCsvRoster(
   text: string,
 ): Promise<RosterFacts | RosterProblem> {
-  const converter = csv({ checkColumn: true, flatKeys: true });
-  // A mismatched row is reported as an event and the row is dropped: the parse
-  // still settles, with a roster quietly shorter than the file. Listening is
-  // also what keeps the failure from surfacing as an unhandled stream error.
-  let malformed = false;
-  converter.on('error', () => {
-    malformed = true;
-  });
-
-  let rows: unknown;
-  try {
-    rows = await converter.fromString(text);
-  } catch {
+  const csv = await readRosterCsv(text).catch(() => undefined);
+  if (csv === undefined) return unreadableRoster();
+  const { columns, rows } = csv;
+  if (rows.some(({ cells }) => cells !== columns.length)) {
     return unreadableRoster();
   }
-  if (malformed || !Array.isArray(rows)) return unreadableRoster();
-  const parsedRows: readonly unknown[] = rows;
-  const attributes = parsedRows.filter(isAttributeRecord);
-  if (attributes.length !== parsedRows.length) return unreadableRoster();
-  for (const [index, row] of attributes.entries()) {
-    // One-based, because it names a line of the researcher's own file.
-    const unreadableValue = unreadableAttributeValue(row, {
+  for (const { row, values } of rows) {
+    const unreadableValue = unreadableAttributeValue(values, {
       kind: 'row',
-      position: index + 1,
+      position: row,
     });
     if (unreadableValue !== undefined) return unreadableValue;
   }
 
-  if (attributes.length === 0) return unusableRoster(EMPTY_ROSTER);
-  const variableNames = attributeNames(attributes);
+  if (rows.length === 0) return unusableRoster(EMPTY_ROSTER);
+  const variableNames = attributeNames(rows.map(({ values }) => values));
   const unusableName = unusableAttributeName(variableNames);
   if (unusableName !== undefined) return unusableName;
 
   return Object.freeze({
-    counts: Object.freeze({ nodes: attributes.length, edges: 0 }),
+    counts: Object.freeze({ nodes: rows.length, edges: 0 }),
     variableNames,
   });
 }
@@ -219,7 +196,7 @@ function parseJsonRoster(text: string): RosterFacts | RosterProblem {
 
   const nodeAttributes: Readonly<Record<string, unknown>>[] = [];
   for (const [index, node] of nodes.entries()) {
-    // One-based, because it names a row of the researcher's own file.
+    // One-based, in the order the file lists its nodes.
     const position = index + 1;
     if (!isAttributeRecord(node)) {
       return unreadableRoster(
@@ -302,7 +279,10 @@ function unreadableAttributeValue(
 /** Which entry of the researcher's own file a roster problem is about. */
 type RosterEntryPosition = Readonly<{
   kind: 'node' | 'row';
-  /** One-based, because it names a line or entry the researcher can see. */
+  /**
+   * For a row, the row a spreadsheet shows, with the header as row 1; for a
+   * node, its place in the file's list of nodes, counting from 1.
+   */
   position: number;
 }>;
 
