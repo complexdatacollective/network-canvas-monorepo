@@ -7,10 +7,12 @@ import {
   type ExtractedAsset,
   extractProtocolFromZip,
   getMigrationInfo,
+  getProtocolFileErrorKind,
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
   missingAssetsError,
+  type SchemaVersion,
   validateProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
@@ -176,7 +178,19 @@ async function importParsedProtocol(
   onProgress?: OnImportProgress,
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
-  const version = detectSchemaVersion(document);
+  let version: SchemaVersion;
+  try {
+    version = detectSchemaVersion(document);
+  } catch (cause) {
+    return importFailure(
+      getProtocolFileErrorKind(cause) === 'newerVersion'
+        ? 'unsupported-version'
+        : 'validation-failed',
+      describeProtocolFileErrorMessage(cause) ?? {
+        descriptor: messages.invalidProtocol,
+      },
+    );
+  }
 
   let migratedDocument: unknown = document;
   let didMigrate = false;
