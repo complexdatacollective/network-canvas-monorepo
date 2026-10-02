@@ -18,7 +18,7 @@ import { scrubXmlDocument } from './xmlScrub';
 
 type ProtocolTextChange = Pick<
   Extract<ExportWarning, { kind: 'xml-illegal-characters-in-protocol' }>,
-  'text' | 'original'
+  'text' | 'name' | 'removed'
 >;
 
 /**
@@ -88,16 +88,17 @@ async function graphMLGenerator(
   const changedProtocolText = new Map<string, ProtocolTextChange>();
   const protocolTextChanged = (change: ProtocolTextChange) =>
     changedProtocolText.set(JSON.stringify(change), change);
-  scrubXmlDocument(xmlDoc, ({ element, attribute, original }) => {
+  scrubXmlDocument(xmlDoc, ({ element, attribute, stripped, removed }) => {
+    const changed = { name: stripped, removed };
     if (element === graphElement && attribute === caseIdAttribute) {
       caseIdChanged = true;
     } else if (
       element === graphElement &&
       attribute === protocolNameAttribute
     ) {
-      protocolTextChanged({ text: 'protocol-name', original });
+      protocolTextChanged({ text: 'protocol-name', ...changed });
     } else if (element.tagName === 'desc' && attribute === null) {
-      protocolTextChanged({ text: 'column-name', original });
+      protocolTextChanged({ text: 'column-name', ...changed });
     } else if (element.tagName === 'data' && attribute === null) {
       const key = element.getAttribute('key') ?? '';
       const name = variableKeyNames.get(key);
@@ -109,7 +110,7 @@ async function graphMLGenerator(
             element.parentElement?.tagName === 'edge'
               ? 'edge-type-name'
               : 'node-type-name',
-          original,
+          ...changed,
         });
       }
     }

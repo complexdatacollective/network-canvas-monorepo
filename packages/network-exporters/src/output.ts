@@ -96,8 +96,13 @@ export type ExportWarning =
         | 'node-type-name'
         | 'edge-type-name'
         | 'column-name';
-      /** The text as the protocol has it, before the characters were removed. */
-      readonly original: string;
+      /** The text as the GraphML files hold it, without the removed characters. */
+      readonly name: string;
+      /**
+       * Each character removed, written as its code point (`U+0007`), once
+       * each, in the order they first appeared.
+       */
+      readonly removed: readonly string[];
     }
   | {
       readonly kind: 'column-renamed';
@@ -130,7 +135,8 @@ export const exportWarningKey = (warning: ExportWarning): string => {
         warning.kind,
         warning.protocolName,
         warning.text,
-        warning.original,
+        warning.name,
+        warning.removed,
       ]);
     case 'column-renamed':
       return JSON.stringify([

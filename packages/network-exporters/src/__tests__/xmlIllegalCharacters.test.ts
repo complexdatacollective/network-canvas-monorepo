@@ -293,19 +293,22 @@ describe('GraphML files for answers holding characters XML cannot store', () => 
         kind: 'xml-illegal-characters-in-protocol',
         protocolName: `Protocol${control}`,
         text: 'column-name',
-        original: `Odd${control}name`,
+        name: 'Oddname',
+        removed: ['U+0001'],
       },
       {
         kind: 'xml-illegal-characters-in-protocol',
         protocolName: `Protocol${control}`,
         text: 'protocol-name',
-        original: `Protocol${control}`,
+        name: 'Protocol',
+        removed: ['U+0001'],
       },
       {
         kind: 'xml-illegal-characters-in-protocol',
         protocolName: `Protocol${control}`,
         text: 'node-type-name',
-        original: `Per${control}son`,
+        name: 'Person',
+        removed: ['U+0001'],
       },
     ]);
     expect(warnings).toHaveLength(4);

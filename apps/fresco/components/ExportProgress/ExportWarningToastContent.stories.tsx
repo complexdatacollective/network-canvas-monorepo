@@ -22,7 +22,8 @@ const everyKindOfWarning: ExportWarning[] = [
     kind: 'xml-illegal-characters-in-protocol',
     protocolName: 'Friendship study',
     text: 'node-type-name',
-    original: 'Person',
+    name: 'Person',
+    removed: ['U+0007'],
   },
   {
     kind: 'column-renamed',
@@ -102,6 +103,11 @@ export const EveryKind: Story = {
         await screen.findByRole('heading', { name }),
       ).toBeInTheDocument();
     }
+    await expect(
+      screen.getByText(
+        'The node type name “Person” in Friendship study, with U+0007 removed',
+      ),
+    ).toBeInTheDocument();
     await expect(
       screen.getByText(
         'In the GraphML files of Friendship study, the Person column “Colour_red”, from the variable Colour, was written as “Colour_red_2”.',

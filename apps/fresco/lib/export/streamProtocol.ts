@@ -53,7 +53,8 @@ const exportStreamEventSchema = z.discriminatedUnion('type', [
               'edge-type-name',
               'column-name',
             ]),
-            original: z.string(),
+            name: z.string(),
+            removed: z.array(z.string()),
           }),
           z.object({
             kind: z.literal('column-renamed'),

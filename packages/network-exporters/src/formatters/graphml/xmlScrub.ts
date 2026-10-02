@@ -3,6 +3,7 @@ import { CharacterData, Element, type Node } from '@xmldom/xmldom';
 import {
   hasXmlIllegalCharacters,
   stripXmlIllegalCharacters,
+  xmlIllegalCodePoints,
 } from '@codaco/shared-consts';
 
 export type XmlScrubSite = {
@@ -10,9 +11,19 @@ export type XmlScrubSite = {
   readonly element: Element;
   /** The changed attribute's name, or null when the element's text changed. */
   readonly attribute: string | null;
-  /** The text as it was before the characters were removed. */
-  readonly original: string;
+  /** The text as the document now holds it, without the removed characters. */
+  readonly stripped: string;
+  /**
+   * Each character removed, written as its code point (`U+0007`), once each,
+   * in the order they first appeared.
+   */
+  readonly removed: readonly string[];
 };
+
+const scrubbed = (original: string) => ({
+  stripped: stripXmlIllegalCharacters(original),
+  removed: xmlIllegalCodePoints(original),
+});
 
 /**
  * Removes the characters XML 1.0 cannot represent from every text node,
@@ -31,23 +42,24 @@ export function scrubXmlDocument(
   if (root instanceof Element) {
     // Collected first: replacing an attribute while walking the live map could
     // revisit or skip one.
-    const stripped: [name: string, original: string][] = [];
+    const illegal: [name: string, original: string][] = [];
     for (let index = 0; index < root.attributes.length; index += 1) {
       const attribute = root.attributes.item(index);
       if (attribute && hasXmlIllegalCharacters(attribute.value)) {
-        stripped.push([attribute.name, attribute.value]);
+        illegal.push([attribute.name, attribute.value]);
       }
     }
-    for (const [name, original] of stripped) {
-      root.setAttribute(name, stripXmlIllegalCharacters(original));
-      onScrub({ element: root, attribute: name, original });
+    for (const [name, original] of illegal) {
+      const change = scrubbed(original);
+      root.setAttribute(name, change.stripped);
+      onScrub({ element: root, attribute: name, ...change });
     }
   } else if (root instanceof CharacterData) {
     if (hasXmlIllegalCharacters(root.data)) {
-      const original = root.data;
-      root.data = stripXmlIllegalCharacters(original);
+      const change = scrubbed(root.data);
+      root.data = change.stripped;
       if (root.parentElement) {
-        onScrub({ element: root.parentElement, attribute: null, original });
+        onScrub({ element: root.parentElement, attribute: null, ...change });
       }
     }
     return;

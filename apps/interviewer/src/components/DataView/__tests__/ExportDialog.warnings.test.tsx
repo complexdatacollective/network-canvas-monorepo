@@ -104,7 +104,8 @@ describe('the warnings in the export dialog about renamed columns and protocol t
             kind: 'xml-illegal-characters-in-protocol',
             protocolName: 'Friendship study',
             text: 'protocol-name',
-            original: 'Friendship study',
+            name: 'Friendship study',
+            removed: ['U+0001'],
           },
           {
             kind: 'xml-illegal-characters',
@@ -129,7 +130,7 @@ describe('the warnings in the export dialog about renamed columns and protocol t
       within(alerts[1]!)
         .getAllByRole('listitem')
         .map((item) => item.textContent),
-    ).toEqual(['The protocol name “Friendship study”']);
+    ).toEqual(['The protocol name “Friendship study”, with U+0001 removed']);
     expect(alerts[2]).toHaveTextContent('Some columns were given new names');
     expect(alerts[2]).toHaveTextContent(/so that no answers are lost/i);
     expect(

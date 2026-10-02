@@ -148,7 +148,8 @@ describe('the warnings after an export that renamed columns or changed protocol 
           kind: 'xml-illegal-characters-in-protocol',
           protocolName: 'Friendship study',
           text: 'node-type-name',
-          original: 'Person',
+          name: 'Person',
+          removed: ['U+0007'],
         },
         {
           kind: 'column-renamed',
@@ -179,7 +180,7 @@ describe('the warnings after an export that renamed columns or changed protocol 
       screen.getAllByRole('listitem').map((item) => item.textContent),
     ).toEqual(
       expect.arrayContaining([
-        'The node type name “Person” in Friendship study',
+        'The node type name “Person” in Friendship study, with U+0007 removed',
         'In the CSV files of Friendship study, the Person column “nodeID” was written as “nodeID_2”.',
         'In the GraphML files of Friendship study, the Person column “Colour_red”, from the variable Colour, was written as “Colour_red_2”.',
       ]),

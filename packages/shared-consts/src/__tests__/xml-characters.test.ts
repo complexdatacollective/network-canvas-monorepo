@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   hasXmlIllegalCharacters,
   stripXmlIllegalCharacters,
+  xmlIllegalCodePoints,
 } from '../xml-characters.ts';
 
 const character = (codePoint: number) => String.fromCodePoint(codePoint);
@@ -149,6 +150,11 @@ describe('stripXmlIllegalCharacters', () => {
     expect(stripXmlIllegalCharacters('Cafe\u0301\u0001')).toBe('Cafe\u0301');
   });
 
+  it('leaves nothing for xmlIllegalCodePoints to find', () => {
+    const text = `a${character(0x7)}b${character(0xffff)}`;
+    expect(xmlIllegalCodePoints(stripXmlIllegalCharacters(text))).toEqual([]);
+  });
+
   it('leaves nothing for hasXmlIllegalCharacters to find', () => {
     const everything = [
       ...range(0x0, 0x1f),
@@ -165,5 +171,44 @@ describe('stripXmlIllegalCharacters', () => {
     expect(hasXmlIllegalCharacters(stripXmlIllegalCharacters(everything))).toBe(
       false,
     );
+  });
+});
+
+describe('xmlIllegalCodePoints', () => {
+  it('finds nothing in text XML 1.0 can hold', () => {
+    expect(xmlIllegalCodePoints('日本語 Café 😀\t\n\r')).toEqual([]);
+    expect(xmlIllegalCodePoints('')).toEqual([]);
+  });
+
+  it('writes each character as its code point, four hex digits or more', () => {
+    expect(
+      xmlIllegalCodePoints(
+        `${character(0x0)}${character(0x7)}${character(0x1f)}${character(0xfffe)}`,
+      ),
+    ).toEqual(['U+0000', 'U+0007', 'U+001F', 'U+FFFE']);
+  });
+
+  it('names each character once, in the order it first appears', () => {
+    const bell = character(0x7);
+    const unit = character(0x1f);
+    expect(
+      xmlIllegalCodePoints(`${unit}a${bell}b${unit}c${bell}${bell}`),
+    ).toEqual(['U+001F', 'U+0007']);
+  });
+
+  it('names an unpaired surrogate, and not either half of a pair', () => {
+    const lone = String.fromCharCode(0xd800);
+    expect(xmlIllegalCodePoints(`😀${lone}😀`)).toEqual(['U+D800']);
+  });
+
+  it('names exactly what stripXmlIllegalCharacters removes', () => {
+    for (const codePoint of [...ILLEGAL_C0, 0xfffe, 0xffff]) {
+      const text = `a${character(codePoint)}b`;
+      expect(xmlIllegalCodePoints(text)).toHaveLength(1);
+      expect(stripXmlIllegalCharacters(text)).toBe('ab');
+    }
+    for (const codePoint of [...KEPT_C0, 0x7f, 0x85, 0xfdd0, 0x10ffff]) {
+      expect(xmlIllegalCodePoints(character(codePoint))).toEqual([]);
+    }
   });
 });

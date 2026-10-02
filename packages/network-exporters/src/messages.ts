@@ -72,16 +72,16 @@ const exportWarningMessages = defineMessages({
   protocolTextDescription: {
     id: 'networkExporters.warning.protocolText.description',
     defaultMessage:
-      'Some of the protocol’s own text contained characters that GraphML cannot store, so they were removed in the GraphML files. The affected text is:',
+      'Some of the protocol’s own text contained characters that GraphML cannot store, so they were removed in the GraphML files. These characters are usually invisible, so each one is named by its Unicode code point, such as U+0007. The affected text is:',
     description:
-      'Explanation in the warning shown after an export, followed by a list of the protocol’s names that lost characters in the GraphML files. A protocol is the study design a researcher builds. GraphML is a network file format.',
+      'Explanation in the warning shown after an export, followed by a list of the protocol’s names that lost characters in the GraphML files. A protocol is the study design a researcher builds. GraphML is a network file format. A Unicode code point, written like U+0007, is the standard number that identifies a character; keep “U+0007” as it is.',
   },
   protocolTextItem: {
     id: 'networkExporters.warning.protocolText.item',
     defaultMessage:
-      '{text, select, protocolName {The protocol name “{original}”} nodeTypeName {The node type name “{original}” in {protocolName}} edgeTypeName {The edge type name “{original}” in {protocolName}} other {The column name “{original}” in {protocolName}}}',
+      '{text, select, protocolName {The protocol name “{name}”, with {characters} removed} nodeTypeName {The node type name “{name}” in {protocolName}, with {characters} removed} edgeTypeName {The edge type name “{name}” in {protocolName}, with {characters} removed} other {The column name “{name}” in {protocolName}, with {characters} removed}}',
     description:
-      'One entry in the list of protocol text that lost characters in the GraphML files. {text} says which text it is: the protocol’s name, the name of a node type (a kind of person, place or thing in the network), the name of an edge type (a kind of relationship), or the name of a column. {original} is that text as the protocol has it. {protocolName} is the name of the protocol.',
+      'One entry in the list of protocol text that lost characters in the GraphML files. {text} says which text it is: the protocol’s name, the name of a node type (a kind of person, place or thing in the network), the name of an edge type (a kind of relationship), or the name of a column. {name} is that text as the GraphML files now hold it, without the removed characters. {characters} is a list, joined into a sentence, of the removed characters, each written as its Unicode code point, such as U+0007. {protocolName} is the name of the protocol.',
   },
   columnRenamedTitle: {
     id: 'networkExporters.warning.columnRenamed.title',
@@ -162,7 +162,8 @@ const formatWarningItem = (intl: IntlShape, warning: ExportWarning): string => {
     case 'xml-illegal-characters-in-protocol':
       return intl.formatMessage(exportWarningMessages.protocolTextItem, {
         text: PROTOCOL_TEXT_SELECTORS[warning.text],
-        original: warning.original,
+        name: warning.name,
+        characters: intl.formatList(warning.removed, { type: 'conjunction' }),
         protocolName: warning.protocolName,
       });
     case 'column-renamed':

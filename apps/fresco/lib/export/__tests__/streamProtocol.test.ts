@@ -110,7 +110,8 @@ describe('consumeBatchStream', () => {
         kind: 'xml-illegal-characters-in-protocol',
         protocolName: 'Study',
         text: 'node-type-name',
-        original: 'Per\u0001son',
+        name: 'Person',
+        removed: ['U+0001'],
       },
       {
         kind: 'column-renamed',

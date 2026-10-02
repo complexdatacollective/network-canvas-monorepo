@@ -68,12 +68,14 @@ describe('the warnings shown after an export', () => {
       ExportWarning,
       { kind: 'xml-illegal-characters-in-protocol' }
     >['text'],
-    original: string,
+    name: string,
+    removed: readonly string[] = ['U+0001'],
   ): ExportWarning => ({
     kind: 'xml-illegal-characters-in-protocol',
     protocolName: 'Friendship study',
     text,
-    original,
+    name,
+    removed,
   });
   const itemsOf = (warnings: ExportWarning[]) =>
     formatExportWarnings(intl, warnings).flatMap(({ items }) =>
@@ -158,20 +160,27 @@ describe('the warnings shown after an export', () => {
     });
   });
 
-  it('says which of the protocol’s text lost characters', () => {
+  it('says which of the protocol’s text lost characters, and which characters', () => {
     expect(
       itemsOf([
-        protocolText('protocol-name', 'Friendship\u0001 study'),
-        protocolText('node-type-name', 'Per\u0001son'),
-        protocolText('edge-type-name', 'Kn\u0001ows'),
-        protocolText('column-name', 'Nick\u0001name'),
+        protocolText('protocol-name', 'Friendship study'),
+        protocolText('node-type-name', 'Person', ['U+0007']),
+        protocolText('edge-type-name', 'Knows', ['U+0001', 'U+FFFF']),
+        protocolText('column-name', 'Nickname', ['U+0001', 'U+0002', 'U+D800']),
       ]),
     ).toEqual([
-      'The protocol name “Friendship\u0001 study”',
-      'The node type name “Per\u0001son” in Friendship study',
-      'The edge type name “Kn\u0001ows” in Friendship study',
-      'The column name “Nick\u0001name” in Friendship study',
+      'The protocol name “Friendship study”, with U+0001 removed',
+      'The node type name “Person” in Friendship study, with U+0007 removed',
+      'The edge type name “Knows” in Friendship study, with U+0001 and U+FFFF removed',
+      'The column name “Nickname” in Friendship study, with U+0001, U+0002, and U+D800 removed',
     ]);
+  });
+
+  it('says that each removed character is named by its code point', () => {
+    const [group] = formatExportWarnings(intl, [
+      protocolText('node-type-name', 'Person', ['U+0007']),
+    ]);
+    expect(group?.description).toContain('Unicode code point, such as U+0007');
   });
 
   it('says what each renamed column was written as, and where', () => {

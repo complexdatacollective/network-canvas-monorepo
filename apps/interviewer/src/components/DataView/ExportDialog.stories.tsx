@@ -197,7 +197,8 @@ const removedCharacterWarnings: ExportWarning[] = [
     kind: 'xml-illegal-characters-in-protocol',
     protocolName: 'Friendship study',
     text: 'node-type-name',
-    original: 'Person\u0007',
+    name: 'Person',
+    removed: ['U+0007', 'U+0001'],
   },
 ];
 
@@ -252,7 +253,9 @@ export const ReadyWithRemovedCharacters: Story = {
       ),
     ).toBeInTheDocument();
     await expect(
-      screen.getByText(/The node type name “Person.” in Friendship study/),
+      screen.getByText(
+        'The node type name “Person” in Friendship study, with U+0007 and U+0001 removed',
+      ),
     ).toBeInTheDocument();
   },
 };
@@ -316,9 +319,11 @@ export const SavedWithWarnings: Story = {
       expect(screen.queryByText('Archive ready')).not.toBeInTheDocument(),
     );
 
+    const protocolTextTitle =
+      'Some characters were removed from protocol text in the GraphML files';
     const titles = [
       'Some characters were removed from the GraphML files',
-      'Some characters were removed from protocol text in the GraphML files',
+      protocolTextTitle,
       'Some columns were given new names',
     ];
     for (const name of titles) {
@@ -326,6 +331,11 @@ export const SavedWithWarnings: Story = {
         await screen.findByRole('heading', { name }),
       ).toBeInTheDocument();
     }
+    await expect(
+      within(screen.getByRole('dialog', { name: protocolTextTitle })).getByText(
+        'The node type name “Person” in Friendship study, with U+0007 and U+0001 removed',
+      ),
+    ).toBeInTheDocument();
 
     // Longer than a toast's default timeout: these have none.
     await new Promise((resolve) => setTimeout(resolve, 5500));
