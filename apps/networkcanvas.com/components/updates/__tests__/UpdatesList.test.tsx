@@ -148,4 +148,24 @@ describe('UpdatesList', () => {
       screen.queryByRole('button', { name: 'Clear all', hidden: true }),
     ).toBeNull();
   });
+
+  it('does not match words that only appear in a link address', () => {
+    renderWithIntl(
+      <UpdatesList
+        updates={[
+          {
+            ...updates[0]!,
+            summary:
+              'See [the release](https://example.test/announcements_(october)_archive).',
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'archive' },
+    });
+
+    expect(entryTitles()).toEqual([]);
+  });
 });

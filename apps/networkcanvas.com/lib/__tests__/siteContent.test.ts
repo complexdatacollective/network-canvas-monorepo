@@ -358,6 +358,17 @@ partly,2026-04-02,launch,architect@8.2.0|interviewer,Partly released,Out in Arch
     );
   });
 
+  it('rejects a link that leaves the site', async () => {
+    for (const link of ['//attacker.example', '/\\attacker.example']) {
+      await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,Older summary,,${link}
+`);
+
+      await expect(loadUpdates(directory)).rejects.toThrow(
+        'updates.csv: row 2: link:',
+      );
+    }
+  });
+
   it('rejects a kind it does not know', async () => {
     await writeUpdates(`older,2026-01-05,hotfix,fresco@4.1.0,Older update,Older summary,,
 `);
