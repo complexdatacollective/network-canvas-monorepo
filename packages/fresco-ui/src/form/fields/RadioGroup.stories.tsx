@@ -243,3 +243,31 @@ export const PreservesNumericValueType: Story = {
     await expect(typeDisplay).toHaveTextContent('number');
   },
 };
+
+/**
+ * Option values are whatever the researcher typed: spaces, punctuation and any
+ * script. Each option must still be a labelled radio with a valid id.
+ */
+export const UnrestrictedOptionValues: Story = {
+  args: {
+    'name': 'unrestricted-values',
+    'options': [
+      { value: 'close friend', label: 'close friend' },
+      { value: '朋友', label: '朋友' },
+      { value: 'école "A" [1]', label: 'école "A" [1]' },
+    ],
+    'aria-label': 'Relationship',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    for (const element of canvasElement.querySelectorAll('[id]')) {
+      await expect(element.id).not.toMatch(/\s/);
+    }
+
+    for (const name of ['close friend', '朋友', 'école "A" [1]']) {
+      await userEvent.click(canvas.getByText(name));
+      await expect(canvas.getByRole('radio', { name })).toBeChecked();
+    }
+  },
+};
