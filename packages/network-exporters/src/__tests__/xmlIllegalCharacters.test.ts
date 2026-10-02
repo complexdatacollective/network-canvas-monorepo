@@ -4,7 +4,6 @@ import {
   MIME_TYPE,
   XMLSerializer,
 } from '@xmldom/xmldom';
-import { Effect, Layer, Queue } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
@@ -13,14 +12,10 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import type { ExportEvent } from '../events';
 import type { InterviewExportInput } from '../input';
 import type { ExportOptions } from '../options';
-import type { OutputEntry } from '../output';
-import { exportPipeline } from '../pipeline';
-import { InterviewRepository } from '../services/InterviewRepository';
-import { Output } from '../services/Output';
-import { ProtocolRepository } from '../services/ProtocolRepository';
+import type { ExportWarning } from '../output';
+import { runRecordedExport } from './exportHarness';
 
 // Built from code points so that no control character sits in this source.
 const control = String.fromCharCode(0x1);
@@ -143,56 +138,6 @@ const cleanInterview: InterviewExportInput = {
   },
 };
 
-const decoder = new TextDecoder();
-
-const readAll = async (data: AsyncIterable<Uint8Array>) => {
-  let text = '';
-  for await (const chunk of data)
-    text += decoder.decode(chunk, { stream: true });
-  return text;
-};
-
-const runExport = async (
-  options: ExportOptions,
-  interviews: InterviewExportInput[],
-) => {
-  const files = new Map<string, string>();
-  const output = Layer.succeed(Output, {
-    begin: () => Effect.succeed({ id: 'recording' }),
-    writeEntry: (_handle, entry: OutputEntry) =>
-      Effect.promise(async () => {
-        files.set(entry.name, await readAll(entry.data));
-      }),
-    end: () => Effect.succeed({ key: 'k' }),
-  });
-  const repositories = Layer.mergeAll(
-    Layer.succeed(InterviewRepository, {
-      getForExport: () => Effect.succeed(interviews),
-    }),
-    Layer.succeed(ProtocolRepository, {
-      getProtocols: () =>
-        Effect.succeed({
-          'protocol-1': {
-            hash: 'protocol-1',
-            name: `Protocol${control}`,
-            codebook,
-          },
-        }),
-    }),
-  );
-  const result = await Effect.runPromise(
-    Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<ExportEvent>();
-      return yield* exportPipeline(
-        interviews.map((interview) => interview.id),
-        options,
-        queue,
-      );
-    }).pipe(Effect.provide(Layer.mergeAll(repositories, output))),
-  );
-  return { files, result };
-};
-
 // xmldom's parser is lenient, but its serializer applies the XML `Char`
 // production to every text node and attribute value when asked to require a
 // well-formed document, so a round trip through both is a strict check that
@@ -225,11 +170,23 @@ const fileFor = (files: Map<string, string>, id: string, extension: string) => {
   return found;
 };
 
+const runExport = (
+  options: ExportOptions,
+  interviews: InterviewExportInput[],
+) =>
+  runRecordedExport(options, interviews, {
+    hash: 'protocol-1',
+    name: `Protocol${control}`,
+    codebook,
+  });
+
 describe('GraphML files for answers holding characters XML cannot store', () => {
   let files = new Map<string, string>();
-  let warnings: Awaited<ReturnType<typeof runExport>>['result']['warnings'] =
-    [];
+  let warnings: ExportWarning[] = [];
   let document: Document;
+
+  const answerWarnings = () =>
+    warnings.filter((warning) => warning.kind === 'xml-illegal-characters');
 
   beforeAll(async () => {
     const run = await runExport(graphmlAndCsv, [
@@ -301,7 +258,7 @@ describe('GraphML files for answers holding characters XML cannot store', () => 
   });
 
   it('reports which interview and which variables lost characters', () => {
-    expect(warnings).toEqual([
+    expect(answerWarnings()).toEqual([
       {
         kind: 'xml-illegal-characters',
         sessionId: 'interview-bad',
@@ -313,17 +270,48 @@ describe('GraphML files for answers holding characters XML cannot store', () => 
   });
 
   it('does not report an interview whose answers were already storable', () => {
-    expect(warnings.map((warning) => warning.sessionId)).not.toContain(
+    expect(answerWarnings().map((warning) => warning.sessionId)).not.toContain(
       'interview-clean',
     );
   });
 
   it('names a variable once however many answers lost characters', () => {
-    const nicknames = warnings.flatMap((warning) =>
+    const nicknames = answerWarnings().flatMap((warning) =>
       warning.variables.filter((name) => name === 'Nickname'),
     );
 
     expect(nicknames).toEqual(['Nickname']);
+  });
+
+  it("reports the protocol's own text that lost characters, once for the protocol", () => {
+    expect(
+      warnings.filter(
+        (warning) => warning.kind === 'xml-illegal-characters-in-protocol',
+      ),
+    ).toEqual([
+      {
+        kind: 'xml-illegal-characters-in-protocol',
+        protocolName: `Protocol${control}`,
+        text: 'column-name',
+        name: 'Oddname',
+        removed: ['U+0001'],
+      },
+      {
+        kind: 'xml-illegal-characters-in-protocol',
+        protocolName: `Protocol${control}`,
+        text: 'protocol-name',
+        name: 'Protocol',
+        removed: ['U+0001'],
+      },
+      {
+        kind: 'xml-illegal-characters-in-protocol',
+        protocolName: `Protocol${control}`,
+        text: 'node-type-name',
+        name: 'Person',
+        removed: ['U+0001'],
+      },
+    ]);
+    expect(warnings).toHaveLength(4);
   });
 });
 

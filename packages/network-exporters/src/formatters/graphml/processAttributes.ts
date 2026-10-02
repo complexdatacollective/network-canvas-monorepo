@@ -2,10 +2,10 @@ import type { DocumentFragment } from '@xmldom/xmldom';
 
 import type { Codebook } from '@codaco/protocol-validation';
 import {
-  categoricalOptionColumn,
-  layoutColumn,
+  type LayoutColumnAxis,
   type NcEgo,
   type VariableValue,
+  variableExportColumnEntries,
 } from '@codaco/shared-consts';
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
@@ -19,20 +19,38 @@ import {
   createDataElement,
   createDocumentFragment,
   getCodebookVariablesForEntity,
-  sha1,
 } from './helpers';
 import type { GraphMLKeyIds } from './keyIds';
 
+const layoutDatum = (
+  axis: LayoutColumnAxis,
+  x: number,
+  y: number,
+  { globalOptions }: ExportOptions,
+): string => {
+  switch (axis) {
+    case 'x':
+      return String(x);
+    case 'y':
+      return String(y);
+    case 'screenSpaceX':
+      return (x * globalOptions.screenLayoutWidth).toFixed(2);
+    case 'screenSpaceY':
+      return ((1.0 - y) * globalOptions.screenLayoutHeight).toFixed(2);
+  }
+};
+
 /**
  * Function for processing attributes of an entity. Processing means creating
- * one or more <data> elements for each attribute.
+ * one or more <data> elements for each attribute, under the key ids
+ * `generateKeyElements` gave each column.
  */
-async function processAttributes(
+function processAttributes(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
   codebook: Codebook,
   exportOptions: ExportOptions,
   keyIds: GraphMLKeyIds,
-): Promise<DocumentFragment> {
+): DocumentFragment {
   const fragment = createDocumentFragment();
 
   const createDomDataElement = (key: string, value: string) => {
@@ -55,104 +73,63 @@ async function processAttributes(
       continue;
     }
 
-    const variableIsEncrypted = codebookEntry.encrypted;
-    const variableKey = keyIds.variable.get(key) ?? key;
-
-    switch (codebookEntry.type) {
-      case 'categorical': {
-        const options = codebookEntry.options;
-        const hashedValues = await Promise.all(
-          options.map((option) => sha1(String(option.value))),
-        );
-
-        if (variableIsEncrypted) {
-          // If the variable is encrypted, we don't want to export it.
-          options.forEach((_option, index) => {
-            const optionKey = categoricalOptionColumn(
-              key,
-              hashedValues[index] ?? '',
-            );
-            createDomDataElement(optionKey, 'ENCRYPTED');
-          });
-          break;
-        }
-
-        options.forEach((option, index) => {
-          const optionKey = categoricalOptionColumn(
-            key,
-            hashedValues[index] ?? '',
-          );
-
-          const attributeValue = entityAttributes[key];
-          const isSelected = isCategoricalOptionSelected(
-            attributeValue,
-            option.value,
-          );
-          createDomDataElement(optionKey, isSelected ? 'true' : 'false');
-        });
-
-        break;
+    const ids = keyIds.variable.get(codebookEntry);
+    const columns = variableExportColumnEntries(codebookEntry, {
+      format: 'graphml',
+      useScreenLayoutCoordinates:
+        exportOptions.globalOptions.useScreenLayoutCoordinates,
+    }).map(({ origin }, index) => {
+      const id = ids?.[index];
+      if (id === undefined) {
+        throw new Error(`Missing GraphML key for variable: ${key}`);
       }
-      case 'layout': {
-        if (variableIsEncrypted) {
-          // If the variable is encrypted, we don't want to export it.
-          createDomDataElement(layoutColumn('graphml', key, 'x'), 'ENCRYPTED');
-          createDomDataElement(layoutColumn('graphml', key, 'y'), 'ENCRYPTED');
-          break;
-        }
+      return { id, origin };
+    });
 
+    if (codebookEntry.encrypted) {
+      // An encrypted value is never exported. A layout variable writes the
+      // marker for its coordinates only.
+      for (const { id, origin } of columns) {
         if (
-          typeof value !== 'object' ||
-          Array.isArray(value) ||
-          !('x' in value) ||
-          !('y' in value) ||
-          typeof value.x !== 'number' ||
-          typeof value.y !== 'number'
+          origin.kind !== 'layout' ||
+          origin.axis === 'x' ||
+          origin.axis === 'y'
         ) {
-          break;
+          createDomDataElement(id, 'ENCRYPTED');
         }
+      }
+      continue;
+    }
 
-        const { x: xCoord, y: yCoord } = value;
-
-        createDomDataElement(layoutColumn('graphml', key, 'x'), String(xCoord));
-        createDomDataElement(layoutColumn('graphml', key, 'y'), String(yCoord));
-
-        if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-          const { screenLayoutWidth, screenLayoutHeight } =
-            exportOptions.globalOptions;
-          const screenSpaceXCoord = (xCoord * screenLayoutWidth).toFixed(2);
-          const screenSpaceYCoord = (
-            (1.0 - yCoord) *
-            screenLayoutHeight
-          ).toFixed(2);
-
+    if (codebookEntry.type === 'layout') {
+      if (
+        typeof value !== 'object' ||
+        Array.isArray(value) ||
+        !('x' in value) ||
+        !('y' in value) ||
+        typeof value.x !== 'number' ||
+        typeof value.y !== 'number'
+      ) {
+        continue;
+      }
+      for (const { id, origin } of columns) {
+        if (origin.kind === 'layout') {
           createDomDataElement(
-            layoutColumn('graphml', key, 'screenSpaceX'),
-            screenSpaceXCoord,
-          );
-          createDomDataElement(
-            layoutColumn('graphml', key, 'screenSpaceY'),
-            screenSpaceYCoord,
+            id,
+            layoutDatum(origin.axis, value.x, value.y, exportOptions),
           );
         }
-        break;
       }
+      continue;
+    }
 
-      case 'boolean':
-      case 'number':
-      case 'text':
-      case 'datetime':
-      case 'location':
-      case 'ordinal':
-      case 'scalar': {
-        if (variableIsEncrypted) {
-          createDomDataElement(variableKey, 'ENCRYPTED');
-          break;
-        }
-
-        createDomDataElement(variableKey, stringifyValue(value));
-        break;
-      }
+    for (const { id, origin } of columns) {
+      createDomDataElement(
+        id,
+        origin.kind === 'option'
+          ? String(isCategoricalOptionSelected(value, origin.value))
+          : stringifyValue(value),
+      );
     }
   }
 

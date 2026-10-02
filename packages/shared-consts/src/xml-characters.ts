@@ -35,6 +35,23 @@ export const hasXmlIllegalCharacters = (value: string): boolean => {
 };
 
 /**
+ * The characters in `value` that XML 1.0 cannot represent, each written as its
+ * code point (`U+0007`), once each, in the order they first appear.
+ */
+export const xmlIllegalCodePoints = (value: string): string[] => {
+  const codePoints = new Set<string>();
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint !== undefined && !isXmlCharacter(codePoint)) {
+      codePoints.add(
+        `U+${codePoint.toString(16).toUpperCase().padStart(4, '0')}`,
+      );
+    }
+  }
+  return [...codePoints];
+};
+
+/**
  * `value` without the characters XML 1.0 cannot represent, and otherwise
  * unchanged: nothing is replaced, escaped or normalized, and the other
  * characters keep their order.

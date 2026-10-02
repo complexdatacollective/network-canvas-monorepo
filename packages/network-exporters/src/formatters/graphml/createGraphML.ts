@@ -1,22 +1,32 @@
 import { XMLSerializer } from '@xmldom/xmldom';
 
 import type { Codebook } from '@codaco/protocol-validation';
-import { caseProperty, sessionProperty } from '@codaco/shared-consts';
+import {
+  caseProperty,
+  ncTypeProperty,
+  protocolName,
+  sessionProperty,
+} from '@codaco/shared-consts';
 
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
 import type { ExportFileNetwork } from '../../session/exportFile';
 import getDataElementGenerator from './generateDataElements';
 import getKeyElementGenerator from './generateKeyElements';
-import { caseIdAttribute, setUpXml } from './helpers';
+import { caseIdAttribute, protocolNameAttribute, setUpXml } from './helpers';
 import { scrubXmlDocument } from './xmlScrub';
+
+type ProtocolTextChange = Pick<
+  Extract<ExportWarning, { kind: 'xml-illegal-characters-in-protocol' }>,
+  'text' | 'name' | 'removed'
+>;
 
 /**
  * Generator function to supply XML content in chunks to both string and stream producers
  * @param {*} network
  * @param {*} codebook
  * @param {*} exportOptions
- * @param {*} reportWarning called when answers lost characters XML cannot hold
+ * @param {*} reportWarning called with each change the export made to what it was given
  */
 async function graphMLGenerator(
   network: ExportFileNetwork,
@@ -42,6 +52,7 @@ async function graphMLGenerator(
     fragment: keyElements,
     keyIds,
     variableKeyNames,
+    renamedColumns,
   } = await generateKeyElements({
     ego: [network.ego],
     node: network.nodes,
@@ -49,32 +60,59 @@ async function graphMLGenerator(
   });
   graphMLElement.insertBefore(keyElements, graphElement);
 
+  const protocolNameText = network.sessionVariables[protocolName];
+  for (const renamed of renamedColumns) {
+    reportWarning({
+      kind: 'column-renamed',
+      protocolName: protocolNameText,
+      format: 'graphml',
+      ...renamed,
+    });
+  }
+
   const generateDataElements = getDataElementGenerator(
     codebook,
     exportOptions,
     keyIds,
   );
-  const [egoData, nodeData, edgeData] = await Promise.all([
-    generateDataElements(network.ego),
-    generateDataElements(network.nodes),
-    generateDataElements(network.edges),
-  ]);
+  graphElement.appendChild(generateDataElements(network.ego));
+  graphElement.appendChild(generateDataElements(network.nodes));
+  graphElement.appendChild(generateDataElements(network.edges));
 
-  graphElement.appendChild(egoData);
-  graphElement.appendChild(nodeData);
-  graphElement.appendChild(edgeData);
-
-  // Characters XML 1.0 cannot hold would make the whole file unreadable.
-  // Protocol-authored text (names, the protocol's name) is cleaned silently;
-  // a change to what a participant or researcher entered is reported.
+  // Characters XML 1.0 cannot hold would make the whole file unreadable. A
+  // change to what a participant or researcher entered is reported per
+  // interview, a change to the protocol's own text once for the protocol.
+  // Everything else written here is generated, and cannot hold them.
   const changedVariables = new Set<string>();
   let caseIdChanged = false;
-  scrubXmlDocument(xmlDoc, ({ element, attribute }) => {
+  const changedProtocolText = new Map<string, ProtocolTextChange>();
+  const protocolTextChanged = (change: ProtocolTextChange) =>
+    changedProtocolText.set(JSON.stringify(change), change);
+  scrubXmlDocument(xmlDoc, ({ element, attribute, stripped, removed }) => {
+    const changed = { name: stripped, removed };
     if (element === graphElement && attribute === caseIdAttribute) {
       caseIdChanged = true;
+    } else if (
+      element === graphElement &&
+      attribute === protocolNameAttribute
+    ) {
+      protocolTextChanged({ text: 'protocol-name', ...changed });
+    } else if (element.tagName === 'desc' && attribute === null) {
+      protocolTextChanged({ text: 'column-name', ...changed });
     } else if (element.tagName === 'data' && attribute === null) {
-      const name = variableKeyNames.get(element.getAttribute('key') ?? '');
-      if (name !== undefined) changedVariables.add(name);
+      const key = element.getAttribute('key') ?? '';
+      const name = variableKeyNames.get(key);
+      if (name !== undefined) {
+        changedVariables.add(name);
+      } else if (key === ncTypeProperty) {
+        protocolTextChanged({
+          text:
+            element.parentElement?.tagName === 'edge'
+              ? 'edge-type-name'
+              : 'node-type-name',
+          ...changed,
+        });
+      }
     }
   });
   if (caseIdChanged || changedVariables.size > 0) {
@@ -84,6 +122,13 @@ async function graphMLGenerator(
       caseId: network.sessionVariables[caseProperty],
       variables: [...changedVariables],
       caseIdChanged,
+    });
+  }
+  for (const change of changedProtocolText.values()) {
+    reportWarning({
+      kind: 'xml-illegal-characters-in-protocol',
+      protocolName: protocolNameText,
+      ...change,
     });
   }
 

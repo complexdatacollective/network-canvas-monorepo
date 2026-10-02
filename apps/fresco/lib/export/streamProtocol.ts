@@ -36,13 +36,37 @@ const exportStreamEventSchema = z.discriminatedUnion('type', [
     failedSessionIds: z.optional(z.array(z.string())),
     warnings: z.optional(
       z.array(
-        z.object({
-          kind: z.literal('xml-illegal-characters'),
-          sessionId: z.string(),
-          caseId: z.string(),
-          variables: z.array(z.string()),
-          caseIdChanged: z.boolean(),
-        }),
+        z.discriminatedUnion('kind', [
+          z.object({
+            kind: z.literal('xml-illegal-characters'),
+            sessionId: z.string(),
+            caseId: z.string(),
+            variables: z.array(z.string()),
+            caseIdChanged: z.boolean(),
+          }),
+          z.object({
+            kind: z.literal('xml-illegal-characters-in-protocol'),
+            protocolName: z.string(),
+            text: z.enum([
+              'protocol-name',
+              'node-type-name',
+              'edge-type-name',
+              'column-name',
+            ]),
+            name: z.string(),
+            removed: z.array(z.string()),
+          }),
+          z.object({
+            kind: z.literal('column-renamed'),
+            protocolName: z.string(),
+            format: z.enum(['csv', 'graphml']),
+            entity: z.enum(['ego', 'node', 'edge']),
+            entityTypeName: z.optional(z.string()),
+            variable: z.string(),
+            column: z.string(),
+            renamedTo: z.string(),
+          }),
+        ]),
       ),
     ),
   }),

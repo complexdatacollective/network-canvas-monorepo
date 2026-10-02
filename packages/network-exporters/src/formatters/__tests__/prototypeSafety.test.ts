@@ -125,7 +125,7 @@ describe.each([
       const network = prepareSession(sessionFor(hazards));
 
       expectCellsByHeader(
-        rowsOf(attributeListRows(network, codebook, options)),
+        rowsOf(attributeListRows(network, codebook, options, () => undefined)),
         hazards.map((id) => [nameOf(id), [`value of ${id}`, '']]),
       );
     });
@@ -134,7 +134,7 @@ describe.each([
       const network = prepareSession(sessionFor(hazards));
 
       expectCellsByHeader(
-        rowsOf(edgeListRows(network, codebook, options)),
+        rowsOf(edgeListRows(network, codebook, options, () => undefined)),
         hazards.map((id) => [nameOf(id), [`value of ${id}`, '']]),
       );
     });
@@ -143,7 +143,7 @@ describe.each([
       const network = prepareSession(sessionFor(hazards));
 
       expectCellsByHeader(
-        rowsOf(egoListRows(network, codebook, options)),
+        rowsOf(egoListRows(network, codebook, options, () => undefined)),
         hazards.map((id) => [nameOf(id), [`value of ${id}`]]),
       );
     });
@@ -158,7 +158,9 @@ describe.each([
         const network = prepareSession(
           sessionFor(['constructor', 'toString', '__proto__']),
         );
-        const written = rowsOf(rows(network, codebook, options));
+        const written = rowsOf(
+          rows(network, codebook, options, () => undefined),
+        );
 
         expectCellsByHeader(written, [
           [nameOf('hasOwnProperty'), emptyCells],
@@ -200,9 +202,9 @@ describe.each([
 
     it('does not change Object.prototype', () => {
       const network = prepareSession(sessionFor(hazards));
-      rowsOf(attributeListRows(network, codebook, options));
-      rowsOf(edgeListRows(network, codebook, options));
-      rowsOf(egoListRows(network, codebook, options));
+      rowsOf(attributeListRows(network, codebook, options, () => undefined));
+      rowsOf(edgeListRows(network, codebook, options, () => undefined));
+      rowsOf(egoListRows(network, codebook, options, () => undefined));
 
       expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(
         prototypeBefore,
@@ -248,6 +250,7 @@ describe('attributes the codebook does not declare, keyed by Object.prototype ke
           prepareSession(session),
           codebook,
           exportOptions(true),
+          () => undefined,
         ),
       ),
       [
@@ -333,6 +336,7 @@ describe('categorical variables named after Object.prototype keys', () => {
           prepareSession(session),
           codebook,
           exportOptions(true),
+          () => undefined,
         ),
       ),
       hazards.flatMap((id) => [
@@ -388,7 +392,12 @@ describe('entity types whose ids are Object.prototype keys', () => {
 
   it('exports the nodes of each type', () => {
     const rows = rowsOf(
-      attributeListRows(prepareSession(session), codebook, exportOptions(true)),
+      attributeListRows(
+        prepareSession(session),
+        codebook,
+        exportOptions(true),
+        () => undefined,
+      ),
     );
 
     expect(rows).toHaveLength(4);

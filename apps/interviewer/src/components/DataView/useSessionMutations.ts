@@ -20,6 +20,8 @@ import type { StoredSessionLite } from '~/lib/db/types';
 import { buildExportOptions, runExport } from '~/lib/export/exportSessions';
 import { saveBlob } from '~/lib/files/download';
 
+import { useShowExportWarnings } from './useShowExportWarnings';
+
 const messages = defineMessages({
   zipArchive: {
     id: 'interviewer.sessionMutations.zipArchive',
@@ -125,9 +127,10 @@ export type ExportFlow =
       exportGraphML: boolean;
       exportCSV: boolean;
       failedCount: number;
-      // Interviews whose answers lost characters GraphML cannot store; the
-      // archive is complete, but the researcher must be told it differs from
-      // the CSV files.
+      // What the archive holds differently from what was collected: answers
+      // and protocol text that lost characters GraphML cannot store, and
+      // columns written under a numbered name. The archive is complete, but
+      // the researcher must be told.
       warnings: ExportWarning[];
     }
   | {
@@ -155,6 +158,7 @@ export function useSessionMutations({
 }) {
   const intl = useAppIntl();
   const toast = useToast();
+  const showExportWarnings = useShowExportWarnings();
   const dialog = useDialog();
   const analytics = useAnalytics();
   const { requireFreshUnlock } = useStepUpAuth();
@@ -339,6 +343,7 @@ export function useSessionMutations({
       exportGraphML,
       exportCSV,
       failedCount,
+      warnings,
     } = exportFlow;
     setExportFlow({ ...exportFlow, phase: 'saving' });
     try {
@@ -369,6 +374,7 @@ export function useSessionMutations({
         description: fileName,
         variant: 'success',
       });
+      showExportWarnings(warnings);
     } catch (cause) {
       // Failures up to the save/mark boundary keep the archive and return the
       // dialog to the ready state for a retry.
@@ -401,6 +407,7 @@ export function useSessionMutations({
     intl,
     onReload,
     reloadData,
+    showExportWarnings,
     toast,
   ]);
 

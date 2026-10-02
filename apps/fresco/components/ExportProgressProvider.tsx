@@ -10,9 +10,9 @@ import {
 } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { AppMessage } from '@codaco/app-i18n/react';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useToast } from '@codaco/fresco-ui/Toast';
-import { exportWarningMessages } from '@codaco/network-exporters/messages';
+import { formatExportWarnings } from '@codaco/network-exporters/messages';
 import type { ExportOptions } from '@codaco/network-exporters/options';
 import { ensureError } from '@codaco/shared-consts';
 import { commitInterviewExport } from '~/actions/interviews';
@@ -107,6 +107,7 @@ export function ExportProgressProvider({
 }) {
   const { add, update, close } = useToast();
   const download = useDownload();
+  const intl = useAppIntl();
 
   // Tracks whether an export is in flight, so the beforeunload warning can
   // reflect it without re-registering the listener per render.
@@ -166,18 +167,14 @@ export function ExportProgressProvider({
           download(objectUrl, `fresco-export-${date}.zip`);
           setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 
-          // Stays until dismissed: the researcher needs to read which
-          // interviews were affected, and the success toast is gone in a few
-          // seconds. Raised before the status update so that a failure there
-          // cannot hide it.
-          if (warnings.length > 0) {
+          // One toast per kind of warning. Each stays until dismissed: the
+          // researcher needs to read what was affected, and the success toast
+          // is gone in a few seconds. Raised before the status update so that
+          // a failure there cannot hide them.
+          for (const group of formatExportWarnings(intl, warnings)) {
             add({
-              title: (
-                <AppMessage
-                  message={exportWarningMessages.xmlCharactersTitle}
-                />
-              ),
-              description: <ExportWarningToastContent warnings={warnings} />,
+              title: group.title,
+              description: <ExportWarningToastContent group={group} />,
               icon: <TriangleAlert className="size-5" aria-hidden />,
               timeout: 0,
             });
@@ -241,7 +238,7 @@ export function ExportProgressProvider({
         }
       })();
     },
-    [add, update, close, download],
+    [add, update, close, download, intl],
   );
 
   return (

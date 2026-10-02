@@ -4,11 +4,12 @@ import type { ExportEvent } from './events';
 import { stageMessages } from './events';
 import type { InterviewExportInput } from './input';
 import type { ExportOptions } from './options';
-import type {
-  ExportFailure,
-  ExportReturn,
-  ExportSuccess,
-  ExportWarning,
+import {
+  type ExportFailure,
+  type ExportReturn,
+  type ExportSuccess,
+  type ExportWarning,
+  uniqueExportWarnings,
 } from './output';
 import { InterviewRepository } from './services/InterviewRepository';
 import { Output } from './services/Output';
@@ -46,7 +47,8 @@ export const exportPipeline = (
 
     const failuresRef = yield* Ref.make<ExportFailure[]>([]);
     // Filled while the output writes the files: a warning about a file's
-    // contents exists only once that file has been produced.
+    // contents exists only once that file has been produced. A warning about
+    // the protocol is reported by every interview of it, and kept once.
     const warnings: ExportWarning[] = [];
 
     const {
@@ -120,7 +122,7 @@ export const exportPipeline = (
       status: finalFailures.length > 0 ? 'partial' : 'success',
       successfulExports,
       failedExports: finalFailures,
-      warnings,
+      warnings: uniqueExportWarnings(warnings),
       output: outputResult,
     };
 

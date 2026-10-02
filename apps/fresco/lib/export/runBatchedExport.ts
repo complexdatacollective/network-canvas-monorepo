@@ -2,7 +2,10 @@ import { chunk } from 'es-toolkit';
 import { zip } from 'fflate';
 
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import type { ExportWarning } from '@codaco/network-exporters/output';
+import {
+  type ExportWarning,
+  uniqueExportWarnings,
+} from '@codaco/network-exporters/output';
 import { normalizeForComparison } from '@codaco/shared-consts';
 import {
   consumeBatchStream,
@@ -19,7 +22,10 @@ type BatchExportResult = {
   blob: Blob;
   exportedIds: string[];
   failedIds: string[];
-  /** In batch order, one per interview that lost characters from its GraphML. */
+  /**
+   * In batch order. A warning about the protocol, which every batch of its
+   * interviews reports, is kept once.
+   */
   warnings: ExportWarning[];
 };
 
@@ -185,8 +191,8 @@ export async function runBatchedExport(
   const blob = new Blob([zipped], { type: 'application/zip' });
   const exportedIds = ids.filter((id) => !failedIds.has(id));
   // Batches finish in any order; report them in the order they were asked for.
-  const warnings = batches.flatMap(
-    (_, index) => batchWarnings.get(index) ?? [],
+  const warnings = uniqueExportWarnings(
+    batches.flatMap((_, index) => batchWarnings.get(index) ?? []),
   );
   return { blob, exportedIds, failedIds: [...failedIds], warnings };
 }

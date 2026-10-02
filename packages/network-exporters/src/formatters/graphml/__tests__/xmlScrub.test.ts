@@ -31,8 +31,18 @@ describe('scrubXmlDocument', () => {
     expect(inner.textContent).toBe('inner');
     expect(outer.firstChild?.nodeValue).toBe('outer');
     expect(sites).toEqual([
-      { element: outer, attribute: null },
-      { element: inner, attribute: null },
+      {
+        element: outer,
+        attribute: null,
+        stripped: 'outer',
+        removed: ['U+DC00'],
+      },
+      {
+        element: inner,
+        attribute: null,
+        stripped: 'inner',
+        removed: ['U+0002'],
+      },
     ]);
   });
 
@@ -50,8 +60,27 @@ describe('scrubXmlDocument', () => {
     expect(element.getAttribute('clean')).toBe('kept');
     expect(element.getAttribute('last')).toBe('b');
     expect(sites).toEqual([
-      { element, attribute: 'first' },
-      { element, attribute: 'last' },
+      { element, attribute: 'first', stripped: 'a', removed: ['U+0002'] },
+      { element, attribute: 'last', stripped: 'b', removed: ['U+DC00'] },
+    ]);
+  });
+
+  it('names each removed character once, in the order it first appeared', () => {
+    const document = createDocument();
+    const bell = String.fromCharCode(0x7);
+    const element = document.createElement('item');
+    element.appendChild(
+      document.createTextNode(`a${bell}b${control}c${bell}d${control}`),
+    );
+    document.documentElement?.appendChild(element);
+
+    expect(sitesOf(document)).toEqual([
+      {
+        element,
+        attribute: null,
+        stripped: 'abcd',
+        removed: ['U+0007', 'U+0002'],
+      },
     ]);
   });
 

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Codebook } from '@codaco/protocol-validation';
 import {
   egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   ncUUIDProperty,
   nodeExportIDProperty,
+  protocolName,
 } from '@codaco/shared-consts';
 
 import type { SessionWithResequencedIDs } from '../../../input';
@@ -18,6 +20,7 @@ const makeNetwork = (
   ({
     nodes,
     edges: [],
+    sessionVariables: { [protocolName]: 'Protocol' },
   }) as unknown as SessionWithResequencedIDs;
 
 describe('attributeListRows', () => {
@@ -33,7 +36,12 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     expect(rows).toHaveLength(2);
@@ -58,7 +66,12 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     // The cell is both prefixed (formula neutralized) and quoted (contains a comma).
@@ -68,10 +81,49 @@ describe('attributeListRows', () => {
     expect(rows[1]).not.toContain(',=HYPERLINK');
   });
 
+  it('writes a header as named, and guards only the answers below it', () => {
+    const codebook = {
+      node: {
+        'mock-node-type': {
+          name: 'person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'v-total': { name: '=total', type: 'text' },
+            'v-score': { name: '-score, adjusted', type: 'text' },
+          },
+        },
+      },
+    } satisfies Codebook;
+    const network = makeNetwork([
+      {
+        [nodeExportIDProperty]: 1,
+        [egoProperty]: 'ego-1',
+        [entityPrimaryKeyProperty]: 'uid-1',
+        type: 'mock-node-type',
+        [entityAttributesProperty]: { 'v-total': '=1+1', 'v-score': '-2' },
+      } as SessionWithResequencedIDs['nodes'][number],
+    ]);
+
+    const [header, row] = Array.from(
+      attributeListRows(network, codebook, mockExportOptions, () => undefined),
+    );
+
+    expect(header).toBe(
+      `${nodeExportIDProperty},${egoProperty},${ncUUIDProperty},=total,"-score, adjusted"\r\n`,
+    );
+    expect(row).toBe("1,ego-1,uid-1,'=1+1,'-2\r\n");
+  });
+
   it('yields only the header for an empty network', () => {
     const network = makeNetwork([]);
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
     expect(rows).toHaveLength(1);
   });
@@ -88,7 +140,12 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     expect(rows[0]).toContain('unusedBool');
@@ -106,7 +163,12 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     expect(rows[0]).toContain('externalAttribute');
