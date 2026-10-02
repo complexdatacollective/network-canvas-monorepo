@@ -8,7 +8,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { BackgroundDocument } from '../../model/types';
 import { fixtureDocument, fixturePoints } from '../fixtures';
 import { generatePythonScript } from '../python';
-import { buildFixtureCsv, parseCsv, toRecords } from './csvTestHelpers';
+import {
+  buildFixtureCsv,
+  buildNonAsciiCsv,
+  expectNonAsciiOutput,
+  nonAsciiDocument,
+  nonAsciiOpts,
+  parseCsv,
+  toRecords,
+} from './csvTestHelpers';
 
 function pythonAvailable(): boolean {
   const result = spawnSync('python3', ['--version']);
@@ -52,6 +60,39 @@ describe.skipIf(pythonMissing)('generated Python script executes', () => {
       expect(records[index]?.zone, entry.name).toBe(entry.expected ?? '');
     });
   });
+
+  // The script names every file encoding explicitly, so it does not depend on
+  // the locale. UTF-8 mode and C-locale coercion are switched off so the C
+  // locale means ASCII defaults, as it did before Python 3.7.
+  it.each([
+    { label: 'without a byte-order mark', withBom: false },
+    { label: 'with a byte-order mark', withBom: true },
+  ])(
+    'keeps non-ASCII names, values and zone labels intact under the C locale $label',
+    ({ withBom }) => {
+      const scriptPath = join(dir, 'non-ascii.py');
+      const inputPath = join(dir, 'non-ascii-in.csv');
+      const outputPath = join(dir, 'non-ascii-out.csv');
+      writeFileSync(
+        scriptPath,
+        generatePythonScript(nonAsciiDocument, nonAsciiOpts),
+      );
+      writeFileSync(inputPath, buildNonAsciiCsv(withBom));
+
+      const result = spawnSync('python3', [scriptPath, inputPath, outputPath], {
+        encoding: 'utf-8',
+        env: {
+          ...process.env,
+          LC_ALL: 'C',
+          PYTHONUTF8: '0',
+          PYTHONCOERCECLOCALE: '0',
+        },
+      });
+      expect(result.stderr).toBe('');
+      expect(result.status).toBe(0);
+      expectNonAsciiOutput(readFileSync(outputPath));
+    },
+  );
 
   it('honours --layout-variable and --output-variable overrides', () => {
     const scriptPath = join(dir, 'override.py');
