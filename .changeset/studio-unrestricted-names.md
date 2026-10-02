@@ -17,7 +17,9 @@ and the interview preview runs them.
   the message names the other column. A categorical attribute is exported as
   one column for each option, and a layout attribute as one column for each
   coordinate, and no attribute can take the name of a column every export
-  includes.
+  includes. Names that an export would write the same way are refused too,
+  such as "close friend" and "close_friend", which GraphML files both write as
+  "close_friend".
 - A participant data file (roster) that contains a character exported data
   can't carry, usually an invisible control character pasted in from another
   program, is refused when you add it. The message names the row and column,
@@ -26,5 +28,10 @@ and the interview preview runs them.
   the editor can explain it in your language.
 - A roster's column headers can be any name an attribute can have, and the
   messages about headers that can't be used say what is not allowed. A roster
-  with two headers that are the same name written two ways, such as an accented
-  letter stored as one character in one and as two in the other, is refused.
+  with a header that can't be used, or with two headers that are the same name
+  written two ways, such as an accented letter stored as one character in one
+  and as two in the other, is now refused when you add it, rather than being
+  published and then turned away by the interview when a participant reaches
+  it. So is a roster the interview couldn't otherwise load: one that can't be
+  read, has a row with more or fewer cells than its header, has no rows, or
+  holds a value no attribute can take. The server refuses these files too.

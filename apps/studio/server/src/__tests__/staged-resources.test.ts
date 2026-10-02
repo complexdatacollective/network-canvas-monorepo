@@ -1,6 +1,7 @@
 // A roster is refused at staging when it holds a character no export can
-// carry, with a code and a place the editor words itself, so a caller other
-// than the editor cannot stage one either.
+// carry, with a code and a place the editor words itself, or when the
+// interview could not load it, so a caller other than the editor cannot stage
+// one either.
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -125,5 +126,103 @@ describe('staging a roster', () => {
 
     expect(second).toEqual(first);
     expect(resources.descriptors()).toHaveLength(1);
+  });
+});
+
+describe('staging a roster the interview could not load', () => {
+  it.each([
+    [
+      'two headings that are one name written two ways',
+      roster('people.csv', 'caf\u00e9,cafe\u0301\nAda,36\n'),
+      'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
+    ],
+    [
+      'a heading with a space at its end',
+      roster('people.csv', '"name ",age\nAda,36\n'),
+      'the roster\'s attribute name "name " cannot be a variable name',
+    ],
+    [
+      'a row with more cells than its header',
+      roster('people.csv', 'name,age\nAda,36\nGrace,45,extra\n'),
+      'row 3 of the roster has a different number of cells from its header',
+    ],
+    [
+      'a CSV header with no rows under it',
+      roster('people.csv', 'name,age\n'),
+      'the roster holds no nodes',
+    ],
+    [
+      'JSON that does not parse',
+      roster('people.json', '{"nodes": ['),
+      'the roster cannot be read as JSON',
+    ],
+    [
+      'a JSON node that is not an object',
+      roster('people.json', JSON.stringify({ nodes: ['Ada'] })),
+      'node 1 of the roster is not an object',
+    ],
+    [
+      'a JSON attribute value no variable can hold',
+      roster(
+        'people.json',
+        JSON.stringify({
+          nodes: [{ attributes: { name: { first: 'Ada' } } }],
+        }),
+      ),
+      'the "name" attribute of node 1 of the roster is not a value a variable can hold',
+    ],
+    [
+      'two JSON attribute names that are one name written two ways',
+      roster(
+        'people.json',
+        JSON.stringify({
+          nodes: [
+            { attributes: { 'caf\u00e9': 'yes' } },
+            { attributes: { 'cafe\u0301': 'no' } },
+          ],
+        }),
+      ),
+      'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
+    ],
+  ])(
+    'refuses a roster with %s, and stages nothing',
+    async (_, request, message) => {
+      const resources = staging();
+
+      const outcome = await resources.stage('request', request);
+
+      expect(outcome).toEqual({
+        status: 'failed',
+        failure: { reason: 'invalid-content', message, retryable: false },
+      });
+      expect(resources.descriptors()).toEqual([]);
+    },
+  );
+
+  it('reads a file whose name says nothing by its media type', async () => {
+    const outcome = await staging().stage('request', {
+      ...roster('people', 'caf\u00e9,cafe\u0301\nAda,36\n'),
+      contentType: 'text/csv; charset=utf-8',
+    });
+
+    // The headings' refusal, which only a read of the file as CSV can give.
+    expect(outcome).toMatchObject({
+      status: 'failed',
+      failure: { message: expect.stringContaining('attribute names') },
+    });
+  });
+
+  it('stages a roster whose headings are in any language, decomposed or not', async () => {
+    const resources = staging();
+
+    const outcome = await resources.stage(
+      'request',
+      roster('people.csv', 'cafe\u0301,\u540d\u524d\nAda,36\n'),
+    );
+
+    expect(outcome).toMatchObject({
+      status: 'ok',
+      data: { descriptor: { id: 'resource-1', kind: 'network' } },
+    });
   });
 });

@@ -10,6 +10,23 @@ const CHOOSE_FILE = 'Choose a file from your computer';
 const BELL = String.fromCharCode(0x7);
 
 describe('ResourceUploadControl', () => {
+  const chooseRoster = async (contents: string, name: string) => {
+    const user = userEvent.setup();
+    const host = createResourceHost();
+    const stage = vi.fn(host.client.resources.stage);
+    const onStaged = vi.fn();
+    renderInResourceContext(
+      withResourceProcedures(host.client, { stage }),
+      host.protocolId,
+      <ResourceUploadControl kind="network" onStaged={onStaged} />,
+    );
+    await user.upload(
+      screen.getByLabelText(CHOOSE_FILE),
+      new File([contents], name),
+    );
+    return { stage, onStaged };
+  };
+
   it('does not look pressable while its input is disabled', async () => {
     const { client, protocolId } = createResourceHost();
 
@@ -35,23 +52,6 @@ describe('ResourceUploadControl', () => {
   });
 
   describe('a roster holding a character no export can carry', () => {
-    const chooseRoster = async (contents: string, name: string) => {
-      const user = userEvent.setup();
-      const host = createResourceHost();
-      const stage = vi.fn(host.client.resources.stage);
-      const onStaged = vi.fn();
-      renderInResourceContext(
-        withResourceProcedures(host.client, { stage }),
-        host.protocolId,
-        <ResourceUploadControl kind="network" onStaged={onStaged} />,
-      );
-      await user.upload(
-        screen.getByLabelText(CHOOSE_FILE),
-        new File([contents], name),
-      );
-      return { stage, onStaged };
-    };
-
     it('is refused before anything is staged, naming the row and column', async () => {
       const { stage, onStaged } = await chooseRoster(
         `name,notes\nAlice,ok\nBob,b${BELL}d\n`,
@@ -132,6 +132,35 @@ describe('ResourceUploadControl', () => {
 
       await vi.waitFor(() => expect(onStaged).toHaveBeenCalledTimes(1));
       expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
+
+  describe('a roster whose headings the interview could not match', () => {
+    it('is refused before anything is staged when two headings are one name written two ways', async () => {
+      const { stage, onStaged } = await chooseRoster(
+        'caf\u00e9,cafe\u0301\nAda,36\n',
+        'roster.csv',
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'the "cafe\u0301" and "caf\u00e9" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other',
+      );
+      expect(stage).not.toHaveBeenCalled();
+      expect(onStaged).not.toHaveBeenCalled();
+    });
+
+    it('is refused before anything is staged when a heading ends with a space', async () => {
+      const { stage, onStaged } = await chooseRoster(
+        '"name ",age\nAda,36\n',
+        'roster.csv',
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'the "name " attribute cannot be used as a variable name: a name cannot be empty, start or end with a space, or contain line breaks, tabs or other control characters',
+        { normalizeWhitespace: false },
+      );
+      expect(stage).not.toHaveBeenCalled();
+      expect(onStaged).not.toHaveBeenCalled();
     });
   });
 });
