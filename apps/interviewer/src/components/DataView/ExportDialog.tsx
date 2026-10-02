@@ -5,14 +5,18 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { exportStageMessages } from '@codaco/network-exporters/messages';
+import {
+  exportStageMessages,
+  exportWarningMessages,
+  formatXmlCharacterWarnings,
+} from '@codaco/network-exporters/messages';
 import { ExternalLink } from '~/components/ExternalLink';
 import { APP_VERSION } from '~/lib/appVersion';
 import { saveAction, type SaveAction } from '~/lib/files/download';
@@ -417,6 +421,25 @@ export function ExportDialog({
             {intl.formatMessage(messages.incomplete, {
               count: shown.failedCount,
             })}
+          </Alert>
+        )}
+        {shown.warnings.length > 0 && (
+          <Alert variant="warning" className="mt-4">
+            <AlertTitle>
+              {intl.formatMessage(exportWarningMessages.xmlCharactersTitle)}
+            </AlertTitle>
+            <AlertDescription>
+              {intl.formatMessage(
+                exportWarningMessages.xmlCharactersDescription,
+              )}
+            </AlertDescription>
+            <ul className="mt-2 list-disc ps-5 text-sm">
+              {formatXmlCharacterWarnings(intl, shown.warnings).map(
+                (line, index) => (
+                  <li key={shown.warnings[index]?.sessionId}>{line}</li>
+                ),
+              )}
+            </ul>
           </Alert>
         )}
       </>

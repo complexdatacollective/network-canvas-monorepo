@@ -3,19 +3,23 @@ import { DOMImplementation, type DocumentFragment } from '@xmldom/xmldom';
 import type { Codebook, Variable } from '@codaco/protocol-validation';
 import {
   type NcEgo,
-  ncSourceUUID,
-  ncTargetUUID,
-  ncTypeProperty,
-  ncUUIDProperty,
+  categoricalOptionColumn,
+  layoutColumn,
 } from '@codaco/shared-consts';
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
-import { getEntityAttributes } from '../../utils/general';
+import { getEntityAttributes, getOwn } from '../../utils/general';
+import { resolveAttrNames } from './attrNames';
 import { createDocumentFragment, getGraphMLTypeForKey, sha1 } from './helpers';
+import {
+  allocateVariableKeyIds,
+  builtInKeys,
+  type GraphMLKeyIds,
+  type GraphMLKeyTarget,
+} from './keyIds';
 
 type GraphMLEntityKind = 'ego' | 'node' | 'edge';
-type GraphMLKeyTarget = 'graph' | 'node' | 'edge' | 'all';
 
 type GraphMLEntitiesByKind = {
   ego: readonly NcEgo[];
@@ -30,11 +34,18 @@ type GraphMLKey = {
   name: string;
   type: string;
   target: GraphMLKeyTarget;
+  builtIn: boolean;
 };
 
 type GeneratedGraphMLKeys = {
   fragment: DocumentFragment;
-  externalKeyIds: ReadonlyMap<string, string>;
+  keyIds: GraphMLKeyIds;
+  /**
+   * The name, as written, of each key that holds session data: a variable or a
+   * roster attribute. The keys every element has (label, type, UUID) are not
+   * here, so a value in one of them is never mistaken for an answer.
+   */
+  variableKeyNames: ReadonlyMap<string, string>;
 };
 
 const getDeclaredVariables = (
@@ -63,7 +74,7 @@ const getCodebookVariables = (
     return {};
   }
 
-  return codebook[entityKind]?.[entity.type]?.variables ?? {};
+  return getOwn(codebook[entityKind], entity.type)?.variables ?? {};
 };
 
 const mergeTargets = (
@@ -77,7 +88,7 @@ const getGraphMLTypeForDeclaredVariable = (
   fallbackType: 'double' | 'int' | 'string',
 ) =>
   entities.some(
-    (entity) => getEntityAttributes(entity)[variableId] !== undefined,
+    (entity) => getOwn(getEntityAttributes(entity), variableId) !== undefined,
   )
     ? getGraphMLTypeForKey(entities, variableId)
     : fallbackType;
@@ -91,6 +102,7 @@ export default function getKeyElementGenerator(
   ): Promise<GeneratedGraphMLKeys> => {
     const keys = new Map<string, GraphMLKey>();
     const reservedKeyIds = new Set<string>();
+    const variableKeyIds = allocateVariableKeyIds(codebook);
 
     const addKey = (key: GraphMLKey) => {
       const existing = keys.get(key.id);
@@ -103,31 +115,9 @@ export default function getKeyElementGenerator(
       reservedKeyIds.add(key.id);
     };
 
-    addKey({ id: 'label', name: 'label', type: 'string', target: 'all' });
-    addKey({
-      id: ncTypeProperty,
-      name: ncTypeProperty,
-      type: 'string',
-      target: 'all',
-    });
-    addKey({
-      id: ncUUIDProperty,
-      name: ncUUIDProperty,
-      type: 'string',
-      target: 'all',
-    });
-    addKey({
-      id: ncTargetUUID,
-      name: ncTargetUUID,
-      type: 'string',
-      target: 'edge',
-    });
-    addKey({
-      id: ncSourceUUID,
-      name: ncSourceUUID,
-      type: 'string',
-      target: 'edge',
-    });
+    for (const { id, type, target } of builtInKeys) {
+      addKey({ id, name: id, type, target, builtIn: true });
+    }
 
     const addVariableKeys = async (
       entityKind: GraphMLEntityKind,
@@ -135,21 +125,23 @@ export default function getKeyElementGenerator(
       variable: Variable,
     ) => {
       const keyName = variable.name;
+      const keyId = variableKeyIds.get(variableId) ?? variableId;
       const keyTarget = entityKind === 'ego' ? 'graph' : entityKind;
       const entities = entitiesByKind[entityKind];
 
       switch (variable.type) {
         case 'boolean':
           addKey({
-            id: variableId,
+            id: keyId,
             name: keyName,
             type: 'boolean',
             target: keyTarget,
+            builtIn: false,
           });
           break;
         case 'ordinal':
           addKey({
-            id: variableId,
+            id: keyId,
             name: keyName,
             type: getGraphMLTypeForDeclaredVariable(
               entities,
@@ -162,11 +154,12 @@ export default function getKeyElementGenerator(
                 : 'string',
             ),
             target: keyTarget,
+            builtIn: false,
           });
           break;
         case 'number':
           addKey({
-            id: variableId,
+            id: keyId,
             name: keyName,
             type: getGraphMLTypeForDeclaredVariable(
               entities,
@@ -174,36 +167,25 @@ export default function getKeyElementGenerator(
               'double',
             ),
             target: keyTarget,
+            builtIn: false,
           });
           break;
-        case 'layout':
-          addKey({
-            id: `${variableId}_X`,
-            name: `${keyName}_X`,
-            type: 'double',
-            target: keyTarget,
-          });
-          if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+        case 'layout': {
+          // GraphML declares the screen-space keys between X and Y.
+          const axes = exportOptions.globalOptions.useScreenLayoutCoordinates
+            ? (['x', 'screenSpaceY', 'screenSpaceX', 'y'] as const)
+            : (['x', 'y'] as const);
+          for (const axis of axes) {
             addKey({
-              id: `${variableId}_screenSpaceY`,
-              name: `${keyName}_screenSpaceY`,
+              id: layoutColumn('graphml', variableId, axis),
+              name: layoutColumn('graphml', keyName, axis),
               type: 'double',
               target: keyTarget,
-            });
-            addKey({
-              id: `${variableId}_screenSpaceX`,
-              name: `${keyName}_screenSpaceX`,
-              type: 'double',
-              target: keyTarget,
+              builtIn: false,
             });
           }
-          addKey({
-            id: `${variableId}_Y`,
-            name: `${keyName}_Y`,
-            type: 'double',
-            target: keyTarget,
-          });
           break;
+        }
         case 'categorical': {
           const hashedOptionValues = await Promise.all(
             variable.options.map((option) => sha1(String(option.value))),
@@ -212,10 +194,11 @@ export default function getKeyElementGenerator(
             const hashedOptionValue = hashedOptionValues[index];
             if (hashedOptionValue) {
               addKey({
-                id: `${variableId}_${hashedOptionValue}`,
-                name: `${keyName}_${option.value}`,
+                id: categoricalOptionColumn(variableId, hashedOptionValue),
+                name: categoricalOptionColumn(keyName, option.value),
                 type: 'boolean',
                 target: keyTarget,
+                builtIn: false,
               });
             }
           });
@@ -223,18 +206,20 @@ export default function getKeyElementGenerator(
         }
         case 'scalar':
           addKey({
-            id: variableId,
+            id: keyId,
             name: keyName,
             type: 'float',
             target: keyTarget,
+            builtIn: false,
           });
           break;
         default:
           addKey({
-            id: variableId,
+            id: keyId,
             name: keyName,
             type: 'string',
             target: keyTarget,
+            builtIn: false,
           });
       }
     };
@@ -260,7 +245,7 @@ export default function getKeyElementGenerator(
         );
 
         for (const variableId of Object.keys(getEntityAttributes(entity))) {
-          if (codebookVariables[variableId]) {
+          if (getOwn(codebookVariables, variableId)) {
             continue;
           }
 
@@ -307,21 +292,38 @@ export default function getKeyElementGenerator(
         name: variableId,
         type: 'string',
         target,
+        builtIn: false,
       });
       externalKeyIds.set(variableId, keyId);
     }
 
     const fragment = createDocumentFragment();
     const dom = new DOMImplementation().createDocument(null, 'root', null);
+    const attrNames = resolveAttrNames([...keys.values()]);
     for (const key of keys.values()) {
+      const attrName = attrNames.get(key) ?? key.name;
       const keyElement = dom.createElement('key');
       keyElement.setAttribute('id', key.id);
-      keyElement.setAttribute('attr.name', key.name);
+      keyElement.setAttribute('attr.name', attrName);
       keyElement.setAttribute('attr.type', key.type);
       keyElement.setAttribute('for', key.target);
+      if (attrName !== key.name) {
+        // `attr.name` is an xs:NMTOKEN, so the name as written is kept here.
+        const description = dom.createElement('desc');
+        description.appendChild(dom.createTextNode(key.name));
+        keyElement.appendChild(description);
+      }
       fragment.appendChild(keyElement);
     }
 
-    return { fragment, externalKeyIds };
+    return {
+      fragment,
+      keyIds: { variable: variableKeyIds, external: externalKeyIds },
+      variableKeyNames: new Map(
+        [...keys.values()]
+          .filter((key) => !key.builtIn)
+          .map((key) => [key.id, key.name]),
+      ),
+    };
   };
 }

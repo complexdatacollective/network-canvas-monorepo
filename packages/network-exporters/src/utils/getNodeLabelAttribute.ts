@@ -5,6 +5,8 @@ import type {
   EntityAttributesProperty,
 } from '@codaco/shared-consts';
 
+import { getOwn } from './general';
+
 const isValidLabelCandidate = (
   value: VariableValue | undefined,
   variableDefinition?: NonNullable<NodeDefinition['variables']>[string],
@@ -48,7 +50,7 @@ export const getNodeLabelAttribute = (
   if (
     variableCalledName &&
     isValidLabelCandidate(
-      nodeAttributes[variableCalledName[0]],
+      getOwn(nodeAttributes, variableCalledName[0]),
       variableCalledName[1],
     )
   ) {
@@ -60,8 +62,8 @@ export const getNodeLabelAttribute = (
     (attribute) =>
       test.test(attribute) &&
       isValidLabelCandidate(
-        nodeAttributes[attribute],
-        codebookVariables?.[attribute],
+        getOwn(nodeAttributes, attribute),
+        getOwn(codebookVariables, attribute),
       ),
   );
 
@@ -71,7 +73,8 @@ export const getNodeLabelAttribute = (
 
   const nodeVariableCalledName = Object.keys(nodeAttributes).find(
     (attribute) =>
-      test.test(attribute) && isValidLabelCandidate(nodeAttributes[attribute]),
+      test.test(attribute) &&
+      isValidLabelCandidate(getOwn(nodeAttributes, attribute)),
   );
 
   if (nodeVariableCalledName) {
@@ -85,8 +88,8 @@ export const getNodeLabelAttribute = (
   for (const [variableKey] of textVariables) {
     if (
       isValidLabelCandidate(
-        nodeAttributes[variableKey],
-        codebookVariables?.[variableKey],
+        getOwn(nodeAttributes, variableKey),
+        getOwn(codebookVariables, variableKey),
       )
     ) {
       return variableKey;

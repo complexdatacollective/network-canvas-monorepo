@@ -9,7 +9,10 @@ import {
 
 import type { NodeWithResequencedID } from '../../../input';
 import type { ExportOptions } from '../../../options';
+import type { GraphMLKeyIds } from '../keyIds';
 import processAttributes from '../processAttributes';
+
+const noKeyIds: GraphMLKeyIds = { variable: new Map(), external: new Map() };
 
 const mockExportOptions: ExportOptions = {
   exportGraphML: true,
@@ -68,7 +71,7 @@ describe('processAttributes', () => {
         node,
         codebook,
         mockExportOptions,
-        new Map(),
+        noKeyIds,
       );
       const dataElements = getDataElements(result);
 
@@ -117,7 +120,7 @@ describe('processAttributes', () => {
         node,
         codebook,
         mockExportOptions,
-        new Map(),
+        noKeyIds,
       );
       const dataElements = getDataElements(result);
 

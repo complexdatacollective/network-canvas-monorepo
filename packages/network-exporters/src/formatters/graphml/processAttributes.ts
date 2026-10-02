@@ -1,12 +1,18 @@
 import type { DocumentFragment } from '@xmldom/xmldom';
 
 import type { Codebook } from '@codaco/protocol-validation';
-import type { NcEgo, VariableValue } from '@codaco/shared-consts';
+import {
+  categoricalOptionColumn,
+  layoutColumn,
+  type NcEgo,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
 import {
   getEntityAttributes,
+  getOwn,
   isCategoricalOptionSelected,
 } from '../../utils/general';
 import {
@@ -15,6 +21,7 @@ import {
   getCodebookVariablesForEntity,
   sha1,
 } from './helpers';
+import type { GraphMLKeyIds } from './keyIds';
 
 /**
  * Function for processing attributes of an entity. Processing means creating
@@ -24,7 +31,7 @@ async function processAttributes(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
   codebook: Codebook,
   exportOptions: ExportOptions,
-  externalKeyIds: ReadonlyMap<string, string>,
+  keyIds: GraphMLKeyIds,
 ): Promise<DocumentFragment> {
   const fragment = createDocumentFragment();
 
@@ -37,10 +44,10 @@ async function processAttributes(
   const entityAttributes = getEntityAttributes(entity);
 
   for (const [key, value] of Object.entries(entityAttributes)) {
-    const codebookEntry = variables?.[key];
+    const codebookEntry = getOwn(variables, key);
 
     if (!codebookEntry) {
-      const externalKey = externalKeyIds.get(key);
+      const externalKey = keyIds.external.get(key);
       if (!externalKey) {
         throw new Error(`Missing GraphML key for external attribute: ${key}`);
       }
@@ -49,6 +56,7 @@ async function processAttributes(
     }
 
     const variableIsEncrypted = codebookEntry.encrypted;
+    const variableKey = keyIds.variable.get(key) ?? key;
 
     switch (codebookEntry.type) {
       case 'categorical': {
@@ -60,14 +68,20 @@ async function processAttributes(
         if (variableIsEncrypted) {
           // If the variable is encrypted, we don't want to export it.
           options.forEach((_option, index) => {
-            const optionKey = `${key}_${hashedValues[index]}`;
+            const optionKey = categoricalOptionColumn(
+              key,
+              hashedValues[index] ?? '',
+            );
             createDomDataElement(optionKey, 'ENCRYPTED');
           });
           break;
         }
 
         options.forEach((option, index) => {
-          const optionKey = `${key}_${hashedValues[index]}`;
+          const optionKey = categoricalOptionColumn(
+            key,
+            hashedValues[index] ?? '',
+          );
 
           const attributeValue = entityAttributes[key];
           const isSelected = isCategoricalOptionSelected(
@@ -82,8 +96,8 @@ async function processAttributes(
       case 'layout': {
         if (variableIsEncrypted) {
           // If the variable is encrypted, we don't want to export it.
-          createDomDataElement(`${key}_X`, 'ENCRYPTED');
-          createDomDataElement(`${key}_Y`, 'ENCRYPTED');
+          createDomDataElement(layoutColumn('graphml', key, 'x'), 'ENCRYPTED');
+          createDomDataElement(layoutColumn('graphml', key, 'y'), 'ENCRYPTED');
           break;
         }
 
@@ -100,8 +114,8 @@ async function processAttributes(
 
         const { x: xCoord, y: yCoord } = value;
 
-        createDomDataElement(`${key}_X`, String(xCoord));
-        createDomDataElement(`${key}_Y`, String(yCoord));
+        createDomDataElement(layoutColumn('graphml', key, 'x'), String(xCoord));
+        createDomDataElement(layoutColumn('graphml', key, 'y'), String(yCoord));
 
         if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
           const { screenLayoutWidth, screenLayoutHeight } =
@@ -112,8 +126,14 @@ async function processAttributes(
             screenLayoutHeight
           ).toFixed(2);
 
-          createDomDataElement(`${key}_screenSpaceX`, screenSpaceXCoord);
-          createDomDataElement(`${key}_screenSpaceY`, screenSpaceYCoord);
+          createDomDataElement(
+            layoutColumn('graphml', key, 'screenSpaceX'),
+            screenSpaceXCoord,
+          );
+          createDomDataElement(
+            layoutColumn('graphml', key, 'screenSpaceY'),
+            screenSpaceYCoord,
+          );
         }
         break;
       }
@@ -126,11 +146,11 @@ async function processAttributes(
       case 'ordinal':
       case 'scalar': {
         if (variableIsEncrypted) {
-          createDomDataElement(key, 'ENCRYPTED');
+          createDomDataElement(variableKey, 'ENCRYPTED');
           break;
         }
 
-        createDomDataElement(key, stringifyValue(value));
+        createDomDataElement(variableKey, stringifyValue(value));
         break;
       }
     }

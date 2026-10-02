@@ -26,7 +26,7 @@ function AfterBuildHarness(props: ComponentProps<typeof ExportDialog>) {
   return <ExportDialog {...props} flow={flow} />;
 }
 
-const readyFlow = {
+const readyFlow: Extract<ExportFlow, { phase: 'ready' | 'saving' }> = {
   phase: 'ready',
   blob: archiveBlob,
   fileName: 'networkCanvasExport-1722772800000.zip',
@@ -34,7 +34,8 @@ const readyFlow = {
   exportGraphML: true,
   exportCSV: true,
   failedCount: 0,
-} as const;
+  warnings: [],
+};
 
 const meta = {
   title: 'Components/DataView/ExportDialog',
@@ -171,6 +172,48 @@ export const Ready: Story = {
 export const ReadyPartialFailure: Story = {
   args: {
     flow: { ...readyFlow, failedCount: 3 },
+  },
+};
+
+// Answers held characters GraphML cannot store: the dialog names each
+// affected interview and variable, and says the CSV files are unchanged.
+export const ReadyWithRemovedCharacters: Story = {
+  args: {
+    flow: {
+      ...readyFlow,
+      warnings: [
+        {
+          kind: 'xml-illegal-characters',
+          sessionId: 'session-3',
+          caseId: 'P-007',
+          variables: ['Nickname', 'ニックネーム'],
+          caseIdChanged: false,
+        },
+        {
+          kind: 'xml-illegal-characters',
+          sessionId: 'session-8',
+          caseId: 'P-012',
+          variables: ['Notes'],
+          caseIdChanged: true,
+        },
+      ],
+    },
+  },
+  play: async () => {
+    await expect(
+      await screen.findByText(
+        'Some characters were removed from the GraphML files',
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(/The CSV files keep every answer unchanged/),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText('Interview P-007: Nickname and ニックネーム'),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText('Interview P-012: Case ID and Notes'),
+    ).toBeInTheDocument();
   },
 };
 

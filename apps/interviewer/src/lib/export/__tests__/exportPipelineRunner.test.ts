@@ -12,6 +12,7 @@ const pipelineResult: ExportReturn = {
   status: 'success',
   successfulExports: [],
   failedExports: [],
+  warnings: [],
   output: { key: 'export.zip' },
 };
 

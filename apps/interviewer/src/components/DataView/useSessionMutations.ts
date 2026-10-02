@@ -6,6 +6,7 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import type { ExportEvent } from '@codaco/network-exporters/events';
+import type { ExportWarning } from '@codaco/network-exporters/output';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
@@ -124,6 +125,10 @@ export type ExportFlow =
       exportGraphML: boolean;
       exportCSV: boolean;
       failedCount: number;
+      // Interviews whose answers lost characters GraphML cannot store; the
+      // archive is complete, but the researcher must be told it differs from
+      // the CSV files.
+      warnings: ExportWarning[];
     }
   | {
       phase: 'error';
@@ -270,6 +275,7 @@ export function useSessionMutations({
         exportGraphML: settings.exportGraphML,
         exportCSV: settings.exportCSV,
         failedCount,
+        warnings: result.warnings,
       });
     } catch (cause) {
       // A cancelled build already reset the flow; its rejection is not an

@@ -37,8 +37,17 @@ function getNodeById(nodes: Element[], id: string) {
 const getChildElements = (parentEl: Element, elements: LiveNodeList<Element>) =>
   Array.from(elements).filter((el) => el.parentNode === parentEl);
 
-const buildXML = async (...args: Parameters<typeof graphMLGenerator>) => {
-  const xmlString = await graphMLGenerator(...args);
+const buildXML = async (
+  network: Parameters<typeof graphMLGenerator>[0],
+  codebook: Parameters<typeof graphMLGenerator>[1],
+  options: Parameters<typeof graphMLGenerator>[2],
+) => {
+  const xmlString = await graphMLGenerator(
+    network,
+    codebook,
+    options,
+    () => undefined,
+  );
 
   const parser = new DOMParser();
   const result = parser.parseFromString(xmlString, MIME_TYPE.XML_APPLICATION);

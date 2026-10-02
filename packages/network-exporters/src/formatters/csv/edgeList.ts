@@ -1,6 +1,8 @@
-import type { Codebook, Variable } from '@codaco/protocol-validation';
+import type { Codebook } from '@codaco/protocol-validation';
 import {
   edgeExportIDProperty,
+  edgeSourceProperty,
+  edgeTargetProperty,
   egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -14,37 +16,16 @@ import type {
   SessionWithResequencedIDs,
 } from '../../input';
 import type { ExportOptions } from '../../options';
+import { getOwn } from '../../utils/general';
 import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
 import processEntityVariables from './processEntityVariables';
+import { addVariableHeaders } from './variableHeaders';
 
 const printableAttribute = (attribute: string) =>
   attribute === entityPrimaryKeyProperty ? ncUUIDProperty : attribute;
 
 type ProcessedEdge = EdgeWithResequencedID & {
   [entityAttributesProperty]: Record<string, unknown>;
-};
-
-const addVariableHeaders = (
-  headers: Set<string>,
-  variables: Record<string, Variable> | undefined,
-  exportOptions: ExportOptions,
-) => {
-  for (const variable of Object.values(variables ?? {})) {
-    if (variable.type === 'categorical') {
-      for (const option of variable.options) {
-        headers.add(`${variable.name}_${option.value}`);
-      }
-    } else if (variable.type === 'layout') {
-      headers.add(`${variable.name}_x`);
-      headers.add(`${variable.name}_y`);
-      if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-        headers.add(`${variable.name}_screenSpaceX`);
-        headers.add(`${variable.name}_screenSpaceY`);
-      }
-    } else {
-      headers.add(variable.name);
-    }
-  }
 };
 
 function collectHeaders(
@@ -54,8 +35,8 @@ function collectHeaders(
 ): string[] {
   const headers = new Set<string>([
     edgeExportIDProperty,
-    'from',
-    'to',
+    edgeSourceProperty,
+    edgeTargetProperty,
     egoProperty,
     entityPrimaryKeyProperty,
     ncSourceUUID,
@@ -67,7 +48,7 @@ function collectHeaders(
     edgeTypes.size === 0
       ? Object.values(codebook.edge ?? {})
       : [...edgeTypes].flatMap((type) => {
-          const definition = codebook.edge?.[type];
+          const definition = getOwn(codebook.edge, type);
           return definition ? [definition] : [];
         });
   for (const definition of definitions) {
@@ -90,10 +71,10 @@ const getValue = (edge: ProcessedEdge, header: string) => {
       return edge[edgeExportIDProperty];
     case egoProperty:
       return edge[egoProperty];
-    case 'from':
-      return edge.from;
-    case 'to':
-      return edge.to;
+    case edgeSourceProperty:
+      return edge[edgeSourceProperty];
+    case edgeTargetProperty:
+      return edge[edgeTargetProperty];
     case ncSourceUUID:
       return edge[ncSourceUUID];
     case ncTargetUUID:

@@ -5,12 +5,15 @@ import {
   type NcEdge,
   type NcEgo,
   type NcNode,
+  categoricalOptionColumn,
   entityAttributesProperty,
+  layoutColumn,
 } from '@codaco/shared-consts';
 
 import type { ExportOptions } from '../../options';
 import {
   getEntityAttributes,
+  getOwn,
   isCategoricalOptionSelected,
 } from '../../utils/general';
 
@@ -25,7 +28,10 @@ const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
   codebook: Codebook,
   exportOptions: ExportOptions,
 ) => {
-  const attributes: Record<string, unknown> = {};
+  // Keyed by researcher-authored names, so it must have no prototype: a
+  // variable named `__proto__` would otherwise be lost, and one named
+  // `toString` read back as a function.
+  const attributes: Record<string, unknown> = Object.create(null);
 
   for (const [attributeUUID, attributeData] of Object.entries(
     getEntityAttributes(entityObject),
@@ -33,33 +39,35 @@ const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
     let codebookAttribute: VariableDefinition | undefined;
 
     if (entity === 'ego') {
-      codebookAttribute = codebook.ego?.variables?.[attributeUUID];
+      codebookAttribute = getOwn(codebook.ego?.variables, attributeUUID);
     } else if ('type' in entityObject) {
-      codebookAttribute =
-        codebook[entity]?.[entityObject.type]?.variables?.[attributeUUID];
+      codebookAttribute = getOwn(
+        getOwn(codebook[entity], entityObject.type)?.variables,
+        attributeUUID,
+      );
     }
 
-    const attributeName = codebookAttribute?.name;
-    const attributeType = codebookAttribute?.type;
     const attributeIsEncrypted = codebookAttribute?.encrypted;
-    if (attributeType === 'categorical') {
-      const attributeOptions = codebookAttribute?.options ?? [];
-
-      for (const optionName of attributeOptions) {
-        const key = `${attributeName}_${optionName.value}`;
+    if (codebookAttribute?.type === 'categorical') {
+      for (const option of codebookAttribute.options) {
+        const key = categoricalOptionColumn(
+          codebookAttribute.name,
+          option.value,
+        );
         if (attributeIsEncrypted) {
           attributes[key] = 'ENCRYPTED';
         } else {
           attributes[key] = isCategoricalOptionSelected(
             attributeData,
-            optionName.value,
+            option.value,
           );
         }
       }
       continue;
     }
 
-    if (attributeType === 'layout') {
+    if (codebookAttribute?.type === 'layout') {
+      const { name } = codebookAttribute;
       const xCoord =
         typeof attributeData === 'object' &&
         !Array.isArray(attributeData) &&
@@ -76,13 +84,13 @@ const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
           : undefined;
 
       if (attributeIsEncrypted) {
-        attributes[`${attributeName}_x`] = 'ENCRYPTED';
-        attributes[`${attributeName}_y`] = 'ENCRYPTED';
+        attributes[layoutColumn('csv', name, 'x')] = 'ENCRYPTED';
+        attributes[layoutColumn('csv', name, 'y')] = 'ENCRYPTED';
         continue;
       }
 
-      attributes[`${attributeName}_x`] = xCoord;
-      attributes[`${attributeName}_y`] = yCoord;
+      attributes[layoutColumn('csv', name, 'x')] = xCoord;
+      attributes[layoutColumn('csv', name, 'y')] = yCoord;
 
       if (
         exportOptions.globalOptions.useScreenLayoutCoordinates &&
@@ -91,10 +99,10 @@ const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
       ) {
         const { screenLayoutWidth, screenLayoutHeight } =
           exportOptions.globalOptions;
-        attributes[`${attributeName}_screenSpaceX`] = (
+        attributes[layoutColumn('csv', name, 'screenSpaceX')] = (
           xCoord * screenLayoutWidth
         ).toFixed(2);
-        attributes[`${attributeName}_screenSpaceY`] = (
+        attributes[layoutColumn('csv', name, 'screenSpaceY')] = (
           (1.0 - yCoord) *
           screenLayoutHeight
         ).toFixed(2);
@@ -102,8 +110,8 @@ const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
       continue;
     }
 
-    if (attributeName) {
-      attributes[attributeName] = attributeIsEncrypted
+    if (codebookAttribute?.name) {
+      attributes[codebookAttribute.name] = attributeIsEncrypted
         ? 'ENCRYPTED'
         : attributeData;
     } else {

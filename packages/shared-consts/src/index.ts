@@ -9,3 +9,4 @@ export * from './session.ts';
 export * from './site-locales.ts';
 export * from './stage-metadata.ts';
 export * from './variables.ts';
+export * from './xml-characters.ts';

@@ -14,5 +14,21 @@
   "networkExporters.stage.outputting": {
     "defaultMessage": "Writing output...",
     "description": "Export progress while writing the completed export files."
+  },
+  "networkExporters.warning.xmlCharacters.caseId": {
+    "defaultMessage": "Case ID",
+    "description": "Name of an interview’s case ID, the identifier the researcher gave the interview, shown in a list of the variables whose answers lost characters."
+  },
+  "networkExporters.warning.xmlCharacters.description": {
+    "defaultMessage": "Some answers contained characters that GraphML cannot store, so they were removed from the GraphML files only. The CSV files keep every answer unchanged. The affected interviews and variables are:",
+    "description": "Explanation in the warning shown after an export, followed by a list of the interviews and the variables whose answers lost characters in the GraphML files. GraphML is a network file format. CSV is a spreadsheet file format."
+  },
+  "networkExporters.warning.xmlCharacters.interview": {
+    "defaultMessage": "Interview {caseId}: {variables}",
+    "description": "One entry in the list of interviews affected by removed characters. {caseId} is the interview’s case ID. {variables} is a list of the names of the variables, joined into a sentence, whose answers lost characters."
+  },
+  "networkExporters.warning.xmlCharacters.title": {
+    "defaultMessage": "Some characters were removed from the GraphML files",
+    "description": "Heading of the warning shown after an export when some answers held characters that GraphML files cannot store."
   }
 }
