@@ -20,6 +20,7 @@ import { frescoCatalogs } from '~/src/locales/catalogs';
 import de from '~/src/locales/de.json';
 import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
+import fr from '~/src/locales/fr.json';
 import italian from '~/src/locales/it.json';
 import nl from '~/src/locales/nl.json';
 import ptBR from '~/src/locales/pt-BR.json';
@@ -47,6 +48,7 @@ const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const italianSources = readTranslationSources(localesDir, 'it');
+const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Fresco researcher message catalogs', () => {
@@ -72,6 +74,7 @@ describe('Fresco researcher message catalogs', () => {
       'nl',
       'pt-BR',
       'it',
+      'fr',
     ]);
     for (const { locale } of frescoLocales) {
       expect(ecosystemLocales.map((entry) => entry.locale)).toContain(locale);
@@ -105,6 +108,10 @@ describe('Fresco researcher message catalogs', () => {
 
   it('requires complete Italian and matching ICU arguments and rich text tags', () => {
     expect(checkFullLocale(en, italian, italianSources)).toEqual([]);
+  });
+
+  it('requires complete French and matching ICU arguments and rich text tags', () => {
+    expect(checkFullLocale(en, fr, frSources)).toEqual([]);
   });
 
   it('keeps British English sparse with only reviewed differences', () => {

@@ -38,6 +38,7 @@ export async function generateMetadata({
         'nl': 'https://networkcanvas.com/nl/get-started',
         'pt-BR': 'https://networkcanvas.com/pt-BR/get-started',
         'it': 'https://networkcanvas.com/it/get-started',
+        'fr': 'https://networkcanvas.com/fr/get-started',
       },
     },
   };

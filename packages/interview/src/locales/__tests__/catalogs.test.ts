@@ -18,6 +18,7 @@ import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { interviewLocales } from '../../i18n/locales';
 import { interviewCatalogs } from '../catalogs';
 import de from '../de.json';
+import fr from '../fr.json';
 import ptBR from '../pt-BR.json';
 
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -31,6 +32,7 @@ const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const italianSources = readTranslationSources(localesDir, 'it');
+const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the interview package built-in message catalogs', () => {
@@ -63,6 +65,7 @@ describe('the interview package built-in message catalogs', () => {
       'nl',
       'pt-BR',
       'it',
+      'fr',
     ]);
     expect(ecosystemLocales.map(({ locale }) => locale).toSorted()).toEqual(
       declared.toSorted(),
@@ -113,6 +116,10 @@ describe('the interview package built-in message catalogs', () => {
       readFileSync(join(localesDir, 'it.json'), 'utf8'),
     ) as Record<string, string>;
     expect(checkFullLocale(committedEn, italian, italianSources)).toEqual([]);
+  });
+
+  it('provides complete nonblank French with ICU and rich-text token parity', () => {
+    expect(checkFullLocale(committedEn, fr, frSources)).toEqual([]);
   });
 
   it('keeps British English a valid sparse override', () => {
