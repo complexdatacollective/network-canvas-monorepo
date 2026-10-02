@@ -31,8 +31,8 @@ describe('scrubXmlDocument', () => {
     expect(inner.textContent).toBe('inner');
     expect(outer.firstChild?.nodeValue).toBe('outer');
     expect(sites).toEqual([
-      { element: outer, attribute: null },
-      { element: inner, attribute: null },
+      { element: outer, attribute: null, original: `ou${loneSurrogate}ter` },
+      { element: inner, attribute: null, original: `in${control}ner` },
     ]);
   });
 
@@ -50,8 +50,8 @@ describe('scrubXmlDocument', () => {
     expect(element.getAttribute('clean')).toBe('kept');
     expect(element.getAttribute('last')).toBe('b');
     expect(sites).toEqual([
-      { element, attribute: 'first' },
-      { element, attribute: 'last' },
+      { element, attribute: 'first', original: `a${control}` },
+      { element, attribute: 'last', original: `${loneSurrogate}b` },
     ]);
   });
 

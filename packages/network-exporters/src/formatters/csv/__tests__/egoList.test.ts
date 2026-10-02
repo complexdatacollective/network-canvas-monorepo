@@ -25,6 +25,7 @@ describe('egoListRows', () => {
         mockNetwork as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
+        () => undefined,
       ),
     );
     expect(rows).toHaveLength(2);
@@ -50,6 +51,7 @@ describe('egoListRows', () => {
         mockNetwork as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
+        () => undefined,
       ),
     );
     // caseProperty value from mockNetwork.sessionVariables
@@ -66,6 +68,7 @@ describe('egoListRows', () => {
         mockNetwork as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
+        () => undefined,
       ),
     );
     // egoName attribute from mockNetwork.ego
@@ -95,6 +98,7 @@ describe('egoListRows', () => {
         emptyNetwork as unknown as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
+        () => undefined,
       ),
     );
     // Always yields header + one data row (ego is a single entity, not a list)

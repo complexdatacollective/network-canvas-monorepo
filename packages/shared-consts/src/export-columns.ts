@@ -113,7 +113,8 @@ export type ExportColumnOrigin =
   | { readonly kind: 'option'; readonly value: ExportOptionValue }
   | { readonly kind: 'layout'; readonly axis: LayoutColumnAxis };
 
-type ColumnEntry = {
+/** One column a variable is written to, and what in the variable produces it. */
+export type ExportColumnEntry = {
   readonly column: string;
   readonly origin: ExportColumnOrigin;
 };
@@ -122,10 +123,10 @@ const columnEntries = (
   format: ExportColumnFormat,
   variable: ExportColumnVariable,
   useScreenLayoutCoordinates: boolean,
-): ColumnEntry[] => {
+): ExportColumnEntry[] => {
   switch (variable.type) {
     case 'categorical':
-      return (variable.options ?? []).map(({ value }): ColumnEntry => ({
+      return (variable.options ?? []).map(({ value }): ExportColumnEntry => ({
         column: categoricalOptionColumn(variable.name, value),
         origin: { kind: 'option', value },
       }));
@@ -133,7 +134,7 @@ const columnEntries = (
       return [
         ...NORMALIZED_AXES,
         ...(useScreenLayoutCoordinates ? SCREEN_SPACE_AXES : []),
-      ].map((axis): ColumnEntry => ({
+      ].map((axis): ExportColumnEntry => ({
         column: layoutColumn(format, variable.name, axis),
         origin: { kind: 'layout', axis },
       }));
@@ -142,34 +143,30 @@ const columnEntries = (
   }
 };
 
+type ExportColumnOptions = Readonly<{
+  format: ExportColumnFormat;
+  useScreenLayoutCoordinates: boolean;
+}>;
+
 /**
- * Every column a variable is written to, in the order the CSV formatters write
- * them. Only categorical and layout variables expand; every other type,
- * ordinal included, is one column named after the variable.
+ * Every column a variable is written to, with what in the variable produces
+ * each one, in the order the CSV formatters write them. Only categorical and
+ * layout variables expand; every other type, ordinal included, is one column
+ * named after the variable.
  */
-export const variableExportColumns = (
+export const variableExportColumnEntries = (
   variable: ExportColumnVariable,
-  {
-    format,
-    useScreenLayoutCoordinates,
-  }: Readonly<{
-    format: ExportColumnFormat;
-    useScreenLayoutCoordinates: boolean;
-  }>,
-): string[] =>
-  columnEntries(format, variable, useScreenLayoutCoordinates).map(
-    ({ column }) => column,
-  );
+  { format, useScreenLayoutCoordinates }: ExportColumnOptions,
+): ExportColumnEntry[] =>
+  columnEntries(format, variable, useScreenLayoutCoordinates);
 
 /**
  * The built-in columns each export file writes beside its variable columns.
  *
- * The CSV formatters key their header set by internal property names and only
- * rename them as the header row is printed. A variable named after the
- * internal name (`_uid`, `caseId`) is merged into the built-in column and its
- * own values are lost; one named after the printed name (`networkCanvasUUID`,
- * `networkCanvasCaseID`) writes a second column under the same header. Both
- * spellings are reserved.
+ * The CSV formatters read a built-in column from an internal property
+ * (`_uid`, `caseId`) and print it under another name (`networkCanvasUUID`,
+ * `networkCanvasCaseID`). Both spellings are reserved: an export renames a
+ * variable column that has either one, and reports it.
  *
  * GraphML declares `label`, `networkCanvasType` and `networkCanvasUUID` for
  * every element, the graph (ego) included.
@@ -249,7 +246,7 @@ export type ExportColumnConflict<
       readonly siblingOrigin: ExportColumnOrigin;
     };
 
-type ComparableEntry = ColumnEntry & { readonly key: string };
+type ComparableEntry = ExportColumnEntry & { readonly key: string };
 
 const originKey = (origin: ExportColumnOrigin): string => {
   switch (origin.kind) {

@@ -6,7 +6,7 @@ import {
   type ExportColumnVariable,
   findExportColumnConflicts,
   layoutColumn,
-  variableExportColumns,
+  variableExportColumnEntries,
 } from '../export-columns.ts';
 
 const char = (codePoint: number) => String.fromCodePoint(codePoint);
@@ -80,8 +80,29 @@ describe('layoutColumn', () => {
   });
 });
 
-describe('variableExportColumns', () => {
+describe('variableExportColumnEntries', () => {
   const csv = { format: 'csv', useScreenLayoutCoordinates: false } as const;
+  const variableExportColumns = (
+    variable: ExportColumnVariable,
+    options: Parameters<typeof variableExportColumnEntries>[1],
+  ) =>
+    variableExportColumnEntries(variable, options).map(({ column }) => column);
+
+  it('says what in the variable produces each column', () => {
+    expect(
+      variableExportColumnEntries(categorical('foo', 'bar', 2), csv),
+    ).toEqual([
+      { column: 'foo_bar', origin: { kind: 'option', value: 'bar' } },
+      { column: 'foo_2', origin: { kind: 'option', value: 2 } },
+    ]);
+    expect(variableExportColumnEntries(layout('pos'), csv)).toEqual([
+      { column: 'pos_x', origin: { kind: 'layout', axis: 'x' } },
+      { column: 'pos_y', origin: { kind: 'layout', axis: 'y' } },
+    ]);
+    expect(variableExportColumnEntries(text('amigo'), csv)).toEqual([
+      { column: 'amigo', origin: { kind: 'name' } },
+    ]);
+  });
 
   it('writes one column per categorical option', () => {
     expect(variableExportColumns(categorical('foo', 'bar', 2), csv)).toEqual([

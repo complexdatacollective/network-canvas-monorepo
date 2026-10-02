@@ -7,6 +7,16 @@ const containsDifficultCharacters = (value: string) =>
 
 const quoteValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
+const quoteIfNeeded = (value: string) =>
+  containsDifficultCharacters(value) ? quoteValue(value) : value;
+
+/**
+ * A header cell, quoted where CSV needs it. Headers are the names a researcher
+ * gave the protocol's variables, so they are written as named: the formula
+ * guard below is for answers only.
+ */
+export const csvHeaderCell = (header: string): string => quoteIfNeeded(header);
+
 // Characters that trigger formula evaluation in spreadsheet applications when
 // they appear at the start of a cell. Prefixing the value with a single quote
 // forces the cell to be treated as literal text, neutralizing CSV/formula
@@ -34,10 +44,7 @@ export function sanitizeCellValue(
     return quoteValue(serialized);
   }
   if (typeof value === 'string') {
-    const neutralized = neutralizeFormula(value);
-    return containsDifficultCharacters(neutralized)
-      ? quoteValue(neutralized)
-      : neutralized;
+    return quoteIfNeeded(neutralizeFormula(value));
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
     return value;

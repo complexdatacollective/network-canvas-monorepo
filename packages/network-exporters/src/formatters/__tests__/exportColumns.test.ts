@@ -6,7 +6,7 @@ import {
   type ExportColumnFormat,
   type ExportColumnVariable,
   reservedExportColumns,
-  variableExportColumns,
+  variableExportColumnEntries,
 } from '@codaco/shared-consts';
 
 import { attributeListRows } from '../csv/attributeList';
@@ -27,7 +27,10 @@ const variableColumns = (
   useScreenLayoutCoordinates: boolean,
 ) =>
   Object.values(variables ?? {}).flatMap((variable) =>
-    variableExportColumns(variable, { format, useScreenLayoutCoordinates }),
+    variableExportColumnEntries(variable, {
+      format,
+      useScreenLayoutCoordinates,
+    }).map(({ column }) => column),
   );
 
 const entityVariables = (entity: ExportColumnEntity) => {
@@ -66,7 +69,7 @@ describe.each([true, false])(
       ['egoList', 'ego', egoListRows],
     ] as const)('%s CSV', (_, entity, rows) => {
       const headers = parseCsvRecord(
-        [...rows(network, namesCodebook, options)].join(''),
+        [...rows(network, namesCodebook, options, () => undefined)].join(''),
       );
       const variableHeaders = expectedColumns(
         entity,
@@ -189,9 +192,9 @@ describe('the columns of names in other scripts, with spaces and punctuation', (
   const options = exportOptions(true);
 
   it('writes the variable name as the CSV header, quoted where CSV needs it', () => {
-    const csv = [...attributeListRows(network, namesCodebook, options)].join(
-      '',
-    );
+    const csv = [
+      ...attributeListRows(network, namesCodebook, options, () => undefined),
+    ].join('');
     const headers = parseCsvRecord(csv);
 
     expect(headers).toEqual(
@@ -215,7 +218,7 @@ describe('the columns of names in other scripts, with spaces and punctuation', (
 
   it('writes the values under those headers', () => {
     const [headerRow, firstRow] = [
-      ...attributeListRows(network, namesCodebook, options),
+      ...attributeListRows(network, namesCodebook, options, () => undefined),
     ];
     const headers = parseCsvRecord(headerRow ?? '');
     const row = parseCsvRecord(firstRow ?? '');

@@ -10,6 +10,8 @@ export type XmlScrubSite = {
   readonly element: Element;
   /** The changed attribute's name, or null when the element's text changed. */
   readonly attribute: string | null;
+  /** The text as it was before the characters were removed. */
+  readonly original: string;
 };
 
 /**
@@ -29,25 +31,23 @@ export function scrubXmlDocument(
   if (root instanceof Element) {
     // Collected first: replacing an attribute while walking the live map could
     // revisit or skip one.
-    const stripped: [name: string, value: string][] = [];
+    const stripped: [name: string, original: string][] = [];
     for (let index = 0; index < root.attributes.length; index += 1) {
       const attribute = root.attributes.item(index);
       if (attribute && hasXmlIllegalCharacters(attribute.value)) {
-        stripped.push([
-          attribute.name,
-          stripXmlIllegalCharacters(attribute.value),
-        ]);
+        stripped.push([attribute.name, attribute.value]);
       }
     }
-    for (const [name, value] of stripped) {
-      root.setAttribute(name, value);
-      onScrub({ element: root, attribute: name });
+    for (const [name, original] of stripped) {
+      root.setAttribute(name, stripXmlIllegalCharacters(original));
+      onScrub({ element: root, attribute: name, original });
     }
   } else if (root instanceof CharacterData) {
     if (hasXmlIllegalCharacters(root.data)) {
-      root.data = stripXmlIllegalCharacters(root.data);
+      const original = root.data;
+      root.data = stripXmlIllegalCharacters(original);
       if (root.parentElement) {
-        onScrub({ element: root.parentElement, attribute: null });
+        onScrub({ element: root.parentElement, attribute: null, original });
       }
     }
     return;

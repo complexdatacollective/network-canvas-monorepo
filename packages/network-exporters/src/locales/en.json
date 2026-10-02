@@ -15,6 +15,34 @@
     "defaultMessage": "Writing output...",
     "description": "Export progress while writing the completed export files."
   },
+  "networkExporters.warning.columnRenamed.description": {
+    "defaultMessage": "Some columns would have had the same name as another column in the same file. So that no answers are lost, each was written under a numbered name instead. The renamed columns are:",
+    "description": "Explanation in the warning shown after an export, followed by a list of the columns that were renamed. A column is one field of the exported data, such as a variable’s answers."
+  },
+  "networkExporters.warning.columnRenamed.fromVariableItem": {
+    "defaultMessage": "In the {format, select, csv {CSV} other {GraphML}} files of {protocolName}, the {entity, select, ego {ego} other {{entityTypeName}}} column “{column}”, from the variable {variable}, was written as “{renamedTo}”.",
+    "description": "One entry in the list of renamed columns, for a column that holds one part of a variable, such as one option of a multiple-choice question. {format} is the file format: CSV, a spreadsheet format, or GraphML, a network format. {protocolName} is the name of the protocol, the study design a researcher builds. {entity} is “ego” for the column of the interview’s participant, and otherwise the column belongs to {entityTypeName}, the name the researcher gave a kind of person, place, thing or relationship. {column} is the name the column would have had, {variable} the name of the variable it comes from, and {renamedTo} the numbered name it was written under."
+  },
+  "networkExporters.warning.columnRenamed.item": {
+    "defaultMessage": "In the {format, select, csv {CSV} other {GraphML}} files of {protocolName}, the {entity, select, ego {ego} other {{entityTypeName}}} column “{column}” was written as “{renamedTo}”.",
+    "description": "One entry in the list of renamed columns. {format} is the file format: CSV, a spreadsheet format, or GraphML, a network format. {protocolName} is the name of the protocol, the study design a researcher builds. {entity} is “ego” for the column of the interview’s participant, and otherwise the column belongs to {entityTypeName}, the name the researcher gave a kind of person, place, thing or relationship. {column} is the name the column would have had, and {renamedTo} the numbered name it was written under."
+  },
+  "networkExporters.warning.columnRenamed.title": {
+    "defaultMessage": "Some columns were given new names",
+    "description": "Heading of the warning shown after an export when some columns in the exported files were renamed because another column in the same file already had their name."
+  },
+  "networkExporters.warning.protocolText.description": {
+    "defaultMessage": "Some of the protocol’s own text contained characters that GraphML cannot store, so they were removed in the GraphML files. The affected text is:",
+    "description": "Explanation in the warning shown after an export, followed by a list of the protocol’s names that lost characters in the GraphML files. A protocol is the study design a researcher builds. GraphML is a network file format."
+  },
+  "networkExporters.warning.protocolText.item": {
+    "defaultMessage": "{text, select, protocolName {The protocol name “{original}”} nodeTypeName {The node type name “{original}” in {protocolName}} edgeTypeName {The edge type name “{original}” in {protocolName}} other {The column name “{original}” in {protocolName}}}",
+    "description": "One entry in the list of protocol text that lost characters in the GraphML files. {text} says which text it is: the protocol’s name, the name of a node type (a kind of person, place or thing in the network), the name of an edge type (a kind of relationship), or the name of a column. {original} is that text as the protocol has it. {protocolName} is the name of the protocol."
+  },
+  "networkExporters.warning.protocolText.title": {
+    "defaultMessage": "Some characters were removed from protocol text in the GraphML files",
+    "description": "Heading of the warning shown after an export when text written in the protocol itself, such as its name or the name of a type, held characters that GraphML files cannot store. GraphML is a network file format."
+  },
   "networkExporters.warning.xmlCharacters.caseId": {
     "defaultMessage": "Case ID",
     "description": "Name of an interview’s case ID, the identifier the researcher gave the interview, shown in a list of the variables whose answers lost characters."

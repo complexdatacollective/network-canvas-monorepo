@@ -1,4 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Variable } from '@codaco/protocol-validation';
 import {
   graphMLLabelKey,
   ncSourceUUID,
@@ -6,6 +6,8 @@ import {
   ncTypeProperty,
   ncUUIDProperty,
 } from '@codaco/shared-consts';
+
+import { sha1 } from './helpers';
 
 export type GraphMLKeyTarget = 'graph' | 'node' | 'edge' | 'all';
 
@@ -24,53 +26,57 @@ export const builtInKeys: readonly GraphMLBuiltInKey[] = [
   { id: ncSourceUUID, type: 'string', target: 'edge' },
 ];
 
-const builtInKeyIds: ReadonlySet<string> = new Set(
-  builtInKeys.map(({ id }) => id),
-);
-
 export type GraphMLKeyIds = {
   /**
-   * The key id of each codebook variable whose record id is also a built-in
-   * key's id (`label`). Every other variable's key id is its record id.
+   * The key id of each column of a codebook variable, in the order
+   * `variableExportColumnEntries` lists them, looked up by the variable's
+   * record in the codebook.
    */
-  readonly variable: ReadonlyMap<string, string>;
+  readonly variable: ReadonlyMap<Variable, readonly string[]>;
   /** The key id of each attribute the codebook does not declare. */
   readonly external: ReadonlyMap<string, string>;
 };
 
 /**
- * Gives a variable whose record id is a built-in key's id a key id of its own.
- * Left alone, it would be merged into the built-in key, and its values would be
- * written under the wrong key.
+ * Hands out key ids so that no two keys share one, built-in keys included.
  *
- * The new id is the record id followed by `_1`, `_2`, ... until it is neither a
- * built-in id nor another variable's record id, so it cannot collide with
- * either. Ids that do not collide are not changed.
+ * Every key asks for the id it would have on its own: a built-in key its
+ * name, a variable column its record id (with a suffix for each column of a
+ * categorical or layout variable), an attribute the codebook does not declare
+ * the SHA-1 of its name. The first key to ask gets the id. A later one gets
+ * that id followed by `_1`, `_2`, ..., or, for an undeclared attribute, the
+ * SHA-1 of a salted name; either way an id no key asked for, so a moved key
+ * never takes another key's own id.
  */
-export const allocateVariableKeyIds = (
-  codebook: Codebook,
-): ReadonlyMap<string, string> => {
-  const variableIds = new Set<string>();
-  const addVariableIds = (variables: Record<string, unknown> | undefined) => {
-    for (const id of Object.keys(variables ?? {})) variableIds.add(id);
+export const createKeyIdAllocator = (requested: Iterable<string>) => {
+  const wanted = new Set(requested);
+  const given = new Set<string>();
+  const isFree = (id: string) => !given.has(id) && !wanted.has(id);
+  const give = (id: string) => {
+    given.add(id);
+    return id;
   };
-  addVariableIds(codebook.ego?.variables);
-  for (const definition of Object.values(codebook.node ?? {})) {
-    addVariableIds(definition.variables);
-  }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    addVariableIds(definition.variables);
-  }
 
-  const taken = new Set([...builtInKeyIds, ...variableIds]);
-  const allocated = new Map<string, string>();
-  for (const id of variableIds) {
-    if (!builtInKeyIds.has(id)) continue;
-    let suffix = 1;
-    while (taken.has(`${id}_${suffix}`)) suffix += 1;
-    const keyId = `${id}_${suffix}`;
-    taken.add(keyId);
-    allocated.set(id, keyId);
-  }
-  return allocated;
+  return {
+    keyId: (preferred: string): string => {
+      if (!given.has(preferred)) return give(preferred);
+      let suffix = 1;
+      while (!isFree(`${preferred}_${suffix}`)) suffix += 1;
+      return give(`${preferred}_${suffix}`);
+    },
+    externalKeyId: async (
+      attribute: string,
+      preferred: string,
+    ): Promise<string> => {
+      if (!given.has(preferred)) return give(preferred);
+      const maximumAttempts = given.size + wanted.size + 1;
+      for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+        const candidate = await sha1(`external:${attempt}:${attribute}`);
+        if (isFree(candidate)) return give(candidate);
+      }
+      throw new Error(
+        `Could not generate a unique GraphML key for external attribute: ${attribute}`,
+      );
+    },
+  };
 };

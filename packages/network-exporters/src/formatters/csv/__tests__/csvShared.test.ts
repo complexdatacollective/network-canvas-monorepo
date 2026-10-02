@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { sanitizeCellValue } from '../csvShared';
+import { csvHeaderCell, sanitizeCellValue } from '../csvShared';
+
+describe('csvHeaderCell', () => {
+  it.each(['=total', '+1', '-score', '@handle'])(
+    'writes the header %s as named, with no formula guard',
+    (header) => {
+      expect(csvHeaderCell(header)).toBe(header);
+    },
+  );
+
+  it('quotes a header that CSV needs quoted', () => {
+    expect(csvHeaderCell('=a,b')).toBe('"=a,b"');
+    expect(csvHeaderCell('say "hi"')).toBe('"say ""hi"""');
+    expect(csvHeaderCell('\rline')).toBe('"\rline"');
+  });
+});
 
 describe('sanitizeCellValue', () => {
   describe('formula injection neutralization', () => {

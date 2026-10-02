@@ -8,6 +8,7 @@ import {
 } from '@codaco/shared-consts';
 
 import type { FormattedSession } from '../../../input';
+import type { ExportWarning } from '../../../output';
 import {
   exportOptions,
   namesCodebook,
@@ -15,6 +16,7 @@ import {
   prepareSession,
 } from '../../__tests__/namesFixture';
 import graphMLGenerator from '../createGraphML';
+import { sha1 } from '../helpers';
 
 const parse = (xml: string) =>
   new DOMParser().parseFromString(xml, MIME_TYPE.XML_APPLICATION);
@@ -291,5 +293,169 @@ describe('GraphML keys for variables whose id is a built-in key id', () => {
     expect(data.get('networkCanvasType_1')).toBe('friend');
     expect(data.get('networkCanvasUUID')).toBe('node-a');
     expect(data.get('networkCanvasUUID_1')).toBe('abc');
+  });
+});
+
+describe('GraphML key ids that would be the same', () => {
+  // `pos_X` is a variable id, and also the id the layout variable `pos` would
+  // give its X key. The options 1 and '1' would get the same hashed id.
+  // `nickname` is not declared, and the variable `hashed` has the id it would
+  // be given.
+  const renderWithHashedId = async (hashed: string) => {
+    const codebook = personCodebook({
+      pos_X: { name: 'Position text', type: 'text' },
+      pos: { name: 'Position', type: 'layout' },
+      rating: {
+        name: 'Rating',
+        type: 'categorical',
+        options: [
+          { label: 'One', value: 1 },
+          { label: 'Also one', value: '1' },
+        ],
+      },
+      [hashed]: { name: 'Hashed', type: 'text' },
+    });
+    const session: FormattedSession = {
+      ...sessionWithNode({}),
+      nodes: [
+        {
+          [entityPrimaryKeyProperty]: 'node-a',
+          type: 'person',
+          [entityAttributesProperty]: {
+            pos_X: 'written',
+            pos: { x: 0.25, y: 0.75 },
+            rating: ['1'],
+            [hashed]: 'hashed value',
+            nickname: 'Dee',
+          },
+        },
+      ],
+    };
+    return graphMLGenerator(
+      prepareSession(session),
+      codebook,
+      exportOptions(false),
+      () => undefined,
+    );
+  };
+
+  it('gives every key an id of its own, built-in keys included', async () => {
+    const xml = await renderWithHashedId(await sha1('nickname'));
+    const ids = keyElements(xml).map((key) => key.getAttribute('id'));
+
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('writes each value under the key of its own column', async () => {
+    const hashed = await sha1('nickname');
+    const xml = await renderWithHashedId(hashed);
+    const keys = keyElements(xml);
+    const attrNameById = new Map(
+      keys.map((key) => [
+        key.getAttribute('id'),
+        key.getAttribute('attr.name'),
+      ]),
+    );
+    const byAttrName = new Map(
+      nodeData(xml, 0).map(([id, value]) => [attrNameById.get(id), value]),
+    );
+
+    expect(byAttrName.get('Position_text')).toBe('written');
+    expect(byAttrName.get('Position_X')).toBe('0.25');
+    expect(byAttrName.get('Position_Y')).toBe('0.75');
+    expect(byAttrName.get('Rating_1')).toBe('false');
+    expect(byAttrName.get('Rating_1_2')).toBe('true');
+    expect(byAttrName.get('Hashed')).toBe('hashed value');
+    expect(byAttrName.get('nickname')).toBe('Dee');
+    expect(keyById(keys, 'pos_X').getAttribute('attr.name')).toBe(
+      'Position_text',
+    );
+    expect(keyById(keys, hashed).getAttribute('attr.name')).toBe('Hashed');
+  });
+});
+
+describe('GraphML columns the export renames', () => {
+  const renderReporting = async (
+    codebook: Codebook,
+    session: FormattedSession,
+  ) => {
+    const warnings: ExportWarning[] = [];
+    const xml = await graphMLGenerator(
+      prepareSession(session),
+      codebook,
+      exportOptions(false),
+      (warning) => warnings.push(warning),
+    );
+    return { xml, warnings };
+  };
+
+  const renamed = (
+    entityTypeName: string,
+    variable: string,
+    column: string,
+    renamedTo: string,
+  ): ExportWarning => ({
+    kind: 'column-renamed',
+    protocolName: 'protocol name',
+    format: 'graphml',
+    entity: 'node',
+    entityTypeName,
+    variable,
+    column,
+    renamedTo,
+  });
+
+  it('reports each column numbered to keep it apart from another', async () => {
+    const { xml, warnings } = await renderReporting(
+      personCodebook({
+        'v-label': { name: 'label', type: 'text' },
+        'v-text': { name: 'pos_X', type: 'text' },
+        'v-layout': { name: 'pos', type: 'layout' },
+        'v-space': { name: 'a b', type: 'text' },
+        'v-valid': { name: 'a_b', type: 'text' },
+      }),
+      sessionWithNode({ 'v-label': 'Dee' }),
+    );
+    const keys = keyElements(xml);
+
+    expect(keyById(keys, 'v-label').getAttribute('attr.name')).toBe('label_2');
+    expect(keyById(keys, 'v-layout_X').getAttribute('attr.name')).toBe(
+      'pos_X_2',
+    );
+    expect(warnings).toEqual([
+      renamed('Person', 'label', 'label', 'label_2'),
+      renamed('Person', 'pos', 'pos_X', 'pos_X_2'),
+      renamed('Person', 'a b', 'a_b', 'a_b_2'),
+    ]);
+  });
+
+  it('does not report a name made into a valid attr.name, or one shared by two types', async () => {
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: { 'p-name': { name: 'Full name', type: 'text' } },
+        },
+        place: {
+          name: 'Place',
+          color: 'node-color-seq-2',
+          shape: { default: 'circle' },
+          variables: { 'pl-name': { name: 'Full name', type: 'text' } },
+        },
+      },
+    } satisfies Codebook;
+    const { xml, warnings } = await renderReporting(
+      codebook,
+      sessionWithNode({ 'p-name': 'Dee' }),
+    );
+    const keys = keyElements(xml);
+
+    expect(keyById(keys, 'p-name').getAttribute('attr.name')).toBe('Full_name');
+    expect(keyById(keys, 'pl-name').getAttribute('attr.name')).toBe(
+      'Full_name',
+    );
+    expect(warnings).toEqual([]);
   });
 });

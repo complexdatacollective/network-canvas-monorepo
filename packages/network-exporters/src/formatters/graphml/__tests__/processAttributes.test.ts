@@ -9,10 +9,8 @@ import {
 
 import type { NodeWithResequencedID } from '../../../input';
 import type { ExportOptions } from '../../../options';
-import type { GraphMLKeyIds } from '../keyIds';
+import getKeyElementGenerator from '../generateKeyElements';
 import processAttributes from '../processAttributes';
-
-const noKeyIds: GraphMLKeyIds = { variable: new Map(), external: new Map() };
 
 const mockExportOptions: ExportOptions = {
   exportGraphML: true,
@@ -23,6 +21,14 @@ const mockExportOptions: ExportOptions = {
     screenLayoutWidth: 1920,
   },
 };
+
+const keyIdsFor = async (codebook: Codebook, node: NodeWithResequencedID) =>
+  (
+    await getKeyElementGenerator(
+      codebook,
+      mockExportOptions,
+    )({ ego: [], node: [node], edge: [] })
+  ).keyIds;
 
 // Helper to extract data elements from the document fragment
 const getDataElements = (fragment: XmlDomDocumentFragment) => {
@@ -67,11 +73,11 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(
+      const result = processAttributes(
         node,
         codebook,
         mockExportOptions,
-        noKeyIds,
+        await keyIdsFor(codebook, node),
       );
       const dataElements = getDataElements(result);
 
@@ -116,11 +122,11 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(
+      const result = processAttributes(
         node,
         codebook,
         mockExportOptions,
-        noKeyIds,
+        await keyIdsFor(codebook, node),
       );
       const dataElements = getDataElements(result);
 

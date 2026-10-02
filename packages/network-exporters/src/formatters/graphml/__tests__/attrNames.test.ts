@@ -93,7 +93,8 @@ describe('resolveAttrNames', () => {
     name: string,
     target: 'graph' | 'node' | 'edge' | 'all' = 'node',
     builtIn = false,
-  ) => ({ name, target, builtIn });
+    scopes?: readonly string[],
+  ) => ({ name, target, builtIn, ...(scopes ? { scopes } : {}) });
   const namesOf = (keys: ReturnType<typeof key>[]) => {
     const resolved = resolveAttrNames(keys);
     return keys.map((each) => resolved.get(each));
@@ -135,11 +136,28 @@ describe('resolveAttrNames', () => {
     ]);
   });
 
-  it('shares one attr.name between keys with the very same name', () => {
-    expect(namesOf([key('Full name'), key('Full name'), key('a?b')])).toEqual([
+  it('shares one attr.name between keys with the very same name that never meet on one element', () => {
+    expect(
+      namesOf([
+        key('Full name', 'node', false, ['node:person']),
+        key('Full name', 'node', false, ['node:place']),
+        key('a?b', 'node', false, ['node:person']),
+      ]),
+    ).toEqual(['Full_name', 'Full_name', 'a_b']);
+  });
+
+  it('numbers keys with the very same name that can meet on one element', () => {
+    expect(
+      namesOf([
+        key('Full name', 'node', false, ['node:person', 'node:place']),
+        key('Full name', 'node', false, ['node:place']),
+        key('Full_name', 'node', false, ['node:person']),
+        key('Full_name', 'node', false, ['node:person']),
+      ]),
+    ).toEqual(['Full_name_2', 'Full_name_3', 'Full_name', 'Full_name_4']);
+    expect(namesOf([key('Full name'), key('Full name')])).toEqual([
       'Full_name',
-      'Full_name',
-      'a_b',
+      'Full_name_2',
     ]);
   });
 

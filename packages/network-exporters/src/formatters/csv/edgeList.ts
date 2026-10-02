@@ -4,109 +4,77 @@ import {
   edgeSourceProperty,
   edgeTargetProperty,
   egoProperty,
-  entityAttributesProperty,
   entityPrimaryKeyProperty,
   ncSourceUUID,
   ncTargetUUID,
   ncUUIDProperty,
+  protocolName,
 } from '@codaco/shared-consts';
 
-import type {
-  EdgeWithResequencedID,
-  SessionWithResequencedIDs,
-} from '../../input';
+import type { SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
-import { getOwn } from '../../utils/general';
-import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
-import processEntityVariables from './processEntityVariables';
-import { addVariableHeaders } from './variableHeaders';
+import type { ExportWarning } from '../../output';
+import { getEntityAttributes } from '../../utils/general';
+import { planTypedColumns } from './columns';
+import {
+  csvEOL,
+  csvHeaderCell,
+  sanitizeCellValue,
+  toAsyncBytes,
+} from './csvShared';
 
-const printableAttribute = (attribute: string) =>
-  attribute === entityPrimaryKeyProperty ? ncUUIDProperty : attribute;
-
-type ProcessedEdge = EdgeWithResequencedID & {
-  [entityAttributesProperty]: Record<string, unknown>;
-};
-
-function collectHeaders(
-  edges: ProcessedEdge[],
-  codebook: Codebook,
-  exportOptions: ExportOptions,
-): string[] {
-  const headers = new Set<string>([
-    edgeExportIDProperty,
-    edgeSourceProperty,
-    edgeTargetProperty,
-    egoProperty,
-    entityPrimaryKeyProperty,
-    ncSourceUUID,
-    ncTargetUUID,
-  ]);
-
-  const edgeTypes = new Set(edges.map((edge) => edge.type));
-  const definitions =
-    edgeTypes.size === 0
-      ? Object.values(codebook.edge ?? {})
-      : [...edgeTypes].flatMap((type) => {
-          const definition = getOwn(codebook.edge, type);
-          return definition ? [definition] : [];
-        });
-  for (const definition of definitions) {
-    addVariableHeaders(headers, definition.variables, exportOptions);
-  }
-
-  for (const edge of edges) {
-    for (const key of Object.keys(edge[entityAttributesProperty])) {
-      headers.add(key);
-    }
-  }
-  return [...headers];
-}
-
-const getValue = (edge: ProcessedEdge, header: string) => {
-  switch (header) {
-    case entityPrimaryKeyProperty:
-      return edge[entityPrimaryKeyProperty];
-    case edgeExportIDProperty:
-      return edge[edgeExportIDProperty];
-    case egoProperty:
-      return edge[egoProperty];
-    case edgeSourceProperty:
-      return edge[edgeSourceProperty];
-    case edgeTargetProperty:
-      return edge[edgeTargetProperty];
-    case ncSourceUUID:
-      return edge[ncSourceUUID];
-    case ncTargetUUID:
-      return edge[ncTargetUUID];
-    default:
-      return edge[entityAttributesProperty][header];
-  }
-};
+const BUILT_IN_HEADERS = [
+  edgeExportIDProperty,
+  edgeSourceProperty,
+  edgeTargetProperty,
+  egoProperty,
+  ncUUIDProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+];
 
 export function* edgeListRows(
   network: SessionWithResequencedIDs,
   codebook: Codebook,
   exportOptions: ExportOptions,
+  reportWarning: (warning: ExportWarning) => void,
 ): Generator<string, void, void> {
-  const edges: ProcessedEdge[] = network.edges.map((edge) =>
-    processEntityVariables(edge, 'edge', codebook, exportOptions),
+  const columns = planTypedColumns(
+    'edge',
+    codebook.edge,
+    network.edges.map((edge) => ({
+      type: edge.type,
+      attributes: getEntityAttributes(edge),
+    })),
+    {
+      exportOptions,
+      protocolName: network.sessionVariables[protocolName],
+      reportWarning,
+    },
   );
 
-  const headers = collectHeaders(edges, codebook, exportOptions);
-
   yield (
-    headers
-      .map((h) => String(sanitizeCellValue(printableAttribute(h)) ?? ''))
+    [...BUILT_IN_HEADERS, ...columns.map(({ header }) => header)]
+      .map(csvHeaderCell)
       .join(',') + csvEOL
   );
 
-  for (const edge of edges) {
-    const cells = headers.map((header) => {
-      const value = getValue(edge, header);
-      return String(sanitizeCellValue(value) ?? '');
-    });
-    yield cells.join(',') + csvEOL;
+  for (const edge of network.edges) {
+    const attributes = getEntityAttributes(edge);
+    yield (
+      [
+        edge[edgeExportIDProperty],
+        edge[edgeSourceProperty],
+        edge[edgeTargetProperty],
+        edge[egoProperty],
+        edge[entityPrimaryKeyProperty],
+        edge[ncSourceUUID],
+        edge[ncTargetUUID],
+        ...columns.map(({ cells }) => cells.get(edge.type)?.(attributes)),
+      ]
+        .map((value) => String(sanitizeCellValue(value) ?? ''))
+        .join(',') + csvEOL
+    );
   }
 }
 
@@ -114,6 +82,9 @@ export function edgeListBytes(
   network: SessionWithResequencedIDs,
   codebook: Codebook,
   exportOptions: ExportOptions,
+  reportWarning: (warning: ExportWarning) => void,
 ): AsyncIterable<Uint8Array> {
-  return toAsyncBytes(edgeListRows(network, codebook, exportOptions));
+  return toAsyncBytes(
+    edgeListRows(network, codebook, exportOptions, reportWarning),
+  );
 }
