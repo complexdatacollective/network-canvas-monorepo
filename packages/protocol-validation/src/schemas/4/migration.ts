@@ -183,7 +183,7 @@ const collectOptionValueRenames = (
       before?.variables ?? {},
     )) {
       const migratedOptions = after?.variables?.[variableId]?.options ?? [];
-      const changed = new Map<unknown>();
+      const changed: Map<unknown, unknown> = new Map();
       // Only an option value's first occurrence is renamed: a later duplicate
       // gets a suffix, and rules naming the value meant the first.
       const seen = new Set<unknown>();
