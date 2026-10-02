@@ -6,6 +6,7 @@ import {
   extractRelativePathLiterals,
   extractSpecifiers,
   isInsideAppPackage,
+  isOptionalRequire,
   shouldCheckSpecifier,
   stripCommentLines,
 } from './verify-packaged-app-sweep.cjs';
@@ -116,4 +117,40 @@ test('shouldCheckSpecifier checks real packages and relative paths', () => {
   assert.equal(shouldCheckSpecifier('./relative'), true);
   // electron-log is a real runtime dependency, not the electron runtime.
   assert.equal(shouldCheckSpecifier('electron-log'), true);
+});
+
+test('isOptionalRequire tolerates supports-color only inside debug', () => {
+  assert.equal(
+    isOptionalRequire('supports-color', 'node_modules/debug/src/node.js'),
+    true,
+  );
+  assert.equal(
+    isOptionalRequire(
+      'supports-color',
+      'node_modules/a/node_modules/debug/src/node.js',
+    ),
+    true,
+  );
+  // A different requirer, a different specifier, or a look-alike package
+  // name is still a packaging failure.
+  assert.equal(
+    isOptionalRequire('supports-color', 'node_modules/chalk/index.js'),
+    false,
+  );
+  assert.equal(
+    isOptionalRequire('supports-color', 'node_modules/debug-fake/index.js'),
+    false,
+  );
+  assert.equal(
+    isOptionalRequire('lodash', 'node_modules/debug/src/node.js'),
+    false,
+  );
+  // A package nested under debug's own node_modules is not debug.
+  assert.equal(
+    isOptionalRequire(
+      'supports-color',
+      'node_modules/debug/node_modules/other/index.js',
+    ),
+    false,
+  );
 });
