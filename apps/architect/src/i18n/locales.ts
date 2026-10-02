@@ -14,6 +14,7 @@ export const architectProductionLocales = defineAppLocales([
   { locale: 'de', label: 'Deutsch', direction: 'ltr' },
   { locale: 'nl', label: 'Nederlands', direction: 'ltr' },
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
+  { locale: 'it', label: 'Italiano', direction: 'ltr' },
 ]);
 
 export const architectLocales: readonly AppLocale[] = import.meta.env.DEV

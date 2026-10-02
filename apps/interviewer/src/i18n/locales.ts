@@ -11,6 +11,7 @@ export const interviewerProductionLocales = defineAppLocales([
   { locale: 'de', label: 'Deutsch', direction: 'ltr' },
   { locale: 'nl', label: 'Nederlands', direction: 'ltr' },
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
+  { locale: 'it', label: 'Italiano', direction: 'ltr' },
 ]);
 
 export const interviewerLocales: readonly AppLocale[] = import.meta.env.DEV

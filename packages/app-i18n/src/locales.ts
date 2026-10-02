@@ -74,6 +74,7 @@ export const ecosystemLocales = defineAppLocales([
   { locale: 'de', label: 'Deutsch', direction: 'ltr' },
   { locale: 'nl', label: 'Nederlands', direction: 'ltr' },
   { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
+  { locale: 'it', label: 'Italiano', direction: 'ltr' },
 ]);
 
 /**

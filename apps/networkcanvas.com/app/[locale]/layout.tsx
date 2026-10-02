@@ -73,6 +73,7 @@ export async function generateMetadata({
         'de': 'https://networkcanvas.com/de',
         'nl': 'https://networkcanvas.com/nl',
         'pt-BR': 'https://networkcanvas.com/pt-BR',
+        'it': 'https://networkcanvas.com/it',
       },
     },
     openGraph: {

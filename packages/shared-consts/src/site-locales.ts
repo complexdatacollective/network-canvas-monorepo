@@ -55,6 +55,12 @@ export const supportedSiteLocales = [
     englishName: 'Portuguese (Brazil)',
     compactLabel: 'pt-BR',
   },
+  {
+    locale: 'it',
+    nativeName: 'Italiano',
+    englishName: 'Italian',
+    compactLabel: 'it',
+  },
 ] as const satisfies readonly SiteLocaleDefinition[];
 
 export type SiteLocale = (typeof supportedSiteLocales)[number]['locale'];

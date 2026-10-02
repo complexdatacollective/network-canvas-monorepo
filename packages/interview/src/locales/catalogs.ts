@@ -3,6 +3,7 @@ import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
+import it from './it.json';
 import nl from './nl.json';
 import ptBR from './pt-BR.json';
 import zhHans from './zh-Hans.json';
@@ -17,4 +18,5 @@ export const interviewCatalogs: Readonly<Record<string, CatalogMessages>> = {
   de,
   nl,
   'pt-BR': ptBR,
+  it,
 };

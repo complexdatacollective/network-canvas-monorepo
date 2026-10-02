@@ -355,6 +355,7 @@ describe('Shell built-in interface language', () => {
       'de',
       'nl',
       'pt-BR',
+      'it',
     ]);
     await user.selectOptions(language, 'es');
     expect(onLocaleChange).toHaveBeenLastCalledWith('es');

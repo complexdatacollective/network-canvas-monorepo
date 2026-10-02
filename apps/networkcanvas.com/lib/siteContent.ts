@@ -68,6 +68,7 @@ const newsRowSchema = z
     'title_de': requiredText,
     'title_nl': requiredText,
     'title_pt-BR': requiredText,
+    'title_it': requiredText,
     'href': z.union([httpsUrl, internalPath]),
   })
   .strict();
@@ -82,6 +83,7 @@ const publicationRowSchema = z
     'title_de': requiredText,
     'title_nl': requiredText,
     'title_pt-BR': requiredText,
+    'title_it': requiredText,
     'source_en': requiredText,
     'source_es': requiredText,
     'source_zh-Hans': requiredText,
@@ -89,6 +91,7 @@ const publicationRowSchema = z
     'source_de': requiredText,
     'source_nl': requiredText,
     'source_pt-BR': requiredText,
+    'source_it': requiredText,
     'authors': requiredText,
     'href': httpsUrl,
     'year': publicationYear,
@@ -105,6 +108,7 @@ const grantRowSchema = z
     'title_de': requiredText,
     'title_nl': requiredText,
     'title_pt-BR': requiredText,
+    'title_it': requiredText,
     'pis_en': requiredText,
     'pis_es': requiredText,
     'pis_zh-Hans': requiredText,
@@ -112,6 +116,7 @@ const grantRowSchema = z
     'pis_de': requiredText,
     'pis_nl': requiredText,
     'pis_pt-BR': requiredText,
+    'pis_it': requiredText,
     'description_en': requiredText,
     'description_es': requiredText,
     'description_zh-Hans': requiredText,
@@ -119,6 +124,7 @@ const grantRowSchema = z
     'description_de': requiredText,
     'description_nl': requiredText,
     'description_pt-BR': requiredText,
+    'description_it': requiredText,
     'logo': publicImage,
     'logo_alt_en': requiredText,
     'logo_alt_es': requiredText,
@@ -127,6 +133,7 @@ const grantRowSchema = z
     'logo_alt_de': requiredText,
     'logo_alt_nl': requiredText,
     'logo_alt_pt-BR': requiredText,
+    'logo_alt_it': requiredText,
     'href': httpsUrl,
   })
   .strict();
@@ -142,6 +149,7 @@ const teamMemberRowSchema = z
     'institution_de': requiredText,
     'institution_nl': requiredText,
     'institution_pt-BR': requiredText,
+    'institution_it': requiredText,
     'photo': publicImage,
   })
   .strict();
@@ -214,6 +222,7 @@ function localized(
   german: string,
   dutch: string,
   brazilianPortuguese: string,
+  italian: string,
 ): string {
   if (locale === 'es') return spanish;
   if (locale === 'zh-Hans') return simplifiedChinese;
@@ -221,6 +230,7 @@ function localized(
   if (locale === 'de') return german;
   if (locale === 'nl') return dutch;
   if (locale === 'pt-BR') return brazilianPortuguese;
+  if (locale === 'it') return italian;
   return english;
 }
 
@@ -247,6 +257,7 @@ export async function loadSiteContent(
         row.title_de,
         row.title_nl,
         row['title_pt-BR'],
+        row.title_it,
       ),
       href: row.href,
     })),
@@ -261,6 +272,7 @@ export async function loadSiteContent(
         row.title_de,
         row.title_nl,
         row['title_pt-BR'],
+        row.title_it,
       ),
       source: localized(
         locale,
@@ -271,6 +283,7 @@ export async function loadSiteContent(
         row.source_de,
         row.source_nl,
         row['source_pt-BR'],
+        row.source_it,
       ),
       authors: row.authors,
       href: row.href,
@@ -287,6 +300,7 @@ export async function loadSiteContent(
         row.title_de,
         row.title_nl,
         row['title_pt-BR'],
+        row.title_it,
       ),
       pis: localized(
         locale,
@@ -297,6 +311,7 @@ export async function loadSiteContent(
         row.pis_de,
         row.pis_nl,
         row['pis_pt-BR'],
+        row.pis_it,
       ),
       description: localized(
         locale,
@@ -307,6 +322,7 @@ export async function loadSiteContent(
         row.description_de,
         row.description_nl,
         row['description_pt-BR'],
+        row.description_it,
       ),
       logo: row.logo,
       logoAlt: localized(
@@ -318,6 +334,7 @@ export async function loadSiteContent(
         row.logo_alt_de,
         row.logo_alt_nl,
         row['logo_alt_pt-BR'],
+        row.logo_alt_it,
       ),
       href: row.href,
     })),
@@ -333,6 +350,7 @@ export async function loadSiteContent(
         row.institution_de,
         row.institution_nl,
         row['institution_pt-BR'],
+        row.institution_it,
       ),
       photo: row.photo,
     })),

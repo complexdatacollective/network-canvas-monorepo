@@ -23,6 +23,7 @@ import { interviewerCatalogs } from '../catalogs';
 import de from '../de.json';
 import enGb from '../en-GB.json';
 import es from '../es.json';
+import italian from '../it.json';
 import nl from '../nl.json';
 import ptBR from '../pt-BR.json';
 import zhHans from '../zh-Hans.json';
@@ -39,6 +40,7 @@ const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
 const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
+const italianSources = readTranslationSources(localesDir, 'it');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
@@ -72,6 +74,10 @@ describe('the complete administration catalog', () => {
   it('ships full Brazilian Portuguese with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, ptBR, ptBRSources)).toEqual([]);
   });
+
+  it('ships full Italian with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, italian, italianSources)).toEqual([]);
+  });
   it('ships only reviewed British differences and inherits the English base', () => {
     expect(checkOverrideLocale(source, enGb, enGbSources)).toEqual([]);
     expect(Object.keys(enGb).length).toBeGreaterThan(0);
@@ -102,6 +108,7 @@ describe('the complete administration catalog', () => {
       'de',
       'nl',
       'pt-BR',
+      'it',
     ]);
     for (const entry of interviewerProductionLocales)
       expect(

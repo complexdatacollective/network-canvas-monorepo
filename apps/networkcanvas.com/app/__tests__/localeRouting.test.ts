@@ -146,6 +146,21 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/pt-BR/',
   },
   {
+    name: 'Italian browser language',
+    headers: { 'accept-language': 'it-IT,it;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/it/',
+  },
+  {
+    name: 'Swiss Italian browser language',
+    headers: { 'accept-language': 'it-CH,it;q=0.9' },
+    destination: 'http://localhost/it/',
+  },
+  {
+    name: 'bare Italian browser language',
+    headers: { 'accept-language': 'it' },
+    destination: 'http://localhost/it/',
+  },
+  {
     name: 'US English fallback',
     headers: {},
     destination: 'http://localhost/en-US/',
@@ -191,7 +206,7 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, and Brazilian Portuguese static params', () => {
+  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, Brazilian Portuguese, and Italian static params', () => {
     expect(locales).toEqual([
       'en-US',
       'en-GB',
@@ -201,6 +216,7 @@ describe('locale routing', () => {
       'de',
       'nl',
       'pt-BR',
+      'it',
     ]);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
@@ -211,6 +227,7 @@ describe('locale routing', () => {
       { locale: 'de' },
       { locale: 'nl' },
       { locale: 'pt-BR' },
+      { locale: 'it' },
     ]);
   });
 

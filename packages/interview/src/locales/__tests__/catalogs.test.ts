@@ -30,6 +30,7 @@ const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
 const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
+const italianSources = readTranslationSources(localesDir, 'it');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the interview package built-in message catalogs', () => {
@@ -61,6 +62,7 @@ describe('the interview package built-in message catalogs', () => {
       'de',
       'nl',
       'pt-BR',
+      'it',
     ]);
     expect(ecosystemLocales.map(({ locale }) => locale).toSorted()).toEqual(
       declared.toSorted(),
@@ -104,6 +106,13 @@ describe('the interview package built-in message catalogs', () => {
 
   it('provides complete nonblank Brazilian Portuguese with ICU and rich-text token parity', () => {
     expect(checkFullLocale(committedEn, ptBR, ptBRSources)).toEqual([]);
+  });
+
+  it('provides complete nonblank Italian with ICU and rich-text token parity', () => {
+    const italian = JSON.parse(
+      readFileSync(join(localesDir, 'it.json'), 'utf8'),
+    ) as Record<string, string>;
+    expect(checkFullLocale(committedEn, italian, italianSources)).toEqual([]);
   });
 
   it('keeps British English a valid sparse override', () => {

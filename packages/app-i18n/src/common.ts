@@ -16,6 +16,7 @@ import type { CatalogMessages } from './locales.ts';
 import de from './locales/de.json';
 import enGbOverrides from './locales/en-GB.json';
 import es from './locales/es.json';
+import it from './locales/it.json';
 import nl from './locales/nl.json';
 import ptBR from './locales/pt-BR.json';
 import zhHans from './locales/zh-Hans.json';
@@ -108,4 +109,5 @@ export const commonCatalogs: Readonly<Record<string, CatalogMessages>> = {
   de,
   nl,
   'pt-BR': ptBR,
+  it,
 };
