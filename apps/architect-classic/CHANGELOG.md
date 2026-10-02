@@ -22,6 +22,9 @@
   now reads those files, and the summary window loads without errors.
 - **Fixed an error when previewing a stage.** The Interviewer preview logged an error when it
   first cleared its temporary protocol folder. The preview itself was unaffected.
+- **Fixed custom node labels in the stage preview.** A protocol's custom node label script
+  (`nodeLabelWorker.js`) was looked for in the wrong folder during preview, so previewed nodes
+  showed their plain names. The preview now uses the protocol's script, as Interviewer does.
 - **Fixed a path traversal weakness when importing protocols.** Importing a protocol file
   (`.netcanvas`) used a ZIP extraction library with a known flaw: a specially crafted archive
   could write files outside the folder it was being unpacked into. It has been replaced with a
