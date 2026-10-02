@@ -19,6 +19,21 @@ const cases = ['en', ...Object.keys(protocolBuilderCatalogs)].flatMap(
   (locale) => (['node', 'edge'] as const).map((entity) => ({ locale, entity })),
 );
 
+const examplesIn = (locale: string, entity: 'node' | 'edge') =>
+  quotedExamples(
+    createAppIntl({
+      locale,
+      messages: protocolBuilderCatalogs[locale],
+    }).formatMessage(
+      {
+        id: NAME_HINT,
+        defaultMessage: en[NAME_HINT].defaultMessage,
+        description: en[NAME_HINT].description,
+      },
+      { entity },
+    ),
+  );
+
 /**
  * The hint under the type-name field suggests example names. Each one has to
  * be a name the field accepts, in every language: a researcher who types an
@@ -30,21 +45,12 @@ describe('example names in the entity name hint', () => {
   it.each(cases)(
     'suggests only valid $entity type names in $locale',
     ({ locale, entity }) => {
-      const intl = createAppIntl({
-        locale,
-        messages: protocolBuilderCatalogs[locale],
-      });
-      const hint = intl.formatMessage(
-        {
-          id: NAME_HINT,
-          defaultMessage: en[NAME_HINT].defaultMessage,
-          description: en[NAME_HINT].description,
-        },
-        { entity },
-      );
-      const examples = quotedExamples(hint);
+      const examples = examplesIn(locale, entity);
 
       expect(examples.length).toBeGreaterThan(0);
+      // As many as the English offers, so an example in a quotation style the
+      // pattern does not recognise fails here rather than going unchecked.
+      expect(examples).toHaveLength(examplesIn('en', entity).length);
       // The schema CodebookEntityEditor's validateFields applies to the name.
       expect(
         examples.filter(

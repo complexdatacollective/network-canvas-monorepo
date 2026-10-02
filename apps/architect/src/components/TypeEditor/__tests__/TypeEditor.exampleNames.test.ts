@@ -18,6 +18,21 @@ const cases = ['en', ...Object.keys(architectCatalogs)].flatMap((locale) =>
   (['node', 'edge'] as const).map((entity) => ({ locale, entity })),
 );
 
+const examplesIn = (locale: string, entity: 'node' | 'edge') =>
+  quotedExamples(
+    createAppIntl({
+      locale,
+      messages: architectCatalogs[locale],
+    }).formatMessage(
+      {
+        id: NAME_HINT,
+        defaultMessage: en[NAME_HINT].defaultMessage,
+        description: en[NAME_HINT].description,
+      },
+      { entity },
+    ),
+  );
+
 // The rule TypeEditor puts on its name field.
 const isAllowedTypeName = createValidations().allowedNMToken();
 
@@ -32,21 +47,12 @@ describe('example names in the type name hint', () => {
   it.each(cases)(
     'suggests only valid $entity type names in $locale',
     ({ locale, entity }) => {
-      const intl = createAppIntl({
-        locale,
-        messages: architectCatalogs[locale],
-      });
-      const hint = intl.formatMessage(
-        {
-          id: NAME_HINT,
-          defaultMessage: en[NAME_HINT].defaultMessage,
-          description: en[NAME_HINT].description,
-        },
-        { entity },
-      );
-      const examples = quotedExamples(hint);
+      const examples = examplesIn(locale, entity);
 
       expect(examples.length).toBeGreaterThan(0);
+      // As many as the English offers, so an example in a quotation style the
+      // pattern does not recognise fails here rather than going unchecked.
+      expect(examples).toHaveLength(examplesIn('en', entity).length);
       expect(
         examples.filter((example) => isAllowedTypeName(example) !== undefined),
       ).toEqual([]);
