@@ -29,7 +29,6 @@
     "cap:add:ios": "cap add ios",
     "cap:add:android": "cap add android",
     "cap:run:ios": "pnpm version:sync && pnpm build:web && cap run ios",
-    "cap:release:android": "pnpm cap:sync && cd android && ./gradlew bundleRelease assembleRelease",
     "cap:run:android": "pnpm version:sync && pnpm build:web && cap run android --target Pixel_Tablet_API_35",
     "cap:dev:ios": "pnpm version:sync && pnpm build:web && node scripts/cap-dev.mjs ios --target \"iPad Pro 13-inch (M5)\"",
     "cap:dev:android": "pnpm version:sync && pnpm build:web && node scripts/cap-dev.mjs android --target Pixel_Tablet_API_35"

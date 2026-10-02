@@ -11,18 +11,16 @@
 //          suffix) is written.
 //
 // Build numbers: versionCode (Android) and CURRENT_PROJECT_VERSION (iOS
-// CFBundleVersion) are derived from the version as
-// major * 10000 + minor * 100 + patch, so 6.6.2 -> 60602. The stores
-// require the number to rise with every upload; deriving it keeps it rising
-// with each release and stays above the 4-digit codes the Cordova builds
-// (<= 6.5.x) used. Pre-releases of one version share its build number, so
-// only one of them can be uploaded to a store.
-//
-// Re-uploading the same version to App Store Connect needs a new build
-// number: set CURRENT_PROJECT_VERSION to e.g. 60602.1 (CFBundleVersion
-// allows up to three period-separated integers). This script keeps such a
-// suffix while the version stays the same and drops it when the version
-// changes.
+// CFBundleVersion) are both
+// (major * 10000 + minor * 100 + patch) * 100 + upload, so 6.6.2 ->
+// 6060200. The stores require a new, higher number for every upload;
+// deriving it from the version keeps it rising with each release and
+// above every earlier upload (the Cordova builds used 4-digit codes, and
+// 6.6.2 was first uploaded as 60602). The last two digits count re-uploads
+// of one version: to upload 6.6.2 again, raise both numbers to 6060201.
+// This script keeps a raised number while the version stays the same and
+// resets it when the version changes. Pre-releases of one version share
+// its numbers.
 //
 // Idempotent: re-runs are no-ops once everything is in sync.
 
@@ -52,9 +50,14 @@ if (Number(minor) > 99 || Number(patch) > 99) {
   );
   process.exit(1);
 }
-const buildNumber = String(
-  Number(major) * 10000 + Number(minor) * 100 + Number(patch),
-);
+const buildBase = Number(major) * 10000 + Number(minor) * 100 + Number(patch);
+const buildNumber = String(buildBase * 100);
+
+// Keeps a build number already raised for a re-upload of this version.
+const syncBuildNumber = (match, prefix, current, suffix) =>
+  /^\d+$/.test(current) && Math.floor(Number(current) / 100) === buildBase
+    ? match
+    : `${prefix}${buildNumber}${suffix}`;
 const androidVersionName = version;
 
 function replaceInFile(file, pattern, replacement, label) {
@@ -90,10 +93,7 @@ replaceInFile(
 replaceInFile(
   pbxproj,
   /(CURRENT_PROJECT_VERSION = )([^;]+)(;)/g,
-  (match, prefix, current, suffix) =>
-    /^\d+\.\d+$/.test(current) && current.startsWith(`${buildNumber}.`)
-      ? match
-      : `${prefix}${buildNumber}${suffix}`,
+  syncBuildNumber,
   `iOS CURRENT_PROJECT_VERSION -> ${buildNumber}`,
 );
 
@@ -106,7 +106,7 @@ replaceInFile(
 );
 replaceInFile(
   gradle,
-  /(versionCode )\d+/g,
-  `$1${buildNumber}`,
+  /(versionCode )(\d+)()/g,
+  syncBuildNumber,
   `Android versionCode -> ${buildNumber}`,
 );
