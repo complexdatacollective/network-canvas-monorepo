@@ -212,4 +212,49 @@ export const siteNavigationMessages = {
       },
     },
   },
+  'nl': {
+    home: 'Startpagina van Network Canvas',
+    navigationLabel: 'Hoofdnavigatie',
+    skipToContent: 'Naar de hoofdinhoud',
+    community: 'Community',
+    documentation: 'Documentatie',
+    protocolGallery: 'Protocolgalerij',
+    resources: 'Hulpmiddelen',
+    software: 'Software',
+    getStarted: 'Aan de slag',
+    openMenu: 'Sitenavigatie openen',
+    closeMenu: 'Sitenavigatie sluiten',
+    softwareLinks: {
+      architect: {
+        name: 'Architect',
+        action: 'Architect openen',
+        description:
+          'Ontwerp verzorgde interviewprotocollen voor Network Canvas in je browser, met een visuele werkwijze die speciaal voor onderzoekers is gemaakt.',
+      },
+      architectClassic: {
+        name: 'Architect Classic',
+        action: 'Architect Classic downloaden',
+        description:
+          'Gebruik deze app alleen als je onderzoek compatibel moet blijven met Interviewer Classic en schema 7.',
+      },
+      interviewer: {
+        name: 'Interviewer',
+        action: 'Interviewer openen',
+        description:
+          'Neem in het veld boeiende netwerkinterviews af onder leiding van een interviewer, in elke ondersteunde browser.',
+      },
+      interviewerClassic: {
+        name: 'Interviewer Classic',
+        action: 'Interviewer Classic downloaden',
+        description:
+          'Voor bestaande onderzoeken in schema 7 en offline workflows op desktop of tablet. Wordt onderhouden voor compatibiliteit en bugfixes.',
+      },
+      fresco: {
+        name: 'Fresco',
+        action: 'Fresco-sandbox uitproberen',
+        description:
+          'Coördineer netwerkinterviews op afstand en beheer onderzoeksgegevens vanuit één gedeeld dashboard in de browser.',
+      },
+    },
+  },
 } satisfies Record<SiteLocale, SiteNavigationMessages>;

@@ -70,6 +70,7 @@ export async function generateMetadata({
         'es': 'https://networkcanvas.com/es',
         'zh-Hans': 'https://networkcanvas.com/zh-Hans',
         'de': 'https://networkcanvas.com/de',
+        'nl': 'https://networkcanvas.com/nl',
       },
     },
     openGraph: {

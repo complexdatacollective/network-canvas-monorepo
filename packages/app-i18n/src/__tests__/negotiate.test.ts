@@ -136,6 +136,22 @@ describe('resolveAppLocale', () => {
     }
   });
 
+  it('negotiates Dutch from the Netherlands, Belgium and bare nl to nl', () => {
+    for (const requested of [
+      ['nl-NL', 'en'],
+      ['nl-BE', 'fr-BE', 'en'],
+      ['nl'],
+    ]) {
+      expect(
+        resolveAppLocale({
+          requested,
+          locales: ecosystemLocales,
+          defaultLocale: 'en',
+        }),
+      ).toEqual({ locale: 'nl', source: 'negotiated' });
+    }
+  });
+
   it('rejects a defaultLocale outside the registry', () => {
     expect(() =>
       resolveAppLocale({

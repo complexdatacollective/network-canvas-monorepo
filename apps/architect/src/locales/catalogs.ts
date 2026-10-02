@@ -8,6 +8,7 @@ import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales'
 import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
+import nl from './nl.json';
 import zhHans from './zh-Hans.json';
 
 /** Static imports include every production locale in installed/offline builds. */
@@ -45,5 +46,13 @@ export const architectCatalogs: Readonly<
     protocolValidationCatalogs.de ?? {},
     protocolUtilitiesCatalogs.de ?? {},
     de,
+  ),
+  'nl': mergeCatalogs(
+    commonCatalogs.nl ?? {},
+    frescoUiCatalogs.nl ?? {},
+    protocolBuilderCatalogs.nl ?? {},
+    protocolValidationCatalogs.nl ?? {},
+    protocolUtilitiesCatalogs.nl ?? {},
+    nl,
   ),
 };

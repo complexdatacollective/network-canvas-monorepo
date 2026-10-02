@@ -3,6 +3,7 @@ import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
+import nl from './nl.json';
 import zhHans from './zh-Hans.json';
 
 export const networkExporterCatalogs: Readonly<
@@ -12,4 +13,5 @@ export const networkExporterCatalogs: Readonly<
   es,
   'zh-Hans': zhHans,
   de,
+  nl,
 };

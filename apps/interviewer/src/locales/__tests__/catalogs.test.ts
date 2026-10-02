@@ -23,6 +23,7 @@ import { interviewerCatalogs } from '../catalogs';
 import de from '../de.json';
 import enGb from '../en-GB.json';
 import es from '../es.json';
+import nl from '../nl.json';
 import zhHans from '../zh-Hans.json';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -33,6 +34,7 @@ const localesDir = join(src, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
 const deSources = readTranslationSources(localesDir, 'de');
+const nlSources = readTranslationSources(localesDir, 'nl');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
@@ -53,6 +55,10 @@ describe('the complete administration catalog', () => {
   });
   it('ships full German with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, de, deSources)).toEqual([]);
+  });
+
+  it('ships full Dutch with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, nl, nlSources)).toEqual([]);
   });
   it('ships only reviewed British differences and inherits the English base', () => {
     expect(checkOverrideLocale(source, enGb, enGbSources)).toEqual([]);
@@ -81,6 +87,7 @@ describe('the complete administration catalog', () => {
       'es',
       'zh-Hans',
       'de',
+      'nl',
     ]);
     for (const entry of interviewerProductionLocales)
       expect(

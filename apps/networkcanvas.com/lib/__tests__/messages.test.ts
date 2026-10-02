@@ -6,6 +6,7 @@ import de from '~/messages/de.json';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
+import nl from '~/messages/nl.json';
 import zhHans from '~/messages/zh-Hans.json';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -36,6 +37,7 @@ const translatedCatalogs = [
   ['Spanish', es],
   ['Simplified Chinese', zhHans],
   ['German', de],
+  ['Dutch', nl],
 ] as const;
 
 describe('message catalogs', () => {

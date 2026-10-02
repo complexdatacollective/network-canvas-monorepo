@@ -16,6 +16,7 @@ import type { CatalogMessages } from './locales.ts';
 import de from './locales/de.json';
 import enGbOverrides from './locales/en-GB.json';
 import es from './locales/es.json';
+import nl from './locales/nl.json';
 import zhHans from './locales/zh-Hans.json';
 import { defineMessages } from './messages.ts';
 
@@ -102,4 +103,5 @@ export const commonCatalogs: Readonly<Record<string, CatalogMessages>> = {
   es,
   'zh-Hans': zhHans,
   de,
+  nl,
 };
