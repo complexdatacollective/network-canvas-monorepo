@@ -4,6 +4,7 @@ import {
   type VersionedProtocol,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
+import { findPrototypeCodebookKeys } from './prototypeCodebookKeys.ts';
 
 export type ProtocolValidationIssue = {
   /** Machine-readable issue code (currently Zod's issue codes, e.g. 'invalid_type', 'custom'). */
@@ -46,32 +47,44 @@ export type ProtocolValidationResult =
  * All validation logic (schema + cross-references) is now handled natively by Zod.
  * Returns a domain-owned result: the parsed protocol on success, or a
  * ProtocolValidationError carrying the validation issues on failure.
+ *
+ * Pass the document as it was read, not the output of a schema parse: a parse
+ * has already dropped any `__proto__` codebook id, which this refuses.
  */
 const validateProtocol = async (
-  protocol: VersionedProtocol,
+  protocol: unknown,
 ): Promise<ProtocolValidationResult> => {
   if (protocol === undefined) {
     throw new Error('Protocol is undefined');
   }
 
   try {
+    const prototypeKeyIssues = findPrototypeCodebookKeys(protocol);
     const result = await VersionedProtocolSchema.safeParseAsync(protocol);
 
-    if (result.success) {
+    if (result.success && prototypeKeyIssues.length === 0) {
       return { success: true, data: result.data };
     }
 
-    const issues = result.error.issues.map((issue) => ({
-      code: issue.code,
-      // Zod paths are PropertyKey[]; symbols cannot appear in protocol JSON but
-      // are stringified so the domain path stays (string | number)[].
-      path: issue.path.map((segment) =>
-        typeof segment === 'symbol' ? String(segment) : segment,
-      ),
-      message: issue.message,
-    }));
+    const schemaIssues = result.success
+      ? []
+      : result.error.issues.map((issue) => ({
+          code: issue.code,
+          // Zod paths are PropertyKey[]; symbols cannot appear in protocol JSON but
+          // are stringified so the domain path stays (string | number)[].
+          path: issue.path.map((segment) =>
+            typeof segment === 'symbol' ? String(segment) : segment,
+          ),
+          message: issue.message,
+        }));
 
-    return { success: false, error: new ProtocolValidationError(issues) };
+    return {
+      success: false,
+      error: new ProtocolValidationError([
+        ...prototypeKeyIssues,
+        ...schemaIssues,
+      ]),
+    };
   } catch (e) {
     const error = ensureError(e);
 

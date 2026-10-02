@@ -5,7 +5,6 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 
-type NamedRecord = Record<string, { name: string; [key: string]: unknown }>;
 type OptionEntry = { value: unknown; [key: string]: unknown };
 type VariableRecord = Record<
   string,
@@ -92,12 +91,6 @@ const getSafeValue = (
   );
 };
 
-const getNames = (obj: NamedRecord = {}): string[] =>
-  Object.keys(obj).map((key) => {
-    const entry = obj[key];
-    return entry ? entry.name : '';
-  });
-
 const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] => {
   const result: OptionEntry[] = [];
   for (const { value, ...rest } of options) {
@@ -115,48 +108,50 @@ const migrateOptionValues = (options: OptionEntry[] = []): OptionEntry[] => {
 const migrateVariable = (
   variable: VariableRecord[string],
   variableId: string,
-  acc: VariableRecord = {},
+  takenNames: string[] = [],
 ): VariableRecord[string] =>
   setProps(
     {
       options: migrateOptionValues(variable.options),
-      name: getSafeValue(variable.name, getNames(acc), variableId),
+      name: getSafeValue(variable.name, takenNames, variableId),
     },
     variable as unknown as Record<string, unknown>,
   ) as unknown as VariableRecord[string];
 
-const migrateVariables = (variables: VariableRecord = {}): VariableRecord => {
-  const result: VariableRecord = {};
-  for (const variableId of Object.keys(variables)) {
-    const variable = variables[variableId];
-    if (!variable) continue;
-    result[variableId] = migrateVariable(variable, variableId, result);
+// Built from entries rather than by assignment: assigning a `__proto__` id to
+// a plain object replaces its prototype and loses the entry, where
+// `Object.fromEntries` keeps it for validation to refuse.
+const migrateEntries = <T extends { name: string }>(
+  record: Record<string, T>,
+  migrateEntry: (entry: T, id: string, takenNames: string[]) => T,
+): Record<string, T> => {
+  const migrated: [string, T][] = [];
+  for (const [id, entry] of Object.entries(record)) {
+    if (!entry) continue;
+    const takenNames = migrated.map(([, done]) => done.name);
+    migrated.push([id, migrateEntry(entry, id, takenNames)]);
   }
-  return result;
+  return Object.fromEntries(migrated);
 };
+
+const migrateVariables = (variables: VariableRecord = {}): VariableRecord =>
+  migrateEntries(variables, migrateVariable);
 
 const migrateType = (
   type: TypeEntry,
   typeId?: string,
-  acc: TypesRecord = {},
+  takenNames: string[] = [],
 ): TypeEntry =>
   setProps(
     {
-      name: getSafeValue(type.name, getNames(acc), typeId),
+      name: getSafeValue(type.name, takenNames, typeId),
       variables: migrateVariables(type.variables),
     },
     type as unknown as Record<string, unknown>,
   ) as unknown as TypeEntry;
 
-const migrateTypes = (types: TypesRecord = {}): TypesRecord => {
-  const result: TypesRecord = {};
-  for (const typeId of Object.keys(types)) {
-    const type = types[typeId];
-    if (!type) continue;
-    result[typeId] = migrateType(type, typeId, result);
-  }
-  return result;
-};
+const migrateTypes = (types: TypesRecord = {}): TypesRecord =>
+  migrateEntries(types, migrateType);
 
 // Filter and skip logic rules compare against option values, so a value this
 // migration changes is changed in the rules that name it too. A rule is scoped

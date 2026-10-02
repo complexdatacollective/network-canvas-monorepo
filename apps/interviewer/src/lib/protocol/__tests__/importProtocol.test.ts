@@ -147,6 +147,27 @@ describe('importProtocolFromFile error reporting', () => {
     expect(result.message).toContain('device');
   });
 
+  it('refuses a current protocol whose codebook uses __proto__ as an id', async () => {
+    const nodeType = {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+    };
+    const bytes = await buildArchive({
+      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","stages":[],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('validation-failed');
+    expect(result.issues).toEqual([
+      { path: 'codebook.node.__proto__', message: 'An id cannot be __proto__' },
+    ]);
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+
   it('renders actionable Spanish import guidance from the actual archive failure metadata', async () => {
     const intl = createAppIntl({
       locale: 'es',
