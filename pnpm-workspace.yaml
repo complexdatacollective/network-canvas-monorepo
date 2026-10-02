@@ -162,6 +162,7 @@ catalog:
   # two versions means the hook can rewrite a generated baseline that the
   # subsequent comparison then rejects.
   oxfmt: ^0.71.0
+  pdfjs-dist: ^6.3.289
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.63.0
