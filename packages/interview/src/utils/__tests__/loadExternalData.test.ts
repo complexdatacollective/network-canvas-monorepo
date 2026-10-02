@@ -1,7 +1,10 @@
 import { hash } from 'ohash';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  isUsableExternalAttributeName,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -376,5 +379,61 @@ describe('makeVariableUUIDReplacer column names', () => {
       Object.getOwnPropertyDescriptor(attributes, '__proto__')?.value,
     ).toBe('one');
     expect(attributes.constructor).toBe('two');
+  });
+});
+
+// Architect and the protocol builder import a roster only when every heading
+// passes isUsableExternalAttributeName. These follow a heading from that check
+// to the variable the interview fills from it.
+describe('a roster heading, from import to the variable it fills', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const cafe = `Caf${String.fromCharCode(0xe9)}`;
+  const cafeDecomposed = `Cafe${String.fromCharCode(0x301)}`;
+
+  const cafeCodebook: Codebook = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: { 'id-cafe': { name: cafe, type: 'text' } },
+      },
+    },
+  };
+
+  const fill = async (csvText: string) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(csvText));
+    const { nodes } = await loadExternalData('roster.csv', 'stub://url');
+    return nodes.map(
+      (node, index) =>
+        makeVariableUUIDReplacer(cafeCodebook, 'person')(node, index)[
+          entityAttributesProperty
+        ],
+    );
+  };
+
+  it('fills the variable from a heading spelled decomposed, which import accepts', async () => {
+    expect(isUsableExternalAttributeName(cafeDecomposed)).toBe(true);
+
+    expect(await fill(`${cafeDecomposed}\nespresso\n`)).toEqual([
+      { 'id-cafe': 'espresso' },
+    ]);
+  });
+
+  it('fills no variable from a quoted heading with a space at the end, which import refuses', async () => {
+    expect(isUsableExternalAttributeName(`${cafe} `)).toBe(false);
+
+    expect(await fill(`"${cafe} "\nespresso\n`)).toEqual([
+      { [`${cafe} `]: 'espresso' },
+    ]);
+  });
+
+  it('fills the variable from an unquoted heading with spaces round it, which every reader trims', async () => {
+    expect(await fill(` ${cafe} \nespresso\n`)).toEqual([
+      { 'id-cafe': 'espresso' },
+    ]);
   });
 });

@@ -38,6 +38,7 @@ import {
 } from './utils/protocolFileErrorKind.ts';
 import {
   getVariableNamesFromNetwork,
+  isUsableExternalAttributeName,
   type Network,
   validateNames,
 } from './utils/validateExternalData.ts';
@@ -150,6 +151,7 @@ export {
   getVariableNamesFromNetwork,
   hashProtocol,
   isProtocolFileFault,
+  isUsableExternalAttributeName,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,

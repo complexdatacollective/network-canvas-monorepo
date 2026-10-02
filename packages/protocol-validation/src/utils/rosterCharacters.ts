@@ -84,7 +84,7 @@ const csvProblems = async (text: string): Promise<RosterCharacterProblem[]> => {
   }
   for (const { row, values } of rows) {
     for (const [column, value] of Object.entries(values)) {
-      const character = firstIllegalCharacterIn(value);
+      const character = firstIllegalCharacter(value);
       if (character !== undefined) {
         problems.push({ kind: 'cell', row, column, character });
       }
