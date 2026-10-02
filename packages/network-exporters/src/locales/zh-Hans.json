@@ -4,14 +4,14 @@
   "networkExporters.stage.generating": "正在生成文件…",
   "networkExporters.stage.outputting": "正在写入输出…",
   "networkExporters.warning.columnRenamed.description": "部分列原本会与同一文件中的另一列同名。为避免丢失任何回答，每一列都改用带编号的名称写入。被重命名的列如下：",
-  "networkExporters.warning.columnRenamed.fromVariableItem": "在 {protocolName} 的 {format, select, csv {CSV} other {GraphML}} 文件中，{entity, select, ego {自我} other {{entityTypeName}}}的“{column}”列（来自变量 {variable}）已写为“{renamedTo}”。",
-  "networkExporters.warning.columnRenamed.item": "在 {protocolName} 的 {format, select, csv {CSV} other {GraphML}} 文件中，{entity, select, ego {自我} other {{entityTypeName}}}的“{column}”列已写为“{renamedTo}”。",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "在“{protocolName}”的 {format, select, csv {CSV} other {GraphML}} 文件中，{entity, select, ego {自我} other {“{entityTypeName}”}}的“{column}”列（来自变量“{variable}”）已写为“{renamedTo}”。",
+  "networkExporters.warning.columnRenamed.item": "在“{protocolName}”的 {format, select, csv {CSV} other {GraphML}} 文件中，{entity, select, ego {自我} other {“{entityTypeName}”}}的“{column}”列已写为“{renamedTo}”。",
   "networkExporters.warning.columnRenamed.title": "部分列已重命名",
   "networkExporters.warning.protocolText.description": "协议自身的部分文本包含 GraphML 无法存储的字符，因此这些字符已在 GraphML 文件中被移除。这些字符通常不可见，因此每个字符都以其 Unicode 码位标出，例如 U+0007。受影响的文本如下：",
-  "networkExporters.warning.protocolText.item": "{text, select, protocolName {协议名称“{name}”，已移除 {characters}} nodeTypeName {{protocolName} 中的节点类型名称“{name}”，已移除 {characters}} edgeTypeName {{protocolName} 中的关系类型名称“{name}”，已移除 {characters}} other {{protocolName} 中的列名称“{name}”，已移除 {characters}}}",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {协议名称“{name}”，已移除 {characters}} nodeTypeName {“{protocolName}”中的节点类型名称“{name}”，已移除 {characters}} edgeTypeName {“{protocolName}”中的关系类型名称“{name}”，已移除 {characters}} other {“{protocolName}”中的列名称“{name}”，已移除 {characters}}}",
   "networkExporters.warning.protocolText.title": "GraphML 文件中，协议文本里的部分字符已被移除",
   "networkExporters.warning.xmlCharacters.caseId": "案例 ID",
   "networkExporters.warning.xmlCharacters.description": "部分回答包含 GraphML 无法存储的字符，因此这些字符仅在 GraphML 文件中被移除。CSV 文件中的每个回答均保持不变。受影响的访谈和变量如下：",
-  "networkExporters.warning.xmlCharacters.interview": "访谈 {caseId}：{variables}",
+  "networkExporters.warning.xmlCharacters.interview": "访谈“{caseId}”：{variables}",
   "networkExporters.warning.xmlCharacters.title": "GraphML 文件中的部分字符已被移除"
 }
