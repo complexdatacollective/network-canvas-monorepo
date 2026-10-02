@@ -225,6 +225,7 @@
   "frescoUi.storageRiskBanner.lowRisk": "Low data-loss risk",
   "frescoUi.storageRiskBanner.mediumRisk": "Medium data-loss risk",
   "frescoUi.timeAgo.justNow": "just now",
+  "frescoUi.toast.moreNotifications": "{count, plural, one {# more notification} other {# more notifications}}",
   "frescoUi.toast.notifications": "Notifications",
   "frescoUi.validation.differentFromError": "Your answer must be different from your earlier answer.",
   "frescoUi.validation.differentFromHint": "Must be different from your earlier answer.",
