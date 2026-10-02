@@ -131,17 +131,18 @@ const normalizedName = (name: unknown) =>
   typeof name === 'string' ? { name: normalizeCodebookName(name) } : {};
 
 // Only categorical and ordinal options carry text a researcher typed; a boolean
-// variable's options are true and false, and numeric values are left alone. The
-// variable's type is not checked because an edit sends only what changed.
-const withNormalizedOptionValues = (
-  configuration: Partial<Variable>,
-): Partial<Variable> => {
-  if (!('options' in configuration) || !Array.isArray(configuration.options)) {
-    return configuration;
+// variable's options are true and false. It runs on the variable as stored,
+// because an edit sends only what changed and so may not say the type.
+const withNormalizedOptionValues = (variable: Variable): Variable => {
+  if (
+    (variable.type !== 'categorical' && variable.type !== 'ordinal') ||
+    !Array.isArray(variable.options)
+  ) {
+    return variable;
   }
   return {
-    ...configuration,
-    options: configuration.options.map((option) =>
+    ...variable,
+    options: variable.options.map((option) =>
       typeof option.value === 'string'
         ? { ...option, value: normalizeCodebookName(option.value) }
         : option,
@@ -257,7 +258,7 @@ export const createVariableAsync = createAppAsyncThunk(
     }
 
     const safeConfiguration = prune({
-      ...withNormalizedOptionValues(configuration),
+      ...configuration,
       name,
     }) as Variable;
 
@@ -331,7 +332,7 @@ const updateVariableAsync = createAppAsyncThunk(
     const payload: UpdateVariablePayload = {
       variable,
       configuration: prune({
-        ...withNormalizedOptionValues(configuration),
+        ...configuration,
         ...normalizedName(get(configuration, 'name')),
       }),
       replaceProperties,
@@ -457,10 +458,10 @@ const getStateWithUpdatedVariable = (
     existingVariable && typeof existingVariable === 'object'
       ? omit(existingVariable as Partial<Variable>, replaceProperties)
       : {};
-  const variableConfiguration = {
+  const variableConfiguration = withNormalizedOptionValues({
     ...preservedProperties,
     ...configuration,
-  } as Variable;
+  } as Variable);
 
   const existingVariables = get(state, [...entityPath, 'variables']);
   const newVariables: Record<string, Variable> = {
