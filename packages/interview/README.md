@@ -236,9 +236,9 @@ The package replaces a previous `onError` callback with internal `posthog.captur
 
 Pass the user's preference or your host's already negotiated locale as
 `requestedLocale`. The package owns its registry and messages: it currently
-supports `en`, `en-GB`, `es`, `zh-Hans`, and `zh-Hant`, matches regional requests
-such as `es-MX` to `es`, `zh-CN` and `zh-SG` to `zh-Hans`, and `zh-TW`, `zh-HK`
-and `zh-MO` to `zh-Hant`, and falls back to `en` for unsupported or malformed requests. An array
+supports `en`, `en-GB`, `es`, `zh-Hans`, `zh-Hant`, `de`, and `nl`, matches regional requests
+such as `es-MX` to `es`, `zh-CN` and `zh-SG` to `zh-Hans`, `zh-TW`, `zh-HK` and `zh-MO` to
+`zh-Hant`, `de-AT` to `de`, and `nl-BE` to `nl`, and falls back to `en` for unsupported or malformed requests. An array
 expresses requests in preference order. No host provider or catalog is required.
 All supported messages are bundled, so switching language needs no network.
 

@@ -763,7 +763,7 @@
   "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": "为此类型命名，用于编码簿和导出的数据。",
   "architect.typeEditor.typeEditor.nodeAppearance": "节点外观",
   "architect.typeEditor.typeEditor.shape": "形状",
-  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {此名称用于在编码簿和数据导出中标识该节点类型。例如“人员”“地点”或“组织”。} other {此名称用于在编码簿和数据导出中标识该关系类型。例如“朋友”或“同事”。}}",
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {此名称用于在编码簿和数据导出中标识该节点类型。例如“Person”（人员）、“Place”（地点）或“Organization”（组织）。} other {此名称用于在编码簿和数据导出中标识该关系类型。例如“Friends”（朋友）或“Colleagues”（同事）。}}",
   "architect.typeEditor.typeEditor.typeColor": "类型颜色",
   "architect.typeEditor.typeEditor.typeIdentity": "类型标识",
   "architect.typeEditor.typeEditor.typeName": "{entity, select, node {节点} other {关系}}类型名称",

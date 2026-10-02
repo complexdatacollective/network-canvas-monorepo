@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { supportedLocales } from '~/lib/i18n/locales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
+import de from '~/messages/de.json';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
+import nl from '~/messages/nl.json';
 import zhHans from '~/messages/zh-Hans.json';
 import zhHant from '~/messages/zh-Hant.json';
 
@@ -36,6 +38,8 @@ const translatedCatalogs = [
   ['Spanish', es],
   ['Simplified Chinese', zhHans],
   ['Traditional Chinese', zhHant],
+  ['German', de],
+  ['Dutch', nl],
 ] as const;
 
 describe('message catalogs', () => {

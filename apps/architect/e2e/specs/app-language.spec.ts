@@ -32,6 +32,8 @@ const OPTION_NAMES: Record<string, RegExp> = {
   'es': /^Español/,
   'zh-Hans': /^简体中文/,
   'zh-Hant': /^繁體中文/,
+  'de': /^Deutsch/,
+  'nl': /^Nederlands/,
 };
 
 async function selectLanguage(page: Page, locale: string) {
@@ -63,6 +65,8 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
     /^Español$/,
     /^简体中文$/,
     /^繁體中文$/,
+    /^Deutsch$/,
+    /^Nederlands$/,
   ]);
   await expect(options.first()).toHaveAttribute('aria-selected', 'true');
   await expect(

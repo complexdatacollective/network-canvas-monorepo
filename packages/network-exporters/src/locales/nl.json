@@ -1,0 +1,6 @@
+{
+  "networkExporters.stage.fetching": "Interviewgegevens ophalen…",
+  "networkExporters.stage.formatting": "Sessies opmaken…",
+  "networkExporters.stage.generating": "Bestanden genereren…",
+  "networkExporters.stage.outputting": "Uitvoer wegschrijven…"
+}

@@ -24,7 +24,7 @@ Researchers create and validate protocols in Architect, collect data in Intervie
 
 ## Capabilities and Constraints
 
-- The website is a statically exported, localized Next.js site with `en-US`, `en-GB`, `es`, `zh-Hans`, and `zh-Hant` routes.
+- The website is a statically exported, localized Next.js site with `en-US`, `en-GB`, `es`, `zh-Hans`, `zh-Hant`, `de`, and `nl` routes.
 - Research content and downloadable artifacts must be evidence-backed and must not rely on unsupported claims.
 - Protocol migrations from Schema 7 to Schema 8 are one-way, so guidance must distinguish current and Classic applications accurately.
 - Gallery protocol and codebook downloads are versioned static files shipped with the website.
