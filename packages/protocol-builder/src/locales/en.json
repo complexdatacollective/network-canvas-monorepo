@@ -187,10 +187,6 @@
     "defaultMessage": "Add",
     "description": "Button that commits the dialog a researcher has filled in for a NEW row of a list. The same dialog says Save when it is editing a row that already exists."
   },
-  "protocolBuilder.arrayField.attributeNameSubject": {
-    "defaultMessage": "attribute name",
-    "description": "What the researcher was entering, named inside the sentence that refuses it: the name of a codebook variable. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
-  },
   "protocolBuilder.arrayField.deleteRow": {
     "defaultMessage": "Delete {itemLabel}",
     "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -199,17 +195,13 @@
     "defaultMessage": "Edit {itemLabel}",
     "description": "Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
-  "protocolBuilder.arrayField.invalidName": {
-    "defaultMessage": "Not a valid {subject}. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Shown under a cell whose text cannot be stored as an XML element name or a CSV column header. subject names what was being entered — an attribute name, an option value — already in the reader’s language. The characters listed are literal punctuation and stay as they are."
+  "protocolBuilder.arrayField.invalidOptionValue": {
+    "defaultMessage": "Cannot contain line breaks, tabs or other control characters",
+    "description": "Shown under the value cell of an option in an editable list when the text holds a character that cannot be stored in a value, such as a line break or a tab. Terse because it sits inside a row of a table-like list. A value may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.arrayField.itemNoun": {
     "defaultMessage": "item",
     "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Delete this item?\", \"This item was not saved.\"), so it is lower case and singular."
-  },
-  "protocolBuilder.arrayField.optionValueSubject": {
-    "defaultMessage": "option value",
-    "description": "What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
   },
   "protocolBuilder.arrayField.reorderRow": {
     "defaultMessage": "Reorder {itemLabel} {position} of {count, number}",
@@ -728,8 +720,8 @@
     "description": "Refusal shown under the name field when another attribute of the same type is already called that."
   },
   "protocolBuilder.codebookEditing.newVariableNameInvalid": {
-    "defaultMessage": "Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Refusal shown under the name field of a stage editor when the name typed for a new attribute holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated. Said in the same words as the row-cell rule that judges an attribute name as it is typed."
+    "defaultMessage": "An attribute name cannot contain line breaks, tabs or other control characters.",
+    "description": "Refusal shown under the name field of a stage editor when the name typed for a new attribute holds a character that cannot be stored in a name, such as a line break or a tab. Names may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.codebookEditing.noSubject": {
     "defaultMessage": "Choose what this stage works with before creating an attribute.",
@@ -748,8 +740,8 @@
     "description": "Refusal shown when a researcher saves an attribute whose list of allowed answers has a row with an empty label or an empty stored value. The label is what a participant reads; the value is what the export records."
   },
   "protocolBuilder.codebookEditing.optionsInvalidValue": {
-    "defaultMessage": "Not a valid option value. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Refusal shown when an allowed answer’s stored value holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated."
+    "defaultMessage": "An option value cannot contain line breaks, tabs or other control characters.",
+    "description": "Refusal shown when an allowed answer’s stored value holds a character that cannot be stored in a value, such as a line break or a tab. Values may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.codebookEditing.saving": {
     "defaultMessage": "Saving…",
@@ -909,11 +901,11 @@
   },
   "protocolBuilder.codebookEntity.nameHint": {
     "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be \"Person\", \"Place\", or \"Organization\".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be \"Friends\" or \"Works With\".} other {This name identifies the ego definition in the codebook and exported data.}}",
-    "description": "Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names and may be translated."
+    "description": "Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names: translate them into natural type names in your language. Spaces, accented letters and any script are allowed in a type name."
   },
   "protocolBuilder.codebookEntity.nameInvalid": {
-    "defaultMessage": "{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}",
-    "description": "Refusal shown under the name field when the name holds characters the export formats cannot carry. entity is node, edge or ego. The listed symbols are literal characters and must not be translated."
+    "defaultMessage": "{entity, select, node {A node type name cannot contain line breaks, tabs or other control characters.} edge {An edge type name cannot contain line breaks, tabs or other control characters.} other {An ego definition name cannot contain line breaks, tabs or other control characters.}}",
+    "description": "Refusal shown under the name field when the name holds a character that cannot be stored in a name, such as a line break or a tab. entity is node, edge or ego. Names may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.codebookEntity.nameLabel": {
     "defaultMessage": "{entity, select, node {Node type name} other {Edge type name}}",
@@ -1506,6 +1498,54 @@
   "protocolBuilder.entitySelect.nodeGroupLabel": {
     "defaultMessage": "Node type options",
     "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
+  },
+  "protocolBuilder.exportColumn.reservedLayout": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a built-in column called “{reservedColumn}”. Choose a different name.",
+    "description": "Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to a column the export always writes itself. name is the attribute; column is the position column; reservedColumn is the built-in column it matches. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.reservedName": {
+    "defaultMessage": "The export already has a built-in column called “{reservedColumn}”, so an attribute cannot be named “{column}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of a column the export always writes itself. column is the name typed; reservedColumn is the built-in column it matches, which can differ in capital letters. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.reservedOption": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the export already has a built-in column called “{reservedColumn}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of a categorical attribute would be exported to a column the export always writes itself. name is the attribute; value is the option; column is where it would be written; reservedColumn is the built-in column it matches. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingLayoutWithLayout": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for the position of the layout attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when a position column of one layout attribute would be the same as a position column of another. name is the layout attribute being saved; column is its position column; siblingName is the other layout attribute; siblingColumn is its position column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingLayoutWithName": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the attribute “{siblingName}” already has a column called “{siblingColumn}”. Choose a different name.",
+    "description": "Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to a column another attribute already writes. name is the layout attribute; column is the position column; siblingName is the other attribute; siblingColumn is its column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingLayoutWithOption": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for option “{siblingValue}” of the attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when a position column of a layout attribute would be the same as the column an option of a categorical attribute is exported to. name is the layout attribute; column is the position column; siblingName and siblingValue are the categorical attribute and its option; siblingColumn is the option’s column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingNameWithLayout": {
+    "defaultMessage": "The export already has a column called “{siblingColumn}” for the position of the layout attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of one of the position columns a layout attribute is exported to, such as “position_x”. siblingColumn is that column; siblingName is the layout attribute. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingNameWithName": {
+    "defaultMessage": "The export already has a column called “{siblingColumn}” for the attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of a column another attribute already writes. siblingColumn is that column; siblingName is the other attribute. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingNameWithOption": {
+    "defaultMessage": "The export already has a column called “{siblingColumn}” for option “{siblingValue}” of the attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of the column an option of a categorical attribute is exported to, such as “foo_bar” for option “bar” of “foo”. siblingColumn is that column; siblingValue is the option; siblingName is the categorical attribute. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingOptionWithLayout": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for the position of the layout attribute “{siblingName}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of a categorical attribute would be exported to the same column as a position of a layout attribute. name and value are the option being saved; column is where it would be written; siblingName is the layout attribute; siblingColumn is its position column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingOptionWithName": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the attribute “{siblingName}” already has a column called “{siblingColumn}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of a categorical attribute would be exported to a column another attribute already writes. name is the categorical attribute; value is the option; column is where it would be written; siblingName is the other attribute; siblingColumn is its column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingOptionWithOption": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for option “{siblingValue}” of the attribute “{siblingName}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of one categorical attribute would be exported to the same column as an option of another, which happens when two names and values run together the same way. name and value are the option being saved; column is where it would be written; siblingName and siblingValue are the other option; siblingColumn is its column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
   },
   "protocolBuilder.externalDataSource.columnsDescription": {
     "defaultMessage": "The people in it carry these attributes: {names}.",
@@ -4372,8 +4412,8 @@
     "description": "Refusal shown when a researcher picks a resource another field is in the middle of discarding."
   },
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": {
-    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :",
-    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a spreadsheet heading such as \"home address\". name is that heading, left exactly as the researcher wrote it. Lower case and without a full stop."
+    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: a name cannot be empty or contain line breaks, tabs or other control characters",
+    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.rosterEmpty": {
     "defaultMessage": "the selected file has no records in it, so a stage using it would have nobody to show",
@@ -6088,8 +6128,8 @@
     "description": "Name of the one option standing for an attribute that is not among the ones this control was given to offer. attributeId is the raw stored identifier — there is no name to show, because no definition of it reached this control."
   },
   "protocolBuilder.variablePicker.nameInvalid": {
-    "defaultMessage": "only letters, numbers and the symbols ._-: can be used in a name",
-    "description": "Reason given on the switched-off create row of the attribute list when the name typed holds characters the export formats cannot carry. Reads after a colon, so it is a clause rather than a sentence. The listed symbols are literal characters and must not be translated."
+    "defaultMessage": "a name cannot contain line breaks, tabs or other control characters",
+    "description": "Reason given on the switched-off create row of the attribute list when the name typed holds a character that cannot be stored in a name, such as a line break or a tab. Reads after a colon, so it is a clause rather than a sentence. Names may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.variablePicker.nameTaken": {
     "defaultMessage": "this type already has an attribute called that",

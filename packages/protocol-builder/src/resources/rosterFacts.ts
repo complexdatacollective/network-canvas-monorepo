@@ -2,8 +2,9 @@ import csv from 'csvtojson';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import {
-  CodebookIdSchema,
+  CodebookNameSchema,
   entityAttributesProperty,
+  normalizeCodebookName,
   VariableValueSchema,
 } from '@codaco/shared-consts';
 
@@ -86,19 +87,21 @@ const EMPTY_ROSTER = createMessageError(resourceFailureMessages.rosterEmpty);
  * The attribute names a roster may carry, which are the variable names the
  * protocol will hold.
  *
- * {@link CodebookIdSchema} is the rule the runtime and the protocol format
- * already apply — NMTOKEN-compatible, because variable names reach XML-based
- * exports — and it is used rather than restated so a name the protocol format
- * learns to accept is one this gateway learns to accept. A spreadsheet's own
- * headings routinely break it ("home address", "date of birth"), and a roster
- * that only fails at export time is one the researcher cannot connect to the
- * file they chose weeks earlier.
+ * {@link CodebookNameSchema} is the rule the protocol format applies to a
+ * variable name — any script, spaces and punctuation, but nothing the export
+ * formats cannot carry — and it is used rather than restated so a name the
+ * protocol format learns to accept is one this gateway learns to accept. It is
+ * asked of the name as it will be stored, so a heading with a stray space
+ * round it is usable. A roster that only fails at export time is one the
+ * researcher cannot connect to the file they chose weeks earlier.
  */
 function unusableAttributeName(
   names: readonly string[],
 ): RosterProblem | undefined {
   for (const name of names) {
-    if (CodebookIdSchema.safeParse(name).success) continue;
+    if (CodebookNameSchema.safeParse(normalizeCodebookName(name)).success) {
+      continue;
+    }
     return unusableRoster(
       createMessageError(resourceFailureMessages.rosterAttributeNameUnusable, {
         name,

@@ -11,9 +11,10 @@ import { hasDuplicateOptionLabels } from '@codaco/shared-consts';
 
 import { minimumOptionsMessage } from '../../codebook/editing.ts';
 import {
-  invalidVariableName,
+  invalidOptionValue,
   isSameAnswer,
-  variableNameSubjects,
+  optionExportColumnIssue,
+  type OptionExportColumns,
 } from './cellRules.ts';
 import Option, {
   optionNoun,
@@ -61,7 +62,7 @@ const messages = defineMessages({
 
 /**
  * Array-level rules. They belong to the caller's `<Field>`
- * (spread as `{...optionsValidation}`), which hands the whole array to each
+ * (spread as `{...optionsValidationFor(columns)}`), which hands the whole array to each
  * rule — rows are not registered fields and cannot carry them.
  */
 const MINIMUM_OPTIONS_MESSAGE = createMessageError(minimumOptionsMessage);
@@ -125,13 +126,13 @@ const uniqueOptionLabels = (value: unknown) =>
     : undefined;
 
 /**
- * The array counterpart of the rows' own name check, running the same rule so
+ * The array counterpart of the rows' own value check, running the same rule so
  * the two can never disagree about which characters — or which wording —
- * apply. An option value has to be an NMTOKEN because it becomes an XML export
- * key and a CSV column header (`${attributeName}_${option.value}`), and the
- * row's own message is display-only: collapsing the row hides it entirely
- * while keeping the value, so without this the protocol ships with a value the
- * researcher was told was invalid.
+ * apply. An option value becomes part of an export column header
+ * (`${attributeName}_${option.value}`) and the row's own message is
+ * display-only: collapsing the row hides it entirely while keeping the value,
+ * so without this the protocol ships with a value the researcher was told was
+ * invalid.
  *
  * Values are stringified because `parseOptionValue` stores numeric-looking
  * input as a number. Empty values are `completeOptions`' business, and this
@@ -143,17 +144,24 @@ const allowedOptionValues = (value: unknown) =>
   readOptions(value)
     .map((option) => option.value)
     .filter((optionValue) => !isOptionValueEmpty(optionValue))
-    .map((optionValue) =>
-      invalidVariableName(
-        String(optionValue),
-        variableNameSubjects.optionValue,
-      ),
-    )
+    .map((optionValue) => invalidOptionValue(String(optionValue)))
+    .find((message) => message !== undefined);
+
+/**
+ * The row-level export-column check, asked of the whole list: a value that
+ * would be exported to a column the export already writes is refused here as
+ * well as shown on its row, for the reason `allowedOptionValues` is.
+ */
+const freeExportColumns = (columns: OptionExportColumns) => (value: unknown) =>
+  readOptions(value)
+    .map((option) => option.value)
+    .filter((optionValue) => !isOptionValueEmpty(optionValue))
+    .map((optionValue) => optionExportColumnIssue(optionValue, columns))
     .find((message) => message !== undefined);
 
 /**
  * Every array-level rule an options editor needs, as one object to SPREAD onto
- * the owning `<Field>` (`{...optionsValidation}`) — Fresco reads
+ * the owning `<Field>` (`{...optionsValidationFor(columns)}`) — Fresco reads
  * validation from the field's own props. Passed whole rather than rule by rule
  * so a call site cannot silently keep some and drop others.
  *
@@ -162,7 +170,7 @@ const allowedOptionValues = (value: unknown) =>
  * problem where the researcher is working, the array is what stops the
  * protocol being saved with it.
  */
-export const optionsValidation = {
+export const optionsValidationFor = (columns?: OptionExportColumns) => ({
   required: MINIMUM_OPTIONS_MESSAGE,
   custom: messageRuleValidation([
     minTwoPopulatedOptions,
@@ -170,8 +178,9 @@ export const optionsValidation = {
     uniqueOptionValues,
     uniqueOptionLabels,
     allowedOptionValues,
+    ...(columns === undefined ? [] : [freeExportColumns(columns)]),
   ]),
-};
+});
 
 const EMPTY_OPTIONS: OptionValue[] = [];
 
@@ -200,6 +209,12 @@ export type OptionsProps = Omit<
    * navigating by a list of buttons (#1391).
    */
   addButtonLabel: string;
+  /**
+   * Which attribute these options belong to and what it shares a type with,
+   * where the list knows. An option exports to `{attribute}_{value}`, so the
+   * rows can say when a value would land on a column that is taken.
+   */
+  exportColumns?: OptionExportColumns;
 };
 
 /**
@@ -217,13 +232,19 @@ export default function Options({
   onChange,
   name = '',
   addButtonLabel,
+  exportColumns,
   'aria-invalid': ariaInvalid = false,
   ...arrayFieldProps
 }: OptionsProps) {
   const intl = useAppIntl();
   const context = useMemo(
-    () => ({ arrayName: name, rows: value, showArrayError: ariaInvalid }),
-    [ariaInvalid, name, value],
+    () => ({
+      arrayName: name,
+      rows: value,
+      showArrayError: ariaInvalid,
+      exportColumns,
+    }),
+    [ariaInvalid, exportColumns, name, value],
   );
 
   const itemTemplate = useCallback(() => ({}), []);

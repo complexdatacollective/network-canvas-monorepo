@@ -27,6 +27,7 @@ import {
   buildVariableRoleMap,
   hasValidatedUse,
 } from '../../codebook/variableRoles.ts';
+import { variableNameScope } from '../../fields/variableNameRules.ts';
 // The contract the picker's `onCreateOption` prop is written in, taken from
 // where that prop is declared. A type, so nothing about which picker a host
 // injects is decided here — see `variablePickerComponent`.
@@ -362,12 +363,12 @@ export default function Attribute({
     () => variablesForSubject(protocolContext, subject),
     [protocolContext, subject],
   );
-  // What the picker's create row checks a typed name against. Every name this
-  // type holds, not just the ones a row may bind: the codebook refuses a
+  // What the picker's create row checks a typed name against. Every attribute
+  // this type holds, not just the ones a row may bind: the codebook refuses a
   // duplicate whatever kind of answer the attribute wearing it records.
-  const namesInUse = useMemo(
-    () => Object.values(allVariables).map((held) => held.name),
-    [allVariables],
+  const nameScope = useMemo(
+    () => variableNameScope(subject.entity, allVariables),
+    [allVariables, subject.entity],
   );
 
   const crossClassValidate = useCallback(
@@ -501,7 +502,7 @@ export default function Attribute({
           aria-invalid={showVariableErrors}
           options={variableOptions}
           onCreateOption={handleCreateOption}
-          namesInUse={namesInUse}
+          nameScope={nameScope}
           disabled={disabled || readOnly}
         />
         {variable && (

@@ -37,7 +37,7 @@ import {
   type VariableType,
   VariableTypes,
 } from '@codaco/protocol-validation';
-import { toCanonicalText } from '@codaco/shared-consts';
+import { normalizeCodebookName, toCanonicalText } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import OptionLabelField from '../../fields/OptionLabelField.tsx';
@@ -715,7 +715,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       if (outcome.status === 'applied') {
         onComplete(
           variableId,
-          typeof submittedDraft.name === 'string' ? submittedDraft.name : '',
+          typeof submittedDraft.name === 'string'
+            ? normalizeCodebookName(submittedDraft.name)
+            : '',
         );
         return;
       }

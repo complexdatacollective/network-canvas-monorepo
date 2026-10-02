@@ -14,10 +14,13 @@ import {
   useRenameCodebookVariable,
   useSubjectForVariable,
 } from '../codebook/useCodebookVariableEdits.ts';
-import { useSubjectVariableNames } from '../sections/canvas/codebookChoices.ts';
+import { useSubjectVariableScope } from '../sections/canvas/codebookChoices.ts';
 import { useHasProtocolBuilderHost } from '../state/context.ts';
 import AttributePill from './AttributePill.tsx';
-import { variableNameRefusal } from './variableNameRules.ts';
+import {
+  variableNameRefusal,
+  type VariableNameScope,
+} from './variableNameRules.ts';
 import VariableSpotlight, {
   type CreateRowOutcome,
 } from './VariableSpotlight.tsx';
@@ -59,16 +62,23 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
     /** Shown in place of the list when nothing can be picked yet. */
     emptyMessage?: string;
     /**
-     * Every attribute name the type this would create on already holds, for
-     * the create row to check a typed name against before asking.
+     * Every attribute the type this would create on already holds, for the
+     * create row to check a typed name against before asking.
      *
      * Wider than `options`, which the caller has already narrowed to the kinds
      * of answer it can use: a name is taken by a date attribute just as firmly
-     * as by a text one. Passed in rather than read here, for the reason
+     * as by a text one, and another attribute's export columns can be what a
+     * name would collide with. Passed in rather than read here, for the reason
      * `options` is — the picker is handed what a section knows, and a field
      * that read the protocol for itself could not be rendered outside one.
      */
-    namesInUse?: readonly string[];
+    nameScope?: VariableNameScope;
+    /**
+     * The kind of answer the attribute this creates will record, where the
+     * caller already knows it. Judged against the export's columns: a layout
+     * attribute exports several, named after it.
+     */
+    newVariableType?: string;
     /**
      * Adds an attribute to the codebook under this name and selects it here.
      *
@@ -299,7 +309,7 @@ function RenameableAttributePill({
    * where it is unambiguous: a record id belongs to exactly one section.
    */
   const subject = useSubjectForVariable(option.value);
-  const namesInThisType = useSubjectVariableNames(subject);
+  const nameScope = useSubjectVariableScope(subject);
   const renameVariable = useRenameCodebookVariable(subject);
 
   /**
@@ -315,16 +325,14 @@ function RenameableAttributePill({
     (next: string): string | undefined =>
       variableNameRefusal(next, {
         intl,
-        namesInUse: namesInThisType,
-        // Self-excluded by NAME rather than by record id, which here is the
-        // same exclusion: `assertVariableNameAvailable` compares normalised
-        // names, so no two attributes of one type can share one and an
-        // attribute is the only holder of its own. It is what lets a
-        // researcher change the case or the Unicode form of a name without
-        // being told it is already taken.
-        excluding: option.label,
+        ...(nameScope === undefined ? {} : { scope: nameScope }),
+        // Self-excluded by record id: it is what lets a researcher change the
+        // case or the Unicode form of a name without being told it is already
+        // taken, and what stops the attribute's own columns standing in the
+        // way of the ones its new name would write.
+        excluding: option.value,
       }),
-    [intl, namesInThisType, option.label],
+    [intl, nameScope, option.value],
   );
 
   /**
@@ -401,7 +409,8 @@ export default function VariablePickerField({
   onFocus,
   options = [],
   emptyMessage,
-  namesInUse,
+  nameScope,
+  newVariableType,
   onCreateOption,
   disabled = false,
   readOnly = false,
@@ -837,7 +846,13 @@ export default function VariablePickerField({
             }}
             options={offerable}
             onSelect={handleSelect}
-            {...(canCreate ? { onCreate: handleCreate, namesInUse } : {})}
+            {...(canCreate
+              ? {
+                  onCreate: handleCreate,
+                  ...(nameScope === undefined ? {} : { nameScope }),
+                  ...(newVariableType === undefined ? {} : { newVariableType }),
+                }
+              : {})}
             {...(ariaLabelledBy === undefined
               ? {}
               : { 'aria-labelledby': ariaLabelledBy })}

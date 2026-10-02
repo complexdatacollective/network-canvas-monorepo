@@ -762,14 +762,30 @@ describe('the form-fields row dialog, read in Spanish', () => {
  */
 describe('a codebook write a Spanish form field needs, refused', () => {
   /**
-   * The two names the create row turns away by itself, read in Spanish.
+   * The names the create row turns away by itself, read in Spanish.
    *
    * Neither reaches the codebook any more: the row it is typed into asks the
-   * schema's own name rule and the names this type already holds, so the
-   * refusal stands beside the name while the researcher is still looking at
-   * it, in their own language, with nothing asked of the host.
+   * codebook's own name rules and the names and export columns this type
+   * already holds, so the refusal stands beside the name while the
+   * researcher is still looking at it, in their own language, with nothing
+   * asked of the host.
    */
-  it('says on the create row what the codebook could not store', async () => {
+  it('says on the create row that another spelling of a name is already used', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+
+    const window = await searchForAnAttribute(harness, dialog, 'CONTACTTYPE');
+
+    const refused = within(window).getByRole('option', {
+      name: 'No se puede crear un atributo llamado «CONTACTTYPE»: este tipo ya tiene un atributo con ese nombre',
+    });
+    expect(refused).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('offers to create a name written with spaces', async () => {
     const harness = alterFormInSpanish();
     const dialog = await openFieldDialog(
       harness,
@@ -782,10 +798,11 @@ describe('a codebook write a Spanish form field needs, refused', () => {
       'nombre de pila',
     );
 
-    const refused = within(window).getByRole('option', {
-      name: 'No se puede crear un atributo llamado «nombre de pila»: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
-    });
-    expect(refused).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      within(window).getByRole('option', {
+        name: 'Crear un atributo nuevo llamado «nombre de pila».',
+      }),
+    ).not.toHaveAttribute('aria-disabled');
   });
 
   it('says on the create row that this type is already using the name', async () => {
@@ -829,9 +846,9 @@ describe('a codebook write a Spanish form field needs, refused', () => {
    * chose here.
    *
    * Reached through an attribute the protocol SCHEMA accepts and the builder
-   * refuses — a stored value with a space in it, which export formats turn
-   * into a key — so the row's own save is refused on the control that caused
-   * it rather than closing over a write that never happened.
+   * refuses — a stored value with a tab in it, which no name may hold — so the
+   * row's own save is refused on the control that caused it rather than
+   * closing over a write that never happened.
    */
   it('says the input control could not be recorded', async () => {
     const harness = alterFormInSpanish();
@@ -845,7 +862,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
         // writes, and its write the only thing that can be refused.
         readOnly: true,
         options: [
-          { label: 'En casa', value: 'en casa' },
+          { label: 'En casa', value: 'en\tcasa' },
           { label: 'En el trabajo', value: 'trabajo' },
         ],
       },

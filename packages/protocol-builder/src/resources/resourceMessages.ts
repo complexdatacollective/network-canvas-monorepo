@@ -80,8 +80,8 @@ export const resourceFailureMessages = defineMessages({
   rosterAttributeNameUnusable: {
     id: 'protocolBuilder.resourceFailure.rosterAttributeNameUnusable',
     defaultMessage:
-      'the "{name}" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :',
+      'the "{name}" attribute cannot be used as a variable name: a name cannot be empty or contain line breaks, tabs or other control characters',
     description:
-      'Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a spreadsheet heading such as "home address". name is that heading, left exactly as the researcher wrote it. Lower case and without a full stop.',
+      'Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation. Lower case and without a full stop.',
   },
 });
