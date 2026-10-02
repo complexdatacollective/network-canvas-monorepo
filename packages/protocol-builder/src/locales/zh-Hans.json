@@ -226,7 +226,7 @@
   "protocolBuilder.codebookEntity.issuesListLabel": "编码簿问题",
   "protocolBuilder.codebookEntity.issuesTitle": "部分编码簿数据无法显示",
   "protocolBuilder.codebookEntity.manageEgoAttributes": "管理属性",
-  "protocolBuilder.codebookEntity.nameHint": "{entity, select, node {此名称用于在编码簿和导出的数据中标识该节点类型。例如“人员”、“地点”或“组织”。} edge {此名称用于在编码簿和导出的数据中标识该关系类型。例如“朋友”或“同事”。} other {此名称用于在编码簿和导出的数据中标识该自我定义。}}",
+  "protocolBuilder.codebookEntity.nameHint": "{entity, select, node {此名称用于在编码簿和导出的数据中标识该节点类型。例如“Person”（人员）、“Place”（地点）或“Organization”（组织）。} edge {此名称用于在编码簿和导出的数据中标识该关系类型。例如“Friends”（朋友）或“Colleagues”（同事）。} other {此名称用于在编码簿和导出的数据中标识该自我定义。}}",
   "protocolBuilder.codebookEntity.nameInvalid": "{entity, select, node {无效的节点类型名称。仅支持字母、数字和符号 ._-:} edge {无效的关系类型名称。仅支持字母、数字和符号 ._-:} other {无效的自我定义名称。仅支持字母、数字和符号 ._-:}}",
   "protocolBuilder.codebookEntity.nameLabel": "{entity, select, node {节点类型名称} other {关系类型名称}}",
   "protocolBuilder.codebookEntity.namePlaceholder": "{entity, select, node {为此节点类型输入名称…} other {为此关系类型输入名称…}}",
