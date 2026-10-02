@@ -13,7 +13,7 @@ const protocol: ProtocolWithInterviews = {
   id: 'protocol-1',
   hash: 'hash-1',
   name: 'Research protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   description: null,
   importedAt: new Date('2026-09-05T00:00:00Z'),
   lastModified: new Date('2026-09-05T00:00:00Z'),

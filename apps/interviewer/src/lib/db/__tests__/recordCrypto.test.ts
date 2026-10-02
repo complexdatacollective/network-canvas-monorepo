@@ -148,14 +148,14 @@ const protocol: StoredProtocol = {
   id: 'h1',
   hash: 'h1',
   name: 'Study',
-  schemaVersion: 8,
+  schemaVersion: 9,
   importedAt: '2026-01-01T00:00:00.000Z',
   description: 'A study',
   codebook: { node: {}, edge: {}, ego: {} },
   // Minimal but structurally valid CurrentProtocol shape for a round-trip.
   protocol: {
     name: 'Study',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
   } as StoredProtocol['protocol'],

@@ -32,7 +32,7 @@ const mockedGetStoredProtocol = vi.mocked(getStoredProtocol);
 
 const PROTOCOL: StoredProtocolRow['protocol'] = {
   name: 'Test protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   codebook: {},
   stages: [],
 };
@@ -40,7 +40,7 @@ const PROTOCOL: StoredProtocolRow['protocol'] = {
 const STORED_ROW: StoredProtocolRow = {
   id: 'protocol-1',
   name: 'Test protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   protocol: PROTOCOL,
   sourceRef: { kind: 'template', id: 'test' },
   createdAt: 0,

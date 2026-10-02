@@ -47,7 +47,7 @@ vi.mock('~/components/ProjectNav/ProjectLayout', () => ({
 
 const protocol: CurrentProtocol = {
   name: 'Test Protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: {},
 };

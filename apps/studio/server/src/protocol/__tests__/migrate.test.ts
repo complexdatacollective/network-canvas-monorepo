@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
@@ -87,7 +90,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(migration).toMatchObject({
       protocolId,
       fromSchemaVersion: 7,
-      toSchemaVersion: 8,
+      toSchemaVersion: CURRENT_SCHEMA_VERSION,
     });
 
     const document = (await store.getDraftDocument(migration.draftId)) as {
@@ -97,7 +100,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
         node: Record<string, { displayVariable?: string; shape?: unknown }>;
       };
     };
-    expect(document.schemaVersion).toBe(8);
+    expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(document.name).toBe('Legacy Protocol');
     expect(document.codebook.node.person!.displayVariable).toBeUndefined();
     expect(document.codebook.node.person!.shape).toBeDefined();
@@ -107,7 +110,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     const after = await store.listVersions(protocolId);
     expect(after[0]).toMatchObject({
       versionNumber: 2,
-      schemaVersion: 8,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       migratedFromVersionId: versionId,
     });
 
@@ -179,8 +182,8 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     const migration = await migrateStoredVersionToDraft(tenantDb, {
       versionId: published.versionId,
     });
-    expect(migration.fromSchemaVersion).toBe(8);
-    expect(migration.toSchemaVersion).toBe(8);
+    expect(migration.fromSchemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migration.toSchemaVersion).toBe(CURRENT_SCHEMA_VERSION);
 
     const republished = await store.publishDraft({
       draftId: migration.draftId,

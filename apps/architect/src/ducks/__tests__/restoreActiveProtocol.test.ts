@@ -22,7 +22,7 @@ import {
 
 const makeProtocol = (name: string): CurrentProtocol => ({
   name,
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: {},
 });
@@ -50,7 +50,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     store.dispatch(setStorageUnavailable(true));
     getStoredProtocol.mockResolvedValue({
       id: 'p1',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: canonical,
       validated: true,
     });
@@ -116,7 +116,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     store.dispatch(setActiveProtocolId('p2'));
     resolveRead?.({
       id: 'p1',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: makeProtocol('Stale'),
       validated: true,
     });
@@ -178,7 +178,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     const legacy = makeProtocol('Legacy invalid');
     getStoredProtocol.mockResolvedValue({
       id: 'legacy',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: legacy,
     });
     const refusal = {
@@ -202,7 +202,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
     expect(admit).toHaveBeenCalledWith(
       {
         id: 'legacy',
-        schemaVersion: 8,
+        schemaVersion: 9,
         protocol: legacy,
       },
       undefined,
@@ -370,7 +370,7 @@ describe('restoreActiveProtocolAfterStoreRehydration', () => {
     store.dispatch(setActiveProtocolId('p1'));
     const getStoredProtocol = vi.fn().mockResolvedValue({
       id: 'p1',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: canonical,
       validated: true,
     });

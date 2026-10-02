@@ -13,7 +13,7 @@ import protocolsReducer, {
 const mockProtocol: CurrentProtocol = {
   name: 'Test Protocol',
   description: 'test description',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: {
     node: {},
@@ -26,7 +26,7 @@ const mockProtocol: CurrentProtocol = {
 const mockProtocol2: CurrentProtocol = {
   name: 'Test Protocol 2',
   description: 'another description',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: {
     node: {},

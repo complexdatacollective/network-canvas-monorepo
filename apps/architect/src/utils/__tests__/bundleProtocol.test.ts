@@ -26,7 +26,7 @@ const makeProtocol = (
 ): CurrentProtocol =>
   ({
     name: 'test',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest,

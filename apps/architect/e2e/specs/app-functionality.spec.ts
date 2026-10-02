@@ -280,7 +280,7 @@ test('reload restores the canonical protocol instead of a legacy session body', 
         activeProtocolId: 'e2e-protocol',
         present: {
           name: 'Invalid Session Copy',
-          schemaVersion: 8,
+          schemaVersion: 9,
           codebook: null,
           stages: null,
         },

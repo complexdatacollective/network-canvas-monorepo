@@ -55,7 +55,7 @@ const makeProtocol = (
   assetManifest: CurrentProtocol['assetManifest'] = {},
 ): CurrentProtocol => ({
   name: 'Test Template',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: {
     node: {},

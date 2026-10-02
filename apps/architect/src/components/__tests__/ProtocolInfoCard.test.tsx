@@ -41,7 +41,7 @@ vi.mock('motion/react', () => ({
 const protocol: CurrentProtocol = {
   name: 'Original protocol',
   description: 'Original description',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [],
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},

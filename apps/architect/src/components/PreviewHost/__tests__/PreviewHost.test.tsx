@@ -92,7 +92,7 @@ function makeProtocol() {
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [{ id: 's1', type: 'Information', label: 'A' }],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
@@ -106,7 +106,7 @@ function makeUnsatisfiableProtocol() {
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [
       {
         id: 's1',
@@ -143,7 +143,7 @@ function makeUnbuildableProtocol() {
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [{ id: 'x', type: 'NotAStageType', label: 'X' }],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
@@ -154,7 +154,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
   return {
     name: 'Consent route',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [
       {
         id: 'consent',
@@ -435,7 +435,7 @@ describe('PreviewHost', () => {
     const protocol = {
       name: 'T',
       description: '',
-      schemaVersion: 8,
+      schemaVersion: 9,
       stages: [
         {
           id: 's1',
@@ -592,7 +592,7 @@ describe('PreviewHost', () => {
     const protocol = {
       name: 'T',
       description: '',
-      schemaVersion: 8,
+      schemaVersion: 9,
       stages: [
         {
           id: 'fp',

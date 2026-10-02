@@ -8,10 +8,10 @@ import {
 
 import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
-// A minimal, valid v8 protocol containing a single name generator stage whose
-// codebook subject ("person") exists. Tests insert/replace panels onto this
-// stage to exercise how `buildProtocolWithStage` normalises wip stage edits
-// before they are validated/previewed.
+// A minimal, valid current-schema protocol containing a single name generator
+// stage whose codebook subject ("person") exists. Tests insert/replace panels
+// onto this stage to exercise how `buildProtocolWithStage` normalises wip stage
+// edits before they are validated/previewed.
 const STAGE_ID = 'stage-1';
 
 function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
@@ -30,7 +30,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
 
   return {
     name: 'Test Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: {
       node: {
         person: {

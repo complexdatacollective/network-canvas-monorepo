@@ -39,7 +39,7 @@ const DRAFT = {
   },
   revision: { sequence: '2', hash: 'revision-2' },
   sections: {
-    settings: { name: 'Shell proof', schemaVersion: 8 },
+    settings: { name: 'Shell proof', schemaVersion: 9 },
     stageOrder: { stages: [STAGE_A, STAGE_B] },
     [`stage:${STAGE_A}`]: {
       id: STAGE_A,

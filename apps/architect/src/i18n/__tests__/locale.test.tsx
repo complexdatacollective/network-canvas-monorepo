@@ -179,7 +179,7 @@ it('uses the switched researcher locale for a later thunk failure without changi
   store.dispatch(
     setActiveProtocol({
       name: 'Research_Name',
-      schemaVersion: 8,
+      schemaVersion: 9,
       stages: [],
       codebook: {},
     }),

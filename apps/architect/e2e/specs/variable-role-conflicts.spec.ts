@@ -44,7 +44,7 @@ const categoricalOptions = [
 function conflictProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse({
     name: 'Variable Role Conflicts E2E',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: {
       node: {
         person: {

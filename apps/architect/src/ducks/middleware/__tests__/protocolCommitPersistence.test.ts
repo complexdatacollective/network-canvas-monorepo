@@ -57,7 +57,7 @@ const makeProtocol = (description?: string): CurrentProtocol =>
   ({
     name: 'Study',
     description,
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},

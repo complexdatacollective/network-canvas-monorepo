@@ -101,7 +101,7 @@ import { HomeRoute } from '../Home';
 const protocolDefinition: CurrentProtocol = {
   name: 'Test protocol',
   description: 'A test protocol.',
-  schemaVersion: 8,
+  schemaVersion: 9,
   codebook: {},
   stages: [],
 };

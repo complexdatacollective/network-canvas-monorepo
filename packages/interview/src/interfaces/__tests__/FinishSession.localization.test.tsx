@@ -27,7 +27,7 @@ const payload = {
     hash: 'literal-original-hash',
     importedAt: '2026-09-06T00:00:00.000Z',
     name: 'Literal protocol name',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
     stages: [],
