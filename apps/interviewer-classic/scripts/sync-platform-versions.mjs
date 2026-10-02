@@ -10,10 +10,13 @@
 //          strings, so the full version (including any pre-release
 //          suffix) is written.
 //
-// Build counters (CURRENT_PROJECT_VERSION on iOS, versionCode on Android)
-// are deliberately NOT touched -- those are integers that must increase
-// monotonically per store submission and are managed separately from the
-// semver `version` field.
+// Build numbers: versionCode (Android) and CURRENT_PROJECT_VERSION (iOS
+// CFBundleVersion) are derived from the version as
+// major * 10000 + minor * 100 + patch, so 6.6.2 -> 60602. The stores
+// require the number to rise with every upload; deriving it keeps it rising
+// with each release and stays above the 4-digit codes the Cordova builds
+// (<= 6.5.x) used. Pre-releases of one version share its build number, so
+// only one of them can be uploaded to a store.
 //
 // Idempotent: re-runs are no-ops once everything is in sync.
 
@@ -37,6 +40,15 @@ if (!semver) {
 }
 const [, major, minor, patch] = semver;
 const marketingVersion = `${major}.${minor}.${patch}`;
+if (Number(minor) > 99 || Number(patch) > 99) {
+  console.error(
+    `sync-platform-versions: ${version} cannot be encoded as a build number (minor and patch must be below 100)`,
+  );
+  process.exit(1);
+}
+const buildNumber = String(
+  Number(major) * 10000 + Number(minor) * 100 + Number(patch),
+);
 const androidVersionName = version;
 
 function replaceInFile(file, pattern, replacement, label) {
@@ -69,6 +81,12 @@ replaceInFile(
   `$1${marketingVersion}$2`,
   `iOS MARKETING_VERSION -> ${marketingVersion}`,
 );
+replaceInFile(
+  pbxproj,
+  /(CURRENT_PROJECT_VERSION = )[^;]+(;)/g,
+  `$1${buildNumber}$2`,
+  `iOS CURRENT_PROJECT_VERSION -> ${buildNumber}`,
+);
 
 const gradle = resolve(appRoot, 'android/app/build.gradle');
 replaceInFile(
@@ -76,4 +94,10 @@ replaceInFile(
   /(versionName )"[^"]*"/g,
   `$1"${androidVersionName}"`,
   `Android versionName -> "${androidVersionName}"`,
+);
+replaceInFile(
+  gradle,
+  /(versionCode )\d+/g,
+  `$1${buildNumber}`,
+  `Android versionCode -> ${buildNumber}`,
 );

@@ -101,6 +101,49 @@ Note: for Apple Silicon users, you need to install the `electron` package manual
 
 See below for installation, options, and information on platform specifics.
 
+## Mobile release builds
+
+The Capacitor projects in `android/` and `ios/` take their version from
+`package.json`: `pnpm version:sync` (run by every `cap:*` script) writes the
+version name and a build number of `major * 10000 + minor * 100 + patch`
+(6.6.2 -> 60602), which Google Play and App Store Connect need to rise with
+every upload.
+
+### Android
+
+`pnpm cap:release:android` builds the web app, syncs it, and writes
+`android/app/build/outputs/bundle/release/app-release.aab` (for Google Play)
+and `android/app/build/outputs/apk/release/app-release.apk`. Both are signed
+with the Play upload key when Gradle can find it, and unsigned otherwise.
+Keystores and passwords never go in the repo:
+
+1. Keep the upload keystore outside the repo, and name it and its alias in
+   `~/.gradle/gradle.properties`:
+
+   ```properties
+   ncUploadKeystore=/Users/you/secure/upload-keystore.jks
+   ncUploadKeyAlias=upload
+   ```
+
+2. Store its password in the macOS Keychain. The command prompts for the
+   password, so it never reaches your shell history:
+
+   ```sh
+   security add-generic-password -a "$USER" -s network-canvas-upload-key -w
+   ```
+
+   Elsewhere (CI, Linux), set `NC_UPLOAD_KEY_PASSWORD` instead; the
+   `NC_UPLOAD_KEYSTORE` and `NC_UPLOAD_KEY_ALIAS` environment variables
+   stand in for the Gradle properties.
+
+Google Play re-signs the app with its own app signing key (Play App Signing),
+so the upload key can be reset from Play Console if it is lost or exposed.
+
+### iOS
+
+Run `pnpm cap:sync`, open `ios/App/App.xcodeproj` in Xcode, choose the team
+under _Signing & Capabilities_, then _Product -> Archive_ and _Distribute App_.
+
 ## Cordova Builds
 
 1. Install [cordova](https://cordova.apache.org) on your system: `npm install -g cordova`

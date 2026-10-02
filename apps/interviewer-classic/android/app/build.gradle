@@ -7,7 +7,7 @@ android {
         applicationId "org.codaco.NetworkCanvasInterviewer6"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 60602
         versionName "6.6.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,8 +16,46 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing with the Play upload key. Nothing secret lives in the
+    // repo: the keystore path and alias come from ~/.gradle/gradle.properties
+    // (ncUploadKeystore, ncUploadKeyAlias) or the environment
+    // (NC_UPLOAD_KEYSTORE, NC_UPLOAD_KEY_ALIAS), and the password from
+    // NC_UPLOAD_KEY_PASSWORD or the macOS Keychain item
+    // "network-canvas-upload-key". Without a keystore the release build is
+    // left unsigned.
+    def uploadKeystore = findProperty('ncUploadKeystore') ?: System.getenv('NC_UPLOAD_KEYSTORE')
+    if (uploadKeystore) {
+        def uploadKeyAlias = findProperty('ncUploadKeyAlias') ?: System.getenv('NC_UPLOAD_KEY_ALIAS')
+        if (!uploadKeyAlias) {
+            throw new GradleException('ncUploadKeystore is set but ncUploadKeyAlias is not')
+        }
+        def uploadKeyPassword = System.getenv('NC_UPLOAD_KEY_PASSWORD')
+        if (!uploadKeyPassword) {
+            def keychain = providers.exec {
+                commandLine 'security', 'find-generic-password', '-s', 'network-canvas-upload-key', '-w'
+                ignoreExitValue = true
+            }
+            if (keychain.result.get().exitValue == 0) {
+                uploadKeyPassword = keychain.standardOutput.asText.get().trim()
+            }
+        }
+        if (!uploadKeyPassword) {
+            throw new GradleException('No upload key password: set NC_UPLOAD_KEY_PASSWORD or add the Keychain item "network-canvas-upload-key"')
+        }
+        signingConfigs {
+            release {
+                storeFile file(uploadKeystore)
+                storePassword uploadKeyPassword
+                keyAlias uploadKeyAlias
+                keyPassword uploadKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadKeystore) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
