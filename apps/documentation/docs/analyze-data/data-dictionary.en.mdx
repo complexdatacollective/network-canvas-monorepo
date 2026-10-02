@@ -56,8 +56,8 @@ or a line break are wrapped in double quotes (with internal quotes doubled),
 following standard CSV rules. As a safeguard against spreadsheet formula
 injection, any text value beginning with `=`, `+`, `-`, `@`, a tab, or a
 carriage return is prefixed with a single quote (`'`) so spreadsheet
-applications treat it as literal text. Numbers and column headers are never
-prefixed. See
+applications treat it as literal text. Column headers get the same prefix, and
+numbers never do. See
 [Why some values start with an apostrophe](/en/analyze-data/data-export#why-some-values-start-with-an-apostrophe)
 to remove the prefix in R or Python. In GraphML, text values are exported with
 `attr.type="string"` and are never prefixed, but characters that XML can't
@@ -173,7 +173,9 @@ the files together:
 
 ## Column names
 
-CSV column headers use each name exactly as it appears in your codebook. In
+CSV column headers use each name exactly as it appears in your codebook, except
+that a name beginning with `=`, `+`, `-` or `@` gets an apostrophe in front of
+it, as text values do. In
 GraphML, `attr.name` must be a valid XML name token (NMTOKEN): letters from any
 language, digits, and the symbols `.`, `-`, `_` and `:` are allowed, but spaces
 and most other punctuation are not. The GraphML export replaces each character

@@ -224,6 +224,21 @@ describe('variable columns with the same name', () => {
     expect(warnings).toEqual([renamed('x', decomposed, `${decomposed}_2`)]);
   });
 
+  it('compares headers as written, with the formula guard', () => {
+    const { headers, rows, warnings } = exportAttributeList(
+      personCodebook({
+        formula: { name: '=total', type: 'text' },
+        guarded: { name: "'=total", type: 'text' },
+      }),
+      withNodes(person({ formula: 'one', guarded: 'two' })),
+    );
+
+    expect(headers.slice(3)).toEqual(["'=total", "'=total_2"]);
+    expect(rows[0]?.get("'=total")).toBe('one');
+    expect(rows[0]?.get("'=total_2")).toBe('two');
+    expect(warnings).toEqual([renamed("'=total", "'=total", "'=total_2")]);
+  });
+
   it('does not rename names that differ only in case', () => {
     const { headers, warnings } = exportAttributeList(
       personCodebook({

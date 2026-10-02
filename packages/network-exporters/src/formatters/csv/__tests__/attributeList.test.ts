@@ -81,7 +81,7 @@ describe('attributeListRows', () => {
     expect(rows[1]).not.toContain(',=HYPERLINK');
   });
 
-  it('writes a header as named, and guards only the answers below it', () => {
+  it('guards a header that could run as a formula, as it does the answers', () => {
     const codebook = {
       node: {
         'mock-node-type': {
@@ -110,7 +110,7 @@ describe('attributeListRows', () => {
     );
 
     expect(header).toBe(
-      `${nodeExportIDProperty},${egoProperty},${ncUUIDProperty},=total,"-score, adjusted"\r\n`,
+      `${nodeExportIDProperty},${egoProperty},${ncUUIDProperty},'=total,"'-score, adjusted"\r\n`,
     );
     expect(row).toBe("1,ego-1,uid-1,'=1+1,'-2\r\n");
   });

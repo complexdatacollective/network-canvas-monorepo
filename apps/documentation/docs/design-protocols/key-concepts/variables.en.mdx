@@ -243,11 +243,12 @@ Choose a naming style and stick to it:
 
 ### Plan for data analysis
 
-Your CSV files keep every name exactly as you wrote it, in any language. Some analysis software handles spaces and punctuation in column names less smoothly, though:
+Your CSV files keep every name as you wrote it, in any language. Some analysis software handles spaces and punctuation in column names less smoothly, though:
 
 - Base R's `read.csv` replaces spaces and punctuation in column names with dots unless you add `check.names = FALSE`. See [Opening CSV files](/en/analyze-data/data-export#opening-csv-files).
 - In R, a column name that contains a space has to be quoted with backticks, as in `` alters$`close friend` ``. In pandas, it can only be used with brackets, as in `alters["close friend"]`.
 - Hyphens can be read as minus signs in formulas, and some software doesn't accept a name that starts with a number, such as `1contact`.
+- A name that starts with `=`, `+`, `-` or `@` gets an apostrophe in front of it as a CSV column header, so that spreadsheet programs don't run it as a formula. See [Why some values start with an apostrophe](/en/analyze-data/data-export#why-some-values-start-with-an-apostrophe).
 - Some statistical packages have stricter rules for variable names than Network Canvas, and may rename columns when you import a file.
 - GraphML attribute names can't contain spaces or most punctuation, so the GraphML export replaces those characters with `_`. See [GraphML attribute names](/en/analyze-data/data-export#graphml-attribute-names).
 

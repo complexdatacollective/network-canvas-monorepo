@@ -4,16 +4,21 @@ import { csvHeaderCell, sanitizeCellValue } from '../csvShared';
 
 describe('csvHeaderCell', () => {
   it.each(['=total', '+1', '-score', '@handle'])(
-    'writes the header %s as named, with no formula guard',
+    'guards the header %s like an answer',
     (header) => {
-      expect(csvHeaderCell(header)).toBe(header);
+      expect(csvHeaderCell(header)).toBe(`'${header}`);
     },
   );
 
+  it('writes any other header as named', () => {
+    expect(csvHeaderCell('close friend')).toBe('close friend');
+    expect(csvHeaderCell('友人')).toBe('友人');
+  });
+
   it('quotes a header that CSV needs quoted', () => {
-    expect(csvHeaderCell('=a,b')).toBe('"=a,b"');
+    expect(csvHeaderCell('=a,b')).toBe(`"'=a,b"`);
     expect(csvHeaderCell('say "hi"')).toBe('"say ""hi"""');
-    expect(csvHeaderCell('\rline')).toBe('"\rline"');
+    expect(csvHeaderCell('\rline')).toBe(`"'\rline"`);
   });
 });
 

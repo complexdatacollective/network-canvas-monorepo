@@ -108,18 +108,20 @@ ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID
 
 #### Why some values start with an apostrophe
 
-Spreadsheet programs treat a cell that starts with `=`, `+`, `-` or `@` as a formula, and can run it when the file is opened. To protect anyone who opens your data in a spreadsheet, the CSV export adds an apostrophe (`'`) to the start of any text value, such as an answer or a case ID, that begins with `=`, `+`, `-`, `@`, a tab, or a carriage return. For example, the answer `-5 degrees` is written as `'-5 degrees`. Numbers, `true`/`false` values and column headers never get the apostrophe, and neither do GraphML files.
+Spreadsheet programs treat a cell that starts with `=`, `+`, `-` or `@` as a formula, and can run it when the file is opened. To protect anyone who opens your data in a spreadsheet, the CSV export adds an apostrophe (`'`) to the start of any text value, such as an answer or a case ID, that begins with `=`, `+`, `-`, `@`, a tab, or a carriage return. For example, the answer `-5 degrees` is written as `'-5 degrees`. Column headers get the same apostrophe, so a variable named `=total` has the header `'=total`. Numbers and `true`/`false` values never get the apostrophe, and neither do GraphML files.
 
-Analysis software reads the apostrophe as part of the text. To remove it from a text column, remove a leading apostrophe only where it is followed by one of those characters:
+Analysis software reads the apostrophe as part of the text. To remove it from a text column, or from your column headers, remove a leading apostrophe only where it is followed by one of those characters:
 
 ```r
 # R
 alters$notes <- sub("^'([=+@\t\r-])", "\\1", alters$notes)
+names(alters) <- sub("^'([=+@\t\r-])", "\\1", names(alters))
 ```
 
 ```python
 # Python (pandas)
 alters["notes"] = alters["notes"].str.replace(r"^'(?=[=+\-@\t\r])", "", regex=True)
+alters.columns = alters.columns.str.replace(r"^'(?=[=+\-@\t\r])", "", regex=True)
 ```
 
 This also removes an apostrophe that a participant typed themselves in front of one of these characters, which is rare.

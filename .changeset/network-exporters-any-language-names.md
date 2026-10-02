@@ -49,8 +49,10 @@ What the exports now do:
   carriage return, unpaired surrogates, U+FFFE and U+FFFF) are stripped from
   the finished GraphML document, with a warning. CSV output keeps the data
   unchanged.
-- CSV header cells no longer get the formula-guard apostrophe. Data cells still
-  do.
+- CSV header cells keep the formula-guard apostrophe, since a name can now
+  begin with `=`, `+`, `-` or `@`. Headers are compared as written, apostrophe
+  included, so a variable named `=total` and one named `'=total` are renamed
+  apart rather than sharing a column.
 - Variables, attributes and entity types whose IDs are `Object.prototype` keys
   (`constructor`, `toString`, ...) are looked up as own properties, so their
   values are exported instead of being dropped or read from the prototype.

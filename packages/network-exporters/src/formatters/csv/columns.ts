@@ -11,6 +11,7 @@ import {
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
 import { getOwn, isCategoricalOptionSelected } from '../../utils/general';
+import { csvHeaderCell } from './csvShared';
 
 type Attributes = Readonly<Record<string, unknown>>;
 
@@ -77,6 +78,10 @@ const layoutCell = (
   }
 };
 
+// Headers are compared as they are written, so `=a`, written `'=a`, clashes
+// with a variable named `'=a`.
+const headerKey = (column: string) => toCanonicalText(csvHeaderCell(column));
+
 const variableCell =
   (
     variableId: string,
@@ -117,7 +122,7 @@ type Claim = {
  * does not declare, in the order the entities have them.
  *
  * Two of them, or one of them and a built-in column, can have the same name,
- * compared after NFC normalisation. The built-in column keeps its name, and so
+ * compared as written to the file and after NFC normalisation. The built-in column keeps its name, and so
  * does the first of the others; a later one is given the first of `_2`, `_3`,
  * ... that no other column has, and reported. Every column whose name is free
  * takes it before any is renamed, so a renamed column never takes another
@@ -157,12 +162,10 @@ const planCsvColumns = (
     });
   }
 
-  const taken = new Set(
-    reservedExportColumns.csv[entity].map((column) => toCanonicalText(column)),
-  );
+  const taken = new Set(reservedExportColumns.csv[entity].map(headerKey));
   const headers = new Map<Claim, string>();
   for (const claim of claims) {
-    const key = toCanonicalText(claim.column);
+    const key = headerKey(claim.column);
     if (taken.has(key)) continue;
     taken.add(key);
     headers.set(claim, claim.column);
@@ -170,11 +173,11 @@ const planCsvColumns = (
   for (const claim of claims) {
     if (headers.has(claim)) continue;
     let suffix = 2;
-    while (taken.has(toCanonicalText(`${claim.column}_${suffix}`))) {
+    while (taken.has(headerKey(`${claim.column}_${suffix}`))) {
       suffix += 1;
     }
     const renamedTo = `${claim.column}_${suffix}`;
-    taken.add(toCanonicalText(renamedTo));
+    taken.add(headerKey(renamedTo));
     headers.set(claim, renamedTo);
     reportWarning({
       kind: 'column-renamed',
@@ -262,7 +265,7 @@ export const planTypedColumns = (
       },
       context,
     )) {
-      const key = toCanonicalText(header);
+      const key = headerKey(header);
       const existing = columns.get(key);
       if (existing) {
         existing.cells.set(type, cell);
