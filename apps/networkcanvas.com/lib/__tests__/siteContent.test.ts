@@ -193,19 +193,21 @@ person,Person Name,Institution,Institución,person.jpg
 describe('loadUpdates', () => {
   let directory: string;
 
+  const header = 'id,date,kind,versions,title,summary,details,link';
+
+  async function writeUpdates(rows: string) {
+    await writeFile(join(directory, 'updates.csv'), `${header}\n${rows}`);
+  }
+
   beforeEach(async () => {
     directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,2026-01-05,fresco,Older update,Older summary,,/older-announcement
-newer,2026-03-10,architect|interviewer,Newer update,"Newer summary
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,Older summary,,/older-announcement
+newer,2026-03-10,launch,architect@8.1.0|interviewer@8.1.0,Newer update,"Newer summary
 
 - A list item","### Heading
 
 Newer details",
-`,
-    );
+`);
   });
 
   afterEach(async () => {
@@ -217,6 +219,11 @@ Newer details",
       {
         id: 'newer',
         date: '2026-03-10',
+        kind: 'launch',
+        versions: [
+          { app: 'architect', version: '8.1.0' },
+          { app: 'interviewer', version: '8.1.0' },
+        ],
         apps: ['architect', 'interviewer'],
         title: 'Newer update',
         summary: 'Newer summary\n\n- A list item',
@@ -225,6 +232,8 @@ Newer details",
       {
         id: 'older',
         date: '2026-01-05',
+        kind: 'fix',
+        versions: [{ app: 'fresco', version: '4.1.0' }],
         apps: ['fresco'],
         title: 'Older update',
         summary: 'Older summary',
@@ -233,13 +242,23 @@ Newer details",
     ]);
   });
 
+  it('leaves out an update none of whose apps has released it yet', async () => {
+    await writeUpdates(`pending,2026-04-01,launch,architect|interviewer,Pending launch,Coming soon,,
+partly,2026-04-02,launch,architect@8.2.0|interviewer,Partly released,Out in Architect,,
+`);
+
+    const updates = await loadUpdates(directory);
+
+    expect(updates.map((update) => update.id)).toEqual(['partly']);
+    expect(updates[0]?.versions).toEqual([
+      { app: 'architect', version: '8.2.0' },
+      { app: 'interviewer' },
+    ]);
+  });
+
   it('rejects an update without a summary', async () => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,2026-01-05,fresco,Older update,,,
-`,
-    );
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,,,
+`);
 
     await expect(loadUpdates(directory)).rejects.toThrow(
       'updates.csv: row 2: summary:',
@@ -247,25 +266,35 @@ older,2026-01-05,fresco,Older update,,,
   });
 
   it('rejects an app it does not know', async () => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,2026-01-05,fresco|studio,Older update,Older summary,,
-`,
-    );
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0|studio@1.0.0,Older update,Older summary,,
+`);
 
     await expect(loadUpdates(directory)).rejects.toThrow(
-      'updates.csv: row 2: apps:',
+      'updates.csv: row 2: versions:',
+    );
+  });
+
+  it('rejects a version that is not semver', async () => {
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1,Older update,Older summary,,
+`);
+
+    await expect(loadUpdates(directory)).rejects.toThrow(
+      'updates.csv: row 2: versions:',
+    );
+  });
+
+  it('rejects a kind it does not know', async () => {
+    await writeUpdates(`older,2026-01-05,hotfix,fresco@4.1.0,Older update,Older summary,,
+`);
+
+    await expect(loadUpdates(directory)).rejects.toThrow(
+      'updates.csv: row 2: kind:',
     );
   });
 
   it('rejects a date that is not an ISO calendar date', async () => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,05/01/2026,fresco,Older update,Older summary,,
-`,
-    );
+    await writeUpdates(`older,05/01/2026,fix,fresco@4.1.0,Older update,Older summary,,
+`);
 
     await expect(loadUpdates(directory)).rejects.toThrow(
       'updates.csv: row 2: date:',

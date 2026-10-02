@@ -75,7 +75,7 @@ export const CSP_DIRECTIVES = [
   // URLs, so media needs blob: (default-src 'self' would otherwise block it).
   "media-src 'self' blob:",
   "font-src 'self' data:",
-  `connect-src 'self' https://api.github.com https://api.mapbox.com https://events.mapbox.com ${POSTHOG_RELAY_ORIGIN} blob:`,
+  `connect-src 'self' https://networkcanvas.com https://api.github.com https://api.mapbox.com https://events.mapbox.com ${POSTHOG_RELAY_ORIGIN} blob:`,
   "worker-src 'self' blob:",
   "base-uri 'none'",
   "object-src 'none'",

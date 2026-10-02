@@ -11,7 +11,7 @@ describe('production content security policy', () => {
 
   it('permits fetching protocol asset object URLs', () => {
     expect(CSP_DIRECTIVES).toContain(
-      "connect-src 'self' https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com blob:",
+      "connect-src 'self' https://networkcanvas.com https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com blob:",
     );
   });
 });
