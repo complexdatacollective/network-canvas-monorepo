@@ -7,38 +7,21 @@ import type { AnyRelations } from 'drizzle-orm/relations';
 import { Context } from 'effect';
 import type { SqlClient } from 'effect/sql';
 
-// The Effect tenancy seam (#1927 §9, §10).
-//
-// `Transaction` and `TeamAccess` are defined **here**, in the package the
-// server depends on, rather than in `apps/studio/api/src/db/tenant.ts`
-// where the scopes that provide them live. They have to be: `SyncServer`
-// (server.ts) writes inside a caller's transaction, so it must be able to
-// require the service — and this package cannot import from the app that
-// depends on it.
-//
-// A service tag's identity is the *class*, not its string key, so there can be
-// exactly one definition of each. The server re-exports these rather than
-// declaring its own; two declarations sharing a key would still be two
-// different services, and a transaction provided under one would be invisible
-// to code requiring the other.
+// Defined here rather than in apps/studio/api: server.ts requires these services,
+// and this package cannot import from the app that depends on it.
 
 /**
- * The open transaction. Provided per transaction and never by a layer, which
- * is the job queue's transaction guarantee at the type level: `Jobs.enqueue`
- * requires this service and only a scope provides it, so an effect that writes
- * a row and enqueues a job cannot run outside one.
+ * Provided per transaction and never by a layer, so `Jobs.enqueue` cannot run outside one.
  */
 export class Transaction extends Context.Service<
   Transaction,
   {
     readonly tx: DrizzleTransaction;
     readonly sql: SqlClient.SqlClient;
-    /** `null` in a maintenance scope, which stamps no team GUC. */
     readonly teamId: string | null;
   }
 >()('@studio/db/Transaction') {}
 
-/** The drizzle handle a transaction body is given. */
 export type DrizzleTransaction = PgEffectTransaction<
   EffectPgQueryEffectHKT,
   EffectPgQueryResultHKT,
@@ -48,10 +31,8 @@ export type DrizzleTransaction = PgEffectTransaction<
 const TeamAccessBrand: unique symbol = Symbol.for('@studio/db/TeamAccess');
 
 /**
- * Proof that the caller may act within a team, and the only key that opens a
- * tenant transaction. Tenancy implies authorization: `TenantScope.open` takes
- * one of these, never a bare team id, so a tenant transaction cannot be opened
- * without a membership check having happened and the compiler says so.
+ * Proof that the caller may act within a team; `TenantScope.open` takes one of these,
+ * never a bare team id.
  */
 export type TeamAccess = {
   readonly teamId: string;
@@ -60,13 +41,8 @@ export type TeamAccess = {
 };
 
 /**
- * Mints a `TeamAccess`. **Not** a general constructor: a source-policy test
- * (`apps/studio/api/src/db/__tests__/team-access-policy.test.ts`) pins its
- * production call sites, each with what it proved first — a membership, the
- * locked invitation an invitee accepts, or, for the worker's maintenance
- * access, nothing, which is why the web process cannot reach that one.
- * Anywhere else it is exactly the hole the branded type closes.
- *
+ * Not a general constructor: its call sites are pinned by
+ * `apps/studio/api/src/db/__tests__/team-access-policy.test.ts`.
  * @internal
  */
 export const unsafeMakeTeamAccess = (

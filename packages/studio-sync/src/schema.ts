@@ -48,10 +48,6 @@ export const sections = pgTable(
   {
     teamId: text('team_id').notNull(),
     hash: text('hash').notNull(),
-    // `$type` is type-level only — it changes no DDL and no fingerprint — and
-    // it is the one place this package says what its jsonb columns hold. The
-    // alternative is an assertion at every read site, which would put the same
-    // claim in a dozen places and let them drift.
     doc: jsonb('doc').notNull().$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

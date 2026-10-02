@@ -46,11 +46,6 @@ const fixtures = vi.hoisted(() => ({
   failing: undefined as 'area' | 'screen' | undefined,
 }));
 
-/**
- * The study these cases stand in. A UUID because the contract's `StudyId` is
- * one: the id travels in the payload of every study-scoped procedure, and a
- * `study-1` would be refused at the call rather than reaching a handler.
- */
 const STUDY_ID = '4d0f5f2e-0000-4000-8000-000000000001';
 const PROTOCOL_ID = '4d0f5f2e-0000-4000-8000-000000000002';
 const DRAFT_ID = '4d0f5f2e-0000-4000-8000-000000000003';
@@ -184,8 +179,6 @@ beforeEach(() => {
         email: 'researcher@example.org',
         emailVerified: true,
         name: 'Researcher',
-        // `me` carries the account's UI-language preference; null means
-        // "follow the browser" (2026-09-04 localization design §5.2).
         locale: null,
         teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
       }),
@@ -196,9 +189,6 @@ beforeEach(() => {
         study: STUDY,
         protocolDraftId: DraftId.make(DRAFT_ID),
       }),
-    // The study sidebar's counts. Nothing here asserts a number, so an empty
-    // study is the honest fixture: `NavItem` renders no count for a zero, and
-    // every row's accessible name stays its label alone.
     'studies.counts': () =>
       Effect.succeed({
         versions: 0,

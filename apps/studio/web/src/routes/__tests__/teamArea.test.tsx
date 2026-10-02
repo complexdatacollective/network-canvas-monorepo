@@ -32,11 +32,6 @@ import {
   type StudioHandlers,
 } from '../../test/rpcHarness.ts';
 
-/**
- * Each procedure's own handler, minus the options argument the harness passes
- * it: a fixture that has drifted from the contract fails `tsc` rather than
- * passing here.
- */
 type Answer<Tag extends keyof StudioHandlers> = (
   payload: Parameters<StudioHandlers[Tag]>[0],
 ) => ReturnType<StudioHandlers[Tag]>;
@@ -253,10 +248,6 @@ vi.mock('../../lib/auth.ts', async () => {
   };
 });
 
-/**
- * Study and protocol ids are UUIDs in the contract, and the payload schema
- * checks them at the call, so the study URLs below carry real ones.
- */
 const STUDY_A = '11111111-1111-4111-8111-111111111111';
 const STUDY_A_LIVE = '22222222-2222-4222-8222-222222222222';
 const STUDY_B = '33333333-3333-4333-8333-333333333333';
@@ -298,14 +289,11 @@ const studiesByTeam: Record<string, (typeof StudySummary)['Type'][]> = {
   ],
 };
 
-/** The signed-in researcher; nothing here turns on any of it. */
 const ME: Me = {
   userId: 'user-1',
   email: 'researcher@example.org',
   emailVerified: true,
   name: 'Researcher',
-  // `me` carries the account's UI-language preference; null means
-  // "follow the browser" (2026-09-04 localization design §5.2).
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -394,7 +382,6 @@ beforeEach(() => {
   fixtures.createStudy.mockImplementation((input) => Effect.succeed(input));
   authState.refetchActiveTeam.mockResolvedValue(undefined);
   authState.refetchActiveMember.mockResolvedValue(undefined);
-  // The in-process rpc client, installed per test.
   installRpcHarness({
     'me': () => Effect.succeed(ME),
     'status': () => Effect.succeed(STATUS),

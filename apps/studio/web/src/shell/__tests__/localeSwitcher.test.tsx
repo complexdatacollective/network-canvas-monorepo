@@ -70,7 +70,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-/** The signed-in researcher, once `meGate` lets identity through. */
 function me(): Me {
   return {
     userId: 'user-1',
@@ -82,7 +81,6 @@ function me(): Me {
   };
 }
 
-/** What this instance says about itself; nothing here turns on any of it. */
 const STATUS: InstanceStatus = {
   name: 'Network Canvas Studio',
   version: '0.1.0',
@@ -183,8 +181,6 @@ beforeEach(() => {
     value: ['en-US', 'en'],
     configurable: true,
   });
-  // The in-process rpc client. `meGate` is held open by the case that stages
-  // the window before identity resolves.
   installRpcHarness({
     'me': () => Effect.promise(() => fixtures.meGate.then(me)),
     'status': () => Effect.succeed(STATUS),

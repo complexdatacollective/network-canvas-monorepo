@@ -23,7 +23,6 @@ import {
 
 const OTHER_TEAM_ID = 'team-other';
 
-/** The SQLSTATE under a rejection, read through drizzle's and Effect's wrapping. */
 function sqlState(error: unknown): string | undefined {
   let current: unknown = error;
   for (let depth = 0; depth < 32; depth += 1) {
@@ -103,9 +102,6 @@ describe.skipIf(!dbAvailable)('row-level security', () => {
   });
 
   it('shows a team only its own rows, even to an unfiltered statement', async () => {
-    // Every statement now runs inside a `run` transaction, so the old
-    // transaction and single-query readings are one mechanism: a statement
-    // sharing a transaction with another, and one alone in its own.
     const inTransaction = await run(
       Effect.gen(function* () {
         const { sql } = yield* Transaction;

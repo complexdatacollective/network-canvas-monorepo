@@ -17,11 +17,6 @@ import {
   type StudioHandlers,
 } from '../../test/rpcHarness.ts';
 
-/**
- * Each audit procedure's own handler, minus the options argument the harness
- * passes it: a fixture that has drifted from the contract fails `tsc` rather
- * than passing here.
- */
 type Answer<Tag extends keyof StudioHandlers> = (
   payload: Parameters<StudioHandlers[Tag]>[0],
 ) => ReturnType<StudioHandlers[Tag]>;
@@ -84,21 +79,15 @@ const fixtures = {
   auditFilterOptions: vi.fn<Answer<'audit.filterOptions'>>(),
 };
 
-/** The signed-in researcher; nothing here turns on any of it. */
 const ME: Me = {
   userId: 'user-1',
   email: 'researcher@example.org',
   emailVerified: true,
   name: 'Researcher',
-  // `me` carries the account's UI-language preference; null means
-  // "follow the browser" (2026-09-04 localization design §5.2).
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
 
-// The team area reads the deployment topology from here to decide whether this
-// instance has billing at all (§10.4), so every test that renders a team route
-// needs an answer.
 const STATUS: InstanceStatus = {
   name: 'Network Canvas Studio',
   version: '0.1.0',
@@ -214,7 +203,6 @@ beforeEach(() => {
       truncated: false,
     }),
   );
-  // The in-process rpc client, installed per test.
   installRpcHarness({
     'me': () => Effect.succeed(ME),
     'status': () => Effect.succeed(STATUS),

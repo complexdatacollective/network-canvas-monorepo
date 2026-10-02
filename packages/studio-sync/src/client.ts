@@ -16,16 +16,6 @@ import type {
 } from './server.ts';
 import { LeaseRejectedError } from './server.ts';
 
-/**
- * What the client half needs of the server, over whatever carries it.
- *
- * The client runs in a browser and reaches the server over RPC; the server's
- * own operations are Effects that require an open, team-stamped transaction
- * (server.ts), which a browser has no way to hold. So the seam between them is
- * this — four promise-returning calls — and the host is what turns each one
- * into a transaction. The suites pass a facade that opens one per call, which
- * is exactly what the host does.
- */
 export type SyncTransport = {
   acquire(
     draftId: string,

@@ -12,28 +12,21 @@ type RpcFor<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> = Rpc.ExtractTag<
   Tag
 >;
 
-/** What a caller passes as the payload of `Tag` — the payload schema's constructor input. */
 export type PayloadOf<
   Rpcs extends Rpc.Any,
   Tag extends Rpcs['_tag'],
 > = Rpc.PayloadConstructor<RpcFor<Rpcs, Tag>>;
 
-/** The decoded success of `Tag`. For a streaming rpc this is the `Stream` itself, not its elements. */
 export type SuccessOf<
   Rpcs extends Rpc.Any,
   Tag extends Rpcs['_tag'],
 > = Rpc.Success<RpcFor<Rpcs, Tag>>;
 
-/** One element of a streaming rpc's response. `never` for a non-streaming rpc. */
 export type ChunkOf<
   Rpcs extends Rpc.Any,
   Tag extends Rpcs['_tag'],
 > = Rpc.SuccessChunk<RpcFor<Rpcs, Tag>>;
 
-/**
- * Everything a call to `Tag` can fail with: the rpc's own errors, its middleware's
- * errors (`Rpc.Error` already unions those in), and the transport's own failures.
- */
 export type ErrorOf<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> =
   | Rpc.Error<RpcFor<Rpcs, Tag>>
   | RpcClientError.RpcClientError;
@@ -52,11 +45,6 @@ export type RpcInfiniteQueryOptions<Page, Cursor> = RpcQueryOptions & {
   readonly getNextCursor: (page: Page) => Cursor | undefined;
 };
 
-/**
- * The per-app binding of TanStack Query to one `RpcGroup`. Every member is typed
- * from the group alone, so `useQuery(rpcQuery('GetUser', { id }))` hands back the
- * rpc's own decoded success and its own error instances.
- */
 export type RpcAdapter<Rpcs extends Rpc.Any> = {
   readonly rpcKey: <Tag extends Rpcs['_tag']>(
     tag: Tag,
@@ -98,12 +86,6 @@ export type RpcAdapter<Rpcs extends Rpc.Any> = {
     PayloadOf<Rpcs, Tag>
   >;
 
-  /**
-   * Runs a streaming rpc outside React, handing each chunk to `onChunk`. Resolves
-   * when the stream ends and rejects the way `rpcCall` does: with the typed failure
-   * instance, or with an abort once `signal` aborts (which interrupts the stream).
-   * For a caller that owns its own reconnection, which `useRpcStream` does not offer.
-   */
   readonly rpcStream: <Tag extends Rpcs['_tag']>(
     tag: Tag,
     payload: PayloadOf<Rpcs, Tag>,

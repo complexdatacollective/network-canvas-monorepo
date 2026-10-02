@@ -510,9 +510,6 @@ const FILTER_OPTIONS_STALE_MS = 5 * 60 * 1000;
 // A permission refusal never resolves by retrying, and every denied attempt is
 // audited server-side, so a retried read writes further audit.read_denied
 // events. Shared by both audit reads.
-//
-// The predicate reads a typed error now: `isForbidden` narrows the contract's
-// own `Forbidden` instance rather than matching a transport code.
 function retryUnlessForbidden(failureCount: number, error: unknown): boolean {
   return !isForbidden(error) && failureCount < 3;
 }
@@ -587,9 +584,8 @@ export default function TeamActivity() {
       { teamId },
       {
         staleTime: FILTER_OPTIONS_STALE_MS,
-        // A second audit read only after the first has succeeded: each denied
-        // attempt commits a rate-limited audit.read_denied event, and a member
-        // who cannot read the log must not spend two of that budget per visit.
+        // Only after the first read succeeds: each denied attempt commits a
+        // rate-limited audit.read_denied event.
         enabled: activity.isSuccess,
       },
     ),

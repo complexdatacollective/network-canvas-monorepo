@@ -34,11 +34,6 @@ const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   /** Read at call time so a test can sign the researcher out of every team. */
   activeTeam: undefined as { id: string } | undefined,
-  /**
-   * The `studies.counts` answer, per test — the procedure's own handler minus
-   * the options argument, so a fixture that has drifted from the contract
-   * fails `tsc` rather than passing here.
-   */
   counts:
     vi.fn<
       (
@@ -47,10 +42,6 @@ const fixtures = vi.hoisted(() => ({
     >(),
 }));
 
-/**
- * Study ids are UUIDs in the contract, and the payload schema checks them at
- * the call, so the URLs below carry real ones.
- */
 const STUDY_1 = '11111111-1111-4111-8111-111111111111';
 const STUDY_7 = '77777777-7777-4777-8777-777777777777';
 
@@ -87,14 +78,11 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-/** The signed-in researcher; nothing here turns on any of it. */
 const ME: Me = {
   userId: 'user-1',
   email: 'researcher@example.org',
   emailVerified: true,
   name: 'Researcher',
-  // `me` carries the account's UI-language preference; null means
-  // "follow the browser" (2026-09-04 localization design §5.2).
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -219,9 +207,6 @@ async function countedRow(
 beforeEach(() => {
   fixtures.activeTeam = { id: fixtures.TEAM.id };
   fixtures.counts.mockReset();
-  // The in-process rpc client. The header's study chip asks `studies.get` on
-  // every study route; it is not under test here, so it answers nothing —
-  // which, like every unreachable study, is `Forbidden` (§6.3).
   installRpcHarness({
     'me': () => Effect.succeed(ME),
     'status': () => Effect.succeed(STATUS),

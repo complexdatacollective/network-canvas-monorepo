@@ -2,12 +2,6 @@
 // transition a single atomic conditional statement), the Replicache-style
 // idempotent commit path with per-draft serialization, and manifest-hash
 // resume — exactly as specified on #1247.
-//
-// Every operation is an Effect requiring `Transaction` (tenant.ts): the
-// caller's open, team-stamped transaction. Nothing here opens one, which is
-// how a host lands a lease change and its own rows together — it simply runs
-// these inside its own scope — and it is why the type says so rather than an
-// optional client argument saying it by convention.
 import { and, eq, gt, isNotNull, max, type SQL, sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { Effect, Schema } from 'effect';
@@ -61,15 +55,6 @@ export class UnknownSectionDocumentError extends Schema.TaggedError<UnknownSecti
   }
 }
 
-/**
- * The host's `validateSection` refused the document the commands produced.
- *
- * The validator is a plain throwing function — it is shared with code that
- * has no Effect around it — so its refusal is caught at the one call site and
- * re-raised as a typed failure rather than left to travel as a defect. What it
- * threw is preserved untouched in `cause`; a host that recognises its own
- * error type still matches on it.
- */
 export class SectionRejectedError extends Schema.TaggedError<SectionRejectedError>()(
   'SectionRejectedError',
   { sectionId: Schema.String, cause: Schema.Defect() },
@@ -77,11 +62,8 @@ export class SectionRejectedError extends Schema.TaggedError<SectionRejectedErro
   override get message(): string {
     const { cause } = this;
     if (cause instanceof Error) return cause.message;
-    // Guarded, because this getter must not be the thing that fails. `String`
-    // throws `TypeError: Cannot convert object to primitive value` for an
-    // object with a null prototype or a throwing `Symbol.toPrimitive` — and an
-    // error whose `message` throws takes down whatever is trying to report it,
-    // which is exactly the moment you need the report.
+    // Guarded: `String` throws for an object with a null prototype or a
+    // throwing `Symbol.toPrimitive`.
     let described: string;
     try {
       described = String(cause);
@@ -98,20 +80,9 @@ export class SectionRejectedError extends Schema.TaggedError<SectionRejectedErro
 // an expired lease as live.
 const clockNow = (): SQL => sql`clock_timestamp()`;
 
-/** `clock_timestamp()` plus the lease TTL, as an interval Postgres computes. */
 const expiryFromNow = (ttlMs: number): SQL =>
   sql`clock_timestamp() + make_interval(secs => ${ttlMs}::float / 1000)`;
 
-/**
- * A section is real only if the draft's head manifest lists it.
- *
- * One function, three statements: `acquire` embeds it in its CAS, `takeover`
- * in its UPDATE's WHERE, and `assertSectionExists` runs it alone to tell "no
- * such section" apart from "someone else holds it". Written once because the
- * three must agree on the boundary — a section present in the draft's head
- * manifest and nowhere else — and a second copy would be a second definition
- * of what a section is.
- */
 export function sectionExists(
   draftId: string,
   sectionId: string,
@@ -182,10 +153,8 @@ export type SyncServerOptions = {
 const DEFAULT_TTL_MS = 30_000;
 
 /**
- * The open transaction, with its team read off it once. `teamId` is `null` in
- * a maintenance scope, which stamps no team GUC — running the sync server
- * there would write rows no tenant policy could ever see again, so it dies
- * rather than guessing a team.
+ * `teamId` is `null` in a maintenance scope; sync rows written there would be
+ * invisible to every tenant policy, so it dies rather than guessing a team.
  */
 const tenant = Effect.fnUntraced(function* () {
   const open = yield* Transaction;
@@ -200,31 +169,16 @@ const tenant = Effect.fnUntraced(function* () {
 });
 
 /**
- * Refuses a resume that is not reading from a single snapshot.
- *
- * `resume`'s two reads must come from ONE MVCC snapshot: read under READ
- * COMMITTED, an in-flight commit landing between them would pair pre-commit
- * sectionHashes with a post-commit lastApplied — the client would drop the
- * acknowledged batch yet load the older document, leaving its base behind the
- * server. The transaction is now the caller's, so the isolation level is the
- * caller's too; this asks the transaction what it actually got rather than
- * trusting that the caller remembered, because the failure it guards against
- * is silent, rare, and corrupts the client's base.
- *
- * A programming error at the call site, not a condition anything recovers
- * from, so it dies — the same treatment `TenantScope.open` gives an isolation
- * level asked for inside an existing transaction.
+ * `resume`'s two reads must come from ONE MVCC snapshot, and the transaction is the
+ * caller's, so this checks the isolation level it actually got.
  */
 const assertSnapshotIsolation = Effect.fnUntraced(function* () {
   const open = yield* Transaction;
-  // No FROM clause: `current_setting` is a function call, and reading it is
-  // the only way to learn the level the transaction actually began at.
   const rows = yield* open.sql<{
     level: string;
   }>`select current_setting('transaction_isolation') as level`;
   const level = rows[0]?.level;
   if (level !== 'repeatable read' && level !== 'serializable') {
-    // Nothing after this line runs: a died fiber does not continue.
     yield* Effect.die(
       new Error(
         `resume must run in a repeatable read (or serializable) transaction so its two reads share one snapshot; this one is "${level ?? 'unknown'}"`,
@@ -237,12 +191,6 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
   const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
   const validateSection = options.validateSection;
 
-  /**
-   * Fails with `UnknownSectionError` unless the draft's head manifest lists
-   * the section. Only the failure paths pay for it — a lease that was not
-   * granted is either "no such section" or "someone else holds it", and this
-   * is what distinguishes them.
-   */
   const assertSectionExists = Effect.fnUntraced(function* (
     draftId: string,
     sectionId: string,
@@ -258,9 +206,8 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
   });
 
   /**
-   * Takes the draft-head row lock, then runs the statement. Shared by the two
-   * lease grants so that a grant and a commit cannot interleave: the commit
-   * path takes the same row FOR UPDATE.
+   * Takes the draft-head row lock, as the commit path does, so a grant and a
+   * commit cannot interleave.
    */
   const lockHead = Effect.fnUntraced(function* (draftId: string) {
     const { tx, teamId } = yield* tenant();
@@ -285,11 +232,6 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
    * manifest actually contains, so an unknown draft or section fails instead
    * of returning a meaningless epoch (and leaving a lease row behind) that
    * only fails later, when the client looks the absent section up.
-   *
-   * Four outcomes, and the CASE and the `setWhere` decide between them
-   * together: same owner + live keeps its epoch; same owner + expired bumps;
-   * another owner + expired takes over and bumps; another owner + live
-   * matches no `setWhere` and so updates nothing and returns no row.
    */
   const acquire = Effect.fn('sync.acquire')(function* (
     draftId: string,
@@ -300,8 +242,7 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
     yield* lockHead(draftId);
     const rows = yield* tx
       .insert(leases)
-      // A FROM-less SELECT: the row is constants plus one EXISTS, and it is a
-      // SELECT rather than VALUES precisely so the EXISTS can gate it.
+      // A SELECT rather than VALUES so the EXISTS can gate it.
       .select(
         sql`select ${draftId}::uuid, ${teamId}::text, ${sectionId}::text, ${owner}::text, 1::bigint, ${expiryFromNow(ttlMs)}
             where exists (${sectionExists(draftId, sectionId, teamId)})`,
@@ -419,9 +360,7 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
           gt(leases.expiresAt, clockNow()),
         ),
       )
-      // Nothing branches on the outcome — releasing a lease one no longer
-      // holds is a no-op by design — but the write still says `returning`, so
-      // that what it hands back is a rows array rather than the driver's
+      // `returning` so the result is a rows array rather than the driver's
       // result object wearing an array's type.
       .returning({ epoch: leases.epoch });
   });
@@ -468,11 +407,8 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
     const { draftId, sectionId, owner, epoch, clientSeq, commands } = params;
     const { tx, teamId } = yield* tenant();
 
-    // Per-draft serialization: every commit advances the head under this
-    // row lock, so concurrent section commits cannot fork the chain. Taken
-    // FIRST — the dedup and lease checks below are only meaningful at the
-    // serialization point. (Lock order is head-then-lease in every
-    // transaction, so the two locks cannot deadlock.)
+    // Taken FIRST: the dedup and lease checks are only meaningful under this
+    // lock. Lock order is head-then-lease in every transaction.
     const head = yield* tx
       .select({
         headSeq: drafts.headSeq,
@@ -488,11 +424,8 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
       });
     }
 
-    // Idempotency BEFORE lease validation: a retransmitted client_seq
-    // returns its original recorded result even when the lease has since
-    // expired or been taken over — a commit that succeeded but lost its
-    // acknowledgement must never read as rejected, or the client rolls
-    // back state the server already persisted.
+    // Idempotency BEFORE lease validation: a commit that succeeded but lost its
+    // acknowledgement must never read as rejected.
     const dup = yield* tx
       .select({ manifestSeq: commandLog.manifestSeq })
       .from(commandLog)
@@ -538,18 +471,9 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
       } satisfies CommitResult;
     }
 
-    // Commit-time lease validation at the serialization point, including
-    // the expiry check that closes the slept-laptop window. FOR UPDATE
-    // locks the lease row through the rest of the transaction: a takeover
-    // or expiry-acquire (both single-row UPDATEs) blocks behind this lock
-    // and its epoch bump linearizes AFTER this commit — without the lock, a
-    // takeover could bump the epoch between this check and the apply,
-    // and the stale owner would still write.
-    //
-    // The expiry compares against clock_timestamp(), not now(): this
-    // transaction may have waited on the draft-head lock for longer than
-    // the TTL, and now() would still report the moment it started, so a
-    // lease that expired while queueing would validate.
+    // FOR UPDATE: a takeover's epoch bump must linearize after this commit.
+    // clock_timestamp(), not now(): this transaction may have waited on the
+    // draft-head lock for longer than the TTL.
     const lease = yield* tx
       .select({ present: sql`1` })
       .from(leases)
@@ -604,7 +528,6 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
       return yield* new UnknownSectionDocumentError({ hash: currentHash });
     }
 
-    // The server runs the same shared apply engine as the client.
     const newDoc = applyCommands(currentRow.doc, commands);
     if (validateSection !== undefined) {
       yield* Effect.try({

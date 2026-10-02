@@ -24,15 +24,8 @@ import { createAppRouter } from '../../router.tsx';
 import type { StudioRpcsType } from '../../runtime/runtime.ts';
 import { installRpcHarness } from '../../test/rpcHarness.ts';
 
-/** One study exactly as the team's list reports it. */
 type StudySummary = SuccessOf<StudioRpcsType, 'studies.list'>[number];
 
-/**
- * A study, and the draft `studies.get` answers for it. The draft id is not a
- * field of `StudySummary` — it belongs to the study's protocol line, and the
- * contract carries it on `StudyDetail` — so the fixture keeps the pair beside
- * each other rather than smuggling one into the other's shape.
- */
 type StudyFixture = {
   readonly summary: StudySummary;
   readonly draftId: DraftId | null;
@@ -41,8 +34,6 @@ type StudyFixture = {
 const STUDY_1_ID = '4d0f5f2e-0000-4000-8000-000000000001';
 const STUDY_2_ID = '4d0f5f2e-0000-4000-8000-000000000002';
 
-// Shaped by `StudySummary`, because the switcher reads the state and the
-// counts to write each study's supporting line.
 const STUDY_1: StudyFixture = {
   summary: {
     id: StudyId.make(STUDY_1_ID),
@@ -224,25 +215,18 @@ beforeEach(() => {
         email: 'researcher@example.org',
         emailVerified: true,
         name: 'Researcher',
-        // `me` carries the account's UI-language preference; null means
-        // "follow the browser" (2026-09-04 localization design §5.2).
         locale: null,
         teams: [
           { teamId: TeamId.make(fixtures.TEAM_A.id), role: 'owner' },
-          // Comma-separated, as Better Auth stores a legacy multi-role
-          // membership: the switcher must read it as "Owner, Admin".
+          // Comma-separated, as Better Auth stores a legacy multi-role membership.
           { teamId: TeamId.make(fixtures.TEAM_B.id), role: 'admin,member' },
         ],
       }),
-    // Keyed by the team, as the real one is.
     'studies.list': ({ teamId }) =>
       Effect.sync(() => {
         fixtures.studyListRequests.push(teamId);
         return fixtures.studies.map((study) => study.summary);
       }),
-    // The server resolves a study's team from the id alone, and refuses a
-    // study no team of this researcher's owns — which is what `Forbidden` is
-    // here, rather than the `null` the old stub answered with.
     'studies.get': ({ studyId }) =>
       Effect.suspend(() => {
         fixtures.studyGetRequests.push(studyId);

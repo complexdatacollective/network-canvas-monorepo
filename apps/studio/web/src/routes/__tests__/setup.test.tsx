@@ -68,19 +68,8 @@ const STATUS: Omit<InstanceStatus, 'setup'> = {
   deployment: { mode: 'self-hosted', billing: false },
 };
 
-/**
- * Read at call time by the `status` handler: completing setup is what turns
- * this over, and the screen invalidates the query that carries it. The status
- * query is `staleTime: Infinity`, so an answer cached before setup completed
- * would stand for the life of the page — which is what lets the cases below
- * tell a screen that invalidates status from one that does not.
- */
 let setupRequired = true;
 
-/**
- * The harness in the shape this file needs it: a real `status` answer, and
- * whatever `setup.complete` is being made to do for one case.
- */
 function installSetupHarness(
   complete: StudioHandlers['setup.complete'],
 ): RpcHarness {
@@ -91,7 +80,6 @@ function installSetupHarness(
   });
 }
 
-/** What the screen sent to one procedure, in the order it sent it. */
 function payloadsFor(harness: RpcHarness, tag: string): unknown[] {
   return harness.calls
     .filter((call) => call.tag === tag)
@@ -149,12 +137,7 @@ describe('completing first-run setup', () => {
   it('sends what the operator typed and leaves them signed in', async () => {
     const harness = installSetupHarness(() =>
       Effect.sync(() => {
-        // The server state this call changes. The screen has to go back for
-        // it, which is what the status assertion below watches for.
         setupRequired = false;
-        // `signedIn` is what says the response also carried the new owner's
-        // session cookie; the screen records the session rather than asking
-        // for it only when it did.
         return { instanceName: OWNER.instanceName, signedIn: true };
       }),
     );
@@ -194,12 +177,6 @@ describe('completing first-run setup', () => {
   });
 
   it('records no session when the response carried no cookie', async () => {
-    // Setup completed — the instance has a name and an owner — but the
-    // response did not establish a session, which is what `signedIn: false`
-    // reports: a deployment whose `Set-Cookie` never reached this tab. The
-    // screen may not record one anyway. If it did, `/` would resolve through
-    // a cached `'signedIn'` to this researcher's landing destination, and the
-    // first call made from there would come back `Unauthorized`.
     installSetupHarness(() =>
       Effect.sync(() => {
         setupRequired = false;
@@ -210,9 +187,6 @@ describe('completing first-run setup', () => {
 
     await fillAndSubmit();
 
-    // The navigation happens either way, and `/` is the one address that
-    // resolves either way: with no session established it resolves to the way
-    // in rather than to a landing destination.
     await waitFor(() =>
       expect(router.state.location.pathname).toBe('/sign-in'),
     );
@@ -268,8 +242,6 @@ describe('completing first-run setup', () => {
   });
 
   it('reports a failure the procedure did not name', async () => {
-    // A failure the contract does not declare is a defect rather than one of
-    // the three refusals, which is exactly what the screen's catch-all is for.
     installSetupHarness(() => Effect.die(new Error('network down')));
     renderSetup();
 
