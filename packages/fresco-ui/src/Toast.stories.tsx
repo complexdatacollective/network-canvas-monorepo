@@ -545,3 +545,68 @@ export const TallPersistentStack: Story = {
     await expectExpandedStackOnScreen(region);
   },
 };
+
+/** Presses Tab until `target` has focus, or fails after `limit` presses. */
+async function tabTo(target: HTMLElement, limit = 30) {
+  for (
+    let presses = 0;
+    presses < limit && target.ownerDocument.activeElement !== target;
+    presses += 1
+  ) {
+    await userEvent.tab();
+  }
+  expect(target).toHaveFocus();
+}
+
+/**
+ * Dismissing a toast from the keyboard hands focus to the next one, even
+ * when that toast was hidden for want of room a moment before. Base UI moves
+ * focus before the stack re-renders to reveal it, so without help focus would
+ * fall out of the stack altogether.
+ *
+ * Base UI only hands focus on when the focused control matches
+ * `:focus-visible`, which never happens in Chromatic's unfocused tab, so this
+ * story is left out of Chromatic.
+ */
+export const TallPersistentStackKeyboardDismiss: Story = {
+  render: () => <TallPersistentStackDemo />,
+  parameters: { chromatic: { disableSnapshot: true } },
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement.ownerDocument.body);
+    const region = await screen.findByRole('region', {
+      name: 'Notifications',
+    });
+    await waitFor(() =>
+      expect(toastsIn(region)).toHaveLength(STACKED_WARNINGS.length),
+    );
+
+    await awaitPassiveEffects();
+    await userEvent.keyboard('{F6}');
+    // At least two hidden toasts, so both dismissals below reveal one.
+    await waitFor(() =>
+      expect(hiddenToastsIn(region).length).toBeGreaterThanOrEqual(2),
+    );
+
+    // Close the topmost toast shown with its Close control…
+    const topmost = shownToastsIn(region).at(-1);
+    const [nextHidden] = hiddenToastsIn(region);
+    if (!topmost || !nextHidden) throw new Error('Expected a full stack');
+    await tabTo(within(topmost).getByLabelText('Close'));
+    await userEvent.keyboard('{Enter}');
+
+    // …and focus moves to the toast that was hidden behind it, now shown.
+    await waitFor(() => {
+      expect(nextHidden.inert).toBe(false);
+      expect(nextHidden).toHaveFocus();
+    });
+
+    // Escape on that toast does the same for the next hidden one.
+    const [lastHidden] = hiddenToastsIn(region);
+    if (!lastHidden) throw new Error('Expected another hidden toast');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(lastHidden.inert).toBe(false);
+      expect(lastHidden).toHaveFocus();
+    });
+  },
+};

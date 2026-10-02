@@ -6,7 +6,7 @@ import {
   type UseToastManagerReturnValue,
 } from '@base-ui/react/toast';
 import { AlertCircle, Info, type LucideIcon, PartyPopper } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -323,6 +323,53 @@ function useStackSpace(
   return space;
 }
 
+/**
+ * Keeps keyboard focus inside the stack on a toast that is shown.
+ *
+ * Base UI moves focus to a neighbouring toast the moment one is dismissed
+ * (its Close control, Escape, or `close()` while focus is in the stack), and
+ * does so synchronously, before React re-renders. A toast hidden for want of
+ * room — like one past the provider's `limit` — only stops being inert in that
+ * re-render, so a neighbour that is about to be revealed still refuses focus
+ * when Base UI tries it, and focus is stranded on the toast being dismissed.
+ * A toast arriving can likewise hide the toast that has focus. So after each
+ * commit, focus left on a toast that is not shown moves to the nearest one
+ * that is: older first, as Base UI chooses, then newer. Like Base UI's own
+ * hand-off, it only moves keyboard (`:focus-visible`) focus.
+ */
+function useKeepFocusOnShownToast(
+  viewport: HTMLElement | null,
+  toasts: readonly ToastObject<ToastCustomData>[],
+  overflowingIds: ReadonlySet<string>,
+) {
+  useLayoutEffect(() => {
+    const active = viewport?.ownerDocument.activeElement;
+    if (
+      !viewport ||
+      !active ||
+      !viewport.contains(active) ||
+      !active.matches(':focus-visible')
+    ) {
+      return;
+    }
+
+    const isShown = (toast: ToastObject<ToastCustomData>) =>
+      toast.transitionStatus !== 'ending' &&
+      !toast.limited &&
+      !overflowingIds.has(toast.id);
+    const index = toasts.findIndex((toast) =>
+      toast.ref?.current?.contains(active),
+    );
+    const focused = toasts[index];
+    if (!focused || isShown(focused)) return;
+
+    const target =
+      toasts.slice(index + 1).find(isShown) ??
+      toasts.slice(0, index).findLast(isShown);
+    target?.ref?.current?.focus();
+  }, [viewport, toasts, overflowingIds]);
+}
+
 const NOTHING_HIDDEN: ReturnType<typeof fitToastStack> = {
   overflowingIds: new Set(),
   hiddenCount: 0,
@@ -345,9 +392,11 @@ export function Toaster() {
   // first, and come back as the ones in front are dismissed; the indicator
   // above the stack counts them, together with any past the provider's
   // `limit`.
-  const { overflowingIds, hiddenCount, extent } = space
-    ? fitToastStack(toasts, space)
-    : NOTHING_HIDDEN;
+  const { overflowingIds, hiddenCount, extent } = useMemo(
+    () => (space ? fitToastStack(toasts, space) : NOTHING_HIDDEN),
+    [toasts, space],
+  );
+  useKeepFocusOnShownToast(viewport, toasts, overflowingIds);
   const indicatorStyle: IndicatorStyle = { '--stack-extent': `${extent}px` };
 
   return (

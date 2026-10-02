@@ -9,6 +9,7 @@ ones out of sight, where they could be neither read nor dismissed.
 
 The expanded stack now shows only the notifications that fit on screen, and a
 "2 more notifications" label above it counts the rest. Dismissing a
-notification brings the next hidden one into view. Hidden notifications are
-skipped by Tab and by screen readers, which can still read the count. The label
-is translated into every supported language.
+notification brings the next hidden one into view, and dismissing it from the
+keyboard moves focus there. Hidden notifications are skipped by Tab and by
+screen readers, which can still read the count. The label is translated into
+every supported language.
