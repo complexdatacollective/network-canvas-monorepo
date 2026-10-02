@@ -101,6 +101,46 @@
     "citing": "Lees ons <article>documentatieartikel</article> voor richtlijnen over het citeren van Network Canvas.",
     "submission": "Wil je jouw publicatie hier laten zien? Laat het ons weten in de <thread>discussie</thread> op onze communitysite."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Updates",
+      "description": "Begrijpelijke samenvattingen van nieuwe versies van Architect, Interviewer en Fresco."
+    },
+    "heading": "Updates",
+    "introduction": "Wat er nieuw is in de Network Canvas-apps. Een gedetailleerde lijst van alle wijzigingen vind je in de <changelog>release notes op GitHub</changelog>. Architect en Interviewer worden automatisch bijgewerkt; volg de <upgrade>instructies in onze documentatie</upgrade> om Fresco bij te werken.",
+    "search": {
+      "label": "Updates zoeken",
+      "placeholder": "Updates zoeken",
+      "clear": "Zoekopdracht wissen",
+      "results": "{count} van {total, plural, =1 {# update} other {# updates}}",
+      "clearAll": "Alles wissen",
+      "emptyHeading": "Geen updates gevonden",
+      "emptyDescription": "Probeer een andere zoekopdracht."
+    },
+    "details": {
+      "show": "Alle details tonen",
+      "hide": "Details verbergen"
+    },
+    "moreLanguagesSoon": "Binnenkort meer",
+    "readMore": "Lees de volledige aankondiging",
+    "filter": {
+      "label": "Filteren op app",
+      "all": "Alle",
+      "appHeading": "App",
+      "kindHeading": "Type",
+      "kindLabel": "Filteren op type",
+      "kinds": {
+        "launch": "Lanceringen",
+        "feature": "Functie-updates",
+        "fix": "Bugfixes"
+      }
+    },
+    "kinds": {
+      "launch": "Lancering",
+      "feature": "Functie-update",
+      "fix": "Bugfixes"
+    }
+  },
   "Team": {
     "heading": "Kernteam",
     "introduction": "Ons projectteam bestaat uit mensen uit uiteenlopende disciplines en specialisaties."
@@ -145,6 +185,7 @@
   },
   "Footer": {
     "terms": "Gebruiksvoorwaarden",
+    "updates": "Updates",
     "privacy": "Privacybeleid",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

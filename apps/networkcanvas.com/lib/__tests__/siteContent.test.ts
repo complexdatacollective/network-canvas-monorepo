@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { loadSiteContent } from '~/lib/siteContent';
+import { loadSiteContent, loadUpdates } from '~/lib/siteContent';
 
 const validFiles = {
   'latest-news.csv': `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href
@@ -261,6 +261,144 @@ person,Person Name,Institution,Institución,机构,機構,Institution,Instelling
 
     await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
       'latest-news.csv: dataset must contain at least one row',
+    );
+  });
+});
+
+describe('loadUpdates', () => {
+  let directory: string;
+
+  const released = {
+    architect: '8.3.0',
+    interviewer: '8.3.0',
+    fresco: '4.2.0',
+  } as const;
+
+  const header = 'id,date,kind,versions,title,summary,details,link';
+
+  async function writeUpdates(rows: string) {
+    await writeFile(join(directory, 'updates.csv'), `${header}\n${rows}`);
+  }
+
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,Older summary,,/older-announcement
+newer,2026-03-10,launch,architect@8.1.0|interviewer@8.1.0,Newer update,"Newer summary
+
+- A list item","### Heading
+
+Newer details",
+`);
+  });
+
+  afterEach(async () => {
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  it('orders updates newest first with their markdown intact', async () => {
+    await expect(loadUpdates(directory, released)).resolves.toEqual([
+      {
+        id: 'newer',
+        date: '2026-03-10',
+        kind: 'launch',
+        versions: [
+          { app: 'architect', version: '8.1.0' },
+          { app: 'interviewer', version: '8.1.0' },
+        ],
+        apps: ['architect', 'interviewer'],
+        title: 'Newer update',
+        summary: 'Newer summary\n\n- A list item',
+        details: '### Heading\n\nNewer details',
+      },
+      {
+        id: 'older',
+        date: '2026-01-05',
+        kind: 'fix',
+        versions: [{ app: 'fresco', version: '4.1.0' }],
+        apps: ['fresco'],
+        title: 'Older update',
+        summary: 'Older summary',
+        link: '/older-announcement',
+      },
+    ]);
+  });
+
+  it('shows only the versions that have been released', async () => {
+    await writeUpdates(`future,2026-04-01,launch,architect@9.0.0|interviewer@9.0.0,Future launch,Coming soon,,
+partly,2026-04-02,launch,architect@8.2.0|interviewer@8.4.0,Partly released,Out in Architect,,
+`);
+
+    const updates = await loadUpdates(directory, released);
+
+    expect(updates.map((update) => update.id)).toEqual(['partly']);
+    expect(updates[0]).toMatchObject({
+      versions: [{ app: 'architect', version: '8.2.0' }],
+      apps: ['architect'],
+    });
+  });
+
+  it('rejects an app without a version', async () => {
+    await writeUpdates(`pending,2026-04-01,launch,architect,Pending launch,Coming soon,,
+`);
+
+    await expect(loadUpdates(directory, released)).rejects.toThrow(
+      'updates.csv: row 2: versions:',
+    );
+  });
+
+  it('rejects an update without a summary', async () => {
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,,,
+`);
+
+    await expect(loadUpdates(directory, released)).rejects.toThrow(
+      'updates.csv: row 2: summary:',
+    );
+  });
+
+  it('rejects an app it does not know', async () => {
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0|studio@1.0.0,Older update,Older summary,,
+`);
+
+    await expect(loadUpdates(directory, released)).rejects.toThrow(
+      'updates.csv: row 2: versions:',
+    );
+  });
+
+  it('rejects a version that is not semver', async () => {
+    await writeUpdates(`older,2026-01-05,fix,fresco@4.1,Older update,Older summary,,
+`);
+
+    await expect(loadUpdates(directory, released)).rejects.toThrow(
+      'updates.csv: row 2: versions:',
+    );
+  });
+
+  it('rejects a link that leaves the site', async () => {
+    for (const link of ['//attacker.example', '/\\attacker.example']) {
+      await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,Older summary,,${link}
+`);
+
+      await expect(loadUpdates(directory, released)).rejects.toThrow(
+        'updates.csv: row 2: link:',
+      );
+    }
+  });
+
+  it('rejects a kind it does not know', async () => {
+    await writeUpdates(`older,2026-01-05,hotfix,fresco@4.1.0,Older update,Older summary,,
+`);
+
+    await expect(loadUpdates(directory, released)).rejects.toThrow(
+      'updates.csv: row 2: kind:',
+    );
+  });
+
+  it('rejects a date that is not an ISO calendar date', async () => {
+    await writeUpdates(`older,05/01/2026,fix,fresco@4.1.0,Older update,Older summary,,
+`);
+
+    await expect(loadUpdates(directory, released)).rejects.toThrow(
+      'updates.csv: row 2: date:',
     );
   });
 });

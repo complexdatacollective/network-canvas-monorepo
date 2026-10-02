@@ -65,7 +65,9 @@ is not ready to go out, release from the previous tag instead:
 
 2. Bump `apps/architect/package.json` to the hotfix version and add the
    matching `## <version>` section to `CHANGELOG.md`; `scripts/release/release-notes.mjs`
-   reads that section for the GitHub release. Do **not** run
+   reads that section for the GitHub release. Also add a `fix` row for
+   `architect@<version>` to `apps/networkcanvas.com/content/updates.csv`: the
+   workflow refuses to release a version with no entry. Do **not** run
    `changeset version` on the branch — it would consume changesets that belong
    to main's next release.
 3. Push the branch, then run the **Hotfix Release** workflow **from main**,

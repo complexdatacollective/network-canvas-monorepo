@@ -79,6 +79,7 @@
     "./appUpdate/AppUpdateIndicator": "./src/appUpdate/AppUpdateIndicator.tsx",
     "./appUpdate/applyFreshLoadServiceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
     "./appUpdate/registerPwaBuildLease": "./src/appUpdate/registerPwaBuildLease.ts",
+    "./appUpdate/releaseNotes": "./src/appUpdate/releaseNotes.ts",
     "./appUpdate/serviceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
     "./appUpdate/useAppUpdate": "./src/appUpdate/useAppUpdate.ts",
     "./collection/components/Collection": "./src/collection/components/Collection.tsx",
@@ -199,7 +200,8 @@
     "./utils/ariaIdReferences": "./src/utils/ariaIdReferences.ts",
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/cva": "./src/utils/cva.ts",
-    "./utils/finalFocus": "./src/utils/finalFocus.ts"
+    "./utils/finalFocus": "./src/utils/finalFocus.ts",
+    "./utils/foldText": "./src/utils/foldText.ts"
   },
   "publishConfig": {
     "exports": {
@@ -454,6 +456,10 @@
       "./appUpdate/registerPwaBuildLease": {
         "types": "./dist/appUpdate/registerPwaBuildLease.d.ts",
         "default": "./dist/appUpdate/registerPwaBuildLease.js"
+      },
+      "./appUpdate/releaseNotes": {
+        "types": "./dist/appUpdate/releaseNotes.d.ts",
+        "default": "./dist/appUpdate/releaseNotes.js"
       },
       "./appUpdate/serviceWorkerUpdate": {
         "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",
@@ -935,6 +941,10 @@
       "./utils/finalFocus": {
         "types": "./dist/utils/finalFocus.d.ts",
         "default": "./dist/utils/finalFocus.js"
+      },
+      "./utils/foldText": {
+        "types": "./dist/utils/foldText.d.ts",
+        "default": "./dist/utils/foldText.js"
       }
     },
     "access": "public"

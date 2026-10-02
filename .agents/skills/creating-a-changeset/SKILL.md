@@ -139,7 +139,45 @@ them.
 4. Write the summary as **reader-facing release notes** — it becomes the
    changelog / GitHub release text. For app-facing entries use the
    participant-appropriate tone described in `developing-network-canvas-ui`.
+   A changeset naming Architect, Interviewer or Fresco also needs an `Update:`
+   line (see below).
 5. Commit the generated `.changeset/*.md` with your PR.
+
+## The Update line (Architect, Interviewer, Fresco)
+
+A changeset that names `@codaco/architect`, `@codaco/interviewer` or `fresco`
+also carries one sentence for users, on its own line starting `Update:`:
+
+```md
+---
+'@codaco/architect': patch
+---
+
+The attribute picker no longer drops the search text when the list refreshes.
+
+Update: Searching for an attribute keeps what you typed while the list updates.
+```
+
+When the Version Packages PR is generated, `scripts/release/version-packages.mjs`
+gathers these lines into one entry per released app version in
+`apps/networkcanvas.com/content/updates.csv`, which feeds the Updates page and
+the release notes inside the apps. Write it for researchers, in plain language,
+as a single sentence. The line is left out of `CHANGELOG.md` and the GitHub
+release.
+
+Use `Update: none` for a change users will not notice, such as a refactor or a
+test fix. `pnpm check:changeset-updates` refuses a new app changeset with no
+`Update:` line. Changesets written before the line existed contribute their
+first paragraph instead.
+
+Never edit the generated entries in the Version Packages PR: `changesets/action`
+rebuilds that PR whenever something merges to `main`, which discards hand edits.
+Change the `Update:` line in the changeset instead. Launch entries, the
+illustrated ones, are written by hand in an ordinary PR and name the version
+they ship in (`architect@8.4.0|interviewer@8.4.0`); the website shows each
+version once the app's `package.json` reaches it. A hotfix needs its `fix` row
+added by hand on the hotfix branch: the Hotfix Release workflow refuses a
+version with no entry.
 
 ## Notes
 

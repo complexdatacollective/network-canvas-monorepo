@@ -101,6 +101,46 @@
     "citing": "Hinweise zum Zitieren von Network Canvas finden Sie in unserem <article>Dokumentationsartikel</article>.",
     "submission": "Wenn Sie Ihre Publikation hier vorstellen möchten, teilen Sie uns dies bitte in diesem <thread>Thread</thread> auf unserer Community-Website mit."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Updates",
+      "description": "Verständliche Zusammenfassungen neuer Versionen von Architect, Interviewer und Fresco."
+    },
+    "heading": "Updates",
+    "introduction": "Neuigkeiten aus den Network-Canvas-Apps. Eine ausführliche Liste aller Änderungen finden Sie in den <changelog>Versionshinweisen auf GitHub</changelog>. Architect und Interviewer werden automatisch aktualisiert; um Fresco zu aktualisieren, folgen Sie der <upgrade>Anleitung in unserer Dokumentation</upgrade>.",
+    "search": {
+      "label": "Updates durchsuchen",
+      "placeholder": "Updates durchsuchen",
+      "clear": "Suche löschen",
+      "results": "{count} von {total, plural, =1 {# Update} other {# Updates}}",
+      "clearAll": "Alle zurücksetzen",
+      "emptyHeading": "Keine Updates gefunden",
+      "emptyDescription": "Versuchen Sie es mit einer anderen Suche."
+    },
+    "details": {
+      "show": "Alle Details anzeigen",
+      "hide": "Details ausblenden"
+    },
+    "moreLanguagesSoon": "Weitere folgen bald",
+    "readMore": "Vollständige Ankündigung lesen",
+    "filter": {
+      "label": "Nach App filtern",
+      "all": "Alle",
+      "appHeading": "App",
+      "kindHeading": "Typ",
+      "kindLabel": "Nach Typ filtern",
+      "kinds": {
+        "launch": "Launches",
+        "feature": "Funktionsupdates",
+        "fix": "Fehlerbehebungen"
+      }
+    },
+    "kinds": {
+      "launch": "Launch",
+      "feature": "Funktionsupdate",
+      "fix": "Fehlerbehebungen"
+    }
+  },
   "Team": {
     "heading": "Kernteam",
     "introduction": "Unser Projektteam besteht aus Personen aus unterschiedlichsten Disziplinen und Fachrichtungen."
@@ -145,6 +185,7 @@
   },
   "Footer": {
     "terms": "Nutzungsbedingungen",
+    "updates": "Updates",
     "privacy": "Datenschutzerklärung",
     "copyright": "Copyright Complex Data Collective 2016–{year}",
     "youtube": "YouTube",

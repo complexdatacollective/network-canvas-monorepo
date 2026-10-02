@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import { fetchFeedNotes } from '@codaco/fresco-ui/appUpdate/releaseNotes';
 import { Button } from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { ensureError } from '@codaco/shared-consts';
@@ -114,6 +115,18 @@ const GithubApiResponseSchema = z
     releaseUrl: value.html_url,
   }));
 
+function plainVersion({
+  major,
+  minor,
+  patch,
+}: {
+  major: number;
+  minor: number;
+  patch: number;
+}) {
+  return `${major}.${minor}.${patch}`;
+}
+
 async function checkForUpdate() {
   if (!env.APP_VERSION) {
     return {
@@ -142,11 +155,17 @@ async function checkForUpdate() {
       GithubApiResponseSchema.parse(data);
 
     const updateType = getSemverUpdateType(currentVersion, latestVersion);
+    const feedNotes = updateType
+      ? await fetchFeedNotes('fresco', {
+          after: plainVersion(currentVersion),
+          upTo: plainVersion(latestVersion),
+        })
+      : null;
 
     return {
       updateType,
       latestVersion: latestVersion.toString(),
-      releaseNotes,
+      releaseNotes: feedNotes?.body ?? releaseNotes,
       releaseUrl,
       error: false,
     };

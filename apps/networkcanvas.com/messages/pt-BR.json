@@ -101,6 +101,46 @@
     "citing": "Para saber como citar o Network Canvas, consulte nosso <article>artigo na documentação</article>.",
     "submission": "Se você quiser divulgar sua publicação aqui, avise-nos com uma mensagem no <thread>tópico</thread> do nosso site da comunidade."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Novidades",
+      "description": "Resumos em linguagem simples das novas versões do Architect, do Interviewer e do Fresco."
+    },
+    "heading": "Novidades",
+    "introduction": "As novidades dos aplicativos do Network Canvas. Para ver uma lista detalhada de todas as mudanças, consulte as <changelog>notas de versão no GitHub</changelog>. O Architect e o Interviewer são atualizados automaticamente; para atualizar o Fresco, siga as <upgrade>instruções da nossa documentação</upgrade>.",
+    "search": {
+      "label": "Pesquisar novidades",
+      "placeholder": "Pesquisar novidades",
+      "clear": "Limpar busca",
+      "results": "{count} de {total, plural, =1 {# novidade} other {# novidades}}",
+      "clearAll": "Limpar tudo",
+      "emptyHeading": "Nenhuma novidade encontrada",
+      "emptyDescription": "Tente outra busca."
+    },
+    "details": {
+      "show": "Mostrar todos os detalhes",
+      "hide": "Ocultar detalhes"
+    },
+    "moreLanguagesSoon": "Mais em breve",
+    "readMore": "Leia o anúncio completo",
+    "filter": {
+      "label": "Filtrar por aplicativo",
+      "all": "Todos",
+      "appHeading": "Aplicativo",
+      "kindHeading": "Tipo",
+      "kindLabel": "Filtrar por tipo",
+      "kinds": {
+        "launch": "Lançamentos",
+        "feature": "Novos recursos",
+        "fix": "Correções"
+      }
+    },
+    "kinds": {
+      "launch": "Lançamento",
+      "feature": "Novos recursos",
+      "fix": "Correções"
+    }
+  },
   "Team": {
     "heading": "Equipe principal",
     "introduction": "A equipe do projeto reúne pessoas de diversas disciplinas e especialidades."
@@ -145,6 +185,7 @@
   },
   "Footer": {
     "terms": "Termos de uso",
+    "updates": "Novidades",
     "privacy": "Política de privacidade",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

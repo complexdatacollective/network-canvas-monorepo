@@ -101,6 +101,46 @@
     "citing": "Pour savoir comment citer Network Canvas, consultez notre <article>article de documentation</article>.",
     "submission": "Si vous souhaitez que votre publication soit mise en avant, faites-le-nous savoir en répondant au <thread>fil de discussion</thread> de notre site communautaire."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Nouveautés",
+      "description": "Résumés en langage clair des nouvelles versions d’Architect, d’Interviewer et de Fresco."
+    },
+    "heading": "Nouveautés",
+    "introduction": "Les nouveautés des applications Network Canvas. Pour la liste détaillée de toutes les modifications, consultez les <changelog>notes de version sur GitHub</changelog>. Architect et Interviewer se mettent à jour automatiquement ; pour mettre à jour Fresco, suivez les <upgrade>instructions de notre documentation</upgrade>.",
+    "search": {
+      "label": "Rechercher dans les nouveautés",
+      "placeholder": "Rechercher dans les nouveautés",
+      "clear": "Effacer la recherche",
+      "results": "{count} sur {total, plural, =1 {# nouveauté} one {# nouveauté} other {# nouveautés}}",
+      "clearAll": "Tout effacer",
+      "emptyHeading": "Aucune nouveauté trouvée",
+      "emptyDescription": "Essayez une autre recherche."
+    },
+    "details": {
+      "show": "Afficher tous les détails",
+      "hide": "Masquer les détails"
+    },
+    "moreLanguagesSoon": "D’autres arrivent bientôt",
+    "readMore": "Lire l’annonce complète",
+    "filter": {
+      "label": "Filtrer par application",
+      "all": "Toutes",
+      "appHeading": "Application",
+      "kindHeading": "Type",
+      "kindLabel": "Filtrer par type",
+      "kinds": {
+        "launch": "Lancements",
+        "feature": "Nouvelles fonctionnalités",
+        "fix": "Corrections de bugs"
+      }
+    },
+    "kinds": {
+      "launch": "Lancement",
+      "feature": "Nouvelles fonctionnalités",
+      "fix": "Corrections de bugs"
+    }
+  },
   "Team": {
     "heading": "Équipe principale",
     "introduction": "Notre équipe de projet réunit des personnes issues de disciplines et de spécialités variées."
@@ -145,6 +185,7 @@
   },
   "Footer": {
     "terms": "Conditions d’utilisation",
+    "updates": "Nouveautés",
     "privacy": "Politique de confidentialité",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

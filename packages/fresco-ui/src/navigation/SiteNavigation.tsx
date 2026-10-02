@@ -33,6 +33,7 @@ export type SiteNavigationItemId =
   | 'community'
   | 'documentation'
   | 'protocolGallery'
+  | 'updates'
   | 'resources'
   | 'software'
   | 'getStarted';
@@ -61,7 +62,7 @@ type SoftwareId =
   | 'fresco';
 
 type ResourceLink = {
-  id: 'community' | 'documentation' | 'protocolGallery';
+  id: 'community' | 'documentation' | 'protocolGallery' | 'updates';
   label: string;
   href: string;
   active: boolean;
@@ -578,6 +579,12 @@ export default function SiteNavigation({
     site === 'website' ? '/' : destinations.networkCanvas;
   const documentationRootHref =
     site === 'documentation' ? '/' : destinations.documentation;
+  // Another host cannot read the website's locale cookie, so the link says
+  // which language the visitor is already reading.
+  const updatesHref = appendPath(
+    networkCanvasRootHref,
+    site === 'website' ? '/updates' : `/${locale}/updates/`,
+  );
   const closeMenu = () => setOpen(false);
   // A fragment link only moves focus to a target the browser already considers
   // focusable; every other browser merely sets the sequential focus navigation
@@ -621,6 +628,14 @@ export default function SiteNavigation({
       rel: documentationRootHref.startsWith('/') ? undefined : 'noreferrer',
     },
     {
+      id: 'updates',
+      label: labels.updates,
+      href: updatesHref,
+      active: activeItemId === 'updates',
+      target: updatesHref.startsWith('/') ? undefined : '_blank',
+      rel: updatesHref.startsWith('/') ? undefined : 'noreferrer',
+    },
+    {
       id: 'protocolGallery',
       label: labels.protocolGallery,
       href: destinations.protocolGallery,
@@ -653,11 +668,11 @@ export default function SiteNavigation({
   const items: InternalNavigationItem[] = [
     ...resourceLinks.map((link) => ({
       ...link,
-      className: 'hidden @min-[80rem]:block',
+      className: 'hidden @min-[88rem]:block',
     })),
     {
       id: 'resources',
-      className: '@min-[80rem]:hidden',
+      className: '@min-[88rem]:hidden',
       render: (view) =>
         view === 'desktop' ? (
           <ResourcesMenu

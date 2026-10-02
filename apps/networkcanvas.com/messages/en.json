@@ -101,6 +101,46 @@
     "citing": "For guidance on citing Network Canvas, see our <article>documentation article</article>.",
     "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Updates",
+      "description": "Plain-language summaries of new releases of Architect, Interviewer, and Fresco."
+    },
+    "heading": "Updates",
+    "introduction": "What's new in the Network Canvas apps. For a detailed list of every change, see the <changelog>release notes on GitHub</changelog>. Architect and Interviewer update automatically; to upgrade Fresco, follow the <upgrade>instructions in our documentation</upgrade>.",
+    "search": {
+      "label": "Search updates",
+      "placeholder": "Search updates",
+      "clear": "Clear search",
+      "results": "{count} of {total, plural, =1 {# update} other {# updates}}",
+      "clearAll": "Clear all",
+      "emptyHeading": "No updates found",
+      "emptyDescription": "Try a different search."
+    },
+    "details": {
+      "show": "Show full details",
+      "hide": "Hide details"
+    },
+    "moreLanguagesSoon": "More coming soon",
+    "readMore": "Read the full announcement",
+    "filter": {
+      "label": "Filter by app",
+      "all": "All",
+      "appHeading": "App",
+      "kindHeading": "Type",
+      "kindLabel": "Filter by type",
+      "kinds": {
+        "launch": "Launches",
+        "feature": "Feature updates",
+        "fix": "Bug fixes"
+      }
+    },
+    "kinds": {
+      "launch": "Launch",
+      "feature": "Feature update",
+      "fix": "Bug fixes"
+    }
+  },
   "Team": {
     "heading": "Core Team",
     "introduction": "Our project team comprises individuals across a variety of disciplines and specializations."
@@ -145,6 +185,7 @@
   },
   "Footer": {
     "terms": "Terms of Use",
+    "updates": "Updates",
     "privacy": "Privacy Policy",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

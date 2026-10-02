@@ -94,7 +94,7 @@ export default async function ProtocolGalleryPage({
         <ProtocolGallery protocols={protocols} />
       </div>
 
-      <Footer />
+      <Footer host="protocolGallery" />
     </main>
   );
 }

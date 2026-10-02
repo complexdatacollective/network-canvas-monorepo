@@ -4,7 +4,14 @@ import { join } from 'node:path';
 import csv from 'csvtojson';
 import { z } from 'zod';
 
+import { compareVersions } from '@codaco/fresco-ui/appUpdate/releaseNotes';
 import type { Locale } from '~/lib/i18n/locales';
+import {
+  type UpdateAppId,
+  updateAppIds,
+  type UpdateKind,
+  updateKinds,
+} from '~/lib/updateApps';
 
 export type NewsItem = { id: string; title: string; href: string };
 
@@ -32,6 +39,20 @@ export type TeamMember = {
   name: string;
   institution: string;
   photo: string;
+};
+
+export type UpdateVersion = { app: UpdateAppId; version: string };
+
+export type Update = {
+  id: string;
+  date: string;
+  kind: UpdateKind;
+  versions: UpdateVersion[];
+  apps: UpdateAppId[];
+  title: string;
+  summary: string;
+  details?: string;
+  link?: string;
 };
 
 export type SiteContent = {
@@ -159,6 +180,57 @@ const teamMemberRowSchema = z
     'institution_it': requiredText,
     'institution_fr': requiredText,
     'photo': publicImage,
+  })
+  .strict();
+
+const isoDate = z.iso.date();
+
+const updateRowSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
+    date: isoDate,
+    kind: z.enum(updateKinds),
+    versions: z
+      .string()
+      .transform((value) =>
+        value.split('|').map((entry) => {
+          const [app = '', version = ''] = entry.trim().split('@');
+          return { app, version };
+        }),
+      )
+      .pipe(
+        z
+          .array(
+            z.object({
+              app: z.enum(updateAppIds),
+              version: z
+                .string()
+                .regex(
+                  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/,
+                  'must be an app@version pair',
+                ),
+            }),
+          )
+          .min(1)
+          .refine(
+            (versions) =>
+              new Set(versions.map(({ app }) => app)).size === versions.length,
+            'must not repeat an app',
+          ),
+      ),
+    title: requiredText,
+    summary: requiredText,
+    details: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value || undefined),
+    link: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value || undefined)
+      .pipe(internalPath.optional()),
   })
   .strict();
 
@@ -373,4 +445,49 @@ export async function loadSiteContent(
       photo: row.photo,
     })),
   };
+}
+
+async function readReleasedAppVersions(
+  appsDirectory: string,
+): Promise<Record<UpdateAppId, string>> {
+  const entries = await Promise.all(
+    updateAppIds.map(async (app) => {
+      const manifest = JSON.parse(
+        await readFile(join(appsDirectory, app, 'package.json'), 'utf8'),
+      ) as { version: string };
+      return [app, manifest.version] as const;
+    }),
+  );
+  return Object.fromEntries(entries) as Record<UpdateAppId, string>;
+}
+
+export async function loadUpdates(
+  contentDirectory = join(process.cwd(), 'content'),
+  releasedVersions?: Record<UpdateAppId, string>,
+): Promise<Update[]> {
+  const [rows, released] = await Promise.all([
+    parseCsv(contentDirectory, 'updates.csv', updateRowSchema),
+    releasedVersions ?? readReleasedAppVersions(join(process.cwd(), '..')),
+  ]);
+
+  return rows
+    .map((row) => ({
+      ...row,
+      versions: row.versions.filter(
+        ({ app, version }) => compareVersions(version, released[app]) <= 0,
+      ),
+    }))
+    .filter((row) => row.versions.length > 0)
+    .map((row) => ({
+      id: row.id,
+      date: row.date,
+      kind: row.kind,
+      versions: row.versions,
+      apps: row.versions.map(({ app }) => app),
+      title: row.title,
+      summary: row.summary,
+      ...(row.details ? { details: row.details } : {}),
+      ...(row.link ? { link: row.link } : {}),
+    }))
+    .toSorted((a, b) => b.date.localeCompare(a.date));
 }

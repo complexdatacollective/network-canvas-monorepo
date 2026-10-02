@@ -13,6 +13,7 @@ const tagVariants = cva({
     size: {
       sm: 'gap-2 px-2.5 py-0.5',
       md: 'gap-2 px-3 py-1',
+      lg: 'gap-2 px-4 py-2',
     },
     uppercase: {
       true: '',
@@ -53,6 +54,7 @@ const dotVariants = cva({
     size: {
       sm: 'w-2.5',
       md: 'w-3',
+      lg: 'w-3.5',
     },
   },
   defaultVariants: { size: 'md' },
@@ -101,7 +103,7 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
   return (
     <Badge
       ref={ref}
-      size="md"
+      size={size === 'lg' ? 'lg' : 'md'}
       uppercase={uppercase}
       appearance="filled"
       icon={

@@ -180,7 +180,7 @@ export default async function ProtocolDetailPage({
         </Container>
       </div>
 
-      <Footer />
+      <Footer host="protocolGallery" />
     </main>
   );
 }

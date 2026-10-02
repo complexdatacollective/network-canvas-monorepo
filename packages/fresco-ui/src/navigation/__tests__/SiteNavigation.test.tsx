@@ -131,6 +131,13 @@ describe('SiteNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Protocol Gallery' }),
     ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
+    expect(screen.getByRole('link', { name: 'Updates' })).toHaveAttribute(
+      'href',
+      '/updates',
+    );
+    expect(screen.getByRole('link', { name: 'Updates' })).not.toHaveAttribute(
+      'target',
+    );
     expect(
       screen.getByRole('button', { name: 'Software' }),
     ).toBeInTheDocument();
@@ -165,6 +172,14 @@ describe('SiteNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Galería de protocolos' }),
     ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
+    expect(screen.getByRole('link', { name: 'Novedades' })).toHaveAttribute(
+      'href',
+      'https://networkcanvas.com/es/updates/',
+    );
+    expect(screen.getByRole('link', { name: 'Novedades' })).toHaveAttribute(
+      'target',
+      '_blank',
+    );
     expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute(
       'href',
       'https://networkcanvas.com/download',

@@ -14,6 +14,8 @@ export const externalLinks = {
   community: 'https://community.networkcanvas.com/',
   documentation: documentationUrl(),
   github: 'https://github.com/complexdatacollective',
+  releases:
+    'https://github.com/complexdatacollective/network-canvas-monorepo/releases',
   twitter: 'https://twitter.com/networkcanvas?lang=en',
   youtube: 'https://www.youtube.com/@complexdatacollective2923',
   youtubeChannel: 'https://www.youtube.com/channel/UC3uFCh2HlR8iqiYhRNomUqQ',

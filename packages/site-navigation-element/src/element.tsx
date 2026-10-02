@@ -19,6 +19,7 @@ const ACTIVE_ITEMS: readonly SiteNavigationItemId[] = [
   'community',
   'documentation',
   'protocolGallery',
+  'updates',
   'resources',
   'software',
   'getStarted',

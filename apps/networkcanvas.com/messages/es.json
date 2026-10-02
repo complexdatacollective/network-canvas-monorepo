@@ -101,6 +101,46 @@
     "citing": "Para obtener orientación sobre cómo citar Network Canvas, consulte nuestro <article>artículo de documentación</article>.",
     "submission": "Si desea que incluyamos su publicación, comuníquenoslo en el <thread>hilo</thread> de nuestro sitio de la comunidad."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Novedades",
+      "description": "Resúmenes en lenguaje sencillo de las nuevas versiones de Architect, Interviewer y Fresco."
+    },
+    "heading": "Novedades",
+    "introduction": "Las novedades de las aplicaciones de Network Canvas. Para ver la lista detallada de todos los cambios, consulte las <changelog>notas de la versión en GitHub</changelog>. Architect e Interviewer se actualizan automáticamente; para actualizar Fresco, siga las <upgrade>instrucciones de nuestra documentación</upgrade>.",
+    "search": {
+      "label": "Buscar novedades",
+      "placeholder": "Buscar novedades",
+      "clear": "Borrar búsqueda",
+      "results": "{count} de {total, plural, =1 {# novedad} other {# novedades}}",
+      "clearAll": "Borrar todo",
+      "emptyHeading": "No se encontraron novedades",
+      "emptyDescription": "Pruebe con otra búsqueda."
+    },
+    "details": {
+      "show": "Mostrar todos los detalles",
+      "hide": "Ocultar detalles"
+    },
+    "moreLanguagesSoon": "Más muy pronto",
+    "readMore": "Leer el anuncio completo",
+    "filter": {
+      "label": "Filtrar por aplicación",
+      "all": "Todas",
+      "appHeading": "Aplicación",
+      "kindHeading": "Tipo",
+      "kindLabel": "Filtrar por tipo",
+      "kinds": {
+        "launch": "Lanzamientos",
+        "feature": "Nuevas funciones",
+        "fix": "Correcciones"
+      }
+    },
+    "kinds": {
+      "launch": "Lanzamiento",
+      "feature": "Nuevas funciones",
+      "fix": "Correcciones"
+    }
+  },
   "Team": {
     "heading": "Equipo principal",
     "introduction": "El equipo del proyecto está compuesto por personas de diversas disciplinas y especialidades."
@@ -145,6 +185,7 @@
   },
   "Footer": {
     "terms": "Términos de uso",
+    "updates": "Novedades",
     "privacy": "Política de privacidad",
     "copyright": "Derechos de autor de Complex Data Collective 2016-{year}",
     "youtube": "YouTube",
