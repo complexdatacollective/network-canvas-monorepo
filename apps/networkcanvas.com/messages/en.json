@@ -314,7 +314,7 @@
       "bestFor": "Best for",
       "downloadVersion": "Download version {version}",
       "platformAccessibleName": "{platform} for {app}",
-      "schemaVersionInfo": "Architect Classic and Interviewer Classic support Schema 7 protocols. The browser-based Architect, Interviewer, and Fresco use Schema 8, which includes the latest features. Upgrading a protocol is one-way, so keep the original Schema 7 file if you still need the Classic apps.",
+      "schemaVersionInfo": "Architect Classic and Interviewer Classic support Schema 7 protocols. The browser-based Architect, Interviewer, and Fresco use Schema 9, which includes the latest features. Upgrading a protocol is one-way, so keep the original Schema 7 file if you still need the Classic apps.",
       "schemaVersionLink": "Learn about schema versions"
     },
     "platforms": {

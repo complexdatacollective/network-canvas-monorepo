@@ -314,7 +314,7 @@
       "bestFor": "Ideal para",
       "downloadVersion": "Baixar a versão {version}",
       "platformAccessibleName": "{platform} para {app}",
-      "schemaVersionInfo": "O Architect Classic e o Interviewer Classic são compatíveis com protocolos do esquema 7. As versões do Architect, do Interviewer e do Fresco que funcionam no navegador usam o esquema 8, que inclui as funcionalidades mais recentes. A atualização de um protocolo é irreversível, então mantenha o arquivo original do esquema 7 se você ainda precisar dos aplicativos Classic.",
+      "schemaVersionInfo": "O Architect Classic e o Interviewer Classic são compatíveis com protocolos do esquema 7. As versões do Architect, do Interviewer e do Fresco que funcionam no navegador usam o esquema 9, que inclui as funcionalidades mais recentes. A atualização de um protocolo é irreversível, então mantenha o arquivo original do esquema 7 se você ainda precisar dos aplicativos Classic.",
       "schemaVersionLink": "Saiba mais sobre as versões de esquema"
     },
     "platforms": {
