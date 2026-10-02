@@ -4,12 +4,15 @@ import csv from 'csvtojson';
 import { get } from 'es-toolkit/compat';
 
 import {
+  findRosterCharacterProblems,
   getVariableNamesFromNetwork,
   type Network,
+  type RosterFormat,
   validateNames,
 } from '@codaco/protocol-validation';
 import { getAssetById, MissingAssetDataError } from '~/utils/assetUtils';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
+import { RosterCharacterError } from '~/utils/protocols/rosterCharacterError';
 
 type ReaderFunc = (...args: string[]) => Promise<unknown>;
 type ExtensionConfig = Record<string, ReaderFunc>;
@@ -120,6 +123,19 @@ const countDuplicateRows = (rows: Record<string, unknown>[]): number => {
   return count;
 };
 
+// First, so a roster is refused for the character itself rather than for a
+// parse failure the character caused.
+const refuseUnsupportedCharacters = async (
+  text: string,
+  format: RosterFormat,
+) => {
+  const { problems, total } = await findRosterCharacterProblems(text, format);
+  const [first] = problems;
+  if (first !== undefined) {
+    throw new RosterCharacterError(first, total);
+  }
+};
+
 const validateNetwork = async (file: File): Promise<ValidationResult> => {
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
 
@@ -128,9 +144,11 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
 
   if (extension === 'json') {
     const text = await file.text();
+    await refuseUnsupportedCharacters(text, 'json');
     network = JSON.parse(text) as Network;
   } else if (extension === 'csv') {
     const text = await file.text();
+    await refuseUnsupportedCharacters(text, 'csv');
     const csvModule = await import('csvtojson');
     let nodes: Network['nodes'];
     try {
