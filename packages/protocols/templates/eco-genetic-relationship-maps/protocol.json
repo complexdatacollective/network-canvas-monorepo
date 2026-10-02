@@ -1,7 +1,7 @@
 {
   "name": "Colored Eco-Genetic Relationship Map (CEGRM)",
   "description": "An implementation of the Colored Eco-Genetic Relationship Map (CEGRM) method for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-08-06T00:00:00.000Z",
   "codebook": {
     "ego": {
