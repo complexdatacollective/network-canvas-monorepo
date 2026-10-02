@@ -177,7 +177,9 @@ dependency change cannot mask another that only the branch's lockfile carried.
 
 2. Bump `apps/fresco/package.json` to the hotfix version and add the matching
    `## <version>` section to `apps/fresco/CHANGELOG.md`; `scripts/release/release-notes.mjs`
-   reads that section for both GitHub releases. Do **not** run
+   reads that section for both GitHub releases. Also add a `fix` row for
+   `fresco@<version>` to `apps/networkcanvas.com/content/updates.csv`: the
+   workflow refuses to release a version with no entry. Do **not** run
    `changeset version` on the branch.
 3. Push the branch and open its merge-back pull request into `main` now. Then
    certify it with the release test — using **main's** tooling, never the

@@ -151,12 +151,6 @@ function parseVersions(value) {
     });
 }
 
-function formatVersions(versions) {
-  return versions
-    .map(({ app, version }) => (version ? `${app}@${version}` : app))
-    .join('|');
-}
-
 function releaseKind(version) {
   return /^\d+\.\d+\.0(?:-|$)/.test(version) ? 'feature' : 'fix';
 }
@@ -166,20 +160,7 @@ function releaseEntryId(app, version) {
 }
 
 export function addReleaseEntries(rows, { released, notes, date }) {
-  const filled = rows.map((row) => {
-    const versions = parseVersions(row.versions);
-    let changed = false;
-    for (const entry of versions) {
-      const release = released.find(({ app }) => app === entry.app);
-      if (release && !entry.version) {
-        entry.version = release.version;
-        changed = true;
-      }
-    }
-    return changed ? { ...row, versions: formatVersions(versions) } : row;
-  });
-
-  const existingIds = new Set(filled.map((row) => row.id));
+  const existingIds = new Set(rows.map((row) => row.id));
   const added = released
     .filter(
       ({ app, version }) => !existingIds.has(releaseEntryId(app, version)),
@@ -202,7 +183,7 @@ export function addReleaseEntries(rows, { released, notes, date }) {
       };
     });
 
-  return { rows: [...added, ...filled], added };
+  return { rows: [...added, ...rows], added };
 }
 
 export function missingReleaseEntries(rows, currentVersions) {

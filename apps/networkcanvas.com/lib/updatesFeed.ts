@@ -40,9 +40,7 @@ export function buildUpdatesFeed(updates: readonly Update[]): UpdatesFeed {
       date: update.date,
       kind: update.kind,
       versions: Object.fromEntries(
-        update.versions.flatMap(({ app, version }) =>
-          version ? [[app, version]] : [],
-        ),
+        update.versions.map(({ app, version }) => [app, version]),
       ),
       title: update.title,
       summary: absoluteMarkdownLinks(update.summary),

@@ -21,10 +21,24 @@ function versionAt(ref, directory) {
   ).version;
 }
 
-const released = readAppVersions(root).filter(({ app, version }) => {
-  const { directory } = UPDATE_APPS.find(({ id }) => id === app);
-  return versionAt(baseRef, directory) !== version;
-});
+function requiredRelease() {
+  const index = process.argv.indexOf('--release');
+  if (index === -1) return undefined;
+  const [app, version] = (process.argv[index + 1] ?? '').split('@');
+  if (!app || !version || !UPDATE_APPS.some(({ id }) => id === app)) {
+    console.error('--release takes an app@version pair, e.g. architect@8.3.1');
+    process.exit(2);
+  }
+  return { app, version };
+}
+
+const required = requiredRelease();
+const released = required
+  ? [required]
+  : readAppVersions(root).filter(({ app, version }) => {
+      const { directory } = UPDATE_APPS.find(({ id }) => id === app);
+      return versionAt(baseRef, directory) !== version;
+    });
 
 const missing = missingReleaseEntries(readUpdateRows(root), released);
 
