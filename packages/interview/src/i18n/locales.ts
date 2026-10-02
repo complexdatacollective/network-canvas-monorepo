@@ -10,6 +10,7 @@ export const interviewLocales = defineAppLocales([
   { locale: 'zh-Hant', label: '繁體中文', direction: 'ltr' },
   { locale: 'de', label: 'Deutsch', direction: 'ltr' },
   { locale: 'nl', label: 'Nederlands', direction: 'ltr' },
+  { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
 ]);
 
 export type RequestedLocale = string | readonly string[] | null;

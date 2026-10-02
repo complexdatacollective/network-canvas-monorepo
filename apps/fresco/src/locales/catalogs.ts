@@ -8,6 +8,7 @@ import de from '~/src/locales/de.json';
 import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
 import nl from '~/src/locales/nl.json';
+import ptBR from '~/src/locales/pt-BR.json';
 import zhHans from '~/src/locales/zh-Hans.json';
 import zhHant from '~/src/locales/zh-Hant.json';
 
@@ -60,5 +61,13 @@ export const frescoCatalogs: Readonly<Record<string, CatalogMessages>> = {
     protocolUtilitiesCatalogs.nl ?? {},
     protocolValidationCatalogs.nl ?? {},
     nl,
+  ),
+  'pt-BR': mergeCatalogs(
+    commonCatalogs['pt-BR'] ?? {},
+    frescoUiCatalogs['pt-BR'] ?? {},
+    networkExporterCatalogs['pt-BR'] ?? {},
+    protocolUtilitiesCatalogs['pt-BR'] ?? {},
+    protocolValidationCatalogs['pt-BR'] ?? {},
+    ptBR,
   ),
 };

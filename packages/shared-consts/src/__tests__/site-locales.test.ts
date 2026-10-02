@@ -18,6 +18,7 @@ describe('site locales', () => {
       'zh-Hant',
       'de',
       'nl',
+      'pt-BR',
     ]);
     expect(supportedSiteLocales.map(({ locale }) => locale)).toEqual(
       siteLocales,

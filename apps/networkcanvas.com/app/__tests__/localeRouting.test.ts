@@ -126,6 +126,26 @@ const negotiationCases: readonly NegotiationCase[] = [
     destination: 'http://localhost/nl/',
   },
   {
+    name: 'Brazilian Portuguese browser language',
+    headers: { 'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'bare Portuguese browser language best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'European Portuguese browser language best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt-PT' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'European Portuguese with a Portuguese fallback best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt-PT,pt;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
     name: 'US English fallback',
     headers: {},
     destination: 'http://localhost/en-US/',
@@ -171,7 +191,7 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, and Dutch static params', () => {
+  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, and Brazilian Portuguese static params', () => {
     expect(locales).toEqual([
       'en-US',
       'en-GB',
@@ -180,6 +200,7 @@ describe('locale routing', () => {
       'zh-Hant',
       'de',
       'nl',
+      'pt-BR',
     ]);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
@@ -189,6 +210,7 @@ describe('locale routing', () => {
       { locale: 'zh-Hant' },
       { locale: 'de' },
       { locale: 'nl' },
+      { locale: 'pt-BR' },
     ]);
   });
 

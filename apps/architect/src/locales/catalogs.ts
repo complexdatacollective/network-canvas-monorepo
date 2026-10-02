@@ -9,6 +9,7 @@ import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
 import nl from './nl.json';
+import ptBR from './pt-BR.json';
 import zhHans from './zh-Hans.json';
 import zhHant from './zh-Hant.json';
 
@@ -63,5 +64,13 @@ export const architectCatalogs: Readonly<
     protocolValidationCatalogs.nl ?? {},
     protocolUtilitiesCatalogs.nl ?? {},
     nl,
+  ),
+  'pt-BR': mergeCatalogs(
+    commonCatalogs['pt-BR'] ?? {},
+    frescoUiCatalogs['pt-BR'] ?? {},
+    protocolBuilderCatalogs['pt-BR'] ?? {},
+    protocolValidationCatalogs['pt-BR'] ?? {},
+    protocolUtilitiesCatalogs['pt-BR'] ?? {},
+    ptBR,
   ),
 };

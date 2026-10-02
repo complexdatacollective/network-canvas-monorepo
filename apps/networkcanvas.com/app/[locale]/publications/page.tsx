@@ -41,6 +41,7 @@ export async function generateMetadata({
         'zh-Hant': 'https://networkcanvas.com/zh-Hant/publications',
         'de': 'https://networkcanvas.com/de/publications',
         'nl': 'https://networkcanvas.com/nl/publications',
+        'pt-BR': 'https://networkcanvas.com/pt-BR/publications',
       },
     },
   };

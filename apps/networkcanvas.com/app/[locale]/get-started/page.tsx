@@ -36,6 +36,7 @@ export async function generateMetadata({
         'zh-Hant': 'https://networkcanvas.com/zh-Hant/get-started',
         'de': 'https://networkcanvas.com/de/get-started',
         'nl': 'https://networkcanvas.com/nl/get-started',
+        'pt-BR': 'https://networkcanvas.com/pt-BR/get-started',
       },
     },
   };

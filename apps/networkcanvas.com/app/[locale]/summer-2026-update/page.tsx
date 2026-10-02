@@ -32,6 +32,7 @@ export async function generateMetadata({
         'zh-Hant': 'https://networkcanvas.com/zh-Hant/summer-2026-update',
         'de': 'https://networkcanvas.com/de/summer-2026-update',
         'nl': 'https://networkcanvas.com/nl/summer-2026-update',
+        'pt-BR': 'https://networkcanvas.com/pt-BR/summer-2026-update',
       },
     },
     openGraph: {

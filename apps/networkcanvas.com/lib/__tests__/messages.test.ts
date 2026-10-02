@@ -7,6 +7,7 @@ import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
 import nl from '~/messages/nl.json';
+import ptBR from '~/messages/pt-BR.json';
 import zhHans from '~/messages/zh-Hans.json';
 import zhHant from '~/messages/zh-Hant.json';
 
@@ -40,6 +41,7 @@ const translatedCatalogs = [
   ['Traditional Chinese', zhHant],
   ['German', de],
   ['Dutch', nl],
+  ['Brazilian Portuguese', ptBR],
 ] as const;
 
 describe('message catalogs', () => {

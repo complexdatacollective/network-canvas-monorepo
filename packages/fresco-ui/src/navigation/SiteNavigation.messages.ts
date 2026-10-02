@@ -302,4 +302,49 @@ export const siteNavigationMessages = {
       },
     },
   },
+  'pt-BR': {
+    home: 'Página inicial do Network Canvas',
+    navigationLabel: 'Navegação principal',
+    skipToContent: 'Pular para o conteúdo principal',
+    community: 'Comunidade',
+    documentation: 'Documentação',
+    protocolGallery: 'Galeria de Protocolos',
+    resources: 'Materiais',
+    software: 'Software',
+    getStarted: 'Começar',
+    openMenu: 'Abrir a navegação do site',
+    closeMenu: 'Fechar a navegação do site',
+    softwareLinks: {
+      architect: {
+        name: 'Architect',
+        action: 'Abrir o Architect',
+        description:
+          'Crie protocolos de entrevista do Network Canvas no navegador, com um fluxo de trabalho visual pensado para equipes de pesquisa.',
+      },
+      architectClassic: {
+        name: 'Architect Classic',
+        action: 'Baixar o Architect Classic',
+        description:
+          'Use apenas quando seu estudo precisar continuar compatível com o Interviewer Classic e o esquema 7.',
+      },
+      interviewer: {
+        name: 'Interviewer',
+        action: 'Abrir o Interviewer',
+        description:
+          'Conduza em campo entrevistas envolventes sobre redes, guiadas por quem entrevista, em qualquer navegador compatível.',
+      },
+      interviewerClassic: {
+        name: 'Interviewer Classic',
+        action: 'Baixar o Interviewer Classic',
+        description:
+          'Para estudos consolidados no esquema 7 e fluxos de trabalho offline em computador ou tablet. Mantido para garantir a compatibilidade e corrigir bugs.',
+      },
+      fresco: {
+        name: 'Fresco',
+        action: 'Experimentar o sandbox do Fresco',
+        description:
+          'Coordene entrevistas de redes a distância e gerencie os dados do estudo em um painel compartilhado no navegador.',
+      },
+    },
+  },
 } satisfies Record<SiteLocale, SiteNavigationMessages>;

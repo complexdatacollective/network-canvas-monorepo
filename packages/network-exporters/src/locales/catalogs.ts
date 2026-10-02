@@ -4,6 +4,7 @@ import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
 import nl from './nl.json';
+import ptBR from './pt-BR.json';
 import zhHans from './zh-Hans.json';
 import zhHant from './zh-Hant.json';
 
@@ -16,4 +17,5 @@ export const networkExporterCatalogs: Readonly<
   'zh-Hant': zhHant,
   de,
   nl,
+  'pt-BR': ptBR,
 };

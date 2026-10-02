@@ -18,6 +18,7 @@ import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { interviewLocales } from '../../i18n/locales';
 import { interviewCatalogs } from '../catalogs';
 import de from '../de.json';
+import ptBR from '../pt-BR.json';
 
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const committedEn = JSON.parse(
@@ -28,6 +29,7 @@ const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
 const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
 const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
+const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the interview package built-in message catalogs', () => {
@@ -58,6 +60,7 @@ describe('the interview package built-in message catalogs', () => {
       'zh-Hant',
       'de',
       'nl',
+      'pt-BR',
     ]);
     expect(ecosystemLocales.map(({ locale }) => locale).toSorted()).toEqual(
       declared.toSorted(),
@@ -97,6 +100,10 @@ describe('the interview package built-in message catalogs', () => {
       readFileSync(join(localesDir, 'nl.json'), 'utf8'),
     ) as Record<string, string>;
     expect(checkFullLocale(committedEn, nl, nlSources)).toEqual([]);
+  });
+
+  it('provides complete nonblank Brazilian Portuguese with ICU and rich-text token parity', () => {
+    expect(checkFullLocale(committedEn, ptBR, ptBRSources)).toEqual([]);
   });
 
   it('keeps British English a valid sparse override', () => {

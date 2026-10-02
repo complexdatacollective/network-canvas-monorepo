@@ -67,6 +67,7 @@ const newsRowSchema = z
     'title_zh-Hant': requiredText,
     'title_de': requiredText,
     'title_nl': requiredText,
+    'title_pt-BR': requiredText,
     'href': z.union([httpsUrl, internalPath]),
   })
   .strict();
@@ -80,12 +81,14 @@ const publicationRowSchema = z
     'title_zh-Hant': requiredText,
     'title_de': requiredText,
     'title_nl': requiredText,
+    'title_pt-BR': requiredText,
     'source_en': requiredText,
     'source_es': requiredText,
     'source_zh-Hans': requiredText,
     'source_zh-Hant': requiredText,
     'source_de': requiredText,
     'source_nl': requiredText,
+    'source_pt-BR': requiredText,
     'authors': requiredText,
     'href': httpsUrl,
     'year': publicationYear,
@@ -101,18 +104,21 @@ const grantRowSchema = z
     'title_zh-Hant': requiredText,
     'title_de': requiredText,
     'title_nl': requiredText,
+    'title_pt-BR': requiredText,
     'pis_en': requiredText,
     'pis_es': requiredText,
     'pis_zh-Hans': requiredText,
     'pis_zh-Hant': requiredText,
     'pis_de': requiredText,
     'pis_nl': requiredText,
+    'pis_pt-BR': requiredText,
     'description_en': requiredText,
     'description_es': requiredText,
     'description_zh-Hans': requiredText,
     'description_zh-Hant': requiredText,
     'description_de': requiredText,
     'description_nl': requiredText,
+    'description_pt-BR': requiredText,
     'logo': publicImage,
     'logo_alt_en': requiredText,
     'logo_alt_es': requiredText,
@@ -120,6 +126,7 @@ const grantRowSchema = z
     'logo_alt_zh-Hant': requiredText,
     'logo_alt_de': requiredText,
     'logo_alt_nl': requiredText,
+    'logo_alt_pt-BR': requiredText,
     'href': httpsUrl,
   })
   .strict();
@@ -134,6 +141,7 @@ const teamMemberRowSchema = z
     'institution_zh-Hant': requiredText,
     'institution_de': requiredText,
     'institution_nl': requiredText,
+    'institution_pt-BR': requiredText,
     'photo': publicImage,
   })
   .strict();
@@ -205,12 +213,14 @@ function localized(
   traditionalChinese: string,
   german: string,
   dutch: string,
+  brazilianPortuguese: string,
 ): string {
   if (locale === 'es') return spanish;
   if (locale === 'zh-Hans') return simplifiedChinese;
   if (locale === 'zh-Hant') return traditionalChinese;
   if (locale === 'de') return german;
   if (locale === 'nl') return dutch;
+  if (locale === 'pt-BR') return brazilianPortuguese;
   return english;
 }
 
@@ -236,6 +246,7 @@ export async function loadSiteContent(
         row['title_zh-Hant'],
         row.title_de,
         row.title_nl,
+        row['title_pt-BR'],
       ),
       href: row.href,
     })),
@@ -249,6 +260,7 @@ export async function loadSiteContent(
         row['title_zh-Hant'],
         row.title_de,
         row.title_nl,
+        row['title_pt-BR'],
       ),
       source: localized(
         locale,
@@ -258,6 +270,7 @@ export async function loadSiteContent(
         row['source_zh-Hant'],
         row.source_de,
         row.source_nl,
+        row['source_pt-BR'],
       ),
       authors: row.authors,
       href: row.href,
@@ -273,6 +286,7 @@ export async function loadSiteContent(
         row['title_zh-Hant'],
         row.title_de,
         row.title_nl,
+        row['title_pt-BR'],
       ),
       pis: localized(
         locale,
@@ -282,6 +296,7 @@ export async function loadSiteContent(
         row['pis_zh-Hant'],
         row.pis_de,
         row.pis_nl,
+        row['pis_pt-BR'],
       ),
       description: localized(
         locale,
@@ -291,6 +306,7 @@ export async function loadSiteContent(
         row['description_zh-Hant'],
         row.description_de,
         row.description_nl,
+        row['description_pt-BR'],
       ),
       logo: row.logo,
       logoAlt: localized(
@@ -301,6 +317,7 @@ export async function loadSiteContent(
         row['logo_alt_zh-Hant'],
         row.logo_alt_de,
         row.logo_alt_nl,
+        row['logo_alt_pt-BR'],
       ),
       href: row.href,
     })),
@@ -315,6 +332,7 @@ export async function loadSiteContent(
         row['institution_zh-Hant'],
         row.institution_de,
         row.institution_nl,
+        row['institution_pt-BR'],
       ),
       photo: row.photo,
     })),

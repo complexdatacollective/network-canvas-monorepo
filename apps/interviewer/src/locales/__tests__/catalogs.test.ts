@@ -24,6 +24,7 @@ import de from '../de.json';
 import enGb from '../en-GB.json';
 import es from '../es.json';
 import nl from '../nl.json';
+import ptBR from '../pt-BR.json';
 import zhHans from '../zh-Hans.json';
 import zhHant from '../zh-Hant.json';
 
@@ -37,6 +38,7 @@ const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
 const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
 const deSources = readTranslationSources(localesDir, 'de');
 const nlSources = readTranslationSources(localesDir, 'nl');
+const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
@@ -65,6 +67,10 @@ describe('the complete administration catalog', () => {
 
   it('ships full Dutch with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, nl, nlSources)).toEqual([]);
+  });
+
+  it('ships full Brazilian Portuguese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, ptBR, ptBRSources)).toEqual([]);
   });
   it('ships only reviewed British differences and inherits the English base', () => {
     expect(checkOverrideLocale(source, enGb, enGbSources)).toEqual([]);
@@ -95,6 +101,7 @@ describe('the complete administration catalog', () => {
       'zh-Hant',
       'de',
       'nl',
+      'pt-BR',
     ]);
     for (const entry of interviewerProductionLocales)
       expect(
