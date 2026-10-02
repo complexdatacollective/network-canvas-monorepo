@@ -18,6 +18,12 @@
 // (<= 6.5.x) used. Pre-releases of one version share its build number, so
 // only one of them can be uploaded to a store.
 //
+// Re-uploading the same version to App Store Connect needs a new build
+// number: set CURRENT_PROJECT_VERSION to e.g. 60602.1 (CFBundleVersion
+// allows up to three period-separated integers). This script keeps such a
+// suffix while the version stays the same and drops it when the version
+// changes.
+//
 // Idempotent: re-runs are no-ops once everything is in sync.
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -83,8 +89,11 @@ replaceInFile(
 );
 replaceInFile(
   pbxproj,
-  /(CURRENT_PROJECT_VERSION = )[^;]+(;)/g,
-  `$1${buildNumber}$2`,
+  /(CURRENT_PROJECT_VERSION = )([^;]+)(;)/g,
+  (match, prefix, current, suffix) =>
+    /^\d+\.\d+$/.test(current) && current.startsWith(`${buildNumber}.`)
+      ? match
+      : `${prefix}${buildNumber}${suffix}`,
   `iOS CURRENT_PROJECT_VERSION -> ${buildNumber}`,
 );
 
