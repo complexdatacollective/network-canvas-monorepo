@@ -21,6 +21,7 @@ export default function ArchitectLocaleSwitcher({
       options={architectLocales}
       value={preference}
       automaticLocale={automaticLocale}
+      searchable
       onChange={setLocale}
       saveState={saveState}
       persistence="device"

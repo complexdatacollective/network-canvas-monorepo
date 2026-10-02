@@ -13,6 +13,7 @@ export default function InterviewerLocaleSwitcher() {
       options={interviewerLocales}
       value={preference}
       automaticLocale={automaticLocale}
+      searchable
       onChange={setPreference}
       saveState={saveState}
       persistence="device"
