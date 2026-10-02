@@ -14,6 +14,14 @@
   valuesincluding"; it now reads correctly.
 - **Fixed "Download Sample Protocol".** Downloading the sample protocol always failed with
   "Buffer is not defined". It now downloads, saves to the location you choose, and opens.
+- **Fixed upgrading older protocols.** Choosing "Create upgraded copy" for a protocol made with
+  an older version of Architect (schema 6 or earlier) failed with "Something went wrong" and
+  saved nothing. The upgraded copy is now created and opens.
+- **Fixed external data missing from the printable summary.** The summary did not list the
+  variables in external data files (such as roster CSVs) and logged errors while it loaded. It
+  now reads those files, and the summary window loads without errors.
+- **Fixed an error when previewing a stage.** The Interviewer preview logged an error when it
+  first cleared its temporary protocol folder. The preview itself was unaffected.
 - **Fixed a path traversal weakness when importing protocols.** Importing a protocol file
   (`.netcanvas`) used a ZIP extraction library with a known flaw: a specially crafted archive
   could write files outside the folder it was being unpacked into. It has been replaced with a
