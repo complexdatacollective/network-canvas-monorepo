@@ -98,7 +98,7 @@
   "architect.chrome.codebook.entityTypeDialog.node": "Nœud",
   "architect.chrome.home.libraryPanel.anExampleIntroducingTheKeyFeatures": "Un exemple présentant les principales fonctionnalités et techniques disponibles dans Network Canvas.",
   "architect.chrome.home.libraryPanel.thisProtocolHasNoDescription": "Ce protocole n’a pas de description.",
-  "architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn": "{protocolCount, plural, one {Votre protocole est enregistré uniquement sur cet appareil. Il n’est jamais envoyé vers un serveur.} other {Vos # protocoles sont enregistrés uniquement sur cet appareil. Ils ne sont jamais envoyés vers un serveur.}}",
+  "architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn": "{protocolCount, plural, one {Vos protocoles sont enregistrés uniquement sur cet appareil. Ils ne sont jamais envoyés vers un serveur.} other {Vos # protocoles sont enregistrés uniquement sur cet appareil. Ils ne sont jamais envoyés vers un serveur.}}",
   "architect.chrome.projectNav.projectActions.returnToStages": "Revenir aux étapes",
   "architect.chrome.projectNav.projectActions.returnToStartScreen": "Revenir à l’écran d’accueil",
   "architect.chrome.projectNav.projectNav.untitledProtocol": "Protocole sans titre",
