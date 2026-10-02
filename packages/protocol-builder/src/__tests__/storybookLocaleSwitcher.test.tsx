@@ -87,7 +87,7 @@ describe('the Storybook language control', () => {
       (item) => item.value,
     );
 
-    expect(offered).toEqual(['en', 'en-GB', 'es', 'zh-Hans', 'en-XA']);
+    expect(offered).toEqual(['en', 'en-GB', 'es', 'zh-Hans', 'de', 'en-XA']);
   });
 
   it('opens on the source locale, so every existing play and capture is unchanged', () => {

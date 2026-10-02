@@ -27,12 +27,16 @@ const es = JSON.parse(
 const zhHans = JSON.parse(
   readFileSync(join(srcDir, 'locales/zh-Hans.json'), 'utf8'),
 ) as Record<string, string>;
+const de: Record<string, string> = JSON.parse(
+  readFileSync(join(srcDir, 'locales/de.json'), 'utf8'),
+);
 const enGb = JSON.parse(
   readFileSync(join(srcDir, 'locales/en-GB.json'), 'utf8'),
 ) as Record<string, string>;
 const localesDir = join(srcDir, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const deSources = readTranslationSources(localesDir, 'de');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Architect catalog contract', () => {
@@ -54,6 +58,7 @@ describe('Architect catalog contract', () => {
   it('ships complete Spanish and reviewed sparse British English with identical ICU arguments and rich tags', () => {
     expect(checkFullLocale(en, es, esSources)).toEqual([]);
     expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
+    expect(checkFullLocale(en, de, deSources)).toEqual([]);
     expect(checkOverrideLocale(en, enGb, enGbSources)).toEqual([]);
   });
   it('keeps the selectable production set inside the shared ecosystem', () => {
@@ -62,6 +67,7 @@ describe('Architect catalog contract', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'de',
     ]);
     const supported = new Set(ecosystemLocales.map((x) => x.locale));
     expect(

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { supportedLocales } from '~/lib/i18n/locales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
+import de from '~/messages/de.json';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
@@ -34,6 +35,7 @@ function messageTokens(text: string): string[] {
 const translatedCatalogs = [
   ['Spanish', es],
   ['Simplified Chinese', zhHans],
+  ['German', de],
 ] as const;
 
 describe('message catalogs', () => {

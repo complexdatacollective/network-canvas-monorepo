@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineAppLocales } from '../locales.ts';
+import { defineAppLocales, ecosystemLocales } from '../locales.ts';
 import { canonicalizeAppLocale, resolveAppLocale } from '../negotiate.ts';
 
 const registry = defineAppLocales([
@@ -113,6 +113,26 @@ describe('resolveAppLocale', () => {
     for (const requested of samples) {
       const { locale } = resolve({ requested });
       expect(registry.map((entry) => entry.locale)).toContain(locale);
+    }
+  });
+
+  it('resolves German from Germany, Austria, Switzerland and bare de to the shipped catalog', () => {
+    for (const tag of ['de-DE', 'de-AT', 'de-CH', 'de']) {
+      expect(
+        resolveAppLocale({
+          requested: [tag, 'en'],
+          locales: ecosystemLocales,
+          defaultLocale: 'en',
+        }),
+      ).toEqual({ locale: 'de', source: 'negotiated' });
+      expect(
+        resolveAppLocale({
+          stored: tag,
+          requested: ['en-US'],
+          locales: ecosystemLocales,
+          defaultLocale: 'en',
+        }),
+      ).toEqual({ locale: 'de', source: 'stored' });
     }
   });
 
