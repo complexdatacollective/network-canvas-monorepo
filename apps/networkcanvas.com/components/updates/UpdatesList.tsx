@@ -11,7 +11,6 @@ import {
   AccordionItem,
   AccordionPanel,
 } from '@codaco/fresco-ui/Accordion';
-import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -86,7 +85,6 @@ function updateIdFromHash(updates: readonly Update[]) {
 export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   const t = useTranslations('UpdatesPage');
   const format = useFormatter();
-  const latestId = updates[0]?.id;
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [app, setApp] = useState<AppFilter>('all');
@@ -270,11 +268,6 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                   ) : null}
                   <div className="tablet-portrait:p-8 p-6">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
-                      {update.id === latestId ? (
-                        <Badge color="neon-coral" uppercase>
-                          {t('latest')}
-                        </Badge>
-                      ) : null}
                       {update.apps.map((id) => (
                         <Fragment key={id}>
                           {' '}

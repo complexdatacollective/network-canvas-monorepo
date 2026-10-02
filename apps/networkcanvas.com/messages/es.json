@@ -107,12 +107,7 @@
       "description": "Resúmenes en lenguaje sencillo de las nuevas versiones de Architect, Interviewer y Fresco."
     },
     "heading": "Novedades",
-    "introduction": "Las novedades de las aplicaciones de Network Canvas. Para ver la lista detallada de todos los cambios, consulte las <changelog>notas de la versión en GitHub</changelog>.",
-    "upgrading": {
-      "heading": "Cómo actualizar",
-      "automatic": "Architect e Interviewer se actualizan automáticamente, sin necesidad de gestionar versiones manualmente. Si los ha instalado desde su navegador como aplicaciones web progresivas, las actualizaciones se cargan al reiniciarlas, y sus datos locales siguen seguros y bajo su control.",
-      "fresco": "Para actualizar Fresco a la versión más reciente, siga las <link>instrucciones de actualización de nuestra documentación</link>."
-    },
+    "introduction": "Las novedades de las aplicaciones de Network Canvas. Para ver la lista detallada de todos los cambios, consulte las <changelog>notas de la versión en GitHub</changelog>. Architect e Interviewer se actualizan automáticamente; para actualizar Fresco, siga las <upgrade>instrucciones de nuestra documentación</upgrade>.",
     "search": {
       "label": "Buscar novedades",
       "placeholder": "Buscar novedades",
@@ -121,7 +116,6 @@
       "emptyHeading": "No se encontraron novedades",
       "emptyDescription": "Pruebe con otra búsqueda."
     },
-    "latest": "Novedad más reciente",
     "details": {
       "show": "Mostrar todos los detalles",
       "hide": "Ocultar detalles"

@@ -14,6 +14,7 @@ import { renderWithIntl } from '~/test/renderWithIntl';
 import UpdatesPage, { generateMetadata } from '../page';
 
 vi.mock('next-intl/server', async () => {
+  const { createTranslator } = await import('next-intl');
   const { loadLocaleMessages } = await import('~/lib/i18n/messages');
 
   return {
@@ -24,25 +25,12 @@ vi.mock('next-intl/server', async () => {
     }: {
       locale: 'en-US' | 'en-GB' | 'es';
       namespace: string;
-    }) => {
-      const messages = loadLocaleMessages(locale) as Record<
-        string,
-        Record<string, unknown>
-      >;
-      const scope = messages[namespace] ?? {};
-      const read = (key: string) => {
-        const value = key
-          .split('.')
-          .reduce<unknown>(
-            (current, part) => (current as Record<string, unknown>)?.[part],
-            scope,
-          );
-
-        return typeof value === 'string' ? value : key;
-      };
-
-      return Object.assign(read, { rich: read });
-    },
+    }) =>
+      createTranslator({
+        locale,
+        messages: loadLocaleMessages(locale),
+        namespace,
+      }),
   };
 });
 
@@ -131,18 +119,17 @@ describe('updates page', () => {
     expect(detailsTrigger(newest!.title)).toHaveTextContent('Hide details');
   });
 
-  it('explains how to upgrade before the list of updates', async () => {
+  it('links to the Fresco upgrade instructions from the introduction', async () => {
     await renderPage();
 
-    const upgrading = screen.getByRole('region', {
-      name: 'Upgrading',
-      hidden: true,
-    });
-    expect(upgrading).toHaveTextContent(
-      'Architect and Interviewer update automatically',
-    );
-    expect(upgrading).toHaveTextContent(
-      'To upgrade to the latest version of Fresco',
+    expect(
+      screen.getByRole('link', {
+        name: 'instructions in our documentation',
+        hidden: true,
+      }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringContaining('/en/collect-data/fresco/upgrading'),
     );
   });
 
@@ -272,18 +259,6 @@ describe('updates page', () => {
       'aria-expanded',
       'false',
     );
-  });
-
-  it('labels only the newest update as the latest', async () => {
-    const [newest, older] = await loadUpdates('en-US');
-    await renderPage();
-
-    expect(
-      within(updateEntry(newest!.title)).getByText('Latest update'),
-    ).toBeInTheDocument();
-    expect(
-      within(updateEntry(older!.title)).queryByText('Latest update'),
-    ).toBeNull();
   });
 
   it('filters updates by app alongside the search', async () => {

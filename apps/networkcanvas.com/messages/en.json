@@ -107,12 +107,7 @@
       "description": "Plain-language summaries of new releases of Architect, Interviewer, and Fresco."
     },
     "heading": "Updates",
-    "introduction": "What's new in the Network Canvas apps. For a detailed list of every change, see the <changelog>release notes on GitHub</changelog>.",
-    "upgrading": {
-      "heading": "Upgrading",
-      "automatic": "Architect and Interviewer update automatically, without the need for manual version management. If you have installed them from your browser as Progressive Web Apps, updates load on restart while keeping your local data secure and under your control.",
-      "fresco": "To upgrade to the latest version of Fresco, follow the <link>upgrade instructions in our documentation</link>."
-    },
+    "introduction": "What's new in the Network Canvas apps. For a detailed list of every change, see the <changelog>release notes on GitHub</changelog>. Architect and Interviewer update automatically; to upgrade Fresco, follow the <upgrade>instructions in our documentation</upgrade>.",
     "search": {
       "label": "Search updates",
       "placeholder": "Search updates",
@@ -121,7 +116,6 @@
       "emptyHeading": "No updates found",
       "emptyDescription": "Try a different search."
     },
-    "latest": "Latest update",
     "details": {
       "show": "Show full details",
       "hide": "Hide details"
