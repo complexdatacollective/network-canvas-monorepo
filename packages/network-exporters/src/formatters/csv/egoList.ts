@@ -1,6 +1,8 @@
-import type { Codebook, Variable } from '@codaco/protocol-validation';
+import type { Codebook } from '@codaco/protocol-validation';
 import {
+  appVersionProperty,
   caseProperty,
+  commitHashProperty,
   egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -18,8 +20,9 @@ import type { SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
 import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
 import processEntityVariables from './processEntityVariables';
+import { addVariableHeaders } from './variableHeaders';
 
-const TOP_LEVEL_KEYS = new Set<string>([
+const TOP_LEVEL_COLUMNS = [
   entityPrimaryKeyProperty,
   caseProperty,
   sessionProperty,
@@ -27,9 +30,11 @@ const TOP_LEVEL_KEYS = new Set<string>([
   sessionStartTimeProperty,
   sessionFinishTimeProperty,
   sessionExportTimeProperty,
-  'APP_VERSION',
-  'COMMIT_HASH',
-]);
+  appVersionProperty,
+  commitHashProperty,
+];
+
+const TOP_LEVEL_KEYS = new Set<string>(TOP_LEVEL_COLUMNS);
 
 const printableAttribute = (attribute: string) => {
   switch (attribute) {
@@ -49,45 +54,12 @@ const printableAttribute = (attribute: string) => {
 const isUnknownRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const addVariableHeaders = (
-  headers: Set<string>,
-  variables: Record<string, Variable> | undefined,
-  exportOptions: ExportOptions,
-) => {
-  for (const variable of Object.values(variables ?? {})) {
-    if (variable.type === 'categorical') {
-      for (const option of variable.options) {
-        headers.add(`${variable.name}_${option.value}`);
-      }
-    } else if (variable.type === 'layout') {
-      headers.add(`${variable.name}_x`);
-      headers.add(`${variable.name}_y`);
-      if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-        headers.add(`${variable.name}_screenSpaceX`);
-        headers.add(`${variable.name}_screenSpaceY`);
-      }
-    } else {
-      headers.add(variable.name);
-    }
-  }
-};
-
 function collectHeaders(
   ego: Record<string, unknown>,
   codebook: Codebook,
   exportOptions: ExportOptions,
 ): string[] {
-  const headers = new Set<string>([
-    entityPrimaryKeyProperty,
-    caseProperty,
-    sessionProperty,
-    protocolName,
-    sessionStartTimeProperty,
-    sessionFinishTimeProperty,
-    sessionExportTimeProperty,
-    'APP_VERSION',
-    'COMMIT_HASH',
-  ]);
+  const headers = new Set<string>(TOP_LEVEL_COLUMNS);
 
   addVariableHeaders(headers, codebook.ego?.variables, exportOptions);
 

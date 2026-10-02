@@ -2,7 +2,11 @@ import { chunk } from 'es-toolkit';
 import { zip } from 'fflate';
 
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import { consumeBatchStream } from '~/lib/export/streamProtocol';
+import { normalizeForComparison } from '@codaco/shared-consts';
+import {
+  consumeBatchStream,
+  DuplicateExportFileError,
+} from '~/lib/export/streamProtocol';
 
 export const EXPORT_BATCH_SIZE = 200;
 const EXPORT_CONCURRENCY = 3;
@@ -65,6 +69,9 @@ async function fetchBatchWithRetry(
       return await consumeBatchStream(res.body, () => undefined);
     } catch (error) {
       if (signal.aborted) throw error;
+      // The server names its files the same way on every attempt, so a retry
+      // would fail the same way.
+      if (error instanceof DuplicateExportFileError) throw error;
       lastError = error;
       if (attempt < EXPORT_BATCH_RETRIES) await backoffDelay(attempt, signal);
     }
@@ -86,8 +93,9 @@ function zipAsync(
 
 /**
  * Orchestrates a batched export entirely client-side: bounded per-batch
- * requests (with retry), first-wins dedup of shared files, then one zip in the
- * browser. The single zip means each server request stays small, so a large
+ * requests (with retry), then one zip in the browser. Two files with the same
+ * name, across or within batches, fail the export rather than overwrite one
+ * another. The single zip means each server request stays small, so a large
  * export never approaches the serverless time/memory limit.
  */
 export async function runBatchedExport(
@@ -102,6 +110,7 @@ export async function runBatchedExport(
 
   const batches = chunk(ids, EXPORT_BATCH_SIZE);
   const files = new Map<string, Uint8Array<ArrayBuffer>>();
+  const claimedNames = new Set<string>();
   const failedIds = new Set<string>();
   let completed = 0;
 
@@ -123,7 +132,12 @@ export async function runBatchedExport(
         internal.signal,
       );
       for (const [name, bytes] of batchFiles) {
-        if (!files.has(name)) files.set(name, bytes);
+        const claim = normalizeForComparison(name);
+        if (claimedNames.has(claim)) {
+          throw new DuplicateExportFileError(name);
+        }
+        claimedNames.add(claim);
+        files.set(name, bytes);
       }
       for (const id of failedSessionIds) failedIds.add(id);
       completed += batch.length;

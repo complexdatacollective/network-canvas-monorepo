@@ -33,7 +33,7 @@ async function graphMLGenerator(
     throw new Error('GraphML document missing expected root elements');
   }
 
-  const { fragment: keyElements, externalKeyIds } = await generateKeyElements({
+  const { fragment: keyElements, keyIds } = await generateKeyElements({
     ego: [network.ego],
     node: network.nodes,
     edge: network.edges,
@@ -43,7 +43,7 @@ async function graphMLGenerator(
   const generateDataElements = getDataElementGenerator(
     codebook,
     exportOptions,
-    externalKeyIds,
+    keyIds,
   );
   const [egoData, nodeData, edgeData] = await Promise.all([
     generateDataElements(network.ego),

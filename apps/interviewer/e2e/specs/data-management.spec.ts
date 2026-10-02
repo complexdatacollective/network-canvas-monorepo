@@ -131,12 +131,12 @@ test.describe('interview data management', () => {
 
     expect(fileName).toMatch(/^networkCanvasExport-\d+\.zip$/);
     // Deviation from the brief: the archive's GraphML entry ends in plain
-    // `.graphml`, not `_graphml.graphml`. network-exporters' makeFilename
+    // `.graphml`, not `_graphml.graphml`. network-exporters' assignFileNames
     // only appends `_${exportFormat}` when the format name differs from its
     // extension's own name (true for `ego` → `.csv`, false for `graphml` →
     // `.graphml`, since `.graphml`/`graphml` collide) — verified directly
-    // against packages/network-exporters/src/utils/general.ts's
-    // makeFilename/getFileExtension.
+    // against packages/network-exporters/src/utils/fileNames.ts's
+    // assignFileNames and utils/general.ts's getFileExtension.
     const graphmls = readEntries(files, '.graphml');
     expect(graphmls.length).toBeGreaterThan(0);
     // Every exported (complete) session's GraphML must contain nodes — validate

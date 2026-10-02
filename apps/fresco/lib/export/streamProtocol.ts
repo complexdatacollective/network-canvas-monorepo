@@ -1,6 +1,7 @@
 import { z } from 'zod/mini';
 
 import { type ExportEvent } from '@codaco/network-exporters/events';
+import { normalizeForComparison } from '@codaco/shared-consts';
 
 export type ExportStreamEvent =
   | ExportEvent
@@ -31,6 +32,25 @@ const exportStreamEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('error'), message: z.string() }),
 ]);
+
+/**
+ * Raised when an export would write two files that are one file once extracted:
+ * the same name, or names that differ only in case or Unicode normalization,
+ * which macOS and Windows treat as the same. The exporter names its files so
+ * this cannot happen; a file silently overwritten or skipped here would be
+ * lost participant data, so it stops the export instead.
+ */
+export class DuplicateExportFileError extends Error {
+  readonly fileName: string;
+
+  constructor(fileName: string) {
+    super(
+      `The export would write more than one file named "${fileName}", and one would replace the other.`,
+    );
+    this.name = 'DuplicateExportFileError';
+    this.fileName = fileName;
+  }
+}
 
 const encoder = new TextEncoder();
 
@@ -105,6 +125,7 @@ export async function consumeBatchStream(
   let streamError: string | null = null;
   let completed = false;
   let failedSessionIds: string[] = [];
+  const claimedNames = new Set<string>();
   let openName: string | null = null;
   let openChunks: Uint8Array<ArrayBuffer>[] = [];
 
@@ -120,15 +141,21 @@ export async function consumeBatchStream(
         case 'progress':
           onProgress(event);
           break;
-        case 'file-open':
+        case 'file-open': {
           if (openName !== null) {
             throw new Error(
               'Received file-open before the previous file was closed',
             );
           }
+          const claim = normalizeForComparison(event.name);
+          if (claimedNames.has(claim)) {
+            throw new DuplicateExportFileError(event.name);
+          }
+          claimedNames.add(claim);
           openName = event.name;
           openChunks = [];
           break;
+        }
         case 'file-chunk':
           if (openName === null) {
             throw new Error('Received file-chunk before file-open');

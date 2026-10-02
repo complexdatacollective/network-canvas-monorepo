@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   consumeBatchStream,
   decodeBase64Chunk,
+  DuplicateExportFileError,
   encodeExportEvent,
   type ExportStreamEvent,
   parseExportEventBuffer,
@@ -156,5 +157,58 @@ describe('consumeBatchStream', () => {
         () => undefined,
       ),
     ).rejects.toThrow(/unfinished file/);
+  });
+
+  it.each([
+    ['the same name', 'friend.csv', 'friend.csv'],
+    ['names that differ only in case', 'Friend.csv', 'friend.csv'],
+    [
+      'names that differ only in Unicode normalization',
+      'caf\u00e9.csv',
+      'cafe\u0301.csv',
+    ],
+  ])(
+    'throws, rather than overwrite a file, for %s',
+    async (_, first, second) => {
+      const consumed = consumeBatchStream(
+        streamOf([
+          { type: 'file-open', name: first },
+          { type: 'file-chunk', b64: b64([1]) },
+          { type: 'file-close' },
+          { type: 'file-open', name: second },
+          { type: 'file-chunk', b64: b64([2]) },
+          { type: 'file-close' },
+          { type: 'complete', failedSessionIds: [] },
+        ]),
+        () => undefined,
+      );
+
+      await expect(consumed).rejects.toBeInstanceOf(DuplicateExportFileError);
+      await expect(consumed).rejects.toMatchObject({ fileName: second });
+    },
+  );
+
+  it('accepts files whose names are different, however alike', async () => {
+    const result = await consumeBatchStream(
+      streamOf([
+        { type: 'file-open', name: 'close-friend.csv' },
+        { type: 'file-close' },
+        { type: 'file-open', name: 'close.friend.csv' },
+        { type: 'file-close' },
+        { type: 'file-open', name: '友人.csv' },
+        { type: 'file-close' },
+        { type: 'file-open', name: '家族.csv' },
+        { type: 'file-close' },
+        { type: 'complete', failedSessionIds: [] },
+      ]),
+      () => undefined,
+    );
+
+    expect([...result.files.keys()]).toEqual([
+      'close-friend.csv',
+      'close.friend.csv',
+      '友人.csv',
+      '家族.csv',
+    ]);
   });
 });

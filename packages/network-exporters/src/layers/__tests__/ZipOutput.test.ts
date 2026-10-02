@@ -129,6 +129,53 @@ describe('makeZipOutput', () => {
     }
   });
 
+  it.each([
+    ['an identical name', 'a.csv', 'a.csv'],
+    ['a name that differs only in case', 'Friend.csv', 'friend.csv'],
+    [
+      'a name that differs only in Unicode normalization',
+      'caf\u00e9.csv',
+      'cafe\u0301.csv',
+    ],
+  ])(
+    'refuses %s instead of overwriting the first file',
+    async (_, first, second) => {
+      const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>
+        Effect.tryPromise({
+          try: async () => {
+            try {
+              for await (const _chunk of stream) {
+                // drain
+              }
+            } catch {
+              // The failed write aborts the stream; only the write matters here.
+            }
+            return { key: fileName };
+          },
+          catch: (cause) => new OutputError({ cause }),
+        });
+
+      const program = Effect.gen(function* () {
+        const out = yield* Output;
+        const handle = yield* out.begin();
+        yield* out.writeEntry(handle, { name: first, data: bytesOf('first') });
+        return yield* Effect.result(
+          out.writeEntry(handle, { name: second, data: bytesOf('second') }),
+        );
+      });
+
+      const result = await Effect.runPromise(
+        program.pipe(Effect.provide(makeZipOutput(sink))),
+      );
+
+      expect(result._tag).toBe('Failure');
+      if (result._tag === 'Failure') {
+        expect(result.failure).toBeInstanceOf(OutputError);
+        expect(String(result.failure.cause)).toContain('already in it');
+      }
+    },
+  );
+
   it('surfaces a throwing source iterable as OutputError without hanging end()', async () => {
     // Sink that drains chunks until the stream rejects (or completes).
     const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>

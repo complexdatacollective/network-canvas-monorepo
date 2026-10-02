@@ -5,14 +5,13 @@ import type { Codebook } from '@codaco/protocol-validation';
 import { ExportGenerationError } from '../errors';
 import type { ExportFormat, ExportOptions } from '../options';
 import type { ExportFailure, ExportSuccess, OutputEntry } from '../output';
-import { getFileExtension, makeFilename } from '../utils/general';
 import { getFormatter } from '../utils/getFormatter';
 import type { partitionByType } from './partitionByType';
 
 export type ExportFileNetwork = ReturnType<typeof partitionByType>[number];
 
 type ExportFileParams = {
-  prefix: string;
+  name: string;
   exportFormat: ExportFormat;
   network: ExportFileNetwork;
   codebook: Codebook;
@@ -28,22 +27,9 @@ const exportFile = (
   params: ExportFileParams,
 ): Effect.Effect<GenerationResult> =>
   Effect.sync(() => {
-    const {
-      prefix,
-      exportFormat,
-      network,
-      codebook,
-      exportOptions,
-      sessionId,
-    } = params;
+    const { name, exportFormat, network, codebook, exportOptions, sessionId } =
+      params;
     const toBytes = getFormatter(exportFormat);
-    const extension = getFileExtension(exportFormat);
-    const name = makeFilename(
-      prefix,
-      network.partitionEntity,
-      exportFormat,
-      extension,
-    );
 
     try {
       const data = toBytes(network, codebook, exportOptions);

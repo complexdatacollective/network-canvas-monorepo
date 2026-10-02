@@ -1,4 +1,4 @@
-import type { Codebook, Variable } from '@codaco/protocol-validation';
+import type { Codebook } from '@codaco/protocol-validation';
 import {
   egoProperty,
   entityAttributesProperty,
@@ -12,37 +12,16 @@ import type {
   SessionWithResequencedIDs,
 } from '../../input';
 import type { ExportOptions } from '../../options';
+import { getOwn } from '../../utils/general';
 import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
 import processEntityVariables from './processEntityVariables';
+import { addVariableHeaders } from './variableHeaders';
 
 const printableAttribute = (attribute: string) =>
   attribute === entityPrimaryKeyProperty ? ncUUIDProperty : attribute;
 
 type ProcessedNode = NodeWithResequencedID & {
   [entityAttributesProperty]: Record<string, unknown>;
-};
-
-const addVariableHeaders = (
-  headers: Set<string>,
-  variables: Record<string, Variable> | undefined,
-  exportOptions: ExportOptions,
-) => {
-  for (const variable of Object.values(variables ?? {})) {
-    if (variable.type === 'categorical') {
-      for (const option of variable.options) {
-        headers.add(`${variable.name}_${option.value}`);
-      }
-    } else if (variable.type === 'layout') {
-      headers.add(`${variable.name}_x`);
-      headers.add(`${variable.name}_y`);
-      if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-        headers.add(`${variable.name}_screenSpaceX`);
-        headers.add(`${variable.name}_screenSpaceY`);
-      }
-    } else {
-      headers.add(variable.name);
-    }
-  }
 };
 
 function collectHeaders(
@@ -61,7 +40,7 @@ function collectHeaders(
     nodeTypes.size === 0
       ? Object.values(codebook.node ?? {})
       : [...nodeTypes].flatMap((type) => {
-          const definition = codebook.node?.[type];
+          const definition = getOwn(codebook.node, type);
           return definition ? [definition] : [];
         });
   for (const definition of definitions) {

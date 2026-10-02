@@ -7,7 +7,10 @@ import {
   EXPORT_BATCH_SIZE,
   runBatchedExport,
 } from '~/lib/export/runBatchedExport';
-import { encodeExportEvent } from '~/lib/export/streamProtocol';
+import {
+  DuplicateExportFileError,
+  encodeExportEvent,
+} from '~/lib/export/streamProtocol';
 
 // A valid ExportOptions value; the actual contents are irrelevant because fetch
 // is mocked (it is only JSON-serialized into the request body).
@@ -49,35 +52,15 @@ function fileBatch(
 afterEach(() => vi.restoreAllMocks());
 
 describe('runBatchedExport', () => {
-  it('zips files collected across batches, deduping shared files first-wins', async () => {
+  it('zips the files collected across batches', async () => {
     const ids = Array.from(
       { length: EXPORT_BATCH_SIZE + 1 },
       (_, i) => `id${i}`,
     );
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(
-        sseResponse([
-          { type: 'file-open', name: 'shared.txt' },
-          { type: 'file-chunk', b64: b64([1]) },
-          { type: 'file-close' },
-          { type: 'file-open', name: 'a.txt' },
-          { type: 'file-chunk', b64: b64([10]) },
-          { type: 'file-close' },
-          { type: 'complete', failedSessionIds: [] },
-        ]),
-      )
-      .mockResolvedValueOnce(
-        sseResponse([
-          { type: 'file-open', name: 'shared.txt' },
-          { type: 'file-chunk', b64: b64([2]) },
-          { type: 'file-close' },
-          { type: 'file-open', name: 'b.txt' },
-          { type: 'file-chunk', b64: b64([20]) },
-          { type: 'file-close' },
-          { type: 'complete', failedSessionIds: [] },
-        ]),
-      );
+      .mockResolvedValueOnce(fileBatch('a.txt', [10]))
+      .mockResolvedValueOnce(fileBatch('b.txt', [20]));
     vi.stubGlobal('fetch', fetchMock);
 
     const progress: [number, number][] = [];
@@ -90,15 +73,64 @@ describe('runBatchedExport', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const entries = unzipSync(new Uint8Array(await blob.arrayBuffer()));
-    expect(Object.keys(entries).toSorted()).toEqual([
-      'a.txt',
-      'b.txt',
-      'shared.txt',
-    ]);
-    expect(Array.from(entries['shared.txt']!)).toEqual([1]); // first-wins
+    expect(Object.keys(entries).toSorted()).toEqual(['a.txt', 'b.txt']);
+    expect(Array.from(entries['a.txt']!)).toEqual([10]);
+    expect(Array.from(entries['b.txt']!)).toEqual([20]);
     expect(failedIds).toEqual([]);
     expect(exportedIds).toEqual(ids);
     expect(progress.at(-1)).toEqual([ids.length, ids.length]);
+  });
+
+  it.each([
+    ['the same name', 'shared.txt', 'shared.txt'],
+    ['names that differ only in case', 'Friend.csv', 'friend.csv'],
+  ])(
+    'fails, rather than keep one file and drop the other, for %s in two batches',
+    async (_, first, second) => {
+      const ids = Array.from(
+        { length: EXPORT_BATCH_SIZE + 1 },
+        (_unused, i) => `id${i}`,
+      );
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(fileBatch(first, [1]))
+        .mockResolvedValueOnce(fileBatch(second, [2]));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(
+        runBatchedExport(
+          ids,
+          exportOptions,
+          new AbortController().signal,
+          () => undefined,
+        ),
+      ).rejects.toBeInstanceOf(DuplicateExportFileError);
+    },
+  );
+
+  it('does not retry a batch that contains two files with one name', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        sseResponse([
+          { type: 'file-open', name: 'dup.csv' },
+          { type: 'file-close' },
+          { type: 'file-open', name: 'dup.csv' },
+          { type: 'file-close' },
+          { type: 'complete', failedSessionIds: [] },
+        ]),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      runBatchedExport(
+        ['id0'],
+        exportOptions,
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toBeInstanceOf(DuplicateExportFileError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('retries a failing batch then succeeds', async () => {

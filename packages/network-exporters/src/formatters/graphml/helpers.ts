@@ -18,7 +18,7 @@ import {
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportFileNetwork } from '../../session/exportFile';
-import { getEntityAttributes } from '../../utils/general';
+import { getEntityAttributes, getOwn } from '../../utils/general';
 
 export function getCodebookVariablesForEntity(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
@@ -29,10 +29,10 @@ export function getCodebookVariablesForEntity(
   }
 
   if (edgeSourceProperty in entity) {
-    return codebook.edge?.[entity.type]?.variables ?? {};
+    return getOwn(codebook.edge, entity.type)?.variables ?? {};
   }
 
-  return codebook.node?.[entity.type]?.variables ?? {};
+  return getOwn(codebook.node, entity.type)?.variables ?? {};
 }
 
 export function createDocumentFragment() {
@@ -138,12 +138,12 @@ export const getGraphMLTypeForKey = (
   key: string,
 ): GraphMLKeyType =>
   data.reduce<GraphMLKeyType | null>((result, value) => {
-    const attrs = getEntityAttributes(value);
+    const attribute = getOwn(getEntityAttributes(value), key);
 
     // If the attribute is not present, return the current result
-    if (attrs[key] === undefined) return result;
+    if (attribute === undefined) return result;
 
-    const currentType = getAttributeType(attrs[key]);
+    const currentType = getAttributeType(attribute);
 
     // If we haven't yet set a type, set it to whatever we detected the type as
     if (result === null) return currentType;

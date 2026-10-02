@@ -17,8 +17,10 @@ import {
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
+import { getOwn } from '../../utils/general';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import { createDataElement, createDocumentFragment } from './helpers';
+import type { GraphMLKeyIds } from './keyIds';
 import processAttributes from './processAttributes';
 
 /**
@@ -27,7 +29,7 @@ import processAttributes from './processAttributes';
 export default function getDataElementGenerator(
   codebook: Codebook,
   exportOptions: ExportOptions,
-  externalKeyIds: ReadonlyMap<string, string>,
+  keyIds: GraphMLKeyIds,
 ) {
   return async (
     entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo,
@@ -40,7 +42,7 @@ export default function getDataElementGenerator(
         entities,
         codebook,
         exportOptions,
-        externalKeyIds,
+        keyIds,
       );
       fragment.appendChild(entityDataElements);
     } else {
@@ -51,7 +53,7 @@ export default function getDataElementGenerator(
             entity,
             codebook,
             exportOptions,
-            externalKeyIds,
+            keyIds,
           ),
         ),
       );
@@ -68,7 +70,7 @@ async function generateDataElementsForEntity(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
   codebook: Codebook,
   exportOptions: ExportOptions,
-  externalKeyIds: ReadonlyMap<string, string>,
+  keyIds: GraphMLKeyIds,
 ): Promise<DocumentFragment> {
   const fragment = createDocumentFragment();
   const dom = new DOMImplementation().createDocument(null, 'root', null);
@@ -84,7 +86,7 @@ async function generateDataElementsForEntity(
       entity,
       codebook,
       exportOptions,
-      externalKeyIds,
+      keyIds,
     );
     fragment.appendChild(dataElements);
     return fragment;
@@ -100,7 +102,7 @@ async function generateDataElementsForEntity(
         edge[entityPrimaryKeyProperty],
       ),
     );
-    const entityTypeName = codebook.edge?.[edge.type]?.name ?? edge.type;
+    const entityTypeName = getOwn(codebook.edge, edge.type)?.name ?? edge.type;
     domElement.appendChild(
       createDataElement({ key: ncTypeProperty }, entityTypeName),
     );
@@ -116,7 +118,7 @@ async function generateDataElementsForEntity(
       edge,
       codebook,
       exportOptions,
-      externalKeyIds,
+      keyIds,
     );
     domElement.appendChild(dataElements);
     fragment.appendChild(domElement);
@@ -129,12 +131,12 @@ async function generateDataElementsForEntity(
   domElement.appendChild(
     createDataElement({ key: ncUUIDProperty }, node[entityPrimaryKeyProperty]),
   );
-  const entityTypeName = codebook.node?.[node.type]?.name ?? node.type;
+  const entityTypeName = getOwn(codebook.node, node.type)?.name ?? node.type;
   domElement.appendChild(
     createDataElement({ key: ncTypeProperty }, entityTypeName),
   );
 
-  const codebookDefinition = codebook.node?.[node.type];
+  const codebookDefinition = getOwn(codebook.node, node.type);
   const labelAttribute = getNodeLabelAttribute(
     codebookDefinition?.variables,
     node[entityAttributesProperty],
@@ -142,7 +144,7 @@ async function generateDataElementsForEntity(
 
   if (labelAttribute) {
     const isEncrypted =
-      codebookDefinition?.variables?.[labelAttribute]?.encrypted ?? false;
+      getOwn(codebookDefinition?.variables, labelAttribute)?.encrypted ?? false;
     if (isEncrypted) {
       domElement.appendChild(createDataElement({ key: 'label' }, 'Encrypted'));
     } else {
@@ -166,7 +168,7 @@ async function generateDataElementsForEntity(
     node,
     codebook,
     exportOptions,
-    externalKeyIds,
+    keyIds,
   );
   domElement.appendChild(dataElements);
   fragment.appendChild(domElement);

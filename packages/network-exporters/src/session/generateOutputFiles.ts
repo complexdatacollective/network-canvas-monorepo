@@ -9,7 +9,8 @@ import type { ExportEvent } from '../events';
 import type { SessionWithResequencedIDs, ProtocolExportInput } from '../input';
 import type { ExportFormat, ExportOptions } from '../options';
 import type { ExportFailure, ExportSuccess, OutputEntry } from '../output';
-import { getFilePrefix } from '../utils/general';
+import { assignFileNames } from '../utils/fileNames';
+import { getFileExtension, getFilePrefix } from '../utils/general';
 import exportFile, { type GenerationResult } from './exportFile';
 import { partitionByType } from './partitionByType';
 
@@ -33,7 +34,7 @@ const getDefaultConcurrency = async (): Promise<number> => {
 };
 
 type ExportItem = {
-  prefix: string;
+  name: string;
   exportFormat: ExportFormat;
   network: ReturnType<typeof partitionByType>[number];
   codebook: ProtocolExportInput['codebook'];
@@ -53,7 +54,7 @@ function buildExportItems(
       : []),
   ];
 
-  const items: ExportItem[] = [];
+  const pending: (Omit<ExportItem, 'name'> & { prefix: string })[] = [];
   Object.entries(unifiedSessions).forEach(([protocolKey, sessions]) => {
     const codebook = protocols[protocolKey]?.codebook;
     invariant(codebook, `No protocol found for key: ${protocolKey}`);
@@ -63,7 +64,7 @@ function buildExportItems(
       exportFormats.forEach((format) => {
         const partitionedNetworks = partitionByType(codebook, session, format);
         partitionedNetworks.forEach((partitionedNetwork) => {
-          items.push({
+          pending.push({
             prefix,
             exportFormat: format,
             network: partitionedNetwork,
@@ -75,7 +76,15 @@ function buildExportItems(
       });
     });
   });
-  return items;
+
+  // Named together, so that no two files of the export can share a name.
+  return assignFileNames(pending, ({ prefix, exportFormat, network }) => ({
+    prefix,
+    exportFormat,
+    extension: getFileExtension(exportFormat),
+    entityName: network.partitionEntity,
+    entityId: network.partitionEntityId,
+  })).map(({ item, name }) => ({ ...item, name }));
 }
 
 type GenerateOutputFilesResult = {
