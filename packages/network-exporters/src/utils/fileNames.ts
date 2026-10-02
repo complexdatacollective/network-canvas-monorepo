@@ -1,7 +1,11 @@
+import { hash } from 'ohash';
+
 import { normalizeForComparison, toCanonicalText } from '@codaco/shared-consts';
 
 // File systems cap a single name at 255 bytes, not characters.
 const MAX_FILE_NAME_BYTES = 255;
+// Room for a UUID, the id Architect gives every type, with plenty to spare.
+const MAX_TYPE_ID_BYTES = 64;
 
 const PATH_UNSAFE = /[\\/:*?"<>|\p{Cc}]/gu;
 const TRAILING_DOTS_AND_SPACES = /[. ]+$/;
@@ -94,6 +98,14 @@ const fitFileName = (
 
 const comparisonKey = normalizeForComparison;
 
+// A codebook id has no length limit, so one too long to leave room for the rest
+// of the name is replaced by a digest of it: still the same for the same type
+// on every run.
+const typeIdSuffix = (entityId: string) => {
+  const id = sanitizeFilePart(entityId);
+  return byteLength(id) > MAX_TYPE_ID_BYTES ? hash(entityId) : id;
+};
+
 /**
  * Names the files of one export so that no two are the same file on any file
  * system. The entity type's name is the only record of which type a CSV holds,
@@ -125,7 +137,7 @@ export const assignFileNames = <Item>(
     const needsId =
       entityLost || (occurrences.get(comparisonKey(name)) ?? 0) > 1;
     const id =
-      needsId && request.entityId ? sanitizeFilePart(request.entityId) : '';
+      needsId && request.entityId ? typeIdSuffix(request.entityId) : '';
 
     let candidate = id ? fitFileName(request, id).name : name;
     for (let counter = 2; taken.has(comparisonKey(candidate)); counter += 1) {

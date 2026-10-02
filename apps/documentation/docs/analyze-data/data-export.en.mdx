@@ -248,7 +248,7 @@ Node and edge type names are used as written in your codebook, in any language, 
 - Characters that file systems don't allow in file names, `\ / : * ? " < > |` and invisible control characters, are removed, as are dots and spaces at the end of a type name.
 - A type name that Windows reserves, such as `CON`, `PRN`, `AUX`, `NUL`, `COM1` or `LPT1`, gets an underscore in front of it.
 - A file name can be at most 255 bytes long. If it would be longer, the type name is shortened first. Letters outside the Latin alphabet take two to four bytes each, so names in those scripts reach the limit sooner.
-- If two files would get the same name, the node or edge type's identifier from the codebook is added after the type name: `caseID_sessionUUID_attributeList_Friend_typeID.csv`. This happens when two type names differ only in capitalization (`Friend` and `friend`, which some computers treat as the same file name), and when a type name had to be shortened or had nothing left after unsafe characters were removed. The identifier belongs to the type, so the same type gets the same file name every time you export.
+- If two files would get the same name, the node or edge type's identifier from the codebook is added after the type name: `caseID_sessionUUID_attributeList_Friend_typeID.csv`. This happens when two type names differ only in capitalization (`Friend` and `friend`, which some computers treat as the same file name), and when a type name had to be shortened or had nothing left after unsafe characters were removed. The identifier belongs to the type, so the same type gets the same file name every time you export. A very long identifier is replaced by a shorter code made from it, which also stays the same each time.
 
 ### Column names that clash
 

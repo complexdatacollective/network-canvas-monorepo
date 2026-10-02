@@ -30,7 +30,8 @@ What the exports now do:
   removed, a name Windows reserves (`CON`, `NUL`, ...) is prefixed with `_`,
   and a name is cut to fit 255 bytes. Names that would be equal ignoring case
   and Unicode normalization, or that lost their type name when cut, get the
-  type's codebook ID as a `_<typeId>` suffix. Before, every character other
+  type's codebook ID as a `_<typeId>` suffix (an ID longer than 64 bytes is
+  replaced by a digest of it, so the name still fits). Before, every character other
   than `[A-Za-z0-9_]` was stripped, so a type named `Close-Friend` now exports
   to `..._Close-Friend.csv` rather than `..._CloseFriend.csv`, and types whose
   names collided wrote over each other.

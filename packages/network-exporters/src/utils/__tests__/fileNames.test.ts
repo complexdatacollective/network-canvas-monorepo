@@ -288,5 +288,23 @@ describe('assignFileNames', () => {
       expect(bytes(name ?? '')).toBeLessThanOrEqual(255);
       expect(name?.endsWith('_attributeList_friend.csv')).toBe(true);
     });
+
+    it('keeps the name within the limit when the type id telling it apart is long', () => {
+      const longId = (end: string) => `${'t'.repeat(300)}${end}`;
+      const types: TypeRecord[] = [
+        ['Friend', longId('A')],
+        ['friend', longId('B')],
+      ];
+
+      const names = nameFiles(types);
+
+      expect(names).toHaveLength(2);
+      expectDistinctIgnoringCase(names);
+      for (const name of names) {
+        expect(bytes(name)).toBeLessThanOrEqual(255);
+        expect(name).toMatch(/^case_session_attributeList_[Ff]riend_.+\.csv$/);
+      }
+      expect(nameFiles(types)).toEqual(names);
+    });
   });
 });
