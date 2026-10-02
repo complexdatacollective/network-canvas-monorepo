@@ -104,7 +104,12 @@ describe.each([true, false])(
 
       beforeAll(async () => {
         const document = new DOMParser().parseFromString(
-          await graphMLGenerator(network, namesCodebook, options),
+          await graphMLGenerator(
+            network,
+            namesCodebook,
+            options,
+            () => undefined,
+          ),
           MIME_TYPE.XML_APPLICATION,
         );
         keys = Array.from(document.getElementsByTagName('key')).map((key) => ({

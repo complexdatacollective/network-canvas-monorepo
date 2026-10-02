@@ -42,6 +42,10 @@ export function createDocumentFragment() {
   return fragment;
 }
 
+// Named once so the code that reports a change to the case ID finds the
+// attribute `setUpXml` writes it to.
+export const caseIdAttribute = 'nc:caseId';
+
 export const setUpXml = (
   sessionVariables: ExportFileNetwork['sessionVariables'],
 ) => {
@@ -69,7 +73,7 @@ export const setUpXml = (
 
   // Add attributes
   graph.setAttribute('edgedefault', 'undirected');
-  graph.setAttribute('nc:caseId', sessionVariables[caseProperty]);
+  graph.setAttribute(caseIdAttribute, sessionVariables[caseProperty]);
   graph.setAttribute('nc:sessionUUID', sessionVariables[sessionProperty]);
   graph.setAttribute('nc:protocolName', sessionVariables[protocolName]);
   graph.setAttribute('nc:protocolUID', sessionVariables[protocolProperty]);

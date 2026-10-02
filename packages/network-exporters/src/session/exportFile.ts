@@ -4,7 +4,12 @@ import type { Codebook } from '@codaco/protocol-validation';
 
 import { ExportGenerationError } from '../errors';
 import type { ExportFormat, ExportOptions } from '../options';
-import type { ExportFailure, ExportSuccess, OutputEntry } from '../output';
+import type {
+  ExportFailure,
+  ExportSuccess,
+  ExportWarning,
+  OutputEntry,
+} from '../output';
 import { getFormatter } from '../utils/getFormatter';
 import type { partitionByType } from './partitionByType';
 
@@ -17,6 +22,11 @@ type ExportFileParams = {
   codebook: Codebook;
   exportOptions: ExportOptions;
   sessionId: string;
+  /**
+   * Called as the file's bytes are produced, which is when the output
+   * consumes them, not when this function returns.
+   */
+  reportWarning: (warning: ExportWarning) => void;
 };
 
 export type GenerationResult =
@@ -27,12 +37,19 @@ const exportFile = (
   params: ExportFileParams,
 ): Effect.Effect<GenerationResult> =>
   Effect.sync(() => {
-    const { name, exportFormat, network, codebook, exportOptions, sessionId } =
-      params;
+    const {
+      name,
+      exportFormat,
+      network,
+      codebook,
+      exportOptions,
+      sessionId,
+      reportWarning,
+    } = params;
     const toBytes = getFormatter(exportFormat);
 
     try {
-      const data = toBytes(network, codebook, exportOptions);
+      const data = toBytes(network, codebook, exportOptions, reportWarning);
       const success: ExportSuccess = {
         success: true,
         format: exportFormat,

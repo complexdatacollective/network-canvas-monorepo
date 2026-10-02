@@ -174,6 +174,7 @@ describe.each([
           prepareSession(sessionFor(hazards)),
           codebook,
           options,
+          () => undefined,
         ),
         MIME_TYPE.XML_APPLICATION,
       );
@@ -264,6 +265,7 @@ describe('attributes the codebook does not declare, keyed by Object.prototype ke
         prepareSession(session),
         codebook,
         exportOptions(true),
+        () => undefined,
       ),
       MIME_TYPE.XML_APPLICATION,
     );

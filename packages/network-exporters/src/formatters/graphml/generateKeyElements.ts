@@ -40,6 +40,12 @@ type GraphMLKey = {
 type GeneratedGraphMLKeys = {
   fragment: DocumentFragment;
   keyIds: GraphMLKeyIds;
+  /**
+   * The name, as written, of each key that holds session data: a variable or a
+   * roster attribute. The keys every element has (label, type, UUID) are not
+   * here, so a value in one of them is never mistaken for an answer.
+   */
+  variableKeyNames: ReadonlyMap<string, string>;
 };
 
 const getDeclaredVariables = (
@@ -313,6 +319,11 @@ export default function getKeyElementGenerator(
     return {
       fragment,
       keyIds: { variable: variableKeyIds, external: externalKeyIds },
+      variableKeyNames: new Map(
+        [...keys.values()]
+          .filter((key) => !key.builtIn)
+          .map((key) => [key.id, key.name]),
+      ),
     };
   };
 }

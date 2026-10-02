@@ -85,6 +85,7 @@ async function buildReadyArchive(
     result: {
       successfulExports: [{ sessionId: 's1' }],
       failedExports: [],
+      warnings: [],
     },
     blob: new Blob(['x']),
     fileName: 'export.zip',
@@ -281,6 +282,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
       result: {
         successfulExports: [{ sessionId: 's1' }],
         failedExports: [],
+        warnings: [],
       },
       blob: new Blob(['x']),
       fileName: 'export.zip',
@@ -308,6 +310,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
       result: {
         successfulExports: [{ sessionId: 's1' }],
         failedExports: [],
+        warnings: [],
       },
       blob: new Blob(['x']),
       fileName: 'export.zip',
@@ -567,6 +570,58 @@ describe('useSessionMutations — export flow lifecycle', () => {
       failedCount: 1,
     });
     expect(toastAdd).not.toHaveBeenCalled();
+  });
+
+  it('carries the export warnings onto the ready state and keeps them while saving', async () => {
+    const warning = {
+      kind: 'xml-illegal-characters',
+      sessionId: 's1',
+      caseId: 'P-7',
+      variables: ['Nickname'],
+      caseIdChanged: false,
+    };
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+        warnings: [warning],
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    let finishSave: (outcome: { saved: boolean }) => void = () => undefined;
+    saveBlob.mockReturnValue(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'ready',
+      warnings: [warning],
+    });
+
+    let saving: Promise<void> | undefined;
+    act(() => {
+      saving = result.current.handleShareReady();
+    });
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'saving',
+      warnings: [warning],
+    });
+
+    await act(async () => {
+      finishSave({ saved: false });
+      await saving;
+    });
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'ready',
+      warnings: [warning],
+    });
   });
 
   it('a refresh failure after a successful save does not resurrect the save flow', async () => {

@@ -89,6 +89,45 @@ describe('consumeBatchStream', () => {
     expect(result.failedSessionIds).toEqual(['s1', 's2']);
   });
 
+  it('returns the warnings from the complete event', async () => {
+    const warning = {
+      kind: 'xml-illegal-characters',
+      sessionId: 's1',
+      caseId: 'P-7',
+      variables: ['Nickname'],
+      caseIdChanged: true,
+    } as const;
+    const result = await consumeBatchStream(
+      streamOf([{ type: 'complete', warnings: [warning] }]),
+      () => undefined,
+    );
+    expect(result.warnings).toEqual([warning]);
+  });
+
+  it('returns no warnings when the complete event has none', async () => {
+    const result = await consumeBatchStream(
+      streamOf([{ type: 'complete', failedSessionIds: [] }]),
+      () => undefined,
+    );
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('ignores a complete event whose warnings are malformed, rather than guess', async () => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            `data: ${JSON.stringify({ type: 'complete', warnings: [{ sessionId: 1 }] })}\n\n`,
+          ),
+        );
+        controller.close();
+      },
+    });
+    await expect(consumeBatchStream(body, () => undefined)).rejects.toThrow(
+      'interrupted',
+    );
+  });
+
   it('reports progress events', async () => {
     const progress: ExportStreamEvent[] = [];
     await consumeBatchStream(

@@ -1,5 +1,6 @@
 'use client';
 
+import { TriangleAlert } from 'lucide-react';
 import {
   createContext,
   useCallback,
@@ -11,10 +12,12 @@ import {
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { exportWarningMessages } from '@codaco/network-exporters/messages';
 import type { ExportOptions } from '@codaco/network-exporters/options';
 import { ensureError } from '@codaco/shared-consts';
 import { commitInterviewExport } from '~/actions/interviews';
 import ExportToastContent from '~/components/ExportProgress/ExportToastContent';
+import ExportWarningToastContent from '~/components/ExportProgress/ExportWarningToastContent';
 import { useDownload } from '~/hooks/useDownload';
 import { runBatchedExport } from '~/lib/export/runBatchedExport';
 import { captureClientException } from '~/lib/posthog-client';
@@ -138,29 +141,47 @@ export function ExportProgressProvider({
 
       void (async () => {
         try {
-          const { blob, exportedIds, failedIds } = await runBatchedExport(
-            interviewIds,
-            exportOptions,
-            controller.signal,
-            (completed, total) => {
-              update(toastId, {
-                description: (
-                  <ExportToastContent
-                    stage="generating"
-                    current={completed}
-                    total={total}
-                    progress={total > 0 ? (completed / total) * 100 : 0}
-                    onCancel={() => controller.abort()}
-                  />
-                ),
-              });
-            },
-          );
+          const { blob, exportedIds, failedIds, warnings } =
+            await runBatchedExport(
+              interviewIds,
+              exportOptions,
+              controller.signal,
+              (completed, total) => {
+                update(toastId, {
+                  description: (
+                    <ExportToastContent
+                      stage="generating"
+                      current={completed}
+                      total={total}
+                      progress={total > 0 ? (completed / total) * 100 : 0}
+                      onCancel={() => controller.abort()}
+                    />
+                  ),
+                });
+              },
+            );
 
           const date = new Date().toISOString().slice(0, 10);
           const objectUrl = URL.createObjectURL(blob);
           download(objectUrl, `fresco-export-${date}.zip`);
           setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+
+          // Stays until dismissed: the researcher needs to read which
+          // interviews were affected, and the success toast is gone in a few
+          // seconds. Raised before the status update so that a failure there
+          // cannot hide it.
+          if (warnings.length > 0) {
+            add({
+              title: (
+                <AppMessage
+                  message={exportWarningMessages.xmlCharactersTitle}
+                />
+              ),
+              description: <ExportWarningToastContent warnings={warnings} />,
+              icon: <TriangleAlert className="size-5" aria-hidden />,
+              timeout: 0,
+            });
+          }
 
           // Mark exported only after the user has the complete file.
           const commit = await commitInterviewExport(exportedIds);

@@ -8,7 +8,12 @@ import { sessionProperty } from '@codaco/shared-consts';
 import type { ExportEvent } from '../events';
 import type { SessionWithResequencedIDs, ProtocolExportInput } from '../input';
 import type { ExportFormat, ExportOptions } from '../options';
-import type { ExportFailure, ExportSuccess, OutputEntry } from '../output';
+import type {
+  ExportFailure,
+  ExportSuccess,
+  ExportWarning,
+  OutputEntry,
+} from '../output';
 import { assignFileNames } from '../utils/fileNames';
 import { getFileExtension, getFilePrefix } from '../utils/general';
 import exportFile, { type GenerationResult } from './exportFile';
@@ -100,6 +105,7 @@ export const generateOutputFilesEffect = (
   exportOptions: ExportOptions,
   unifiedSessions: Record<string, SessionWithResequencedIDs[]>,
   progressQueue: Queue.Enqueue<ExportEvent>,
+  reportWarning: (warning: ExportWarning) => void,
 ) =>
   Effect.gen(function* () {
     const items = buildExportItems(protocols, exportOptions, unifiedSessions);
@@ -119,7 +125,7 @@ export const generateOutputFilesEffect = (
     const results: GenerationResult[] = yield* Effect.forEach(
       items,
       (item) =>
-        exportFile(item).pipe(
+        exportFile({ ...item, reportWarning }).pipe(
           Effect.tap(() =>
             Ref.updateAndGet(completedRef, (n) => n + 1).pipe(
               Effect.tap((current) =>

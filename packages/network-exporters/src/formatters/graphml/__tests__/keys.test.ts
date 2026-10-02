@@ -76,6 +76,7 @@ const render = (
     prepareSession(session),
     codebook,
     exportOptions(useScreenLayoutCoordinates),
+    () => undefined,
   );
 
 describe('GraphML keys for names in other scripts, with spaces and punctuation', () => {

@@ -2,6 +2,7 @@ import { chunk } from 'es-toolkit';
 import { zip } from 'fflate';
 
 import type { ExportOptions } from '@codaco/network-exporters/options';
+import type { ExportWarning } from '@codaco/network-exporters/output';
 import { normalizeForComparison } from '@codaco/shared-consts';
 import {
   consumeBatchStream,
@@ -18,6 +19,8 @@ type BatchExportResult = {
   blob: Blob;
   exportedIds: string[];
   failedIds: string[];
+  /** In batch order, one per interview that lost characters from its GraphML. */
+  warnings: ExportWarning[];
 };
 
 function abortError(): DOMException {
@@ -50,6 +53,7 @@ async function fetchBatchWithRetry(
 ): Promise<{
   files: Map<string, Uint8Array<ArrayBuffer>>;
   failedSessionIds: string[];
+  warnings: ExportWarning[];
 }> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= EXPORT_BATCH_RETRIES; attempt++) {
@@ -112,6 +116,7 @@ export async function runBatchedExport(
   const files = new Map<string, Uint8Array<ArrayBuffer>>();
   const claimedNames = new Set<string>();
   const failedIds = new Set<string>();
+  const batchWarnings = new Map<number, ExportWarning[]>();
   let completed = 0;
 
   // Abort sibling batches as soon as one fails, and propagate external cancel.
@@ -126,11 +131,11 @@ export async function runBatchedExport(
       const index = cursor++;
       if (index >= batches.length) return;
       const batch = batches[index]!;
-      const { files: batchFiles, failedSessionIds } = await fetchBatchWithRetry(
-        batch,
-        exportOptions,
-        internal.signal,
-      );
+      const {
+        files: batchFiles,
+        failedSessionIds,
+        warnings,
+      } = await fetchBatchWithRetry(batch, exportOptions, internal.signal);
       for (const [name, bytes] of batchFiles) {
         const claim = normalizeForComparison(name);
         if (claimedNames.has(claim)) {
@@ -140,6 +145,7 @@ export async function runBatchedExport(
         files.set(name, bytes);
       }
       for (const id of failedSessionIds) failedIds.add(id);
+      batchWarnings.set(index, warnings);
       completed += batch.length;
       onProgress(completed, total);
     }
@@ -178,5 +184,9 @@ export async function runBatchedExport(
   const zipped = await zipAsync(filesObject);
   const blob = new Blob([zipped], { type: 'application/zip' });
   const exportedIds = ids.filter((id) => !failedIds.has(id));
-  return { blob, exportedIds, failedIds: [...failedIds] };
+  // Batches finish in any order; report them in the order they were asked for.
+  const warnings = batches.flatMap(
+    (_, index) => batchWarnings.get(index) ?? [],
+  );
+  return { blob, exportedIds, failedIds: [...failedIds], warnings };
 }

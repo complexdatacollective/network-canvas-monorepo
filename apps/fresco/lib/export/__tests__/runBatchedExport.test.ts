@@ -2,6 +2,7 @@ import { unzipSync } from 'fflate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ExportOptions } from '@codaco/network-exporters/options';
+import type { ExportWarning } from '@codaco/network-exporters/output';
 import {
   EXPORT_BATCH_RETRIES,
   EXPORT_BATCH_SIZE,
@@ -40,14 +41,23 @@ function fileBatch(
   name: string,
   bytes: number[],
   failedSessionIds: string[] = [],
+  warnings: ExportWarning[] = [],
 ) {
   return sseResponse([
     { type: 'file-open', name },
     { type: 'file-chunk', b64: b64(bytes) },
     { type: 'file-close' },
-    { type: 'complete', failedSessionIds },
+    { type: 'complete', failedSessionIds, warnings },
   ]);
 }
+
+const warningFor = (sessionId: string): ExportWarning => ({
+  kind: 'xml-illegal-characters',
+  sessionId,
+  caseId: `case-${sessionId}`,
+  variables: ['Nickname'],
+  caseIdChanged: false,
+});
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -79,6 +89,45 @@ describe('runBatchedExport', () => {
     expect(failedIds).toEqual([]);
     expect(exportedIds).toEqual(ids);
     expect(progress.at(-1)).toEqual([ids.length, ids.length]);
+  });
+
+  it('collects the warnings of every batch, in the order the batches were asked for', async () => {
+    const ids = Array.from(
+      { length: EXPORT_BATCH_SIZE + 1 },
+      (_, i) => `id${i}`,
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(fileBatch('a.txt', [1], [], [warningFor('first')]))
+      .mockResolvedValueOnce(
+        fileBatch('b.txt', [2], [], [warningFor('second')]),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { warnings } = await runBatchedExport(
+      ids,
+      exportOptions,
+      new AbortController().signal,
+      () => undefined,
+    );
+
+    expect(warnings.map((warning) => warning.sessionId)).toEqual([
+      'first',
+      'second',
+    ]);
+  });
+
+  it('reports no warnings when no batch raised any', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(fileBatch('a.txt', [1])));
+
+    const { warnings } = await runBatchedExport(
+      ['id0'],
+      exportOptions,
+      new AbortController().signal,
+      () => undefined,
+    );
+
+    expect(warnings).toEqual([]);
   });
 
   it.each([

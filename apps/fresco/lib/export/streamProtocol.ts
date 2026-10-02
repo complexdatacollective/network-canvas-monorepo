@@ -1,6 +1,7 @@
 import { z } from 'zod/mini';
 
 import { type ExportEvent } from '@codaco/network-exporters/events';
+import type { ExportWarning } from '@codaco/network-exporters/output';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
 export type ExportStreamEvent =
@@ -8,7 +9,11 @@ export type ExportStreamEvent =
   | { type: 'file-open'; name: string }
   | { type: 'file-chunk'; b64: string }
   | { type: 'file-close' }
-  | { type: 'complete'; failedSessionIds?: string[] }
+  | {
+      type: 'complete';
+      failedSessionIds?: string[];
+      warnings?: ExportWarning[];
+    }
   | { type: 'error'; message: string };
 
 const exportStreamEventSchema = z.discriminatedUnion('type', [
@@ -29,6 +34,17 @@ const exportStreamEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('complete'),
     failedSessionIds: z.optional(z.array(z.string())),
+    warnings: z.optional(
+      z.array(
+        z.object({
+          kind: z.literal('xml-illegal-characters'),
+          sessionId: z.string(),
+          caseId: z.string(),
+          variables: z.array(z.string()),
+          caseIdChanged: z.boolean(),
+        }),
+      ),
+    ),
   }),
   z.object({ type: z.literal('error'), message: z.string() }),
 ]);
@@ -117,6 +133,7 @@ export async function consumeBatchStream(
 ): Promise<{
   files: Map<string, Uint8Array<ArrayBuffer>>;
   failedSessionIds: string[];
+  warnings: ExportWarning[];
 }> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -125,6 +142,7 @@ export async function consumeBatchStream(
   let streamError: string | null = null;
   let completed = false;
   let failedSessionIds: string[] = [];
+  let warnings: ExportWarning[] = [];
   const claimedNames = new Set<string>();
   let openName: string | null = null;
   let openChunks: Uint8Array<ArrayBuffer>[] = [];
@@ -176,6 +194,7 @@ export async function consumeBatchStream(
         case 'complete':
           completed = true;
           failedSessionIds = event.failedSessionIds ?? [];
+          warnings = event.warnings ?? [];
           break;
       }
     }
@@ -188,5 +207,5 @@ export async function consumeBatchStream(
   if (openName !== null) {
     throw new Error('The export stream ended with an unfinished file.');
   }
-  return { files, failedSessionIds };
+  return { files, failedSessionIds, warnings };
 }

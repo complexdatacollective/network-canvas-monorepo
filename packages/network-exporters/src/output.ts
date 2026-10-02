@@ -52,9 +52,30 @@ export type ExportResult =
   | ExportSuccess
   | { readonly success: false; readonly failure: ExportFailure };
 
+/**
+ * Something the export changed in the data it was asked to write, which the
+ * researcher should know about. The export still succeeded: warnings never
+ * make it `partial`.
+ *
+ * GraphML is XML 1.0, which cannot hold control characters, unpaired
+ * surrogates, or U+FFFE and U+FFFF. A file containing one is rejected whole by
+ * every conforming reader, so they are removed from the GraphML file; the CSV
+ * files keep the answer exactly as given.
+ */
+export type ExportWarning = {
+  readonly kind: 'xml-illegal-characters';
+  readonly sessionId: string;
+  readonly caseId: string;
+  /** The variables, and roster attributes, whose answers lost characters. */
+  readonly variables: readonly string[];
+  /** Whether the case ID itself lost characters. */
+  readonly caseIdChanged: boolean;
+};
+
 export type ExportReturn = {
   readonly status: 'success' | 'partial';
   readonly successfulExports: ExportSuccess[];
   readonly failedExports: ExportFailure[];
+  readonly warnings: ExportWarning[];
   readonly output: OutputResult;
 };
