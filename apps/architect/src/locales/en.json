@@ -2351,6 +2351,26 @@
     "defaultMessage": "Check that it is a supported file type, and try again.",
     "description": "Generic resource-import guidance for unexpected exception messages."
   },
+  "architect.resourceImport.charactersInAttributeName": {
+    "defaultMessage": "An attribute name in node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when an attribute name in a JSON network file added as a resource contains a character Network Canvas can’t store. node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInAttributeValue": {
+    "defaultMessage": "The “{attribute}” attribute of node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when an attribute value in a JSON network file added as a resource contains a character Network Canvas can’t store. attribute is the attribute’s name as the file writes it; node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInCell": {
+    "defaultMessage": "Row {row} of the “{column}” column contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when a cell of a CSV network file added as a resource contains a character Network Canvas can’t store. row is the row number a spreadsheet shows, where the header is row 1; column is the researcher’s own column header. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInColumnName": {
+    "defaultMessage": "The header of column {column} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when the header of a column in a CSV network file added as a resource contains a character Network Canvas can’t store. column is the column’s position, counting from 1 at the left. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInLine": {
+    "defaultMessage": "Line {line} of this file contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when a network file (CSV or JSON) added as a resource contains a character Network Canvas can’t store, somewhere that can only be pointed to by its line. line is the line number a text editor shows, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
   "architect.resourceImport.columns": {
     "defaultMessage": "Some rows have a different number of columns. Make each row match the column headers, then import the file again.",
     "description": "Researcher-facing Architect control or feedback."

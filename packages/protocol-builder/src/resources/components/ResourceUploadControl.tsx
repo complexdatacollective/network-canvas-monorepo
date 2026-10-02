@@ -29,6 +29,7 @@ import {
   unsupportedFileMessage,
   type ResourcePickerKind,
 } from './resourceKinds.ts';
+import { rosterCharacterRefusal } from './rosterCharacters.ts';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 
 const messages = defineMessages({
@@ -228,6 +229,20 @@ export default function ResourceUploadControl({
         return;
       }
       if (!claim.current()) return;
+
+      // Read here, before anything is staged, because a host only has to hold
+      // a roster's bytes and need not read them: a character no export can
+      // carry would otherwise be found when the data is exported, long after
+      // the researcher could still choose a corrected file.
+      if (contentKind === 'network') {
+        const refusal = await rosterCharacterRefusal(bytes, file.name);
+        if (!claim.current()) return;
+        if (refusal !== undefined) {
+          setRejected(refusal);
+          setReading(false);
+          return;
+        }
+      }
 
       const source = sourceFilename(file.name);
       // One id for this file, kept across a retry: repeating an uncertain

@@ -1,8 +1,11 @@
-import csv from 'csvtojson';
 import { hash } from 'ohash';
 
 // import CSVWorker from './csvDecoder.worker';
-import type { Codebook, StageSubject } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  readRosterCsv,
+  type StageSubject,
+} from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
   entityAttributesProperty,
@@ -96,50 +99,13 @@ const parseExternalNetwork = (value: unknown): { nodes: ExternalNode[] } => {
   return { nodes: nodes.map(parseExternalNode) };
 };
 
-const columnName = (header: readonly unknown[], index: number) => {
-  const name = header[index];
-  return typeof name === 'string' && name !== '' ? name : `field${index + 1}`;
-};
-
-/**
- * Reads each row as an array of cells and pairs it with the header ourselves.
- * csvtojson's JSON output builds each row by assigning to a plain object, which
- * silently drops a `__proto__` column, and treats a dot in a header as nesting
- * unless `flatKeys` is set. A researcher's variable name may be any text, so a
- * column must keep exactly the name it was given.
- *
- * Mirrors the JSON output otherwise: a blank header is named `field<n>`, and
- * blank lines are not rows.
- */
-const parseCSVRows = async (data: string) => {
-  const converter = csv({ output: 'csv' }).fromString(data);
-  const rows: unknown[] = await converter;
-  const header = converter.parseRuntime.headers ?? [];
-
-  return rows.flatMap((row) => {
-    if (!Array.isArray(row)) {
-      throw new TypeError('CSV rows must be arrays of cells.');
-    }
-
-    if (row.length === 0) {
-      return [];
-    }
-
-    return [
-      Object.fromEntries(
-        row.map((cell: unknown, index) => [columnName(header, index), cell]),
-      ),
-    ];
-  });
-};
-
 const CSVToJSONNetworkFormat = async (
   data: string,
 ): Promise<ExternalNode[]> => {
-  const network = await parseCSVRows(data);
+  const { rows } = await readRosterCsv(data);
 
-  return network.map((entry) => ({
-    [entityAttributesProperty]: parseExternalAttributes(entry),
+  return rows.map(({ values }) => ({
+    [entityAttributesProperty]: parseExternalAttributes(values),
   }));
 };
 

@@ -48,27 +48,27 @@ export const resourceFailureMessages = defineMessages({
     id: 'protocolBuilder.resourceFailure.rosterNodeNotObject',
     defaultMessage: 'node {position} is not an object',
     description:
-      'Names the entry at fault in an imported roster. "Node" is the network-research term for one person or entity in the data; position is its one-based place in the file. Appears after a clause of its own, so it is lower case and has no full stop.',
+      'Names the entry at fault in an imported roster. "Node" is the network-research term for one person or entity in the data; position is the node’s position in the file’s list of nodes, counting from 1. Appears after a clause of its own, so it is lower case and has no full stop.',
   },
   rosterNodeAttributesNotObject: {
     id: 'protocolBuilder.resourceFailure.rosterNodeAttributesNotObject',
     defaultMessage: 'the attributes of node {position} are not an object',
     description:
-      'Names the entry at fault in an imported roster whose attributes are malformed. "Node" is one person or entity in network data; position is its one-based place in the file. Lower case and without a full stop.',
+      'Names the entry at fault in an imported roster whose attributes are malformed. "Node" is one person or entity in network data; position is the node’s position in the file’s list of nodes, counting from 1. Lower case and without a full stop.',
   },
   rosterValueUnusableInRow: {
     id: 'protocolBuilder.resourceFailure.rosterValueUnusableInRow',
     defaultMessage:
       'the "{name}" attribute of row {row} is not a value a variable can hold',
     description:
-      'Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is its one-based line in the file. "Attribute" and "variable" are the data fields a protocol records. Lower case and without a full stop.',
+      'Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is the row number a spreadsheet shows, where the header is row 1. "Attribute" and "variable" are the data fields a protocol records. Lower case and without a full stop.',
   },
   rosterValueUnusableInNode: {
     id: 'protocolBuilder.resourceFailure.rosterValueUnusableInNode',
     defaultMessage:
       'the "{name}" attribute of node {position} is not a value a variable can hold',
     description:
-      'Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; "node" is one person or entity in network data and position is its one-based place in the file. Lower case and without a full stop.',
+      'Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; "node" is one person or entity in network data and position is the node’s position in the file’s list of nodes, counting from 1. Lower case and without a full stop.',
   },
   rosterEmpty: {
     id: 'protocolBuilder.resourceFailure.rosterEmpty',
@@ -80,8 +80,8 @@ export const resourceFailureMessages = defineMessages({
   rosterAttributeNameUnusable: {
     id: 'protocolBuilder.resourceFailure.rosterAttributeNameUnusable',
     defaultMessage:
-      'the "{name}" attribute cannot be used as a variable name: a name cannot be empty or contain line breaks, tabs or other control characters',
+      'the "{name}" attribute cannot be used as a variable name: a name cannot be empty, start or end with a space, or contain line breaks, tabs or other control characters',
     description:
-      'Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation. Lower case and without a full stop.',
+      'Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, one with a space at the start or end, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation inside them. Lower case and without a full stop.',
   },
 });

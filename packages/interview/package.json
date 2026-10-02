@@ -72,7 +72,6 @@
     "@mapbox/search-js-react": "^1.6.0",
     "@reduxjs/toolkit": "catalog:",
     "concaveman": "^2.0.0",
-    "csvtojson": "catalog:",
     "d3-force": "^3.0.0",
     "es-toolkit": "catalog:",
     "html-to-image": "^1.11.13",

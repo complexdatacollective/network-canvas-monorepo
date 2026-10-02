@@ -8,7 +8,14 @@ import { toCanonicalText } from './canonical-text.ts';
  * to stay in the same alphabet. Never the rule for text a researcher types:
  * that is `CodebookNameSchema`.
  */
-export const CodebookIdSchema = z.string().regex(/^[a-zA-Z0-9._:-]+$/); // TODO: think about using branding here
+export const CodebookIdSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9._:-]+$/)
+  // An id is used as an object key, and a key called `__proto__` is dropped
+  // or turns into the object's prototype instead of being stored.
+  .refine((id) => id !== '__proto__', {
+    message: 'An id cannot be __proto__',
+  }); // TODO: think about using branding here
 
 // Unicode category Cc: U+0000–U+001F and U+007F–U+009F.
 const CONTROL_CHARACTER = /\p{Cc}/u;

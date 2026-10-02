@@ -4412,8 +4412,8 @@
     "description": "Refusal shown when a researcher picks a resource another field is in the middle of discarding."
   },
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": {
-    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: a name cannot be empty or contain line breaks, tabs or other control characters",
-    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation. Lower case and without a full stop."
+    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: a name cannot be empty, start or end with a space, or contain line breaks, tabs or other control characters",
+    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, one with a space at the start or end, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation inside them. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.rosterEmpty": {
     "defaultMessage": "the selected file has no records in it, so a stage using it would have nobody to show",
@@ -4421,11 +4421,11 @@
   },
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": {
     "defaultMessage": "the attributes of node {position} are not an object",
-    "description": "Names the entry at fault in an imported roster whose attributes are malformed. \"Node\" is one person or entity in network data; position is its one-based place in the file. Lower case and without a full stop."
+    "description": "Names the entry at fault in an imported roster whose attributes are malformed. \"Node\" is one person or entity in network data; position is the node’s position in the file’s list of nodes, counting from 1. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.rosterNodeNotObject": {
     "defaultMessage": "node {position} is not an object",
-    "description": "Names the entry at fault in an imported roster. \"Node\" is the network-research term for one person or entity in the data; position is its one-based place in the file. Appears after a clause of its own, so it is lower case and has no full stop."
+    "description": "Names the entry at fault in an imported roster. \"Node\" is the network-research term for one person or entity in the data; position is the node’s position in the file’s list of nodes, counting from 1. Appears after a clause of its own, so it is lower case and has no full stop."
   },
   "protocolBuilder.resourceFailure.rosterUnreadable": {
     "defaultMessage": "the selected file is not a readable network",
@@ -4437,11 +4437,11 @@
   },
   "protocolBuilder.resourceFailure.rosterValueUnusableInNode": {
     "defaultMessage": "the \"{name}\" attribute of node {position} is not a value a variable can hold",
-    "description": "Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; \"node\" is one person or entity in network data and position is its one-based place in the file. Lower case and without a full stop."
+    "description": "Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; \"node\" is one person or entity in network data and position is the node’s position in the file’s list of nodes, counting from 1. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.rosterValueUnusableInRow": {
     "defaultMessage": "the \"{name}\" attribute of row {row} is not a value a variable can hold",
-    "description": "Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is its one-based line in the file. \"Attribute\" and \"variable\" are the data fields a protocol records. Lower case and without a full stop."
+    "description": "Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is the row number a spreadsheet shows, where the header is row 1. \"Attribute\" and \"variable\" are the data fields a protocol records. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.unreachable": {
     "defaultMessage": "The resource could not be reached. Try again in a moment.",
@@ -4802,6 +4802,26 @@
   "protocolBuilder.resourceUpload.unreadable": {
     "defaultMessage": "That file could not be read. Choose it again, or try a different file.",
     "description": "Refusal shown when the browser could not read the bytes of the file a researcher chose — it was moved, renamed, or is unreadable."
+  },
+  "protocolBuilder.rosterCharacters.attributeName": {
+    "defaultMessage": "An attribute name in node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when an attribute name in a JSON data file (a roster) a researcher chose contains a character Network Canvas can’t store. node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.attributeValue": {
+    "defaultMessage": "The “{attribute}” attribute of node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when an attribute value in a JSON data file (a roster) a researcher chose contains a character Network Canvas can’t store. attribute is the attribute’s name as the file writes it; node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.cell": {
+    "defaultMessage": "Row {row} of the “{column}” column contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when a cell of a CSV data file (a roster) a researcher chose contains a character Network Canvas can’t store. row is the row number a spreadsheet shows, where the header is row 1; column is the researcher’s own column header. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.columnName": {
+    "defaultMessage": "The header of column {column} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when the header of a column in a CSV data file (a roster) a researcher chose contains a character Network Canvas can’t store. column is the column’s position, counting from 1 at the left. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.line": {
+    "defaultMessage": "Line {line} of this file contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when a data file (a roster, CSV or JSON) a researcher chose contains a character Network Canvas can’t store, somewhere that can only be pointed to by its line. line is the line number a text editor shows, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
   },
   "protocolBuilder.rosterColumns.missingColumn": {
     "defaultMessage": "{column} — this attribute is not in the data file",

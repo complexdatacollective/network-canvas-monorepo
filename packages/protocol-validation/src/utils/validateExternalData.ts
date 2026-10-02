@@ -1,10 +1,8 @@
-// An external network's column names become attribute names, so they follow
-// the same rule as the names a researcher types into the codebook.
-
 import {
   CodebookNameSchema,
   entityAttributesProperty,
   type NcEntity,
+  toCanonicalText,
 } from '@codaco/shared-consts';
 
 // External data types - represent imported data before conversion to full NcNetwork format
@@ -31,10 +29,23 @@ export const getVariableNamesFromNetwork = (network: Network) =>
     getUniqueAttributes(network[entity] || []),
   );
 
+/**
+ * Whether an external network's column or attribute name is one an interview
+ * can match to a variable.
+ *
+ * The interview pairs a column with the variable of the same name, compared in
+ * NFC and otherwise exactly as written (`getParentKeyByNameValue`). So a name
+ * follows the codebook's own name rule once it is in NFC: a heading a macOS
+ * export spelled decomposed still reaches its variable and is accepted, while
+ * one with a space at either end is refused rather than trimmed, because no
+ * variable can be named that way and the column's values would never reach
+ * one.
+ */
+export const isUsableExternalAttributeName = (name: string) =>
+  CodebookNameSchema.safeParse(toCanonicalText(name)).success;
+
 export const validateNames = (items: string[] = []) => {
-  const errors = items.filter(
-    (item) => !CodebookNameSchema.safeParse(item).success,
-  );
+  const errors = items.filter((item) => !isUsableExternalAttributeName(item));
 
   if (errors.length === 0) {
     return false;

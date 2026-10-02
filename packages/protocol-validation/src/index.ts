@@ -38,6 +38,7 @@ import {
 } from './utils/protocolFileErrorKind.ts';
 import {
   getVariableNamesFromNetwork,
+  isUsableExternalAttributeName,
   type Network,
   validateNames,
 } from './utils/validateExternalData.ts';
@@ -114,6 +115,13 @@ export {
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.
+export { readRosterCsv } from './utils/readRosterCsv.ts';
+export {
+  findRosterCharacterProblems,
+  type RosterCharacterProblem,
+  type RosterCharacterReport,
+  type RosterFormat,
+} from './utils/rosterCharacters.ts';
 export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
@@ -143,6 +151,7 @@ export {
   getVariableNamesFromNetwork,
   hashProtocol,
   isProtocolFileFault,
+  isUsableExternalAttributeName,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,

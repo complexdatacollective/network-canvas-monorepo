@@ -5,6 +5,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { Network } from '../validateExternalData.ts';
 import {
   getVariableNamesFromNetwork,
+  isUsableExternalAttributeName,
   validateNames,
 } from '../validateExternalData.ts';
 
@@ -157,6 +158,27 @@ describe('validateExternalData', () => {
     });
   });
 
+  describe('isUsableExternalAttributeName', () => {
+    it.each([
+      ['a name in any script, with spaces and punctuation', '年龄 (years)'],
+      ['a name spelled decomposed', 'Cafe\u0301'],
+      ['__proto__', '__proto__'],
+    ])('accepts %s', (_description, name) => {
+      expect(isUsableExternalAttributeName(name)).toBe(true);
+    });
+
+    it.each([
+      ['an empty name', ''],
+      ['a leading space', ' notes'],
+      ['a trailing space', 'notes '],
+      ['a trailing no-break space', 'notes\u00A0'],
+      ['a tab', 'first\tname'],
+      ['a control character', 'no\u0007tes'],
+    ])('refuses %s', (_description, name) => {
+      expect(isUsableExternalAttributeName(name)).toBe(false);
+    });
+  });
+
   describe('validateNames', () => {
     it('should return false for valid variable names', () => {
       const validNames = [
@@ -264,9 +286,14 @@ describe('validateExternalData', () => {
       ['a C1 control character', 'name\u0085'],
       ['a noncharacter', 'name\uFFFE'],
       ['a lone surrogate', 'name\uD800'],
-      ['a decomposed accent', 'nam\u0065\u0301'],
     ])('should reject a name with %s', (_description, name) => {
       expect(validateNames([name])).toContain('Attribute name not allowed');
+    });
+
+    // The interview compares names in NFC, so this heading reaches the
+    // variable called `namé`.
+    it('should allow a name spelled with a decomposed accent', () => {
+      expect(validateNames(['nam\u0065\u0301'])).toBe(false);
     });
 
     it('should reject empty string', () => {
