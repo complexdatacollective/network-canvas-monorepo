@@ -423,6 +423,20 @@ describe('a roster heading, from import to the variable it fills', () => {
     ]);
   });
 
+  it('refuses headings that are one name written composed and decomposed, naming both', async () => {
+    await expect(
+      fill(`${cafe},${cafeDecomposed}\nespresso,latte\n`),
+    ).rejects.toThrow(
+      `The roster headings ${JSON.stringify(cafe)} and ${JSON.stringify(cafeDecomposed)} both resolve to the attribute "id-cafe".`,
+    );
+  });
+
+  it('fills the variable from only the heading that matches its case', async () => {
+    expect(
+      await fill(`${cafe},${cafe.toLowerCase()}\nespresso,latte\n`),
+    ).toEqual([{ 'id-cafe': 'espresso', [cafe.toLowerCase()]: 'latte' }]);
+  });
+
   it('fills no variable from a quoted heading with a space at the end, which import refuses', async () => {
     expect(isUsableExternalAttributeName(`${cafe} `)).toBe(false);
 

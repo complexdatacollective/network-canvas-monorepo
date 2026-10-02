@@ -593,6 +593,7 @@
   "architect.resourceImport.charactersInColumnName": "第 {column} 欄的標題含有無法使用的字元（{character}）。請從檔案中刪除此字元，然後重新匯入檔案。{others, plural, =0 {} other {檔案中另有 # 處出現相同問題。}}",
   "architect.resourceImport.charactersInLine": "此檔案的第 {line} 行含有無法使用的字元（{character}）。請從檔案中刪除此字元，然後重新匯入檔案。{others, plural, =0 {} other {檔案中另有 # 處出現相同問題。}}",
   "architect.resourceImport.columns": "部分列的欄數不一致。請讓每一列都與欄標題相符，然後重新匯入檔案。",
+  "architect.resourceImport.duplicateColumns": "此檔案中有兩個欄標題是同一名稱的兩種不同寫法，例如帶重音符號的字母在一個標題中寫成一個字元，在另一個標題中寫成兩個字元。請重新命名或刪除其中一個，然後重新匯入檔案。",
   "architect.resourceImport.empty": "此網絡檔案不包含任何節點或關係。",
   "architect.resourceImport.generic": "請確認檔案類型受支援，然後再試一次。",
   "architect.resourceImport.names": "此檔案中有部分欄標題無法作為屬性名稱。標題不可留空、不可以空格開頭或結尾，也不可包含 Tab 字元、換行或其他控制字元。請修正標題，然後重新匯入檔案。",

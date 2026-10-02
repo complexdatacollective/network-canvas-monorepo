@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "Ressourcenliste erneut laden",
   "protocolBuilder.resourceFailure.resourceDiscarded": "Diese Ressource ist nicht mehr verfügbar: sie wurde verworfen, während diese Liste geöffnet war. Schließen und öffnen Sie die Ressourcenauswahl erneut, um den aktuellen Stand zu sehen.",
   "protocolBuilder.resourceFailure.resourceLeaving": "Diese Ressource wird gerade verworfen und kann daher hier nicht verwendet werden. Wählen Sie eine andere.",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "die Attribute „{first}“ und „{second}“ sind derselbe Name in zwei verschiedenen Schreibweisen, etwa ein Buchstabe mit Akzent, der im einen als ein Zeichen und im anderen als zwei Zeichen geschrieben ist",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "das Attribut „{name}“ kann nicht als Variablenname verwendet werden: Namen dürfen nicht leer sein, nicht mit einem Leerzeichen beginnen oder enden und keine Zeilenumbrüche, Tabulatoren oder andere Steuerzeichen enthalten",
   "protocolBuilder.resourceFailure.rosterEmpty": "die ausgewählte Datei enthält keine Datensätze, daher hätte ein Abschnitt, der sie verwendet, niemanden anzuzeigen",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "die Attribute von Knoten {position} sind kein Objekt",

@@ -44,12 +44,51 @@ export const getVariableNamesFromNetwork = (network: Network) =>
 export const isUsableExternalAttributeName = (name: string) =>
   CodebookNameSchema.safeParse(toCanonicalText(name)).success;
 
+/**
+ * Groups of attribute names that are different strings but the same name once
+ * in NFC, each group holding the names exactly as written.
+ *
+ * The interview would pair every name in a group with one variable and keep
+ * only one column's values, so a network carrying such a group is refused.
+ * Names that differ only in case are not grouped: the interview matches them
+ * case-sensitively, so each reaches its own variable.
+ */
+export const findCollidingAttributeNames = (
+  names: readonly string[],
+): string[][] => {
+  const groups = new Map<string, Set<string>>();
+  for (const name of names) {
+    const canonical = toCanonicalText(name);
+    const group = groups.get(canonical) ?? new Set<string>();
+    group.add(name);
+    groups.set(canonical, group);
+  }
+
+  return Array.from(groups.values())
+    .filter((group) => group.size > 1)
+    .map((group) => Array.from(group));
+};
+
 export const validateNames = (items: string[] = []) => {
   const errors = items.filter((item) => !isUsableExternalAttributeName(item));
+  const collisions = findCollidingAttributeNames(items);
 
-  if (errors.length === 0) {
+  if (errors.length === 0 && collisions.length === 0) {
     return false;
   }
 
-  return `Attribute name not allowed (${errors.map((error) => JSON.stringify(error)).join(', ')}). Names must not be empty, start or end with a space, or contain control characters.`;
+  const unusable =
+    errors.length === 0
+      ? []
+      : [
+          `Attribute name not allowed (${errors.map((error) => JSON.stringify(error)).join(', ')}). Names must not be empty, start or end with a space, or contain control characters.`,
+        ];
+  const duplicated =
+    collisions.length === 0
+      ? []
+      : [
+          `Attribute names that are the same name written in different ways (${collisions.map((group) => group.map((name) => JSON.stringify(name)).join(' and ')).join(', ')}). Rename or remove all but one of each.`,
+        ];
+
+  return [...unusable, ...duplicated].join(' ');
 };

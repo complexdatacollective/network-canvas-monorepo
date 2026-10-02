@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "重新載入資源清單",
   "protocolBuilder.resourceFailure.resourceDiscarded": "該資源已無法使用：此清單開啟期間，該資源已被捨棄。請關閉並重新開啟資源瀏覽器，查看目前可用的資源。",
   "protocolBuilder.resourceFailure.resourceLeaving": "該資源正在捨棄中，因此無法在此使用。請選擇其他資源。",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "「{first}」和「{second}」屬性是同一名稱的兩種不同寫法，例如帶重音符號的字母在一個名稱中寫成一個字元，在另一個名稱中寫成兩個字元",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "「{name}」屬性無法作為變項名稱：名稱不可留空、不可以空格開頭或結尾，也不可包含換行、Tab 字元或其他控制字元",
   "protocolBuilder.resourceFailure.rosterEmpty": "所選檔案中沒有任何紀錄，因此使用此檔案的階段沒有可顯示的人員",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "節點 {position} 的屬性不是物件",

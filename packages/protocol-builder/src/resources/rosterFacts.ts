@@ -1,5 +1,6 @@
 import { createMessageError } from '@codaco/app-i18n/messages';
 import {
+  findCollidingAttributeNames,
   isUsableExternalAttributeName,
   readRosterCsv,
 } from '@codaco/protocol-validation';
@@ -87,11 +88,14 @@ const EMPTY_ROSTER = createMessageError(resourceFailureMessages.rosterEmpty);
  * The attribute names a roster may carry: names an interview can match to a
  * variable.
  *
- * {@link isUsableExternalAttributeName} is the rule Architect's import applies
+ * {@link isUsableExternalAttributeName} and
+ * {@link findCollidingAttributeNames} are the rules Architect's import applies
  * too, so a file one accepts is a file the other accepts. A heading with a
  * stray space round it is refused rather than trimmed: the interview matches
  * the heading as written, so a trimmed name here would point the stage at a
- * column the interview cannot pair with any variable.
+ * column the interview cannot pair with any variable. Two headings that are
+ * one name written two ways are refused because the interview would fill one
+ * variable from both and keep only one column's values.
  */
 function unusableAttributeName(
   names: readonly string[],
@@ -101,6 +105,16 @@ function unusableAttributeName(
     return unusableRoster(
       createMessageError(resourceFailureMessages.rosterAttributeNameUnusable, {
         name,
+      }),
+    );
+  }
+  const [collision] = findCollidingAttributeNames(names);
+  const [first, second] = collision ?? [];
+  if (first !== undefined && second !== undefined) {
+    return unusableRoster(
+      createMessageError(resourceFailureMessages.rosterAttributeNameDuplicate, {
+        first,
+        second,
       }),
     );
   }

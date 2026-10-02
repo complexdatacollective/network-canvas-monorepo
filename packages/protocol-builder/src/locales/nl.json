@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "Lijst met bronnen opnieuw laden",
   "protocolBuilder.resourceFailure.resourceDiscarded": "Die bron is niet meer beschikbaar, omdat die is verwijderd terwijl deze lijst openstond. Sluit dit venster en open het opnieuw om te zien wat er beschikbaar is.",
   "protocolBuilder.resourceFailure.resourceLeaving": "Die bron wordt op dit moment verwijderd en kan hier dus niet worden gebruikt. Kies een andere bron.",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "de attributen “{first}” en “{second}” zijn dezelfde naam, op twee verschillende manieren geschreven, bijvoorbeeld een letter met een accent die in het ene als één teken en in het andere als twee tekens is getypt",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "het attribuut “{name}” kan niet als variabelenaam worden gebruikt: een naam mag niet leeg zijn, niet met een spatie beginnen of eindigen en geen regeleinden, tabtekens of andere besturingstekens bevatten",
   "protocolBuilder.resourceFailure.rosterEmpty": "het geselecteerde bestand bevat geen records, dus een fase die het gebruikt, zou niemand kunnen tonen",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "de attributen van knooppunt {position} zijn geen object",

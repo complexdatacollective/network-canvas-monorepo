@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "Tentar carregar a lista de recursos novamente",
   "protocolBuilder.resourceFailure.resourceDiscarded": "Esse recurso não está mais disponível: ele foi descartado enquanto esta lista estava aberta. Feche e reabra a janela de recursos para ver o que há.",
   "protocolBuilder.resourceFailure.resourceLeaving": "Esse recurso está sendo descartado, então não pode ser usado aqui. Escolha outro.",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "os atributos “{first}” e “{second}” são o mesmo nome escrito de duas formas diferentes, por exemplo, uma letra acentuada digitada como um único caractere em um e como dois no outro",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "o atributo “{name}” não pode ser usado como nome de variável: um nome não pode ficar vazio, começar ou terminar com um espaço, nem conter quebras de linha, tabulações ou outros caracteres de controle",
   "protocolBuilder.resourceFailure.rosterEmpty": "o arquivo selecionado não tem nenhum registro, então uma etapa que o usasse não teria ninguém para mostrar",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "os atributos do nó {position} não são um objeto",

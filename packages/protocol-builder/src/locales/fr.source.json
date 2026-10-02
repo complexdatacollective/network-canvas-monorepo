@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "Try loading the resource list again",
   "protocolBuilder.resourceFailure.resourceDiscarded": "That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.",
   "protocolBuilder.resourceFailure.resourceLeaving": "That resource is being discarded, so it cannot be used here. Choose a different one.",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "the \"{first}\" and \"{second}\" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "the \"{name}\" attribute cannot be used as a variable name: a name cannot be empty, start or end with a space, or contain line breaks, tabs or other control characters",
   "protocolBuilder.resourceFailure.rosterEmpty": "the selected file has no records in it, so a stage using it would have nobody to show",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "the attributes of node {position} are not an object",

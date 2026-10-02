@@ -150,12 +150,26 @@ export const makeVariableUUIDReplacer =
     // it was parsed for, keeping primary keys unique within a single network.
     const uuid = `${subjectType}_${hash({ node, index })}`;
 
+    // Two headings can resolve to one variable, such as one name written
+    // composed and decomposed. Refused, because keeping either would silently
+    // drop the other column's values.
+    const headingByKey = new Map<string, string>();
     const attributes: NcNode[EntityAttributesProperty] = Object.fromEntries(
       Object.entries(node[entityAttributesProperty] ?? {}).map(
-        ([attributeKey, attributeValue]) => [
-          getParentKeyByNameValue(codebookDefinition?.variables, attributeKey),
-          attributeValue,
-        ],
+        ([attributeKey, attributeValue]): [string, VariableValue] => {
+          const key = getParentKeyByNameValue(
+            codebookDefinition?.variables,
+            attributeKey,
+          );
+          const earlier = headingByKey.get(key);
+          if (earlier !== undefined) {
+            throw new Error(
+              `The roster headings ${JSON.stringify(earlier)} and ${JSON.stringify(attributeKey)} both resolve to the attribute ${JSON.stringify(key)}.`,
+            );
+          }
+          headingByKey.set(key, attributeKey);
+          return [key, attributeValue];
+        },
       ),
     );
 

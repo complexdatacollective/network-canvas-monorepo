@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "Réessayer de charger la liste des ressources",
   "protocolBuilder.resourceFailure.resourceDiscarded": "Cette ressource n’est plus disponible : elle a été retirée pendant que cette liste était ouverte. Fermez puis rouvrez le sélecteur pour voir ce qui est disponible.",
   "protocolBuilder.resourceFailure.resourceLeaving": "Cette ressource est en cours de retrait : elle ne peut donc pas être utilisée ici. Choisissez-en une autre.",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "les attributs « {first} » et « {second} » sont le même nom écrit de deux façons différentes, par exemple une lettre accentuée saisie comme un seul caractère dans l’un et comme deux dans l’autre",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "l’attribut « {name} » ne peut pas être utilisé comme nom de variable : un nom ne peut pas être vide, commencer ou se terminer par des espaces, ni contenir de sauts de ligne, de tabulations ni d’autres caractères de contrôle",
   "protocolBuilder.resourceFailure.rosterEmpty": "le fichier sélectionné ne contient aucun enregistrement : une étape qui l’utiliserait n’aurait donc personne à afficher",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "les attributs du nœud {position} ne sont pas un objet",

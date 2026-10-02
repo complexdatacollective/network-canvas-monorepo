@@ -47,6 +47,23 @@ describe('readRosterFacts', () => {
       });
     });
 
+    it('refuses headings that are one name written composed and decomposed, naming both', async () => {
+      const composed = `Caf${String.fromCharCode(0xe9)}`;
+      const decomposed = `Cafe${COMBINING_ACUTE}`;
+
+      expect(
+        await refusal(readCsv(`${composed},${decomposed}\nespresso,latte\n`)),
+      ).toBe(
+        `the "${decomposed}" and "${composed}" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other`,
+      );
+    });
+
+    it('accepts headings that differ only in case', async () => {
+      expect(await readCsv('Name,name\nAda,Lovelace\n')).toMatchObject({
+        variableNames: ['Name', 'name'],
+      });
+    });
+
     it('reads an unquoted heading without the spaces round it, as the interview does', async () => {
       expect(await readCsv(' name ,age\nAda,36\n')).toMatchObject({
         variableNames: ['age', 'name'],

@@ -593,6 +593,7 @@
   "architect.resourceImport.charactersInColumnName": "第 {column} 列的标题包含无法使用的字符（{character}）。请从文件中删除该字符，然后重新导入该文件。{others, plural, =0 {} other {文件中另有 # 处出现相同的问题。}}",
   "architect.resourceImport.charactersInLine": "此文件的第 {line} 行包含无法使用的字符（{character}）。请从文件中删除该字符，然后重新导入该文件。{others, plural, =0 {} other {文件中另有 # 处出现相同的问题。}}",
   "architect.resourceImport.columns": "部分行的列数不一致。请使每一行与列标题匹配，然后重新导入该文件。",
+  "architect.resourceImport.duplicateColumns": "此文件中有两个列标题是同一名称的两种不同写法，例如带重音符号的字母在一个标题中写作一个字符，在另一个标题中写作两个字符。请重命名或删除其中一个，然后重新导入该文件。",
   "architect.resourceImport.empty": "此网络文件不包含任何节点或关系。",
   "architect.resourceImport.generic": "请检查是否为受支持的文件类型，然后重试。",
   "architect.resourceImport.names": "此文件中的部分列标题不能用作属性名称。标题不能为空，不能以空格开头或结尾，也不能包含制表符、换行符或其他控制字符。请修正这些标题，然后重新导入该文件。",

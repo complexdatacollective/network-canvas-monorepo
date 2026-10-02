@@ -60,6 +60,21 @@ describe('importing a roster: headings and rows', () => {
     expect(result.type).toBe('assetManifest/importAssetAsync/fulfilled');
   });
 
+  it('refuses headings that are one name written composed and decomposed', async () => {
+    const result = await importCsv(
+      `Caf${String.fromCharCode(0xe9)},Cafe${COMBINING_ACUTE}\nespresso,latte\n`,
+    );
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/rejected');
+    expect(result.payload).toMatchObject({ code: 'DUPLICATE_COLUMN' });
+  });
+
+  it('accepts headings that differ only in case', async () => {
+    const result = await importCsv('Name,name\nAda,Lovelace\n');
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/fulfilled');
+  });
+
   it('accepts headings named after Object.prototype members, and compares their rows by value', async () => {
     const result = await importCsv(
       '__proto__,constructor,toString\na,b,c\na,b,d\n',

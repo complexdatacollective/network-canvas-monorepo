@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "重新加载资源列表",
   "protocolBuilder.resourceFailure.resourceDiscarded": "该资源已不可用：它在此列表打开期间被丢弃。请关闭并重新打开资源浏览器以查看现有资源。",
   "protocolBuilder.resourceFailure.resourceLeaving": "该资源正在被丢弃，因此无法在此处使用。请另选一个。",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "属性“{first}”和“{second}”是同一名称的两种不同写法，例如带重音符号的字母在一个名称中写作一个字符，在另一个名称中写作两个字符",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "属性“{name}”不能用作变量名：名称不能为空，不能以空格开头或结尾，也不能包含换行符、制表符或其他控制字符",
   "protocolBuilder.resourceFailure.rosterEmpty": "所选文件中没有任何记录，使用它的阶段将没有可显示的对象",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "节点 {position} 的属性不是对象",

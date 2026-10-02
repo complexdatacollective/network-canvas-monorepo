@@ -2375,6 +2375,10 @@
     "defaultMessage": "Some rows have a different number of columns. Make each row match the column headers, then import the file again.",
     "description": "Researcher-facing Architect control or feedback."
   },
+  "architect.resourceImport.duplicateColumns": {
+    "defaultMessage": "Two column headers in this file are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other. Rename or remove one of them, then import the file again.",
+    "description": "Error shown when a network file (CSV or JSON) is added as a resource and two of its column headers look identical but are stored differently: the same accented letter is typed as a single character in one header and as a plain letter followed by a separate accent mark in the other. Network Canvas would treat them as one attribute and lose one column’s values. Headers that differ only in capital letters are not affected."
+  },
   "architect.resourceImport.empty": {
     "defaultMessage": "This network file doesn't contain any nodes or edges.",
     "description": "Researcher-facing Architect control or feedback."

@@ -3,6 +3,7 @@
 import { get } from 'es-toolkit/compat';
 
 import {
+  findCollidingAttributeNames,
   findRosterCharacterProblems,
   getVariableNamesFromNetwork,
   type Network,
@@ -176,6 +177,18 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
   }
 
   const variableNames = getVariableNamesFromNetwork(network as Network);
+
+  // Checked before validateNames, which reports these too, so they carry
+  // their own code and researcher-facing message.
+  const collisions = findCollidingAttributeNames(variableNames);
+
+  if (collisions.length > 0) {
+    const error: CodedError = new Error(
+      `Column headers that are the same name written in different ways: ${collisions.map((group) => group.map((name) => JSON.stringify(name)).join(' and ')).join(', ')}.`,
+    );
+    error.code = 'DUPLICATE_COLUMN';
+    throw error;
+  }
 
   const errorString = validateNames(variableNames);
 

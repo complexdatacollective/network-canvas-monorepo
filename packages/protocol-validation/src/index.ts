@@ -37,6 +37,7 @@ import {
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
 import {
+  findCollidingAttributeNames,
   getVariableNamesFromNetwork,
   isUsableExternalAttributeName,
   type Network,
@@ -145,6 +146,7 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  findCollidingAttributeNames,
   formatProtocolValidationIssues,
   getAssetMimeType,
   getProtocolFileErrorKind,

@@ -84,4 +84,11 @@ export const resourceFailureMessages = defineMessages({
     description:
       'Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, one with a space at the start or end, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation inside them. Lower case and without a full stop.',
   },
+  rosterAttributeNameDuplicate: {
+    id: 'protocolBuilder.resourceFailure.rosterAttributeNameDuplicate',
+    defaultMessage:
+      'the "{first}" and "{second}" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other',
+    description:
+      'Refusal shown when an imported roster carries two column or attribute names that look identical but are stored differently: the same accented letter is typed as a single character in one and as a plain letter followed by a separate accent mark in the other. An interview would fill one variable from both and lose one column’s values. first and second are those two headings, left exactly as the researcher wrote them, so they usually look the same. Names that differ only in capital letters are not refused. Lower case and without a full stop.',
+  },
 });

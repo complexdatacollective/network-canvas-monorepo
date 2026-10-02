@@ -168,13 +168,15 @@ const getImportAssetErrorInfo = (
       ? errorMessages.empty
       : code === 'VARIABLE_NAME'
         ? errorMessages.names
-        : code === 'COLUMN_MISMATCHED'
-          ? errorMessages.columns
-          : code === 'UNSUPPORTED_TYPE'
-            ? errorMessages.unsupported
-            : code === 'REPLACEMENT_TYPE_MISMATCH'
-              ? errorMessages.replacementType
-              : errorMessages.generic;
+        : code === 'DUPLICATE_COLUMN'
+          ? errorMessages.duplicateColumns
+          : code === 'COLUMN_MISMATCHED'
+            ? errorMessages.columns
+            : code === 'UNSUPPORTED_TYPE'
+              ? errorMessages.unsupported
+              : code === 'REPLACEMENT_TYPE_MISMATCH'
+                ? errorMessages.replacementType
+                : errorMessages.generic;
   return {
     filename,
     code,
@@ -493,6 +495,13 @@ const errorMessages = defineMessages({
       'Some column headers in this file can’t be used as attribute names. A header can’t be empty, can’t start or end with a space, and can’t contain tabs, line breaks or other control characters. Fix the headers, then import the file again.',
     description:
       'Error shown when a network file (CSV or JSON) is added as a resource and one of its attribute names, taken from the column headers, is not allowed. Any script, spaces and punctuation are allowed inside a name.',
+  },
+  duplicateColumns: {
+    id: 'architect.resourceImport.duplicateColumns',
+    defaultMessage:
+      'Two column headers in this file are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other. Rename or remove one of them, then import the file again.',
+    description:
+      'Error shown when a network file (CSV or JSON) is added as a resource and two of its column headers look identical but are stored differently: the same accented letter is typed as a single character in one header and as a plain letter followed by a separate accent mark in the other. Network Canvas would treat them as one attribute and lose one column’s values. Headers that differ only in capital letters are not affected.',
   },
   columns: {
     id: 'architect.resourceImport.columns',

@@ -593,6 +593,7 @@
   "architect.resourceImport.charactersInColumnName": "The header of column {column} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
   "architect.resourceImport.charactersInLine": "Line {line} of this file contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
   "architect.resourceImport.columns": "Some rows have a different number of columns. Make each row match the column headers, then import the file again.",
+  "architect.resourceImport.duplicateColumns": "Two column headers in this file are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other. Rename or remove one of them, then import the file again.",
   "architect.resourceImport.empty": "This network file doesn't contain any nodes or edges.",
   "architect.resourceImport.generic": "Check that it is a supported file type, and try again.",
   "architect.resourceImport.names": "Some column headers in this file can’t be used as attribute names. A header can’t be empty, can’t start or end with a space, and can’t contain tabs, line breaks or other control characters. Fix the headers, then import the file again.",

@@ -4,10 +4,14 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { Network } from '../validateExternalData.ts';
 import {
+  findCollidingAttributeNames,
   getVariableNamesFromNetwork,
   isUsableExternalAttributeName,
   validateNames,
 } from '../validateExternalData.ts';
+
+const cafe = `caf${String.fromCharCode(0xe9)}`;
+const cafeDecomposed = `cafe${String.fromCharCode(0x301)}`;
 
 describe('validateExternalData', () => {
   describe('getVariableNamesFromNetwork', () => {
@@ -179,7 +183,41 @@ describe('validateExternalData', () => {
     });
   });
 
+  describe('findCollidingAttributeNames', () => {
+    it('groups a name written composed and decomposed, as written', () => {
+      expect(
+        findCollidingAttributeNames(['age', cafe, 'name', cafeDecomposed]),
+      ).toEqual([[cafe, cafeDecomposed]]);
+    });
+
+    it('does not group names that differ only in case', () => {
+      expect(findCollidingAttributeNames(['Name', 'name'])).toEqual([]);
+    });
+
+    it('does not group a name repeated exactly as written', () => {
+      expect(findCollidingAttributeNames([cafe, cafe])).toEqual([]);
+    });
+  });
+
   describe('validateNames', () => {
+    it('should reject a name written composed and decomposed', () => {
+      expect(validateNames([cafe, cafeDecomposed])).toBe(
+        `Attribute names that are the same name written in different ways (${JSON.stringify(cafe)} and ${JSON.stringify(cafeDecomposed)}). Rename or remove all but one of each.`,
+      );
+    });
+
+    it('should allow names that differ only in case', () => {
+      expect(validateNames(['Name', 'name'])).toBe(false);
+    });
+
+    it('should report unusable and duplicated names together', () => {
+      const result = validateNames(['notes ', cafe, cafeDecomposed]);
+      expect(result).toContain('Attribute name not allowed ("notes ")');
+      expect(result).toContain(
+        'Attribute names that are the same name written in different ways',
+      );
+    });
+
     it('should return false for valid variable names', () => {
       const validNames = [
         'name',

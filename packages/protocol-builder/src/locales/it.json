@@ -1102,6 +1102,7 @@
   "protocolBuilder.resourceBrowser.retryLibrary": "Riprova a caricare l’elenco delle risorse",
   "protocolBuilder.resourceFailure.resourceDiscarded": "Quella risorsa non è più disponibile: è stata scartata mentre questo elenco era aperto. Chiudi e riapri il selettore per vedere cosa c’è.",
   "protocolBuilder.resourceFailure.resourceLeaving": "Quella risorsa sta per essere scartata, quindi non può essere usata qui. Scegline un’altra.",
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": "gli attributi «{first}» e «{second}» sono lo stesso nome scritto in due modi diversi, per esempio una lettera accentata digitata come un solo carattere in uno e come due nell’altro",
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": "l’attributo «{name}» non può essere usato come nome di variabile: un nome non può essere vuoto, non può iniziare né finire con uno spazio e non può contenere interruzioni di riga, tabulazioni o altri caratteri di controllo",
   "protocolBuilder.resourceFailure.rosterEmpty": "il file selezionato non contiene record, quindi una fase che lo usa non avrebbe nessuno da mostrare",
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": "gli attributi del nodo {position} non sono un oggetto",
