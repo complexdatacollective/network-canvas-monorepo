@@ -19,9 +19,6 @@ import {
 import { NotFound } from '../schema/errors.ts';
 import type { InstanceStatus } from '../schema/status.ts';
 
-// The public surface's published contract (#1248): the OpenAPI document third
-// parties generate clients from, and the wire the `status` group answers on.
-
 const document = openApiDocument();
 
 describe('the published OpenAPI document', () => {
@@ -75,9 +72,6 @@ describe('the published OpenAPI document', () => {
   });
 
   it('would publish one as soon as an endpoint used it', () => {
-    // The positive control for the case above: the same group behind a
-    // middleware that declares the token puts a scheme in the document, so an
-    // empty `securitySchemes` means unused rather than unreadable.
     class Scoped extends HttpApiMiddleware.Service<Scoped>()(
       '@studio/test/Scoped',
       { security: { scopedToken: ScopedToken } },
@@ -135,9 +129,6 @@ describe('the status group through HttpApiTest', () => {
 });
 
 describe('the status group on the wire', () => {
-  // The typed client decodes through the same schema, which would strip an
-  // excess key or read a problem document whatever its media type. These read
-  // the raw response instead, which is what a third party receives.
   const serve = async (group: typeof answering, path = '/status') => {
     const { handler, dispose } = HttpRouter.toWebHandler(
       HttpApiBuilder.layer(StudioApi).pipe(

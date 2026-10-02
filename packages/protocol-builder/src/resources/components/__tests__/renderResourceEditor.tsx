@@ -33,11 +33,6 @@ import {
 
 export type RenderResourceEditorOptions = ResourceHostSeed &
   Readonly<{
-    /**
-     * The adapter the editor is mounted over, built from the seeded host, for
-     * a test about a host that refuses, holds its answer, counts what it is
-     * asked, or reads more out of a file than the in-memory store does.
-     */
     adapter?: (host: InMemoryHost) => ProtocolBuilderAdapter;
     /** Somebody else holds the stage, so this editor opens read-only. */
     readOnly?: boolean;
@@ -57,7 +52,6 @@ export type RenderResourceEditorOptions = ResourceHostSeed &
  */
 export type RenderedResourceEditor = Readonly<{
   host: InMemoryHost;
-  /** The adapter the editor is mounted over, which may be a wrapped one. */
   adapter: ProtocolBuilderAdapter;
   /**
    * The edit this editor has open, which is what the host holds its staged

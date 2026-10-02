@@ -24,18 +24,11 @@ import type { HostPrincipal } from './protocolStore.ts';
 
 export type WebSocketHost = Readonly<{
   host: InMemoryHost;
-  /** The same contract, reached over a serialized socket rather than in process. */
   adapter: ProtocolBuilderAdapter;
-  /** Kills the socket under both ends, as a lost connection does. */
   dropConnection(): void;
   close(): Promise<void>;
 }>;
 
-/**
- * The frame bound both ends are built with. Explicit, because the default
- * (16 MiB) refuses an asset the host accepts, and a refused frame poisons the
- * connection rather than closing it.
- */
 const MAX_FRAME_BYTES = 101 * 1024 * 1024;
 
 const serialization = RpcSerialization.layerSchemaBinary({
@@ -48,7 +41,6 @@ class WireClient extends Context.Service<WireClient, ProtocolBuilderClient>()(
 
 type Link = Readonly<{ cut: (reason: Error) => void }>;
 
-/** One direction of a connection, which either end can error. */
 function pipe() {
   let controller: TransformStreamDefaultController<Uint8Array> | undefined;
   const stream = new TransformStream<Uint8Array, Uint8Array>(
@@ -66,13 +58,6 @@ function pipe() {
   };
 }
 
-/**
- * The in-memory host served over the rpc socket protocol Studio's editor uses,
- * through an in-memory socket pair and the same serialization, so a test can
- * watch the package across a real encoding boundary: revisions arrive as
- * decoded `bigint`s and staged bytes as decoded `Uint8Array`s, and a dropped
- * connection fails what was in flight on it.
- */
 export async function createWebSocketHost(
   seed: InMemoryHostSeed,
   principal?: HostPrincipal,
@@ -110,8 +95,6 @@ export async function createWebSocketHost(
   const serverRuntime = ManagedRuntime.make(server);
   await serverRuntime.runPromise(Effect.void);
 
-  // A connection is opened each time the client's socket protocol connects,
-  // which it does again after a drop.
   const connect = Effect.gen(function* () {
     const toServer = pipe();
     const toClient = pipe();

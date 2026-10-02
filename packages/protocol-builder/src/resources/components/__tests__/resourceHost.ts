@@ -126,7 +126,6 @@ type Procedure<Tag extends keyof HandlerOverrides> = (
   input: Parameters<Handler<Tag>>[0],
 ) => Promise<SuccessOf<ProtocolBuilderRpcs, Tag>>;
 
-/** The resource procedures a test can answer in the host's place. */
 export type ResourceProcedures = Readonly<{
   list?: Procedure<'ResourcesList'>;
   stage?: Procedure<'ResourcesStage'>;
@@ -136,8 +135,6 @@ export type ResourceProcedures = Readonly<{
 }>;
 
 /**
- * Some of the host's resource procedures answered differently.
- *
  * Every override answers the contract: a host that refuses to stage, one that
  * takes its time, one that reads more out of a file than the in-memory store
  * does. Nothing here is a control being told what to do — the editor calls the
@@ -167,7 +164,6 @@ export function resourceProcedures(
   };
 }
 
-/** The same host, with some of its resource procedures answered differently. */
 export function withResourceProcedures(
   host: InMemoryHost,
   overrides: ResourceProcedures,
@@ -176,9 +172,6 @@ export function withResourceProcedures(
 }
 
 /**
- * The same host, counting the section submits it is asked to make, over
- * whatever else `overrides` answers.
- *
  * For a test about a form that must NOT save the stage around it. A submit the
  * host never received is the only proof there is: one it received and refused
  * leaves the protocol looking exactly as it did.

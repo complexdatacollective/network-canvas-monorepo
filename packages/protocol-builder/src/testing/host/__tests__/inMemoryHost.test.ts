@@ -80,10 +80,6 @@ async function submitHeld(
   });
 }
 
-/**
- * Watches the protocol until `enough` says so, and closes the watch: the
- * events delivered by then, in order.
- */
 async function watchUntil(
   adapter: ProtocolBuilderAdapter,
   payload: Readonly<{ protocolId: string; since?: string }>,
@@ -108,7 +104,6 @@ async function watchUntil(
   return events;
 }
 
-/** The cursors replayable events carry; presence is not replayed, so has none. */
 function cursorsOf(events: readonly ProtocolEvent[]): string[] {
   return events.flatMap((event) =>
     event.type !== 'presence' && event.cursor !== undefined
@@ -117,11 +112,6 @@ function cursorsOf(events: readonly ProtocolEvent[]): string[] {
   );
 }
 
-/**
- * The cursors of the protocol's first `count` replayable events, read from a
- * watch that is then closed. Two writes under one lock produce three: the
- * lock, and a revision each.
- */
 async function watchCursors(
   subject: InMemoryHost,
   count: number,
@@ -240,8 +230,8 @@ async function stageRoster(
       name: 'Roster',
       source,
       contentType,
-      // Copied into this realm's `Uint8Array`: jsdom's `TextEncoder` answers
-      // with Node's, which the contract's `instanceof` check does not know.
+      // jsdom's `TextEncoder` answers with Node's `Uint8Array`, which the
+      // contract's `instanceof` check does not know.
       bytes: new Uint8Array(new TextEncoder().encode(text)),
     },
   });
@@ -702,9 +692,6 @@ describe('the in-memory host', () => {
           sectionId: INFORMATION,
           document: subject.store.read(INFORMATION).document,
           revision: subject.store.read(INFORMATION).revision,
-          // Names a resource rather than nothing, because a promotion of
-          // nothing is refused by the contract before any handler sees it,
-          // and what this asks is what the handler does with the protocol.
           promote: { editId: EDIT, resourceIds: ['whatever'] },
         })
       ).refusal?._tag,
@@ -1091,9 +1078,6 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    // The stream ends after its first event, as a dropped socket ends it;
-    // the channel resumes on a new one, and the editor behind it never
-    // stopped holding its draft.
     await watchUntil(
       subject.adapter,
       { protocolId: subject.protocolId },
@@ -1253,8 +1237,6 @@ describe('the in-memory host', () => {
     });
   });
 
-  // No host handles an empty promotion itself: the contract's payload decode,
-  // which every served procedure runs before its handler, refuses it.
   it('never hands a host a promotion that names no resource', () => {
     const payload = (resourceIds: readonly string[]) => ({
       protocolId: 'protocol-1',
@@ -1327,7 +1309,6 @@ describe('the in-memory host', () => {
       sectionId: INFORMATION,
       document: held.document,
       revision: held.revision,
-      // Naming the id is not enough: the staging is another session's.
       promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
     });
 
@@ -1424,10 +1405,6 @@ describe('the in-memory host', () => {
     const subject = host();
     const cursors = await watchCursors(subject, 3);
 
-    // A dropped stream is resumed by the client with the cursor of the last
-    // event it was given. Starting anywhere earlier would hand this
-    // connection what it already had, and the channel applies what it is
-    // given.
     const resumed = await watchUntil(
       subject.adapter,
       { protocolId: subject.protocolId, since: cursors[1] },
@@ -1522,7 +1499,6 @@ function fieldVariables(document: Record<string, unknown>): string[] {
   );
 }
 
-/** A refusal's own fields, as the host sent them. */
 function refusalData(refusal: object | undefined): unknown {
   if (refusal === undefined) return undefined;
   return Object.fromEntries(

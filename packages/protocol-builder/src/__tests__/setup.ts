@@ -1,10 +1,5 @@
 import '@testing-library/jest-dom/vitest';
 
-/**
- * The contract's transport tests declare the node environment — bytes jsdom's
- * `TextEncoder` produces are another realm's `Uint8Array`, which the
- * contract's bytes schema refuses — and there is nothing to stub there.
- */
 if (typeof window !== 'undefined') {
   stubBrowserAPIsJsdomLacks();
 }

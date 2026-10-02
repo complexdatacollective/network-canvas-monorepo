@@ -9,10 +9,6 @@ import {
 import { createProtocolQueryClient } from './state/queryClient.ts';
 
 export type ProtocolBuilderProps = Readonly<{
-  /**
-   * The host's procedures, in-process or over a wire; both are typed alike.
-   * Built once by the host: this memoises on its identity.
-   */
   adapter: ProtocolBuilderAdapter;
   protocolId: string;
   children?: ReactNode;

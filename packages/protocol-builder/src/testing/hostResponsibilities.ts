@@ -2,9 +2,6 @@ import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
 
 /**
  * One thing a host has to serve: the procedure, and what serving it means.
- *
- * `tag` is the procedure's name in the group, which is how a host's handlers
- * name it too.
  */
 export type HostResponsibility = Readonly<{
   tag: string;

@@ -73,8 +73,6 @@ describe('useArchitectClient', () => {
     const initial = result.current.adapter;
     await initial.rpcCall('ListSections', { protocolId: PROTOCOL_ID });
 
-    // Mutation: keep the client when the store changes → the adapter is the
-    // one over the first store, and the write below lands there.
     rerender({ store: second, name: 'Another tab' });
     const overSecond = result.current.adapter;
     expect(overSecond).not.toBe(initial);
@@ -96,7 +94,6 @@ describe('useArchitectClient', () => {
     expect(stageLabel(second)).toBe('Written to the second store');
     expect(stageLabel(first)).not.toBe('Written to the second store');
 
-    // Mutation: keep the client when the tab name changes → the same adapter.
     rerender({ store: second, name: 'Ein anderer Tab' });
     const renamed = result.current.adapter;
     expect(renamed).not.toBe(overSecond);

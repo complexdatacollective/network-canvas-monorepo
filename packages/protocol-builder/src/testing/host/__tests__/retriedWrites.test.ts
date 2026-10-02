@@ -26,7 +26,6 @@ const REQUEST = 'write-1';
  * lost on its way back, not never sent.
  */
 type KeyedWrite = Readonly<{
-  /** Tag of the contract procedure this exercises. */
   procedure: string;
   name: string;
   prepare?: (host: InMemoryHost) => Promise<void>;

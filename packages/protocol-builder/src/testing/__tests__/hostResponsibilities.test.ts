@@ -33,11 +33,6 @@ describe('the host responsibilities', () => {
     expect(hostResponsibilities().map(({ tag }) => tag)).toEqual(declared);
   });
 
-  /**
-   * The group is flat, and its tags are the names a host's handlers take.
-   * Named rather than left to the comparison above, so a failure says which
-   * shape broke.
-   */
   it('names each procedure by its tag in the group', () => {
     const tags = contractProcedureTags();
 

@@ -5,7 +5,6 @@ import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
-/** The host's procedures, bound to TanStack Query once by the host. */
 export type ProtocolBuilderAdapter = RpcAdapter<ProtocolBuilderRpcs>;
 
 export type ProtocolBuilderContextValue = Readonly<{

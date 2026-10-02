@@ -12,12 +12,8 @@ type Held = Readonly<{
 const holders = new WeakMap<ArchitectClient, number>();
 
 /**
- * One client per store and tab name, disposed once nothing holds it.
- *
- * Disposal waits a microtask so StrictMode's unmount-and-remount of the same
- * effect re-takes the client before it goes, keeping the adapter the editor
- * was handed. A client created by a render React throws away is never built:
- * the runtime is lazy.
+ * Disposal waits a microtask so StrictMode's unmount-and-remount re-takes the
+ * client before it goes.
  */
 export function useArchitectClient(
   store: ArchitectStore,

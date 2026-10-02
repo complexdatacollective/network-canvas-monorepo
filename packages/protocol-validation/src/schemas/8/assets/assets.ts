@@ -7,9 +7,6 @@ const baseAssetSchema = z.strictObject({
 
 // source is written verbatim as a zip entry name on export, so reject path
 // separators and parent-directory segments to prevent zip-slip entry names.
-// Exported, predicate and schema both, so a host staging a file can refuse the
-// name before it promotes one the manifest would then reject — with the same
-// rule even where the host validates with something other than zod.
 export function isSafeAssetSource(source: string): boolean {
   return (
     source.length > 0 &&

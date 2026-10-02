@@ -23,18 +23,6 @@ import {
   CreateTeamInvitationResult,
 } from '../schema/team.ts';
 
-// What a Studio client actually receives. The rpc transport encodes every
-// payload, success and error through `Schema.toCodecJson(schema)` — that is
-// the `codecFor` `RpcServer` installs — so encoding through the same codec
-// here is the wire, not an approximation of it.
-//
-// The expected documents are written out in full rather than derived from the
-// schemas, because the point of each is that a field the contract never
-// declared cannot appear and a field it declares cannot silently change shape.
-
-// The service channels are pinned to `never` so that the sync parsers accept
-// the derived codec: a contract schema that grew a service requirement would
-// stop compiling here rather than be encoded by something else at runtime.
 const encode = <S extends Schema.Codec<unknown, unknown>>(schema: S) =>
   Schema.encodeUnknownSync(Schema.toCodecJson(schema));
 const decode = <S extends Schema.Codec<unknown, unknown>>(schema: S) =>
@@ -360,10 +348,6 @@ describe('dates on the wire', () => {
   });
 });
 
-// ADR #1248: a declared output schema IS the serialization allowlist. A handler
-// that hands the encoder a whole database row rather than a projection of it
-// must not be able to leak the row's other columns, and these three cases are
-// what makes that a property of the contract instead of handler discipline.
 describe('a declared output schema is the serialization allowlist', () => {
   it('strips a field Me never declared', () => {
     const encoded = encode(Me)({ ...VALID_ME, passwordHash: 'LEAK' });
@@ -398,11 +382,6 @@ describe('a declared output schema is the serialization allowlist', () => {
   });
 });
 
-// Why every output in this package is a `Schema.Struct`. A success schema
-// declared as a class refuses anything that is not an instance of it at encode
-// time, so a handler returning a plain object — which is what a query, a
-// mapper, or a `toHandlers` object naturally produces — would fail at the
-// transport rather than at its own boundary.
 class MeClass extends Schema.Class<MeClass>('MeClass')(Me.fields) {}
 
 describe('a class success schema refuses a plain object', () => {

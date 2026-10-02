@@ -56,7 +56,6 @@ type Caller = Readonly<{ adapter: ProtocolBuilderAdapter; editId: string }>;
  * its own.
  */
 type Reach = Readonly<{
-  /** Tag of the contract procedure this goes through. */
   procedure: string;
   name: string;
   reaches: (
