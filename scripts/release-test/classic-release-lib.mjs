@@ -61,7 +61,11 @@ export function createRun({ artifactsDir, meta, timeoutMs }) {
   // the walker; a watchdog exit runs it too, so a hung run does not leave a
   // process holding a port for the rerun.
   const cleanups = [];
+  // Once the watchdog fires, the run's verdict is "timed out" (exit 2) however
+  // it ends: the walk itself may fail first as the cleanup tears the app down.
+  let timedOut = false;
   const watchdog = setTimeout(async () => {
+    timedOut = true;
     result.failures.push(`watchdog: run exceeded ${timeoutMs}ms`);
     await Promise.race([
       Promise.allSettled(cleanups.map((fn) => fn())),
@@ -115,7 +119,10 @@ export function createRun({ artifactsDir, meta, timeoutMs }) {
         return undefined;
       }
     },
-    finish: () => finish(result.failures.length === 0 ? 0 : 1),
+    finish: () => {
+      if (timedOut) finish(2);
+      else finish(result.failures.length === 0 ? 0 : 1);
+    },
     setupFailure(message) {
       result.failures.push(`setup: ${message}`);
       console.log(`SETUP ${message}`);
