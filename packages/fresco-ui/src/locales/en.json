@@ -292,7 +292,7 @@
     "description": "Button selecting every enabled combobox option."
   },
   "frescoUi.combobox.someSelected": {
-    "defaultMessage": "{count, plural, one {# {singular} selected} other {# {plural} selected}}",
+    "defaultMessage": "{count, plural, =1 {# {singular} selected} other {# {plural} selected}}",
     "description": "Trigger label summarising the selection; {singular} and {plural} are host-supplied noun forms (e.g. \"item\"/\"items\")."
   },
   "frescoUi.dataTable.noResults": {
@@ -902,6 +902,10 @@
   "frescoUi.timeAgo.justNow": {
     "defaultMessage": "just now",
     "description": "Relative timestamp for an event less than one minute ago."
+  },
+  "frescoUi.toast.moreNotifications": {
+    "defaultMessage": "{count, plural, one {# more notification} other {# more notifications}}",
+    "description": "Shown above an expanded stack of notifications when some do not fit on screen. They appear as the visible ones are dismissed."
   },
   "frescoUi.toast.notifications": {
     "defaultMessage": "Notifications",

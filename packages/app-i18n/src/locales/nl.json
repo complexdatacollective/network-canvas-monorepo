@@ -1,0 +1,14 @@
+{
+  "common.back": "Terug",
+  "common.cancel": "Annuleren",
+  "common.close": "Sluiten",
+  "common.confirm": "Bevestigen",
+  "common.continue": "Doorgaan",
+  "common.delete": "Verwijderen",
+  "common.done": "Gereed",
+  "common.genericError": "Er is iets misgegaan.",
+  "common.loading": "Laden…",
+  "common.retry": "Opnieuw proberen",
+  "common.save": "Opslaan",
+  "common.search": "Zoeken"
+}

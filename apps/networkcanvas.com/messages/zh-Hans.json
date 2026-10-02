@@ -1,0 +1,842 @@
+{
+  "ThemeTranslations": {
+    "label": "颜色主题",
+    "triggerLabel": "颜色主题：{theme}",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "Metadata": {
+    "siteTitle": "Network Canvas",
+    "siteDescription": "Network Canvas 提供免费、开源的社会网络调查软件，围绕研究人员及其参与者的需求而设计。",
+    "getStartedTitle": "快速入门",
+    "getStartedDescription": "选择合适的 Network Canvas 应用，用于设计协议或收集网络数据。"
+  },
+  "Hero": {
+    "headline": "让复杂的网络数据收集变得简单。",
+    "description": "Network Canvas 提供<strong>免费、开源</strong>的社会网络调查软件，围绕研究人员及其参与者的需求而设计。",
+    "getStarted": "快速入门",
+    "keepScrolling": "或继续向下滚动以了解更多"
+  },
+  "News": {
+    "label": "最新消息：",
+    "fullStory": "[阅读全文]"
+  },
+  "Tools": {
+    "heading": "一系列助力研究的工具",
+    "introduction": "我们为网络研究提供完整的端到端工作流程，涵盖问卷设计和访谈两类应用。借助这些工具，研究人员可以轻松设计、采集和导出网络数据。",
+    "architect": {
+      "description": "一款基于浏览器的工具，用于以可视化方式设计 Network Canvas 访谈。Architect 让领域专家专注于研究的设计与实施，而无需学习复杂的新技术。",
+      "action": "打开 Architect",
+      "screenshotAlt": "Architect 协议编辑器中显示的访谈设计"
+    },
+    "interviewer": {
+      "description": "一款基于浏览器的应用，用于在实地开展 Network Canvas 访谈。Interviewer 为个体网络访谈中的各项数据收集任务提供简洁、以参与者为中心的界面。",
+      "action": "打开 Interviewer",
+      "screenshotAlt": "Interviewer 主屏幕，显示可用的 Network Canvas 协议"
+    },
+    "fresco": {
+      "description": "将 Network Canvas 访谈带到网页端！Fresco 让研究人员能够在网页浏览器中开展 Network Canvas 访谈。",
+      "action": "试用 Fresco 沙盒",
+      "deployAction": "部署 Fresco",
+      "screenshotAlt": "Fresco 仪表板，显示协议、参与者和访谈总数"
+    }
+  },
+  "Video": {
+    "heading": "了解更多",
+    "description": "我们的目标是为研究界打造一套高质量、免费、可安全用于研究且经久耐用的工具。观看我们的项目视频，了解我们创建 Network Canvas 的初衷；如需观看更多视频，请访问我们的 <channel>YouTube 频道</channel>。",
+    "channel": "YouTube 频道",
+    "title": "什么是 Network Canvas？",
+    "watchLabel": "观看：什么是 Network Canvas？"
+  },
+  "Principles": {
+    "heading": "设计原则",
+    "introduction": "所有 Network Canvas 软件都以五项设计原则为基础。这些原则源自我们对希望设计和开展个体网络研究的研究人员所面临问题的观察与经验。",
+    "ontologicalFlexibility": {
+      "title": "本体灵活性",
+      "paragraph1": "本软件在设计上具备根本的本体灵活性。简而言之，我们不会对您的访谈性质做任何预设。",
+      "paragraph2": "研究人员可以自由定义访谈中的节点和关系及其属性、数据收集任务的顺序，以及向参与者解释这些任务的方式。"
+    },
+    "interviewerAssisted": {
+      "title": "面对面、由访谈员协助",
+      "paragraph1": "我们相信，由受过培训的访谈员在场协助完成数据收集任务，能够获得更高质量的数据。",
+      "paragraph2": "因此，Network Canvas 工具的设计前提是：访谈在访谈员在场的情况下进行，使用由访谈员控制的设备，并且访谈员已接受过引导访谈过程的专门培训。"
+    },
+    "emphasisOnDesign": {
+      "title": "重视设计",
+      "paragraph1": "我们的软件从一开始就致力于为参与者提供尽可能有吸引力的视觉体验，并尽量减轻其负担。",
+      "paragraph2": "我们高度重视设计，借鉴了人机交互（HCI）文献以及网络分析领域的研究论文，打造出参与者易于理解的访谈体验，以清晰、一致且直观可触的交互引导数据收集。"
+    },
+    "endToEndWorkflow": {
+      "title": "端到端工作流程",
+      "paragraph1": "要简化复杂结构数据的收集过程，不仅需要访谈工具，还需要用于设计这些访谈的工具。这些工具共同构成端到端的工作流程，降低了收集网络数据的成本（包括物质成本和技术成本）。",
+      "paragraph2": "重要的是，使用我们的工具并不需要很高的技术水平。相反，它们让研究人员能够专注于运用自身的专业知识，设计出有效的访谈体验。"
+    },
+    "openSourceCommunity": {
+      "title": "开源、社区驱动的开发",
+      "paragraph1": "维持这项工作的关键在于与学术界内外社区的交流与合作。因此，Network Canvas 工具可免费使用，并且完全开源（采用 GPL 第 3 版许可）。",
+      "paragraph2": "我们实施了社区驱动的开发计划，热切欢迎任何感兴趣的第三方参与功能开发或做出其他贡献。"
+    }
+  },
+  "Grants": {
+    "heading": "使用 Network Canvas 的资助项目",
+    "introduction": "我们很自豪地宣布，Network Canvas 正被美国多个联邦资助项目积极使用，涵盖多样化的研究情境、机构和资助方。",
+    "previous": "上一个资助项目",
+    "next": "下一个资助项目",
+    "show": "显示资助项目 {number}"
+  },
+  "Publications": {
+    "heading": "使用 Network Canvas 的近期出版物",
+    "carouselLabel": "近期出版物轮播",
+    "introduction": "以下是使用 Network Canvas 的 16 篇最新出版物。浏览<all>完整出版物列表</all>。",
+    "submission": "如果您希望在此展示您的出版物，请在我们社区网站的<thread>讨论帖</thread>中留言告知我们。",
+    "thread": "讨论帖"
+  },
+  "PublicationsPage": {
+    "metadata": {
+      "title": "出版物",
+      "description": "使用 Network Canvas 工具收集和研究社会网络数据的研究与学术成果。"
+    },
+    "heading": "使用 Network Canvas 的出版物",
+    "citing": "关于如何引用 Network Canvas，请参阅我们的<article>文档文章</article>。",
+    "submission": "如果您希望在此展示您的出版物，请在我们社区网站的<thread>讨论帖</thread>中留言告知我们。"
+  },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "更新",
+      "description": "以简明语言概述 Architect、Interviewer 和 Fresco 的新版本。"
+    },
+    "heading": "更新",
+    "introduction": "Network Canvas 应用的最新动态。如需查看每项更改的详细列表，请参阅 <changelog>GitHub 上的发布说明</changelog>。Architect 和 Interviewer 会自动更新；如需升级 Fresco，请按照<upgrade>我们文档中的说明</upgrade>操作。",
+    "search": {
+      "label": "搜索更新",
+      "placeholder": "搜索更新",
+      "clear": "清除搜索",
+      "results": "{count} / {total, plural, =1 {# 条更新} other {# 条更新}}",
+      "clearAll": "全部清除",
+      "emptyHeading": "未找到更新",
+      "emptyDescription": "请尝试其他搜索词。"
+    },
+    "details": {
+      "show": "显示完整详情",
+      "hide": "隐藏详情"
+    },
+    "moreLanguagesSoon": "更多语言即将推出",
+    "readMore": "阅读完整公告",
+    "filter": {
+      "label": "按应用筛选",
+      "all": "全部",
+      "appHeading": "应用",
+      "kindHeading": "类型",
+      "kindLabel": "按类型筛选",
+      "kinds": {
+        "launch": "重大发布",
+        "feature": "功能更新",
+        "fix": "错误修复"
+      }
+    },
+    "kinds": {
+      "launch": "重大发布",
+      "feature": "功能更新",
+      "fix": "错误修复"
+    }
+  },
+  "Team": {
+    "heading": "核心团队",
+    "introduction": "我们的项目团队由来自多个学科和专业领域的成员组成。"
+  },
+  "ScientificAdvisors": {
+    "heading": "科学顾问"
+  },
+  "Institutions": {
+    "heading": "机构",
+    "paragraph1": "本软件由西北大学和牛津大学的研究人员与开发人员团队以及多名外部合同开发人员共同开发。我们感谢美国国立卫生研究院<prior>此前</prior>和<ongoing>目前</ongoing>提供的资助，使这项工作成为可能。",
+    "paragraph2": "与本软件相关的知识产权和版权由注册非营利组织 Complex Data Collective 管理，该组织由项目核心成员组成。",
+    "prior": "此前",
+    "ongoing": "目前"
+  },
+  "WhatNext": {
+    "heading": "下一步？",
+    "documentation": {
+      "title": "想了解更多？",
+      "body": "我们编写了详尽的文档，涵盖使用 Network Canvas 创建、部署和管理研究的各个方面。",
+      "action": "访问文档网站"
+    },
+    "community": {
+      "title": "需要帮助？",
+      "body": "我们最近还上线了社区网站，您可以在那里提问、报告错误、分享您的工作，并获得其他研究人员的帮助。",
+      "action": "访问社区网站"
+    },
+    "keepInTouch": {
+      "title": "保持联系",
+      "body": "如果您希望与本项目保持联系，第一时间了解活动和版本发布信息，欢迎加入我们的邮件列表，并在 Twitter 上关注我们。我们会谨慎使用电子邮件，此列表仅用于发布重要公告。"
+    },
+    "collaboration": {
+      "title": "希望合作？",
+      "body": "如果您有意开展正式的学术合作或咨询合作，请参阅我们关于此主题的文档文章。很遗憾，由于团队规模较小、精力有限，我们无法提供无偿咨询。",
+      "action": "了解合作方式"
+    }
+  },
+  "MailingList": {
+    "placeholder": "email@networkcanvas.com",
+    "emailLabel": "电子邮件地址",
+    "submit": "加入列表",
+    "success": "谢谢！我们会与您联系。"
+  },
+  "Footer": {
+    "terms": "使用条款",
+    "updates": "更新",
+    "privacy": "隐私政策",
+    "copyright": "版权所有 Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "ProtocolGallery": {
+    "metadata": {
+      "title": "协议示例库",
+      "description": "探索使用 Network Canvas 创建的研究协议，包括研究概要、编码簿和可直接使用的协议文件。"
+    },
+    "intro": {
+      "heading": "协议示例库",
+      "introduction": "探索 Network Canvas 用户分享的协议。了解每项研究的设计方式，下载其编码簿和协议，或在浏览器中预览访谈。",
+      "featured": "精选协议"
+    },
+    "collection": {
+      "heading": "浏览协议集",
+      "searchLabel": "搜索协议",
+      "searchPlaceholder": "搜索协议",
+      "clearSearch": "清除搜索",
+      "clearFilters": "全部清除",
+      "resultsOfTotal": "{count} / {total, plural, =1 {# 个协议} other {# 个协议}}",
+      "filterLabel": "筛选协议",
+      "facets": {
+        "fields": "研究领域",
+        "edgeGeneration": "关系生成"
+      },
+      "sortLabel": "排序方式",
+      "sortOptions": {
+        "newest": "最新",
+        "oldest": "最早",
+        "titleAsc": "标题 A–Z",
+        "titleDesc": "标题 Z–A"
+      },
+      "emptyHeading": "未找到协议",
+      "emptyDescription": "请尝试更改搜索条件或筛选条件。",
+      "openProtocol": "探索 {title}",
+      "viewDetails": "查看"
+    },
+    "card": {
+      "edges": "关系",
+      "fields": "领域",
+      "added": "添加于 {date}"
+    },
+    "stages": {
+      "heading": "阶段顺序",
+      "waveTabs": "轮次",
+      "count": "{count, plural, =1 {# 个阶段} other {# 个阶段}}",
+      "waves": "{count, plural, =1 {# 轮} other {# 轮}}",
+      "edgeStageCounts": {
+        "Sociogram": "{count, plural, =1 {# 个社会关系图} other {# 个社会关系图}}",
+        "DyadCensus": "{count, plural, =1 {# 个二元组普查} other {# 个二元组普查}}",
+        "TieStrengthCensus": "{count, plural, =1 {# 个关系强度普查} other {# 个关系强度普查}}",
+        "OneToManyDyadCensus": "{count, plural, =1 {# 个一对多二元组普查} other {# 个一对多二元组普查}}",
+        "NetworkComposer": "{count, plural, =1 {# 个网络构建器} other {# 个网络构建器}}"
+      }
+    },
+    "stageTypes": {
+      "AlterEdgeForm": "逐一他者关系表单",
+      "AlterForm": "逐一他者表单",
+      "Anonymisation": "匿名化界面",
+      "CategoricalBin": "分类分箱",
+      "DyadCensus": "二元组普查",
+      "EgoForm": "自我表单",
+      "FamilyPedigree": "家族谱系",
+      "Geospatial": "地理空间界面",
+      "Information": "信息",
+      "NameGenerator": "姓名生成器（使用表单）",
+      "NameGeneratorQuickAdd": "姓名生成器（快速添加）",
+      "NameGeneratorRoster": "名册数据姓名生成器",
+      "Narrative": "叙事",
+      "NarrativePedigree": "叙事谱系",
+      "NetworkComposer": "网络构建器",
+      "OneToManyDyadCensus": "一对多二元组普查",
+      "OrdinalBin": "有序分箱",
+      "Sociogram": "社会关系图",
+      "TieStrengthCensus": "关系强度普查"
+    },
+    "detail": {
+      "back": "返回协议示例库",
+      "citation": "引用此出版物",
+      "demonstrates": "此协议展示的内容",
+      "details": "研究详情",
+      "studyPi": "研究负责人（PI）",
+      "grantNumber": "资助编号",
+      "contact": "协议联系人",
+      "methods": "关系生成",
+      "fields": "领域",
+      "population": "研究人群",
+      "usesRosters": "使用名册",
+      "yes": "是",
+      "no": "否",
+      "clinicalTrials": "试验注册",
+      "publication": "DOI / 出版物",
+      "dateAdded": "添加日期",
+      "viewPublication": "查看出版物",
+      "wave": "第 {wave} 轮",
+      "preview": "预览协议",
+      "downloadProtocol": "下载协议",
+      "viewCodebook": "编码簿摘要"
+    },
+    "preview": {
+      "metadata": {
+        "title": "预览：{name}"
+      },
+      "loading": "正在准备预览…",
+      "finishConfirmation": "这是预览，因此不会保存任何内容。完成将结束本次协议运行，之后您可以重新开始。",
+      "finishedHeading": "预览已完成",
+      "finishedDescription": "访谈已按参与者实际体验的方式完成。未保存任何内容。",
+      "restart": "重新开始预览",
+      "backToProtocol": "返回协议",
+      "errorHeading": "无法预览此协议",
+      "errors": {
+        "unavailable": "无法下载协议文件。请检查网络连接后重试。",
+        "unreadable": "无法打开协议文件。文件可能已损坏。",
+        "unsupported-version": "此协议使用的架构版本无法由访谈引擎运行。",
+        "invalid": "此协议未通过验证，因此访谈引擎无法运行。"
+      },
+      "retry": "重试"
+    },
+    "submit": {
+      "heading": "提交您的协议",
+      "description": "将您的 .netcanvas 文件、编码簿和引用信息发送给我们，我们将审核其是否可收录到协议示例库中。",
+      "action": "通过电子邮件提交协议"
+    }
+  },
+  "GetStarted": {
+    "metadata": {
+      "title": "快速入门",
+      "description": "选择合适的 Network Canvas 应用，用于设计协议或收集网络数据。"
+    },
+    "intro": {
+      "heading": "选择起点",
+      "introduction": "请点击最符合您当前研究阶段的卡片开始。",
+      "stages": {
+        "design": {
+          "label": "设计阶段",
+          "title": "设计或创建访谈协议",
+          "accessibleName": "设计或创建访谈协议"
+        },
+        "collect": {
+          "label": "数据收集阶段",
+          "title": "使用 Network Canvas 收集数据",
+          "accessibleName": "使用 Network Canvas 收集数据"
+        },
+        "learn": {
+          "label": "了解 Network Canvas",
+          "title": "进一步了解本项目",
+          "accessibleName": "进一步了解本项目——在新标签页中打开文档"
+        }
+      }
+    },
+    "sections": {
+      "design": {
+        "label": "设计阶段",
+        "heading": "设计或创建协议",
+        "description": "在 Architect 中设计新的基于浏览器的研究，或在 Architect Classic 中继续现有研究。"
+      },
+      "collect": {
+        "label": "数据收集阶段",
+        "heading": "收集数据",
+        "description": "根据您计划收集数据的方式和地点，选择 Interviewer、Fresco 或 Interviewer Classic。"
+      }
+    },
+    "shared": {
+      "bestFor": "最适合",
+      "downloadVersion": "下载 {version} 版",
+      "platformAccessibleName": "适用于 {platform} 的 {app}",
+      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持架构 7 协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用架构 8，其中包含最新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始的架构 7 文件。",
+      "schemaVersionLink": "了解架构版本"
+    },
+    "platforms": {
+      "appleSilicon": "Apple Silicon",
+      "appleIntel": "Apple Intel",
+      "windows": "Windows",
+      "linux": "Linux",
+      "android": "Android"
+    },
+    "apps": {
+      "architect": {
+        "status": "推荐用于新研究",
+        "description": "直接在浏览器中设计协议，无需安装任何内容，并可使用 Network Canvas 的所有最新功能。",
+        "bestFor": {
+          "newStudy": "开始新的研究",
+          "latestFeatures": "使用所有最新功能设计协议",
+          "interviewerOrFresco": "使用新版 Interviewer 或 Fresco 收集数据",
+          "upgradeClassic": "更新在 Architect Classic 中创建的协议，以使用最新功能"
+        },
+        "actions": {
+          "open": "打开 Architect"
+        }
+      },
+      "interviewer": {
+        "status": "面对面 · 推荐",
+        "description": "在您控制的设备上开展由访谈员协助的数据收集，使用以 Network Canvas 所有最新功能构建的协议。",
+        "bestFor": {
+          "inPerson": "面对面开展的访谈",
+          "guided": "由受过培训的访谈员引导参与者",
+          "researcherDevice": "在研究人员控制的设备上收集数据",
+          "latestFeatures": "使用具备所有最新功能的协议的研究"
+        },
+        "actions": {
+          "open": "打开 Interviewer"
+        }
+      },
+      "fresco": {
+        "status": "大型团队 · 远程施测 · 推荐",
+        "description": "适用于参与者在自己的浏览器中远程完成访谈，并集中管理研究和数据。沙盒是公开的演示环境，不可用于开展真实研究。",
+        "bestFor": {
+          "remoteBrowser": "参与者在自己的浏览器中远程完成访谈",
+          "centralManagement": "集中管理研究和参与者",
+          "sharedDashboard": "通过共享仪表板管理和导出数据",
+          "selfHosted": "能够部署和托管 Fresco 实例的团队"
+        },
+        "actions": {
+          "sandbox": "Fresco 沙盒访问指南",
+          "deployment": "部署指南"
+        }
+      },
+      "architectClassic": {
+        "status": "Classic · 维护模式",
+        "description": "仅在您的研究必须保持与 Interviewer Classic 和架构 7 兼容时使用。",
+        "bestFor": {
+          "classicCompatibility": "必须保持与 Interviewer Classic 兼容的现有研究",
+          "editWithoutMigration": "需要在不迁移的情况下继续编辑的架构 7 协议"
+        }
+      },
+      "interviewerClassic": {
+        "status": "Classic · 现有研究",
+        "description": "适用于已在进行的架构 7 研究，以及离线的桌面或平板电脑工作流程。为保持兼容性和修复错误而继续维护。",
+        "bestFor": {
+          "schema7Study": "依赖架构 7 的现有研究",
+          "desktopTablet": "保留现有的桌面或平板电脑工作流程",
+          "offlineCollection": "需要旧版离线收集工作流程的研究"
+        }
+      }
+    }
+  },
+  "SummerUpdate": {
+    "metadata": {
+      "title": "隆重推出新一代 Network Canvas 应用",
+      "description": "了解重新设计的 Architect 和 Interviewer 应用、Fresco 4.0.0，以及全新的架构 8 协议格式。"
+    },
+    "hero": {
+      "heading": "<lead>隆重推出新一代</lead> <product><brand>Network Canvas</brand> <apps>应用</apps></product>",
+      "description": "在设计、运行和管理 Network Canvas 访谈方面的一次飞跃。本页介绍有哪些<strong>变化</strong>、有哪些<strong>新功能</strong>，以及这些对您的工作<strong>意味着</strong>什么。",
+      "scrollCue": "继续向下滚动以了解更多"
+    },
+    "definitions": {
+      "pwa": "<dfn>渐进式 Web 应用</dfn>（PWA）是经过特别设计的网站，可以安装到您的设备上，提供类似原生应用的体验。这意味着它们拥有可点击打开的图标和独立的存储空间，并且可以离线使用。",
+      "protocolSchema": "协议架构是一种技术规范，定义了协议文件的结构以及应用解读协议文件的方式。它们确保协议在不同版本的应用之间保持兼容，并为实现新功能和新界面提供框架。",
+      "architectClassic": "用于设计 Network Canvas 协议的原版可下载桌面应用。它仍可用于进行中的研究并获得全面支持，但已进入维护模式，不会再添加新功能。请<link>在此</link>下载。",
+      "interviewerClassic": "用于收集访谈数据的原版可下载桌面和平板电脑应用。它仍可用于进行中的研究并获得全面支持，但已进入维护模式，不会再添加新功能。请<link>在此</link>下载。"
+    },
+    "common": {
+      "documentation": "文档"
+    },
+    "overview": {
+      "label": "新功能",
+      "heading": "为浏览器全新打造的 Architect 和 Interviewer",
+      "introduction": "我们将 <strong>Architect</strong> 和 <strong>Interviewer</strong> 重新设计为网站，同时也可以作为<pwa>渐进式 Web 应用</pwa>安装到您的设备上。它们与 <strong>Fresco 4.0.0</strong> 一起，构成了一个建立在共享技术基础之上的统一、现代化平台——三者均支持全新的协议文件格式<strong>架构 8</strong>。",
+      "benefits": {
+        "lowFriction": {
+          "title": "轻松上手",
+          "description": "随时在任何设备上访问 <architect>architect.networkcanvas.com</architect> 或 <interviewer>interviewer.networkcanvas.com</interviewer>，无需安装任何内容即可使用这些工具。"
+        },
+        "installation": {
+          "title": "本地应用安装",
+          "description": "可以直接从浏览器将任一工具安装为应用。它在您的设备上与普通应用无异，同时您仍可在本地掌控自己的数据。"
+        },
+        "updates": {
+          "title": "简化的更新",
+          "description": "新应用会自动更新至最新功能和修复，让您专注于研究，而不必操心软件版本管理。"
+        },
+        "tablet": {
+          "title": "恢复对平板电脑的支持",
+          "description": "由于应用商店的限制，Interviewer 已有数年无法在平板电脑上使用；新版 Interviewer 应用重新支持在平板电脑（iPad 和 Android）上运行。"
+        }
+      },
+      "classic": {
+        "title": "原版桌面和平板电脑应用怎么办？",
+        "description": "原版桌面和平板电脑应用现已更名为 <architectClassic>Architect Classic</architectClassic> 和 <interviewerClassic>Interviewer Classic</interviewerClassic>。它们仍可用于进行中的研究，并获得<strong>全面支持</strong>，但已进入维护模式，不会再添加新功能。"
+      }
+    },
+    "apps": {
+      "architect": {
+        "label": "协议设计",
+        "heading": "全新的 Architect——在浏览器中设计协议",
+        "description": "无需安装任何内容——只需打开 <link>architect.networkcanvas.com</link> 即可开始构建。Architect 始终自动运行最新版本。进入网站后，您可以将其作为 <pwa>PWA</pwa> 安装到计算机上，获得类似原生应用的体验，并在本地掌控您的数据。",
+        "iconAlt": "Architect 应用图标",
+        "screenshotAlt": "Architect 协议编辑器，显示示例协议的时间线",
+        "bullets": {
+          "schema8": "构建具备所有新功能的<strong>架构 8</strong> 协议（见下文）",
+          "upgrades": "打开并<strong>自动升级</strong>旧版架构 7 协议",
+          "templates": "内置<strong>协议模板</strong>，帮助您快速上手并避免常见错误"
+        },
+        "open": "打开 Architect",
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> 仍可供需要继续使用旧版 Interviewer（例如 6.6.0）的研究人员使用。它处于维护模式（仅修复错误），并继续生成架构 7 协议。"
+      },
+      "interviewer": {
+        "label": "面对面访谈",
+        "heading": "Interviewer——随时随地开展访谈",
+        "description": "Interviewer 同样已为浏览器重新设计：在 <link>interviewer.networkcanvas.com</link> 上传协议，无需安装任何内容即可部署。将其安装为 <pwa>PWA</pwa> 即可支持离线工作流程——它仍然是开展面对面、由访谈员协助的网络研究的理想工具。",
+        "iconAlt": "Interviewer 应用图标",
+        "screenshotAlt": "Interviewer 仪表板，显示协议卡片和继续访谈操作",
+        "bullets": {
+          "security": "全新的高级安全功能：加密数据存储，以及在导出数据等敏感操作前进行应用授权",
+          "schema8": "原生支持<strong>架构 8</strong>，并在导入时自动迁移所有现有的架构 7 协议",
+          "compatibility": "兼容所有桌面和平板电脑设备，包括 iPad 和 Android 平板电脑"
+        },
+        "open": "打开 Interviewer",
+        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> 仍可用于进行中的研究。与 <architectClassic>Architect Classic</architectClassic> 一样，它仅处于维护模式，不会获得新功能。"
+      },
+      "fresco": {
+        "label": "远程自填式访谈",
+        "heading": "Fresco 4.0.0——一次重大升级",
+        "description": "最新版 Fresco 是一次重大发布，带来了多项重要的新功能。Fresco 专为支持远程自填式访谈而设计（同时也完全兼容面对面访谈），推荐用于参与者众多、研究团队规模较大或需要集中式数据管理方案的研究。",
+        "iconAlt": "Fresco 应用图标",
+        "deploymentGuide": "部署指南",
+        "upgradeNote": "Fresco 3.x 用户应避免在研究进行期间升级。Fresco 4.0.0 无法降级到 3.x。",
+        "cards": {
+          "multiUser": {
+            "title": "多用户访问",
+            "description": "每位团队成员都拥有自己的账户，支持双重身份验证和通行密钥，并对系统中执行的所有操作保留完整的审计日志。"
+          },
+          "api": {
+            "title": "安全的数据 API",
+            "description": "Fresco 现在提供安全的只读 API，支持以编程方式访问研究数据，从而实现实时报告、仪表板和分析。"
+          },
+          "selfHosted": {
+            "title": "完全可自托管",
+            "description": "Fresco 现在可以完全安装在您自己的服务器上，或托管在您的私有云中，让您完全掌控自己的数据。"
+          }
+        }
+      }
+    },
+    "features": {
+      "label": "架构 8",
+      "heading": "新界面与新功能",
+      "introduction": "新一代应用引入了新的<definition>协议架构版本</definition>——架构 8，其中包含多个新的访谈界面和功能。如果您的研究需要用到其中任何一项，就需要使用新工具。选择任意卡片即可查看详情。",
+      "documentationLink": "在文档中了解详情",
+      "previewAlt": "{name} 预览",
+      "groups": {
+        "interfaces": "新的访谈界面",
+        "schema": "架构 8 功能",
+        "architect": "Architect",
+        "interviewer": "Interviewer",
+        "fresco": "Fresco 4.0.0"
+      },
+      "geospatial": {
+        "shortName": "地理空间",
+        "name": "地理空间界面",
+        "summary": "请参与者在交互式地图上选择区域，从而采集他者层面的位置数据。",
+        "details": {
+          "0": "使用 GeoJSON 文件定义可选择的人口普查区、邮政编码区、街区或自定义研究区域。",
+          "1": "选择随每个人一起保存的 GeoJSON 属性，使回答在分析时可以直接与空间数据关联。",
+          "2": "可选择添加地址搜索和公共交通背景信息。Mapbox 服务要求访谈期间连接互联网。"
+        }
+      },
+      "anonymisation": {
+        "shortName": "匿名化",
+        "name": "匿名化界面",
+        "summary": "通过在参与者设备上加密所选的节点或关系属性，让参与者直接掌控敏感标识信息。",
+        "details": {
+          "0": "每位参与者自行创建用于保护所选数据的密码短语，应用绝不会存储该密码短语。",
+          "1": "研究人员无法解密受保护的值；导出时，加密属性会被替换为明确的标记。",
+          "2": "这是一项实验性功能，适用于更强的隐私保障可能有助于建立信任、促进信息披露的研究。"
+        }
+      },
+      "oneToMany": {
+        "shortName": "一对多二元组普查",
+        "name": "一对多二元组普查界面",
+        "summary": "在同一屏幕上建立从一个焦点人物到其他多人的关系，而不必逐一考察每一对。",
+        "details": {
+          "0": "当网络中存在可能与许多人有关系的核心人物时使用。",
+          "1": "收集一种或多种关系类型，同时让焦点人物在整个任务过程中始终可见。",
+          "2": "决定每个焦点人物在被考察后是返回列表再进行一轮，还是从列表中移除。"
+        }
+      },
+      "familyPedigree": {
+        "shortName": "家族谱系",
+        "name": "家族谱系界面",
+        "summary": "通过专门的可视化工作流程，引导参与者构建复杂的家庭结构。",
+        "details": {
+          "0": "同时创建家庭成员及其关系，自动布局让谱系在不断扩展时仍保持清晰易读。",
+          "1": "表示生物学、社会、收养、捐赠者、代孕和伴侣关系，并为每位家庭成员收集属性。",
+          "2": "可添加疾病提名步骤，记录哪些亲属患有特定疾病，以便后续进行可视化。"
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "叙事谱系",
+        "name": "叙事谱系界面",
+        "summary": "将先前的家族谱系转换为采用标准临床谱系符号的只读可视化图。",
+        "details": {
+          "0": "针对一种或多种疾病，按所支持的遗传模式显示患病亲属和确定携带者。",
+          "1": "当研究设计包含适当的指导性解读时，可选择显示可能的风险状态。",
+          "2": "聚焦于某一个人的相关世系，并导出可打印的快照。该可视化仅供参考，不构成诊断。"
+        }
+      },
+      "networkComposer": {
+        "shortName": "网络构建器",
+        "name": "网络构建器界面",
+        "summary": "在一块自由画布上构建和编辑参与者的完整个体网络。",
+        "details": {
+          "0": "随着对话推进，添加人物、填写人物和关系属性、绘制多种关系类型，并调整网络布局。",
+          "1": "使用套索选择、分组、自动布局、键盘快捷键以及撤销或重做，高效构建密集网络。",
+          "2": "将其视为由研究人员或访谈员主导的网络记事本，而非分步骤的自填式任务。"
+        }
+      },
+      "validation": {
+        "shortName": "验证",
+        "name": "更丰富的字段验证",
+        "summary": "直接在协议中表达答案之间的关系，使表单能在访谈进行过程中发现不一致的回答。",
+        "details": {
+          "0": "使用新的“大于变量”和“小于变量”规则，将数值回答与另一个变量进行比较。",
+          "1": "将这些相对检查与现有的必填、范围、唯一性和跨字段规则结合使用，描述您的研究可接受的答案。",
+          "2": "部署前在 Architect 中预览表单并测试边界情况；相同的协议规则也会在 Interviewer 和 Fresco 中运行。"
+        }
+      },
+      "enhancedSkipLogic": {
+        "shortName": "增强的跳过逻辑",
+        "name": "增强的跳过逻辑",
+        "summary": "借助扩展的比较规则，并为每个被跳过的阶段指定明确的目标，构建更精确的访谈路径。",
+        "details": {
+          "0": "对文本回答使用“包含”和“不包含”，并在分类和有序规则中匹配多个选定值。",
+          "1": "继续前往下一个可用阶段、向前跳转到选定的后续阶段，或直接进入访谈结束界面。",
+          "2": "所有目标都只能向前推进，使复杂路径可预测，并避免数据收集过程中出现循环。"
+        }
+      },
+      "nodeShapes": {
+        "shortName": "节点形状",
+        "name": "可配置的节点形状",
+        "summary": "将形状作为额外的视觉通道，在密集的网络界面中更容易区分不同类型的人。",
+        "details": {
+          "0": "为每种人物类型选择圆形、方形或菱形作为默认形状。",
+          "1": "当视觉区分承载数据时，可根据分类、有序、布尔、数值或标量变量动态映射形状。",
+          "2": "将形状与颜色和大小结合使用，使重要类别无需依赖单一视觉线索也能清晰可辨。"
+        }
+      },
+      "formHints": {
+        "shortName": "表单提示",
+        "name": "表单提示与验证指引",
+        "summary": "在单个问题旁放置简明的指引，在参与者最需要的地方提供背景信息。",
+        "details": {
+          "0": "为表单字段添加 Markdown 格式的提示，而无需加长阶段的主提示。",
+          "1": "使用提示说明预期格式、陌生术语或回答的解读方式。",
+          "2": "可选择显示根据字段验证规则自动生成的指引，例如可接受的范围或必填回答。"
+        }
+      },
+      "protocolTemplates": {
+        "shortName": "协议模板",
+        "name": "协议模板",
+        "summary": "从有研究依据的协议起步，而不是从空白时间线开始，然后根据您的研究进行调整。",
+        "details": {
+          "0": "探索针对跨国网络、心理健康、社会孤立、行为影响、照护与支持，以及性行为或注射风险网络的模板。",
+          "1": "使用通用的示例协议，了解 Network Canvas 的关键功能和技术如何协同工作。",
+          "2": "可编辑每个阶段、提示、变量和视觉选项；您调整后的协议始终保存在本地浏览器中。"
+        }
+      },
+      "responsiveSvg": {
+        "shortName": "响应式 SVG 背景",
+        "name": "响应式 SVG 社会关系图背景",
+        "summary": "创建区域、坐标轴和标签能够同时适应纵向和横向访谈画布的社会关系图背景。",
+        "details": {
+          "0": "上传 SVG，其元素相对于可用画布定位，而不是基于固定的像素网格。",
+          "1": "当参与者旋转平板电脑或使用不同形状的屏幕时，标签保持清晰易读，区域始终延伸到画布边缘。",
+          "2": "以提供的社会情境模板为起点，构建象限、独立坐标轴、类别或相互重叠的情境。"
+        }
+      },
+      "syntheticData": {
+        "shortName": "合成数据",
+        "name": "合成访谈数据",
+        "summary": "在招募之前生成逼真的测试访谈，让您在不危及参与者数据的情况下检查完整的数据工作流程。",
+        "details": {
+          "0": "一次最多创建 1,000 个合成访谈，并检查回答在研究表格和导出文件中的呈现方式。",
+          "1": "可选择模拟参与者中途退出，并遵循协议的跳过逻辑和网络筛选条件。",
+          "2": "合成记录会被单独标记，可以批量删除，而不会影响真实访谈。"
+        }
+      },
+      "encryptionAtRest": {
+        "shortName": "静态加密",
+        "name": "设备端静态加密",
+        "summary": "只要配置了 Interviewer 应用锁，即可保护存储在设备上的协议、访谈和设置。",
+        "details": {
+          "0": "在设置过程中选择 PIN 码、密码短语或受支持的生物识别方式；同一身份验证方式会解锁用于解密本地数据的密钥。",
+          "1": "Interviewer 解锁期间，解密密钥仅保存在内存中。重新加载、锁定、关闭应用或达到空闲超时都会清除该密钥。",
+          "2": "将这一应用级保护与全设备加密和定期导出结合使用，作为多层数据安全方案的一部分。"
+        }
+      },
+      "authorisationChecks": {
+        "shortName": "授权检查",
+        "name": "可配置的授权检查",
+        "summary": "在敏感的工作流程节点要求重新解锁，而不仅仅依赖应用的常规空闲锁定。",
+        "details": {
+          "0": "可分别要求在进入访谈、离开访谈返回仪表板或导出所收集的数据前重新进行身份验证。",
+          "1": "使用已配置的 PIN 码、密码短语或生物识别方式，无需另设一套凭据。",
+          "2": "Interviewer 锁定时，协议名称、会话数量和存储的数据均保持隐藏。"
+        }
+      },
+      "multiUser": {
+        "shortName": "多用户",
+        "name": "多用户管理",
+        "summary": "为每位研究人员提供独立的管理员账户，而不是共用一套仪表板凭据。",
+        "details": {
+          "0": "在设置中添加和删除多个管理员账户；所有现有账户均拥有同等的管理权限。",
+          "1": "选择密码身份验证（可选 TOTP 双重身份验证保护），或使用通行密钥实现无密码登录。",
+          "2": "在共享审计动态中将仪表板活动归属到具体用户名，包括身份验证、协议、导出和账户管理事件。"
+        }
+      },
+      "advancedExportFiltering": {
+        "shortName": "高级导出筛选",
+        "name": "高级导出筛选",
+        "summary": "即使大型研究的结果跨越很多页，也能准确找到并导出所需的访谈。",
+        "details": {
+          "0": "在服务器端针对完整数据集，按协议、日期、进度、网络规模、导出状态或参与者标识符进行筛选。",
+          "1": "选择与当前筛选条件匹配的所有访谈，而不仅仅是屏幕上当前可见的行。",
+          "2": "在筛选结果集中导出全部、已完成或未导出的访谈，同时不影响无关记录。"
+        }
+      },
+      "secureDataApi": {
+        "shortName": "安全的数据 API",
+        "name": "安全的访谈数据 API",
+        "summary": "通过带版本号的只读 JSON API，将分析工具直接连接到 Fresco 部署。",
+        "details": {
+          "0": "在需要之前保持 API 停用，需要时再登录仪表板创建持有者令牌（bearer token）。",
+          "1": "列出并获取访谈网络和协议元数据，不开放任何可修改研究数据的端点。",
+          "2": "撤销令牌、查看每个令牌的最后使用时间，并构建可重复的 R、Python、仪表板或报告工作流程。"
+        }
+      }
+    },
+    "compatibility": {
+      "label": "兼容性",
+      "heading": "升级前须知",
+      "introduction": "<definition>协议架构版本</definition>决定了哪些应用可以打开给定的协议文件——而本次发布最重要的变化就是<strong>架构 8</strong>。下表准确列出了每个应用如何处理这两种格式。选择某一行即可查看其在实际使用中的具体含义。",
+      "defaultNote": "选择上方任意一行，查看其对您的协议文件意味着什么。",
+      "groups": {
+        "classic": "当前（“Classic”）一代",
+        "new": "新一代"
+      },
+      "columns": {
+        "app": "应用",
+        "platform": "平台",
+        "schema7": "架构 7",
+        "schema8": "架构 8"
+      },
+      "statuses": {
+        "migrates": "迁移到 8",
+        "native": "原生支持",
+        "unsupported": "不支持"
+      },
+      "rowAccessibleName": "{app}，{platform}：架构 7 {schema7}；架构 8 {schema8}",
+      "rowAccessibleNameWithVersion": "{app} {version}，{platform}：架构 7 {schema7}；架构 8 {schema8}",
+      "rows": {
+        "interviewerClassic": {
+          "platform": "桌面和平板电脑",
+          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> 原生运行架构 7，但无法打开架构 8 协议。对于进行中的架构 7 研究，请继续使用它——它仍会获得错误修复支持。"
+        },
+        "architectClassic": {
+          "platform": "桌面",
+          "note": "<architectClassic>Architect Classic</architectClassic> 处于维护模式，继续生成架构 7 协议。仅在您需要继续运行旧版 Interviewer（例如 6.6.0）时使用。"
+        },
+        "frescoClassic": {
+          "platform": "浏览器",
+          "note": "Fresco 3.1.2 原生运行架构 7，但无法打开架构 8 协议。请升级到 Fresco 4.0.0 以使用新格式。"
+        },
+        "interviewer": {
+          "platform": "浏览器和 PWA",
+          "note": "新版 Interviewer 原生打开架构 8 协议。打开架构 7 协议时会自动将其迁移到架构 8——且迁移是单向的。"
+        },
+        "architect": {
+          "platform": "浏览器和 PWA",
+          "note": "新版 Architect 构建架构 8 协议，并可打开和自动升级在 <architectClassic>Architect Classic</architectClassic> 中创建的旧版架构 7 协议。"
+        },
+        "fresco": {
+          "platform": "浏览器",
+          "note": "Fresco 4.0.0 原生运行架构 8；上传的架构 7 协议会自动迁移到架构 8——且迁移是单向的。"
+        }
+      },
+      "illustration": {
+        "schema": "架构",
+        "original": "原始"
+      },
+      "caution": {
+        "label": "注意",
+        "heading": "协议迁移是单向的。",
+        "description": "如果您在任何新一代应用中打开架构 7 协议，它将被自动升级到架构 8。之后您将无法将其转换回去，也无法在旧版应用中打开它。如果您在 Architect 中修改协议，这一点尤为重要，因为保存时协议会被升级到架构 8。",
+        "fileNote": "如果您需要继续在 <interviewerClassic>Interviewer Classic</interviewerClassic>、<architectClassic>Architect Classic</architectClassic> 或 Fresco 3.x 中运行协议，请保留原始 <file>.netcanvas</file> 文件的副本。"
+      },
+      "upgrade": {
+        "label": "是否应该升级？",
+        "heading": "何时应该升级？",
+        "newStudy": {
+          "label": "正在开始新的研究？",
+          "heading": "使用新一代工具",
+          "description": "对于新研究，我们推荐使用新工具：使用 <strong>Architect</strong> 设计协议，并根据需要使用 <strong>Fresco 4.0.0</strong> 或 <strong>Interviewer</strong> 部署访谈。"
+        },
+        "ongoing": {
+          "label": "正在进行中的研究？",
+          "heading": "不必着急！",
+          "description": "<interviewerClassic>Interviewer Classic</interviewerClassic> 和 <architectClassic>Architect Classic</architectClassic> 仍受支持，并将继续获得错误修复。请在适合您项目的时间升级——升级时请注意迁移是单向的。"
+        }
+      }
+    },
+    "resources": {
+      "label": "项目资源",
+      "heading": "焕然一新的文档和全新的项目网站",
+      "introduction": "Network Canvas 的变化不只在应用上。我们还重新设计了项目网站并重新组织了文档，让您更容易了解平台、选择合适的工具并找到下一步。",
+      "documentation": {
+        "label": "项目文档",
+        "heading": "围绕研究工作流程组织的指南",
+        "description": "文档现在按照您所处的研究阶段进行组织：入门、设计协议、收集数据和分析结果。全新的工作流程导航和更新后的指南让您更容易找到下一步。",
+        "link": "浏览文档",
+        "screenshotAlt": "重新设计的 Network Canvas 文档首页"
+      },
+      "website": {
+        "label": "项目网站",
+        "heading": "networkcanvas.com 焕然一新",
+        "description": "重新设计的网站采用了更具表现力的视觉形象，并在 Network Canvas 生态系统中提供更清晰的路径——从了解平台的功能，到为您的研究选择最合适的工具。",
+        "link": "浏览新网站",
+        "screenshotAlt": "重新设计的 Network Canvas 网站首页"
+      }
+    },
+    "destinations": {
+      "label": "快速入门",
+      "heading": "开始探索新一代应用",
+      "closing": "如果您有任何疑问或遇到问题，<community>社区论坛</community>是联系我们以及与其他使用这些工具的研究人员交流的最佳去处。我们希望这些新工具能为您的研究带来切实的帮助——我们的团队由衷感谢社区的反馈，以及让这项工作得以持续的长期支持。",
+      "architect": {
+        "title": "打开 Architect",
+        "category": "设计协议",
+        "description": "直接在浏览器中构建、验证和预览架构 8 协议，本地协议库始终保存在您的设备上。",
+        "detail": "architect.networkcanvas.com"
+      },
+      "interviewer": {
+        "title": "打开 Interviewer",
+        "category": "面对面收集",
+        "description": "在桌面和平板电脑上开展安全、可离线进行的访谈，然后在同一本地应用中导出已完成的会话。",
+        "detail": "interviewer.networkcanvas.com"
+      },
+      "fresco": {
+        "title": "部署 Fresco 4.0.0",
+        "category": "远程收集",
+        "description": "搭建多用户平台，支持远程自填式研究、集中式数据管理和研究团队协作。",
+        "detail": "部署指南"
+      },
+      "documentation": {
+        "title": "浏览文档",
+        "category": "了解工作流程",
+        "description": "按照以任务为中心的指南选择工具、设计协议、收集数据，并了解每个界面。",
+        "detail": "最新界面与功能"
+      }
+    }
+  }
+}

@@ -20,8 +20,15 @@ import { createAppIntl } from '@codaco/app-i18n/messages';
 import { interviewerProductionLocales } from '../../i18n/locales';
 import { buildDeleteProtocolMessage } from '../../routes/deleteProtocolMessage';
 import { interviewerCatalogs } from '../catalogs';
+import de from '../de.json';
 import enGb from '../en-GB.json';
 import es from '../es.json';
+import fr from '../fr.json';
+import italian from '../it.json';
+import nl from '../nl.json';
+import ptBR from '../pt-BR.json';
+import zhHans from '../zh-Hans.json';
+import zhHant from '../zh-Hant.json';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const source = JSON.parse(
@@ -29,6 +36,13 @@ const source = JSON.parse(
 ) as ExtractedCatalog;
 const localesDir = join(src, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
+const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
+const deSources = readTranslationSources(localesDir, 'de');
+const nlSources = readTranslationSources(localesDir, 'nl');
+const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
+const italianSources = readTranslationSources(localesDir, 'it');
+const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
@@ -43,6 +57,32 @@ describe('the complete administration catalog', () => {
   });
   it('ships full Spanish with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, es, esSources)).toEqual([]);
+  });
+  it('ships full Simplified Chinese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, zhHans, zhHansSources)).toEqual([]);
+  });
+  it('ships full Traditional Chinese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, zhHant, zhHantSources)).toEqual([]);
+  });
+
+  it('ships full German with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, de, deSources)).toEqual([]);
+  });
+
+  it('ships full Dutch with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, nl, nlSources)).toEqual([]);
+  });
+
+  it('ships full Brazilian Portuguese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, ptBR, ptBRSources)).toEqual([]);
+  });
+
+  it('ships full Italian with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, italian, italianSources)).toEqual([]);
+  });
+
+  it('ships full French with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, fr, frSources)).toEqual([]);
   });
   it('ships only reviewed British differences and inherits the English base', () => {
     expect(checkOverrideLocale(source, enGb, enGbSources)).toEqual([]);
@@ -69,6 +109,13 @@ describe('the complete administration catalog', () => {
       'en',
       'en-GB',
       'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+      'it',
+      'fr',
     ]);
     for (const entry of interviewerProductionLocales)
       expect(

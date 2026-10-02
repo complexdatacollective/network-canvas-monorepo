@@ -1,0 +1,842 @@
+{
+  "ThemeTranslations": {
+    "label": "Farbschema",
+    "triggerLabel": "Farbschema: {theme}",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "Metadata": {
+    "siteTitle": "Network Canvas",
+    "siteDescription": "Network Canvas bietet kostenlose und quelloffene Software zur Erhebung von Netzwerkdaten, die sich an den Bedürfnissen von Forschenden ebenso wie von deren Teilnehmenden orientiert.",
+    "getStartedTitle": "Erste Schritte",
+    "getStartedDescription": "Wählen Sie die passende App von Network Canvas, um ein Protokoll zu entwerfen oder Netzwerkdaten zu erheben."
+  },
+  "Hero": {
+    "headline": "Komplexe Netzwerkdaten einfach erheben.",
+    "description": "Network Canvas bietet <strong>kostenlose und quelloffene</strong> Software zur Erhebung von Netzwerkdaten, die sich an den Bedürfnissen von Forschenden ebenso wie von deren Teilnehmenden orientiert.",
+    "getStarted": "Erste Schritte",
+    "keepScrolling": "oder scrollen Sie weiter, um mehr zu erfahren"
+  },
+  "News": {
+    "label": "Aktuelles:",
+    "fullStory": "[Weiterlesen]"
+  },
+  "Tools": {
+    "heading": "Werkzeuge, die Ihre Forschung erleichtern",
+    "introduction": "Wir bieten einen durchgängigen Arbeitsablauf für die Netzwerkforschung – mit Apps für die Gestaltung von Interviews und für deren Durchführung. Mit diesen Werkzeugen können Forschende die Erhebung von Netzwerkdaten mühelos gestalten, die Daten erfassen und exportieren.",
+    "architect": {
+      "description": "Ein browserbasiertes Werkzeug zur visuellen Gestaltung von Interviews mit Network Canvas. Mit Architect können sich Fachleute auf die Konzeption und Umsetzung ihrer Studie konzentrieren, ohne komplexe neue Technologien erlernen zu müssen.",
+      "action": "Architect öffnen",
+      "screenshotAlt": "Protokolleditor von Architect mit einem Interviewentwurf"
+    },
+    "interviewer": {
+      "description": "Eine browserbasierte App zur Durchführung von Interviews mit Network Canvas im Feld. Interviewer bietet minimalistische, auf die Teilnehmenden ausgerichtete Oberflächen für alle Aufgaben der Datenerhebung in Interviews zu persönlichen Netzwerken.",
+      "action": "Interviewer öffnen",
+      "screenshotAlt": "Startbildschirm von Interviewer mit den verfügbaren Protokollen für Network Canvas"
+    },
+    "fresco": {
+      "description": "Interviews mit Network Canvas – jetzt im Web! Mit Fresco können Forschende Interviews mit Network Canvas direkt im Webbrowser durchführen.",
+      "action": "Fresco-Sandbox ausprobieren",
+      "deployAction": "Fresco bereitstellen",
+      "screenshotAlt": "Fresco-Dashboard mit der Gesamtzahl der Protokolle, Teilnehmenden und Interviews"
+    }
+  },
+  "Video": {
+    "heading": "Mehr erfahren",
+    "description": "Unser Ziel ist es, für die Forschungsgemeinschaft Werkzeuge zu entwickeln, die hochwertig, kostenlos, sicher für die Forschung und auf Dauer angelegt sind. In unserem Projektvideo erfahren Sie mehr darüber, warum wir Network Canvas entwickelt haben. Weitere Videos finden Sie auf unserem <channel>YouTube-Kanal</channel>.",
+    "channel": "YouTube-Kanal",
+    "title": "Was ist Network Canvas?",
+    "watchLabel": "Video ansehen: Was ist Network Canvas?"
+  },
+  "Principles": {
+    "heading": "Designprinzipien",
+    "introduction": "Aller Software von Network Canvas liegen fünf Designprinzipien zugrunde. Sie beruhen auf unseren Beobachtungen und Erfahrungen mit den Problemen, vor denen Forschende stehen, die Studien zu persönlichen Netzwerken konzipieren und durchführen möchten.",
+    "ontologicalFlexibility": {
+      "title": "Ontologische Flexibilität",
+      "paragraph1": "Die Software ist von Grund auf ontologisch flexibel angelegt. Einfach gesagt: Wir setzen nichts über die Art Ihres Interviews voraus.",
+      "paragraph2": "Forschende können die Knoten und Kanten ihrer Interviews, deren Attribute und die Abfolge der Erhebungsaufgaben frei festlegen – ebenso wie die Art, in der diese Aufgaben den Teilnehmenden erklärt werden."
+    },
+    "interviewerAssisted": {
+      "title": "Persönlich und von Interviewenden begleitet",
+      "paragraph1": "Wir sind überzeugt, dass die Anwesenheit einer geschulten interviewenden Person, die die Datenerhebung begleitet, zu Daten von höherer Qualität führt.",
+      "paragraph2": "Die Werkzeuge von Network Canvas gehen deshalb davon aus, dass Interviews in Anwesenheit einer interviewenden Person auf einem von ihr kontrollierten Gerät stattfinden und dass diese Person eigens darin geschult wurde, durch das Interview zu führen."
+    },
+    "emphasisOnDesign": {
+      "title": "Besonderer Wert auf Design",
+      "paragraph1": "Unsere Software wurde von Grund auf so gestaltet, dass sie für Teilnehmende visuell möglichst ansprechend und möglichst wenig belastend ist.",
+      "paragraph2": "Wir nehmen Design sehr ernst und haben auf Literatur aus der Mensch-Computer-Interaktion (HCI) sowie auf Arbeiten aus der Netzwerkanalyse zurückgegriffen, um ein Interview-Erlebnis zu schaffen, das für Teilnehmende leicht verständlich ist – mit klaren, einheitlichen und haptischen Interaktionen, die durch die Datenerhebung führen."
+    },
+    "endToEndWorkflow": {
+      "title": "Durchgängiger Arbeitsablauf",
+      "paragraph1": "Um die Erhebung komplexer struktureller Daten zu vereinfachen, braucht es nicht nur ein Werkzeug für das Interview, sondern auch eines für die Gestaltung dieser Interviews. Zusammen bilden diese Werkzeuge einen durchgängigen Arbeitsablauf, der die (materiellen wie technischen) Kosten der Erhebung von Netzwerkdaten senkt.",
+      "paragraph2": "Wichtig ist: Die Bedienung unserer Werkzeuge erfordert keine umfassenden technischen Kenntnisse. Vielmehr ermöglichen sie es Forschenden, sich darauf zu konzentrieren, mit ihrer fachlichen Expertise ein wirkungsvolles Interview-Erlebnis zu gestalten."
+    },
+    "openSourceCommunity": {
+      "title": "Von der Community getragene Open-Source-Entwicklung",
+      "paragraph1": "Entscheidend für den Fortbestand dieses Vorhabens sind die Anregungen der Community und die Zusammenarbeit mit ihr – innerhalb und außerhalb der Wissenschaft. Deshalb sind die Werkzeuge von Network Canvas kostenlos nutzbar und vollständig quelloffen (lizenziert unter der GPL Version 3).",
+      "paragraph2": "Wir haben ein von der Community getragenes Entwicklungsprogramm ins Leben gerufen und freuen uns über die Entwicklung neuer Funktionen und andere Beiträge von allen interessierten Dritten."
+    }
+  },
+  "Grants": {
+    "heading": "Förderprojekte mit Network Canvas",
+    "introduction": "Wir sind stolz darauf, dass Network Canvas in einer Reihe von Projekten aktiv eingesetzt wird, die in den Vereinigten Staaten mit Bundesmitteln gefördert werden – über vielfältige Forschungskontexte, Institutionen und Fördereinrichtungen hinweg.",
+    "previous": "Vorheriges Förderprojekt",
+    "next": "Nächstes Förderprojekt",
+    "show": "Förderprojekt {number} anzeigen"
+  },
+  "Publications": {
+    "heading": "Aktuelle Publikationen mit Network Canvas",
+    "carouselLabel": "Karussell mit aktuellen Publikationen",
+    "introduction": "Hier finden Sie die 16 neuesten Publikationen, in denen Network Canvas eingesetzt wurde. Durchsuchen Sie auch die <all>vollständige Liste der Publikationen</all>.",
+    "submission": "Wenn Sie Ihre Publikation hier vorstellen möchten, teilen Sie uns dies bitte in diesem <thread>Thread</thread> auf unserer Community-Website mit.",
+    "thread": "Thread"
+  },
+  "PublicationsPage": {
+    "metadata": {
+      "title": "Publikationen",
+      "description": "Forschung und wissenschaftliche Arbeiten, die mit den Werkzeugen von Network Canvas Daten zu sozialen Netzwerken erheben und untersuchen."
+    },
+    "heading": "Publikationen mit Network Canvas",
+    "citing": "Hinweise zum Zitieren von Network Canvas finden Sie in unserem <article>Dokumentationsartikel</article>.",
+    "submission": "Wenn Sie Ihre Publikation hier vorstellen möchten, teilen Sie uns dies bitte in diesem <thread>Thread</thread> auf unserer Community-Website mit."
+  },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Updates",
+      "description": "Verständliche Zusammenfassungen neuer Versionen von Architect, Interviewer und Fresco."
+    },
+    "heading": "Updates",
+    "introduction": "Neuigkeiten aus den Network-Canvas-Apps. Eine ausführliche Liste aller Änderungen finden Sie in den <changelog>Versionshinweisen auf GitHub</changelog>. Architect und Interviewer werden automatisch aktualisiert; um Fresco zu aktualisieren, folgen Sie der <upgrade>Anleitung in unserer Dokumentation</upgrade>.",
+    "search": {
+      "label": "Updates durchsuchen",
+      "placeholder": "Updates durchsuchen",
+      "clear": "Suche löschen",
+      "results": "{count} von {total, plural, =1 {# Update} other {# Updates}}",
+      "clearAll": "Alle zurücksetzen",
+      "emptyHeading": "Keine Updates gefunden",
+      "emptyDescription": "Versuchen Sie es mit einer anderen Suche."
+    },
+    "details": {
+      "show": "Alle Details anzeigen",
+      "hide": "Details ausblenden"
+    },
+    "moreLanguagesSoon": "Weitere folgen bald",
+    "readMore": "Vollständige Ankündigung lesen",
+    "filter": {
+      "label": "Nach App filtern",
+      "all": "Alle",
+      "appHeading": "App",
+      "kindHeading": "Typ",
+      "kindLabel": "Nach Typ filtern",
+      "kinds": {
+        "launch": "Launches",
+        "feature": "Funktionsupdates",
+        "fix": "Fehlerbehebungen"
+      }
+    },
+    "kinds": {
+      "launch": "Launch",
+      "feature": "Funktionsupdate",
+      "fix": "Fehlerbehebungen"
+    }
+  },
+  "Team": {
+    "heading": "Kernteam",
+    "introduction": "Unser Projektteam besteht aus Personen aus unterschiedlichsten Disziplinen und Fachrichtungen."
+  },
+  "ScientificAdvisors": {
+    "heading": "Wissenschaftlicher Beirat"
+  },
+  "Institutions": {
+    "heading": "Institutionen",
+    "paragraph1": "Die Software wird von einem Forschungs- und Entwicklungsteam an der Northwestern University und der University of Oxford entwickelt, unterstützt von mehreren extern beauftragten Fachleuten für Softwareentwicklung. Wir danken den National Institutes of Health für die <prior>bisherige</prior> und <ongoing>laufende</ongoing> Förderung, die diese Arbeit möglich macht.",
+    "paragraph2": "Das geistige Eigentum und das Urheberrecht an der Software liegen bei einer eingetragenen gemeinnützigen Organisation, dem Complex Data Collective, dem die Kernmitglieder des Projektteams angehören.",
+    "prior": "bisherige",
+    "ongoing": "laufende"
+  },
+  "WhatNext": {
+    "heading": "Wie geht es weiter?",
+    "documentation": {
+      "title": "Möchten Sie mehr erfahren?",
+      "body": "Wir haben eine umfassende Dokumentation erstellt, die alle Aspekte der Konzeption, Durchführung und Verwaltung einer Studie mit Network Canvas abdeckt.",
+      "action": "Zur Dokumentation"
+    },
+    "community": {
+      "title": "Benötigen Sie Hilfe?",
+      "body": "Außerdem haben wir vor Kurzem eine Community-Website gestartet, auf der Sie Fragen stellen, Fehler melden, Ihre Arbeit teilen und Hilfe von anderen Forschenden erhalten können.",
+      "action": "Zur Community-Website"
+    },
+    "keepInTouch": {
+      "title": "In Kontakt bleiben",
+      "body": "Wenn Sie über das Projekt auf dem Laufenden bleiben und sofort von Veranstaltungen und neuen Versionen erfahren möchten, tragen Sie sich gern in unsere Mailingliste ein und folgen Sie uns auf Twitter. Wir gehen rücksichtsvoll mit Ihrem Postfach um und nutzen diese Liste ausschließlich für wichtige Ankündigungen."
+    },
+    "collaboration": {
+      "title": "Interesse an einer Zusammenarbeit?",
+      "body": "Wenn Sie an einer formellen wissenschaftlichen Zusammenarbeit oder an einer Beratung interessiert sind, lesen Sie bitte unseren Dokumentationsartikel zu diesem Thema. Da unser kleines Team nur begrenzte Kapazitäten hat, können wir leider keine unentgeltliche Beratung anbieten.",
+      "action": "Möglichkeiten der Zusammenarbeit ansehen"
+    }
+  },
+  "MailingList": {
+    "placeholder": "email@networkcanvas.com",
+    "emailLabel": "E-Mail-Adresse",
+    "submit": "Eintragen",
+    "success": "Vielen Dank! Wir melden uns bei Ihnen."
+  },
+  "Footer": {
+    "terms": "Nutzungsbedingungen",
+    "updates": "Updates",
+    "privacy": "Datenschutzerklärung",
+    "copyright": "Copyright Complex Data Collective 2016–{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "ProtocolGallery": {
+    "metadata": {
+      "title": "Protokollgalerie",
+      "description": "Entdecken Sie mit Network Canvas erstellte Forschungsprotokolle – mit Studienzusammenfassungen, Codebüchern und sofort einsatzbereiten Protokolldateien."
+    },
+    "intro": {
+      "heading": "Protokollgalerie",
+      "introduction": "Entdecken Sie Protokolle, die Forschende mit Network Canvas erstellt und hier geteilt haben. Sehen Sie sich an, wie die einzelnen Studien aufgebaut sind, laden Sie Codebuch und Protokoll herunter oder öffnen Sie eine Vorschau des Interviews in Ihrem Browser.",
+      "featured": "Ausgewähltes Protokoll"
+    },
+    "collection": {
+      "heading": "Die Sammlung entdecken",
+      "searchLabel": "Protokolle durchsuchen",
+      "searchPlaceholder": "Protokolle durchsuchen",
+      "clearSearch": "Suche löschen",
+      "clearFilters": "Alle zurücksetzen",
+      "resultsOfTotal": "{count} von {total, plural, =1 {# Protokoll} other {# Protokollen}}",
+      "filterLabel": "Protokolle filtern",
+      "facets": {
+        "fields": "Fachgebiet",
+        "edgeGeneration": "Kantenerhebung"
+      },
+      "sortLabel": "Sortieren nach",
+      "sortOptions": {
+        "newest": "Neueste zuerst",
+        "oldest": "Älteste zuerst",
+        "titleAsc": "Titel A–Z",
+        "titleDesc": "Titel Z–A"
+      },
+      "emptyHeading": "Keine Protokolle gefunden",
+      "emptyDescription": "Versuchen Sie es mit einer anderen Suche oder anderen Filtern.",
+      "openProtocol": "{title} ansehen",
+      "viewDetails": "Ansehen"
+    },
+    "card": {
+      "edges": "Kanten",
+      "fields": "Fachgebiete",
+      "added": "Hinzugefügt am {date}"
+    },
+    "stages": {
+      "heading": "Abfolge der Abschnitte",
+      "waveTabs": "Wellen",
+      "count": "{count, plural, =1 {# Abschnitt} other {# Abschnitte}}",
+      "waves": "{count, plural, =1 {# Welle} other {# Wellen}}",
+      "edgeStageCounts": {
+        "Sociogram": "{count, plural, =1 {# Soziogramm} other {# Soziogramme}}",
+        "DyadCensus": "{count, plural, =1 {# Dyadenzensus} other {# Dyadenzensus}}",
+        "TieStrengthCensus": "{count, plural, =1 {# Beziehungsstärke-Zensus} other {# Beziehungsstärke-Zensus}}",
+        "OneToManyDyadCensus": "{count, plural, =1 {# Eins-zu-viele-Dyadenzensus} other {# Eins-zu-viele-Dyadenzensus}}",
+        "NetworkComposer": "{count, plural, =1 {# Netzwerkeditor} other {# Netzwerkeditoren}}"
+      }
+    },
+    "stageTypes": {
+      "AlterEdgeForm": "Kantenformular für jedes Alteri-Paar",
+      "AlterForm": "Formular für jeden Alter",
+      "Anonymisation": "Anonymisierungsoberfläche",
+      "CategoricalBin": "Kategoriale Einordnung",
+      "DyadCensus": "Dyadenzensus",
+      "EgoForm": "Ego-Formular",
+      "FamilyPedigree": "Familienstammbaum",
+      "Geospatial": "Geodaten-Oberfläche",
+      "Information": "Information",
+      "NameGenerator": "Namensgenerator (mit Formularen)",
+      "NameGeneratorQuickAdd": "Namensgenerator (Schnelleingabe)",
+      "NameGeneratorRoster": "Namensgenerator mit Namensliste",
+      "Narrative": "Narrativ",
+      "NarrativePedigree": "Narrativer Stammbaum",
+      "NetworkComposer": "Netzwerkeditor",
+      "OneToManyDyadCensus": "Eins-zu-viele-Dyadenzensus",
+      "OrdinalBin": "Ordinale Einordnung",
+      "Sociogram": "Soziogramm",
+      "TieStrengthCensus": "Beziehungsstärke-Zensus"
+    },
+    "detail": {
+      "back": "Zurück zur Protokollgalerie",
+      "citation": "Diese Publikation zitieren",
+      "demonstrates": "Was dieses Protokoll zeigt",
+      "details": "Studiendetails",
+      "studyPi": "Studienleitung (PI)",
+      "grantNumber": "Förderkennzeichen",
+      "contact": "Ansprechperson für das Protokoll",
+      "methods": "Kantenerhebung",
+      "fields": "Fachgebiet(e)",
+      "population": "Population",
+      "usesRosters": "Verwendet Namenslisten",
+      "yes": "Ja",
+      "no": "Nein",
+      "clinicalTrials": "Studienregistrierung",
+      "publication": "DOI / Publikation",
+      "dateAdded": "Hinzugefügt am",
+      "viewPublication": "Publikation ansehen",
+      "wave": "Welle {wave}",
+      "preview": "Protokollvorschau öffnen",
+      "downloadProtocol": "Protokoll herunterladen",
+      "viewCodebook": "Codebuch-Übersicht"
+    },
+    "preview": {
+      "metadata": {
+        "title": "Vorschau: {name}"
+      },
+      "loading": "Vorschau wird vorbereitet…",
+      "finishConfirmation": "Dies ist eine Vorschau, daher wird nichts gespeichert. Wenn Sie das Interview beenden, endet dieser Durchlauf des Protokolls. Sie können ihn danach erneut starten.",
+      "finishedHeading": "Vorschau beendet",
+      "finishedDescription": "Das Interview wurde genau so abgeschlossen, wie es auch bei einer teilnehmenden Person der Fall wäre. Es wurde nichts gespeichert.",
+      "restart": "Vorschau neu starten",
+      "backToProtocol": "Zurück zum Protokoll",
+      "errorHeading": "Für dieses Protokoll ist keine Vorschau möglich",
+      "errors": {
+        "unavailable": "Die Protokolldatei konnte nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+        "unreadable": "Die Protokolldatei konnte nicht geöffnet werden. Möglicherweise ist sie beschädigt.",
+        "unsupported-version": "Dieses Protokoll verwendet eine Schemaversion, die die Interview-Engine nicht ausführen kann.",
+        "invalid": "Das Protokoll hat die Validierung nicht bestanden, daher kann die Interview-Engine es nicht ausführen."
+      },
+      "retry": "Erneut versuchen"
+    },
+    "submit": {
+      "heading": "Ihr Protokoll einreichen",
+      "description": "Senden Sie uns Ihre .netcanvas-Datei, Ihr Codebuch und die Zitationsangabe. Wir prüfen dann, ob wir das Protokoll in die Galerie aufnehmen.",
+      "action": "Protokoll per E-Mail senden"
+    }
+  },
+  "GetStarted": {
+    "metadata": {
+      "title": "Erste Schritte",
+      "description": "Wählen Sie die passende App von Network Canvas, um ein Protokoll zu entwerfen oder Netzwerkdaten zu erheben."
+    },
+    "intro": {
+      "heading": "Wählen Sie Ihren Einstieg",
+      "introduction": "Klicken Sie zunächst auf die Karte, die am besten beschreibt, in welcher Phase sich Ihre Forschung befindet.",
+      "stages": {
+        "design": {
+          "label": "Designphase",
+          "title": "Ein Interviewprotokoll entwerfen oder erstellen",
+          "accessibleName": "Ein Interviewprotokoll entwerfen oder erstellen"
+        },
+        "collect": {
+          "label": "Erhebungsphase",
+          "title": "Daten mit Network Canvas erheben",
+          "accessibleName": "Daten mit Network Canvas erheben"
+        },
+        "learn": {
+          "label": "Network Canvas erkunden",
+          "title": "Mehr über das Projekt erfahren",
+          "accessibleName": "Mehr über das Projekt erfahren – öffnet die Dokumentation in einem neuen Tab"
+        }
+      }
+    },
+    "sections": {
+      "design": {
+        "label": "Designphase",
+        "heading": "Ein Protokoll entwerfen oder erstellen",
+        "description": "Gestalten Sie eine neue browserbasierte Studie in Architect oder setzen Sie eine bestehende Studie in Architect Classic fort."
+      },
+      "collect": {
+        "label": "Erhebungsphase",
+        "heading": "Daten erheben",
+        "description": "Wählen Sie Interviewer, Fresco oder Interviewer Classic – je nachdem, wie und wo Sie Daten erheben möchten."
+      }
+    },
+    "shared": {
+      "bestFor": "Ideal für",
+      "downloadVersion": "Version {version} herunterladen",
+      "platformAccessibleName": "{app} für {platform}",
+      "schemaVersionInfo": "Architect Classic und Interviewer Classic unterstützen Protokolle mit Schema 7. Die browserbasierten Apps Architect und Interviewer sowie Fresco verwenden Schema 8, das die neuesten Funktionen enthält. Die Aktualisierung eines Protokolls lässt sich nicht rückgängig machen. Bewahren Sie daher die ursprüngliche Datei mit Schema 7 auf, wenn Sie die Classic-Apps weiterhin benötigen.",
+      "schemaVersionLink": "Mehr über Schemaversionen erfahren"
+    },
+    "platforms": {
+      "appleSilicon": "Apple Silicon",
+      "appleIntel": "Apple Intel",
+      "windows": "Windows",
+      "linux": "Linux",
+      "android": "Android"
+    },
+    "apps": {
+      "architect": {
+        "status": "Empfohlen für neue Studien",
+        "description": "Gestalten Sie Protokolle in Ihrem Browser, ohne etwas installieren zu müssen – mit allen neuesten Funktionen von Network Canvas.",
+        "bestFor": {
+          "newStudy": "Eine neue Studie beginnen",
+          "latestFeatures": "Protokolle mit allen neuesten Funktionen gestalten",
+          "interviewerOrFresco": "Daten mit der neuen Version von Interviewer oder mit Fresco erheben",
+          "upgradeClassic": "Ein in Architect Classic erstelltes Protokoll aktualisieren, um die neuesten Funktionen zu nutzen"
+        },
+        "actions": {
+          "open": "Architect öffnen"
+        }
+      },
+      "interviewer": {
+        "status": "Vor Ort · Empfohlen",
+        "description": "Führen Sie die Datenerhebung mit Unterstützung durch Interviewende auf einem Gerät durch, das Sie kontrollieren – mit Protokollen, die alle neuesten Funktionen von Network Canvas nutzen.",
+        "bestFor": {
+          "inPerson": "Persönlich geführte Interviews",
+          "guided": "Begleitung der Teilnehmenden durch geschulte Interviewende",
+          "researcherDevice": "Datenerhebung auf einem Gerät unter Kontrolle des Forschungsteams",
+          "latestFeatures": "Studien mit Protokollen, die alle neuesten Funktionen nutzen"
+        },
+        "actions": {
+          "open": "Interviewer öffnen"
+        }
+      },
+      "fresco": {
+        "status": "Große Teams · Ortsunabhängige Durchführung · Empfohlen",
+        "description": "Für Teilnehmende, die Interviews ortsunabhängig in ihrem eigenen Browser absolvieren, mit zentraler Verwaltung von Studie und Daten. Die Sandbox ist eine öffentliche Demonstrationsumgebung und nicht für die Durchführung echter Studien gedacht.",
+        "bestFor": {
+          "remoteBrowser": "Teilnehmende, die Interviews ortsunabhängig in ihrem eigenen Browser absolvieren",
+          "centralManagement": "Zentrale Verwaltung von Studien und Teilnehmenden",
+          "sharedDashboard": "Daten über ein gemeinsames Dashboard verwalten und exportieren",
+          "selfHosted": "Teams, die eine Fresco-Instanz bereitstellen und hosten können"
+        },
+        "actions": {
+          "sandbox": "Anleitung zum Zugang zur Fresco-Sandbox",
+          "deployment": "Anleitung zur Bereitstellung"
+        }
+      },
+      "architectClassic": {
+        "status": "Classic · Wartungsmodus",
+        "description": "Verwenden Sie diese App nur, wenn Ihre Studie mit Interviewer Classic und Schema 7 kompatibel bleiben muss.",
+        "bestFor": {
+          "classicCompatibility": "Eine bestehende Studie, die mit Interviewer Classic kompatibel bleiben muss",
+          "editWithoutMigration": "Ein Protokoll mit Schema 7, das ohne Migration weiter bearbeitet werden muss"
+        }
+      },
+      "interviewerClassic": {
+        "status": "Classic · Bestehende Studien",
+        "description": "Für bestehende Studien mit Schema 7 und für Offline-Arbeitsabläufe auf Desktop-Computern oder Tablets. Wird für Kompatibilität und Fehlerbehebungen weiter gepflegt.",
+        "bestFor": {
+          "schema7Study": "Eine bestehende Studie, die auf Schema 7 angewiesen ist",
+          "desktopTablet": "Einen bestehenden Arbeitsablauf auf Desktop-Computern oder Tablets beibehalten",
+          "offlineCollection": "Studien, die den bisherigen Offline-Arbeitsablauf für die Erhebung benötigen"
+        }
+      }
+    }
+  },
+  "SummerUpdate": {
+    "metadata": {
+      "title": "Wir stellen vor: die nächste Generation der Apps von Network Canvas",
+      "description": "Lernen Sie die neu gestalteten Apps Architect und Interviewer, Fresco 4.0.0 und das neue Protokollformat Schema 8 kennen."
+    },
+    "hero": {
+      "heading": "<lead>Wir stellen vor: die nächste Generation der</lead> <product><apps>Apps von</apps> <brand>Network Canvas</brand></product>",
+      "description": "Ein großer Schritt nach vorn beim Gestalten, Durchführen und Verwalten von Interviews mit Network Canvas. Auf dieser Seite erfahren Sie, was sich <strong>ändert</strong>, was <strong>neu</strong> ist und was das für Ihre Arbeit <strong>bedeutet</strong>.",
+      "scrollCue": "Scrollen Sie weiter, um mehr zu erfahren"
+    },
+    "definitions": {
+      "pwa": "<dfn>Progressive Web Apps</dfn> sind speziell entwickelte Websites, die sich auf Ihrem Gerät installieren lassen und sich wie native Apps verhalten. Sie haben also ein Symbol, über das Sie sie öffnen können, verfügen über einen eigenen Speicher und funktionieren auch offline.",
+      "protocolSchema": "Protokollschemas sind die technischen Spezifikationen, die festlegen, wie Protokolldateien aufgebaut sind und von den Apps interpretiert werden. Sie stellen sicher, dass Protokolle mit verschiedenen Versionen der Apps kompatibel sind, und bilden den Rahmen für die Umsetzung neuer Funktionen und Oberflächen.",
+      "architectClassic": "Die ursprüngliche Desktop-App zum Herunterladen, mit der Protokolle für Network Canvas gestaltet werden. Sie bleibt für laufende Studien verfügbar und wird vollständig unterstützt, befindet sich aber im Wartungsmodus und erhält keine neuen Funktionen. Sie können sie <link>hier</link> herunterladen.",
+      "interviewerClassic": "Die ursprüngliche Desktop- und Tablet-App zum Herunterladen, mit der Interviewdaten erhoben werden. Sie bleibt für laufende Studien verfügbar und wird vollständig unterstützt, befindet sich aber im Wartungsmodus und erhält keine neuen Funktionen. Sie können sie <link>hier</link> herunterladen."
+    },
+    "common": {
+      "documentation": "Dokumentation"
+    },
+    "overview": {
+      "label": "Neuerungen",
+      "heading": "Architect und Interviewer, neu gedacht für den Browser",
+      "introduction": "Wir haben <strong>Architect</strong> und <strong>Interviewer</strong> als Websites neu gestaltet, die sich auch als <pwa>Progressive Web Apps</pwa> auf Ihrem Gerät installieren lassen. Zusammen mit <strong>Fresco 4.0.0</strong> bilden sie eine einheitliche, moderne Plattform auf einer gemeinsamen technischen Grundlage – und alle drei unterstützen ein neues Protokolldateiformat: <strong>Schema 8</strong>.",
+      "benefits": {
+        "lowFriction": {
+          "title": "Unkomplizierte Nutzung",
+          "description": "Rufen Sie <architect>architect.networkcanvas.com</architect> oder <interviewer>interviewer.networkcanvas.com</interviewer> jederzeit auf jedem Gerät auf – und nutzen Sie die Werkzeuge, ohne etwas zu installieren."
+        },
+        "installation": {
+          "title": "Lokale Installation als App",
+          "description": "Installieren Sie eines der beiden Werkzeuge direkt aus dem Browser als App. Es funktioniert auf Ihrem Gerät wie eine gewöhnliche App, und Ihre Daten bleiben lokal unter Ihrer Kontrolle."
+        },
+        "updates": {
+          "title": "Einfachere Updates",
+          "description": "Die neuen Apps werden automatisch mit den neuesten Funktionen und Fehlerbehebungen aktualisiert. So können Sie sich auf Ihre Forschung konzentrieren, statt Softwareversionen zu verwalten."
+        },
+        "tablet": {
+          "title": "Wieder auf Tablets verfügbar",
+          "description": "Die neue Interviewer-App läuft wieder auf Tablets (iPad und Android), nachdem sie wegen Einschränkungen der App-Stores mehrere Jahre lang nicht verfügbar war."
+        }
+      },
+      "classic": {
+        "title": "Was ist mit den ursprünglichen Desktop- und Tablet-Apps?",
+        "description": "Die ursprünglichen Desktop- und Tablet-Apps heißen jetzt <architectClassic>Architect Classic</architectClassic> und <interviewerClassic>Interviewer Classic</interviewerClassic>. Sie bleiben für laufende Studien verfügbar und werden <strong>vollständig unterstützt</strong>, befinden sich aber im Wartungsmodus und erhalten keine neuen Funktionen."
+      }
+    },
+    "apps": {
+      "architect": {
+        "label": "Protokollgestaltung",
+        "heading": "Neu: Architect – Protokolle im Browser gestalten",
+        "description": "Es muss nichts installiert werden – öffnen Sie einfach <link>architect.networkcanvas.com</link> und legen Sie los. Architect läuft automatisch immer in der neuesten Version. Auf der Website können Sie Architect als <pwa>PWA</pwa> auf Ihrem Computer installieren – für ein Erlebnis wie bei einer nativen App und die lokale Kontrolle über Ihre Daten.",
+        "iconAlt": "App-Symbol von Architect",
+        "screenshotAlt": "Protokolleditor von Architect mit der Zeitleiste des Beispielprotokolls",
+        "bullets": {
+          "schema8": "Erstellt Protokolle mit <strong>Schema 8</strong> und allen neuen Funktionen (siehe unten)",
+          "upgrades": "Öffnet ältere Protokolle mit Schema 7 und <strong>aktualisiert sie automatisch</strong>",
+          "templates": "Enthält <strong>Protokollvorlagen</strong>, die Ihnen einen schnellen Einstieg ermöglichen und helfen, häufige Fehler zu vermeiden"
+        },
+        "open": "Architect öffnen",
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> bleibt für Forschende verfügbar, die weiterhin ältere Versionen von Interviewer (z. B. 6.6.0) verwenden müssen. Die App befindet sich im Wartungsmodus – es gibt nur noch Fehlerbehebungen – und erstellt weiterhin Protokolle mit Schema 7."
+      },
+      "interviewer": {
+        "label": "Persönliche Interviews",
+        "heading": "Interviewer – Interviews überall durchführen",
+        "description": "Auch Interviewer wurde für den Browser neu gestaltet: Laden Sie unter <link>interviewer.networkcanvas.com</link> ein Protokoll hoch und legen Sie los, ohne etwas zu installieren. Installieren Sie Interviewer als <pwa>PWA</pwa>, um auch offline arbeiten zu können – es bleibt das ideale Werkzeug für persönliche, von Interviewenden begleitete Netzwerkstudien.",
+        "iconAlt": "App-Symbol von Interviewer",
+        "screenshotAlt": "Dashboard von Interviewer mit Protokollkarten und einer Aktion zum Fortsetzen eines Interviews",
+        "bullets": {
+          "security": "Neue, erweiterte Sicherheit: verschlüsselte Datenspeicherung und Autorisierung in der App für sensible Aktionen wie den Datenexport",
+          "schema8": "Unterstützt <strong>Schema 8</strong> nativ und migriert beim Import alle vorhandenen Protokolle mit Schema 7 automatisch",
+          "compatibility": "Kompatibel mit allen Desktop-Computern und Tablets, einschließlich iPads und Android-Tablets"
+        },
+        "open": "Interviewer öffnen",
+        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> bleibt für laufende Studien verfügbar. Wie <architectClassic>Architect Classic</architectClassic> befindet sich die App ausschließlich im Wartungsmodus und erhält keine neuen Funktionen."
+      },
+      "fresco": {
+        "label": "Ortsunabhängige, selbstadministrierte Interviews",
+        "heading": "Fresco 4.0.0 – ein bedeutendes Upgrade",
+        "description": "Die neueste Version von Fresco ist ein großes Release mit mehreren bedeutenden neuen Funktionen. Fresco wurde für ortsunabhängige, selbstadministrierte Interviews entwickelt (ist aber auch voll kompatibel mit persönlichen Interviews) und empfiehlt sich für Studien mit vielen Teilnehmenden, mit einem großen Forschungsteam oder mit Bedarf an einer zentralen Datenverwaltung.",
+        "iconAlt": "App-Symbol von Fresco",
+        "deploymentGuide": "Anleitung zur Bereitstellung",
+        "upgradeNote": "Wenn Sie Fresco 3.x nutzen, sollten Sie nicht während einer laufenden Studie aktualisieren. Fresco 4.0.0 kann nicht auf 3.x zurückgestuft werden.",
+        "cards": {
+          "multiUser": {
+            "title": "Zugriff für mehrere Personen",
+            "description": "Jedes Teammitglied erhält ein eigenes Konto mit Zwei-Faktor-Authentifizierung, Unterstützung für Passkeys und einem vollständigen Aktivitätsverlauf aller im System ausgeführten Aktionen."
+          },
+          "api": {
+            "title": "Sichere Daten-API",
+            "description": "Fresco bietet jetzt eine sichere, schreibgeschützte API für den programmatischen Zugriff auf Ihre Studiendaten – für Berichte, Dashboards und Analysen in Echtzeit."
+          },
+          "selfHosted": {
+            "title": "Vollständig selbst hostbar",
+            "description": "Fresco lässt sich jetzt vollständig auf Ihren eigenen Servern installieren oder in Ihrer privaten Cloud hosten – so behalten Sie die volle Kontrolle über Ihre Daten."
+          }
+        }
+      }
+    },
+    "features": {
+      "label": "Schema 8",
+      "heading": "Neue Oberflächen und Funktionen",
+      "introduction": "Mit dieser neuen Generation von Apps wird eine neue <definition>Schemaversion für Protokolle</definition> eingeführt: Schema 8. Sie umfasst mehrere neue Interviewoberflächen und Funktionen. Wenn Ihre Studie eine davon benötigt, müssen Sie die neuen Werkzeuge verwenden. Wählen Sie eine beliebige Karte, um die Details zu sehen.",
+      "documentationLink": "In der Dokumentation ansehen",
+      "previewAlt": "Vorschau: {name}",
+      "groups": {
+        "interfaces": "Neue Interviewoberflächen",
+        "schema": "Funktionen von Schema 8",
+        "architect": "Architect",
+        "interviewer": "Interviewer",
+        "fresco": "Fresco 4.0.0"
+      },
+      "geospatial": {
+        "shortName": "Geodaten",
+        "name": "Geodaten-Oberfläche",
+        "summary": "Erheben Sie Standortdaten zu jeder genannten Person, indem Sie Teilnehmende bitten, auf einer interaktiven Karte ein Gebiet auszuwählen.",
+        "details": {
+          "0": "Legen Sie mit einer GeoJSON-Datei auswählbare Zählbezirke, Postleitzahlgebiete, Stadtviertel oder eigene Untersuchungsregionen fest.",
+          "1": "Wählen Sie, welche GeoJSON-Eigenschaft zu jeder Person gespeichert wird, damit sich die Antwort bei der Analyse direkt mit räumlichen Daten verknüpfen lässt.",
+          "2": "Fügen Sie optional eine Adresssuche und Kontextinformationen zum öffentlichen Nahverkehr hinzu. Die Dienste von Mapbox erfordern während des Interviews eine Internetverbindung."
+        }
+      },
+      "anonymisation": {
+        "shortName": "Anonymisierung",
+        "name": "Anonymisierungsoberfläche",
+        "summary": "Geben Sie Teilnehmenden direkte Kontrolle über sensible Identifikationsmerkmale, indem ausgewählte Knoten- oder Kantenattribute auf ihrem Gerät verschlüsselt werden.",
+        "details": {
+          "0": "Jede teilnehmende Person legt die Passphrase fest, mit der ihre ausgewählten Daten geschützt werden. Die App speichert diese Passphrase niemals.",
+          "1": "Forschende können die geschützten Werte nicht entschlüsseln; in Exporten werden verschlüsselte Attribute stattdessen durch eine eindeutige Markierung ersetzt.",
+          "2": "Dies ist eine experimentelle Funktion für Studien, in denen stärkere Datenschutzgarantien Vertrauen und Auskunftsbereitschaft fördern können."
+        }
+      },
+      "oneToMany": {
+        "shortName": "Eins-zu-viele-Dyadenzensus",
+        "name": "Oberfläche „Eins-zu-viele-Dyadenzensus“",
+        "summary": "Erstellen Sie Beziehungen von einer Fokusperson zu mehreren anderen Personen auf demselben Bildschirm, statt jedes Paar einzeln zu betrachten.",
+        "details": {
+          "0": "Verwenden Sie diese Oberfläche, wenn ein Netzwerk zentrale Personen enthält, die wahrscheinlich Beziehungen zu vielen anderen haben.",
+          "1": "Erheben Sie einen oder mehrere Beziehungstypen; die Fokusperson bleibt dabei während der gesamten Aufgabe sichtbar.",
+          "2": "Legen Sie fest, ob jede Fokusperson nach ihrer Betrachtung für einen weiteren Durchgang in die Liste zurückkehrt oder entfernt wird."
+        }
+      },
+      "familyPedigree": {
+        "shortName": "Familienstammbaum",
+        "name": "Oberfläche „Familienstammbaum“",
+        "summary": "Führen Sie Teilnehmende in einem eigens dafür entwickelten visuellen Ablauf durch den Aufbau einer komplexen Familienstruktur.",
+        "details": {
+          "0": "Erstellen Sie Familienmitglieder und Beziehungen gemeinsam; ein automatisches Layout hält den Stammbaum übersichtlich, während er wächst.",
+          "1": "Bilden Sie biologische und soziale Beziehungen ebenso ab wie Beziehungen durch Adoption, Keimzellspende, Leihmutterschaft und Partnerschaft, und erheben Sie Attribute für jedes Familienmitglied.",
+          "2": "Fügen Sie optional einen Schritt zur Nennung von Erkrankungen hinzu, um festzuhalten, welche Angehörigen von bestimmten Erkrankungen betroffen sind, damit dies später visualisiert werden kann."
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "Narrativer Stammbaum",
+        "name": "Oberfläche „Narrativer Stammbaum“",
+        "summary": "Wandeln Sie einen zuvor erstellten Familienstammbaum in eine schreibgeschützte Visualisierung um, die die standardisierte klinische Stammbaumnotation verwendet.",
+        "details": {
+          "0": "Zeigen Sie für eine oder mehrere Erkrankungen betroffene und sicher anlagetragende Angehörige an – für alle unterstützten Erbgänge.",
+          "1": "Zeigen Sie optional mögliche Risikoeinstufungen an, wenn die Studie eine angemessen begleitete Interpretation vorsieht.",
+          "2": "Konzentrieren Sie sich auf die für eine Person relevante Abstammungslinie und exportieren Sie eine druckbare Momentaufnahme. Die Visualisierung ist eine Hilfe, keine Diagnose."
+        }
+      },
+      "networkComposer": {
+        "shortName": "Netzwerkeditor",
+        "name": "Oberfläche „Netzwerkeditor“",
+        "summary": "Erstellen und bearbeiten Sie das gesamte persönliche Netzwerk einer teilnehmenden Person auf einer frei gestaltbaren Arbeitsfläche.",
+        "details": {
+          "0": "Fügen Sie Personen hinzu, ergänzen Sie Attribute von Personen und Beziehungen, zeichnen Sie mehrere Beziehungstypen ein und ordnen Sie das Netzwerk im Verlauf des Gesprächs neu an.",
+          "1": "Nutzen Sie Lasso-Auswahl, Gruppen, automatisches Layout, Tastenkürzel sowie Rückgängig und Wiederholen, um dichte Netzwerke effizient aufzubauen.",
+          "2": "Verstehen Sie die Oberfläche als Netzwerk-Notizblock, der von Forschenden oder Interviewenden geführt wird – nicht als schrittweise, selbstadministrierte Aufgabe."
+        }
+      },
+      "validation": {
+        "shortName": "Validierung",
+        "name": "Umfassendere Feldvalidierung",
+        "summary": "Bilden Sie Beziehungen zwischen Antworten direkt im Protokoll ab, damit Formulare widersprüchliche Antworten erkennen, solange das Interview noch läuft.",
+        "details": {
+          "0": "Vergleichen Sie eine numerische Antwort mit einer anderen Variable – mit den neuen Regeln „größer als Variable“ und „kleiner als Variable“.",
+          "1": "Kombinieren Sie diese relativen Prüfungen mit den bestehenden Regeln für Pflichtangaben, Wertebereiche, Eindeutigkeit und feldübergreifende Vergleiche, um festzulegen, welche Antworten Ihre Studie akzeptiert.",
+          "2": "Sehen Sie sich das Formular in der Vorschau von Architect an und testen Sie Grenzfälle vor dem Einsatz; dieselben Protokollregeln gelten in Interviewer und Fresco."
+        }
+      },
+      "enhancedSkipLogic": {
+        "shortName": "Erweiterte Sprunglogik",
+        "name": "Erweiterte Sprunglogik",
+        "summary": "Gestalten Sie präzisere Interviewverläufe mit erweiterten Vergleichsregeln und ausdrücklich festgelegten Zielen für jeden übersprungenen Abschnitt.",
+        "details": {
+          "0": "Verwenden Sie „enthält“ und „enthält nicht“ bei Textantworten und prüfen Sie in kategorialen und ordinalen Regeln auf mehrere ausgewählte Werte.",
+          "1": "Fahren Sie mit dem nächsten verfügbaren Abschnitt fort, springen Sie zu einem ausgewählten späteren Abschnitt oder leiten Sie direkt zum Abschlussbildschirm des Interviews weiter.",
+          "2": "Alle Sprungziele führen nur vorwärts – so bleiben komplexe Verläufe vorhersehbar, und Schleifen bei der Datenerhebung werden vermieden."
+        }
+      },
+      "nodeShapes": {
+        "shortName": "Knotenformen",
+        "name": "Konfigurierbare Knotenformen",
+        "summary": "Nutzen Sie die Form als zusätzlichen visuellen Kanal, damit sich unterschiedliche Arten von Personen in dichten Netzwerkoberflächen leichter unterscheiden lassen.",
+        "details": {
+          "0": "Wählen Sie Kreise, Quadrate oder Rauten als Standardform für jeden Personentyp.",
+          "1": "Ordnen Sie Formen dynamisch anhand kategorialer, ordinaler, boolescher, numerischer oder skalarer Variablen zu, wenn die visuelle Unterscheidung Daten transportiert.",
+          "2": "Kombinieren Sie Form mit Farbe und Größe, damit wichtige Kategorien gut erkennbar bleiben, ohne von einem einzigen visuellen Merkmal abzuhängen."
+        }
+      },
+      "formHints": {
+        "shortName": "Formularhinweise",
+        "name": "Formularhinweise und Validierungshilfen",
+        "summary": "Platzieren Sie kurze Hinweise direkt neben einer einzelnen Frage, damit Teilnehmende den Kontext genau dort erhalten, wo sie ihn brauchen.",
+        "details": {
+          "0": "Fügen Sie einem Formularfeld einen Hinweis im Markdown-Format hinzu, ohne die Hauptfrage des Abschnitts zu verlängern.",
+          "1": "Verwenden Sie Hinweise, um erwartete Formate, unbekannte Begriffe oder die Interpretation einer Antwort zu erläutern.",
+          "2": "Zeigen Sie optional automatische Hinweise an, die sich aus den Prüfregeln des Feldes ergeben, etwa zulässige Wertebereiche oder Pflichtangaben."
+        }
+      },
+      "protocolTemplates": {
+        "shortName": "Protokollvorlagen",
+        "name": "Protokollvorlagen",
+        "summary": "Beginnen Sie mit einem forschungsbasierten Protokoll statt mit einer leeren Zeitleiste und passen Sie es dann an Ihre Studie an.",
+        "details": {
+          "0": "Entdecken Sie Vorlagen für transnationale Netzwerke sowie für Netzwerke zu psychischer Gesundheit, sozialer Isolation, Verhaltenseinflüssen, Pflege und Unterstützung und zu sexuellen oder injektionsbezogenen Risiken.",
+          "1": "Nutzen Sie das allgemeine Beispielprotokoll, um zu sehen, wie zentrale Funktionen und Techniken von Network Canvas zusammenwirken.",
+          "2": "Bearbeiten Sie jeden Abschnitt, jede Frage, jede Variable und jede visuelle Einstellung; Ihre angepassten Protokolle bleiben lokal in Ihrem Browser gespeichert."
+        }
+      },
+      "responsiveSvg": {
+        "shortName": "Responsive SVG-Hintergründe",
+        "name": "Responsive SVG-Hintergründe für Soziogramme",
+        "summary": "Erstellen Sie Soziogramm-Hintergründe, deren Regionen, Achsen und Beschriftungen sich an Interview-Arbeitsflächen im Hoch- und Querformat anpassen.",
+        "details": {
+          "0": "Laden Sie eine SVG-Datei hoch, deren Elemente relativ zur verfügbaren Arbeitsfläche statt in einem festen Pixelraster positioniert sind.",
+          "1": "Sorgen Sie dafür, dass Beschriftungen lesbar bleiben und Regionen bis an die Ränder der Arbeitsfläche reichen, wenn Teilnehmende ein Tablet drehen oder einen Bildschirm mit anderem Format verwenden.",
+          "2": "Nutzen Sie die mitgelieferte Vorlage für soziale Kontexte als Ausgangspunkt für Quadranten, unabhängige Achsen, Kategorien oder sich überschneidende Kontexte."
+        }
+      },
+      "syntheticData": {
+        "shortName": "Synthetische Daten",
+        "name": "Synthetische Interviewdaten",
+        "summary": "Generieren Sie vor der Rekrutierung realistische Testinterviews, damit Sie den gesamten Datenablauf prüfen können, ohne Daten von Teilnehmenden zu gefährden.",
+        "details": {
+          "0": "Erstellen Sie bis zu 1.000 synthetische Interviews auf einmal und prüfen Sie, wie die Antworten in den Studientabellen und Exporten erscheinen.",
+          "1": "Simulieren Sie optional Abbrüche durch Teilnehmende; die Sprunglogik und die Netzwerkfilter des Protokolls werden dabei berücksichtigt.",
+          "2": "Synthetische Datensätze werden gesondert gekennzeichnet und lassen sich gesammelt entfernen, ohne echte Interviews zu berühren."
+        }
+      },
+      "encryptionAtRest": {
+        "shortName": "Verschlüsselung ruhender Daten",
+        "name": "Verschlüsselung ruhender Daten auf dem Gerät",
+        "summary": "Schützen Sie auf dem Gerät gespeicherte Protokolle, Interviews und Einstellungen, sobald Sie eine App-Sperre für Interviewer einrichten.",
+        "details": {
+          "0": "Wählen Sie bei der Einrichtung eine PIN, eine Passphrase oder ein unterstütztes biometrisches Verfahren; dieselbe Authentifizierung entsperrt den Schlüssel, mit dem lokale Daten entschlüsselt werden.",
+          "1": "Der Entschlüsselungsschlüssel wird nur im Arbeitsspeicher gehalten, solange Interviewer entsperrt ist. Beim Neuladen, Sperren oder Schließen sowie nach Ablauf des Zeitlimits für Inaktivität wird er entfernt.",
+          "2": "Nutzen Sie diesen Schutz auf App-Ebene zusammen mit einer vollständigen Geräteverschlüsselung und regelmäßigen Exporten als Teil eines mehrstufigen Datensicherheitskonzepts."
+        }
+      },
+      "authorisationChecks": {
+        "shortName": "Autorisierungsprüfungen",
+        "name": "Konfigurierbare Autorisierungsprüfungen",
+        "summary": "Verlangen Sie an sensiblen Stellen im Arbeitsablauf eine erneute Entsperrung, statt sich nur auf die allgemeine Inaktivitätssperre der App zu verlassen.",
+        "details": {
+          "0": "Verlangen Sie unabhängig voneinander eine erneute Authentifizierung – vor dem Beginn eines Interviews, vor dem Verlassen eines Interviews in Richtung Dashboard und vor dem Export erhobener Daten.",
+          "1": "Nutzen Sie die bereits eingerichtete PIN, Passphrase oder biometrische Methode, ohne zusätzliche Zugangsdaten einzuführen.",
+          "2": "Protokollnamen, Sitzungszahlen und gespeicherte Daten bleiben verborgen, solange Interviewer gesperrt ist."
+        }
+      },
+      "multiUser": {
+        "shortName": "Mehrere Konten",
+        "name": "Administration mit mehreren Konten",
+        "summary": "Geben Sie allen Forschenden ein eigenes Admin-Konto, statt gemeinsame Zugangsdaten für das Dashboard zu nutzen.",
+        "details": {
+          "0": "Fügen Sie in den Einstellungen mehrere Admin-Konten hinzu oder entfernen Sie sie; alle bestehenden Konten haben die gleichen Administrationsrechte.",
+          "1": "Wählen Sie die Authentifizierung per Passwort mit optionalem Zwei-Faktor-Schutz über TOTP oder nutzen Sie Passkeys für die passwortlose Anmeldung.",
+          "2": "Ordnen Sie Aktivitäten im Dashboard im gemeinsamen Aktivitätsverlauf den jeweiligen Benutzernamen zu – darunter Ereignisse zu Authentifizierung, Protokollen, Exporten und Kontoverwaltung."
+        }
+      },
+      "advancedExportFiltering": {
+        "shortName": "Erweiterte Exportfilter",
+        "name": "Erweiterte Exportfilter",
+        "summary": "Finden und exportieren Sie genau die Interviews, die Sie brauchen – auch wenn sich die Ergebnisse einer großen Studie über viele Seiten erstrecken.",
+        "details": {
+          "0": "Filtern Sie serverseitig im gesamten Datensatz nach Protokoll, Datum, Fortschritt, Netzwerkgröße, Exportstatus oder Teilnehmenden-Kennung.",
+          "1": "Wählen Sie alle Interviews aus, die den aktiven Filtern entsprechen – nicht nur die aktuell auf dem Bildschirm sichtbaren Zeilen.",
+          "2": "Exportieren Sie alle, die abgeschlossenen oder die noch nicht exportierten Interviews innerhalb der gefilterten Ergebnismenge, ohne andere Datensätze zu verändern."
+        }
+      },
+      "secureDataApi": {
+        "shortName": "Sichere Daten-API",
+        "name": "Sichere Interviewdaten-API",
+        "summary": "Verbinden Sie Analysewerkzeuge über eine versionierte, schreibgeschützte JSON-API direkt mit einer Fresco-Instanz.",
+        "details": {
+          "0": "Lassen Sie die API deaktiviert, bis Sie sie benötigen, und erstellen Sie dann nach der Anmeldung im Dashboard Bearer-Tokens.",
+          "1": "Listen Sie Interviewnetzwerke und Protokoll-Metadaten auf und rufen Sie sie ab, ohne einen Endpunkt bereitzustellen, über den Studiendaten verändert werden könnten.",
+          "2": "Widerrufen Sie Tokens, prüfen Sie, wann jedes Token zuletzt verwendet wurde, und bauen Sie wiederholbare Arbeitsabläufe mit R oder Python, für Dashboards oder für Berichte auf."
+        }
+      }
+    },
+    "compatibility": {
+      "label": "Kompatibilität",
+      "heading": "Was Sie vor der Aktualisierung wissen sollten",
+      "introduction": "<definition>Schemaversionen für Protokolle</definition> bestimmen, welche Apps eine bestimmte Protokolldatei öffnen können – und die wichtigste Änderung in diesem Release ist <strong>Schema 8</strong>. Die folgende Tabelle zeigt genau, wie jede App mit beiden Formaten umgeht. Wählen Sie eine Zeile aus, um zu erfahren, was das in der Praxis bedeutet.",
+      "defaultNote": "Wählen Sie oben eine beliebige Zeile aus, um zu sehen, was sie für Ihre Protokolldateien bedeutet.",
+      "groups": {
+        "classic": "Aktuelle Generation („Classic“)",
+        "new": "Neue Generation"
+      },
+      "columns": {
+        "app": "App",
+        "platform": "Plattform",
+        "schema7": "Schema 7",
+        "schema8": "Schema 8"
+      },
+      "statuses": {
+        "migrates": "Migration zu 8",
+        "native": "Nativ",
+        "unsupported": "Nicht unterstützt"
+      },
+      "rowAccessibleName": "{app}, {platform}: Schema 7 {schema7}; Schema 8 {schema8}",
+      "rowAccessibleNameWithVersion": "{app} {version}, {platform}: Schema 7 {schema7}; Schema 8 {schema8}",
+      "rows": {
+        "interviewerClassic": {
+          "platform": "Desktop und Tablet",
+          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> führt Schema 7 nativ aus, kann aber keine Protokolle mit Schema 8 öffnen. Verwenden Sie die App weiterhin für laufende Studien mit Schema 7 – sie wird weiterhin unterstützt und erhält Fehlerbehebungen."
+        },
+        "architectClassic": {
+          "platform": "Desktop",
+          "note": "<architectClassic>Architect Classic</architectClassic> erstellt im Wartungsmodus weiterhin Protokolle mit Schema 7. Verwenden Sie die App nur, wenn Sie weiterhin ältere Versionen von Interviewer (z. B. 6.6.0) einsetzen müssen."
+        },
+        "frescoClassic": {
+          "platform": "Browser",
+          "note": "Fresco 3.1.2 führt Schema 7 nativ aus, öffnet aber keine Protokolle mit Schema 8. Aktualisieren Sie auf Fresco 4.0.0, um das neue Format zu nutzen."
+        },
+        "interviewer": {
+          "platform": "Browser und PWA",
+          "note": "Die neue Version von Interviewer öffnet Schema 8 nativ. Beim Öffnen wird ein Protokoll mit Schema 7 automatisch zu Schema 8 migriert – und zwar unumkehrbar."
+        },
+        "architect": {
+          "platform": "Browser und PWA",
+          "note": "Die neue Version von Architect erstellt Protokolle mit Schema 8 und öffnet ältere, in <architectClassic>Architect Classic</architectClassic> erstellte Protokolle mit Schema 7, die dabei automatisch aktualisiert werden."
+        },
+        "fresco": {
+          "platform": "Browser",
+          "note": "Fresco 4.0.0 führt Schema 8 nativ aus; hochgeladene Protokolle mit Schema 7 werden automatisch zu Schema 8 migriert – und zwar unumkehrbar."
+        }
+      },
+      "illustration": {
+        "schema": "SCHEMA",
+        "original": "ORIGINAL"
+      },
+      "caution": {
+        "label": "Achtung",
+        "heading": "Die Migration von Protokollen ist unumkehrbar.",
+        "description": "Wenn Sie ein Protokoll mit Schema 7 in einer App der neuen Generation öffnen, wird es automatisch auf Schema 8 aktualisiert. Sie können es danach weder zurückkonvertieren noch in den älteren Apps öffnen. Das ist besonders wichtig, wenn Sie ein Protokoll in Architect bearbeiten, denn es wird beim Speichern auf Schema 8 aktualisiert.",
+        "fileNote": "Bewahren Sie eine Kopie Ihrer ursprünglichen <file>.netcanvas</file>-Datei auf, wenn Sie das Protokoll weiterhin in <interviewerClassic>Interviewer Classic</interviewerClassic>, <architectClassic>Architect Classic</architectClassic> oder Fresco 3.x verwenden müssen."
+      },
+      "upgrade": {
+        "label": "Sollten Sie aktualisieren?",
+        "heading": "Wann sollten Sie aktualisieren?",
+        "newStudy": {
+          "label": "Beginnen Sie eine neue Studie?",
+          "heading": "Nutzen Sie die neue Generation",
+          "description": "Für neue Studien empfehlen wir die neuen Werkzeuge: Gestalten Sie Ihr Protokoll mit <strong>Architect</strong> und führen Sie die Interviews je nach Bedarf mit <strong>Fresco 4.0.0</strong> oder <strong>Interviewer</strong> durch."
+        },
+        "ongoing": {
+          "label": "Läuft Ihre Studie bereits?",
+          "heading": "Kein Grund zur Eile!",
+          "description": "<interviewerClassic>Interviewer Classic</interviewerClassic> und <architectClassic>Architect Classic</architectClassic> werden weiterhin unterstützt und erhalten auch künftig Fehlerbehebungen. Aktualisieren Sie zu einem Zeitpunkt, der zu Ihrem Projekt passt – denken Sie dabei nur daran, dass die Migration unumkehrbar ist."
+        }
+      }
+    },
+    "resources": {
+      "label": "Projektressourcen",
+      "heading": "Überarbeitete Dokumentation und eine neue Projekt-Website",
+      "introduction": "Nicht nur die Apps von Network Canvas haben sich verändert. Wir haben auch die Projekt-Website neu gestaltet und die Dokumentation neu strukturiert, damit Sie die Plattform leichter verstehen, die richtigen Werkzeuge wählen und Ihren nächsten Schritt finden können.",
+      "documentation": {
+        "label": "Projektdokumentation",
+        "heading": "Anleitungen entlang Ihres Forschungsablaufs",
+        "description": "Die Dokumentation ist jetzt nach der Phase gegliedert, in der sich Ihre Forschung befindet: Einstieg, Gestaltung von Protokollen, Datenerhebung und Auswertung der Ergebnisse. Eine neue Navigation entlang des Arbeitsablaufs und überarbeitete Anleitungen erleichtern es, den nächsten Schritt zu finden.",
+        "link": "Dokumentation entdecken",
+        "screenshotAlt": "Die neu gestaltete Startseite der Dokumentation von Network Canvas"
+      },
+      "website": {
+        "label": "Projekt-Website",
+        "heading": "Ein frischer neuer Auftritt für networkcanvas.com",
+        "description": "Die neu gestaltete Website bietet eine ausdrucksstärkere visuelle Identität und klarere Wege durch das Ökosystem von Network Canvas – vom Kennenlernen der Möglichkeiten der Plattform bis zur Wahl der besten Werkzeuge für Ihre Studie.",
+        "link": "Neue Website entdecken",
+        "screenshotAlt": "Die neu gestaltete Startseite der Website von Network Canvas"
+      }
+    },
+    "destinations": {
+      "label": "Erste Schritte",
+      "heading": "Entdecken Sie die neue Generation",
+      "closing": "Wenn Sie Fragen haben oder auf Probleme stoßen, ist das <community>Community-Forum</community> der beste Ort, um uns zu erreichen und sich mit anderen Forschenden auszutauschen, die die Werkzeuge nutzen. Wir hoffen, dass diese neuen Werkzeuge Ihre Forschung spürbar voranbringen. Unser Team ist sehr dankbar für das Feedback aus der Community und für die fortlaufende Unterstützung, die diese Arbeit möglich macht.",
+      "architect": {
+        "title": "Architect öffnen",
+        "category": "Protokolle gestalten",
+        "description": "Erstellen und validieren Sie Protokolle mit Schema 8 direkt in Ihrem Browser und sehen Sie sie sich in der Vorschau an – mit einer lokalen Protokollbibliothek, die auf Ihrem Gerät bleibt.",
+        "detail": "architect.networkcanvas.com"
+      },
+      "interviewer": {
+        "title": "Interviewer öffnen",
+        "category": "Vor Ort erheben",
+        "description": "Führen Sie sichere, offlinefähige Interviews auf Desktop-Computern und Tablets durch und exportieren Sie abgeschlossene Sitzungen anschließend aus derselben lokalen App.",
+        "detail": "interviewer.networkcanvas.com"
+      },
+      "fresco": {
+        "title": "Fresco 4.0.0 bereitstellen",
+        "category": "Ortsunabhängig erheben",
+        "description": "Richten Sie die Plattform mit Zugang für mehrere Personen ein – für ortsunabhängige, selbstadministrierte Studien, zentrale Datenverwaltung und Forschungsteams.",
+        "detail": "Anleitung zur Bereitstellung"
+      },
+      "documentation": {
+        "title": "Dokumentation entdecken",
+        "category": "Den Arbeitsablauf kennenlernen",
+        "description": "Folgen Sie aufgabenorientierten Anleitungen, um Werkzeuge auszuwählen, Protokolle zu gestalten, Daten zu erheben und jede Oberfläche zu verstehen.",
+        "detail": "neueste Oberflächen und Funktionen"
+      }
+    }
+  }
+}

@@ -98,10 +98,9 @@ test('fails and names the file when a changeset mixes product lanes', () => {
 });
 
 test('fails when a changeset names a workspace that is never released', () => {
-  // `changeset version` accepts this one: `privatePackages.version` is true and
-  // the package is not in the config `ignore` list, so it would be bumped and
-  // given a CHANGELOG in the normal Version Packages PR — announcing a release
-  // of something nobody can install.
+  // `changeset version` does not refuse this one: the package is in the config
+  // `ignore` list, which only skips the changeset — leaving it pending forever
+  // for a release that never comes.
   const cwd = fixture({
     'private-package.md': `---\n"@codaco/protocol-builder": patch\n---\n\nprivate package`,
   });

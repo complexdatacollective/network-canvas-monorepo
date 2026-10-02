@@ -37,6 +37,13 @@ export async function generateMetadata({
         'en-US': 'https://networkcanvas.com/en-US/publications',
         'en-GB': 'https://networkcanvas.com/en-GB/publications',
         'es': 'https://networkcanvas.com/es/publications',
+        'zh-Hans': 'https://networkcanvas.com/zh-Hans/publications',
+        'zh-Hant': 'https://networkcanvas.com/zh-Hant/publications',
+        'de': 'https://networkcanvas.com/de/publications',
+        'nl': 'https://networkcanvas.com/nl/publications',
+        'pt-BR': 'https://networkcanvas.com/pt-BR/publications',
+        'it': 'https://networkcanvas.com/it/publications',
+        'fr': 'https://networkcanvas.com/fr/publications',
       },
     },
   };

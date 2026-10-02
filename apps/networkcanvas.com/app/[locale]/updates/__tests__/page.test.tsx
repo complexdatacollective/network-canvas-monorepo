@@ -317,6 +317,13 @@ describe('updates page', () => {
           'en-US': 'https://networkcanvas.com/en-US/updates',
           'en-GB': 'https://networkcanvas.com/en-GB/updates',
           'es': 'https://networkcanvas.com/es/updates',
+          'zh-Hans': 'https://networkcanvas.com/zh-Hans/updates',
+          'zh-Hant': 'https://networkcanvas.com/zh-Hant/updates',
+          'de': 'https://networkcanvas.com/de/updates',
+          'nl': 'https://networkcanvas.com/nl/updates',
+          'pt-BR': 'https://networkcanvas.com/pt-BR/updates',
+          'it': 'https://networkcanvas.com/it/updates',
+          'fr': 'https://networkcanvas.com/fr/updates',
         },
       },
     });

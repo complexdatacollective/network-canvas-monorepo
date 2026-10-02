@@ -17,7 +17,7 @@ import {
   smallSizeVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -25,15 +25,17 @@ const radioGroupWrapperOwnVariants = cva({
   base: 'items-start',
 });
 
-const radioGroupWrapperVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  interactiveStateVariants,
-  orientationVariants,
-  radioGroupWrapperOwnVariants,
-);
+const radioGroupWrapperVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    interactiveStateVariants,
+    orientationVariants,
+    radioGroupWrapperOwnVariants,
+  ],
+});
 
 const radioIndicatorOwnVariants = cva({
   base: cx(
@@ -43,13 +45,15 @@ const radioIndicatorOwnVariants = cva({
   ),
 });
 
-const radioIndicatorVariants = compose(
-  smallSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  radioIndicatorOwnVariants,
-);
+const radioIndicatorVariants = cva({
+  composes: [
+    smallSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    radioIndicatorOwnVariants,
+  ],
+});
 
 type RadioItemProps = {
   value: string | number;

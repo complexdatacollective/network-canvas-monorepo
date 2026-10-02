@@ -1,6 +1,6 @@
 {
   "name": "networkcanvas.com",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,14 +23,14 @@
     "@codaco/tailwind-config": "workspace:^",
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
-    "@formatjs/intl-localematcher": "^0.8.9",
+    "@formatjs/intl-localematcher": "catalog:",
     "@posthog/nextjs-config": "catalog:",
     "@posthog/react": "catalog:",
     "csvtojson": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",
     "next": "catalog:",
-    "next-intl": "^4.13.0",
+    "next-intl": "^4.14.8",
     "next-themes": "^0.4.6",
     "posthog-js": "catalog:",
     "react": "catalog:",
@@ -41,7 +41,7 @@
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
-    "@netlify/edge-functions": "^3.0.8",
+    "@netlify/edge-functions": "^4.0.1",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
@@ -52,7 +52,7 @@
     "jsdom": "catalog:",
     "jszip": "catalog:",
     "postcss": "catalog:",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

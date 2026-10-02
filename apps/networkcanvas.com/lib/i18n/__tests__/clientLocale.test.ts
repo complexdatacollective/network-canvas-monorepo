@@ -44,7 +44,7 @@ describe('client locale selection', () => {
     ['other=1; NEXT_LOCALE=en-GB; another=2', 'en-GB'],
     ['other=1', null],
     ['NEXT_LOCALE=', null],
-    ['NEXT_LOCALE=fr', null],
+    ['NEXT_LOCALE=ja', null],
   ] as const)('reads %s as the preference %s', (cookie, expected) => {
     vi.spyOn(document, 'cookie', 'get').mockReturnValue(cookie);
     expect(readLocalePreference()).toBe(expected);

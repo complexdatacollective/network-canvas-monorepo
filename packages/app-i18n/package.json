@@ -1,6 +1,6 @@
 {
   "name": "@codaco/app-i18n",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared application UI internationalisation for Network Canvas apps: ICU message catalogs, locale negotiation, and React bindings.",
   "license": "MIT",
   "repository": {
@@ -69,6 +69,7 @@
     "clean": "rm -rf .turbo node_modules dist"
   },
   "dependencies": {
+    "@codaco/shared-consts": "workspace:^",
     "@formatjs/cli-lib": "catalog:",
     "@formatjs/icu-messageformat-parser": "catalog:",
     "@formatjs/intl-localematcher": "catalog:",

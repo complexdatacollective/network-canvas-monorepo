@@ -37,6 +37,11 @@ const refreshWorkflow = parse(
     'utf8',
   ),
 );
+const WORKFLOW_DIR = new URL('../../.github/workflows/', import.meta.url);
+// Every turbo invocation in CI is capped by this, set at the top of each
+// workflow, rather than by a flag at each call site.
+const TURBO_CAP =
+  /^env:\n(?:[^\S\n][^\n]*\n)*?[^\S\n]+TURBO_CONCURRENCY: '1'$/m;
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
@@ -674,18 +679,18 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // nor the sharding can be quietly re-broken.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
     'the affected path scopes to the PR base and to this shard',
   );
   // The fallback runs whenever the diff touches anything outside the turbo
   // input trees — including an edit to this very workflow file, which is how
   // most changes to the job itself are exercised. Without its own assertion,
   // a shard restriction dropped or misquoted here would leave every shard
-  // running the whole workspace, and only the generic --concurrency=1 check
+  // running the whole workspace, and no other assertion
   // would have looked at the line.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 "\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test "\$\{SHARD_FILTERS\[@\]\}"/,
     'the full-suite fallback is scoped to this shard too',
   );
   // Both invocations, and no others: a third turbo run without the shard
@@ -796,26 +801,114 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
 });
 
-test('workspace test suites run one at a time', () => {
+test('every CI turbo invocation is capped at one task, job-wide', () => {
   // Every vitest sizes its fork pool to the runner's CPUs, so one suite
   // already fills the 4-vCPU runner; concurrent suites starve each other
   // into 20s timeouts without shortening the job (PR #1801).
-  const testJob = job('test');
-  assert.ok(testJob, 'test job exists');
-  const testRuns =
-    testJob.match(/pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g) ?? [];
-  assert.ok(testRuns.length >= 2, 'test job runs turbo test on both branches');
-  for (const run of testRuns) {
-    assert.match(run, /--concurrency=1/, `capped: ${run}`);
+  //
+  // This used to be asserted per invocation, which is how `quality-support`
+  // came to run `turbo run typecheck` uncapped and kill the runner on a pull
+  // request that invalidated six packages at once (#2023). The cap is now one
+  // variable per workflow, so this guards that rather than each call site.
+  let capped = 0;
+  for (const file of readdirSync(WORKFLOW_DIR)) {
+    const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
+
+    // A per-invocation flag would override the workflow's variable and drift
+    // from it, which is the arrangement #2023 replaced. The continuation group
+    // matters: these commands are routinely wrapped across `\`-continued
+    // lines, and `test:storybook` was written that way until this change, so a
+    // line-bounded pattern would miss the most likely way the flag comes back.
+    assert.doesNotMatch(
+      source,
+      /turbo run(?:[^\n]*\\\n)*[^\n]*--concurrency/,
+      `${file} passes --concurrency at a call site instead of setting TURBO_CONCURRENCY`,
+    );
+
+    if (!/exec turbo run/.test(source)) continue;
+    assert.match(
+      source,
+      TURBO_CAP,
+      `${file} runs turbo without setting TURBO_CONCURRENCY`,
+    );
+    capped += 1;
   }
+  // A rename of a workflow that runs turbo must not silently empty this loop.
+  assert.ok(
+    capped >= 5,
+    `expected every turbo workflow to be capped, saw ${capped}`,
+  );
 
   const seedJob = job('seed-turbo-cache');
   assert.ok(seedJob, 'seed-turbo-cache job exists');
-  assert.match(seedJob, /pnpm exec turbo run test --concurrency=1/);
+  assert.match(seedJob, /pnpm exec turbo run test/);
   assert.doesNotMatch(
     seedJob,
     /turbo run (?:build|typecheck)[^\n]*\btest\b/,
     'the seed does not run tests in the same turbo invocation as build or typecheck',
+  );
+});
+
+test('turbo runs at the one version the root package.json pins', () => {
+  // A step that fetches its own turbo drifts from the installed one: the
+  // Studio image pruned with 2.10.4, change detection listed packages with
+  // 2.9.6 and the Netlify deploy-preview ignore commands queried with 2.10.4,
+  // so a turbo.json key that only the installed 2.11.5 knew failed the Studio
+  // stack build, silently emptied change detection, and built every preview
+  // the ignore commands should have skipped.
+  const pinned = rootPackage.devDependencies.turbo;
+  assert.match(
+    pinned,
+    /^\d+\.\d+\.\d+$/,
+    'root package.json pins turbo exactly, so a fetch of that version matches the lockfile',
+  );
+
+  const actionDir = new URL('../../.github/actions/', import.meta.url);
+  const dockerfile = new URL('../../apps/studio/Dockerfile', import.meta.url);
+  const appsDir = new URL('../../apps/', import.meta.url);
+  const netlifyConfigs = readdirSync(appsDir)
+    .map((app) => new URL(`${app}/netlify.toml`, appsDir))
+    .filter((url) => existsSync(url));
+  const sources = [
+    ...readdirSync(WORKFLOW_DIR).map((file) => new URL(file, WORKFLOW_DIR)),
+    ...readdirSync(actionDir, { recursive: true })
+      .filter((file) => file.endsWith('.yml'))
+      .map((file) => new URL(file, actionDir)),
+    dockerfile,
+    ...netlifyConfigs,
+  ];
+  for (const url of sources) {
+    assert.doesNotMatch(
+      readFileSync(url, 'utf8'),
+      /(?<![\w-])turbo@\d/,
+      `${url.pathname} hard-codes a turbo version instead of reading the root pin`,
+    );
+  }
+
+  // The callers without an install must read the pin, not drop turbo.
+  const readsPin = /require\('\.\/package\.json'\)\.devDependencies\.turbo/;
+  assert.match(readFileSync(dockerfile, 'utf8'), readsPin);
+  assert.match(readFileSync(dockerfile, 'utf8'), /dlx "turbo@\$\(node -p/);
+  assert.match(job('detect'), readsPin);
+  assert.match(job('detect'), /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
+
+  // Each ignore command has already changed to the repository root, so
+  // ./package.json is the root manifest.
+  let ignoreCommands = 0;
+  for (const url of netlifyConfigs) {
+    const source = readFileSync(url, 'utf8');
+    if (!source.includes('query affected')) continue;
+    assert.match(
+      source,
+      /npx --yes \\"turbo@\$\(node -p \\"require\('\.\/package\.json'\)\.devDependencies\.turbo\\"\)\\" query affected/,
+      `${url.pathname} queries turbo without reading the root pin`,
+    );
+    ignoreCommands += 1;
+  }
+  // A move of the Netlify configs must not silently empty this loop.
+  assert.ok(
+    ignoreCommands >= 5,
+    `expected the five Netlify ignore commands, saw ${ignoreCommands}`,
   );
 });
 
@@ -1691,4 +1784,44 @@ test('studio-stack is selected by detect and required by the quality gate', () =
     /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_STACK_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
     'quality fails when a required studio-stack did not succeed',
   );
+});
+
+// PostHog resolves a minified stack frame by matching the chunk ID injected
+// into the bundle at build time against an uploaded map, so maps are only
+// useful when they come from the very build that produced the deployed
+// artefact. Each app below both wires `withPostHogConfig`/the Vite plugin into
+// its build config and is deployed from a build this workflow runs, so the
+// credentials have to reach that build step — silently losing them turns every
+// future exception in that app back into unresolved frames.
+const SOURCE_MAP_UPLOADING_RELEASES = {
+  'apps-release-architect': '@codaco/architect',
+  'apps-release-interviewer': '@codaco/interviewer',
+  'apps-release-documentation': '@codaco/documentation',
+  'apps-release-website': 'networkcanvas.com',
+  'refresh-website-after-classic-release': 'networkcanvas.com',
+};
+
+test('every production build that uploads source maps gets the credentials', () => {
+  for (const [jobName, filter] of Object.entries(
+    SOURCE_MAP_UPLOADING_RELEASES,
+  )) {
+    const steps = parsedWorkflow.jobs[jobName]?.steps;
+    assert.ok(steps, `${jobName} exists`);
+
+    const buildStep = steps.find((step) =>
+      step.run?.includes(`--filter=${filter}`),
+    );
+    assert.ok(buildStep, `${jobName} builds ${filter}`);
+
+    assert.equal(
+      buildStep.env?.POSTHOG_PERSONAL_API_KEY,
+      '${{ secrets.POSTHOG_PERSONAL_API_KEY }}',
+      `${jobName}'s build step receives POSTHOG_PERSONAL_API_KEY`,
+    );
+    assert.equal(
+      buildStep.env?.POSTHOG_PROJECT_ID,
+      '${{ secrets.POSTHOG_PROJECT_ID }}',
+      `${jobName}'s build step receives POSTHOG_PROJECT_ID`,
+    );
+  }
 });

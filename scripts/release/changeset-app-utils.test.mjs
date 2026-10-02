@@ -285,8 +285,8 @@ test('UNRELEASED_PACKAGES holds every workspace with no release path at all', ()
       `${name} is a separately gated product`,
     );
     assert.ok(
-      !ignore.includes(name),
-      `${name} is in the changesets ignore list, which is a gated lane rather than no lane`,
+      ignore.includes(name),
+      `${name} must be in the changesets ignore list: otherwise a dependency bump versions it and writes it a CHANGELOG.md in the Version Packages PR`,
     );
     assert.ok(
       !readdirSync(directory).some((entry) => entry.startsWith('wrangler.')),

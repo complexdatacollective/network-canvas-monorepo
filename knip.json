@@ -20,7 +20,15 @@
   // apps/architect-classic/scripts/dev.mjs to tear down dev-server processes.
   // diff is the POSIX tool apps/fresco/release-test/scripts/diff-exports.mjs
   // spawns to compare normalized export trees.
-  "ignoreBinaries": ["electron-builder", "xcrun", "taskkill", "diff"],
+  // ios_webkit_debug_proxy (Homebrew) exposes the iOS simulator's WebKit
+  // inspector to scripts/release-test/interviewer-classic-release-walker.mjs.
+  "ignoreBinaries": [
+    "electron-builder",
+    "xcrun",
+    "taskkill",
+    "diff",
+    "ios_webkit_debug_proxy"
+  ],
   // unplugin-dts loads @typescript/typescript6 by name at build time (TypeScript
   // 7 dropped the JavaScript Compiler API it needs for declaration emit), so it
   // is never imported from source.
@@ -37,6 +45,11 @@
     ".": {
       "entry": [
         "scripts/release-test/interviewer-*-walker.mjs",
+        // The classic apps' release tests are run with node by the
+        // architect-classic-release-test and interviewer-classic-release-test
+        // skills (the Interviewer walker is covered by the pattern above).
+        "scripts/release-test/architect-classic-release-walker.mjs",
+        "scripts/release-test/classic-release-build.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/buildtime/posthog-cli-upload-stub.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
@@ -192,9 +205,6 @@
     "apps/interviewer-classic": {
       "project": ["src/**/*.{js,jsx}"],
       "paths": { "@/*": ["./src/*"] },
-      "ignore": [
-        "src/shims/react-resize-aware.js" // wired via electron.vite.config resolve.alias, not a normal import
-      ],
       "ignoreDependencies": [
         "buffer", // npm Buffer polyfill — `import { Buffer } from 'buffer'` in filesystem.js + saveExport.js; knip treats 'buffer' as a Node built-in
         "is-hotkey" // required by @codaco/ui's bundled RichText field; @codaco/ui does not declare it
@@ -214,7 +224,7 @@
         // from `project` above: knip's CJS export --fix corrupts module.exports
         // in the main-process modules, so that tree is left out of analysis.
         "archiver",
-        "decompress",
+        "@xhmikosr/decompress",
         "electron-log",
         "electron-devtools-installer"
       ],

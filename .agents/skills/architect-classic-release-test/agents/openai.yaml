@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Architect Classic Release Test'
+  short_description: 'Build Architect Classic and drive the packaged app to check release readiness'
+  default_prompt: 'Use $architect-classic-release-test to build Architect Classic from this checkout and report whether the release is ready.'
