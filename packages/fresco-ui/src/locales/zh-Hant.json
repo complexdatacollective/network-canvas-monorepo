@@ -225,6 +225,7 @@
   "frescoUi.storageRiskBanner.lowRisk": "資料遺失風險低",
   "frescoUi.storageRiskBanner.mediumRisk": "資料遺失風險中等",
   "frescoUi.timeAgo.justNow": "剛剛",
+  "frescoUi.toast.moreNotifications": "{count, plural, other {還有 # 則通知}}",
   "frescoUi.toast.notifications": "通知",
   "frescoUi.validation.differentFromError": "您的答案必須與先前的答案不同。",
   "frescoUi.validation.differentFromHint": "必須與先前的答案不同。",
