@@ -111,6 +111,9 @@ export default defineConfig({
             '@codaco/fresco-ui > remark-gfm',
             '@codaco/fresco-ui > tailwind-merge',
             '@codaco/fresco-ui > usehooks-ts',
+            // `readRosterCsv` loads it with a dynamic import, which the
+            // scanner never follows.
+            '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
             'd3-force',
             'zod',
