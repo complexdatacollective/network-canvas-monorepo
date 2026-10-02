@@ -282,11 +282,12 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                       variant="subheading"
                       margin="none"
                       id={update.id}
+                      lang="en"
                       className="scroll-mt-8"
                     >
                       {update.title}
                     </Heading>
-                    <div className="mt-3">
+                    <div className="mt-3" lang="en">
                       <RenderMarkdown
                         allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
                         components={markdownComponents}
@@ -296,7 +297,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                     </div>
                     {update.details ? (
                       <>
-                        <AccordionPanel inert={!open}>
+                        <AccordionPanel inert={!open} lang="en">
                           <RenderMarkdown
                             allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
                             components={markdownComponents}

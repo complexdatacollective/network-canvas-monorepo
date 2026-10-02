@@ -85,7 +85,7 @@ function detailsTrigger(title: string) {
 
 describe('updates page', () => {
   it('shows each update’s summary with its details collapsed', async () => {
-    const updates = await loadUpdates('en-US');
+    const updates = await loadUpdates();
     await renderPage();
 
     expect(screen.getAllByRole('article', { hidden: true })).toHaveLength(
@@ -107,7 +107,7 @@ describe('updates page', () => {
   });
 
   it('expands an update’s full details on request', async () => {
-    const [newest] = await loadUpdates('en-US');
+    const [newest] = await loadUpdates();
     await renderPage();
 
     fireEvent.click(detailsTrigger(newest!.title));
@@ -134,7 +134,7 @@ describe('updates page', () => {
   });
 
   it('opens the update a link points at', async () => {
-    const [newest] = await loadUpdates('en-US');
+    const [newest] = await loadUpdates();
     window.history.replaceState(null, '', `/en-US/updates#${newest!.id}`);
     await renderPage();
 
@@ -145,7 +145,7 @@ describe('updates page', () => {
   });
 
   it('ignores a link whose fragment is not valid percent-encoding', async () => {
-    const [newest] = await loadUpdates('en-US');
+    const [newest] = await loadUpdates();
     window.history.replaceState(null, '', '/en-US/updates#%E0%A4');
     await renderPage();
 
@@ -156,7 +156,7 @@ describe('updates page', () => {
   });
 
   it('opens an update when the address changes to point at it', async () => {
-    const [newest] = await loadUpdates('en-US');
+    const [newest] = await loadUpdates();
     await renderPage();
     expect(detailsTrigger(newest!.title)).toHaveAttribute(
       'aria-expanded',
@@ -187,7 +187,7 @@ describe('updates page', () => {
   });
 
   it('narrows the list to updates that match every search word', async () => {
-    const updates = await loadUpdates('en-US');
+    const updates = await loadUpdates();
     const titles = updates.map((update) => update.title);
     const [newest, older] = updates;
     await renderPage();
@@ -202,7 +202,7 @@ describe('updates page', () => {
   });
 
   it('opens the details of every update a search matches', async () => {
-    const [newest] = await loadUpdates('en-US');
+    const [newest] = await loadUpdates();
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
@@ -216,20 +216,34 @@ describe('updates page', () => {
   });
 
   it('ignores accents when searching', async () => {
-    const updates = await loadUpdates('es');
+    const updates = await loadUpdates();
     const titles = updates.map((update) => update.title);
     const [newest] = updates;
-    await renderPage('es');
+    await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
-      target: { value: 'LOCALIZACION' },
+      target: { value: 'LÓCALIZÁTION' },
     });
 
     expect(entryTitles(titles)).toEqual([newest!.title]);
   });
 
+  it('shows the English text of each update on a translated page', async () => {
+    const updates = await loadUpdates();
+    await renderPage('es');
+
+    for (const update of updates) {
+      const heading = within(updateEntry(update.title)).getByRole('heading', {
+        level: 2,
+        hidden: true,
+      });
+      expect(heading).toHaveTextContent(update.title);
+      expect(heading).toHaveAttribute('lang', 'en');
+    }
+  });
+
   it('does not match link destinations', async () => {
-    const titles = (await loadUpdates('en-US')).map((update) => update.title);
+    const titles = (await loadUpdates()).map((update) => update.title);
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
@@ -241,7 +255,7 @@ describe('updates page', () => {
   });
 
   it('restores every update when the search is cleared', async () => {
-    const updates = await loadUpdates('en-US');
+    const updates = await loadUpdates();
     const titles = updates.map((update) => update.title);
     await renderPage();
 
@@ -262,7 +276,7 @@ describe('updates page', () => {
   });
 
   it('filters updates by app alongside the search', async () => {
-    const updates = await loadUpdates('en-US');
+    const updates = await loadUpdates();
     await renderPage();
     const filters = screen.getByRole('group', {
       name: 'Filter by app',

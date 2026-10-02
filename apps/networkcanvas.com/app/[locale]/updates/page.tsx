@@ -75,7 +75,7 @@ export default async function UpdatesPage({ params }: UpdatesPageProps) {
   setRequestLocale(locale);
 
   const [updates, t] = await Promise.all([
-    loadUpdates(locale),
+    loadUpdates(),
     getTranslations({ locale, namespace: 'UpdatesPage' }),
   ]);
 

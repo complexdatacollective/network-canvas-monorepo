@@ -135,9 +135,13 @@ const updateRowSchema = z
             'must not repeat an app',
           ),
       ),
-    title_en: requiredText,
-    title_en_gb: requiredText,
-    title_es: requiredText,
+    title: requiredText,
+    summary: requiredText,
+    details: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value || undefined),
     link: z
       .string()
       .trim()
@@ -255,42 +259,20 @@ export async function loadSiteContent(
   };
 }
 
-const DETAILS_MARKER = '<!-- more -->';
-
 export async function loadUpdates(
-  locale: Locale,
   contentDirectory = join(process.cwd(), 'content'),
 ): Promise<Update[]> {
   const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
-  const bodySuffix = locale === 'en-US' ? 'en' : locale;
 
-  const updates = await Promise.all(
-    rows.map(async (row) => {
-      const filename = `updates/${row.id}.${bodySuffix}.md`;
-      let body: string;
-      try {
-        body = await readFile(join(contentDirectory, filename), 'utf8');
-      } catch (error) {
-        throw new Error(`${filename}: missing update body`, { cause: error });
-      }
-
-      const [summary = '', details] = body.split(DETAILS_MARKER);
-
-      return {
-        id: row.id,
-        date: row.date,
-        apps: row.apps,
-        title: {
-          'en-US': row.title_en,
-          'en-GB': row.title_en_gb,
-          'es': row.title_es,
-        }[locale],
-        summary: summary.trim(),
-        ...(details === undefined ? {} : { details: details.trim() }),
-        ...(row.link ? { link: row.link } : {}),
-      };
-    }),
-  );
-
-  return updates.toSorted((a, b) => b.date.localeCompare(a.date));
+  return rows
+    .map((row) => ({
+      id: row.id,
+      date: row.date,
+      apps: row.apps,
+      title: row.title,
+      summary: row.summary,
+      ...(row.details ? { details: row.details } : {}),
+      ...(row.link ? { link: row.link } : {}),
+    }))
+    .toSorted((a, b) => b.date.localeCompare(a.date));
 }
