@@ -2,5 +2,16 @@
   "networkExporters.stage.fetching": "Interviewgegevens ophalen…",
   "networkExporters.stage.formatting": "Sessies opmaken…",
   "networkExporters.stage.generating": "Bestanden genereren…",
-  "networkExporters.stage.outputting": "Uitvoer wegschrijven…"
+  "networkExporters.stage.outputting": "Uitvoer wegschrijven…",
+  "networkExporters.warning.columnRenamed.description": "Sommige kolommen zouden dezelfde naam hebben gehad als een andere kolom in hetzelfde bestand. Om te voorkomen dat er antwoorden verloren gaan, is elke kolom in plaats daarvan onder een genummerde naam weggeschreven. De hernoemde kolommen zijn:",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "In de {format, select, csv {CSV} other {GraphML}}-bestanden van {protocolName} is de kolom “{column}” van {entity, select, ego {ego} other {{entityTypeName}}}, afkomstig van de variabele {variable}, weggeschreven als “{renamedTo}”.",
+  "networkExporters.warning.columnRenamed.item": "In de {format, select, csv {CSV} other {GraphML}}-bestanden van {protocolName} is de kolom “{column}” van {entity, select, ego {ego} other {{entityTypeName}}} weggeschreven als “{renamedTo}”.",
+  "networkExporters.warning.columnRenamed.title": "Sommige kolommen hebben een nieuwe naam gekregen",
+  "networkExporters.warning.protocolText.description": "Sommige teksten in het protocol zelf bevatten tekens die GraphML niet kan opslaan. Die tekens zijn daarom uit de GraphML-bestanden verwijderd. Ze zijn meestal onzichtbaar, dus elk teken wordt aangeduid met het bijbehorende Unicode-codepunt, zoals U+0007. De betreffende teksten zijn:",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {De protocolnaam “{name}”, na verwijdering van {characters}} nodeTypeName {De naam van het knooppunttype “{name}” in {protocolName}, na verwijdering van {characters}} edgeTypeName {De naam van het relatietype “{name}” in {protocolName}, na verwijdering van {characters}} other {De kolomnaam “{name}” in {protocolName}, na verwijdering van {characters}}}",
+  "networkExporters.warning.protocolText.title": "Er zijn tekens verwijderd uit protocoltekst in de GraphML-bestanden",
+  "networkExporters.warning.xmlCharacters.caseId": "Case-ID",
+  "networkExporters.warning.xmlCharacters.description": "Sommige antwoorden bevatten tekens die GraphML niet kan opslaan. Die tekens zijn alleen uit de GraphML-bestanden verwijderd. De CSV-bestanden bevatten alle antwoorden ongewijzigd. De betreffende interviews en variabelen zijn:",
+  "networkExporters.warning.xmlCharacters.interview": "Interview {caseId}: {variables}",
+  "networkExporters.warning.xmlCharacters.title": "Er zijn tekens verwijderd uit de GraphML-bestanden"
 }
