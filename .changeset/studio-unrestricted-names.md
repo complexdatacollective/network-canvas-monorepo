@@ -25,4 +25,6 @@ and the interview preview runs them.
   carries the problem as structured detail (`code: 'roster-characters'`), so
   the editor can explain it in your language.
 - A roster's column headers can be any name an attribute can have, and the
-  messages about headers that can't be used say what is not allowed.
+  messages about headers that can't be used say what is not allowed. A roster
+  with two headers that are the same name written two ways, such as an accented
+  letter stored as one character in one and as two in the other, is refused.

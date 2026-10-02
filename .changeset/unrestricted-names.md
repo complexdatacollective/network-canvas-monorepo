@@ -44,16 +44,20 @@ In Architect:
   can't carry, which are usually invisible control characters pasted in from
   another program. A file that contains one is refused when you import it, and
   the message names the row and column, or the line, to fix.
-- A roster's column headers can be any name an attribute can have.
+- A roster's column headers can be any name an attribute can have. A roster
+  with two headers that are the same name written two ways, such as an accented
+  letter stored as one character in one and as two in the other, is refused,
+  because only one of the two columns could fill the attribute.
 - The roster preview shows the values of a column called "constructor" or
   "toString" correctly.
 
 In interviews:
 
 - Rosters match their columns to attributes by name in any language, including
-  a spreadsheet saved on a Mac that stores accented letters differently. An
-  option whose value looks like a number or `true` keeps the value the codebook
-  gives it.
+  a spreadsheet saved on a Mac that stores accented letters differently. A
+  roster with two such columns for one attribute shows an error instead of
+  keeping only one column's values. An option whose value looks like a number
+  or `true` keeps the value the codebook gives it.
 - Columns and attributes called "constructor" or "toString", and names that
   contain a dot, are read, shown, searched and sorted like any other name.
   Before, some of them were dropped or read wrongly.
