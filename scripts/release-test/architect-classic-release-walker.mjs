@@ -86,6 +86,24 @@ const SCHEMA_8 = fixture(
   'rt-schema8.netcanvas',
 );
 
+// The interface types the new-stage menu must offer: interfaceOptions.js in
+// the checkout under test (the source the build came from). Anonymisation is
+// listed there but only offered behind the encryptedVariables experiment.
+const EXPERIMENT_ONLY_INTERFACES = ['Anonymisation Interface'];
+const SUPPORTED_INTERFACES = [
+  ...fs
+    .readFileSync(
+      path.join(
+        appDir,
+        'src/components/Screens/NewStageScreen/interfaceOptions.js',
+      ),
+      'utf8',
+    )
+    .matchAll(/^\s*title: '([^']+)',$/gm),
+]
+  .map((m) => m[1])
+  .filter((title) => !EXPERIMENT_ONLY_INTERFACES.includes(title));
+
 const readProtocol = async (file) => {
   const zip = await JSZip.loadAsync(fs.readFileSync(file));
   return JSON.parse(await zip.file('protocol.json').async('string'));
@@ -109,6 +127,7 @@ try {
       path.join(os.tmpdir(), 'architect-classic-rt-'),
     ),
   });
+  run.onCleanup(() => closeElectron(app));
   const pageErrors = trackPageErrors(app);
   const page = await mainWindow(app);
   const driver = playwrightDriver(page, { artifactsDir });
@@ -356,16 +375,31 @@ async function walk(driver, page, pageErrors) {
           );
         };
         await openList();
-        const types = await driver.eval(
+        const offered = await driver.eval(
           `${list}.map((e) => e.querySelector('.new-stage-screen__interface-info')?.firstElementChild?.textContent.trim())`,
         );
         await closeScreens();
         const broken = [];
+        if (SUPPORTED_INTERFACES.length === 0) {
+          throw new Error('no interface titles found in interfaceOptions.js');
+        }
+        const missing = SUPPORTED_INTERFACES.filter(
+          (t) => !offered.includes(t),
+        );
+        const unexpected = offered.filter(
+          (t) => !SUPPORTED_INTERFACES.includes(t),
+        );
+        if (missing.length)
+          broken.push(`missing from the menu: ${missing.join(', ')}`);
+        if (unexpected.length)
+          broken.push(`not in interfaceOptions.js: ${unexpected.join(', ')}`);
+        const types = offered.filter((t) => SUPPORTED_INTERFACES.includes(t));
         for (const type of types) {
           const errorsBefore = pageErrors.length;
           await openList();
           await driver.eval(
-            `__rt.click(${list}.find((e) => e.querySelector('.new-stage-screen__interface-info')?.firstElementChild?.textContent.trim() === ${JSON.stringify(type)}))`,
+            `(type) => __rt.click(${list}.find((e) => e.querySelector('.new-stage-screen__interface-info')?.firstElementChild?.textContent.trim() === type))`,
+            type,
           );
           const opened = await waitFor(
             driver,
@@ -395,7 +429,7 @@ async function walk(driver, page, pageErrors) {
           }
         }
         return {
-          ok: broken.length === 0 && types.length > 0,
+          ok: broken.length === 0,
           note: broken.length
             ? broken.join(' || ')
             : `${types.length} interface types`,
@@ -404,11 +438,19 @@ async function walk(driver, page, pageErrors) {
     );
 
     await check('the codebook lists the sample node types', async () => {
+      // Every node type the sample defines, read from the protocol file.
+      const nodeTypes = Object.values(
+        (await readProtocol(samplePath)).codebook?.node ?? {},
+      ).map((t) => t.name);
       await driver.eval(`__rt.click(__rt.byText('Manage Codebook'))`);
-      const text = await waitFor(
+      await waitFor(
         driver,
-        `(() => { const s = [...document.querySelectorAll('.screen')].filter(__rt.visible).pop(); return s && s.textContent.includes('Person') ? s.textContent.slice(0, 200) : null; })()`,
+        `[...document.querySelectorAll('.screen')].some((s) => s.textContent.includes('Below you can find an overview'))`,
         { label: 'codebook screen' },
+      );
+      const missingTypes = await driver.eval(
+        `(names) => { const s = [...document.querySelectorAll('.screen')].find((x) => x.textContent.includes('Below you can find an overview')); return names.filter((n) => !s.textContent.includes(n)); }`,
+        nodeTypes,
       );
       const errors = await visibleErrors();
       const codebookScreen = `[...document.querySelectorAll('.screen')].find((s) => s.textContent.includes('Below you can find an overview'))`;
@@ -425,8 +467,15 @@ async function walk(driver, page, pageErrors) {
         { label: 'codebook closed' },
       );
       return {
-        ok: errors.length === 0,
-        note: errors.join(' | ') || text.slice(0, 80),
+        ok:
+          errors.length === 0 &&
+          missingTypes.length === 0 &&
+          nodeTypes.length > 0,
+        note:
+          errors.join(' | ') ||
+          (missingTypes.length
+            ? `missing node types: ${missingTypes.join(', ')}`
+            : `node types: ${nodeTypes.join(', ')}`),
       };
     });
 

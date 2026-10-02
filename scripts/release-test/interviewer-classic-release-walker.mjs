@@ -482,12 +482,26 @@ async function connectWebKit(port, urlPrefix) {
         }),
       );
     });
-  const evaluate = async (expression) => {
-    const wrapped = `Promise.resolve((() => { ${PAGE_HELPERS}; return (${expression}); })()).then((v) => JSON.stringify(v === undefined ? null : v))`;
-    const first = await send('Runtime.evaluate', {
-      expression: wrapped,
+  // A function call with data goes through Runtime.callFunctionOn, so the
+  // value arrives as an argument rather than as part of the evaluated code.
+  const callWithArg = async (source, arg) => {
+    const win = await send('Runtime.evaluate', { expression: 'window' });
+    if (win.error) throw new Error(win.error.message);
+    return send('Runtime.callFunctionOn', {
+      objectId: win.result.result.objectId,
+      functionDeclaration: `function (source, value) { ${PAGE_HELPERS}; return Promise.resolve((0, eval)('(' + source + ')')(value)).then((v) => JSON.stringify(v === undefined ? null : v)); }`,
+      arguments: [{ value: source }, { value: arg }],
       emulateUserGesture: true,
     });
+  };
+  const evaluate = async (expression, arg) => {
+    const first =
+      arg === undefined
+        ? await send('Runtime.evaluate', {
+            expression: `Promise.resolve((() => { ${PAGE_HELPERS}; return (${expression}); })()).then((v) => JSON.stringify(v === undefined ? null : v))`,
+            emulateUserGesture: true,
+          })
+        : await callWithArg(expression, arg);
     if (first.error) throw new Error(first.error.message);
     if (first.result.wasThrown)
       throw new Error(first.result.result.description);
@@ -539,16 +553,26 @@ async function iosPlatform() {
     await simctl('launch', udid, bundleId);
   }
 
-  const socket = fs
-    .readdirSync('/private/var/tmp')
-    .filter((d) => d.startsWith('com.apple.launchd.'))
-    .map((d) =>
-      path.join('/private/var/tmp', d, 'com.apple.webinspectord_sim.socket'),
+  // Each booted simulator has its own launchd_sim (its command line names the
+  // device directory) holding that simulator's Web Inspector socket; take the
+  // socket of the simulator under test, not the first one on the host.
+  const launchdPid = (
+    await execFile('pgrep', ['-f', `launchd_sim .*/Devices/${udid}/`]).catch(
+      () => ({ stdout: '' }),
     )
-    .find((p) => fs.existsSync(p));
+  ).stdout
+    .trim()
+    .split('\n')[0];
+  const socket = launchdPid
+    ? (
+        await execFile('lsof', ['-a', '-U', '-p', launchdPid]).catch(() => ({
+          stdout: '',
+        }))
+      ).stdout.match(/(\/\S*com\.apple\.webinspectord_sim\.socket)/)?.[1]
+    : undefined;
   if (!socket)
     throw new SetupError(
-      'simulator web inspector socket not found (is the simulator booted?)',
+      `Web Inspector socket for simulator ${udid} not found (is it booted?)`,
     );
   const proxy = spawn(
     'ios_webkit_debug_proxy',
@@ -558,7 +582,7 @@ async function iosPlatform() {
   proxy.on('error', () => {});
   const webkit = await connectWebKit(9222, 'capacitor://');
   const driver = {
-    eval: (expression) => webkit.evaluate(expression),
+    eval: (expression, arg) => webkit.evaluate(expression, arg),
     async screenshot(name) {
       await simctl(
         'io',
@@ -659,7 +683,9 @@ async function journey(p) {
   const waitOrError = (expression, options) =>
     waitFor(
       driver,
-      `(() => { const e = __rt.errors(); if (e.length) return { error: e.join(' | ') }; return (${expression}) ? { ok: true } : null; })()`,
+      options?.arg === undefined
+        ? `(() => { const e = __rt.errors(); if (e.length) return { error: e.join(' | ') }; return (${expression}) ? { ok: true } : null; })()`
+        : `(arg) => { const e = __rt.errors(); if (e.length) return { error: e.join(' | ') }; return (${expression})(arg) ? { ok: true } : null; }`,
       options,
     ).then((r) => {
       if (r.error) throw new Error(`app reported: ${r.error}`);
@@ -700,8 +726,8 @@ async function journey(p) {
       );
       const s = await waitFor(
         driver,
-        `(async () => { const s = await ${STATE}; return s?.protocols.some((p) => p.name === '${SAMPLE.name}') ? s : null; })()`,
-        { label: 'sample protocol persisted' },
+        `async (name) => { const s = await ${STATE}; return s?.protocols.some((p) => p.name === name) ? s : null; }`,
+        { label: 'sample protocol persisted', arg: SAMPLE.name },
       );
       const sample = s.protocols.find((x) => x.name === SAMPLE.name);
       return {
@@ -760,14 +786,19 @@ async function conductInterview(driver, check, waitOrError) {
         { label: 'case ID prompt' },
       );
       await driver.eval(
-        `__rt.typeInto(document.querySelector('input[name=case_id]'), '${caseId}')`,
+        `(id) => __rt.typeInto(document.querySelector('input[name=case_id]'), id)`,
+        caseId,
       );
       await driver.eval(`__rt.click(__rt.byText('Start interview'))`);
       // A stage that never paints (6.6.2's minified CSS variables broke every
       // transition in the mobile build) times out here.
       await waitOrError(
-        `document.querySelector('.stage')?.textContent.includes('${SAMPLE.firstStageText}')`,
-        { timeout: 20_000, label: 'first stage rendered' },
+        `(text) => document.querySelector('.stage')?.textContent.includes(text)`,
+        {
+          timeout: 20_000,
+          label: 'first stage rendered',
+          arg: SAMPLE.firstStageText,
+        },
       );
     },
   );
@@ -791,8 +822,8 @@ async function conductInterview(driver, check, waitOrError) {
         );
         changed = await waitFor(
           driver,
-          `(${signature}) !== ${JSON.stringify(before)}`,
-          { timeout: 4_000, label: 'stage change' },
+          `(before) => (${signature}) !== before`,
+          { timeout: 4_000, label: 'stage change', arg: before },
         ).catch(() => false);
       }
       if (!changed) {
@@ -831,12 +862,13 @@ async function conductInterview(driver, check, waitOrError) {
     );
     for (const name of SAMPLE.nodeNames) {
       await driver.eval(
-        `(async () => { const i = document.querySelector('input.label-input'); await __rt.typeInto(i, '${name}'); i.closest('form').requestSubmit(); return true; })()`,
+        `async (name) => { const i = document.querySelector('input.label-input'); await __rt.typeInto(i, name); i.closest('form').requestSubmit(); return true; }`,
+        name,
       );
       await waitFor(
         driver,
-        `[...document.querySelectorAll('.name-generator-interface__nodes .node__label-text')].some((e) => e.textContent === '${name}')`,
-        { label: `${name} in the node list` },
+        `(name) => [...document.querySelectorAll('.name-generator-interface__nodes .node__label-text')].some((e) => e.textContent === name)`,
+        { label: `${name} in the node list`, arg: name },
       );
     }
   });
@@ -878,8 +910,12 @@ async function conductInterview(driver, check, waitOrError) {
         // stage remounted.
         await waitFor(
           driver,
-          `[...document.querySelectorAll('.node-layout .node__label-text')].some((e) => e.textContent === '${label}' && __rt.visible(e))`,
-          { timeout: 5_000, label: `${label} visible on the canvas` },
+          `(label) => [...document.querySelectorAll('.node-layout .node__label-text')].some((e) => e.textContent === label && __rt.visible(e))`,
+          {
+            timeout: 5_000,
+            label: `${label} visible on the canvas`,
+            arg: label,
+          },
         );
       }
       // The last node leaves the bucket through an exit animation.
@@ -896,18 +932,18 @@ async function conductInterview(driver, check, waitOrError) {
 
   await check('clicking two nodes creates an edge', async () => {
     await advanceTo(stages.edges);
-    const node = (name) =>
-      `[...document.querySelectorAll('.node-layout .node')].find((el) => el.querySelector('.node__label-text')?.textContent === '${name}')`;
-    await driver.eval(`__rt.click(${node('Alice')})`);
+    const node = `(name) => [...document.querySelectorAll('.node-layout .node')].find((el) => el.querySelector('.node__label-text')?.textContent === name)`;
+    await driver.eval(`(name) => __rt.click((${node})(name))`, 'Alice');
     await waitFor(
       driver,
-      `${node('Alice')}?.classList.contains('node--linking')`,
+      `(name) => (${node})(name)?.classList.contains('node--linking')`,
       {
         timeout: 5_000,
         label: 'Alice selected as the edge origin',
+        arg: 'Alice',
       },
     );
-    await driver.eval(`__rt.click(${node('Bob')})`);
+    await driver.eval(`(name) => __rt.click((${node})(name))`, 'Bob');
     await waitFor(
       driver,
       `document.querySelectorAll('.edge-layout line').length >= 1`,
@@ -918,8 +954,8 @@ async function conductInterview(driver, check, waitOrError) {
     );
     await waitFor(
       driver,
-      `(async () => { const s = await ${STATE}; return (s?.sessions.find((x) => x.caseId === '${caseId}')?.edges ?? 0) >= 1; })()`,
-      { timeout: 10_000, label: 'edge persisted' },
+      `async (id) => { const s = await ${STATE}; return (s?.sessions.find((x) => x.caseId === id)?.edges ?? 0) >= 1; }`,
+      { timeout: 10_000, label: 'edge persisted', arg: caseId },
     );
   });
 
@@ -932,8 +968,8 @@ async function conductInterview(driver, check, waitOrError) {
     });
     const s = await waitFor(
       driver,
-      `(async () => { const s = await ${STATE}; const x = s?.sessions.find((y) => y.caseId === '${caseId}'); return x?.finishedAt ? x : null; })()`,
-      { label: 'session persisted as finished' },
+      `async (id) => { const s = await ${STATE}; const x = s?.sessions.find((y) => y.caseId === id); return x?.finishedAt ? x : null; }`,
+      { label: 'session persisted as finished', arg: caseId },
     );
     const ok = s.nodes === SAMPLE.nodeNames.length && s.edges === 1;
     return { ok, note: `persisted ${s.nodes} node(s), ${s.edges} edge(s)` };
@@ -947,13 +983,14 @@ async function exportSession(p, check, waitOrError) {
     await driver.eval(`__rt.click(__rt.byText('Sessions'))`);
     await waitFor(
       driver,
-      `[...document.querySelectorAll('.session-card')].filter(__rt.visible).some((c) => c.textContent.includes('${caseId}'))`,
-      { label: 'session list' },
+      `(id) => [...document.querySelectorAll('.session-card')].filter(__rt.visible).some((c) => c.textContent.includes(id))`,
+      { label: 'session list', arg: caseId },
     );
     // The start screen's "resume" card is also a .session-card; the
     // management overlay's copy is the last one in the document.
     await driver.eval(
-      `__rt.click([...document.querySelectorAll('.session-card')].filter((c) => __rt.visible(c) && c.textContent.includes('${caseId}')).pop())`,
+      `(id) => __rt.click([...document.querySelectorAll('.session-card')].filter((c) => __rt.visible(c) && c.textContent.includes(id)).pop())`,
+      caseId,
     );
     await driver.eval(`__rt.click(__rt.byText('Export Selected To File'))`);
     await waitFor(driver, `Boolean(__rt.byText('Start Export Process'))`, {
@@ -974,6 +1011,7 @@ async function exportSession(p, check, waitOrError) {
     layoutVariable: SAMPLE.layoutVariable,
     edgeType: SAMPLE.edgeType,
     edgeCount: 1,
+    edgeBetween: ['Alice', 'Bob'],
   });
   for (const c of checks) run.record(`export: ${c.check}`, c.ok, c.note);
 
@@ -986,8 +1024,8 @@ async function exportSession(p, check, waitOrError) {
       );
       await waitFor(
         driver,
-        `(async () => { const s = await ${STATE}; return s?.sessions.find((x) => x.caseId === '${caseId}')?.exportedAt; })()`,
-        { label: 'exportedAt persisted' },
+        `async (id) => { const s = await ${STATE}; return s?.sessions.find((x) => x.caseId === id)?.exportedAt; }`,
+        { label: 'exportedAt persisted', arg: caseId },
       );
     });
   }
@@ -1061,10 +1099,11 @@ async function importProtocols(p, check, waitOrError, state) {
           await p.importFile(f);
           await waitFor(
             driver,
-            `__rt.errors().some((e) => e.includes(${JSON.stringify(f.refused)}))`,
+            `(text) => __rt.errors().some((e) => e.includes(text))`,
             {
               timeout: 60_000,
               label: 'refusal explained',
+              arg: f.refused,
             },
           );
           // Dismiss the error dialog so the run can continue.
@@ -1128,6 +1167,7 @@ try {
   }[platform];
   if (!factory) throw new SetupError(`unknown --platform ${platform}`);
   platformHandle = await factory();
+  run.onCleanup(() => platformHandle.close());
   if (args.phase === 'verify-imports') {
     await importProtocols(platformHandle, run.step, null, () =>
       platformHandle.driver.eval(STATE),

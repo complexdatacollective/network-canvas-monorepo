@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // Builds a classic app release candidate for the release-test walkers.
 //
-//   desktop  electron-vite build + electron-builder --dir for the host
-//            platform and architecture, unsigned (CSC_IDENTITY_AUTO_DISCOVERY
-//            off) — the same packaging the release job signs and notarizes
-//   ios      Interviewer only: the Capacitor web build, `cap sync ios`, and a
+//   desktop  the app's Turbo build (as the release job runs it, so Architect
+//            also builds the Interviewer it bundles for stage preview), then
+//            electron-builder --dir for the host platform and architecture,
+//            unsigned (CSC_IDENTITY_AUTO_DISCOVERY off) — the same packaging
+//            the release job signs and notarizes
+//   ios      Interviewer only: the Turbo web build, `cap sync ios`, and a
 //            Debug simulator build of the Xcode project
-//   android  Interviewer only: the Capacitor web build, `cap sync android`,
-//            and a debug APK (debug so the WebView is inspectable)
+//   android  Interviewer only: the Turbo web build, `cap sync android`, and a
+//            debug APK (debug so the WebView is inspectable)
 //
 // It deliberately does not run `version:sync`: the walkers check that the
 // native projects' version stamps already match package.json, which is what
@@ -32,10 +34,12 @@ const { values: args } = parseArgs({
 
 const APPS = {
   architect: {
+    pkg: '@codaco/architect-classic',
     dir: 'apps/architect-classic',
     builderConfig: 'electron-builder.config.js',
   },
   interviewer: {
+    pkg: '@codaco/interviewer-classic',
     dir: 'apps/interviewer-classic',
     builderConfig: 'electron-builder.config.cjs',
   },
@@ -79,11 +83,18 @@ function androidEnv() {
 
 let artifact;
 if (args.platform === 'desktop') {
-  fs.rmSync(path.join(appDir, 'release-builds'), {
-    recursive: true,
-    force: true,
+  // Clear previous Electron packages only: release-builds/ also holds the iOS
+  // simulator build (ios-derived-data), which a desktop build must not delete.
+  const builds = path.join(appDir, 'release-builds');
+  for (const entry of fs.existsSync(builds) ? fs.readdirSync(builds) : []) {
+    if (/^(mac|linux|win)/.test(entry)) {
+      fs.rmSync(path.join(builds, entry), { recursive: true, force: true });
+    }
+  }
+
+  run('pnpm', ['exec', 'turbo', 'run', 'build', `--filter=${app.pkg}`], {
+    cwd: repoRoot,
   });
-  run('pnpm', ['exec', 'electron-vite', 'build']);
   const platformFlag = { darwin: '--mac', linux: '--linux', win32: '--win' }[
     process.platform
   ];
@@ -102,7 +113,9 @@ if (args.platform === 'desktop') {
   );
   artifact = findPackagedBinary(appDir);
 } else {
-  run('pnpm', ['exec', 'vite', 'build', '--config', 'vite.web.config.js']);
+  run('pnpm', ['exec', 'turbo', 'run', 'build:web', `--filter=${app.pkg}`], {
+    cwd: repoRoot,
+  });
   run('pnpm', ['exec', 'cap', 'sync', args.platform]);
   if (args.platform === 'ios') {
     const derivedData = path.join(appDir, 'release-builds', 'ios-derived-data');

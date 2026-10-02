@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { JSDOM } from 'jsdom';
 import JSZip from 'jszip';
 
 export const repoRoot = path.resolve(
@@ -56,8 +57,16 @@ export function createRun({ artifactsDir, meta, timeoutMs }) {
     process.exit(code);
   };
 
-  const watchdog = setTimeout(() => {
+  // Platform teardown (closing the app, the inspector proxy) registered by
+  // the walker; a watchdog exit runs it too, so a hung run does not leave a
+  // process holding a port for the rerun.
+  const cleanups = [];
+  const watchdog = setTimeout(async () => {
     result.failures.push(`watchdog: run exceeded ${timeoutMs}ms`);
+    await Promise.race([
+      Promise.allSettled(cleanups.map((fn) => fn())),
+      new Promise((r) => setTimeout(r, 10_000)),
+    ]);
     finish(2);
   }, timeoutMs);
   watchdog.unref();
@@ -72,6 +81,9 @@ export function createRun({ artifactsDir, meta, timeoutMs }) {
   return {
     result,
     record,
+    onCleanup(fn) {
+      cleanups.push(fn);
+    },
     note(text) {
       result.notes.push(text);
       console.log(`NOTE ${text}`);
@@ -434,13 +446,22 @@ export const PAGE_HELPERS = String.raw`
 `;
 
 // Wraps a Playwright Page (Electron renderer, Android WebView) in the
-// platform-neutral driver the journeys use: eval(expression) runs a string
+// platform-neutral driver the journeys use. eval(expression) runs a string
 // expression in the page, awaiting a returned promise, with __rt installed.
+// eval(fn, arg) runs the function source `fn` with `arg` passed as data: values
+// from the run (names, case IDs, text read back from the page) never become
+// part of the evaluated code.
 export function playwrightDriver(page, { artifactsDir }) {
   return {
-    async eval(expression) {
+    async eval(expression, arg) {
       await page.evaluate(PAGE_HELPERS);
-      return page.evaluate(expression);
+      if (arg === undefined) return page.evaluate(expression);
+      const fn = await page.evaluateHandle(`(${expression})`);
+      try {
+        return await fn.evaluate((f, value) => f(value), arg);
+      } finally {
+        await fn.dispose();
+      }
     },
     async screenshot(name) {
       await page
@@ -450,17 +471,18 @@ export function playwrightDriver(page, { artifactsDir }) {
   };
 }
 
-// Polls a page expression until it returns a truthy value, which it returns.
+// Polls a page expression (or function, with options.arg) until it returns a
+// truthy value, which it returns.
 export async function waitFor(
   driver,
   expression,
-  { timeout = 15_000, interval = 250, label = 'condition' } = {},
+  { timeout = 15_000, interval = 250, label = 'condition', arg } = {},
 ) {
   const deadline = Date.now() + timeout;
   let last;
   while (Date.now() < deadline) {
     try {
-      last = await driver.eval(expression);
+      last = await driver.eval(expression, arg);
       if (last) return last;
     } catch (error) {
       last = error instanceof Error ? error.message : String(error);
@@ -544,8 +566,54 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
   const graphml = find('.graphml');
   add('export contains the session graphml', graphml, graphml ?? listing);
   if (graphml) {
-    const xml = await read(graphml);
-    add('graphml is a graphml document', xml.includes('<graphml'));
+    let doc;
+    try {
+      doc = new JSDOM(await read(graphml), { contentType: 'text/xml' }).window
+        .document;
+    } catch (error) {
+      add('graphml parses as XML', false, String(error).slice(0, 200));
+    }
+    if (doc) {
+      const graph = doc.querySelector('graphml > graph');
+      add('graphml has a graph element', graph);
+      // Node labels by GraphML id, from each node's <data key="label">.
+      const labelOf = new Map(
+        [...(graph?.querySelectorAll(':scope > node') ?? [])].map((n) => [
+          n.getAttribute('id'),
+          n.querySelector(':scope > data[key="label"]')?.textContent ?? '',
+        ]),
+      );
+      const graphLabels = [...labelOf.values()].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      add(
+        'graphml nodes are the ones created',
+        JSON.stringify(graphLabels) ===
+          JSON.stringify(
+            [...expected.nodeNames].sort((a, b) => a.localeCompare(b)),
+          ),
+        `got ${graphLabels.join(', ') || 'none'}`,
+      );
+      if (expected.edgeBetween) {
+        const pairs = [...(graph?.querySelectorAll(':scope > edge') ?? [])].map(
+          (e) =>
+            [
+              labelOf.get(e.getAttribute('source')),
+              labelOf.get(e.getAttribute('target')),
+            ]
+              .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
+              .join('–'),
+        );
+        const want = [...expected.edgeBetween]
+          .sort((a, b) => a.localeCompare(b))
+          .join('–');
+        add(
+          `graphml has the ${want} edge`,
+          pairs.length === expected.edgeCount && pairs.includes(want),
+          `got ${pairs.join(', ') || 'no edges'}`,
+        );
+      }
+    }
   }
 
   const egoFile = find('_ego.csv');
@@ -579,8 +647,9 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
     nodeFile,
     nodeFile ?? listing,
   );
+  let nodes = [];
   if (nodeFile) {
-    const nodes = parseCsv(await read(nodeFile));
+    nodes = parseCsv(await read(nodeFile));
     const labels = nodes.map((n) => n.name).sort((a, b) => a.localeCompare(b));
     add(
       'exported nodes are the ones created',
@@ -591,12 +660,15 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
       `got ${labels.join(', ') || 'none'}`,
     );
     if (expected.layoutVariable) {
+      // Both coordinates: the exporter writes <variable>_x and <variable>_y.
       const unplaced = nodes
-        .filter(
-          (n) =>
-            !Number.isFinite(
-              Number.parseFloat(n[`${expected.layoutVariable}_x`]),
-            ),
+        .filter((n) =>
+          ['x', 'y'].some(
+            (axis) =>
+              !Number.isFinite(
+                Number.parseFloat(n[`${expected.layoutVariable}_${axis}`]),
+              ),
+          ),
         )
         .map((n) => n.name);
       add(
@@ -615,6 +687,23 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
       edges.length === expected.edgeCount,
       edgeFile ? `got ${edges.length}` : `no edge list; ${listing}`,
     );
+    if (expected.edgeBetween && edgeFile) {
+      // from/to are the node list's nodeIDs.
+      const nameOf = new Map(nodes.map((n) => [n.nodeID, n.name]));
+      const pairs = edges.map((e) =>
+        [nameOf.get(e.from), nameOf.get(e.to)]
+          .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
+          .join('–'),
+      );
+      const want = [...expected.edgeBetween]
+        .sort((a, b) => a.localeCompare(b))
+        .join('–');
+      add(
+        `the ${expected.edgeType} edge connects ${want}`,
+        pairs.includes(want),
+        `got ${pairs.join(', ') || 'none'}`,
+      );
+    }
   }
   return checks;
 }
