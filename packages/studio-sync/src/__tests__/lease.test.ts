@@ -213,14 +213,6 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     await assertLinearChain(server, draft);
   });
 
-  // The four outcomes acquire's single INSERT … ON CONFLICT DO UPDATE decides
-  // between, each asserted on BOTH what the caller is handed and the row the
-  // statement leaves behind. The cases above reach them one at a time and
-  // mostly through the returned epoch alone, so a rewrite that collapsed
-  // "same owner, live" into "same owner, expired" — or that refreshed the TTL
-  // of a lease it refused — could still satisfy several of them. These four
-  // are the statement's truth table, and they are what a rewrite is checked
-  // against.
   describe('the acquire CAS truth table', () => {
     type LeaseRow = { owner: string; epoch: string; expires_at: Date };
 
@@ -242,11 +234,10 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
       const before = await leaseRow(draft);
 
       const again = await server.acquire(draft, 'stage-1', 'tab-A');
-      expect(again?.epoch).toBe(1n); // NOT bumped: this is the idempotent retry
+      expect(again?.epoch).toBe(1n);
       const after = await leaseRow(draft);
       expect(after.epoch).toBe(before.epoch);
       expect(after.owner).toBe('tab-A');
-      // The TTL really moved, and the row and the returned lease agree on it.
       expect(after.expires_at.getTime()).toBeGreaterThan(
         before.expires_at.getTime(),
       );
@@ -260,8 +251,6 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
       const before = await leaseRow(draft);
 
       const again = await server.acquire(draft, 'stage-1', 'tab-A');
-      // Bumped, which is what fences the owner's own pre-sleep in-flight
-      // commits: they carry epoch 1 and the lease is now epoch 2.
       expect(again?.epoch).toBe(2n);
       const after = await leaseRow(draft);
       expect(after.owner).toBe('tab-A');
@@ -290,9 +279,6 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
 
       expect(await server.acquire(draft, 'stage-1', 'tab-B')).toBeNull();
 
-      // A refusal writes nothing: not the owner, not the epoch, and — the one
-      // a misplaced `setWhere` would silently break — not the expiry. A
-      // refused contender must not extend the holder's TTL.
       const after = await leaseRow(draft);
       expect(after.owner).toBe('tab-A');
       expect(after.epoch).toBe(before.epoch);
@@ -313,10 +299,6 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
 
 describe('SectionRejectedError', () => {
   it('describes a cause that cannot be converted to a string', () => {
-    // A `message` getter that throws takes down whatever logs the error, so
-    // the one input that breaks `String` has to be survivable. An object with
-    // a null prototype has no `toString`, so `String(cause)` raises
-    // `TypeError: Cannot convert object to primitive value`.
     const hostile = Object.create(null) as object;
     const error = new SectionRejectedError({
       sectionId: 'stage-1',

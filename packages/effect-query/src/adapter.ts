@@ -19,7 +19,7 @@ import {
   Option,
   Stream,
 } from 'effect';
-import type { Rpc, RpcClient, RpcClientError } from 'effect/unstable/rpc';
+import type { Rpc, RpcClient, RpcClientError } from 'effect/rpc';
 import { useEffect, useRef, useState } from 'react';
 
 import type {
@@ -33,29 +33,14 @@ import type {
   SuccessOf,
 } from './types.ts';
 
-/**
- * An infinite query sends the caller's payload with that page's cursor added, and the
- * first page — which has no cursor yet — sends it with no cursor key at all, so a
- * contract that declares its cursor with `Schema.optionalKey` is never handed an explicit
- * `undefined` to decode. TypeScript cannot rebuild `PayloadOf` out of
- * `Omit<PayloadOf, 'cursor'>` plus a cursor while the tag is still generic, so the funnel
- * accepts that shape beside the whole payload.
- */
 type PagePayloadOf<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> = Omit<
   PayloadOf<Rpcs, Tag>,
   'cursor'
 > & { readonly cursor?: unknown };
 
 /**
- * The flat client's return type is a conditional on the rpc's success schema, which
- * TypeScript leaves unresolved while `Tag` is generic. These two function types are the
- * resolved views of it — one for the rpcs that answer with an effect, one for the rpcs
- * that answer with a stream — and the `as unknown as` casts to them are the only casts
- * in this package. The erasure through `unknown` is deliberate and written
- * where it happens: the conditional type and these views do not overlap for the
- * compiler, so nothing here can check them against each other. What pins them is the
- * compile-time probe in `__tests__/adapter.test.tsx` (`_flatClientShapeProbe`), which
- * assigns a real flat client's results for a concrete group to exactly these shapes.
+ * Resolved views of the flat client's conditional return type, the target of the
+ * only casts in this package; pinned by `_flatClientShapeProbe` in the tests.
  */
 type CallAt<Rpcs extends Rpc.Any, Tag extends Rpcs['_tag']> = (
   tag: Tag,
@@ -71,10 +56,6 @@ const IDLE: StreamState<never> = { status: 'idle', error: undefined };
 const STREAMING: StreamState<never> = { status: 'streaming', error: undefined };
 const DONE: StreamState<never> = { status: 'done', error: undefined };
 
-/**
- * Binds one app's rpc client to TanStack Query. `Id extends R` is what ties the client
- * key to the runtime: the key names a service the runtime can actually build.
- */
 export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
   readonly runtime: ManagedRuntime.ManagedRuntime<R, never>;
   readonly client: Context.Key<
@@ -87,12 +68,6 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
   const { client, onFailure, runtime } = options;
   const keyPrefix = options.keyPrefix ?? 'rpc';
 
-  /**
-   * Every export runs through here. An interrupt — which is how both TanStack's own
-   * cancellation and an unmounted component arrive — has to reject as an abort rather
-   * than as the rpc's typed error, or a cancelled query would render a failure that
-   * never happened.
-   */
   const run = async <A, E>(
     effect: Effect.Effect<A, E, R>,
     signal?: AbortSignal,
@@ -223,10 +198,6 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
       signal,
     );
 
-  /**
-   * A hook, so it obeys the rules of hooks: the adapter is built once per app and this
-   * member is called from components as `adapter.useRpcStream(...)`.
-   */
   const useRpcStream = <Tag extends Rpcs['_tag']>(
     tag: Tag,
     payload: PayloadOf<Rpcs, Tag>,
@@ -236,9 +207,6 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
     const enabled = streamOptions?.enabled ?? true;
     const [state, setState] = useState<StreamState<ErrorOf<Rpcs, Tag>>>(IDLE);
 
-    // The subscription is keyed by the payload's hash, so a caller may pass a fresh
-    // object literal every render without resubscribing; these refs carry the current
-    // values into a subscription that outlives the render which started it.
     const onChunkRef = useRef(onChunk);
     onChunkRef.current = onChunk;
     const payloadRef = useRef(payload);
@@ -281,8 +249,6 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
       });
       return () => {
         live = false;
-        // Interrupting the client fiber sends the rpc's Interrupt message, so the
-        // server's own finalisers run rather than the stream being abandoned.
         Effect.runFork(Fiber.interrupt(fiber));
       };
     }, [enabled, tag, payloadHash]);

@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import { Headers, HttpRouter, HttpServerRequest } from 'effect/unstable/http';
+import { Headers, HttpRouter, HttpServerRequest } from 'effect/http';
 
 import {
   CLIENT_SESSION_HEADER,
@@ -8,23 +8,9 @@ import {
 } from '@codaco/studio-contract/client-session';
 
 /**
- * Moves the tab's id from the `/ws` upgrade URL onto the request's headers, so
- * that everything downstream reads it in one place.
- *
- * A browser cannot put a header on a WebSocket handshake — the `WebSocket`
- * constructor takes a URL and subprotocols and nothing else — so the tab names
- * itself on the query string. A fetch request to `/rpc` carries the header
- * directly. Rewriting here is what lets everything downstream know only about
- * the header.
- *
- * The query is the only thing that can name a tab on this route: the header is
- * always rewritten from it, and removed outright when the query names none.
- * A handshake is not a browser fetch — any non-browser client can set the
- * header itself — and the id ends up in the `leases.owner` column, so a value
- * that never passed `readClientSessionId` must not reach the handlers. A client
- * that names nothing, or names an id the contract rejects (a parameter given
- * twice arrives as an array, which names no tab), leaves the route with no
- * header at all.
+ * The header is always rewritten from the query and removed when it names
+ * none: any client can set the header on a handshake, and a value that never
+ * passed `readClientSessionId` must not reach the handlers.
  */
 export const ClientSessionQuery = HttpRouter.middleware((httpEffect) =>
   Effect.gen(function* () {

@@ -1,10 +1,3 @@
-// `/ws` is where the protocol-builder host is served to the editor (#1483):
-// a fetch transport answers one request with one response, so the contract's
-// only streaming procedure — `WatchProtocol` — needs a socket to be held open
-// over. The wiring is what this file proves: a real socket, through the real
-// origin and principal guards, to the real handlers, driven by the same Effect
-// rpc client the editor uses. The unary plane beside it,
-// `/rpc/protocol-builder`, is proved against the same server at the end.
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
@@ -25,13 +18,13 @@ import {
   Scope,
   Stream,
 } from 'effect';
-import * as FetchHttpClient from 'effect/unstable/http/FetchHttpClient';
-import * as HttpClient from 'effect/unstable/http/HttpClient';
-import * as HttpClientRequest from 'effect/unstable/http/HttpClientRequest';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import type { RpcClientError } from 'effect/unstable/rpc/RpcClientError';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as Socket from 'effect/unstable/socket/Socket';
+import * as FetchHttpClient from 'effect/http/FetchHttpClient';
+import * as HttpClient from 'effect/http/HttpClient';
+import * as HttpClientRequest from 'effect/http/HttpClientRequest';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import type { RpcClientError } from 'effect/rpc/RpcClientError';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as Socket from 'effect/socket/Socket';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -96,11 +89,9 @@ function researcher(slug: string): SessionPrincipal {
 const ADA = researcher('ada');
 const GRACE = researcher('grace');
 
-/** The cookie each researcher's browser presents, and who it resolves to. */
 const COOKIES = new Map([
   ['session=ada', ADA],
   ['session=grace', GRACE],
-  // Grace signed in on a second browser too.
   ['session=grace-elsewhere', GRACE],
 ]);
 
@@ -112,15 +103,12 @@ type Client = RpcClient.RpcClient.Flat<ProtocolBuilderRpcs, RpcClientError>;
 type LockEvent = Extract<ProtocolEvent, { type: 'lock' }>;
 type PresenceEvent = Extract<ProtocolEvent, { type: 'presence' }>;
 
-/** A stream running in the background, and what it has delivered so far. */
 type Watch = {
   readonly events: ProtocolEvent[];
-  /** How the stream ended, once it has. */
   readonly ended: () => Exit.Exit<void, unknown> | undefined;
   readonly stop: () => Promise<void>;
 };
 
-/** An editor tab's connection: its client, its socket, and its own runtime. */
 type Connected = {
   readonly client: Client;
   readonly run: <A, E>(effect: Effect.Effect<A, E>) => Promise<A>;
@@ -130,16 +118,12 @@ type Connected = {
   readonly watch: (
     protocolId: string,
     since?: string,
-    /** Headers the watch's own frame carries. */
     headers?: Readonly<Record<string, string>>,
   ) => Watch;
-  /** The underlying socket the client opened most recently. */
   readonly socket: () => NodeWS.WebSocket;
-  /** Closes the client, which closes its socket cleanly. */
   readonly close: () => Promise<void>;
 };
 
-/** Waits for something the server does of its own accord, or fails saying so. */
 async function until(
   predicate: () => boolean,
   what: string,
@@ -152,7 +136,6 @@ async function until(
   }
 }
 
-/** The holder a lock event named for a section, out of what a stream saw. */
 function lockHolder(
   events: readonly ProtocolEvent[],
   sectionId: string,
@@ -163,7 +146,6 @@ function lockHolder(
   )?.holder;
 }
 
-/** Whether a lock event has said the section is free again. */
 function released(events: readonly ProtocolEvent[], sectionId: string) {
   const last = events.findLast(
     (event): event is LockEvent =>
@@ -172,7 +154,6 @@ function released(events: readonly ProtocolEvent[], sectionId: string) {
   return last !== undefined && last.holder === undefined;
 }
 
-/** Whether the last presence a stream saw still contains this connection. */
 function isPresent(events: readonly ProtocolEvent[], sessionId: string) {
   const latest = events.findLast(
     (event): event is PresenceEvent => event.type === 'presence',
@@ -182,7 +163,6 @@ function isPresent(events: readonly ProtocolEvent[], sessionId: string) {
   );
 }
 
-/** A transport failure's close code, when the socket was closed with one. */
 function closeCodeOf(exit: Exit.Exit<unknown, unknown>): number | undefined {
   if (Exit.isSuccess(exit)) return undefined;
   const error = Cause.findErrorOption(exit.cause);
@@ -211,22 +191,12 @@ describe.skipIf(!testDb || !env.auth)(
     const connections: Connected[] = [];
     let studio: ReturnType<typeof createStudio>;
 
-    /**
-     * A client on its own socket, as a browser tab opens one.
-     *
-     * A browser cannot put a header on a WebSocket handshake, so a tab names
-     * itself on the upgrade URL and its locks belong to that name; a socket
-     * that names no tab is its own owner, for as long as it is connected.
-     * `retryTransientErrors` is off, as it is in the editor (#1927 §21 F3).
-     */
     async function connect(
       options: {
         readonly as?: SessionPrincipal;
         readonly tab?: string;
         readonly url?: string;
-        /** A query string of the case's own, in place of `tab`'s. */
         readonly query?: string;
-        /** Handshake headers beyond the origin and the cookie. */
         readonly handshake?: Readonly<Record<string, string>>;
       } = {},
     ): Promise<Connected> {
@@ -310,10 +280,6 @@ describe.skipIf(!testDb || !env.auth)(
       return connected;
     }
 
-    /**
-     * A stage section of the calling test's own, so nothing here locks a
-     * section another test left held.
-     */
     const createStage = (tab: Connected, label: string) =>
       tab
         .run(
@@ -355,8 +321,6 @@ describe.skipIf(!testDb || !env.auth)(
           'utf8',
         ),
       ) as CurrentProtocol;
-      // The protocol is sealed with the test keyring, so the services the
-      // handlers run on carry that same cipher.
       const services = Context.add(
         database.services,
         SecretsCipher,
@@ -370,9 +334,8 @@ describe.skipIf(!testDb || !env.auth)(
       );
       protocolId = created.protocolId;
 
-      // Self-hosted rather than the dev default: the managed topology refuses
-      // anything that has not come through its proxy, and this suite is the
-      // socket rather than the ingress boundary.
+      // Self-hosted: the managed topology refuses anything that has not come
+      // through its proxy.
       const serverEnv = { ...env, deploymentMode: 'self-hosted' } as const;
       studio = createStudio(serverEnv, {
         auth: authServiceStub({
@@ -383,7 +346,6 @@ describe.skipIf(!testDb || !env.auth)(
           listMemberships: () =>
             Effect.succeed([{ teamId: TEAM_ID, role: 'owner' }]),
         }),
-        pool: database.appPool,
         services,
       });
       server = await startStudioServer(
@@ -428,8 +390,6 @@ describe.skipIf(!testDb || !env.auth)(
       expect(sections.sectionIds).toContain('stageOrder');
 
       const watch = tab.watch(protocolId);
-      // The stream's own first event is who is here, published by its join,
-      // so it is live before the write below is made.
       await until(
         () => watch.events.some((event) => event.type === 'presence'),
         'the watch to go live',
@@ -448,8 +408,6 @@ describe.skipIf(!testDb || !env.auth)(
         }),
       );
 
-      // The live half: the write above reaches the open stream, and its event
-      // carries the cursor a dropped socket would resume from.
       const revisions = () =>
         watch.events.filter(
           (event): event is Extract<ProtocolEvent, { type: 'revision' }> =>
@@ -465,9 +423,6 @@ describe.skipIf(!testDb || !env.auth)(
       const resumeFrom = live[0]?.cursor;
       expect(resumeFrom).toBeDefined();
 
-      // The resume half, on a second socket: from that cursor the stream
-      // starts with the very next event and never repeats the one it resumed
-      // from.
       const second = await connect();
       const replay = second.watch(protocolId, resumeFrom);
       await until(
@@ -482,11 +437,6 @@ describe.skipIf(!testDb || !env.auth)(
       expect(first.cursor).toBe(live[1]?.cursor);
     });
 
-    /**
-     * Two tabs of one researcher are two connections, so the second has to be
-     * able to say who has the section — and it learns that from the stream, on
-     * a socket that served none of the calls that took the lock.
-     */
     it('tells a second socket which connection took a section', async () => {
       const watcher = await connect();
       const holder = await connect();
@@ -496,9 +446,6 @@ describe.skipIf(!testDb || !env.auth)(
         'the watch to go live',
       );
 
-      // The watcher takes one section itself first, so the lock event for the
-      // other one can be compared against its own connection rather than
-      // merely looking plausible.
       await watcher.run(
         watcher.client('AcquireLock', { protocolId, sectionId: ASSETS }),
       );
@@ -519,13 +466,8 @@ describe.skipIf(!testDb || !env.auth)(
       expect(theirs?.displayName).toBe(ADA.name);
       expect(theirs?.mode).toBe('editing');
       expect(theirs?.sectionId).toBe('stageOrder');
-      // Two tabs of one researcher are two owners, so the identity the event
-      // carries is the socket's rather than the person's.
       expect(theirs?.sessionId).not.toBe(own?.sessionId);
 
-      // The connection the event named is the one the lease is actually
-      // under: asking for the same section answers read-only behind that same
-      // identity.
       const behind = await watcher.run(
         watcher.client('AcquireLock', { protocolId, sectionId: STAGE_ORDER }),
       );
@@ -533,9 +475,6 @@ describe.skipIf(!testDb || !env.auth)(
       if (behind.lock !== 'readOnly') return;
       expect(behind.holder.sessionId).toBe(theirs?.sessionId);
 
-      // Given back before the test ends: the stage index and the asset
-      // manifest are the sections a create and a promoting write have to
-      // take, so a test that keeps them refuses every later one in this suite.
       await holder.run(
         holder.client('ReleaseLock', { protocolId, sectionId: STAGE_ORDER }),
       );
@@ -545,23 +484,12 @@ describe.skipIf(!testDb || !env.auth)(
       await watch.stop();
     });
 
-    /**
-     * A tab that loses its socket is the same tab when it comes back, and the
-     * section it had open is still its own: the lock owner is the tab the
-     * client names on its upgrade, never the connection that carried the call.
-     * A network blip is a reconnection in progress, and losing a lock under an
-     * open editor is not a thing that may happen.
-     */
     it('keeps a section for the tab that took it when its socket dies', async () => {
       const tab = 'pb-ws-reconnecting-tab';
       const first = await connect({ tab });
-      // A colleague on a socket of its own: what it is refused after the drop
-      // is what makes the section still the dead tab's rather than nobody's.
       const stranger = await connect({ as: GRACE });
       const watched = stranger.watch(protocolId);
       const sectionId = await createStage(first, 'Held across a drop');
-      // The channel is what renews this tab's lease, and what strands its
-      // owner when the socket under it dies.
       const channel = first.watch(protocolId);
       await until(
         () => channel.events.some((event) => event.type === 'presence'),
@@ -583,8 +511,6 @@ describe.skipIf(!testDb || !env.auth)(
         'the first socket to be present',
       );
 
-      // A drop rather than a close: no close frame, so the server learns of
-      // it the way it learns of a network blip.
       first.socket().terminate();
       await until(
         () => !isPresent(watched.events, connection),
@@ -599,9 +525,6 @@ describe.skipIf(!testDb || !env.auth)(
       if (behind.lock !== 'readOnly') throw new Error('unreachable');
       expect(behind.holder.userId).toBe(ADA.userId);
 
-      // The tab comes back on a new socket, names itself, and finds the
-      // section still its own — and writes it, which is the whole point of
-      // keeping it.
       const second = await connect({ tab });
       second.watch(protocolId);
       const resumed = await second.run(
@@ -632,11 +555,6 @@ describe.skipIf(!testDb || !env.auth)(
       await watched.stop();
     });
 
-    /**
-     * A tab id the server would not store is no identity at all: the caller
-     * falls back to its connection, which is what a client naming nothing gets
-     * (the test above), so two such sockets are two owners rather than one.
-     */
     it('falls back to the connection for a socket whose tab id it cannot use', async () => {
       const unusable = 'not a tab id!';
       const first = await connect({ tab: unusable });
@@ -647,8 +565,6 @@ describe.skipIf(!testDb || !env.auth)(
         first.client('AcquireLock', { protocolId, sectionId }),
       );
       expect(held.lock).toBe('held');
-      // Had the server taken the id, both sockets would be one owner and this
-      // would have been the holder's own section handed back to it.
       const behind = await second.run(
         second.client('AcquireLock', { protocolId, sectionId }),
       );
@@ -667,18 +583,12 @@ describe.skipIf(!testDb || !env.auth)(
       );
       expect(held.lock).toBe('held');
 
-      // The same tab on another socket is the same owner — which it can only
-      // be if the id on the upgrade URL reached the handler as the caller's
-      // client session. Mutation: resolve `clientSessionId` from anything but
-      // the rewritten header (or drop `ClientSessionQuery`) → each socket is
-      // its own owner and this is read-only.
       const again = await connect({ tab });
       const reopened = await again.run(
         again.client('AcquireLock', { protocolId, sectionId }),
       );
       expect(reopened.lock).toBe('held');
 
-      // And another tab of the same researcher is not.
       const other = await connect({ tab: `pb-ws-tab-${randomUUID()}` });
       const refused = await other.run(
         other.client('AcquireLock', { protocolId, sectionId }),
@@ -687,7 +597,6 @@ describe.skipIf(!testDb || !env.auth)(
       await first.run(first.client('ReleaseLock', { protocolId, sectionId }));
     });
 
-    /** Two sockets opened alike, and whether the second owns what the first took. */
     const sameOwner = async (
       options: Parameters<typeof connect>[0],
       label: string,
@@ -706,14 +615,7 @@ describe.skipIf(!testDb || !env.auth)(
       return again.lock === 'held';
     };
 
-    // The query string is the only thing that names a tab on `/ws`. A browser
-    // cannot put a header on a handshake, so a header here comes from a client
-    // that wrote the request itself — and the id it carries goes on to be a
-    // `leases.owner` value, so it must have passed the contract's check.
     it('ignores a tab id a handshake supplied as a header', async () => {
-      // Well-formed, so nothing but the rewrite's authority can refuse it.
-      // Mutation: drop `ClientSessionQuery` from the upgrade's guards → the
-      // header names both sockets' tab and they are one owner.
       expect(
         await sameOwner(
           { handshake: { [CLIENT_SESSION_HEADER]: randomUUID() } },
@@ -723,8 +625,6 @@ describe.skipIf(!testDb || !env.auth)(
     });
 
     it('names no tab for a socket that named two', async () => {
-      // A parameter given twice arrives as an array, which names no tab: the
-      // rewrite refuses it rather than picking one of them.
       const tab = randomUUID();
       expect(
         await sameOwner(
@@ -734,7 +634,6 @@ describe.skipIf(!testDb || !env.auth)(
           'Named twice',
         ),
       ).toBe(false);
-      // Where one name does make one owner of the two.
       expect(await sameOwner({ tab }, 'Named once')).toBe(true);
     });
 
@@ -745,17 +644,12 @@ describe.skipIf(!testDb || !env.auth)(
         () => watch.events.some((event) => event.type === 'presence'),
         'the watch to go live',
       );
-      // A protocol id the store cannot even look up is a fault in the
-      // database, not a refusal the contract names, so the call dies.
       const died = await tab.runExit(
         tab.client('ListSections', { protocolId: 'not-a-protocol-id' }),
       );
       expect(Exit.isFailure(died)).toBe(true);
       if (Exit.isSuccess(died)) return;
       expect(Option.isNone(Cause.findErrorOption(died.cause))).toBe(true);
-      // Mutation: turn fatal defects back on in `protocol-builder/rpc.ts` →
-      // the server's `Defect` frame ends every call on the socket, the watch
-      // with them, and the write below never reaches it.
       const sectionId = await createStage(tab, 'Made after a defect');
       await until(
         () =>
@@ -788,8 +682,6 @@ describe.skipIf(!testDb || !env.auth)(
       await until(() => isPresent(seen.events, connection), 'the presence');
 
       await leaving.close();
-      // The close interrupts the watch the socket carried, and its finalizers
-      // publish the presence without it straight away.
       await until(
         () => !isPresent(seen.events, connection),
         'presence without the departed socket',
@@ -797,17 +689,12 @@ describe.skipIf(!testDb || !env.auth)(
       );
       await until(() => channel.ended() !== undefined, 'the watch to end');
 
-      // The lock is still the tab's: its reconnection is in progress as far as
-      // anyone can tell. Mutation: release an owner's leases as its last
-      // channel ends rather than after the grace → this is `held`.
       const during = await observer.run(
         observer.client('AcquireLock', { protocolId, sectionId }),
       );
       expect(during.lock).toBe('readOnly');
       expect(released(seen.events, sectionId)).toBe(false);
 
-      // The grace runs out with nothing of this tab's back: its locks go, and
-      // the lock event says so.
       clock.advance(RECONNECT_GRACE_MS + 1);
       await until(
         () => released(seen.events, sectionId),
@@ -828,8 +715,6 @@ describe.skipIf(!testDb || !env.auth)(
       const forged = `pb-ws-forged-${randomUUID()}`;
       const honest = await connect({ as: ADA, tab });
       const sectionId = await createStage(honest, 'Held by the upgrade’s tab');
-      // The message carries a cookie and a tab of its own, which the websocket
-      // protocol merges over the upgrade's headers for every frame.
       const acquired = await honest.run(
         RpcClient.withHeaders(
           honest.client('AcquireLock', { protocolId, sectionId }),
@@ -838,7 +723,6 @@ describe.skipIf(!testDb || !env.auth)(
       );
       expect(acquired.lock).toBe('held');
 
-      // Held by the upgrade's researcher, not the one the frame named.
       const grace = await connect({ as: GRACE, tab: forged });
       const behindGrace = await grace.run(
         grace.client('AcquireLock', { protocolId, sectionId }),
@@ -847,10 +731,6 @@ describe.skipIf(!testDb || !env.auth)(
       if (behindGrace.lock !== 'readOnly') throw new Error('unreachable');
       expect(behindGrace.holder.userId).toBe(ADA.userId);
 
-      // And owned by the upgrade's tab, not the one the frame named: the same
-      // researcher on the forged tab is another owner. Mutation: read the tab
-      // from `options.headers` in `HostSessionLive` → the frame's tab owns the
-      // lock and this is `held`.
       const adaForged = await connect({ as: ADA, tab: forged });
       const behindForged = await adaForged.run(
         adaForged.client('AcquireLock', { protocolId, sectionId }),
@@ -862,10 +742,7 @@ describe.skipIf(!testDb || !env.auth)(
     it('carries a staged file’s bytes whole, as bytes', async () => {
       const tab = await connect();
       const editId = randomUUID();
-      // Past `layerSchemaBinary`'s own 16 MiB default on both ends, so a
-      // parser left at its default refuses it. Mutation: drop `maxFrameSize`
-      // from the `/ws` serialization → the frame is refused and the socket's
-      // parser is spent.
+      // Past `layerSchemaBinary`'s own 16 MiB default on both ends.
       const bytes = new Uint8Array(17 * 1024 * 1024);
       for (let index = 0; index < bytes.length; index += 1) {
         bytes[index] = (index * 31 + 7) % 251;
@@ -888,8 +765,6 @@ describe.skipIf(!testDb || !env.auth)(
       expect(staged.status).toBe('ok');
       if (staged.status !== 'ok') return;
       expect(staged.data.descriptor.byteLength).toBe(bytes.length);
-      // A staged resource is previewed inline, so its preview is the bytes
-      // the server holds, and they are the ones sent.
       const preview = await tab.run(
         tab.client('ResourcesPreview', {
           protocolId,
@@ -907,9 +782,6 @@ describe.skipIf(!testDb || !env.auth)(
     });
 
     it('closes a socket that sends a frame over the bound with 1009', async () => {
-      // A listener with a small bound, so the case needs no hundred-mebibyte
-      // frame: what is under test is which layer answers, not where the
-      // bound is.
       const bounded = await startStudioServer(
         { ...env, deploymentMode: 'self-hosted' },
         createStudio(
@@ -943,9 +815,6 @@ describe.skipIf(!testDb || !env.auth)(
             },
           }),
         );
-        // The listener refused the frame from its header, with a close the
-        // client reads as a transport failure — not the rpc parser answering
-        // it with a defect and every later frame on the socket with another.
         expect(closeCodeOf(exit)).toBe(1009);
         await tab.close();
       } finally {
@@ -953,7 +822,6 @@ describe.skipIf(!testDb || !env.auth)(
       }
     });
 
-    /** A unary caller of `/rpc/protocol-builder`, as a script would be one. */
     const overHttp = (who: SessionPrincipal, tab: string): Connected => {
       const runtime = ManagedRuntime.make(
         RpcClient.layerProtocolHttp({
@@ -961,7 +829,6 @@ describe.skipIf(!testDb || !env.auth)(
           transformClient: HttpClient.mapRequest(
             HttpClientRequest.setHeaders({
               'cookie': cookieOf(who),
-              // The cookie plane's CSRF gate admits a same-origin fetch.
               'sec-fetch-site': 'same-origin',
               [CLIENT_SESSION_HEADER]: tab,
             }),
@@ -997,7 +864,6 @@ describe.skipIf(!testDb || !env.auth)(
       return connected;
     };
 
-    /** The same caller in process, over the handlers both mounts serve. */
     const inProcess = (
       host: ProtocolBuilderTestClient,
       who: SessionPrincipal,
@@ -1015,7 +881,6 @@ describe.skipIf(!testDb || !env.auth)(
       close: () => Promise.resolve(),
     });
 
-    /** What a refusal or an answer comes to, with nothing transport-shaped. */
     const outcome = (exit: Exit.Exit<unknown, unknown>): unknown => {
       if (Exit.isSuccess(exit)) {
         const value = exit.value;
@@ -1036,10 +901,6 @@ describe.skipIf(!testDb || !env.auth)(
         : 'defect';
     };
 
-    /**
-     * One editing sequence: a stage made, taken, refused to a colleague,
-     * written by its holder and read back, and a section that is not there.
-     */
     const sequence = async (as: (who: SessionPrincipal) => Connected) => {
       const ada = as(ADA);
       const grace = as(GRACE);
@@ -1147,7 +1008,6 @@ describe.skipIf(!testDb || !env.auth)(
       ).toEqual(EXPECTED);
     });
 
-    /** One raw ndjson request to the unary plane, and its frames. */
     const postFrame = async (
       headers: Record<string, string>,
       request: Record<string, unknown>,
@@ -1190,16 +1050,12 @@ describe.skipIf(!testDb || !env.auth)(
           },
         },
       );
-      // The status says nothing: every rpc answer is a 200. The verdict is in
-      // the frame.
       expect(missing.status).toBe(200);
       expect(missing.exit).toMatchObject({
         _tag: 'Failure',
         cause: [{ _tag: 'Fail', error: { _tag: 'SectionNotFound' } }],
       });
 
-      // A caller with no session is refused by the route, before the rpc
-      // server reads the body.
       const stranger = await postFrame(
         {},
         { tag: 'ListSections', payload: { protocolId } },
@@ -1210,11 +1066,6 @@ describe.skipIf(!testDb || !env.auth)(
     });
 
     it('refuses an anonymous /rpc/protocol-builder body without reading it', async () => {
-      // A body declared far past any bound, of which only the first kilobyte
-      // is ever sent: an answer can only come from a gate that did not wait
-      // for the rest. Mutation: mount the unary plane without
-      // `requirePrincipal` → the rpc server waits on the body and no response
-      // arrives.
       const { hostname, port } = new URL(server.origin);
       const status = await new Promise<number | string>((settle) => {
         const pending = httpRequest(
@@ -1246,8 +1097,6 @@ describe.skipIf(!testDb || !env.auth)(
     });
 
     it('refuses a cross-site call on /rpc/protocol-builder before any procedure runs', async () => {
-      // A cookie surface like `/rpc`, so the same CSRF gate. Mutation: mount
-      // the unary plane without `requireSameOrigin` → the call is served.
       const crossSite = await postFrame(
         { 'cookie': cookieOf(ADA), 'sec-fetch-site': 'cross-site' },
         { tag: 'ListSections', payload: { protocolId } },
@@ -1257,10 +1106,6 @@ describe.skipIf(!testDb || !env.auth)(
     });
 
     it('stops reading a /rpc/protocol-builder body over the bound', async () => {
-      // A small bound, as for the frame bound above; the in-process harness
-      // reads a body whole whatever the bound, so only a listener shows it.
-      // Mutation: mount the unary plane without its body bound → the
-      // oversized call is read and answered.
       const bounded = await startStudioServer(
         { ...env, deploymentMode: 'self-hosted' },
         studio,
@@ -1285,7 +1130,6 @@ describe.skipIf(!testDb || !env.auth)(
           (error: unknown) => ({ refused: error }),
         );
       try {
-        // The listener drops the connection mid-body, with no response.
         const oversized = await post({ cookie: cookieOf(ADA) }, 1024 * 1024);
         expect(oversized).toHaveProperty('refused');
 
@@ -1300,7 +1144,6 @@ describe.skipIf(!testDb || !env.auth)(
       }
     });
 
-    /** Which server a spelling of a path reaches, by the answer it gives. */
     const routedTo = async (path: string): Promise<string> => {
       const response = await fetch(`${server.origin}${path}`, {
         method: 'POST',
@@ -1336,10 +1179,6 @@ describe.skipIf(!testDb || !env.auth)(
       });
 
     it('routes the spellings the router folds to the mount they name, and no other', async () => {
-      // The router matches case-insensitively and collapses repeated slashes
-      // (Effect's `RouterConfig` default, kept by ruling). What matters is
-      // that no spelling reaches the other rpc server: `/rpc` serves
-      // `StudioRpcs`, which knows no protocol-builder tag.
       const observed: Record<string, string> = {};
       for (const path of [
         PROTOCOL_BUILDER_RPC_PATH,
@@ -1357,10 +1196,6 @@ describe.skipIf(!testDb || !env.auth)(
       for (const path of ['/ws', '/WS', '//ws', '/ws/', '/%77s']) {
         observed[path] = String(await upgradeAt(path));
       }
-      // Observed on rc.115: every folded or percent-encoded spelling reaches
-      // the mount it names, an encoded slash is one path segment and so no
-      // route at all, and `/rpc` stays `StudioRpcs`'. The maintenance gate is
-      // global, so none of these spellings is a way around it.
       expect(observed).toEqual({
         [PROTOCOL_BUILDER_RPC_PATH]: 'protocol-builder',
         '/RPC/protocol-builder': 'protocol-builder',
@@ -1389,8 +1224,6 @@ describe.skipIf(!testDb || !env.auth)(
         {
           tag: 'AcquireLock',
           payload: { protocolId, sectionId },
-          // The message's own headers, which the server merges over the
-          // request's before any middleware sees them.
           headers: [
             ['cookie', cookieOf(GRACE)],
             [CLIENT_SESSION_HEADER, forged],
@@ -1401,9 +1234,6 @@ describe.skipIf(!testDb || !env.auth)(
         _tag: 'Success',
         value: { lock: 'held' },
       });
-      // The request's researcher and the request's tab own it: the socket on
-      // that tab is the same owner, and the forged tab is not. Mutation: read
-      // `options.headers` in `HostSessionLive` → Grace's forged tab owns it.
       const same = await owner.run(
         owner.client('AcquireLock', { protocolId, sectionId }),
       );
@@ -1418,7 +1248,6 @@ describe.skipIf(!testDb || !env.auth)(
       await owner.run(owner.client('ReleaseLock', { protocolId, sectionId }));
     });
 
-    /** The tag a call failed with, when it failed with one. */
     const failureTag = (exit: Exit.Exit<unknown, unknown>) => {
       if (Exit.isSuccess(exit)) return 'success';
       const error = Cause.findErrorOption(exit.cause);
@@ -1434,12 +1263,8 @@ describe.skipIf(!testDb || !env.auth)(
           await tab.runExit(tab.client('ListSections', { protocolId })),
         ),
       ).toBe('success');
-      // Signed out elsewhere, or revoked by an administrator, while the socket
-      // stays open.
       COOKIES.delete(cookieOf(GRACE));
       try {
-        // Mutation: take the principal the upgrade resolved instead of asking
-        // the upgrade's cookie again → the call is served.
         expect(
           failureTag(
             await tab.runExit(tab.client('ListSections', { protocolId })),
@@ -1452,8 +1277,6 @@ describe.skipIf(!testDb || !env.auth)(
 
     it('ends a watch over an open socket once its session is revoked', async () => {
       const watcher = await connect({ as: GRACE });
-      // The frame names another of Grace's live sessions, which the websocket
-      // protocol merges over the upgrade's cookie.
       const watch = watcher.watch(protocolId, undefined, {
         cookie: 'session=grace-elsewhere',
       });
@@ -1469,9 +1292,6 @@ describe.skipIf(!testDb || !env.auth)(
           writer,
           'Written after a session was revoked',
         );
-        // Mutation: re-read only the memberships when reauthorising, or read
-        // the session from the frame's merged headers → the watch goes on and
-        // delivers the write.
         await until(() => watch.ended() !== undefined, 'the watch to end');
         const ended = watch.ended();
         expect(ended !== undefined && Exit.isFailure(ended)).toBe(true);
@@ -1488,8 +1308,6 @@ describe.skipIf(!testDb || !env.auth)(
     });
 
     it('ends a /rpc/protocol-builder watch when a maintenance window opens', async () => {
-      // The gate sees only the request, so a watch opened on the unary plane
-      // before the window must end as a socket does.
       const flag = MutableRef.make(false);
       const gated = await startStudioServer(
         { ...env, deploymentMode: 'self-hosted' },
@@ -1516,7 +1334,6 @@ describe.skipIf(!testDb || !env.auth)(
       if (reader === undefined) throw new Error('the watch has no body');
       const decoder = new TextDecoder();
       let received = '';
-      /** Reads until `done` says so, or answers false once `ms` have passed. */
       const readUntil = async (
         done: (finished: boolean) => boolean,
         ms: number,
@@ -1542,8 +1359,6 @@ describe.skipIf(!testDb || !env.auth)(
           await readUntil(() => received.includes('"presence"'), 5_000),
         ).toBe(true);
         MutableRef.set(flag, true);
-        // Mutation: drop the unary route's watch cutoff → the stream stays
-        // open through the window.
         expect(await readUntil((finished) => finished, 3_000)).toBe(true);
       } finally {
         await reader.cancel().catch(() => undefined);
@@ -1588,8 +1403,6 @@ describe.skipIf(!testDb || !env.auth)(
           'the watch to go live',
         );
         const stopped = stopping.dispose();
-        // Mutation: end the unary watch on the operator's window alone → the
-        // response stays open until the 10 s graceful window runs out.
         await until(() => finished, 'the watch to end with the stop', 2_000);
         await stopped;
       } finally {

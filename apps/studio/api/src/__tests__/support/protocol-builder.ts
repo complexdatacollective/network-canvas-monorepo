@@ -8,8 +8,8 @@ import {
   Option,
   Scope,
 } from 'effect';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcServer from 'effect/rpc/RpcServer';
 
 import {
   ProtocolBuilderGroup,
@@ -31,21 +31,6 @@ import {
 import { ObjectStore } from '../../storage/object-store.ts';
 import { studioServices } from './services.ts';
 
-// The protocol-builder host in process: the handlers `/ws` and
-// `/rpc/protocol-builder` serve, behind the same `HostSessionLive`, over a
-// client and a server wired to each other with no serializer and no socket.
-// What a suite driving this does not exercise is a transport, which is what
-// `ws-protocol-builder.test.ts` is for.
-
-/**
- * Who a call is made as.
- *
- * `principal` is a signed-in session: the call carries a header the harness's
- * auth service resolves to it, as a cookie is resolved on every call. A caller
- * without one is resolved from `headers` by the Studio's own auth service.
- * `connection` makes the call one made over a socket, which is what presence
- * is drawn from; `tab` is the client session its locks belong to.
- */
 export type Caller = {
   readonly principal?: SessionPrincipal;
   readonly connection?: string;
@@ -54,20 +39,16 @@ export type Caller = {
 };
 
 export type ProtocolBuilderTestClient = {
-  /** The flat client: `client.rpc('AcquireLock', { protocolId, sectionId })`. */
   readonly rpc: RpcClient.RpcClient.Flat<ProtocolBuilderRpcs>;
-  /** Runs a call as `caller`; a declared failure rejects. */
   readonly call: <A, E>(
     caller: Caller,
     effect: Effect.Effect<A, E>,
   ) => Promise<A>;
-  /** Runs a call as `caller` and hands back the whole exit. */
   readonly callExit: <A, E>(
     caller: Caller,
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Promise<Exit.Exit<A, E>>;
-  /** Runs anything over the harness's services, e.g. a read of `Leases`. */
   readonly run: <A, E>(
     effect: Effect.Effect<
       A,
@@ -78,15 +59,10 @@ export type ProtocolBuilderTestClient = {
   readonly dispose: () => Promise<void>;
 };
 
-/** The header a harness caller's session travels in. */
 const SESSION_HEADER = 'x-harness-session';
 
 type Sessions = Map<string, SessionPrincipal>;
 
-/**
- * The Studio's auth service, which also resolves the sessions the harness's
- * callers carry.
- */
 const harnessAuth = (
   auth: AuthService['Service'],
   sessions: Sessions,
@@ -101,7 +77,6 @@ const harnessAuth = (
     },
   });
 
-/** Runs `effect` as `caller`: in their fiber, with their headers. */
 const asCaller = <A, E, R>(
   sessions: Sessions,
   caller: Caller,
@@ -128,11 +103,6 @@ const asCaller = <A, E, R>(
   return RpcClient.withHeaders(withConnection, headers);
 };
 
-/**
- * The two public no-serialization constructors wired to each other, with fatal
- * defects off as both mounts run them (`protocol-builder/rpc.ts`): a call that
- * dies fails alone rather than every call in flight.
- */
 const inProcessClient = Effect.gen(function* () {
   let client:
     | Effect.Success<
@@ -154,13 +124,6 @@ const inProcessClient = Effect.gen(function* () {
   return client.client;
 });
 
-/**
- * A clock whose wall time a suite can move forward without waiting for it:
- * `advance` shifts every reading, and wakes every sleep whose deadline the
- * shift has passed. Sleeps otherwise run on real timers, so everything the
- * handlers do that is not about time — Postgres, the socket — runs as it does
- * in production.
- */
 export const makeShiftableClock = () => {
   let offset = 0;
   const sleepers = new Set<{
@@ -201,11 +164,6 @@ export const makeShiftableClock = () => {
   return {
     clock,
     now,
-    /**
-     * How many sleeps asked for exactly `millis` are waiting, so a suite can
-     * tell when the lease keeper is between ticks, or a reconnect grace has
-     * started.
-     */
     pending: (millis: number) =>
       [...sleepers].filter((sleeper) => sleeper.millis === millis).length,
     advance: (millis: number) => {
@@ -216,14 +174,6 @@ export const makeShiftableClock = () => {
   };
 };
 
-/**
- * The handlers over one Studio's services, and a client to them.
- *
- * `clock` is the clock the handlers, the lease keeper and `run` read; `objectStore`
- * replaces the Studio's; `leases` and `events` replace the keeper and the
- * fan-out, for a suite that needs one it can see into or hold; `layer` is
- * provided to the runtime, e.g. a logger.
- */
 export async function createProtocolBuilderClient(
   studio: Studio,
   options: {

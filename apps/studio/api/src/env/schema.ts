@@ -240,12 +240,6 @@ export const EnvironmentSchema = Schema.Struct({
     example: 'true',
   }),
 
-  /**
-   * Absence is the gate: no endpoint means no exporter is built at all, so a
-   * deployment that says nothing pays nothing. `STUDIO_TELEMETRY=false` turns
-   * the export off even where an endpoint is configured, which is why the two
-   * are separate variables rather than one.
-   */
   OTEL_EXPORTER_OTLP_ENDPOINT: variable(HttpUrl, {
     group: 'Process',
     summary:
@@ -308,21 +302,16 @@ export const EnvironmentSchema = Schema.Struct({
     group: 'Database',
     summary: 'Postgres connection string, as a `postgres://` URL.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: node-postgres would let it override the `role=` every pool pins itself with, and both processes would run as the login instead. It must be a `postgres://` URL: a bare socket path, a keyword connection string, a URL with credentials but no host, or an `sslmode` other than `disable`, `require`, `verify-ca` or `verify-full` is refused at boot, because the server’s database client cannot read one. For a Unix socket, keep `localhost` as the host and name the socket’s directory in the `host` parameter — `postgres://studio@localhost/studio?host=/var/run/postgresql` — so a password from `DATABASE_PASSWORD_FILE` has somewhere to go.',
+      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: it could override the role every database client pins itself with, and both processes would run as the login instead. It must be a `postgres://` URL: a bare socket path, a keyword connection string, a URL with credentials but no host, or an `sslmode` other than `disable`, `require`, `verify-ca` or `verify-full` is refused at boot, because the server’s database client cannot read one. For a Unix socket, keep `localhost` as the host and name the socket’s directory in the `host` parameter — `postgres://studio@localhost/studio?host=/var/run/postgresql` — so a password from `DATABASE_PASSWORD_FILE` has somewhere to go.',
     example: 'postgres://user@host:5432/studio',
   }),
 
-  /**
-   * A Compose file secret path rather than a value, so the password is in
-   * neither `docker inspect` nor the process environment. `resolve.ts` reads
-   * the file once and produces the effective connection string from the two.
-   */
   DATABASE_PASSWORD_FILE: variable(NonEmptyString, {
     group: 'Database',
     summary:
       'Path of a file holding the password for `DATABASE_URL`, which must then carry none.',
     deployment:
-      'How the reference compose stack delivers the database password: a Compose file secret at `/run/secrets/postgres_password`, so it appears neither in `docker inspect` nor in any process environment. The file is read once at boot and its password inserted into `DATABASE_URL`. Setting it while `DATABASE_URL` also carries a password is a boot error — there would be no way to tell which was meant. Trailing newlines are stripped, matching what the Postgres image does with the same file.',
+      'How the reference compose stack delivers the database password: a Compose file secret at `/run/secrets/postgres_password`, so it appears neither in `docker inspect` nor in any process environment. The server rereads the file for every new database connection, so a rotated password takes effect without a restart once the file holds it. Setting it while `DATABASE_URL` also carries a password is a boot error — there would be no way to tell which was meant. Trailing newlines are stripped, matching what the Postgres image does with the same file.',
     example: '/run/secrets/postgres_password',
   }),
 

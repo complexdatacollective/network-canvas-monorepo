@@ -78,12 +78,6 @@ describe('sealing and opening each kind of secret', () => {
   });
 
   it('opens a ciphertext a row hands back as a plain Uint8Array', () => {
-    // `protocol_asset_keys.ciphertext` is a `bytea`, and the two clients this
-    // stage straddles decode one differently: node-postgres returns a
-    // `Buffer`, `@effect/sql-pg` a plain `Uint8Array`. Pinned on the runtime
-    // type rather than on the declared one, because a cipher that reached for
-    // a `Buffer` method would typecheck against `Uint8Array` and still throw
-    // on the row it was given.
     const sealed = cipher.sealAssetKey(ASSET, ASSET_KEY);
     const asSqlPgReadsIt = new Uint8Array(sealed.ciphertext);
     expect(Buffer.isBuffer(asSqlPgReadsIt)).toBe(false);

@@ -26,10 +26,6 @@ import {
   layerWorker,
 } from './support.ts';
 
-// What an operator sees of the queue: a gauge per queue and state that
-// follows the table both ways, and pg-boss's backlog warning on the crossing
-// rather than on every tick.
-
 const db = await reachableDb();
 
 describe.skipIf(!db)('the queue’s metrics', () => {
@@ -37,23 +33,19 @@ describe.skipIf(!db)('the queue’s metrics', () => {
     const clear = clearQueue;
     const jobsLayer = layerJobs;
 
-    /** A delivery of its own each time, so no two rows carry one id. */
     const enqueueOne = Effect.suspend(() => enqueueDelivery(randomUUID()));
 
-    /** The gauge series for one queue and state, as a plain number. */
     const depthOf = (queue: string, state: string) =>
       Effect.map(
         Metric.value(Metric.withAttributes(jobQueueDepth, { queue, state })),
         (gauge) => gauge.value,
       );
 
-    /** A pass with the warning state a case owns, so a case is one crossing. */
     const pass = (options: {
       readonly warned: BacklogWarnings;
       readonly warningQueueSize: number;
     }) => recordQueueDepths(options).pipe(Effect.provide(layerWorker()));
 
-    /** A fresh registry per case: a gauge is otherwise process-wide. */
     const withRegistry = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
       Effect.provideService(effect, Metric.MetricRegistry, new Map());
 
@@ -65,8 +57,6 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           yield* enqueueOne;
           yield* enqueueOne;
 
-          // One of the three run to completion, so the pass has two states of
-          // one queue to report rather than one.
           const step = yield* drainWith('invitation-delivery', () =>
             Effect.succeed<JobOutcome>('completed'),
           );
@@ -77,10 +67,6 @@ describe.skipIf(!db)('the queue’s metrics', () => {
             warningQueueSize: 10,
           });
 
-          // Read off the registry before anything else asks for a series:
-          // reading a gauge registers it, and an unset gauge answers 0, so
-          // "the queue with no rows reports 0" is only a real assertion when
-          // it is made of the series the pass itself created.
           const series = (yield* Metric.snapshot).filter(
             (snapshot) => snapshot.id === 'studio_jobs_queue_depth',
           );
@@ -109,8 +95,6 @@ describe.skipIf(!db)('the queue’s metrics', () => {
             yield* depthOf('invitation-delivery', 'active'),
             0,
           );
-          // A queue with no rows at all still reports, which is what lets a
-          // dashboard tell "nothing queued" from "no such series".
           assert.strictEqual(yield* depthOf('sign-in-email', 'created'), 0);
         }),
       ).pipe(Effect.provide(jobsLayer)),
@@ -151,12 +135,10 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           yield* clear;
           const warned: BacklogWarnings = new Set();
 
-          // At the threshold: pg-boss compares strictly, and so does this.
           yield* enqueueOne;
           yield* pass({ warned, warningQueueSize: 1 });
           assert.deepStrictEqual(logs.messages, []);
 
-          // Over it: one line.
           yield* enqueueOne;
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 1);
@@ -164,12 +146,9 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           assert.include(logs.messages[0]!, 'invitation-delivery holds 2 jobs');
           assert.include(logs.messages[0]!, 'warning size of 1');
 
-          // Still over it on the next pass, and still one line: the warning is
-          // the crossing, not the condition.
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 1);
 
-          // Back under, then over again: a second crossing, a second line.
           yield* clear;
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 1);
@@ -189,9 +168,6 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           yield* enqueueOne;
           yield* enqueueOne;
 
-          // Two jobs, one of them finished: pg-boss's `queuedCount` is the
-          // rows below `active`, so a completed row must not count towards a
-          // backlog warning.
           yield* drainWith('invitation-delivery', () =>
             Effect.succeed<JobOutcome>('completed'),
           );
@@ -214,9 +190,6 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           yield* enqueueOne;
 
           yield* Effect.gen(function* () {
-            // The layer's first pass is immediate and runs against a real
-            // database, so it is awaited in live time — the hour-long interval
-            // means nothing else can have set this gauge.
             let depth = 0;
             for (let attempt = 0; attempt < 100 && depth !== 2; attempt++) {
               yield* TestClock.withLive(Effect.sleep(Duration.millis(20)));

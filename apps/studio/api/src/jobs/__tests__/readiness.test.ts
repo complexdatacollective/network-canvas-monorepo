@@ -7,10 +7,6 @@ import { jobsCheck } from '../readiness.ts';
 import { JobWorker } from '../worker.ts';
 import { layerQueueHarness, layerWorker, QueueHarness } from './support.ts';
 
-// The `jobs` entry of the worker's readiness probe, read through the same
-// `readiness` the route serves — so what these cases assert is the status and
-// the reason a deployment actually sees, not the check's own error value.
-
 const db = await reachableDb();
 
 describe.skipIf(!db)('the jobs readiness check', () => {
@@ -27,9 +23,6 @@ describe.skipIf(!db)('the jobs readiness check', () => {
           assert.strictEqual(before.status, 'failing');
           assert.include(before.checks.jobs!, 'has not read its queues yet');
 
-          // What the metrics fiber does every minute (metrics.ts); a probe
-          // must not be the thing that makes the worker ready, which is why
-          // the check reads `ready` before it reads the tables.
           yield* worker.queueDepths;
 
           const after = yield* readiness({
@@ -50,11 +43,6 @@ describe.skipIf(!db)('the jobs readiness check', () => {
           const { maintenance } = yield* QueueHarness;
           assert.isFalse(yield* worker.ready);
 
-          // One drain of an empty queue — what a background worker's poll
-          // fiber does on its own, without any optional layer. A `ready` that
-          // only `queueDepths` could set left a worker wired without
-          // `JobQueueMetrics.layer` reporting not ready for the life of the
-          // process.
           const step = yield* worker.drainOnce('invitation-delivery');
           assert.strictEqual(step._tag, 'idle');
           assert.isTrue(yield* worker.ready);
@@ -77,10 +65,6 @@ describe.skipIf(!db)('the jobs readiness check', () => {
           const { maintenance } = yield* QueueHarness;
           yield* worker.queueDepths;
 
-          // `degraded` is for a listener that is down, and a worker told not
-          // to hold one has nothing down. Without the distinction every suite
-          // here — and every deployment that turns the listener off — would
-          // report degraded for a connection nobody asked for.
           const verdict = yield* readiness({
             jobs: jobsCheck(worker, maintenance),
           });
@@ -101,18 +85,12 @@ describe.skipIf(!db)('the jobs readiness check', () => {
           const { app, maintenance } = yield* QueueHarness;
           yield* worker.queueDepths;
 
-          // Ready, and the read still refused: the application role may insert
-          // a job and read back its id, nothing more (schema.ts's grants). A
-          // worker mounted on the wrong pool reports it here rather than on
-          // its first claim.
           const result = yield* readiness({
             jobs: jobsCheck(worker, app),
           });
           assert.strictEqual(result.status, 'failing');
           assert.include(result.checks.jobs!, 'permission denied');
 
-          // And the same worker on the role it works jobs as is ready, so the
-          // failure above is the role's and not the worker's.
           const healthy = yield* readiness({
             jobs: jobsCheck(worker, maintenance),
           });

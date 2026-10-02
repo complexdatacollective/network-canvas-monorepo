@@ -34,8 +34,6 @@ export type Entrypoint = {
  * @param env variables layered over this process's own, which carry the
  * committed development defaults the suite runs under. A case whose subject is
  * the deployment lane overrides those deliberately.
- * @param args what follows the entry on the command line — for `maintenance`,
- * what `bin/studio-api` passes after taking the command off the front.
  */
 export function startEntrypoint(
   entry: string,

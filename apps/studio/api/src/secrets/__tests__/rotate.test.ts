@@ -1,15 +1,3 @@
-// Rotation against real rows, because every property it has to hold is a
-// property of the transactions: that it re-seals what is behind and leaves
-// what is current alone, that a second run finds nothing, that an interrupted
-// run keeps what it committed, and that it refuses outright rather than
-// half-rotating a database whose keyring is incomplete.
-//
-// Every transaction the rotation opens is a MAINTENANCE one, which stamps no
-// team: the tenant tables force row-level security, so any other role would
-// rotate one team's rows and leave the rest pinned to a key about to be
-// removed. The fixtures and the oracles go through the connecting login
-// instead (`harness.onOwner`), which is a different session and therefore a
-// real second one — which is what makes the held-row case mean anything.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -40,20 +28,12 @@ import {
 
 const TEAM = 'team-rotation';
 const USER = 'user-rotation';
-/** The protocol line every asset key below belongs to. */
 const PROTOCOL = '3f1c9b4e-0a2d-4c5e-9b8a-6d7e5f4c3b2a';
-/** A key id no keyring in this file carries: a half-removed rotation entry. */
 const MISSING = 'gone';
 
-/** `test-2` current, `test-1` readable: what the database was written under. */
 const BEFORE = testKeyring(['test-2', 'test-1']);
-/** `test-1` current, `test-2` readable: the keyring a rotation deploys. */
 const AFTER = testKeyring(['test-1', 'test-2']);
 
-/**
- * `test-1` by name, another key by material: the shape a restore from the
- * wrong backup, or a regenerated keyring, leaves behind.
- */
 const IMPOSTOR = parseKeyring(
   `test-1:${testKeyringEntry('test-impostor').split(':')[1]!}`,
 );
@@ -68,12 +48,6 @@ const TOKEN_COLUMNS = [
   'idToken',
 ] as const satisfies readonly TokenColumn[];
 
-/**
- * The rotation reads its keyring and its cipher from the services, so no call
- * site can hand it a cipher over some other key material. A case that rotates
- * under a given keyring provides both from that one keyring, which is what
- * `SecretsCipher.layer` over it is.
- */
 const underKeyring = <A, E, R>(
   keyring: KeyringApi,
   body: Effect.Effect<A, E, R>,
@@ -85,16 +59,9 @@ const underKeyring = <A, E, R>(
     ),
   );
 
-/** The boot check under one keyring, reading it the way the gate does. */
 const bootCheck = (keyring: KeyringApi) =>
   underKeyring(keyring, verifyStoredKeys);
 
-/**
- * What a refused run answered with. A typed failure (`RotationIncomplete`, the
- * boot check's three) and a DEFECT (a re-seal that refused a plaintext token, a
- * batch size that could never finish) are read the same way: `Effect.result`
- * would catch only the first kind, so everything is read off the `Exit`.
- */
 const failureOf = (exit: Exit.Exit<unknown, unknown>): unknown =>
   Exit.isFailure(exit)
     ? Cause.squash(exit.cause)
@@ -103,11 +70,6 @@ const failureOf = (exit: Exit.Exit<unknown, unknown>): unknown =>
 const messageOf = (failure: unknown): string =>
   failure instanceof Error ? failure.message : String(failure);
 
-/**
- * The team, the user and the protocol line the fixtures hang off, and an empty
- * slate in all three stores. Every case starts from this: the stores are
- * database-wide, so a row left behind by one case is a row the next one counts.
- */
 const reset = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
   yield* harness.onOwner(
@@ -122,8 +84,6 @@ const reset = Effect.fnUntraced(function* () {
       yield* sql`insert into "user" (id, name, email, "emailVerified")
                  values (${USER}, 'Rotation', 'rotation@example.test', true)
                  on conflict (id) do nothing`;
-      // `protocol_asset_keys` rows are pinned to a protocol by a composite
-      // foreign key, so the line has to exist before any key is stored on it.
       yield* sql`insert into protocols (id, team_id, name)
                  values (${PROTOCOL}, ${TEAM}, 'Rotation protocol')
                  on conflict (id) do nothing`;
@@ -131,7 +91,6 @@ const reset = Effect.fnUntraced(function* () {
   );
 });
 
-/** A subscription sealed by `cipher`, returning its id and its plaintext. */
 const newSubscription = Effect.fnUntraced(function* (
   cipher = beforeCipher,
   keyIdOverride?: string,
@@ -155,11 +114,6 @@ const newSubscription = Effect.fnUntraced(function* (
   return { id, secret };
 });
 
-/**
- * One `account` row. `tokens` is what each column holds: a plain string is
- * sealed by `cipher`, and a value given as `{ plaintext: … }` is written
- * as-is, which is the write that bypassed the auth adapter.
- */
 const newAccount = Effect.fnUntraced(function* (
   cipher = beforeCipher,
   tokens: Partial<Record<TokenColumn, string | { plaintext: string }>> = {
@@ -191,7 +145,6 @@ const newAccount = Effect.fnUntraced(function* (
   return { id, accountId, tokens };
 });
 
-/** One sealed API key for `PROTOCOL`, returning its asset id and plaintext. */
 const newAssetKey = Effect.fnUntraced(function* (
   cipher = beforeCipher,
   keyIdOverride?: string,
@@ -213,11 +166,6 @@ const newAssetKey = Effect.fnUntraced(function* (
   return { assetId, value };
 });
 
-// The oracles, read as the connecting login. `updated_at`/`updatedAt` come
-// back from RAW statements, which decode `timestamptz` as epoch milliseconds
-// rather than as a `Date` on rc.115 — so every case that asserts a timestamp
-// was NOT touched also pins that it is a primitive, because the comparison
-// only means "unchanged" while it is one.
 const subscriptionRows = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
   return yield* harness.onOwner(
@@ -225,7 +173,7 @@ const subscriptionRows = Effect.fnUntraced(function* () {
       id: string;
       secret_ciphertext: Uint8Array;
       secret_key_id: string;
-      updated_at: number;
+      updated_at: Date;
     }>`select id, secret_ciphertext, secret_key_id, updated_at
        from webhook_subscriptions order by id`,
   );
@@ -240,7 +188,7 @@ const accountRows = Effect.fnUntraced(function* () {
       accessToken: string | null;
       refreshToken: string | null;
       idToken: string | null;
-      updatedAt: number;
+      updatedAt: Date;
     }>`select id, "accountId", "accessToken", "refreshToken", "idToken", "updatedAt"
        from account order by id`,
   );
@@ -253,7 +201,7 @@ const assetKeyRows = Effect.fnUntraced(function* () {
       asset_id: string;
       ciphertext: Uint8Array;
       key_id: string;
-      updated_at: number;
+      updated_at: Date;
     }>`select asset_id, ciphertext, key_id, updated_at
        from protocol_asset_keys order by asset_id`,
   );
@@ -325,13 +273,14 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               ),
             ).toBe(assetKey.value);
 
-            // Rotation changes how a row is stored, not when anyone last
-            // changed it: a bumped timestamp would make every audit and every
-            // "recently changed" view lie the day a deployment re-keys.
-            expect(typeof rotatedAccount?.updatedAt).toBe('number');
-            expect(rotatedAccount?.updatedAt).toBe(storedAt);
-            expect(typeof rotatedAssetKey?.updated_at).toBe('number');
-            expect(rotatedAssetKey?.updated_at).toBe(assetStoredAt);
+            expect(rotatedAccount?.updatedAt).toBeInstanceOf(Date);
+            expect(rotatedAccount?.updatedAt.getTime()).toBe(
+              storedAt.getTime(),
+            );
+            expect(rotatedAssetKey?.updated_at).toBeInstanceOf(Date);
+            expect(rotatedAssetKey?.updated_at.getTime()).toBe(
+              assetStoredAt.getTime(),
+            );
           }).pipe(Effect.orDie),
       );
 
@@ -339,9 +288,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
         'leaves an asset key that is already current byte for byte alone',
         () =>
           Effect.gen(function* () {
-            // Sealed under the keyring the rotation deploys, so there is
-            // nothing to do: a re-seal under the same key would draw a new
-            // nonce and still pass a count-only assertion.
             yield* reset();
             yield* newAssetKey(afterCipher);
             const stored = yield* assetKeyRows();
@@ -367,9 +313,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             expect(messageOf(failure)).toMatch(
               new RegExp(`cannot produce: ${MISSING}`),
             );
-            // Including the row it could have rotated: the check runs before
-            // any write, so an incomplete keyring rotates nothing rather than
-            // some.
             expect(yield* assetKeyRows()).toEqual(stored);
             expect(
               stored.find((row) => row.asset_id === behind.assetId)?.key_id,
@@ -416,9 +359,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             const firstAccounts = yield* accountRows();
             const firstAssetKeys = yield* assetKeyRows();
 
-            // Idempotent in the strong sense: not merely "reports zero", but
-            // leaves the stored bytes identical. A re-seal under the same key
-            // would produce a new nonce and pass a count-only assertion.
             expect(yield* underKeyring(AFTER, rotateSecrets())).toEqual({
               webhook_subscriptions: 0,
               account: 0,
@@ -437,9 +377,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             yield* reset();
             for (let index = 0; index < 3; index += 1) yield* newSubscription();
 
-            // The process being stopped between batches, which is the failure
-            // resumability is for: the progress line is written only once a
-            // batch has committed, and the run is interrupted from inside it.
             let batches = 0;
             const stopAfterFirstCommit = Logger.make(({ fiber, message }) => {
               if (!String(message).includes('re-sealed')) return;
@@ -462,8 +399,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               partial.filter((row) => row.secret_key_id === 'test-1'),
             ).toHaveLength(1);
 
-            // The rerun is the whole point: it finishes the rest and does not
-            // redo the batch that already committed.
             expect(yield* underKeyring(AFTER, rotateSecrets())).toEqual({
               webhook_subscriptions: 2,
               account: 0,
@@ -486,18 +421,10 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             yield* newSubscription();
             const harness = yield* TestDatabase;
 
-            // The lock is taken on the connecting login's own connection,
-            // which is a different client from the maintenance one, so the
-            // rotation below really is another session.
             const exit = yield* harness.onOwner(
               Effect.gen(function* () {
                 yield* harness.owner.sql`select id from webhook_subscriptions
                                          where id = ${held.id} for update`;
-                // FOR UPDATE SKIP LOCKED means a held row makes a batch return
-                // zero, which is also how a finished store reports itself.
-                // Believing it let the command print "every stored secret is
-                // now under key id …" with a row still sealed under the entry
-                // the operator is about to remove.
                 return yield* Effect.exit(underKeyring(AFTER, rotateSecrets()));
               }),
             );
@@ -507,15 +434,12 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               /webhook_subscriptions: 1 row still under another key \(held by another session, or written under an older key while this ran\); run rotate-secrets again/,
             );
 
-            // The batch that did commit is still committed: the postcondition
-            // reports, it does not roll anything back.
             expect(
               (yield* subscriptionRows()).filter(
                 (row) => row.secret_key_id === 'test-1',
               ),
             ).toHaveLength(1);
 
-            // And the rerun the message asks for finishes the job.
             expect(yield* underKeyring(AFTER, rotateSecrets())).toEqual({
               webhook_subscriptions: 1,
               account: 0,
@@ -536,8 +460,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
           yield* newSubscription(beforeCipher, MISSING);
           yield* newAccount();
           yield* newAssetKey(beforeCipher, 'asset-gone');
-          // What the boot check compares against the keyring: one set, from
-          // every store, however many tables the registry grows to.
           expect(yield* MaintenanceScope.open(secretKeyIdsInUse)).toEqual([
             'asset-gone',
             MISSING,
@@ -550,13 +472,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
         'refuses at boot when a stored key id is not a keyring id',
         () =>
           Effect.gen(function* () {
-            // A row whose key id is not one a keyring could hold cannot be opened
-            // by any keyring, so dropping it from the comparison made the boot
-            // check pass on a database it had just proved unreadable. It is
-            // counted instead, and the count says which table without ever
-            // printing what the column holds: these ids are read back out of
-            // stored text, and a boot refusal must not be a way to get arbitrary
-            // stored bytes into a log.
             yield* reset();
             yield* newSubscription(beforeCipher, 'not a key id');
             yield* newSubscription(beforeCipher, 'nor is this');
@@ -565,8 +480,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               accessToken: { plaintext: 'studio-secret::whatever' },
             });
 
-            // A typed refusal, not a defect: `flip` answers only for the
-            // former, and the gate prints the refusal's own sentence.
             const failure = yield* Effect.flip(bootCheck(AFTER));
             expect(failure).toBeInstanceOf(SecretKeyIdMalformed);
             const message = messageOf(failure);
@@ -579,7 +492,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             expect(message).toContain(
               '1 stored key id in account is not a keyring id',
             );
-            // Never the text itself.
             expect(message).not.toContain('not a key id');
             expect(message).not.toContain('whatever');
           }).pipe(Effect.orDie),
@@ -589,10 +501,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
         'refuses at boot when the keyring holds an id under different material',
         () =>
           Effect.gen(function* () {
-            // A restored database and a keyring that both name `test-1` but
-            // disagree about what it is: every id is present, so the
-            // produce-check passed and the deployment came up to fail one
-            // webhook signature at a time.
             yield* reset();
             yield* newSubscription(afterCipher);
             yield* newAccount(afterCipher);
@@ -603,8 +511,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             expect(messageOf(failure)).toMatch(
               /Key id "test-1" in the keyring does not open the stored secrets sealed under it/,
             );
-            // The keyring that does match still passes, so the probe is not
-            // simply refusing everything.
             expect(yield* Effect.exit(bootCheck(AFTER))).toStrictEqual(
               Exit.succeed(undefined),
             );
@@ -613,10 +519,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
 
       it.effect('refuses a row whose only token is plaintext', () =>
         Effect.gen(function* () {
-          // Selected on "is not under the current key" rather than on carrying
-          // a sealed prefix: a row whose only token is plaintext matched
-          // neither, so rotation walked past it and reported success with
-          // plaintext at rest.
           yield* reset();
           const account = yield* newAccount(beforeCipher, {
             refreshToken: { plaintext: '1//written-around-the-adapter' },
@@ -651,9 +553,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             expect(messageOf(failure)).toMatch(
               new RegExp(`cannot produce: ${MISSING}`),
             );
-            // Not one row: a partial rotation under an incomplete keyring is
-            // the state this command exists to get a deployment out of, not
-            // into.
             expect(yield* subscriptionRows()).toEqual(stored);
           }).pipe(Effect.orDie),
       );
@@ -668,8 +567,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               refreshToken: { plaintext: 'ya29.written-around-the-adapter' },
             });
 
-            // Sealing it here would hide the write that bypassed the auth
-            // adapter, and the row would look rotated ever after.
             const failure = failureOf(
               yield* Effect.exit(underKeyring(AFTER, rotateSecrets())),
             );
@@ -688,9 +585,6 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
 
       it.effect('refuses a batch size that would never finish', () =>
         Effect.gen(function* () {
-          // A DEFECT rather than a failure: the number came from the call site
-          // rather than from the database, and there is nothing an operator
-          // could do with it that is not "fix the caller".
           yield* reset();
           const failure = failureOf(
             yield* Effect.exit(

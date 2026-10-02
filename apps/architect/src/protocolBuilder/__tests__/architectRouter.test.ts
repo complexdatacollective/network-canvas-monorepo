@@ -89,10 +89,6 @@ const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
-/**
- * What a test calls the host through: the adapter `<ProtocolBuilder>` is
- * handed, and the runtime behind it for the protocol's event stream.
- */
 type TestClient = Readonly<{
   call: RpcAdapter<ProtocolBuilderRpcs>['rpcCall'];
   runtime: ManagedRuntime.ManagedRuntime<ArchitectHostClient, never>;
@@ -111,7 +107,6 @@ const clientOf = (store: ArchitectStore): TestClient => {
   return { call: adapter.rpcCall, runtime };
 };
 
-/** A call's outcome, with a refusal as the error instance the host raised. */
 async function safe(
   promise: Promise<unknown>,
 ): Promise<Readonly<{ error: unknown; isSuccess: boolean }>> {
@@ -387,9 +382,6 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(replayed.map((entry) => entry.event.sectionId)).toEqual([EGO_FORM]);
     expect(replayed[0]?.event.document?.label).toBe('After the drop');
 
-    // Every replayable event carries its cursor, so a stream dropped again is
-    // resumed from the last one it delivered and replays nothing it already
-    // had.
     const reached = replayed[0]?.cursor;
     expect(reached).toBeDefined();
     const again = await openStream(client, reached);
@@ -493,12 +485,6 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(personVariables(store).name).toBeDefined();
   });
 
-  /**
-   * The lock table and the revision log belong to the handlers, not to a
-   * client over them — so an open protocol takes one set of handlers, however
-   * many clients read it, and two over one store would each grant the same
-   * lock.
-   */
   it('holds the lock table on the handlers rather than on a client', async () => {
     const store = configureStore({ reducer: rootReducer });
     store.dispatch(setActiveProtocolId(PROTOCOL_ID));
@@ -1785,8 +1771,6 @@ describe("Architect's in-process protocol-builder host", () => {
         _tag: 'SectionsLocked',
         blocked: [{ sectionId: STAGE_ORDER_SECTION }],
       });
-      // The lock the refusal names arrived on the stream too, carrying the
-      // cursor a resumed stream would ask from.
       await waitFor(
         () => stream.seen.some((entry) => entry.event.type === 'lock'),
         'the lock to reach the stream',
@@ -1796,12 +1780,6 @@ describe("Architect's in-process protocol-builder host", () => {
       expect(lock?.cursor).toEqual(expect.any(String));
     });
 
-    /**
-     * No serialization means no decode on the server: the client checks the
-     * payload itself, and a payload failing its schema dies there rather than
-     * reaching a handler that would refuse it. `Delete`'s stage-only refinement
-     * is the one a caller holding a valid section id can still fail.
-     */
     it('dies, rather than refuses, on a Delete naming a section that is not a stage', async () => {
       const { store, client } = openProtocol();
 

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Effect, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
@@ -31,31 +31,6 @@ import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
 import { isTeamAdministrator, tryParseRoles } from './roles.ts';
 import * as store from './store.ts';
 
-// The four team commands, on `audited` (#1927 §10).
-//
-// What the combinator took over, and what that removed from here:
-//
-//   * The trusted half of every event — the team, the team's locked label, the
-//     actor, the request — is stamped by `audited` and *absent* from the
-//     `AuditEventBody` a command may write. The `assertEventContext` this file
-//     used to rely on compared exactly those fields; a mismatch is no longer
-//     refused at runtime because it can no longer be written.
-//   * The outcome is likewise the combinator's. A success is `changed(...)` or
-//     `unchanged(...)`; a denial or a bounded failure is an error carrying the
-//     `auditable` marker, and `audited` stamps `denied`/`failed` from the
-//     marker rather than from anything the command claims.
-//   * The savepoint is the combinator's too. `audited` runs the whole body in
-//     one, captures its `Exit`, and appends the events that Exit implies after
-//     the savepoint has rolled back — so a bounded failure leaves its record
-//     and none of its writes, without this file opening a nested transaction
-//     per command.
-//
-// What is still here, because it is this file's: which refusals are auditable.
-// A denial the team is entitled to see carries the marker; a conflict, a
-// no-change and a not-found do not, so they roll the whole transaction back
-// and leave nothing — an immutable log is the wrong place for "you asked for
-// something that was already true".
-
 const decodeEmail = Schema.decodeUnknownSync(Email);
 const INVITATION_LIMIT = 100;
 const MEMBERSHIP_LIMIT = 100;
@@ -81,7 +56,6 @@ export class TeamCommandError extends Schema.TaggedError<TeamCommandError>()(
   }
 }
 
-/** The fields every team-access event carries and no command varies. */
 const TEAM_EVENT = {
   eventVersion: 1,
   category: 'team_access',
@@ -112,10 +86,8 @@ const isOwner = (
 const memberLabel = (member: store.LockedMember): string =>
   (member.name.trim() || member.email).slice(0, 320);
 
-/** What an auditable refusal is: the command's own error, carrying its event. */
 type AuditableTeamFailure = TeamCommandError & AuditableFailure;
 
-/** A denial the team is entitled to see, as a failure `audited` can stamp. */
 const denied = (
   events: AuditEvents,
 ): Effect.Effect<never, AuditableTeamFailure> =>
@@ -126,7 +98,6 @@ const denied = (
     }),
   );
 
-/** A bounded failure, likewise: the write is undone and the record is kept. */
 const failed = (
   code: TeamCommandErrorCode,
   events: AuditEvents,
@@ -135,11 +106,6 @@ const failed = (
     auditable(new TeamCommandError({ code }), { outcome: 'failed', events }),
   );
 
-/**
- * The denial window, with this tier's reading of it: only a `FORBIDDEN` is a
- * denial, and a suppressed attempt is answered with the same `FORBIDDEN` the
- * command would have given.
- */
 const reserved = <A, E, R>(
   operation: DeniedAuditOperation,
   teamId: string,
@@ -201,11 +167,6 @@ export const updateTeamMemberRole: (
             },
           ]);
 
-        // The authoritative check, and the reason it is here rather than in
-        // the middleware: `openTeam` answered about a membership that is
-        // already stale by the time this transaction opens, and the row read
-        // here is locked, so a role revoked in that window refuses the change
-        // instead of committing under the older answer.
         const actor = members.actor;
         if (actor === null || !(yield* canManage(actor))) {
           return yield* refuse('insufficient_permission');
@@ -227,8 +188,6 @@ export const updateTeamMemberRole: (
           input.role !== 'owner' &&
           (yield* store.countLockedOwners(access.teamId)) <= 1
         ) {
-          // The one failure this command records. It names no subject: the
-          // team, not the member, is what ran out of owners.
           return yield* failed('LAST_OWNER', [
             {
               ...TEAM_EVENT,
@@ -280,9 +239,6 @@ export const createTeamInvitation: (
   access: TeamAccess,
   input: { email: string; role: TeamRole },
 ) {
-  // A malformed address is a contract violation rather than a refusal a caller
-  // could act on, so the decode throws inside `Effect.sync` and reaches the
-  // transport as the defect it is.
   const email = yield* Effect.sync(() =>
     decodeEmail(input.email.trim().toLowerCase()),
   );
@@ -345,26 +301,13 @@ export const createTeamInvitation: (
           teamId: access.teamId,
           email: invitation.email,
           role: input.role,
-          // The labels the combinator locked, not ones this command chose: the
-          // email the invitee reads names the team as it was when the
-          // invitation was made.
           teamLabel: context.teamLabel,
           inviterLabel: context.actorLabel,
           expiresAt: invitation.expiresAt,
         });
-        // In the command's own transaction (#1895), which `Jobs.enqueue`
-        // guarantees at the type level: it requires `Transaction`, and the
-        // only thing that provides one is the scope `audited` opened. A
-        // rollback therefore takes the job with it, and a commit can never
-        // leave an invitation nothing will ever send. The optional job client
-        // this replaced could be absent, which is why it had a runtime throw;
-        // a missing service is now a wiring error the graph refuses to build.
         yield* Effect.orDie(
-          // `JobRefused` is unreachable here and is not a refusal this command
-          // could answer with: the queue refuses only a collision on a
-          // per-enqueue `singletonKey`, and this enqueue names none. A
-          // deliveryId is minted per invitation, so there is nothing for a
-          // second job to collide with either.
+          // `JobRefused` is unreachable: the queue refuses only a `singletonKey`
+          // collision, and this enqueue names none.
           jobs.enqueue('invitation-delivery', {
             deliveryId: delivery.deliveryId,
           }),
@@ -432,10 +375,8 @@ export const cancelTeamInvitation: (
           ]);
         }
 
-        // Read before contending for the row: the refusal below names the
-        // invitation it could not cancel, and a lock this command never got
-        // leaves nothing locked to read that label from. Unlocked is enough
-        // for a label — the decision itself is made under the lock.
+        // Read before contending for the row: a lock this command never got leaves
+        // nothing locked to read the refusal's label from.
         const label = yield* store.readInvitationLabel(
           access.teamId,
           input.invitationId,
@@ -444,11 +385,8 @@ export const cancelTeamInvitation: (
           return yield* new TeamCommandError({ code: 'NOT_FOUND' });
         }
 
-        // The delivery handler holds this same row for the length of its send
-        // (#1895). Waiting for it would hold the team's audit lock behind an
-        // SMTP call, so this asks not to wait; Postgres answers 55P03, and
-        // that is the one database failure here which is a decision rather
-        // than a fault.
+        // Postgres answers 55P03 for the `nowait` lock: the one database failure here
+        // which is a decision rather than a fault.
         const invitation = yield* store
           .lockInvitation(access.teamId, input.invitationId, { nowait: true })
           .pipe(
@@ -483,10 +421,7 @@ export const cancelTeamInvitation: (
         if (invitation.role === null) {
           return yield* new TeamCommandError({ code: 'INVALID_ROLE' });
         }
-        // Better Auth historically stored role arrays as comma-separated
-        // values. Cancellation stays available for those rows, while
-        // acceptance below deliberately remains limited to one role for one
-        // new membership.
+        // Better Auth historically stored role arrays as comma-separated values.
         const roles = yield* parseRoles(invitation.role);
 
         yield* store.cancelInvitation(access.teamId, invitation.id);
@@ -518,13 +453,6 @@ export type AcceptedTeamInvitation = {
   status: 'accepted';
 };
 
-/**
- * Invitation acceptance is the one team command whose authenticated actor is
- * not a member yet. The browser supplies only the opaque invitation id, so the
- * tenant is resolved here rather than taken from the request, and every piece
- * of invitation and membership evidence is then locked and revalidated inside
- * the ordinary audited team transaction.
- */
 export const acceptTeamInvitation: (input: {
   invitationId: string;
 }) => Effect.Effect<
@@ -537,34 +465,17 @@ export const acceptTeamInvitation: (input: {
   const invitationId = yield* Effect.sync(() =>
     Schema.decodeUnknownSync(TeamInvitationId)(input.invitationId),
   );
-  // Untenanted because there is no tenant yet: `team_invitations` carries no
-  // row-level-security policy, and this lookup is what decides which team the
-  // audited transaction below will be opened on.
+  // Untenanted: `team_invitations` carries no row-level-security policy, and
+  // this lookup decides which team the transaction below opens on.
   const teamId = yield* UntenantedScope.open(
     store.findInvitationTeam(invitationId),
   );
-  // Unknown, expired, cancelled and wrong-account invitations all expose the
-  // same refusal to the caller. Only a server-resolved tenant can receive a
-  // bounded immutable denial event.
   if (teamId === null) {
     return yield* new TeamCommandError({ code: 'FORBIDDEN' });
   }
 
-  // The access this command opens its transaction on, and the one place in
-  // Studio where the token is minted for somebody who is NOT a member: the
-  // invitation row is what names the team, and the actor's right to act in it
-  // is exactly what the command is about to decide.
-  //
-  // It is minted BEFORE the row is locked, because the scope has to be open
-  // before anything can be locked inside it — so the mint is not the proof.
-  // The proof is the locked re-read below: the transaction it opens is
-  // stamped with the team the invitation named, and every decision after that
-  // comes from the invitation row under `FOR UPDATE`. A token for a team the
-  // caller has no claim on therefore buys nothing: the command denies, and the
-  // denial is the event that team is entitled to.
-  //
-  // The role carried is the invitee's prospective one and nothing is read from
-  // it; `TeamAccess.role` only ever decides ordering, never authorization.
+  // Minted for somebody who is NOT a member, before the row is locked: the proof
+  // is the locked re-read below, not the mint.
   const access = unsafeMakeTeamAccess(teamId, 'member');
 
   return yield* reserved(
@@ -605,9 +516,6 @@ export const acceptTeamInvitation: (input: {
         ) {
           return yield* refuse('email_mismatch');
         }
-        // `isLive` is the database's own comparison against
-        // `clock_timestamp()`, so an application host running behind cannot
-        // accept an invitation Postgres considers expired.
         if (
           (invitation.status !== 'pending' &&
             invitation.status !== 'accepted') ||
@@ -632,9 +540,8 @@ export const acceptTeamInvitation: (input: {
           return yield* failed('INVALID_ROLE', bounded('invalid_role'));
         }
         const roles = tryParseRoles(invitation.role);
-        // One role for one new membership, deliberately: a legacy
-        // comma-separated value can still be cancelled, but it cannot be
-        // turned into a membership whose role nothing can name.
+        // One role for one new membership, deliberately: a legacy comma-separated
+        // value can be cancelled but not accepted.
         if (roles === null || roles.length !== 1) {
           return yield* failed('INVALID_ROLE', bounded('invalid_role'));
         }
@@ -646,9 +553,6 @@ export const acceptTeamInvitation: (input: {
         );
 
         if (invitation.status === 'accepted') {
-          // The lost-response replay: the identities are the same and nothing
-          // changed, so this must return what the first call returned rather
-          // than invent a second acceptance event.
           if (memberships.existing === null) {
             return yield* failed('CONFLICT', bounded('conflict'));
           }

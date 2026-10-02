@@ -1,12 +1,3 @@
-// The asset metadata tables' database-enforced promises: the defaults, every
-// CHECK, the composite foreign key that keeps a pin inside its own tenant, the
-// three sidecar triggers that freeze asset metadata, freeze a published pin,
-// and hold a published referrer's pin set to the transaction that published
-// it, and the unreferenced marker the garbage collector moves.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK or foreign-key violation, the message for a trigger — so a
-// guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -33,14 +24,12 @@ type Row = Record<string, unknown>;
 
 const hex64 = () => randomBytes(32).toString('hex');
 
-/** The three referrer kinds `asset_references_published_immutable` freezes. */
 const PUBLISHED_KINDS = [
   'protocol_version',
   'template_version',
   'consent_document',
 ] as const;
 
-/** The two of them that are published by the insert that creates them. */
 const VERSION_KINDS = ['protocol_version', 'template_version'] as const;
 
 const insertSql = (table: string, row: Row): [string, unknown[]] => [
@@ -53,7 +42,6 @@ const insertSql = (table: string, row: Row): [string, unknown[]] => [
   Object.values(row),
 ];
 
-/** One statement as the connecting login, inside the transaction already open. */
 const inOwnerTransaction = (
   text: string,
   params: ReadonlyArray<unknown> = [],
@@ -62,20 +50,9 @@ const inOwnerTransaction = (
     harness.owner.sql.unsafe<Row>(text, params),
   );
 
-/**
- * One transaction as the connecting login. The insert guard admits a pin on a
- * published referrer only inside the transaction that published it, so a case
- * that needs such a pin has to write both together — and a case that needs
- * the window closed publishes the referrer here and pins afterwards.
- */
 const inTransaction = <A, E, R>(body: Effect.Effect<A, E, R>) =>
   Effect.flatMap(TestDatabase, (harness) => harness.onOwner(body));
 
-/**
- * A referrer of `kind`, with whatever parent row it needs, and its id.
- * A protocol version and a template version are published by the insert
- * that creates them; a consent document is published only when `published`.
- */
 const createReferrer = Effect.fnUntraced(function* (
   kind: string,
   { published = true }: { published?: boolean } = {},
@@ -180,11 +157,6 @@ const newReference = (assetHash: string, overrides: Row = {}) => {
   return Effect.as(ownerInsert('asset_references', row), row);
 };
 
-/**
- * Publishes a referrer of `kind` and pins `assetHash` to it, together, the
- * way each kind is published: a version by the insert that creates it, a
- * consent document drafted, pinned, and then moved to `published`.
- */
 const pinAtPublication = (kind: string, assetHash: string) =>
   inTransaction(
     Effect.gen(function* () {
@@ -212,7 +184,6 @@ const pinAtPublication = (kind: string, assetHash: string) =>
     }),
   );
 
-/** Both teams, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) => insertTeam(teamId)),
 ).pipe(Layer.provideMerge(TestDatabaseLive));
@@ -358,7 +329,6 @@ describe.skipIf(!testDb)('asset schema', () => {
               ownerInsert('assets', assetRow({ hash })),
             );
             expect(refused.state).toBe('23505');
-            // The same bytes in another team are a different row, by design.
             expect(
               yield* ownerInsert('assets', assetRow({ hash, team_id: TEAM_B })),
             ).toBe(1);
@@ -411,8 +381,6 @@ describe.skipIf(!testDb)('asset schema', () => {
         Effect.gen(function* () {
           const hash = yield* newAsset({ team_id: TEAM_B });
 
-          // Referential integrity bypasses row-level security, so the composite
-          // key is what stops one team citing another team's content hash.
           const refused = yield* refusalOf(
             ownerInsert(
               'asset_references',
@@ -441,7 +409,6 @@ describe.skipIf(!testDb)('asset schema', () => {
             ownerInsert('asset_references', pin),
           );
           expect(refused.state).toBe('23505');
-          // A second referrer, and a second kind, are separate pins.
           expect(
             yield* ownerInsert(
               'asset_references',
@@ -504,7 +471,6 @@ describe.skipIf(!testDb)('asset schema', () => {
           );
           expect(swept[0]).toEqual({ marked: true });
 
-          // Reconciliation clears the marker when a pin reappears.
           const reconciled = yield* ownerAffected(
             `UPDATE assets SET unreferenced_at = NULL
              WHERE team_id = $1 AND hash = $2`,
@@ -558,9 +524,6 @@ describe.skipIf(!testDb)('asset schema', () => {
         'lets a draft consent document retract a pin, and freezes it at publication',
         () =>
           Effect.gen(function* () {
-            // The same boundary the insert guard draws: while the document is
-            // a draft an author may replace or remove an attached asset;
-            // publication fixes the set in both directions.
             const hash = yield* newAsset();
             const documentId = yield* inTransaction(
               createReferrer('consent_document', { published: false }),
@@ -581,9 +544,6 @@ describe.skipIf(!testDb)('asset schema', () => {
               referrer_kind: 'consent_document',
               referrer_id: documentId,
             });
-            // Retracted, never re-pointed: an UPDATE aiming the draft's pin at
-            // a published version would be a late pin on that version that the
-            // insert guard never saw.
             const versionId = yield* inTransaction(
               createReferrer('protocol_version'),
             );
@@ -622,11 +582,6 @@ describe.skipIf(!testDb)('asset schema', () => {
         'lets the maintenance purge delete a %s pin, and nobody else',
         (referrerKind) =>
           Effect.gen(function* () {
-            // A study is purged bottom-up, and asset_references carries no key
-            // onto its heterogeneous referrer: a published document's pins
-            // would otherwise outlive the document, never satisfying the draft
-            // test again, and hold the asset's metadata and bytes against
-            // garbage collection for good.
             const hash = yield* newAsset();
             const referrerId = yield* pinAtPublication(referrerKind, hash);
             const where = `WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
@@ -671,9 +626,6 @@ describe.skipIf(!testDb)('asset schema', () => {
       );
     });
 
-    // The other half of the same promise. Freezing only UPDATE and DELETE
-    // would leave a pin insertable after publication — and then
-    // unretractable, because the trigger above refuses to remove it.
     describe('asset_references_insert_frozen', () => {
       it.effect.each(VERSION_KINDS)(
         'admits a %s pin written in the transaction that publishes it',
@@ -720,12 +672,6 @@ describe.skipIf(!testDb)('asset schema', () => {
         'fixes a consent document’s pins at publication, by state rather than by transaction',
         () =>
           Effect.gen(function* () {
-            // A published document is still updated afterwards — retired,
-            // restamped — and each update gives its row a fresh xmin, so "the
-            // transaction that published it" is not a stable fact to prove a
-            // pin against. What is stable is the state: pins are free while
-            // the document is a draft and refused from publication on, even
-            // inside the publishing transaction.
             const harness = yield* TestDatabase;
             const kept = yield* newAsset();
             const late = yield* newAsset();
@@ -748,9 +694,8 @@ describe.skipIf(!testDb)('asset schema', () => {
                    WHERE id = $1`,
                   [id],
                 );
-                // Behind a savepoint (a nested `withTransaction`), so the
-                // refusal leaves the rest of the publishing transaction — and
-                // the pin it legitimately carries — to commit.
+                // Behind a savepoint, so the refusal leaves the rest of the
+                // publishing transaction to commit.
                 const refused = yield* refusalOf(
                   harness.owner.sql.withTransaction(
                     inOwnerTransaction(
@@ -785,9 +730,6 @@ describe.skipIf(!testDb)('asset schema', () => {
         'refuses a %s pin that names no such referrer',
         (referrerKind) =>
           Effect.gen(function* () {
-            // Such a pin could never be retracted either, and admitting it
-            // would let a pin be written before the version it claims to
-            // belong to.
             const hash = yield* newAsset();
 
             const refused = yield* refusalOf(
@@ -807,8 +749,6 @@ describe.skipIf(!testDb)('asset schema', () => {
 
       it.effect('lets a draft consent document gain a pin at any time', () =>
         Effect.gen(function* () {
-          // A draft is still being written, and its pins are not yet frozen;
-          // the window closes when the document publishes.
           const hash = yield* newAsset();
           const documentId = yield* inTransaction(
             createReferrer('consent_document', { published: false }),
@@ -830,8 +770,6 @@ describe.skipIf(!testDb)('asset schema', () => {
         'leaves a %s pin free to be written at any time',
         (referrerKind) =>
           Effect.gen(function* () {
-            // Neither kind's pins are frozen, so there is no frozen set to
-            // protect and nothing for the insert guard to prove.
             const hash = yield* newAsset();
 
             expect(
@@ -861,7 +799,6 @@ describe.skipIf(!testDb)('asset schema', () => {
             constraint: 'asset_references_asset_fk',
           });
 
-          // The sweep's own order: retract the last pin, then delete the row.
           yield* ownerAffected(
             `DELETE FROM asset_references
              WHERE team_id = $1 AND asset_hash = $2 AND referrer_kind = $3
@@ -882,8 +819,6 @@ describe.skipIf(!testDb)('asset schema', () => {
           const orphan = yield* newAsset();
           yield* newReference(pinned);
 
-          // The mark phase, as the protocol store's sweep writes it
-          // (src/jobs/handlers/protocol-store-gc.ts).
           const marked = yield* ownerRows<{ hash: string }>(
             `UPDATE assets a SET unreferenced_at = clock_timestamp()
              WHERE a.team_id = $1

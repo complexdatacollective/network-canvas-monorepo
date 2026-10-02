@@ -1,14 +1,9 @@
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import { HttpRouter, HttpServerResponse } from 'effect/unstable/http';
+import { HttpRouter, HttpServerResponse } from 'effect/http';
 
 import { ProblemJson } from '../middleware/problem-json.ts';
 import { RequestIdLive } from '../middleware/request-id.ts';
-
-// What a caller reads when this server refuses (#1248). A refusal a handler
-// writes is problem JSON; the Effect router answers an unmatched route or an
-// unhandled defect with a status and an empty body, so the two would otherwise
-// disagree about what a refusal looks like.
 
 const Routes = HttpRouter.use((router) =>
   Effect.gen(function* () {
@@ -41,7 +36,6 @@ const Routes = HttpRouter.use((router) =>
   }),
 );
 
-/** The composed stack: problem JSON outermost, then the request id. */
 function composed() {
   return HttpRouter.toWebHandler(
     Routes.pipe(
@@ -51,7 +45,6 @@ function composed() {
   );
 }
 
-/** The same stack with the rewrite taken out — the mutation, run for real. */
 function withoutProblemJson() {
   return HttpRouter.toWebHandler(
     Routes.pipe(Layer.provideMerge(RequestIdLive)),
@@ -87,9 +80,6 @@ describe('an empty refusal', () => {
   });
 
   it('is what the router answers on its own without this middleware', async () => {
-    // The mutation, run rather than described: remove ProblemJson from the
-    // chain and the 404 above carries no body and no content type at all, so
-    // the case above cannot pass by accident.
     const { handler, dispose } = withoutProblemJson();
     try {
       const response = await get(handler, '/nothing-here');
@@ -102,9 +92,6 @@ describe('an empty refusal', () => {
   });
 
   it('names a 500 for a handler that died', async () => {
-    // A defect is the case an operator reads in a log and a client reads on
-    // the wire; answering it with an empty body tells the client nothing at
-    // all about what happened.
     const { handler, dispose } = composed();
     try {
       const response = await get(handler, '/boom');
@@ -124,9 +111,6 @@ describe('an empty refusal', () => {
 
 describe('an empty refusal with headers', () => {
   it('keeps the headers it came with', async () => {
-    // Mutation: build the problem body as a fresh response without carrying
-    // `response.headers` over → the challenge header is gone, and a 401 that
-    // named how to authenticate no longer does.
     const { handler, dispose } = composed();
     try {
       const response = await get(handler, '/challenge');
@@ -146,9 +130,6 @@ describe('an empty refusal with headers', () => {
 
 describe('a body a handler chose', () => {
   it('is left alone even when it is a refusal', async () => {
-    // Mutation: rewrite every response with a status >= 400 rather than the
-    // empty ones, and this 404's own title is replaced by 'Not Found' —
-    // which is how better-auth's `{ message }` errors would be destroyed too.
     const { handler, dispose } = composed();
     try {
       const response = await get(handler, '/gone');
@@ -176,18 +157,12 @@ describe('a body a handler chose', () => {
 
 describe('the request id', () => {
   it('is on every response, and is a different one per request', async () => {
-    // Mutation: mint the id once at layer build rather than per request, and
-    // the two ids below are equal — which would make one id name every
-    // request in the log.
     const { handler, dispose } = composed();
     try {
       const served = await get(handler, '/ok');
       const refused = await get(handler, '/nothing-here');
       const first = served.headers.get('x-request-id');
       const second = refused.headers.get('x-request-id');
-      // Present on the refusal too: the response an operator has to trace is
-      // the one that failed, and that one is synthesised by the router rather
-      // than returned by a handler.
       expect(first).toMatch(/^[0-9a-f-]{36}$/);
       expect(second).toMatch(/^[0-9a-f-]{36}$/);
       expect(first).not.toBe(second);

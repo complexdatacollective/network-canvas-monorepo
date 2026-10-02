@@ -8,9 +8,9 @@ import {
   Scheduler,
   Stream,
 } from 'effect';
-import type * as Rpc from 'effect/unstable/rpc/Rpc';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
+import type * as Rpc from 'effect/rpc/Rpc';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcServer from 'effect/rpc/RpcServer';
 import { v4 as uuid } from 'uuid';
 
 import { makeRpcAdapter } from '@codaco/effect-query/adapter';
@@ -62,7 +62,6 @@ export type InMemoryHostSeed = Readonly<{
   /** Bytes for committed assets, keyed by the `source` the manifest names. */
   assetContent?: Readonly<Record<string, Blob>>;
   principal?: HostPrincipal;
-  /** Overrides the ids `Create` and resource staging mint, for readable tests. */
   nextId?: () => string;
 }>;
 
@@ -72,20 +71,13 @@ const DEFAULT_PRINCIPAL: HostPrincipal = {
   displayName: 'Ada',
 };
 
-/** The in-process client a test host's adapter calls through. */
 export class InMemoryHostClient extends Context.Service<
   InMemoryHostClient,
   ProtocolBuilderClient
 >()('@codaco/protocol-builder/testing/InMemoryHostClient') {}
 
-/** The procedures a layer serves, for a transport or an in-process client. */
 export type HandlersLayer = Layer.Layer<Rpc.ToHandler<ProtocolBuilderRpcs>>;
 
-/**
- * Stand-ins for some of the host's procedures. Each can call the host's own
- * through `host.handle`, so a test can hold an answer, lose one, or count the
- * calls without writing a host of its own.
- */
 export type HandlerOverrides = {
   readonly [
     Current in ProtocolBuilderRpcs as Current['_tag']
@@ -95,29 +87,18 @@ export type HandlerOverrides = {
 export type InMemoryHost = Readonly<{
   protocolId: string;
   adapter: ProtocolBuilderAdapter;
-  /** An adapter for a second connection, which is a second lock owner. */
   asCollaborator(principal: HostPrincipal): ProtocolBuilderAdapter;
-  /**
-   * An adapter as this host's principal (or `principal`) whose procedures are
-   * `overrides` wherever they name one.
-   */
   adapterWith(
     overrides: HandlerOverrides,
     principal?: HostPrincipal,
   ): ProtocolBuilderAdapter;
-  /** The host's own procedures, for an override to call through to. */
   handle: InMemoryHandlers;
-  /** The procedures over this host's stores, for a transport to serve. */
   handlers: HandlersLayer;
   store: InMemoryProtocolStore;
 }>;
 
 export type InMemoryHandlers = ReturnType<typeof buildHandlers>;
 
-/**
- * The session every call on one connection runs as. A test host has no
- * credentials to check, so the caller is the principal it was built for.
- */
 export function hostSessionFor(principal: HostPrincipal) {
   const caller = HostCaller.of({
     connectionId: principal.sessionId,
@@ -133,18 +114,13 @@ export function hostSessionFor(principal: HostPrincipal) {
 }
 
 /**
- * Runs the host's fibers in microtasks, as a promise-returning host would
- * answer, rather than yielding to the event loop between steps: a test that
- * changes the protocol inside `act` sees the channel deliver it there.
+ * Runs the host's fibers in microtasks, so a test that changes the protocol
+ * inside `act` sees the channel deliver it there.
  */
 const inMicrotasks = Layer.succeed(Scheduler.Scheduler)(
   new Scheduler.MixedScheduler('sync'),
 );
 
-/**
- * `RpcTest.makeClient`'s wiring, with a handler's defect kept on its own call
- * as the Studio and Architect hosts keep it.
- */
 const makeInProcessClient = Effect.fnUntraced(function* () {
   // oxlint-disable-next-line prefer-const
   let client!: Effect.Success<
@@ -164,10 +140,6 @@ const makeInProcessClient = Effect.fnUntraced(function* () {
   return client.client;
 });
 
-/**
- * An adapter over the handlers in process, as `principal`. No serialization:
- * what a handler answers is what the caller gets.
- */
 export function inProcessAdapter(
   handlers: HandlersLayer,
   principal: HostPrincipal,
@@ -231,7 +203,6 @@ const callerPrincipal = Effect.gen(function* () {
   return principal;
 });
 
-/** A replayable event carries the cursor it can be resumed from. */
 function eventOf(entry: LoggedEvent): ProtocolEvent {
   return entry.event.type === 'presence'
     ? entry.event
@@ -299,9 +270,8 @@ function buildHandlers(
       return { sectionIds: store.sectionIds() };
     }),
 
-    // Subscribed to the store before its backlog is read, and filtered by
-    // cursor, inside `store.watch`: an event published between the two is
-    // delivered once, and a resume from `since` is given only what came after.
+    // `store.watch` subscribes before reading its backlog, so an event
+    // published between the two is delivered once.
     WatchProtocol: (input) =>
       Stream.unwrap(
         Effect.gen(function* () {
@@ -516,9 +486,6 @@ function buildHandlers(
     ResourcesList: Effect.fnUntraced(function* (input) {
       yield* inProtocol(input);
       const principal = yield* callerPrincipal;
-      // Committed resources are the protocol's; staged ones are this edit's,
-      // and another editor's imports are no more part of this protocol than
-      // the draft that will name them.
       const all = [
         ...resources.committedDescriptors(assets()),
         ...(input.editId === undefined
@@ -537,8 +504,6 @@ function buildHandlers(
       yield* inProtocol(input);
       const principal = yield* callerPrincipal;
       const { request } = input;
-      // This host keeps imported content as a `Blob`, the way a browser
-      // holds a file; the contract carries it as bytes.
       const held =
         request.kind === 'content'
           ? {

@@ -13,11 +13,6 @@ import { authServiceStub } from './support/auth.ts';
 import { createRpcClient } from './support/rpc.ts';
 import { composeStudio } from './support/serve.ts';
 
-/**
- * The composed stack with better-auth's web handler stubbed: `/api/auth/*` is
- * the Effect router's auth mount, so its organization-policy gate is only
- * reachable through the stack.
- */
 function authMountWith(handler: AuthService['Service']['handler']) {
   const env = readEnv();
   return composeStudio(
@@ -28,8 +23,6 @@ function authMountWith(handler: AuthService['Service']['handler']) {
 
 describe('studio server', () => {
   it('reports healthy on /healthz', async () => {
-    // Through the composed stack: liveness is an Effect route
-    // (src/http/health.ts).
     const env = readEnv();
     const stack = composeStudio(env, createStudio(env));
     try {
@@ -49,9 +42,6 @@ describe('studio server', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('Content-Type')).toBe('application/json');
       const body = (await res.json()) as Record<string, unknown>;
-      // The public surface's output schema is the serialization allowlist
-      // (#1248): the SPA-facing auth, deployment and setup blocks the domain
-      // hands the handler must never reach this wire.
       expect(Object.keys(body).sort()).toEqual(['name', 'version']);
       expect(body.name).toBe('Network Canvas Studio');
       expect(body.version).toBe(STUDIO_VERSION);
@@ -98,8 +88,6 @@ describe('studio server', () => {
     try {
       const res = await stack.request(path, { method });
       expect(res.status).toBe(404);
-      // The guarantee is RFC 9457 problem details — never a fall-through to
-      // the SPA fallback's HTML.
       expect(res.headers.get('Content-Type')).toContain(
         'application/problem+json',
       );
@@ -223,8 +211,6 @@ describe('studio server', () => {
     );
     const app = authMountWith(handler);
 
-    // Mutation: skip the trailing-slash normalisation before the policy
-    // lookup → this allowed route reads as unclassified and 404s.
     const response = await app.request(
       '/api/auth/organization/check-slug/?slug=example',
       { method: 'POST' },
@@ -240,9 +226,6 @@ describe('studio server', () => {
     const env = readEnv();
     const stack = composeStudio(env, createStudio(env));
     try {
-      // An API, RPC or asset caller must never be handed a 200 to cache: a
-      // path no route claims under a machine prefix is the router's 404, as
-      // problem JSON.
       for (const path of [
         '/api',
         '/api/nope',
@@ -266,8 +249,6 @@ describe('studio server', () => {
     }
   });
   it('closes unmatched paths too while the instance is in maintenance', async () => {
-    // No route claims these, so it is the gate, a global middleware, that has
-    // to answer them — there is no catch-all route behind it any more.
     const env = readEnv();
     const closed = Layer.succeed(MaintenanceTriggers)(
       MaintenanceTriggers.of({

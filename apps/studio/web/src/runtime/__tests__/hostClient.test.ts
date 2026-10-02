@@ -17,20 +17,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { FakeWebSocket, installSocketHost } from '../../test/hostHarness.ts';
 import { HostClient } from '../runtime.ts';
 
-// The shipped `HostClient.layer` against a connection that goes half-open: the
-// TCP connection stays up and nothing crosses it, so no close ever arrives and
-// the only thing that can notice is the client's own ping. The client pings
-// every five seconds and gives up on the tick after an unanswered one, so an
-// in-flight call and an open stream have to fail within ten seconds of the
-// connection going quiet — failing, rather than being carried silently onto
-// the next socket, is what hands the stream back to the package's channel
-// ladder to resume. Mutation: `retryTransientErrors: true` in `runtime.ts`, and
-// both hang.
-
 const PROTOCOL_ID = 'protocol-under-test';
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
-/** The error a failed exit carries, if it failed with one. */
 const failureOf = (exit: Exit.Exit<unknown, unknown> | undefined): unknown =>
   exit === undefined || exit._tag === 'Success'
     ? undefined
@@ -48,8 +37,6 @@ describe('a connection that stops answering', () => {
       protocolId: PROTOCOL_ID,
       sections: { stageOrder: { stages: [] } },
     });
-    // A read the host never answers, so the call is still in flight when the
-    // connection goes quiet.
     const { served } = await installSocketHost(
       ProtocolBuilderGroup.toLayer({
         ...host.handle,
@@ -113,10 +100,9 @@ describe('a connection that stops answering', () => {
     for (const exit of [call, stream]) {
       expect(failureOf(exit)).toMatchObject({
         _tag: 'RpcClientError',
-        reason: { _tag: 'SocketOpenError', kind: 'Timeout' },
+        reason: { _tag: 'SocketReadError' },
       });
     }
-    // Neither was answered by being run again somewhere else.
     expect(served.filter(({ tag }) => tag === 'GetSection')).toHaveLength(1);
   });
 });

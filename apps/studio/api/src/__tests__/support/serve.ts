@@ -2,8 +2,8 @@ import { createServer } from 'node:http';
 
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import { Clock, Context, Effect, Exit, Layer, Scope } from 'effect';
-import { HttpRouter, HttpServer } from 'effect/unstable/http';
-import * as NetAddress from 'effect/unstable/net/NetAddress';
+import { HttpRouter, HttpServer } from 'effect/http';
+import * as NetAddress from 'effect/net/NetAddress';
 
 import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
@@ -16,21 +16,9 @@ import { WebSocketDrain } from '../../platform/ws-drain.ts';
 import { UnaryBodyLimit } from '../../protocol-builder/rpc.ts';
 import { studioServices } from './services.ts';
 
-// The composed stack: every surface — the health routes, the problem-JSON
-// rewrite and the WebSocket upgrade included — belongs to the Effect shell, so
-// a suite reaching any of them composes the same layers the programs do rather
-// than a second arrangement of them.
-// The maintenance gate is open unless a suite hands in the triggers it is
-// about: every other suite's subject is what happens when the instance serves.
-
 /**
- * The whole server on an ephemeral loopback port, for a suite that needs a
- * real socket.
- *
- * The build order is the programs': the listener, then the drain registry the
- * `/ws` route enters, then the routes, and the drain's shutdown hook last —
- * acquired after `serve` so that it releases first, before `server.close()`
- * starts waiting on the upgraded sockets this is meant to drain.
+ * The drain's shutdown hook is acquired after `serve` so that it releases
+ * first, before `server.close()` starts waiting on the upgraded sockets.
  */
 export async function startStudioServer(
   env: StudioEnv,
@@ -38,11 +26,8 @@ export async function startStudioServer(
   checks: HealthChecks = studio.checks,
   maintenance: Layer.Layer<MaintenanceTriggers> = MaintenanceTriggers.layerOpen,
   options: {
-    /** The listener's WebSocket frame bound, for a case about exceeding it. */
     readonly wsMaxPayload?: number;
-    /** `/rpc/protocol-builder`'s body bound, for a case about exceeding it. */
     readonly unaryBodyLimit?: number;
-    /** The clock every route and service reads, for a case about time. */
     readonly clock?: Clock.Clock;
   } = {},
 ): Promise<{ origin: string; dispose: () => Promise<void> }> {
@@ -88,7 +73,6 @@ export async function startStudioServer(
   };
 }
 
-/** The same stack in process, with no socket at all. */
 export function composeStudio(
   env: StudioEnv,
   studio: Studio,

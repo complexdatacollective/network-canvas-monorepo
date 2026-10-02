@@ -1,20 +1,3 @@
-// A short, plausible activity history per team, appended through the audit
-// store's own `append` inside the seed's transaction — so the seed is not a
-// second writer of the append-only log, and a seeded event is sequenced,
-// validated and locked exactly as a live one is.
-//
-// Two consequences are load-bearing for the determinism test:
-//
-//   - `audit_events.id` comes from `randomUUID()` in the store, which is not
-//     reachable from the seed's PRNG. It is one of the columns the
-//     determinism case in `seed.test.ts` therefore leaves out of its dumps.
-//     `occurred_at` is passed in: each event is dated to the operation it
-//     records, so the log agrees with the rows — a protocol created before
-//     the versions that were published from it, a draft edit before the
-//     version it produced, a colleague invited before they were promoted.
-//   - `audit_export_jobs` and `audit_alert_outbox` are left empty. They have
-//     no production writer yet — only tests insert into them — so seeding them
-//     would mean inventing rows that bypass invariants no code has stated.
 import { Effect } from 'effect';
 
 import type { AuditEventInput } from '../../src/audit/events.ts';

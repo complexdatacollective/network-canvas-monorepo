@@ -27,18 +27,6 @@ import {
   readSchedules,
 } from './support.ts';
 
-// What a deployment's worker actually works, which is the whole of what
-// `JobHandlersLive` decides. The suite drives one real job per queue rather
-// than reading the registry, because "registered" is only interesting if the
-// job settles: a queue nothing registered is claimed and put straight back
-// (`drainOnce`'s no-handler branch), which looks identical to an idle queue
-// from anywhere but the row.
-//
-// `layerDeliveryHarness` is the general "Studio's schema and the queue's, side
-// by side" harness: the sweep needs Studio's tables and every job needs the
-// queue's.
-
-/** The four queues a worker with a transport claims from. */
 const WORKED = [
   'protocol-store-gc',
   'denied-attempts-summary',
@@ -46,25 +34,12 @@ const WORKED = [
   'invitation-delivery',
 ] as const satisfies readonly JobQueueName[];
 
-/**
- * The one queue `JobHandlersLive` deliberately registers no handler for. It is
- * #1307's parking queue: an invitation whose delivery exhausted its ladder is
- * copied here so a researcher can re-send it by hand, and a worker that
- * claimed from it would retry the send the dead letter exists to stop
- * retrying.
- */
 const UNWORKED = [
   'invitation-delivery-dead-letter',
 ] as const satisfies readonly JobQueueName[];
 
 describe('the queues this deployment declares', () => {
   it('are each either worked or deliberately parked', () => {
-    // Registration is a hand-written list, so the failure mode it has is
-    // omission: a sixth queue added to `JOB_QUEUES` with no handler passes
-    // every case below — each of them names the queues it drives — while its
-    // jobs sit `created` forever (`pollQueue` never claims from a queue with
-    // no handler). This is the only assertion that reads the declarations
-    // rather than a list written beside them.
     assert.deepStrictEqual(
       [...WORKED, ...UNWORKED].toSorted(),
       JOB_QUEUES.map(({ name }) => name).toSorted(),
@@ -73,11 +48,6 @@ describe('the queues this deployment declares', () => {
   });
 });
 
-/**
- * The worker's environment, fixed apart from the two things registration
- * reads: whether a transport is configured, and whether there is a public base
- * URL to mint an invitation link against.
- */
 function workerEnv(
   dbEnv: DbEnv,
   overrides: {
@@ -119,11 +89,6 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
       DeniedAttemptsStore.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
     ).pipe(Layer.provideMerge(layerDeliveryHarness)),
   )('over Studio and the queue', (suite) => {
-    /**
-     * One worker of its own per case, because registration mutates the
-     * worker's registry: a shared worker would carry the previous case's mail
-     * handlers into the case that is about their absence.
-     */
     const registered = (overrides: {
       readonly mail?: StudioEnv['mail'];
       readonly auth?: StudioEnv['auth'];
@@ -161,8 +126,6 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
               { queue, tag: 'settled' },
             );
           }
-          // The magic link reached the transport rather than the handler merely
-          // being present: the sign-in queue's whole job is that send.
           const mail = yield* RecordedMail;
           assert.strictEqual(mail.magicLinks.length, 1);
         }).pipe(Effect.provide(registered(configured), { local: true })),
@@ -182,14 +145,9 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
               const jobId = yield* enqueue(queue);
               const step = yield* worker.drainOnce(queue);
               assert.strictEqual(step._tag, 'idle');
-              // By id: earlier cases left their own settled rows on this
-              // queue, and the oldest row is not this case's.
               const row = (yield* readJobs(queue)).find(
                 (entry) => entry.id === jobId,
               );
-              // Claimed and put straight back, attempt and all: the jobs wait
-              // for a replica that has a transport rather than burning their
-              // ladder here (#1895).
               assert.deepStrictEqual(
                 {
                   id: row?.id,
@@ -199,7 +157,6 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
                 { id: jobId, state: 'created', attempts: 0 },
               );
             }
-            // And the queues that need no transport are still worked.
             yield* enqueue('protocol-store-gc');
             const swept = yield* worker.drainOnce('protocol-store-gc');
             assert.strictEqual(swept._tag, 'settled');
@@ -223,8 +180,6 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
       () =>
         Effect.gen(function* () {
           const { schema } = yield* QueueHarness;
-          // A row a previous release left behind. It keeps coming due on a
-          // queue nothing works unless boot removes it.
           yield* asOwner(
             Effect.flatMap(
               MaintenanceDatabase,
@@ -250,9 +205,6 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
 
     suite.effect('refuses to register delivery without a public base URL', () =>
       Effect.gen(function* () {
-        // The worker program refuses a database without one before it ever
-        // gets here; this is the second refusal, at the one registration that
-        // cannot be made without it.
         const built = yield* Effect.exit(
           Effect.provide(
             Effect.void,

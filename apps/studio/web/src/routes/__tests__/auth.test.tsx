@@ -137,10 +137,6 @@ async function clickSignOut() {
 beforeEach(() => {
   vi.resetAllMocks();
   currentStatus = STATUS;
-  // The three procedures the shell and its screens ask for on these routes.
-  // `studies.get` and `studies.list` for a STUDY are absent deliberately: no
-  // URL here names one, so the lockup skips both rather than asking about a
-  // study that is not there.
   installRpcHarness({
     'status': () => Effect.succeed(currentStatus),
     'me': () =>
@@ -553,9 +549,6 @@ describe('sign-out', () => {
 });
 
 describe('sign-in page', () => {
-  // Only ids the route accepts are pinned. An id it refuses still reaches
-  // `useSearch` through the root route's unvalidated search, so the refusal
-  // has no observable effect today (recorded on #1937).
   it.each([INVITATION_ID, 'a'.repeat(255)])(
     'returns to invitation %# after sign-in',
     async (invitationId) => {

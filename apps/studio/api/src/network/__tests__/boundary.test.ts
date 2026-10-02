@@ -18,11 +18,6 @@ const SERVER_SRC = resolve(HERE, '../..');
 const SERVER_SCRIPTS = resolve(SERVER_SRC, '../scripts');
 const REPO_ROOT = resolve(SERVER_SRC, '../../../..');
 
-/**
- * Every TypeScript file under the server's source and scripts trees, tests
- * included: a test or a script outside `src/network/` reaching for these
- * tables would breach the boundary exactly as production code would.
- */
 function typescriptFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const path = resolve(root, entry.name);

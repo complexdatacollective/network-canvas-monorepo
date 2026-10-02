@@ -1,21 +1,12 @@
 import { Effect } from 'effect';
-import type * as Rpc from 'effect/unstable/rpc/Rpc';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import type * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
+import type * as Rpc from 'effect/rpc/Rpc';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import type * as RpcGroup from 'effect/rpc/RpcGroup';
+import * as RpcServer from 'effect/rpc/RpcServer';
 
 /**
- * A client wired straight to the group's handlers: no transport and no
- * serialization, so typed errors and stream chunks arrive as the handlers made
- * them. `RpcTest.makeClient` composes the same two public constructors; it is
- * not depended on because Effect ships it as a test harness.
- *
  * `disableFatalDefects` keeps a handler's defect on its own call. Without it
- * the server reports the defect to the whole connection, and the client fails
- * every call in flight with it — the protocol's event stream included.
- *
- * A payload failing its schema is a defect here, not a typed failure: the
- * client checks it before anything is sent.
+ * the client fails every call in flight with it.
  */
 export const makeInProcessClient = Effect.fnUntraced(function* <
   Rpcs extends Rpc.Any,

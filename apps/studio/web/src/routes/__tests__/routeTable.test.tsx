@@ -35,11 +35,6 @@ import { installRpcHarness } from '../../test/rpcHarness.ts';
  */
 
 const fixtures = vi.hoisted(() => {
-  // Annotated, not asserted. A hoisted factory infers `mode` as `string`, and
-  // an assertion would silence that widening rather than check anything; the
-  // binding's own type is what makes a mode the status document has no member
-  // for a type error here, and it still admits the `self-hosted` the tests
-  // below reassign.
   const deployment: InstanceStatus['deployment'] = {
     mode: 'managed',
     billing: false,
@@ -48,23 +43,12 @@ const fixtures = vi.hoisted(() => {
   return {
     TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
     deployment,
-    // First-run setup (#1909), read at call time like `deployment`: `/setup` is
-    // a real screen while an instance has no owner and a not-found once it has.
     setup: { required: true },
     getSession: vi.fn(),
-    // Read at call time, so a test can put the researcher in no team, or in
-    // several, before it renders.
     teams: [] as { id: string; name: string }[],
   };
 });
 
-/**
- * The identifiers the study tier is addressed by. UUIDs because the contract's
- * `StudyId`, `ProtocolId` and `DraftId` are: every one of them travels in a
- * payload, and a `study-1` would be refused at the call rather than reaching a
- * handler. They are out of `vi.hoisted` because branding them needs the
- * contract's schemas, which a hoisted factory runs before.
- */
 const STUDY_ID = '4d0f5f2e-0000-4000-8000-000000000001';
 const SIBLING_STUDY_ID = '4d0f5f2e-0000-4000-8000-000000000002';
 const PROTOCOL_ID = '4d0f5f2e-0000-4000-8000-000000000003';
@@ -82,7 +66,6 @@ const STUDY = {
   participantCount: 0,
 } as const;
 
-/** A second study in the same team, so the chip has a sibling to offer. */
 const SIBLING_STUDY = {
   id: StudyId.make(SIBLING_STUDY_ID),
   name: 'Second study',
@@ -94,7 +77,6 @@ const SIBLING_STUDY = {
   participantCount: 3,
 } as const;
 
-/** The protocol line the study points at, as `protocols.draft` reports it. */
 const PROTOCOL = {
   id: ProtocolId.make(PROTOCOL_ID),
   draftId: DraftId.make(DRAFT_ID),
@@ -473,8 +455,6 @@ beforeEach(() => {
           emailAndPassword: true,
           socialProviders: [],
         },
-        // Both read at call time, so a test can put the client on a
-        // self-hosted instance, or close first-run setup, before it renders.
         deployment: fixtures.deployment,
         setup: fixtures.setup,
       }),
@@ -484,24 +464,16 @@ beforeEach(() => {
         email: 'researcher@example.org',
         emailVerified: true,
         name: 'Researcher',
-        // `me` carries the account's UI-language preference; null means
-        // "follow the browser" (2026-09-04 localization design §5.2).
         locale: null,
         teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
       }),
     'studies.list': () => Effect.succeed([STUDY, SIBLING_STUDY]),
-    // The study chip and the editor are both addressed by the study id and
-    // resolve everything else from here (§6.3).
     'studies.get': () =>
       Effect.succeed({
         teamId: TeamId.make(fixtures.TEAM.id),
         study: STUDY,
         protocolDraftId: PROTOCOL.draftId,
       }),
-    // The study sidebar's counts. This file asserts where every destination
-    // goes, never how much is at one, so an empty study is the honest fixture:
-    // `NavItem` renders no count for a zero, and each row's accessible name
-    // stays the label these cases look it up by.
     'studies.counts': () =>
       Effect.succeed({
         versions: 0,
@@ -513,9 +485,6 @@ beforeEach(() => {
       Effect.succeed({
         protocol: PROTOCOL,
         revision: { sequence: '1', hash: 'revision-1' },
-        // No stages, so the editor selects none and acquires no editing
-        // session: this file renders every route, and the editor's leased
-        // session belongs to `Editor.test.tsx`.
         sections: {
           settings: { name: PROTOCOL.name, schemaVersion: 8 },
           stageOrder: { stages: [] },

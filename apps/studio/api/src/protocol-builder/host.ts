@@ -9,15 +9,9 @@
 // while the caller is alive (leases.ts), and every write re-reads the lease
 // row inside its own transaction — that read, not the epoch a client presents,
 // is what decides whether a write is admitted.
-//
-// Every function here opens the transaction it needs, as the Promise-era host
-// did, and nothing takes a connection as an argument: the sync server, the
-// draft structure and the event log all require the open `Transaction`, so a
-// lease change and the rows it admits land together because they run in one
-// scope rather than because a caller remembered to pass one client.
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type {
   Presence,
@@ -97,22 +91,12 @@ import {
 const { drafts, leases, manifests, sections } = SYNC_TABLES;
 const { protocolEvents } = PROTOCOL_BUILDER_TABLES;
 
-/**
- * Studio's sync server. One value for the process: it holds no database handle
- * and opens no transaction, so there is nothing per-session to build.
- */
 const sync = createProtocolSyncServer();
 
 /** One caller on one protocol: the tenant, the draft, and the lock owner. */
 export type ProtocolBuilderSession = {
   protocolId: string;
   draftId: string;
-  /**
-   * The key that opens this session's transactions, minted by `openSession`
-   * from the membership the protocol was found through (#1927 §10). A team id
-   * on its own would open nothing: `TenantScope.open` takes the branded proof,
-   * so a session cannot exist without a membership check having happened.
-   */
   access: TeamAccess;
   /**
    * Seals an `apikey` asset's value as the manifest naming it is written, and
@@ -122,11 +106,6 @@ export type ProtocolBuilderSession = {
    * already resolved.
    */
   cipher: SecretsCipherApi;
-  /**
-   * The contract's principal, branded once by `openSession`. It is what
-   * `audited` records the actor as, so the value an event names and the value
-   * a lock owner is built from are one.
-   */
   principal: Principal['Service'];
   requestId: string;
   /**
@@ -272,18 +251,12 @@ function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {
   return makeSectionId({ kind: 'codebookEdge', typeId: subject.type });
 }
 
-/** The head manifest's hash for one section, as a SQL fragment. */
 const sectionHashAtHead = (sectionId: string) =>
   sql<string | null>`${manifests.sectionHashes} ->> ${sectionId}`;
 
 /**
- * The manifest sequence this section last reached *through this host*.
- *
- * `::text` rather than the column's own decoding: a correlated subquery in a
- * `sql` fragment carries no column codec, and node-postgres hands an `int8`
- * back as a string. Widened to a bigint beside the draft's head below, which
- * is what a section written by another path — the command surface Studio still
- * serves — falls back to.
+ * `::text` because a `sql` subquery carries no column codec, and node-postgres
+ * hands an `int8` back as a string.
  */
 const sectionSequenceAtHead = (sectionId: string) =>
   sql<string | null>`(
@@ -322,11 +295,6 @@ function toSectionAtRevision(row: SectionRow): SectionAtRevision | undefined {
   };
 }
 
-/**
- * The section at the draft's head, in the caller's own transaction. Every
- * write reads it under the draft-head lock it has already taken; the two
- * read-only procedures open a scope of their own around it.
- */
 const headSection: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
@@ -396,9 +364,6 @@ export const listSectionIds: (
       session.access,
       Effect.gen(function* () {
         const { tx } = yield* Transaction;
-        // The manifest's own map, read whole and keyed in TypeScript. The
-        // `jsonb_object_keys` this replaces returned one row per key, which
-        // was the same list by a longer route.
         const rows = yield* tx
           .select({ sectionHashes: manifests.sectionHashes })
           .from(drafts)
@@ -517,8 +482,6 @@ const blockedBy: (
   const owner = sessionOwner(session);
   const teamId = session.access.teamId;
   const blocked: SectionHolder[] = [];
-  // One statement per section on the caller's connection, and no scope of its
-  // own: a savepoint per row is exactly what `savepoint` warns against.
   for (const sectionId of ids) {
     const lease = yield* lockLease(teamId, session.draftId, sectionId);
     if (lease === undefined || !lease.live) continue;
@@ -553,19 +516,15 @@ export const acquireLock: (
     'protocolBuilder.acquireLock',
     session.access,
     Effect.gen(function* () {
-      // Taking a lease is a write, so it is decided on the role and grants
-      // locked in this transaction rather than the ones `openSession` read.
+      // Decided on the role and grants locked in this transaction, not the ones
+      // `openSession` read.
       yield* requireProtocol(session.access, session.protocolId);
       yield* lockDraftHead(teamId, session.draftId);
       const state = yield* headSection(session, sectionId);
       if (state === undefined) return { outcome: undefined, events: [] };
 
-      // The sync package has no `db/errors.ts` of its own, so its spans
-      // publish the drizzle wrapper — whose message interpolates the query and
-      // every bind parameter. Unwrapped here, at the one boundary that
-      // consumes them, beside the typed refusal `acquire` answers with. The
-      // type arguments are written out because `E` cannot be inferred from a
-      // union that already contains both database shapes.
+      // The sync package's spans publish the drizzle wrapper, whose message
+      // interpolates every bind parameter, so it is unwrapped here.
       const lease = yield* sqlErrorsOnlyBeside<
         Lease | null,
         UnknownSectionError,
@@ -609,18 +568,6 @@ export const acquireLock: (
   );
 });
 
-/**
- * The heartbeat the lease keeper drives, in a transaction of its own.
- *
- * The keeper runs from a timer and has no transaction to give — one opened
- * there would stamp no team — so this is where a renewal becomes one. It is a
- * lease transition and nothing else, which is why it runs under the registry
- * entry that says lease renewal is excluded from the team audit log.
- *
- * `null` is the update matching no row: a lease that expired or was taken
- * over. A rejection is the storage not answering at all, which the keeper
- * tells apart and retries on the next tick.
- */
 export const renewLease: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
@@ -806,8 +753,6 @@ const writeSections: (
     );
   const manifestRow = manifestRows[0];
   if (manifestRow === undefined) {
-    // `advanceDraftManifest` has just written it in this transaction, so its
-    // absence is a database that is not the one this code was written for.
     return yield* Effect.die(
       new Error(
         `draft ${session.draftId} has no manifest at seq ${String(result.manifestSeq)}`,
@@ -857,13 +802,6 @@ type CommitDetails = {
   operationTypes: ProtocolOperation[];
 };
 
-/**
- * The event a committed revision writes.
- *
- * It names no actor, team or request any more: `audited` owns those fields and
- * `AuditEventBody` removes them, so a command supplying one is a type error
- * rather than the runtime mismatch `assertEventContext` used to refuse.
- */
 function committedEvent(
   protocol: { protocolId: string; protocolLabel: string },
   input: { draftId: string; revision: bigint } & CommitDetails,
@@ -888,16 +826,6 @@ function committedEvent(
   };
 }
 
-/**
- * `audited`, with the two services this host resolves for itself.
- *
- * The rpc plane gets `Principal` from the `Authenticated` middleware and
- * `RequestId` from the HTTP router. The protocol builder's procedures run
- * behind `HostSession` instead, and a `/ws` frame has no request of its own,
- * so the session — which resolved both when it opened — provides them. One
- * place, so every audited command this host runs records the same actor and
- * request as the session it belongs to.
- */
 const auditedCommand = <A, E, R>(
   name: string,
   session: ProtocolBuilderSession,
@@ -917,12 +845,7 @@ const auditedCommand = <A, E, R>(
  * single revision, so a refused submit writes neither. The write's receipt is
  * recorded in that same revision's transaction, so a retry carrying the same
  * `requestId` is answered with what this attempt wrote rather than writing a
- * second time. The three refusals here are returned rather than raised so no
- * audit event is written for a change that did not happen: the caller does not
- * hold the lock, the document is not shaped like this section, and — for a
- * submit that promotes — an editor holds the asset manifest the promotion
- * writes. A draft that is invalid across sections is written, because drafts
- * tolerate transient invalidity and validity is enforced at publication.
+ * second time.
  */
 export const submit = Effect.fn('protocolBuilder.submit')(function* (
   session: ProtocolBuilderSession,
@@ -945,8 +868,8 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
         teamId,
         actorUserId: session.principal.userId,
       });
-      // The role and grants `openSession` decided on were read before this
-      // transaction; the write is decided on the ones locked here.
+      // Decided on the role and grants locked in this transaction, not the ones
+      // `openSession` read.
       yield* requireProtocol(session.access, session.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId,
@@ -1090,8 +1013,8 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
         teamId,
         actorUserId: session.principal.userId,
       });
-      // The role and grants `openSession` decided on were read before this
-      // transaction; the write is decided on the ones locked here.
+      // Decided on the role and grants locked in this transaction, not the ones
+      // `openSession` read.
       yield* requireProtocol(session.access, session.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId,
@@ -1241,8 +1164,8 @@ const refactor = Effect.fn('protocolBuilder.refactor')(function* (
         teamId,
         actorUserId: session.principal.userId,
       });
-      // The role and grants `openSession` decided on were read before this
-      // transaction; the write is decided on the ones locked here.
+      // Decided on the role and grants locked in this transaction, not the ones
+      // `openSession` read.
       yield* requireProtocol(session.access, session.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId,
@@ -1439,16 +1362,6 @@ function stageList(order: SectionDoc): string[] {
     : [];
 }
 
-/**
- * Every section document at the draft's head, in one read.
- *
- * The hashes come from the head the caller already holds, so the statement is
- * `hash IN (...)` over that list (drizzle's `inArray`) rather than the
- * `jsonb_each_text` join it replaces — bound hashes instead of a jsonb document, and the
- * section-to-hash mapping stays where it was read. Two sections holding the
- * same document share one row, which is why the rows are keyed by hash and the
- * sections are walked separately.
- */
 const headDocuments: (
   session: ProtocolBuilderSession,
   head: HeadState,

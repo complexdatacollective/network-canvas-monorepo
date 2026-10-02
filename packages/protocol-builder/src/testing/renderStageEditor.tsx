@@ -511,10 +511,6 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       displayName: string;
     }>[];
     /**
-     * The adapter the editor is mounted over, built from the seeded host —
-     * `host.adapterWith(...)` — the way `renderResourceEditor` does, for a
-     * test about a host that holds its answer.
-     *
      * Between the editor and the host rather than inside it: this host answers
      * in a microtask, so a request that is still in flight is something only
      * the transport can be. A stubbed store method would be answering for a

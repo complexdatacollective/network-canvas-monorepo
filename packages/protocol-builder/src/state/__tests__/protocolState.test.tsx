@@ -738,14 +738,8 @@ function NodeTypes() {
   );
 }
 
-/** A host that answers procedures but publishes nothing on the channel. */
 const SILENT: HandlerOverrides = { WatchProtocol: () => Stream.never };
 
-/**
- * The host with its answer for one section's `AcquireLock` held at a gate the
- * test opens, so an acquire can settle after the editor that asked for it has
- * moved on.
- */
 function gatedAcquire(
   host: InMemoryHost,
   held: ProtocolSectionId,
@@ -782,11 +776,6 @@ function gatedAcquire(
   };
 }
 
-/**
- * The host with one section's `AcquireLock` answered by a result whose
- * document cannot be read: a bug in what the hook does with an answer, rather
- * than anything the host said about it.
- */
 function faultyAcquire(
   host: InMemoryHost,
   faulty: ProtocolSectionId,
@@ -810,8 +799,6 @@ function faultyAcquire(
 }
 
 /**
- * The host with the first `Submit` answered by a dropped connection.
- *
  * The host makes the write and the caller is told only that the call failed,
  * which is all a client has when a socket closes between a request and its
  * answer: the socket protocol fails the calls that were in flight and
@@ -877,11 +864,6 @@ class Boundary extends Component<
   }
 }
 
-/**
- * The host with one section's `AcquireLock` held at a gate the test opens
- * BEFORE the host takes it up, so an acquire can be granted after the editor
- * that asked for it has already given the lock back.
- */
 function withheldAcquire(
   host: InMemoryHost,
   held: ProtocolSectionId,
@@ -912,11 +894,6 @@ function withheldAcquire(
   };
 }
 
-/**
- * The host with its `ListSections` answer held at a gate the test opens, so a
- * section can be created after the host formed the answer and before the
- * client has it.
- */
 function gatedSectionList(host: InMemoryHost) {
   const gates: (() => void)[] = [];
   const adapter = host.adapterWith({
@@ -952,10 +929,6 @@ function Lock({ id }: Readonly<{ id: ProtocolSectionId }>) {
   );
 }
 
-/**
- * The host with every `GetSection` answer held at a gate the test opens, so a
- * revision can be published while a read is in flight.
- */
 function delayedSectionReads(host: InMemoryHost) {
   const gates: (() => void)[] = [];
   const adapter = host.adapterWith({
@@ -978,11 +951,6 @@ function delayedSectionReads(host: InMemoryHost) {
 
 const isProtocolEvent = Schema.is(ProtocolEventSchema);
 
-/**
- * The adapter, recording each revision the channel has finished applying: the
- * event is recorded after the channel's handler for it has returned, so a test
- * can sequence itself against what the cache has already been told.
- */
 function watchedEvents(adapter: ProtocolBuilderAdapter) {
   const applied: string[] = [];
   return {
@@ -1014,10 +982,6 @@ function silentChannel(host: InMemoryHost): ProtocolBuilderAdapter {
   return host.adapterWith(SILENT);
 }
 
-/**
- * The host, recording the cursor each `WatchProtocol` call resumes from. The
- * stream itself is untouched: the host cuts it.
- */
 function recordingWatch(host: InMemoryHost) {
   const since: (string | undefined)[] = [];
   const adapter = host.adapterWith({

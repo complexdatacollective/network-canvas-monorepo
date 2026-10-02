@@ -15,14 +15,6 @@ import { ObjectStore } from '../storage/object-store.ts';
 import { authServiceStub } from './support/auth.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
-// `/storage` through the composed Effect router: the gates in front of it, the
-// cap on what an upload may send, and the delivery policy on the way out. The
-// round-trip half runs against a real S3-compatible endpoint — the Garage the
-// development stack runs, or whatever S3_* points at — and skips when none is
-// reachable, the same pattern as the Postgres-backed suites: unit lanes stay
-// green without Docker. Everything else runs against an in-memory store, so it
-// is exercised on every run.
-
 const env = readEnv();
 
 async function storeReachable(): Promise<boolean> {
@@ -61,7 +53,6 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'session-1',
 };
 
-/** An object store in memory: content-addressed, first write wins. */
 function memoryStore(): ObjectStore['Service'] {
   const objects = new Map<
     string,
@@ -95,7 +86,6 @@ function memoryStore(): ObjectStore['Service'] {
   });
 }
 
-/** Counts the session lookups a request made, and answers them. */
 function countingAuth(signedIn: boolean): {
   readonly auth: AuthService['Service'];
   readonly lookups: () => number;
@@ -113,7 +103,6 @@ function countingAuth(signedIn: boolean): {
   };
 }
 
-/** One request through the composed stack, disposed either way. */
 async function send(
   path: string,
   init: RequestInit,
@@ -133,7 +122,6 @@ async function send(
   );
   try {
     const response = await stack.request(path, init);
-    // Read before the stack goes: a streamed body is the stack's to produce.
     const body = new Uint8Array(await response.arrayBuffer());
     return new Response(response.status === 204 ? null : body, response);
   } finally {
@@ -141,7 +129,6 @@ async function send(
   }
 }
 
-/** What the SPA's own upload looks like to the CSRF check. */
 const spaUpload = (
   body?: RequestInit['body'],
   mediaType?: string,
@@ -194,16 +181,12 @@ describe('asset upload authorisation', () => {
         objectStore: memoryStore(),
       },
     );
-    // No origin evidence at all: refused before the 404 it would have been.
     expect(res.status).toBe(403);
   });
 });
 
 describe('asset retrieval authorisation', () => {
   it('leaves retrieval public', async () => {
-    // Assets are fetched from contexts that carry no cookie, and the content
-    // address is the capability. A GET must not consult the session at all.
-    // Mutation: put the principal gate on the read → `lookups` is 1.
     const { auth, lookups } = countingAuth(false);
     const store = memoryStore();
     const { hash } = await Effect.runPromise(
@@ -222,9 +205,6 @@ describe('asset retrieval authorisation', () => {
 
 describe('the upload cap', () => {
   it('abandons a body with no length the moment it crosses the cap', async () => {
-    // A body that never ends, so the only way this request can be answered
-    // is by the route stopping its read at the cap. Buffering it first and
-    // measuring after would never finish.
     const chunk = new Uint8Array(1024 * 1024);
     let sent = 0;
     const endless = new ReadableStream<Uint8Array>({
@@ -249,9 +229,6 @@ describe('the upload cap', () => {
   });
 
   it('refuses a declared length over the cap before reading a byte', async () => {
-    // Over a real socket, because the declared length is the request's own
-    // header there: the upload below announces more than the cap and sends
-    // nothing, so an answer can only come from the header.
     const server = await startStudioServer(
       env,
       createStudio(env, {
@@ -307,9 +284,6 @@ describe('asset delivery policy', () => {
   ])('serves %s as an opaque download', async (mediaType, body) => {
     const hash = await upload(body, mediaType);
     const res = await send(`/storage/${hash}`, {}, { objectStore: store });
-    // Uploads are untrusted and this is the app's own origin: nothing a
-    // browser could execute as a document may be served with a type that
-    // invites it to.
     expect(res.headers.get('Content-Type')).toBe('application/octet-stream');
     expect(res.headers.get('Content-Disposition')).toBe('attachment');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
@@ -344,7 +318,6 @@ describe('asset delivery policy', () => {
 
 describe('asset storage when unconfigured', () => {
   it('refuses with 503 problem JSON', async () => {
-    // No object store given: the deployment names no bucket.
     const res = await send('/storage', spaUpload(bytesOf('x'), 'text/plain'));
     expect(res.status).toBe(503);
     expect(res.headers.get('Content-Type')).toContain(
@@ -386,8 +359,6 @@ describe.skipIf(!reachable)('asset storage', () => {
   });
 
   it('streams stored bytes over a real socket', async () => {
-    // The Node listener writes a response body differently from the
-    // in-process handler, and a web stream is exactly what it cannot pipe.
     await send('/storage', spaUpload(bytes, 'text/plain'), through);
     const server = await startStudioServer(
       env,
@@ -431,9 +402,6 @@ describe.skipIf(!reachable)('asset storage', () => {
     const stored = (await first.json()) as { hash: string; mediaType: string };
     expect(stored.mediaType).toBe('text/plain');
 
-    // Identical bytes, different declared type: the stored representation is
-    // immutable, so the response reports the canonical (first) metadata and
-    // the object keeps it.
     const second = await send(
       '/storage',
       spaUpload(payload, 'application/json'),

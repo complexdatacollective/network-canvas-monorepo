@@ -11,7 +11,7 @@
 // assembly for a participant session or a researcher preview opens one.
 import { and, eq, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -144,10 +144,8 @@ export function withPlaceholderAssetKeys(
  * published version still pins the revision that named it, and that version
  * has to go on assembling for a participant.
  *
- * One statement per key rather than one multi-row upsert: `ON CONFLICT DO
- * UPDATE` refuses a command that would touch the same row twice (21000), and
- * the loop opens no scope of its own — a nested scope per row would be a
- * savepoint per row on the caller's connection.
+ * One statement per key: `ON CONFLICT DO UPDATE` refuses a command that
+ * would touch the same row twice (21000).
  */
 export const sealAssetKeys: (
   cipher: SecretsCipherApi,
@@ -168,14 +166,11 @@ export const sealAssetKeys: (
   createdAt?: Date,
 ) {
   const { tx } = yield* Transaction;
-  // The database's clock where the caller named no date, which is what
-  // `COALESCE($6, now())` said — not this process's.
   const written = createdAt ?? sql`now()`;
   for (const [assetId, value] of values) {
     const sealed = cipher.sealAssetKey({ ...scope, assetId }, value);
-    // `.returning()` is not decoration: a write without it answers with the
-    // driver's own result object, which is typed as a row array and is not
-    // one — so the check below would read `undefined` and invert.
+    // `.returning()` is not decoration: without it the driver's result object,
+    // typed as a row array but not one, would make the check below invert.
     const rows = yield* tx
       .insert(protocolAssetKeys)
       .values({
@@ -239,11 +234,6 @@ export const openAssetKey: (
       );
     const row = rows[0];
     if (row === undefined) return undefined;
-    // A `bytea` decodes as a `Buffer` through node-postgres and as a plain
-    // `Uint8Array` through `@effect/sql-pg`; drizzle declares the column as
-    // the former and hands back whatever the driver produced. The cipher
-    // takes the wider of the two (`StoredSecret`), so the row opens either
-    // way — and `__tests__/asset-keys.test.ts` asserts which one arrives.
     return cipher.openAssetKey(identity, {
       ciphertext: row.ciphertext,
       keyId: row.keyId,

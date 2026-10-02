@@ -1,7 +1,6 @@
 // @vitest-environment node
-// Staged bytes cross the wire as a `Uint8Array` the contract checks by
-// `instanceof`, and jsdom's realm has a `Uint8Array` of its own. Nothing here
-// renders.
+// jsdom's realm has a `Uint8Array` of its own, which the contract's
+// `instanceof` check refuses.
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { Exit, Schema } from 'effect';
-import * as RpcSchema from 'effect/unstable/rpc/RpcSchema';
+import * as RpcSchema from 'effect/rpc/RpcSchema';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { assetSourceSchema } from '@codaco/protocol-validation';
@@ -29,9 +29,6 @@ import {
 } from '../schemas.ts';
 import { HostSession } from '../session.ts';
 
-// `Schema.toCodecJson` is the codec the rpc serializers derive for every
-// payload, success and error, so a JSON round trip through it is what a
-// client on either transport actually receives.
 type Contract = Schema.Top & {
   readonly DecodingServices: never;
   readonly EncodingServices: never;
@@ -149,9 +146,6 @@ describe('a section id', () => {
 });
 
 describe("a staged file's name", () => {
-  // The protocol schema validates the manifest with zod; the contract with
-  // Effect. Both must refuse the same names, or a host could stage a file the
-  // protocol would then refuse to publish.
   const REFUSED = ['..', 'a/b', 'a\\b', '', '../x.png', '/x.png'];
   const ACCEPTED = ['photo.png', 'a..b.mp4', '.hidden', 'with space.csv'];
 
@@ -194,8 +188,6 @@ const failure = {
   retryable: true,
 } as const;
 
-// One instance of each refusal, so a procedure's declared error is read by
-// what it accepts rather than by how the union happens to be built.
 const REFUSALS = [
   new ProtocolNotFound({ protocolId: 'protocol-1' }),
   new SectionNotFound({ sectionId: stage }),
@@ -210,8 +202,6 @@ const REFUSALS = [
 const BASE = ['ProtocolNotFound', 'SectionNotFound'];
 const REFACTOR = [...BASE, 'ReferencesRemain', 'SectionsLocked'];
 
-// The retired oRPC contract, procedure by procedure: `oc.errors(protocolErrors)`
-// on every one, and the `.errors(…)` each added.
 const DECLARED: Record<(typeof TAGS)[number], ReadonlyArray<string>> = {
   AcquireLock: BASE,
   ReleaseLock: BASE,

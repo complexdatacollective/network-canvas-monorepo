@@ -73,11 +73,6 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
   });
 }
 
-/**
- * An environment this process refuses to start with. A failure rather than a
- * defect, so a process reports it as the sentence `resolve` wrote rather than
- * as a crash (src/programs/command.ts).
- */
 export class EnvironmentInvalid extends Schema.TaggedError<EnvironmentInvalid>()(
   'EnvironmentInvalid',
   { cause: Schema.Defect() },
@@ -97,12 +92,7 @@ const readEnvironment = (options: ReadEnvOptions) =>
 
 /**
  * The resolved environment as an Effect service, which is how Effect code asks
- * for it: `const env = yield* Environment`. The worker program provides it —
- * the job queue's layers are built over it — and it is the sanctioned way in
- * for anything else that runs under Effect, rather than reaching for `readEnv`
- * from inside a fiber, because `Layer` is what makes "decoded and resolved
- * once, at the edge of the program" a property of the wiring instead of a
- * convention.
+ * for it.
  *
  * `Layer.effect` rather than `Layer.succeed`: the read must happen when the
  * layer is built, not when this module is imported, or a failure would be

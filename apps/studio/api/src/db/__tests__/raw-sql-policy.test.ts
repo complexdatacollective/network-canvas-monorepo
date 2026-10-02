@@ -40,7 +40,6 @@ const TEMPLATE_KINDS = new Set([
   SyntaxKind.TemplateHead,
 ]);
 
-/** The index just past a balanced `<…>` starting at `start`, or `start`. */
 function skipTypeArguments(tokens: SourceToken[], start: number): number {
   if (!isPunctuation(tokens[start], SyntaxKind.LessThanToken)) return start;
   let depth = 0;
@@ -57,7 +56,6 @@ function skipTypeArguments(tokens: SourceToken[], start: number): number {
 const skipTypeArgumentsToken = (tokens: SourceToken[], start: number) =>
   tokens[skipTypeArguments(tokens, start)];
 
-/** The index of the parenthesis closing the one opened at `open`. */
 function closingParen(tokens: SourceToken[], open: number): number {
   let depth = 0;
   for (let index = open; index < tokens.length; index += 1) {
@@ -73,11 +71,6 @@ function closingParen(tokens: SourceToken[], open: number): number {
 
 type Span = { name: string; start: number; end: number };
 
-/**
- * `Effect.fn('<span>')(…)`: the span owns every token up to the parenthesis
- * that closes its body. Enclosure rather than "the nearest span above" — a
- * plain helper written after a span would otherwise be charged to it.
- */
 function spansOf(tokens: SourceToken[]): Span[] {
   const spans: Span[] = [];
   for (let index = 0; index + 4 < tokens.length; index += 1) {
@@ -90,7 +83,6 @@ function spansOf(tokens: SourceToken[]): Span[] {
     ) {
       continue;
     }
-    // The formatter leaves a trailing comma after a name that wrapped.
     let close = index + 5;
     if (isPunctuation(tokens[close], SyntaxKind.CommaToken)) close += 1;
     if (
@@ -107,11 +99,6 @@ function spansOf(tokens: SourceToken[]): Span[] {
   return spans;
 }
 
-/**
- * Whether `sql` in this file is drizzle's fragment builder. A drizzle `sql`
- * template builds part of a builder statement, and is not a statement of its
- * own; the Effect client's is. A file cannot bind both to the same name.
- */
 function importsDrizzleSql(tokens: SourceToken[]): boolean {
   for (let index = 0; index < tokens.length; index += 1) {
     if (tokens[index]!.kind !== SyntaxKind.ImportKeyword) continue;
@@ -131,13 +118,6 @@ function importsDrizzleSql(tokens: SourceToken[]): boolean {
   return false;
 }
 
-/**
- * The members that hand a statement to a driver as text: the Effect client's
- * `unsafe`, drizzle's and a reserved connection's `execute`, a connection's
- * `executeRaw`/`executeValues`/`executeStream`/`executeUnprepared`, and
- * node-postgres's `query` — counted so the node-postgres residue is pinned
- * too, and can only shrink.
- */
 const RAW_MEMBERS = new Set([
   'unsafe',
   'execute',
@@ -148,11 +128,6 @@ const RAW_MEMBERS = new Set([
   'query',
 ]);
 
-/**
- * Names the Effect client is bound to under another name by destructuring
- * (`const { sql: client } = yield* Transaction`), so `` client`…` `` is its
- * template as surely as `` sql`…` `` is.
- */
 function clientAliases(tokens: SourceToken[]): Set<string> {
   const aliases = new Set<string>();
   for (let index = 1; index + 3 < tokens.length; index += 1) {
@@ -171,17 +146,6 @@ function clientAliases(tokens: SourceToken[]): Set<string> {
   return aliases;
 }
 
-/**
- * Every statement handed to the driver as text: a call to one of
- * `RAW_MEMBERS`, drizzle's `sql.raw(…)`, and the Effect client's template —
- * `` sql`…` `` where `sql` is not drizzle's fragment builder, `` x.sql`…` ``,
- * and a template on a destructured alias.
- *
- * It counts templates, not executions: an Effect `sql` fragment built to be
- * interpolated into another statement is counted as well as the statement it
- * joins. Over-counting fails loudly on the next change, which is the safe
- * direction for an exact list.
- */
 function rawCalls(tokens: SourceToken[]): number[] {
   const drizzleSql = importsDrizzleSql(tokens);
   const aliases = clientAliases(tokens);
@@ -229,10 +193,6 @@ function rawCalls(tokens: SourceToken[]): number[] {
   return calls;
 }
 
-/**
- * The span each raw statement in `source` sits in, or `null` for one outside
- * any `Effect.fn` — innermost wins, so a span nested in another is its own.
- */
 function rawStatementsIn(source: string): (string | null)[] {
   const tokens = sourceTokens(source);
   const spans = spansOf(tokens);
@@ -258,16 +218,6 @@ function inventory(): Map<string, number> {
 const SERVER = 'apps/studio/api/src';
 const SYNC = 'packages/studio-sync/src';
 
-/**
- * Every statement Studio hands the driver as text, and why the builder cannot
- * write it. Keyed by file and, where the statement sits inside an
- * `Effect.fn`, by that span; the count is the number of statements there.
- *
- * Exact in both directions: a new raw statement fails until it is listed here
- * with its reason, and an entry whose statement has gone fails until it is
- * removed, so the list cannot drift into describing code that no longer
- * exists.
- */
 const ALLOWLIST: Record<string, { count: number; why: string }> = {
   [`${SERVER}/audit/store.ts › audit.store.facets`]: {
     count: 2,
@@ -310,8 +260,8 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: '`pg_locks` and `pg_database`, catalogue views drizzle does not model, matched on the advisory key’s two halves',
   },
   [`${SERVER}/db/tenant.ts`]: {
-    count: 3,
-    why: '`set local role` and `set local search_path` (fallback A: rc.115 has no startup parameters), and the team GUC via `set_config`',
+    count: 1,
+    why: 'the team GUC via `set_config`, the first statement of every tenant scope',
   },
   [`${SERVER}/jobs/jobs.ts`]: {
     count: 1,
@@ -345,10 +295,8 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: '`SELECT now()`, no FROM clause',
   },
-  // Raw since the queue replaced pg-boss (#1957), which ported `gc.ts` "text for
-  // text"; the stage-3 allowlist names the queue's own files but not these.
   [`${SERVER}/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore`]: {
-    count: 10,
+    count: 9,
     why: '#1957’s port of the store sweep: `select current_user` (no FROM) and the sweep over the shared `REFERENCED` predicate',
   },
   [`${SERVER}/jobs/handlers/invitation-delivery.ts › job.invitation-delivery`]:
@@ -374,7 +322,7 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: "`current_setting('transaction_isolation')` (no FROM), and the built `sectionExists` query executed as the same SQL it embeds in an `EXISTS`",
   },
   [`${SERVER}/__tests__/support/database.ts`]: {
-    count: 19,
+    count: 17,
     why: 'the scratch-schema harness: create, apply, grant and drop, and the one-statement fixtures and oracles every suite shares — as the owner, a tenant, the maintenance role, and under the erasure marker',
   },
   [`${SERVER}/jobs/__tests__/support.ts`]: {
@@ -382,25 +330,16 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the queue suites’ scratch job schema and fixtures, and `holding`’s BEGIN, statements, lock probe and COMMIT/ROLLBACK on a reserved connection',
   },
   [`${SYNC}/__tests__/helpers.ts`]: {
-    count: 6,
-    why: 'the conformance suite’s scratch schema (node-postgres) and the role and tenant pin its Effect runtime sets',
+    count: 5,
+    why: 'the conformance suite’s scratch schema (node-postgres) and the tenant pin its Effect runtime sets',
   },
-  // node-postgres. Nothing here is Effect code; it is listed so the residue is
-  // pinned rather than invisible. better-auth left it in stage 4 (it runs on
-  // `auth/adapter.ts` now); what stays is readiness, the schema gate and the
-  // scripts, which remain on node-postgres while the Effect client cannot pin a
-  // role outside a transaction (rc.115).
   [`${SERVER}/db/schema.ts`]: {
     count: 3,
-    why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ and the schema gate’s twins of the Effect pair',
+    why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ twins of the Effect pair',
   },
   [`${SERVER}/jobs/install.ts`]: {
     count: 1,
     why: 'the node-postgres `installJobSchema`, over the same split statement list as the Effect path',
-  },
-  [`${SERVER}/http/health.ts`]: {
-    count: 1,
-    why: 'the readiness probe’s `select 1` on the process’s node-postgres pool',
   },
   [`${SERVER}/__tests__/support/postgres.ts`]: {
     count: 4,
@@ -432,8 +371,6 @@ describe('the raw SQL allowlist', () => {
   });
 });
 
-// The collector is itself under test: an inventory that quietly missed a form
-// would make the list above pass while raw statements accumulate.
 describe('the raw SQL collector', () => {
   it('finds each form a statement reaches the driver as text', () => {
     const source = `

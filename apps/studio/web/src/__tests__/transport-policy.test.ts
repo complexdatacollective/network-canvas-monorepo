@@ -6,14 +6,6 @@ import { describe, expect, it } from 'vitest';
 
 import { sourceTokens } from './support/source-tokens.ts';
 
-// One transport, reached one way.
-//
-// Studio's client talked to its server through two stacks during this
-// migration, and the invariants that keep the first from outliving the second
-// are structural rather than conventional: every call goes through the adapter
-// (so none can bypass the unauthorized report a 401 owes the router), and the
-// oRPC stack is gone.
-
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const sourceFiles = (): string[] => {
@@ -39,29 +31,11 @@ const read = (file: string): string => readFileSync(file, 'utf8');
 const isLiteral = (raw: string | undefined): boolean =>
   raw?.startsWith("'") === true || raw?.startsWith('"') === true;
 
-/**
- * Every module specifier in a file, in all four forms that name a module:
- * `from 'x'` for a static import or re-export, `import 'x'` for a side-effect
- * import, `import('x')` for a dynamic one, and `vi.mock('x')` / `vi.doMock('x')`
- * for the one a suite replaces. `from` is a contextual keyword, so what
- * identifies it is a `from` immediately followed by a string literal, which no
- * expression produces; `import` is reserved, so a literal after it, or after its
- * opening parenthesis, is always a specifier.
- *
- * The `vi.mock` form is here because a suite that mocks `@orpc/client` still
- * depends on it — the check below should catch it — and because a mocked specifier is otherwise invisible to a walk that follows
- * imports alone.
- */
 function moduleSpecifiers(source: string): string[] {
   const tokens = sourceTokens(source);
   const literalAt = (index: number): string | undefined =>
     isLiteral(tokens[index]?.raw) ? tokens[index]?.value : undefined;
 
-  /**
-   * `vi` `.` `mock` `(` `'x'`. The receiver is checked, so a `mock` method on
-   * something else — a query client, a fixture builder — is not read as a
-   * module.
-   */
   const mockedAt = (index: number): string | undefined =>
     (tokens[index]?.raw === 'mock' || tokens[index]?.raw === 'doMock') &&
     tokens[index - 1]?.raw === '.' &&
@@ -87,15 +61,6 @@ function moduleSpecifiers(source: string): string[] {
   return specifiers;
 }
 
-/**
- * What a static `import … from 'x'` binds, so a policy can name one export.
- *
- * A re-export (`export { StudioClient } from './runtime.ts'`) would bind the
- * name onward without appearing as an importer, and is deliberately out of
- * scope: the repository bans barrel files, so no module here re-exports
- * another's members, and the sole-importer case below would have to be read
- * transitively if one ever did.
- */
 type ImportClause = {
   readonly specifier: string;
   readonly names: ReadonlyArray<string>;
@@ -123,9 +88,7 @@ function importClauses(source: string): ImportClause[] {
     for (let index = start + 1; index < tokens.length; index += 1) {
       const current = tokens[index];
       if (current === undefined) break;
-      // `export const url = '…'`: a literal that no `from` introduces is a
-      // value, not a specifier, so the statement ends here rather than
-      // contributing one.
+      // `export const url = '…'`: a literal no `from` introduces is a value.
       if (current.raw === ';' || current.raw === '=') break;
       if (current.raw === 'from' && isLiteral(tokens[index + 1]?.raw)) {
         const specifier = tokens[index + 1]?.value;
@@ -138,7 +101,6 @@ function importClauses(source: string): ImportClause[] {
   return clauses;
 }
 
-/** Src-relative, with the extension the specifier already carries. */
 const resolveRelative = (file: string, specifier: string): string =>
   relative(SRC, resolve(dirname(file), specifier));
 
@@ -149,9 +111,6 @@ const filesImporting = (predicate: (specifier: string) => boolean): string[] =>
 
 describe('the import inventory', () => {
   it('follows every form one module reaches another by', () => {
-    // The lists below are only as complete as this. A specifier this did not
-    // follow would be an import the policy reports as absent — which is how
-    // the second stack could still be here and this file still be green.
     expect(
       moduleSpecifiers(
         [
@@ -198,10 +157,6 @@ describe('the import inventory', () => {
 
 describe('the rpc client', () => {
   it('is reached from runtime/rpc.ts and nowhere else', () => {
-    // `runtime/rpc.ts` is where the adapter's `onFailure` reports a 401 to the
-    // router. A screen holding the client itself would make a call that skips
-    // that report, and the session would stay signed in on screen while the
-    // server had already stopped believing it.
     const importers = FILES.filter((file) =>
       importClauses(read(file)).some(
         (clause) =>
@@ -215,15 +170,11 @@ describe('the rpc client', () => {
   });
 
   it('keeps the rpc and socket machinery in the runtime layer', () => {
-    // `effect/unstable/rpc` and `effect/unstable/socket` are the transport's own
-    // vocabulary. The two runtime modules and the two test harnesses are the
-    // whole of what may name them; a screen that did would be building a
-    // second way to call the server.
     expect(
       filesImporting(
         (specifier) =>
-          specifier.startsWith('effect/unstable/rpc') ||
-          specifier.startsWith('effect/unstable/socket'),
+          specifier.startsWith('effect/rpc') ||
+          specifier.startsWith('effect/socket'),
       ),
     ).toEqual([
       'runtime/errors.ts',
@@ -235,7 +186,6 @@ describe('the rpc client', () => {
 });
 
 describe('the editor’s host socket', () => {
-  /** Files in which the tokens `sequence` occur in order, comments aside. */
   const filesWithTokens = (sequence: ReadonlyArray<string>): string[] =>
     FILES.filter((file) => {
       const raw = sourceTokens(read(file)).map((token) => token.raw);
@@ -245,9 +195,6 @@ describe('the editor’s host socket', () => {
     }).map((file) => relative(SRC, file));
 
   it('is dialled from the runtime module alone', () => {
-    // One socket client, built in one place: a second `layerProtocolSocket`
-    // or `layerWebSocket` would be a socket the host session does not own, and
-    // so one that sign-out could not close.
     expect(filesWithTokens(['layerProtocolSocket'])).toEqual([
       'runtime/runtime.ts',
     ]);
@@ -255,10 +202,6 @@ describe('the editor’s host socket', () => {
   });
 
   it('never retries a transient error underneath the call waiting on it', () => {
-    // With `retryTransientErrors` on, a ping timeout reconnects the socket
-    // without failing the call and the stream that were in flight on it, and
-    // both hang for good (the behavioural oracle is
-    // runtime/__tests__/hostClient.test.ts). Off is stated, not defaulted.
     expect(filesWithTokens(['retryTransientErrors', ':', 'true'])).toEqual([]);
     expect(filesWithTokens(['retryTransientErrors', ':', 'false'])).toEqual([
       'runtime/runtime.ts',
@@ -268,8 +211,6 @@ describe('the editor’s host socket', () => {
 
 describe('the oRPC stack', () => {
   it('is gone', () => {
-    // The editor's host socket was the last of it; it moved onto Effect rpc
-    // with the protocol-builder contract in stage 8.
     expect(
       filesImporting((specifier) => specifier.startsWith('@orpc/')),
     ).toEqual([]);

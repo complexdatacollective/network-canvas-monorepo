@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { Effect, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import {
   type CurrentProtocol,
@@ -67,14 +67,7 @@ const { protocolEvents, protocolWriteReceipts } = PROTOCOL_BUILDER_TABLES;
 const { studies } = STUDY_TABLES;
 const { studyRoleGrants } = STUDY_ROLE_TABLES;
 
-/**
- * A protocol line, draft or version the caller asked for and the store cannot
- * answer with: it does not exist, or it belongs to another team, which are the
- * same refusal here. A typed failure rather than a thrown error — every caller
- * turns it into a refusal of its own.
- *
- * @public
- */
+/** @public */
 export class ProtocolStoreError extends Schema.TaggedError<ProtocolStoreError>()(
   'ProtocolStoreError',
   { reason: Schema.String },
@@ -117,23 +110,13 @@ export type ProtocolRow = {
 export type CreateProtocolResult = {
   protocolId: string;
   draftId: string;
-  /**
-   * False when the creation identity was already in use by exactly this
-   * protocol and draft — a retried import, which is a no-op rather than a
-   * conflict. Always reported now: every call runs in the caller's
-   * transaction, so there is no longer a shape that cannot say.
-   */
   created: boolean;
 };
 
 export type CreateProtocolParams = {
   protocol: CurrentProtocol;
   protocolId?: string;
-  draftId?: string /**
-   * When the protocol was created, for a caller that must say so — the
-   * synthetic-data seed, whose whole corpus is dated from one anchor so the
-   * line exists before the studies that pin its versions. Defaults to now.
-   */;
+  draftId?: string;
   createdAt?: Date;
 };
 
@@ -148,29 +131,8 @@ export type DraftSections = {
   sections: Record<string, SectionDoc>;
 };
 
-/**
- * Subqueries in the predicate below are built without a database handle:
- * `reachableByCaller` is a fragment, not a statement, and the statements that
- * embed it bring their own transaction.
- */
 const qb = new QueryBuilder();
 
-/**
- * Which protocol lines the caller may reach, which is #1257's study rule and
- * not a second one: a team Admin or Owner reaches every line their team owns,
- * and anyone else reaches a line only through a study they can see. A line no
- * study references is therefore Admin/Owner-only — no grant exists that could
- * reach it — and that is why creating one is an Admin/Owner action too.
- *
- * One exported fragment, so the two statements that ask the question cannot
- * drift: `isReachableByCaller` and `listProtocols`, and
- * `__tests__/tenancy.test.ts` pins them to the same boundary row.
- *
- * It still states the study tier's own rule — `studyVisibleToCallerSql` in
- * `study/store.ts`, which is text because that tier has not been converted
- * yet. When it is, the EXISTS below is what it should export, and this file
- * should take it from there rather than keep a second copy.
- */
 export const reachableByCaller = (visibility: StudyVisibility): SQL => {
   const visibleStudy = exists(
     qb
@@ -184,8 +146,6 @@ export const reachableByCaller = (visibility: StudyVisibility): SQL => {
         ),
       ),
   );
-  // The caller's team role as one bound boolean, exactly as `$2::boolean`
-  // carried it: one statement shape whichever role is asking.
   const seesEveryStudy = sql<boolean>`${visibility.seesEveryStudy}::boolean`;
   const reachable = or(
     seesEveryStudy,
@@ -208,8 +168,6 @@ export const reachableByCaller = (visibility: StudyVisibility): SQL => {
   return reachable;
 };
 
-// A lease-scoped command can rewrite a stage's own id, which neither assembly
-// nor the canonical validator can see is out of step with its section key.
 function sectionIdentityIssues(
   sectionDocs: Record<string, SectionDoc>,
 ): ProtocolValidationIssue[] {
@@ -231,20 +189,6 @@ function sectionIdentityIssues(
   return issues;
 }
 
-/**
- * The two public assembly paths (`getDraftDocument`, `getVersionDocument`) go
- * through here, which is the #1897 exclusion check at the point a document
- * leaves the store for anything that is not a participant session or a
- * researcher preview. Neither of those exists yet; when one does, it assembles
- * and then puts the keys back, and this stays the exit every other reader
- * takes.
- *
- * Both of the things it can throw are defects rather than failures, and stay
- * so: a document that will not assemble is a draft whose own manifest is
- * inconsistent, and a key reaching here is the invariant #1897 exists for
- * having already been broken upstream. Neither is an outcome a caller can act
- * on.
- */
 function assembleDocumentWithoutKeys(
   sectionDocs: Record<string, SectionDoc>,
 ): Record<string, unknown> {
@@ -287,14 +231,6 @@ function assertNoValidationFailures(sectionDocs: Record<string, SectionDoc>) {
   if (failures.length > 0) throw new SectionValidationFailedError(failures);
 }
 
-/**
- * Sections are write-time validated; the document is not required to pass
- * whole-protocol validation until publish.
- *
- * Runs in the caller's transaction — the `protocols` row, the sealed keys, the
- * section rows and the draft land together or not at all — which is what the
- * `client` overload used to ask for and every caller now gets.
- */
 export const createProtocol: (
   teamId: string,
   cipher: SecretsCipherApi,
@@ -312,18 +248,13 @@ export const createProtocol: (
   const draftId = params.draftId ?? randomUUID();
   const sectionDocs = sectionizeProtocol(params.protocol);
   // While the keys are still in the document: the assets schema requires an
-  // `apikey` entry to carry a non-empty value, so an import missing one is
-  // refused here rather than silently becoming a protocol with a key asset
-  // the store holds nothing for.
+  // `apikey` entry to carry a value.
   yield* failOnSectionValidation(() => {
     assertNoValidationFailures(sectionDocs);
   });
 
-  // The second write boundary (#1900): a whole protocol arriving at once —
-  // an import, or the synthetic-data seed — carries its keys in the asset
-  // manifest, and they must not reach `sections` any more than a promotion's
-  // do. Stripped before the draft rows are inserted, sealed in the same
-  // transaction that inserts them.
+  // Keys must not reach `sections`: stripped before the draft rows are
+  // inserted, sealed in the same transaction.
   const assetsSectionId = makeSectionId({ kind: 'assets' });
   const assets = sectionDocs[assetsSectionId];
   const strippedAssets =
@@ -334,10 +265,8 @@ export const createProtocol: (
 
   const { tx } = yield* Transaction;
   const created = params.createdAt ?? sql`now()`;
-  // `.returning()` is what makes the idempotence branch below real: a write
-  // without it answers with the driver's result object, typed as a row array
-  // and not one, so `inserted.length === 0` would never be true and a
-  // repeated creation identity would insert nothing and report success.
+  // `.returning()` is what makes the idempotence branch below real: without it
+  // `inserted.length === 0` would never be true.
   const inserted = yield* tx
     .insert(protocols)
     .values({
@@ -370,8 +299,8 @@ export const createProtocol: (
     });
   }
   if (strippedAssets !== undefined && strippedAssets.values.size > 0) {
-    // After the `protocols` row the foreign key names, and before the
-    // sections, so a refused creation seals nothing.
+    // After the `protocols` row the foreign key names, and before the sections,
+    // so a refused creation seals nothing.
     yield* sealAssetKeys(
       cipher,
       { teamId, protocolId },
@@ -458,16 +387,6 @@ export const createDraftFromVersion: (
   return { draftId, protocolId: versionRow.protocolId };
 }, sqlErrorsOnlyBeside);
 
-/**
- * The head manifest and every document it names.
- *
- * Two statements where there was one correlated `jsonb_object_agg`: the head
- * row with its manifest, then the documents that manifest names. Nothing can
- * come between them — a section the head manifest names is referenced, which
- * is exactly what garbage collection refuses to sweep (the `REFERENCED`
- * predicate in `jobs/handlers/protocol-store-gc.ts` reads `manifests`) — and
- * the pair runs inside the caller's transaction.
- */
 export const getDraftSections: (
   teamId: string,
   draftId: string,
@@ -632,10 +551,8 @@ export const validateDraft: (
   if (assembled.document === undefined) {
     return { valid: false, issues: assembled.issues };
   }
-  // Against a placeholder rather than the sealed keys (#1900): what the
-  // canonical validator has to say about an API key is that the asset has
-  // one, and decrypting a researcher's third-party credentials to answer
-  // "is this protocol valid" would put them in memory for no reason.
+  // Against a placeholder rather than the sealed keys: decrypting a
+  // researcher's credentials to validate would put them in memory for no reason.
   const result = yield* Effect.promise(() =>
     validateProtocol(
       withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
@@ -647,21 +564,9 @@ export const validateDraft: (
 });
 
 /**
- * The manifest, frozen.
- *
- * `INSERT … SELECT` over the target table is the one statement here the
- * builder cannot write: it takes `COALESCE(MAX(v.version_number), 0) + 1`
- * from `protocol_versions` itself and the manifest from a correlated
- * `(SELECT to_jsonb(m) …)`, and `to_jsonb(<alias>)` — a whole row as jsonb —
- * has no builder spelling at all. Assembling the same object in JavaScript
- * would change what is stored, since the column holds the manifest row's own
- * snake-case columns.
- *
- * It reads no timestamp or date: `published_at` is bound in, and the only
- * column it returns is `version_number`.
- *
- * A span of its own, so the raw-statement allowlist can name this statement
- * rather than the whole of `publishDraft`.
+ * `INSERT … SELECT` the builder cannot write: `to_jsonb(<alias>)` has no
+ * builder spelling. A span of its own, so the raw-statement allowlist can name
+ * this statement.
  */
 const insertVersion = Effect.fn('protocol.store.insertVersion')(
   function* (params: {
@@ -714,7 +619,7 @@ const insertVersion = Effect.fn('protocol.store.insertVersion')(
 
 /**
  * Validation runs before the head lock is taken; the lock then proves the
- * validated manifest is still the head, so a stale freeze is impossible.
+ * validated manifest is still the head.
  */
 export const publishDraft: (
   teamId: string,
@@ -722,18 +627,7 @@ export const publishDraft: (
     draftId: string;
     label?: string;
     expectedManifestHash?: string;
-    /**
-     * The id to mint the new version under, for a caller that must know it in
-     * advance — the synthetic-data seed, whose ids all come from its own
-     * seeded PRNG. Same role as `createProtocol`'s `protocolId`/`draftId`.
-     * Ignored when the publish resolves to an existing version.
-     */
     versionId?: string;
-    /**
-     * When the version was published, for the same caller and reason as
-     * `versionId`: the seed's versions must predate the sessions that pin
-     * them. Defaults to now.
-     */
     publishedAt?: Date;
   },
 ) => Effect.Effect<
@@ -774,8 +668,6 @@ export const publishDraft: (
       issues: assembled.issues,
     } satisfies PublishResult;
   }
-  // The same placeholder substitution `validateDraft` makes, for the same
-  // reason: publication checks the protocol's shape, never the key's value.
   const validation = yield* Effect.promise(() =>
     validateProtocol(
       withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
@@ -838,8 +730,8 @@ export const publishDraft: (
     });
   }
 
-  // The line's own lock: it serializes two publishes of one protocol, which is
-  // what makes the version number below consecutive rather than colliding.
+  // The line's own lock serializes two publishes of one protocol, so the version
+  // number below is consecutive rather than colliding.
   yield* tx
     .select({ id: protocols.id })
     .from(protocols)
@@ -918,9 +810,6 @@ export const publishDraft: (
     }),
   );
   if (pins.length > 0) {
-    // One statement rather than one per section: no `ON CONFLICT`, and a
-    // manifest cannot name a section id twice, so the multi-row insert says
-    // exactly what the loop said.
     const written = yield* tx
       .insert(versionSections)
       .values(pins)
@@ -1050,11 +939,8 @@ export const listVersions: (
 }, sqlErrorsOnly);
 
 /**
- * Whether the caller may open one protocol line at all. A boolean rather
- * than a row, because callers answer every false the same way: a line in
- * another team, a line behind a study the caller holds no grant on, and a
- * line that does not exist are one refusal, so this is no more an existence
- * oracle than `studies.get` is.
+ * A boolean: another team's line, an ungranted one and a missing one are one
+ * refusal, so this is no existence oracle.
  */
 export const isReachableByCaller: (
   teamId: string,
@@ -1077,12 +963,6 @@ export const isReachableByCaller: (
   return rows.length === 1;
 }, sqlErrorsOnly);
 
-/**
- * The draft a protocol line is edited through — its newest, by the same
- * ordering `listProtocols` shows. The protocol-builder contract names a
- * protocol and never a draft, so the server picks one, and it must pick the
- * one the rest of the app calls current.
- */
 export const latestDraftId: (
   teamId: string,
   protocolId: string,
@@ -1113,8 +993,6 @@ export const listProtocols: (
   'protocol.store.listProtocols',
 )(function* (teamId: string, visibility: StudyVisibility) {
   const { tx } = yield* Transaction;
-  // The line's newest draft, as `latestDraftId` picks it — correlated, so a
-  // line with no draft still lists with a null one.
   const newestDraft = qb
     .select({ draftId: protocolDrafts.draftId })
     .from(protocolDrafts)
@@ -1181,7 +1059,6 @@ export const diffVersions: (
   });
 });
 
-/** Section documents are left for garbage collection. */
 export const discardDraft: (
   teamId: string,
   draftId: string,
@@ -1202,9 +1079,7 @@ export const discardDraft: (
     .delete(commandLog)
     .where(and(eq(commandLog.draftId, draftId), eq(commandLog.teamId, teamId)))
     .returning({ id: commandLog.id });
-  // Before the draft row, which the log's foreign key names. Replay is
-  // meaningful only while the draft it describes exists, and so is the
-  // receipt that tells a retried write what it already committed.
+  // Before the draft row, which the log's foreign key names.
   yield* tx
     .delete(protocolEvents)
     .where(
@@ -1236,10 +1111,6 @@ export const discardDraft: (
     .delete(manifests)
     .where(and(eq(manifests.draftId, draftId), eq(manifests.teamId, teamId)))
     .returning({ seq: manifests.seq });
-  // Discarding a draft that is not there is not an error — a repeated discard
-  // is the same request twice — so the rows are not inspected. `.returning()`
-  // all the same: the builder's answer without it is the driver's result
-  // object, typed as a row array and not one.
   yield* tx
     .delete(drafts)
     .where(and(eq(drafts.id, draftId), eq(drafts.teamId, teamId)))

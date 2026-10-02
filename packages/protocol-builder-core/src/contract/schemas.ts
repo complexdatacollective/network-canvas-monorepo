@@ -151,7 +151,6 @@ const LockEventSchema = Schema.Struct({
   cursor: Schema.optionalKey(CursorSchema),
 });
 
-/** Not replayable, so it carries no cursor: a watcher is sent the current one. */
 const PresenceEventSchema = Schema.Struct({
   type: Schema.Literal('presence'),
   present: Schema.Array(PresenceSchema),
@@ -252,7 +251,7 @@ const EditIdSchema = NonEmptyString;
  * request it is. The bound belongs here, where every host inherits it, rather
  * than in the one host that happens to have a column.
  */
-const RequestIdSchema = Schema.String.check(Schema.isLengthBetween(1, 512));
+const RequestIdSchema = Schema.String.check(Schema.isBetweenLength(1, 512));
 
 /**
  * The staged resources a submit commits along with the section naming them.
@@ -405,7 +404,6 @@ export const StageResourceInputSchema = Schema.Struct({
         }),
       ),
       contentType: NonEmptyString,
-      /** Base64 on a JSON transport. */
       bytes: Schema.Uint8Array,
     }),
     Schema.Struct({

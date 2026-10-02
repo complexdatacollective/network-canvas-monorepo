@@ -149,9 +149,6 @@ export default function AcceptInvitation(props: { invitationId: string }) {
   const [accepted, setAccepted] = useState<AcceptedInvitation | null>(null);
   const [activationFailed, setActivationFailed] = useState(false);
   const [error, setError] = useState<'accept' | 'signOut' | null>(null);
-  // The link's own id, checked before anything is asked of it: an id this
-  // schema refuses could not have been minted here, and the screen says the
-  // link is not valid rather than sending it.
   const invitationId = TeamInvitationId.makeOption(props.invitationId);
 
   const useDifferentAccount = async () => {

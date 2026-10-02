@@ -5,20 +5,13 @@ import { test } from 'vitest';
 
 import { workspaceManifests } from '../release/changeset-app-utils.mjs';
 
-// A package-scoped turbo key or an oxlint override that names a package or
-// directory nobody has any more fails open: turbo falls back to the generic
-// task and oxlint simply stops applying the rule. Renaming a workspace is how
-// one arrives, so both are held to the tree here.
-
 const REPO_ROOT = new URL('../../', import.meta.url);
 
-/** Everything before a glob's first wildcard; the whole string when it has none. */
 const staticPrefix = (glob) => {
   const wildcard = glob.search(/[*?{[]/u);
   return wildcard === -1 ? glob : glob.slice(0, wildcard);
 };
 
-/** Both files carry full-line `//` comments only. */
 const readCommentedJson = (name) =>
   JSON.parse(
     readFileSync(new URL(name, REPO_ROOT), 'utf8')

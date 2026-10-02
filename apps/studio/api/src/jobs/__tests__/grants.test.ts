@@ -14,21 +14,6 @@ import {
   readJobs,
 } from './support.ts';
 
-// The role boundary, on a real Postgres. The application may create a job and
-// learn its id, and nothing more: it cannot read a payload, claim a job, or
-// change one. This is the objection that kept Studio off a queue library at
-// all (#1895) — the job table is one table for every team, so a role that can
-// read it can read every team's queued work.
-//
-// The role is pinned with `set local role` rather than a startup parameter,
-// because `@effect/sql-pg` rc.115 has none (see src/db/tenant.ts). That is exactly
-// what these cases exercise: the grants bite because the transaction is
-// running as `studio_app`.
-
-// The SQLSTATE is read with the queue's own `exitSqlState` (errors.ts) rather
-// than a reader of this suite's own: a refusal these cases name has to be the
-// one the production code would classify, and two readers could disagree.
-
 const db = await reachableDb();
 
 describe.skipIf(!db)('what each role may do with a job', () => {
@@ -62,8 +47,6 @@ describe.skipIf(!db)('what each role may do with a job', () => {
           ),
         );
         assert.isString(id);
-        // The owner can see it; the application that wrote it cannot read it
-        // back, which the next case proves.
         assert.strictEqual((yield* readJobs('invitation-delivery')).length, 1);
       }).pipe(Effect.provide(jobsLayer)),
     );
@@ -85,8 +68,6 @@ describe.skipIf(!db)('what each role may do with a job', () => {
         );
         assert.strictEqual(exitSqlState(state), INSUFFICIENT_PRIVILEGE);
 
-        // The one column it may read, so the three refusals above are not an
-        // artefact of the table being unreadable altogether.
         const ids = yield* asAppSql(
           (sql, schema) => sql`SELECT id FROM ${sql(schema)}.jobs`,
         );

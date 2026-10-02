@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { Effect, Result, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { VariableNameSchema } from '@codaco/shared-consts';
 import {
@@ -20,12 +20,6 @@ import { Transaction } from '../db/tenant.ts';
 
 const { drafts, leases, manifests, sections } = SYNC_TABLES;
 
-/**
- * Something the draft's structure will not allow: a stage that is already
- * there, an index off the end of the order, a section the manifest names but
- * the store has lost. A typed failure rather than a thrown error, because
- * every one of them is an answer a caller acts on.
- */
 export class DraftStructureError extends Schema.TaggedError<DraftStructureError>()(
   'DraftStructureError',
   { reason: Schema.String },
@@ -35,12 +29,6 @@ export class DraftStructureError extends Schema.TaggedError<DraftStructureError>
   }
 }
 
-/**
- * The draft moved on since the caller read it: the revision it named is not
- * the head. Its own error rather than a `DraftStructureError`, because it is
- * the one structural refusal a caller can act on — re-read and retry — and the
- * rpc plane answers it as a `Conflict` the client branches on.
- */
 export class DraftRevisionConflict extends Schema.TaggedError<DraftRevisionConflict>()(
   'DraftRevisionConflict',
   { expected: Schema.String, current: Schema.String },
@@ -58,12 +46,6 @@ export type HeadState = {
   sectionHashes: Record<string, string>;
 };
 
-/**
- * The draft's head, locked for the rest of the transaction. Every path that
- * advances the manifest takes this first, so commits cannot fork the chain —
- * and the protocol-builder host allocates its event cursors under it too, so
- * one draft's events carry one gapless order.
- */
 export const lockDraftHead: (
   teamId: string,
   draftId: string,
@@ -105,8 +87,6 @@ export const lockDraftHead: (
     });
   }
   return {
-    // `head_seq` is a `bigint` column read through the builder, which decodes
-    // it as a `bigint` — the string this used to widen by hand.
     headSeq: draft.headSeq,
     headManifestHash: draft.headManifestHash,
     sectionHashes: { ...row.sectionHashes },
@@ -134,11 +114,6 @@ const loadDoc = Effect.fn('protocol.store.loadDoc')(function* (
 const StageOrder = Schema.Array(Schema.String);
 const decodeStageOrder = Schema.decodeUnknownResult(StageOrder);
 
-/**
- * The stage order a `stageOrder` section carries. A document that is not a
- * list of ids is a draft nothing can advance, so it fails rather than throws:
- * every caller here is already in the error channel.
- */
 const stageOrderOf = (
   doc: SectionDoc,
 ): Effect.Effect<readonly string[], DraftStructureError> => {
@@ -152,12 +127,6 @@ const stageOrderOf = (
       );
 };
 
-/**
- * A synchronous section validation as a typed failure. `assertSectionValid`
- * throws — it is shared with the sync server, which catches — and a throw
- * inside a generator body would arrive as a defect, which no caller can
- * answer and no test can assert on the way this suite does.
- */
 export const failOnSectionValidation = (
   assert: () => void,
 ): Effect.Effect<void, SectionValidationFailedError> =>
@@ -174,8 +143,7 @@ export const failOnSectionValidation = (
   });
 
 // Expiry AND an epoch bump: expiring alone would let the holder's queued
-// commits race the expiry check, and a removed-then-re-added section would
-// accept the old owner's stale edits.
+// commits race the expiry check.
 export const fenceDraftLeases: (
   teamId: string,
   draftId: string,
@@ -183,8 +151,7 @@ export const fenceDraftLeases: (
 ) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
   'protocol.store.fenceDraftLeases',
 )(function* (teamId: string, draftId: string, sectionIds: string[]) {
-  // `IN ()` is not a statement Postgres has; an empty fence is no statement.
-  // `= ANY($2)` over an empty array matched nothing, so this is the same.
+  // `IN ()` is not a statement Postgres has.
   if (sectionIds.length === 0) return;
   const { tx } = yield* Transaction;
   yield* tx
@@ -197,18 +164,9 @@ export const fenceDraftLeases: (
         eq(leases.teamId, teamId),
       ),
     )
-    // Fencing nothing is normal — a section nobody holds a lease on — so the
-    // rows are not inspected. `.returning()` all the same: without it the
-    // builder's answer is the driver's result object, and a later reader of
-    // this value would be reading a lie.
     .returning({ sectionId: leases.sectionId });
 }, sqlErrorsOnly);
 
-/**
- * Writes and removals as one new manifest revision. Also the protocol-builder
- * host's write path, whose `create` and compound refactors land several
- * sections at one sequence.
- */
 export const advanceDraftManifest: (
   teamId: string,
   draftId: string,
@@ -223,9 +181,6 @@ export const advanceDraftManifest: (
     head: HeadState,
     newSections: Record<string, SectionDoc>,
     removedSectionIds: string[],
-    // Dates the new sections for a caller that knows when the edit was made
-    // (the synthetic-data seed); a live command leaves it unset and takes the
-    // clock. Same contract as insertDraftRows.
     createdAt?: Date,
   ) {
     const { tx } = yield* Transaction;
@@ -234,8 +189,8 @@ export const advanceDraftManifest: (
     for (const id of removedSectionIds) {
       delete sectionHashes[id];
     }
-    // One upsert per document, for the reason `insertDraftRows` gives: two
-    // sections of one revision may hold the same document.
+    // One upsert per document: two sections of one revision may hold the same
+    // document.
     for (const [id, doc] of Object.entries(newSections)) {
       const hash = contentHash(doc);
       sectionHashes[id] = hash;
@@ -288,7 +243,6 @@ export const addStage: (
     draftId: string;
     stage: SectionDoc;
     index?: number;
-    /** When the stage was added, for a caller that must say so (the seed). */
     createdAt?: Date;
   },
 ) => Effect.Effect<
@@ -353,7 +307,6 @@ export const removeStage: (
   params: {
     draftId: string;
     stageId: string;
-    /** When the stage was removed, for a caller that must say so (the seed). */
     createdAt?: Date;
   },
 ) => Effect.Effect<

@@ -1,6 +1,6 @@
 import { and, eq, or, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
 
@@ -8,27 +8,11 @@ import { AUTH_TABLES } from '../db/auth-schema.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
 
-// The team tier's reads and writes, as spans on the caller's own transaction
-// (#1927 §10). Every one of them requires `Transaction`, which only the scopes
-// in `db/tenant.ts` provide, so a statement here cannot reach a connection the
-// command that called it is not committing on — the guarantee the
-// `pg.PoolClient` parameter it replaces asked every caller to remember.
+// `sqlErrorsOnly` on every span: the drizzle error message interpolates every
+// bind parameter, here email addresses and member ids.
 //
-// Two conventions the whole module keeps:
-//
-//   * `sqlErrorsOnly` on every span. The drizzle builder re-raises a failed
-//     statement as an `EffectDrizzleQueryError` whose message interpolates the
-//     query text and every bind parameter — here, invitation email addresses
-//     and member identifiers — into anything that logs it.
-//   * `.returning()` on every write whose outcome is inspected. Without it the
-//     builder answers with the driver's own result object, which is *typed* as
-//     a row array and is not one, so `rows.length !== 1` would never be true
-//     and every "this locked row disappeared" check would silently invert.
-//
-// The invitation lifetime is the database's clock throughout —
-// `clock_timestamp()`, never a JavaScript `Date`. An application host running
-// behind must not be able to accept an invitation Postgres considers expired,
-// and the only way to keep that true is to never let the comparison leave SQL.
+// The invitation lifetime is the database's clock throughout, never a
+// JavaScript `Date`.
 
 const {
   team_members: teamMembers,
@@ -61,7 +45,6 @@ export type LockedMembershipSet = {
   existing: LockedMember | null;
 };
 
-/** The columns a locked membership row is read as, everywhere below. */
 const memberColumns = {
   id: teamMembers.id,
   userId: teamMembers.user_id,
@@ -70,16 +53,6 @@ const memberColumns = {
   email: user.email,
 } as const;
 
-/**
- * The team an invitation belongs to, or null for an id no invitation carries.
- *
- * The one read on this path that cannot be tenant-stamped: the caller is not a
- * member of anything yet and the browser supplies only the opaque id, so the
- * team is what this resolves. `team_invitations` is better-auth's table and
- * carries no row-level-security policy, which is why an untenanted transaction
- * can see it at all — every table that does carry one fails closed without the
- * GUC (`studio-sync/src/rls.ts`).
- */
 export const findInvitationTeam: (
   invitationId: string,
 ) => Effect.Effect<string | null, SqlError.SqlError, Transaction> = Effect.fn(
@@ -94,14 +67,8 @@ export const findInvitationTeam: (
 }, sqlErrorsOnly);
 
 /**
- * The actor's and the target's membership rows, locked together in one
- * statement ordered by id.
- *
- * One statement rather than two, because two would take the rows in whichever
- * order each concurrent command happened to ask for them, and two commands
- * asking for the same pair in opposite orders deadlock. `ORDER BY` fixes a
- * global order; `FOR UPDATE OF` names only the membership rows, so the join to
- * `"user"` does not lock a user row that has nothing to do with this team.
+ * One statement ordered by id: two commands locking the same pair in opposite
+ * orders would deadlock.
  */
 export const lockActorAndTarget: (input: {
   teamId: string;
@@ -138,7 +105,6 @@ export const lockActorAndTarget: (input: {
   };
 }, sqlErrorsOnly);
 
-/** The actor's own membership row, locked. Null when they are not a member. */
 export const lockActor: (
   teamId: string,
   actorUserId: string,
@@ -163,24 +129,8 @@ export const lockActor: (
   }, sqlErrorsOnly);
 
 /**
- * How many owners the team has, with every one of their rows locked.
- *
- * The lock is the point: the count decides whether a demotion would leave the
- * team ownerless, and two owners demoting themselves at once must not both
- * read two. Locking every owner row serialises them, so the second reads one.
- *
- * Better Auth stores roles as one comma-separated string, which is why the
- * predicate splits rather than compares: `role = 'owner'` would miss a legacy
- * `owner,admin` row and let the team be left with no owner at all.
- *
- * The lock is belt to `audited`'s braces, and no suite can tell them apart.
- * Every audited command takes the team's advisory lock before its body runs
- * (`audit/audited.ts`), which already serialises two demotions of the same
- * team — measured: removing `.for('update')` here leaves
- * `team/__tests__/commands.test.ts` green, while removing `lockTeam` fails two
- * of its cases. It stays because a caller that reaches this store outside an
- * audited command would otherwise have nothing, and because the row lock is
- * what the count actually means.
+ * Better Auth stores roles as one comma-separated string: `role = 'owner'`
+ * would miss a legacy `owner,admin` row.
  */
 export const countLockedOwners: (
   teamId: string,
@@ -222,10 +172,6 @@ export const updateMemberRole: (input: {
     )
     .returning({ id: teamMembers.id });
   if (updated.length !== 1) {
-    // The caller locked this row a statement ago, so nothing may have removed
-    // it. A defect rather than a failure: there is no state a caller could
-    // recover to, and the command must not commit a role change that the
-    // database did not make.
     return yield* Effect.die(
       new Error('locked team member disappeared before update'),
     );
@@ -281,9 +227,7 @@ export const countLivePendingInvitations: (
   'team.store.countLivePendingInvitations',
 )(function* (teamId: string) {
   const { tx } = yield* Transaction;
-  // `::int` is not decoration: `count(*)` is `int8`, which the driver decodes
-  // as a `bigint`, and every comparison against the invitation ceiling would
-  // then be a number against a bigint.
+  // `::int`: `count(*)` is `int8`, which the driver decodes as a `bigint`.
   const rows = yield* tx
     .select({ count: sql<number>`count(*)::int` })
     .from(teamInvitations)
@@ -321,10 +265,6 @@ export const createInvitation: (input: {
       email: input.email,
       role: input.role,
       status: 'pending',
-      // The database's clock, and the database's arithmetic: the outbox row
-      // the delivery enqueue checks itself against carries this instant, and a
-      // lifetime computed on a host whose clock drifts would disagree with
-      // every later `expires_at > clock_timestamp()`.
       expires_at: sql`clock_timestamp() + INTERVAL '48 hours'`,
       inviter_id: input.inviterId,
     })
@@ -342,11 +282,6 @@ export const createInvitation: (input: {
   return row;
 }, sqlErrorsOnly);
 
-/**
- * The label an audit event names an invitation by, read without taking its
- * lock — a refusal that could not get the lock still has to say which
- * invitation it refused. Null when the team has no such invitation.
- */
 export const readInvitationLabel: (
   teamId: string,
   invitationId: string,
@@ -367,15 +302,8 @@ export const readInvitationLabel: (
 }, sqlErrorsOnly);
 
 /**
- * `nowait` is what cancellation asks for: the delivery handler holds this same
- * row for the length of its SMTP call (#1895), and a cancel that waited would
- * hold the team's audit lock behind a send. Postgres answers 55P03 instead,
- * which the command turns into its delivery-in-progress refusal. Acceptance
- * keeps the blocking lock: it has no send to wait behind.
- *
- * `isLive` is computed in SQL for the reason the whole module keeps the clock
- * in the database: an application host running behind must not be able to
- * accept an invitation Postgres considers expired.
+ * `nowait`: the delivery handler holds this row for its SMTP call, and a cancel
+ * that waited would hold the team's audit lock behind a send.
  */
 export const lockInvitation: (
   teamId: string,
@@ -414,15 +342,6 @@ export const lockInvitation: (
   return rows[0] ?? null;
 }, sqlErrorsOnly);
 
-/**
- * Every membership row in the team, locked, plus the caller's own if they have
- * one.
- *
- * The whole set rather than one row because acceptance decides against the
- * team's membership ceiling as well as against the caller's own membership,
- * and a count taken outside the lock is one another acceptance can invalidate
- * before this one commits.
- */
 export const lockMembershipSet: (
   teamId: string,
   userId: string,

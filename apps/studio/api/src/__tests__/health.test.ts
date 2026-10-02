@@ -1,18 +1,17 @@
 import { afterAll, describe, expect, it } from '@effect/vitest';
-import { Effect, Fiber } from 'effect';
+import { Effect, Fiber, Layer, ManagedRuntime } from 'effect';
 import { TestClock } from 'effect/testing';
-import type pg from 'pg';
 
 import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { createStudio } from '../app.ts';
-import { OwnerDatabase } from '../db/client.ts';
+import { OwnerDatabase, ReadinessDatabase } from '../db/client.ts';
 import { migrateDatabaseEffect } from '../db/migrate.ts';
-import { createOwnerPool } from '../db/pool.ts';
 import { resolve } from '../env/resolve.ts';
 import {
+  databaseCheck,
   type HealthChecks,
   readiness,
-  schemaCheckOnPool,
+  schemaCheckOn,
 } from '../http/health.ts';
 import { freePort } from './support/entrypoint.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
@@ -24,14 +23,9 @@ import {
   REDIS_DATABASES,
 } from './support/valkey.ts';
 
-// Liveness and readiness on the web process (#1897, #1909). The worker serves
-// the same two routes on a loopback listener of its own, which only a real
-// process can show — that half is in worker-entrypoint.test.ts.
-
 const db = await reachableDb();
 const redis = await reachableRedis(REDIS_DATABASES.health);
 
-/** Rendering the DDL imports drizzle-kit; the migrate itself takes a second. */
 const PROVISION_TIMEOUT_MS = 180_000;
 
 const AUTH = {
@@ -39,15 +33,12 @@ const AUTH = {
   PUBLIC_URL: 'http://127.0.0.1:3000',
 };
 
-/** The composed stack this process serves, for a case that reads a route. */
 async function request(
   variables: Parameters<typeof resolve>[0],
   path: string,
   extraChecks: HealthChecks = {},
 ): Promise<{ response: Response; dispose: () => Promise<void> }> {
   const env = resolve(variables);
-  // The limiter the program would build: over `REDIS_URL`'s store when the
-  // variables name one, over no store when they do not.
   const limits = await openRateLimitStore(env.redis);
   const studio = createStudio(env, { limiter: limits.limiter() });
   const stack = composeStudio(env, studio, {
@@ -63,6 +54,14 @@ async function request(
   };
 }
 
+async function readinessOver(url: string) {
+  const runtime = ManagedRuntime.make(
+    Layer.orDie(ReadinessDatabase.layer('app', { url })),
+  );
+  const { sql } = await runtime.runPromise(ReadinessDatabase);
+  return { sql, dispose: () => runtime.dispose() };
+}
+
 const ok = Effect.succeed('ok' as const);
 
 describe('a readiness verdict', () => {
@@ -76,10 +75,6 @@ describe('a readiness verdict', () => {
   );
 
   it.effect('is degraded, not failing, when a check reports degraded', () =>
-    // The shape the Valkey limiter reports: it fails open, so losing it
-    // changes what a deployment enforces without making the process unfit to
-    // serve — and taking the container out of rotation for it would turn a
-    // rate-limit outage into an availability one.
     Effect.gen(function* () {
       expect(
         yield* readiness({ db: ok, limiter: Effect.succeed('degraded') }),
@@ -91,8 +86,6 @@ describe('a readiness verdict', () => {
   );
 
   it.effect('names the reason a check failed', () =>
-    // Naming it is the point: an operator reading a 503 has to learn which
-    // dependency, from the response, without a shell on the container.
     Effect.gen(function* () {
       const result = yield* readiness({
         db: Effect.fail(new Error('connect ECONNREFUSED')),
@@ -105,12 +98,6 @@ describe('a readiness verdict', () => {
   );
 
   it.effect('fails a check that hangs rather than hanging with it', () =>
-    // A wedged socket is the case this exists for: without the bound, the
-    // probe times out at the runtime's deadline with nothing to say, and every
-    // check's verdict is lost along with the one that hung.
-    //
-    // Mutation: drop the `Effect.timeoutOrElse` and this never resolves, even
-    // with the clock moved a second forward.
     Effect.gen(function* () {
       const running = yield* Effect.forkChild(
         readiness({ db: Effect.never, schema: ok }),
@@ -119,51 +106,38 @@ describe('a readiness verdict', () => {
       const result = yield* Fiber.join(running);
       expect(result.status).toBe('failing');
       expect(result.checks.db).toBe('failed: timed out after 1000ms');
-      // The others still answered, which is what running them concurrently
-      // buys.
       expect(result.checks.schema).toBe('ok');
     }),
   );
 });
 
-describe('the schema check over a pool', () => {
-  it('names the database error when the pool cannot connect', async () => {
-    // What a worker container's `/readyz` says when Postgres is down — the
-    // only diagnostic it exposes, so the reason has to be the driver's.
-    // Mutation: build the read with `Effect.tryPromise(() => checkSchema(pool))`
-    // (the one-thunk form) and the reason becomes Effect's own
-    // `An error occurred in Effect.tryPromise` instead of the address that
-    // refused.
-    const pool = createOwnerPool({
-      url: 'postgres://studio:studio@127.0.0.1:59999/studio',
-    });
+describe('the schema check on the readiness client', () => {
+  it('names the database error when it cannot connect', async () => {
+    const probe = await readinessOver(
+      'postgres://studio:studio@127.0.0.1:59999/studio',
+    );
     try {
       const result = await Effect.runPromise(
-        readiness({ schema: schemaCheckOnPool(pool) }),
+        readiness({ schema: schemaCheckOn(probe.sql) }),
       );
       expect(result.status).toBe('failing');
       expect(result.checks.schema).toMatch(
         /^failed: connect ECONNREFUSED 127\.0\.0\.1:59999/,
       );
     } finally {
-      await pool.end();
+      await probe.dispose();
     }
   });
 });
 
 describe('the web process routes', () => {
   it('answers /healthz without asking anything', async () => {
-    // Liveness: a process that answers is running. It must not consult a
-    // dependency — a container runtime restarts on this, and restarting a
-    // healthy process because Postgres is down is how an outage doubles.
     const { response, dispose } = await request(
       { NODE_ENV: 'test' },
       '/healthz',
     );
     try {
       expect(response.status).toBe(200);
-      // Byte-identical to what the route has always answered, because a container
-      // healthcheck may be a literal string comparison.
       expect(await response.text()).toBe('{"status":"ok"}');
     } finally {
       await dispose();
@@ -171,9 +145,6 @@ describe('the web process routes', () => {
   });
 
   it('omits a check for a surface this deployment has not configured', async () => {
-    // No database and no object store: both refuse by design, and reporting
-    // them failed would make a deployment that never wanted one permanently
-    // unready.
     const { response, dispose } = await request(
       { NODE_ENV: 'test' },
       '/readyz',
@@ -187,9 +158,6 @@ describe('the web process routes', () => {
   });
 
   it('omits the limiter where no rate-limit store is configured', async () => {
-    // The same rule every other unconfigured surface takes: nothing is
-    // enforced, nothing is checked, and an instance that never wanted a store
-    // is not permanently degraded for not having one.
     const { response, dispose } = await request(
       { NODE_ENV: 'test' },
       '/readyz',
@@ -202,10 +170,6 @@ describe('the web process routes', () => {
   });
 
   it('is degraded, and still 200, when the rate-limit store is unreachable', async () => {
-    // The limiter fails open (#1909), so the process still serves every
-    // request — it just stops enforcing a limit. Answering 503 here would
-    // take the container out of rotation and turn a rate-limit outage into an
-    // availability one.
     const env = resolve({
       NODE_ENV: 'test',
       REDIS_URL: `redis://127.0.0.1:${await freePort()}`,
@@ -220,7 +184,6 @@ describe('the web process routes', () => {
         status: 'degraded',
         checks: { limiter: 'degraded' },
       });
-      // And a request still goes through, which is what degraded means here.
       expect((await stack.request('/api/v1/status')).status).toBe(200);
     } finally {
       await stack.dispose();
@@ -248,17 +211,14 @@ describe('the web process routes', () => {
   );
 
   it('is 503 and names the database when the pool cannot connect', async () => {
-    // An unroutable loopback port: nothing answers it, and nothing real is
-    // dialled.
     const env = resolve({
       NODE_ENV: 'test',
       DATABASE_URL: 'postgres://studio:studio@127.0.0.1:59999/studio',
-      // A database needs a keyring (#1900); the check under test never
-      // reaches it.
       STUDIO_SECRETS_KEY: testKeyringEntry('test-1'),
       ...AUTH,
     });
-    const studio = createStudio(env);
+    const probe = await readinessOver(env.db!.url);
+    const studio = createStudio(env, { readiness: probe.sql });
     const stack = composeStudio(env, studio);
     try {
       const response = await stack.request('/readyz');
@@ -270,11 +230,10 @@ describe('the web process routes', () => {
       expect(body.status).toBe('failing');
       expect(body.checks.db).toMatch(/^failed: /);
 
-      // And liveness is unaffected: the process is running, the database is
-      // not.
       expect((await stack.request('/healthz')).status).toBe(200);
     } finally {
       await stack.dispose();
+      await probe.dispose();
     }
   });
 });
@@ -295,19 +254,17 @@ describe.skipIf(!db)('the web process against a real database', () => {
       const variables = {
         NODE_ENV: 'test',
         DATABASE_URL: scratch.db.url,
-        // A database needs a keyring (#1900); nothing here opens a secret.
         STUDIO_SECRETS_KEY: testKeyringEntry('test-1'),
         ...AUTH,
       } as const;
 
-      // The `schema` check is the program's, not the app's, so the suite
-      // supplies it the same way the worker program does — from a fresh read
-      // of the fingerprint on the pool.
-      const schema = (pool: pg.Pool) => ({ schema: schemaCheckOnPool(pool) });
+      const probe = await readinessOver(scratch.db.url);
+      const checks = {
+        db: databaseCheck(probe.sql),
+        schema: schemaCheckOn(probe.sql),
+      };
 
-      // Before the schema exists, readiness says so by name rather than
-      // reporting a healthy process with nothing behind it.
-      const before = await request(variables, '/readyz', schema(scratch.pool));
+      const before = await request(variables, '/readyz', checks);
       try {
         expect(before.response.status).toBe(503);
         expect(
@@ -328,9 +285,7 @@ describe.skipIf(!db)('the web process against a real database', () => {
         ),
       );
 
-      // A second app, because the first one's pool is pinned to studio_app and
-      // was refused at connect before that role existed.
-      const after = await request(variables, '/readyz', schema(scratch.pool));
+      const after = await request(variables, '/readyz', checks);
       try {
         expect(after.response.status).toBe(200);
         expect(await after.response.json()).toEqual({
@@ -339,6 +294,7 @@ describe.skipIf(!db)('the web process against a real database', () => {
         });
       } finally {
         await after.dispose();
+        await probe.dispose();
       }
     },
     PROVISION_TIMEOUT_MS,

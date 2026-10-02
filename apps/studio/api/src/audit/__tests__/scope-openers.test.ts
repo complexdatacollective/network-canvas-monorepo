@@ -14,13 +14,6 @@ import {
 } from '../../__tests__/support/source-spans.ts';
 import { sourceTokens } from '../../__tests__/support/source-tokens.ts';
 
-// The other half of the no-audit registry (`audit/transaction-policy.ts`).
-// That registry names the transactions opened through `noAuditTransaction` /
-// `noAuditMaintenanceTransaction`, and `audit/policy.ts` names every `audited`
-// command; a scope opened directly goes through neither, so it is pinned here
-// instead — each with the reason it needs no audit event (a read, the queue's
-// own bookkeeping, a row that belongs to no team). Tests are not inventoried.
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER_ROOT = resolve(HERE, '../../..');
 const REPO_ROOT = resolve(SERVER_ROOT, '../../..');
@@ -33,29 +26,12 @@ const SCOPES = new Set([
   'savepoint',
 ]);
 
-/**
- * The modules that are the mechanism rather than a caller: `db/tenant.ts`
- * declares the scopes, and `audit/audited.ts` / `audit/no-audit.ts` are the two
- * seams the audit policies already cover — every `audited` command is named in
- * `audit/policy.ts`, every `noAuditTransaction` operation in
- * `audit/transaction-policy.ts`. `withTransaction` is collected in these too.
- */
 const MECHANISM = new Set([
   'apps/studio/api/src/db/tenant.ts',
   'apps/studio/api/src/audit/audited.ts',
   'apps/studio/api/src/audit/no-audit.ts',
 ]);
 
-/**
- * Every way `source` opens a transaction other than through the two audit
- * seams, by the `Effect.fn` it sits in (`null` outside one) and the opener:
- * `TenantScope.open`, `MaintenanceScope.openTenant` and so on, `savepoint`,
- * `withTransaction` — the `SqlClient`'s own, which would open one without
- * `pinSession`'s role and search path — and drizzle's `.transaction(`, which
- * delegates to it. A scope named without a member (handed
- * on, aliased, destructured) is `TenantScope` alone, and a renaming import is
- * counted where it is, so a call under another name cannot go unseen.
- */
 function openers(
   source: string,
   { scopes }: { scopes: boolean },
@@ -85,7 +61,6 @@ function openers(
     if (!scopes || !SCOPES.has(token.raw)) continue;
     if (inClause && tokens[index + 1]?.raw !== 'as') continue;
     if (tokens[index - 1]?.kind === SyntaxKind.ConstKeyword) continue;
-    // A property of something else (`open.savepoint`) is not the scope.
     if (tokens[index - 1]?.kind === SyntaxKind.DotToken) continue;
     const member =
       !inClause &&
@@ -123,14 +98,6 @@ function inventory(): Map<string, number> {
 
 const SERVER = 'apps/studio/api';
 
-/**
- * Every transaction opened other than through `audited` or
- * `noAuditTransaction` / `noAuditMaintenanceTransaction`, and why it needs
- * neither. Keyed by file, the `Effect.fn` it sits in where there is one, and
- * the opener; the count is how many times it is named there. Exact in both
- * directions: a new direct opener fails until it is listed here with its
- * reason, and an entry whose opener has gone fails until it is removed.
- */
 const OPENERS: Record<string, { count: number; why: string }> = {
   [`${SERVER}/src/db/tenant.ts › transaction`]: {
     count: 2,
@@ -145,8 +112,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: "better-auth's `transaction()` handed to the bridge, which opens it as `sql-bridge.ts`'s untenanted scope: sign-up, OAuth linking and the like on the auth tables, which belong to no team",
   },
   [`${SERVER}/src/auth/sql-bridge.ts › UntenantedScope.open`]: {
-    count: 2,
-    why: "better-auth's adapter: one pinned transaction per statement outside better-auth's `transaction()`, and one around the whole callback inside it — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
+    count: 1,
+    why: "better-auth's adapter: the transaction around a `transaction()` callback — auth tables, no team, and no audit event of Studio's (better-auth's organization mutations are gated at the mount by `audit/better-auth-policy.ts`)",
   },
   [`${SERVER}/src/app.ts › UntenantedScope.open`]: {
     count: 1,
@@ -184,11 +151,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
   [`${SERVER}/src/auth/service.ts › auth.sendMagicLink › UntenantedScope.open`]:
     {
       count: 1,
-      why: 'the magic-link hook enqueueing a sign-in mail in a transaction of its own, because better-auth calls it outside any adapter transaction; it belongs to no team, and the scope only pins the application role',
+      why: 'the magic-link hook enqueueing a sign-in mail in a transaction of its own, because better-auth calls it outside any adapter transaction; it belongs to no team, and `Jobs.enqueue` requires a transaction',
     },
   [`${SERVER}/src/auth/service.ts › UntenantedScope.open`]: {
     count: 1,
-    why: "`AuthService`'s two membership reads over `team_members` (the `pinned` helper both go through), read-only and policy-free; the scope only pins the application role, which a bare statement loses on rc.115",
+    why: "`AuthService`'s two membership reads over `team_members` (the `pinned` helper both go through), read-only and policy-free; the scope is there because both reads require `Transaction`",
   },
   [`${SERVER}/src/jobs/handlers/denied-attempts-summary.ts › loadActor › MaintenanceScope.open`]:
     {
@@ -212,8 +179,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     },
   [`${SERVER}/src/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore › MaintenanceScope.open`]:
     {
-      count: 2,
-      why: 'the sweep’s role probe and its cross-team tenant enumeration, both read-only; its writes go through `noAuditMaintenanceTransaction`',
+      count: 1,
+      why: 'the sweep’s cross-team tenant enumeration, read-only; its writes go through `noAuditMaintenanceTransaction`',
     },
   [`${SERVER}/src/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore › MaintenanceScope.openTenant`]:
     {

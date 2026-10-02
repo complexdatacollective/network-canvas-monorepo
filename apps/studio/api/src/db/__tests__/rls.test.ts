@@ -1,7 +1,3 @@
-// Row-level security across the whole Studio schema: which tables carry the
-// policy, that the application role cannot see past it, and that the
-// tables better-auth manages stay reachable without team context. The sync
-// package proves the same mechanics on its own tables.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -32,7 +28,6 @@ import {
 
 type Row = Record<string, unknown>;
 
-/** Both teams, with one protocol each written by the worker, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach(['team-a', 'team-b'], (teamId) =>
     Effect.andThen(
@@ -49,7 +44,6 @@ const Fixtures = Layer.effectDiscard(
   ),
 ).pipe(Layer.provideMerge(TestDatabaseLive));
 
-/** One statement on the application client with no team stamped. */
 const untenanted = <A extends object = Row>(statement: string) =>
   UntenantedScope.open(
     Effect.flatMap(Transaction, ({ sql }) => sql.unsafe<A>(statement)),
@@ -86,7 +80,6 @@ describe.skipIf(!testDb)('row-level security', () => {
           )
           .map(getTableName)
           .toSorted();
-        // Spelled out so a new tenant table cannot slip in without a policy.
         expect(expected).toEqual([
           'api_tokens',
           'asset_references',
@@ -173,11 +166,6 @@ describe.skipIf(!testDb)('row-level security', () => {
           })),
         );
         const others = rows.filter((row) => !expected.includes(row.table));
-        // The platform-level tables, which belong to the instance rather than to
-        // any team: the schema stamp, the installation row first-run setup writes
-        // (#1909), and the maintenance switch every process reads
-        // (`deployment_state`). None carries a policy, and all are held by grants —
-        // the list is spelled out so a new tenant table cannot join it silently.
         expect(others.map((row) => row.table).toSorted()).toEqual(
           [
             ...authTables,
@@ -206,16 +194,12 @@ describe.skipIf(!testDb)('row-level security', () => {
           );
           expect(first).toEqual([{ team_id: 'team-a' }]);
 
-          // The team is stamped per transaction, so the next one on the same
-          // pooled connection is stamped again rather than left to inherit.
           const second = yield* tenantRows(
             'team-a',
             `SELECT team_id FROM protocols`,
           );
           expect(second).toEqual([{ team_id: 'team-a' }]);
 
-          // The connecting login is the development superuser, which no policy
-          // binds — which is why the server never runs as it.
           const login = yield* ownerRows(
             `SELECT team_id FROM protocols ORDER BY team_id`,
           );
@@ -223,8 +207,6 @@ describe.skipIf(!testDb)('row-level security', () => {
         }),
     );
 
-    // The application client holds one connection, so every scope below runs on
-    // the same backend session, one transaction after another.
     it.effect(
       'shows nothing without team context, before and after a transaction',
       () =>
@@ -246,8 +228,6 @@ describe.skipIf(!testDb)('row-level security', () => {
           );
           expect(stamped).toBe(1);
 
-          // The expired setting reads as '' on this session from now on; the
-          // policy's NULLIF keeps that from matching anything.
           const setting = yield* untenanted(
             `SELECT current_setting('${TEAM_GUC}', true) AS value`,
           );
@@ -291,12 +271,5 @@ describe.skipIf(!testDb)('row-level security', () => {
           expect(teams).toEqual([{ id: 'team-a' }, { id: 'team-b' }]);
         }),
     );
-
-    // "Refuses to garbage-collect as any role but maintenance" lived here while
-    // the sweep was node-postgres over a pool this suite already had. The sweep
-    // is an Effect over a `Database` now, so the claim moved to the suite that
-    // builds one: `src/jobs/handlers/__tests__/protocol-store-gc.test.ts`
-    // refuses the application identity, and refuses a login that may not assume
-    // the role at all — which this case never covered.
   });
 });

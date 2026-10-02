@@ -6,12 +6,7 @@ export type RawResponse = {
   readonly body: Buffer;
 };
 
-/**
- * One request with its path sent exactly as written. `fetch` and `new URL`
- * both normalise a path before it leaves — resolving `./` and `../`, and
- * reading a leading `//` as a host — so a case about how the server matches
- * an unusual path has to bypass them.
- */
+/** `fetch` and `new URL` both normalise a path before it leaves. */
 export function rawRequest(
   origin: string,
   path: string,

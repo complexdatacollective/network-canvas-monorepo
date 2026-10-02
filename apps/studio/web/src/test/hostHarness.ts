@@ -1,10 +1,10 @@
 import { Context, Effect, Layer, ManagedRuntime, Queue } from 'effect';
-import * as NetAddress from 'effect/unstable/net/NetAddress';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
-import * as Socket from 'effect/unstable/socket/Socket';
-import * as SocketServer from 'effect/unstable/socket/SocketServer';
+import * as NetAddress from 'effect/net/NetAddress';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as RpcServer from 'effect/rpc/RpcServer';
+import * as Socket from 'effect/socket/Socket';
+import * as SocketServer from 'effect/socket/SocketServer';
 import { onTestFinished, vi } from 'vitest';
 
 import {
@@ -23,18 +23,8 @@ import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 import { setHostClientLayer } from '../runtime/hostSession.ts';
 import { HostClient } from '../runtime/runtime.ts';
 
-// The protocol builder's host, for the editor's suites: in process, or over the
-// shipped `HostClient.layer` through a WebSocket stand-in whose far end is a
-// real rpc server on the same serialization `/ws` uses.
-
-/** Puts the shipped socket client back once the test is over. */
 const restoreHostClient = () => setHostClientLayer(HostClient.layer);
 
-/**
- * No socket and no serialization: what a handler answers is what the editor
- * gets. `disableFatalDefects` as on Studio's `/ws`, so a handler's defect fails
- * its own call rather than every call on the connection.
- */
 const inProcessClient = Effect.gen(function* () {
   // oxlint-disable-next-line prefer-const
   let client!: Effect.Success<
@@ -54,10 +44,6 @@ const inProcessClient = Effect.gen(function* () {
   return client.client;
 });
 
-/**
- * Serves `handlers` to the editor in process, as the caller `session` names,
- * for the length of the test.
- */
 export async function installInProcessHost(
   handlers: HandlersLayer,
   session: Layer.Layer<HostSession>,
@@ -70,15 +56,12 @@ export async function installInProcessHost(
   onTestFinished(restoreHostClient);
 }
 
-/** Who the browser's cookie says is signed in, as a handshake presents it. */
 export type HostAccount = Readonly<{ userId: string; displayName: string }>;
 
-/** One call the socket server let through its session, and whose it was. */
 export type ServedCall = Readonly<{
   tag: string;
   payload: unknown;
   userId: string;
-  /** Which socket carried it, counting from 1 in the order they opened. */
   socket: number;
 }>;
 
@@ -87,31 +70,19 @@ type ServerLink = Readonly<{
   cut: () => void;
 }>;
 
-/**
- * A WebSocket whose far end, once `installSocketHost` has run, is a real rpc
- * server. It stands in for the browser's own under
- * `Socket.layerWebSocketConstructorGlobal`, so what the client does with it is
- * the shipped layer's behaviour, not a double's.
- */
 export class FakeWebSocket implements Socket.WebSocketLike {
   static readonly CONNECTING = 0;
   static readonly OPEN = 1;
   static readonly CLOSED = 3;
 
-  /**
-   * Whether a socket is open the moment it is constructed. A real one is not —
-   * it is CONNECTING for a round trip, which is the window a call parks in.
-   */
   static openImmediately = true;
   static opened: FakeWebSocket[] = [];
-  /** What a handshake made now would authenticate as; `undefined` is no cookie. */
   static account: HostAccount | undefined;
   static server: ((socket: FakeWebSocket) => ServerLink) | undefined;
 
   readonly url: string;
   readonly account: HostAccount | undefined;
   readyState: number = FakeWebSocket.CONNECTING;
-  /** A half-open connection: nothing crosses in either direction, and nothing closes. */
   frozen = false;
   readonly #listeners = new Map<
     string,
@@ -126,36 +97,30 @@ export class FakeWebSocket implements Socket.WebSocketLike {
     if (FakeWebSocket.openImmediately) this.#connect();
   }
 
-  /** The tab id the upgrade URL names. */
   get clientSession(): string | null {
     return new URL(this.url).searchParams.get(CLIENT_SESSION_PARAM);
   }
 
-  /** Completes the handshake of a socket left CONNECTING. */
   open(): void {
     if (this.readyState !== FakeWebSocket.CONNECTING) return;
     this.#connect();
     this.#dispatch('open', { type: 'open' });
   }
 
-  /** A frame from the server, lost if the connection is frozen. */
   receive(data: Uint8Array): void {
     if (this.frozen || this.readyState !== FakeWebSocket.OPEN) return;
     this.#dispatch('message', { type: 'message', data });
   }
 
-  /** Stops everything crossing without closing anything. */
   freeze(): void {
     this.frozen = true;
   }
 
   /**
-   * The server going away: 1005 is a close frame with no status code, which
-   * is what a deploy's socket close reaches the browser as; 1006 is no close
-   * frame at all — a killed container or a dropped network — which a browser
-   * reports as an error first.
+   * 1000 is a deploy's close, 1005 a close frame with no status code, 1006 no
+   * close frame at all, which a browser reports as an error first.
    */
-  drop(code: 1005 | 1006): void {
+  drop(code: 1000 | 1005 | 1006): void {
     if (this.readyState === FakeWebSocket.CLOSED) return;
     if (code === 1006) this.#dispatch('error', { type: 'error' });
     this.#end(code);
@@ -177,7 +142,6 @@ export class FakeWebSocket implements Socket.WebSocketLike {
     this.#listeners.get(type)?.delete(listener);
   }
 
-  /** Every frame the client put on the wire, whether or not it arrived. */
   readonly sent: Array<string | Uint8Array> = [];
 
   send(data: string | Uint8Array<ArrayBuffer>): void {
@@ -212,13 +176,11 @@ export class FakeWebSocket implements Socket.WebSocketLike {
 
 type Connection = Readonly<{ caller: HostCaller['Service']; socket: number }>;
 
-/** The connection a server-side call arrived on; unset is a handshake with no cookie. */
 const ConnectionCaller = Context.Reference<Connection | undefined>(
   '@studio/test/hostHarness/ConnectionCaller',
   { defaultValue: () => undefined },
 );
 
-/** One direction of a connection, which either end can error. */
 function direction() {
   let controller: TransformStreamDefaultController<Uint8Array> | undefined;
   const stream = new TransformStream<Uint8Array, Uint8Array>({
@@ -232,18 +194,9 @@ function direction() {
 const encoder = new TextEncoder();
 
 export type SocketHost = Readonly<{
-  /** Live: every call the server admitted, in order. */
   served: ReadonlyArray<ServedCall>;
 }>;
 
-/**
- * Serves `handlers` behind `FakeWebSocket` for the length of the test, and
- * makes the shipped `HostClient.layer` the editor's client again.
- *
- * The session reads the account the socket's handshake carried, as Studio's
- * `/ws` reads the upgrade's cookie, and the tab id from its URL — which is also the lock owner, so a tab that
- * reconnects still holds what it held.
- */
 export async function installSocketHost(
   handlers: HandlersLayer,
 ): Promise<SocketHost> {

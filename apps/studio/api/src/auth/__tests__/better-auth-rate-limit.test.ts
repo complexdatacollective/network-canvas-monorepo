@@ -17,19 +17,10 @@ import { RateLimitStore } from '../../rate-limit/store.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
 import { AuthService } from '../service.ts';
 
-// better-auth's per-address sign-in limit runs from better-auth's own promise
-// callbacks (`customStorage` in auth/better-auth.ts), outside any fiber of the
-// program's. What this pins is that the limiter those callbacks reach still
-// runs over the services `AuthService.layer` was built with — so a denial's
-// warning goes through the program's logger, not Effect's default one, which
-// in a deployment is the difference between a JSON line an operator's
-// pipeline reads and plain text it does not.
-
 const url = await reachableRedis(REDIS_DATABASES.authService);
 
 const env = readEnv();
 
-/** Every line logged through this logger, as the message alone. */
 function capturingLogger(lines: string[]): Layer.Layer<never> {
   return Logger.layer([
     Logger.make(({ message }: Logger.Options<unknown>) => {
@@ -40,7 +31,6 @@ function capturingLogger(lines: string[]): Layer.Layer<never> {
   ]);
 }
 
-/** A password sign-in as the browser sends one, through better-auth's handler. */
 const signIn = (email: string) =>
   AuthService.use((auth) =>
     auth.handler(
@@ -78,13 +68,8 @@ describe.skipIf(!testDb || !url)("better-auth's sign-in limit", () => {
           signIn(email),
         ]).pipe(Effect.provide(liveAuth));
 
-        // The first attempt is admitted and refused as a bad credential; the
-        // second is better-auth's own 429.
         assert.notStrictEqual(first.status, 429);
         assert.strictEqual(second.status, 429);
-        // Mutation: build the instance with `Effect.runPromise` in place of
-        // `Effect.runPromiseWith(context)` → the warning goes to the default
-        // logger and nothing is captured.
         assert.deepStrictEqual(
           lines.filter((line) => line.startsWith('Rate limit reached')),
           [

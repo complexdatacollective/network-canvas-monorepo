@@ -186,10 +186,6 @@ export default function Setup() {
                 },
               });
             } catch (error) {
-              // The procedure's three declared refusals, as the instances the
-              // contract sends rather than as transport codes: a wrong or
-              // missing token, an instance that already has an owner, and an
-              // email address somebody has already used.
               if (error instanceof Unauthorized) {
                 return failure(messages.wrongToken);
               }
@@ -202,24 +198,13 @@ export default function Setup() {
               return failure(messages.failed);
             }
 
-            // Status has changed whatever else did: the instance has a name
-            // and an owner, so setup is closed and this route is about to
-            // become a not-found.
             await invalidateInstanceStatus(queryClient);
-            // Only when the response actually carried the new owner's session
-            // cookie, which is what `signedIn` reports. Recorded rather than
-            // invalidated, for the reason `sessionQueryOptions` gives — but it
-            // is a record of established fact, so it must not be written when
-            // the fact is that no session was established.
             if (completed.signedIn) {
               queryClient.setQueryData(
                 sessionQueryOptions.queryKey,
                 'signedIn',
               );
             }
-            // `/` resolves either way: to this researcher's landing
-            // destination when they are signed in, and to the way in when they
-            // are not.
             await navigate({ to: '/' });
             return { success: true };
           }}

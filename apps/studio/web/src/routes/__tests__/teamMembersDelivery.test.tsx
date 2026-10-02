@@ -16,18 +16,6 @@ import {
   type StudioHandlers,
 } from '../../test/rpcHarness.ts';
 
-/**
- * The one refusal the members screen explains instead of reconciling: a
- * cancellation that races the invitation's delivery job (#1930, design Q15).
- *
- * `team.cancelInvitation` now answers with the contract's real
- * `TeamCommandError` code rather than a flattened `CONFLICT`, so the screen can
- * tell "nothing happened, try again in a moment" from "we cannot tell what
- * happened". Both halves are asserted here: the declared refusal gets the
- * specific sentence, and any other code still gets the reconcile-and-refresh
- * message the screen has always shown, so the branch cannot widen unnoticed.
- */
-
 type Answer<Tag extends keyof StudioHandlers> = (
   payload: Parameters<StudioHandlers[Tag]>[0],
 ) => ReturnType<StudioHandlers[Tag]>;
@@ -110,8 +98,6 @@ vi.mock('../../lib/auth.ts', () => ({
       setActive: vi.fn(() =>
         Promise.resolve({ data: fixtures.ACTIVE_TEAM, error: null }),
       ),
-      // The app shell's guard resolves memberships before it renders any app
-      // route (§6.4), so this researcher has to belong to something.
       list: vi.fn(() =>
         Promise.resolve({ data: [fixtures.TEAM], error: null }),
       ),
@@ -192,27 +178,16 @@ describe('cancelling an invitation the delivery job is holding', () => {
         'This invitation is being sent right now. Try again in a moment.',
       ),
     ).toBeInTheDocument();
-    // The refusal is confirmed, so the screen neither claims uncertainty nor
-    // offers the recovery button that uncertainty comes with.
     expect(
       screen.queryByText(/could not confirm whether the invitation/i),
     ).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Refresh team details' }),
     ).toBeNull();
-    // Nothing was cancelled, so the invitation is still listed.
     expect(screen.getByText('pending@example.com')).toBeInTheDocument();
-    // The team is still refreshed: every mutation on this screen is reconciled
-    // the same way, and the refusal changes what the researcher is TOLD, not
-    // whether the screen goes back for the team's state.
     await waitFor(() =>
       expect(authState.refetchActiveTeam).toHaveBeenCalledTimes(1),
     );
-    // "Try again in a moment" is only true if there is something to try again
-    // with. The screen disables every team mutation while one is in flight, so
-    // the sentence is a lie unless this button comes back — which it does only
-    // because the `finally` that clears the in-flight invitation still runs
-    // through the early return this branch takes.
     expect(
       await screen.findByRole('button', {
         name: 'Cancel invitation for pending@example.com',

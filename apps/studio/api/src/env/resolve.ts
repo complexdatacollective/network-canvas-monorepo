@@ -17,6 +17,7 @@ export type S3Env = {
 
 export type DbEnv = {
   url: string;
+  passwordFile?: string | undefined;
 };
 
 export type MailerEnv =
@@ -84,11 +85,6 @@ export type StudioEnv = {
    * and its opt-out exist before the first version that could report.
    */
   telemetry: boolean;
-  /**
-   * The OTLP/HTTP collector logs, traces and metrics are exported to (#1897).
-   * Undefined is the off switch that costs nothing: no endpoint, no exporter.
-   * `telemetry` being false turns the export off even where one is set.
-   */
   telemetryEndpoint: string | undefined;
   deploymentMode: DeploymentMode;
   /** Only the seed command reads it; unset means the development password. */
@@ -166,10 +162,6 @@ export function isLocalDatabase(url: string): boolean {
  * `postgres://user:pass@/db?options=…` — a connection string pg accepts, and
  * one a hosting provider's socket configuration produces — which the guard
  * used to tolerate rather than refuse.
- *
- * Two formats carry no `options` by construction — the bare socket form
- * (`/var/run/postgresql studio_dev`) and a libpq keyword DSN — and pass this
- * guard; `assertClientCanParse` below refuses both for another reason.
  */
 function assertPinnedRoleSurvives(url: string): void {
   // Not caught: a string this throws on is one pg would throw on too, at the
@@ -184,14 +176,11 @@ function assertPinnedRoleSurvives(url: string): void {
   );
 }
 
-/** The Unix-socket spelling both drivers read, with a host to hold a password. */
 const SOCKET_URL_EXAMPLE =
   'postgres://studio@localhost/studio?host=/var/run/postgresql';
 
 /**
- * The `sslmode` values `@effect/sql-pg` accepts without an explicit `ssl`
- * option, which Studio's clients never pass (`PgConnection.ts` `parseUrl`).
- * `prefer` and `allow` — libpq's defaults — are refused by the client.
+ * The `sslmode` values `@effect/sql-pg` accepts without an explicit `ssl` option.
  */
 const CLIENT_SSL_MODES = new Set([
   'disable',
@@ -200,18 +189,6 @@ const CLIENT_SSL_MODES = new Set([
   'verify-full',
 ]);
 
-/**
- * Refuses a connection string the server's own database client would refuse
- * at its first statement, while node-postgres — still under better-auth and the
- * readiness probe — would accept it and leave the process half working.
- *
- * `@effect/sql-pg` parses `DATABASE_URL` with `new URL`, so what node-postgres
- * also accepts — a bare socket path (`/var/run/postgresql studio_dev`), a libpq
- * keyword DSN, and an authority carrying credentials but no host
- * (`postgres://user@/db`) — fails with "Invalid connection URL"; so does an
- * `sslmode` outside `CLIENT_SSL_MODES`. Refused here instead, at boot, with the
- * spelling that works.
- */
 function assertClientCanParse(url: string): void {
   let parsed: URL | undefined;
   try {
@@ -237,18 +214,30 @@ function assertClientCanParse(url: string): void {
 }
 
 /**
- * The effective connection string, with the file secret's password folded in.
- *
- * The compose stack (#1909) delivers the database password as a Compose file
- * secret rather than a variable, so it appears in neither `docker inspect` nor
- * any process environment — but `pg.Pool` and `@effect/sql-pg` both take one
- * connection string. Producing the URL here is what lets
- * `DbEnv` stay `{ url }`, so every consumer is unchanged and none of them has
- * to know where the password came from.
- *
- * Read once, at boot, like every other variable: a file whose contents change
- * under a running process would give different pools different passwords.
+ * Trailing newlines only are stripped, as the Postgres image's own
+ * `POSTGRES_PASSWORD_FILE` reader does.
  */
+export function readPasswordFile(passwordFile: string): string {
+  let contents: string;
+  try {
+    contents = readFileSync(passwordFile, 'utf8');
+  } catch (error) {
+    throw new Error(
+      `DATABASE_PASSWORD_FILE names ${passwordFile}, which could not be read: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error },
+    );
+  }
+  const password = contents.replace(/[\r\n]+$/, '');
+  if (password === '') {
+    throw new Error(
+      `DATABASE_PASSWORD_FILE names ${passwordFile}, which is empty.`,
+    );
+  }
+  return password;
+}
+
 function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
   const url = raw.DATABASE_URL;
   const passwordFile = raw.DATABASE_PASSWORD_FILE;
@@ -289,27 +278,7 @@ function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
     );
   }
 
-  let contents: string;
-  try {
-    contents = readFileSync(passwordFile, 'utf8');
-  } catch (error) {
-    throw new Error(
-      `DATABASE_PASSWORD_FILE names ${passwordFile}, which could not be read: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      { cause: error },
-    );
-  }
-  // Trailing newlines only, and for a specific reason: the Postgres image's
-  // own POSTGRES_PASSWORD_FILE reader strips exactly these, so a file written
-  // with a shell redirection sets a password there that must match here.
-  // Anything else in the file is part of the password.
-  const password = contents.replace(/[\r\n]+$/, '');
-  if (password === '') {
-    throw new Error(
-      `DATABASE_PASSWORD_FILE names ${passwordFile}, which is empty.`,
-    );
-  }
+  const password = readPasswordFile(passwordFile);
 
   // The setter applies the userinfo percent-encode set, so a password
   // containing `@`, `/`, `:` or `#` survives the round trip through the
@@ -519,7 +488,14 @@ export function resolve(
   }
 
   const databaseUrl = resolveDatabaseUrl(raw);
-  const db = databaseUrl ? { url: databaseUrl } : undefined;
+  const db = databaseUrl
+    ? {
+        url: databaseUrl,
+        ...(raw.DATABASE_PASSWORD_FILE
+          ? { passwordFile: raw.DATABASE_PASSWORD_FILE }
+          : {}),
+      }
+    : undefined;
   if (db) {
     assertPinnedRoleSurvives(db.url);
     assertClientCanParse(db.url);

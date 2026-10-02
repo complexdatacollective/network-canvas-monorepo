@@ -14,37 +14,19 @@ import { SecretsCipher } from '../../secrets/services.ts';
 import { ObjectStore } from '../../storage/object-store.ts';
 import { limiterWithoutStore } from './valkey.ts';
 
-/**
- * The data layer the `/rpc` route asks for, whichever shape a suite's Studio
- * is.
- *
- * A suite that built its Studio with `services` (`support/postgres.ts`'s
- * `scratch.services()`) gets exactly those, which is the production wiring.
- * A suite that built one without — every case about a process with no
- * database, and every case that never reaches a procedure which reads — gets
- * the same stand-ins `programs/serve.ts` provides in that topology: they throw
- * on first touch rather than degrading, so "nothing reached the database" is a
- * property the suite proves rather than assumes.
- */
+export const absentDataServices: Layer.Layer<StudioServices> = Layer.mergeAll(
+  DatabaseAbsent,
+  SecretsCipher.layerAbsent,
+  AuditSignal.layer,
+  Jobs.layer({ schema: JOB_SCHEMA }),
+  DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
+);
+
 const dataServices = (studio: Studio): Layer.Layer<StudioServices> =>
   studio.rpc.services === undefined
-    ? Layer.mergeAll(
-        DatabaseAbsent,
-        SecretsCipher.layerAbsent,
-        AuditSignal.layer,
-        Jobs.layer({ schema: JOB_SCHEMA }),
-        DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
-      )
+    ? absentDataServices
     : Layer.succeedContext(studio.rpc.services);
 
-/**
- * Everything the routes ask for: the data layer above, and the auth provider,
- * limiter and object store the Studio was built over — which is what a program
- * provides from its own graph. A Studio built with no limiter gets one over no
- * store, which admits every call, as a deployment with no `REDIS_URL` does;
- * one built with no object store gets none, as a deployment with no `S3_*`
- * does.
- */
 export const studioServices = (
   studio: Studio,
 ): Layer.Layer<RpcServices | ObjectStore> =>

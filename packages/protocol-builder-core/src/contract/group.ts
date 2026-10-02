@@ -1,8 +1,8 @@
 import { Schema } from 'effect';
-import * as Rpc from 'effect/unstable/rpc/Rpc';
-import type * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import type { RpcClientError } from 'effect/unstable/rpc/RpcClientError';
-import * as RpcGroup from 'effect/unstable/rpc/RpcGroup';
+import * as Rpc from 'effect/rpc/Rpc';
+import type * as RpcClient from 'effect/rpc/RpcClient';
+import type { RpcClientError } from 'effect/rpc/RpcClientError';
+import * as RpcGroup from 'effect/rpc/RpcGroup';
 
 import {
   InvalidShape,
@@ -188,25 +188,12 @@ export class ProtocolBuilderGroup extends RpcGroup.make(
     ]),
   }),
 
-  /**
-   * The two `Refactor…` procedures are changes that cannot be contained in one
-   * section, so they cannot be made under one lock. Each takes every section it
-   * writes or fails naming who holds what. Codebook dialogs issue these; no
-   * stage editor does.
-   *
-   * This one removes a codebook variable and the references to it the schema
-   * declares, or refuses naming the ones it cannot remove: a reference inside a
-   * list — a prompt, a form field, a filter rule — goes with the entry holding
-   * it, and one that is a property of a stage cannot be removed without
-   * inventing what the stage then means.
-   */
   Rpc.make('RefactorDeleteVariable', {
     payload: DeleteVariableInputSchema,
     success: SectionChangeResultSchema,
     error: RefactorError,
   }),
 
-  /** Removes an entity type and its section, on the same terms. */
   Rpc.make('RefactorDeleteEntityType', {
     payload: DeleteEntityTypeInputSchema,
     success: SectionChangeResultSchema,

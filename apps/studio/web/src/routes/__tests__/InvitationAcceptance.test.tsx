@@ -28,11 +28,6 @@ import {
 } from '../../test/rpcHarness.ts';
 
 const mocks = vi.hoisted(() => ({
-  /**
-   * The acceptance command, as its own handler minus the options argument the
-   * harness passes it: a fixture that has drifted from the contract fails
-   * `tsc` rather than passing here.
-   */
   acceptInvitation:
     vi.fn<
       (
@@ -79,7 +74,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-/** The signed-in researcher; nothing here turns on any of it. */
 const ME: Me = {
   userId: 'user-1',
   email: 'researcher@example.org',
@@ -103,7 +97,6 @@ const STATUS: InstanceStatus = {
 };
 
 const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
-/** What the server answers with when the invitation is accepted. */
 const ACCEPTED = {
   invitationId: TeamInvitationId.make(INVITATION_ID),
   teamId: TeamId.make('team-a'),
@@ -158,7 +151,6 @@ beforeEach(() => {
   mocks.setActive.mockResolvedValue({ data: { id: 'team-a' }, error: null });
   mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
   mocks.acceptInvitation.mockReturnValue(Effect.succeed(ACCEPTED));
-  // The in-process rpc client, installed per test.
   installRpcHarness({
     'me': () => Effect.succeed(ME),
     'status': () => Effect.succeed(STATUS),

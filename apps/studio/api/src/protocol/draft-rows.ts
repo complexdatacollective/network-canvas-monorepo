@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import {
   type SectionDoc,
@@ -15,14 +15,9 @@ import { Transaction } from '../db/tenant.ts';
 const { drafts, manifests, sections } = SYNC_TABLES;
 
 /**
- * `createdAt` dates the sections (and re-dates a revived one) for a caller
- * that knows when the draft was made — the synthetic-data seed; a live
- * command leaves it unset and takes the clock.
- *
- * The sections go in one statement per document rather than as one multi-row
- * upsert: two sections of one draft may hold the same document, which is the
- * same row twice under `ON CONFLICT DO UPDATE` (21000). The loop runs in the
- * caller's transaction and opens no scope of its own.
+ * One statement per document rather than a multi-row upsert: two sections may
+ * hold the same document, the same row twice under `ON CONFLICT DO UPDATE`
+ * (21000).
  */
 export const insertDraftRows: (
   teamId: string,
@@ -38,17 +33,15 @@ export const insertDraftRows: (
   createdAt?: Date,
 ) {
   const { tx } = yield* Transaction;
-  // `clock_timestamp()` rather than a JavaScript clock, as
-  // `COALESCE($4, clock_timestamp())` said: expiry comparisons against these
-  // rows are wall-clock, not transaction time.
+  // `clock_timestamp()`: expiry comparisons against these rows are wall-clock,
+  // not transaction time.
   const written = createdAt ?? sql`clock_timestamp()`;
   const sectionHashes: Record<string, string> = {};
   for (const [id, doc] of Object.entries(sectionDocs)) {
     const hash = contentHash(doc);
     sectionHashes[id] = hash;
-    // `.returning()` on every write whose outcome is inspected: without it the
-    // builder answers with the driver's result object, typed as a row array
-    // and not one, so a zero-row branch would never be taken.
+    // `.returning()`: without it the builder answers with the driver's result
+    // object, typed as a row array and not one.
     const sectionRows = yield* tx
       .insert(sections)
       .values({ teamId, hash, doc, createdAt: written })

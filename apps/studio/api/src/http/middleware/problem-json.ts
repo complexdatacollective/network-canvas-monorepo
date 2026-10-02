@@ -1,34 +1,11 @@
 import { STATUS_CODES } from 'node:http';
 
 import { Effect, type Layer } from 'effect';
-import {
-  HttpEffect,
-  HttpRouter,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpEffect, HttpRouter, HttpServerResponse } from 'effect/http';
 
-// RFC 9457 problem details for every refusal this server synthesises, so the
-// machine surfaces answer one shape whatever produced the status (#1248).
-//
-// The Effect router answers an unmatched route, an unhandled defect, a client
-// abort or a shutdown with a response that carries a status and *no body at
-// all*. A caller reading one of those learns nothing, and every refusal a
-// handler writes is problem JSON — so the empty ones are filled in here rather
-// than left as the only refusals on the server with nothing to read.
-//
-// Only empty bodies are rewritten, and only the body: the status, the headers
-// and the cookies the response carried stay on it. Anything a handler chose
-// is already an answer: a handler's own problem JSON, better-auth's
-// `{ message }` errors, an asset's bytes. Replacing those would throw away a
-// considered response, and in better-auth's case would break a client that
-// reads its shape.
-//
-// The mechanism is a pre-response handler rather than error handling in the
-// middleware itself: the router's type forbids a global middleware from
-// handling errors (`Types.unhandled` has to stay in its error channel), and a
-// pre-response handler is the one hook that also sees the response Effect
-// synthesises *from* a failure — which is exactly the 404 and 500 this exists
-// for.
+// Only empty bodies are rewritten: anything a handler chose, such as
+// better-auth's `{ message }` errors, is already an answer. A pre-response
+// handler because a global middleware may not handle errors.
 export const ProblemJson: Layer.Layer<never, never, HttpRouter.HttpRouter> =
   HttpRouter.middleware(
     (httpEffect) =>

@@ -12,13 +12,6 @@ import type { DbEnv } from '../env.ts';
 // exhausted. A bounded wait turns that into a fast, repeatable failure.
 const CONNECTION_TIMEOUT_MS = 10_000;
 
-// One DATABASE_URL, three identities. The connecting login owns the schema and
-// applies it; the application pool starts every session as a NOLOGIN role
-// instead (`role=` is a startup parameter: a missing role refuses the
-// connection, and even RESET ROLE returns to it), so the server never runs as
-// a role that could bypass row-level security — not in a deployment, and not
-// in development, where the login is the superuser. Garbage collection pins
-// the maintenance role the same way as durable delivery workers do.
 /** What a caller may vary; the identity and the timeout are not negotiable. */
 export type PoolLimits = {
   /**
@@ -54,31 +47,7 @@ export function createPool(db: DbEnv, limits: PoolLimits = {}): pg.Pool {
   return connect(db, TENANT_ROLES.app, limits);
 }
 
-/** Background jobs: every session runs as the cross-team maintenance role. */
-export function createMaintenancePool(db: DbEnv): pg.Pool {
-  return connect(db, TENANT_ROLES.maintenance);
-}
-
 /** The connecting login itself: schema application, reset, and seeding. */
 export function createOwnerPool(db: DbEnv): pg.Pool {
   return connect(db);
-}
-
-/**
- * A pinned pool against a database whose schema — and so whose roles — was
- * never applied is refused at connect, before any query could tell the
- * schema is absent. Either pinned role answers for that: the web process
- * verifies the schema on the application pool and the worker on the
- * maintenance one (src/platform/schema-gate.ts), and an unapplied database is
- * missing both.
- */
-export function isMissingRoleError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    error.code === '22023' &&
-    [TENANT_ROLES.app, TENANT_ROLES.maintenance].some((role) =>
-      error.message.includes(role),
-    )
-  );
 }

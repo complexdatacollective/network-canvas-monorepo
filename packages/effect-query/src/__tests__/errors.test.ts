@@ -22,7 +22,6 @@ describe('the catch-block guards', () => {
     expect(isTaggedError(caught, 'Refused')).toBe(true);
     expect(isTaggedError(caught, 'Other')).toBe(false);
     if (isTaggedError(caught, 'Refused')) {
-      // The guard narrows to the literal, so a screen can switch on it.
       const tag: 'Refused' = caught._tag;
       expect(tag).toBe('Refused');
     }

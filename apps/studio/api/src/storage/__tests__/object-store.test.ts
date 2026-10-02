@@ -6,14 +6,6 @@ import { Effect } from 'effect';
 import { readiness } from '../../http/health.ts';
 import { ObjectStore } from '../object-store.ts';
 
-// The readiness probe's bound has to reach the SDK, not only the wait: the
-// route can stop waiting on its own, but the request would carry on retrying
-// and holding a socket — once per probe, every few seconds, for as long as the
-// endpoint is unreachable. So what is observed here is the socket, from the
-// far end: an endpoint that accepts the connection and never answers, which
-// the SDK would otherwise wait on indefinitely.
-
-/** A TCP listener that answers nothing, and the sockets it has seen close. */
 const silentEndpoint = Effect.acquireRelease(
   Effect.callback<{
     readonly port: number;
@@ -28,7 +20,7 @@ const silentEndpoint = Effect.acquireRelease(
       accepted += 1;
       sockets.add(socket);
       // Read and discard what the SDK sends, or the far end's close would
-      // queue behind unread bytes and never be seen here.
+      // never be seen here.
       socket.resume();
       socket.on('close', () => {
         closed += 1;
@@ -79,9 +71,6 @@ describe('the object store', () => {
         );
         expect(endpoint.accepted()).toBe(1);
 
-        // The abort lands asynchronously once the fiber is interrupted; a
-        // request left running would hold its socket open indefinitely.
-        // Mutation: drop `abortSignal` from `head`'s send → this stays 0.
         yield* Effect.gen(function* () {
           while (endpoint.closed() === 0) yield* Effect.sleep('10 millis');
         }).pipe(

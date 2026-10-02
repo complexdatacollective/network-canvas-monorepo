@@ -546,8 +546,7 @@ function StagedFileProbe() {
             name: 'A roster',
             source: 'roster.csv',
             contentType: 'text/csv',
-            // Copied into this realm's `Uint8Array`: jsdom's global is not the
-            // one `TextEncoder` answers with, and the contract checks the class.
+            // jsdom's `TextEncoder` answers with another realm's `Uint8Array`.
             bytes: new Uint8Array(new TextEncoder().encode('{}')),
           });
         }}

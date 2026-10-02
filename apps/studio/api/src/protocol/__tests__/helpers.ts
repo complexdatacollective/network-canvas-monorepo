@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { Cause, Duration, Effect, Exit } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import {
@@ -33,20 +33,10 @@ export const storeDb = testDb;
 
 export const TEST_TEAM_ID = 'team-test';
 
-/**
- * The bare sync state machine, with no section validation — what a case uses
- * to write a document Studio's own validator would refuse, so the store can
- * then be asked what it makes of it. `createProtocolSyncServer` is the
- * validating one, and the cases that want a refusal build that instead.
- *
- * It takes no database handle now: every operation requires the caller's
- * `Transaction`, so it runs in the same scope as the store.
- */
 export function makeTestSyncServer(ttlMs?: number): SyncServer {
   return makeSyncServer({ ttlMs });
 }
 
-/** Simulates a slept laptop by expiring a lease in place. */
 export function expireLease(draftId: string, sectionId: string) {
   return forceExpire(draftId, sectionId);
 }
@@ -57,7 +47,6 @@ export const GC_OPTS = {
   commandRetryHorizonMs: 0,
 };
 
-/** Backdates the sweep quarantine so a GC run can collect immediately. */
 export const ageQuarantine = (teamId?: string) =>
   ownerAffected(
     `UPDATE sections SET unreferenced_at = unreferenced_at - interval '1 hour'
@@ -72,44 +61,22 @@ type InTeam = <A, E>(
 ) => Promise<A>;
 
 export type StoreSchema = {
-  /** The scratch schema, which every client here is pinned to. */
   schema: string;
-  /** Runs one effect against the scratch schema and its clients. */
   run: TestDatabaseRuntime['run'];
-  /** One statement as the connecting login: fixtures and cross-team oracles. */
   rows: <A extends object = Record<string, unknown>>(
     statement: string,
     params?: ReadonlyArray<unknown>,
   ) => Promise<ReadonlyArray<A>>;
-  /** The same, counting the rows it affected. */
   affected: (
     statement: string,
     params?: ReadonlyArray<unknown>,
   ) => Promise<number>;
-  /** The same, reporting what Postgres said when it refused the statement. */
   refusal: (
     statement: string,
     params?: ReadonlyArray<unknown>,
   ) => Promise<Refusal>;
-  /**
-   * One team-stamped transaction on the application client, which is how the
-   * store is called: every function requires `Transaction`, and only a scope
-   * provides it.
-   *
-   * A failure comes back as a rejection carrying the failure value itself —
-   * `ProtocolStoreError`, `DraftStructureError`, a `SqlError` — so a case
-   * still reads `await expect(...).rejects.toThrow(...)` and is asserting on
-   * the store's own error rather than on a wrapper.
-   */
   inTeam: InTeam;
-  /**
-   * The same on the harness's second application client. The first holds one
-   * connection, so two transactions that must be open at once — to contend
-   * for a lock in the database rather than queue for the connection — put
-   * one here.
-   */
   inTeamOnSecondApp: InTeam;
-  /** The same transaction, as an `Exit`, for a case that inspects rollback. */
   exitInTeam: <A, E>(
     teamId: string,
     body: Effect.Effect<A, E, Transaction>,
@@ -118,12 +85,6 @@ export type StoreSchema = {
   dispose: () => Promise<void>;
 };
 
-/**
- * The store under test runs as the application role, as it does in Studio;
- * `rows`/`affected`/`refusal` are the connecting login, for fixtures and
- * cross-team oracles. The sync server the store is tested beside takes the
- * same `Transaction`, so both run in one scope.
- */
 export async function makeStoreSchema(): Promise<StoreSchema> {
   const database = await openTestDatabase();
   try {
@@ -133,8 +94,6 @@ export async function makeStoreSchema(): Promise<StoreSchema> {
     throw error;
   }
 
-  // The membership these stand in for is proved by the commands in
-  // production; a store suite has no command to prove it.
   const access = (teamId: string) => unsafeMakeTeamAccess(teamId, 'owner');
 
   const exitInTeam = <A, E>(
@@ -144,8 +103,6 @@ export async function makeStoreSchema(): Promise<StoreSchema> {
   ) =>
     database.run(Effect.exit(TenantScope.open(access(teamId), body, options)));
 
-  // The failure value, not a wrapper: `Cause.squash` yields the error the
-  // store failed with, which is what the cases assert on.
   const settle = <A, E>(exit: Exit.Exit<A, E>): A => {
     if (Exit.isSuccess(exit)) return exit.value;
     throw Cause.squash(exit.cause);
@@ -254,7 +211,6 @@ export function baseProtocol(): CurrentProtocol {
   } as unknown as CurrentProtocol;
 }
 
-/** Polls, as the connecting login, until some backend is blocked on a lock. */
 export const waitForLockWait = Effect.fnUntraced(function* () {
   for (let attempt = 0; attempt < 200; attempt++) {
     const [row] = yield* ownerRows<{ waiting: number }>(

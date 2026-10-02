@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { StudiesRpcs } from '@codaco/studio-contract/rpc/studies';
@@ -25,14 +25,6 @@ import { withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 import { openTeam, resolveStudy } from '../team-scope.ts';
 
-/**
- * A study command's own vocabulary, no longer flattened into a transport code:
- * a duplicate study id is `StudyCommandError({ code: 'CONFLICT' })`, and a
- * locked membership that lost the role is `{ code: 'FORBIDDEN' }`. A team row
- * that went away under the command leaves as the shared `NotFound` the audited
- * combinator raises. A protocol-store refusal and a database failure are
- * faults, exactly as they were when the command threw them into a promise.
- */
 const refusals = <A, R>(
   command: Effect.Effect<
     A,
@@ -62,10 +54,6 @@ const decodeCreated = Schema.decodeUnknownSync(CreateStudyResult);
 
 export const StudiesHandlers = (deps: RpcDeps) =>
   StudiesRpcs.toLayer({
-    // Which studies the caller sees is their TEAM role (#1257): an Admin or
-    // Owner sees the team's studies, a Member sees the ones they hold a
-    // study-role grant on. The predicate is the store's, not this handler's,
-    // so `studies.get` refuses exactly what `studies.list` omits.
     'studies.list': (payload) =>
       Effect.gen(function* () {
         const principal = yield* Principal;
@@ -92,17 +80,12 @@ export const StudiesHandlers = (deps: RpcDeps) =>
           protocolDraftId,
         });
       }),
-    // Resolved like `get`, so the numbers beside the sidebar's destinations
-    // exist for exactly the studies their reader can open, and a study the
-    // caller cannot reach is refused the same way for both.
     'studies.counts': (payload) =>
       Effect.gen(function* () {
         const resolved = yield* resolveStudy(yield* Principal, payload.studyId);
         const counts = yield* Effect.orDie(
           TenantScope.open(resolved.access, readStudyCounts(resolved.study.id)),
         );
-        // `resolveStudy` found the row inside this tenant a moment ago; a row
-        // missing now is a purge racing the read, not an oracle.
         if (!counts) return yield* new NotFound({});
         return counts;
       }),

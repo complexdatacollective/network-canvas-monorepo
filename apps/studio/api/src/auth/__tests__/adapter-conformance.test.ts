@@ -26,12 +26,6 @@ import { studioAuthAdapter } from '../adapter.ts';
 import { createBetterAuthInstance } from '../better-auth.ts';
 import { makeSqlBridge, type SqlBridge } from '../sql-bridge.ts';
 
-// Conformance for `auth/adapter.ts` (#1927 §12, S6 §7 4.4). better-auth 1.7.5
-// ships no adapter test kit, so it is proved two ways: differentially, against
-// the published memory adapter driven through the same scripted operations
-// with Studio's own options; and through a real better-auth instance, whose
-// flows have to land in the physical tables of `db/auth-schema.ts`.
-
 const ENV: AuthEnv = {
   baseUrl: 'http://studio.test',
   secret: randomBytes(32).toString('hex'),
@@ -39,7 +33,6 @@ const ENV: AuthEnv = {
   socialProviders: {},
 };
 
-/** A bridge for the cases that must never reach a database. */
 const unreachable = (): Promise<never> =>
   Promise.reject(new Error('this case reads no database'));
 const REFUSING_BRIDGE: SqlBridge = {
@@ -49,12 +42,6 @@ const REFUSING_BRIDGE: SqlBridge = {
 
 type MagicLink = { readonly email: string; readonly url: string };
 
-/**
- * Studio's instance over an adapter, and every magic link it would have sent.
- * The instance's own options are what both adapters in the differential are
- * built from, so the plugin set and the organization plugin's snake_case
- * mapping are the configured ones rather than a restatement.
- */
 function instanceOver(adapter: (options: BetterAuthOptions) => DBAdapter) {
   const sent: MagicLink[] = [];
   const auth = createBetterAuthInstance({
@@ -75,21 +62,11 @@ const STUDIO_OPTIONS: BetterAuthOptions = instanceOver(
 
 describe('the better-auth instance Studio configures', () => {
   it('leaves joins and id generation to better-auth', () => {
-    // The adapter throws on a `join` and never mints an id. Both hold only
-    // while these stay unset: `joins` would start forwarding joins to it, and
-    // `generateId` would move id minting (a `'serial'` is refused at
-    // construction by `supportsNumericIds: false`).
     expect(STUDIO_OPTIONS.advanced?.database?.joins).toBeUndefined();
     expect(STUDIO_OPTIONS.advanced?.database?.generateId).toBeUndefined();
   });
 });
 
-/**
- * An answer as the comparison reads it: dates as instants, and a field that
- * came back `undefined` the same as one that came back `null` — the memory
- * adapter stores a row without the columns its create left out, where Postgres
- * stores `NULL`.
- */
 function normal(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map(normal);
@@ -103,7 +80,6 @@ function normal(value: unknown): unknown {
   return value ?? null;
 }
 
-/** For an answer whose order the call did not ask for. */
 function unordered(value: unknown): unknown {
   const answer = normal(value);
   return Array.isArray(answer)
@@ -116,7 +92,6 @@ function unordered(value: unknown): unknown {
 const at = (day: number): Date =>
   new Date(Date.UTC(2026, 0, day, 12, 0, 0, 250));
 
-/** Well past every case, so an expiry in the scripts never lapses mid-run. */
 const LATER = new Date(Date.UTC(2099, 0, 1));
 
 const user = (
@@ -144,7 +119,6 @@ const user = (
 type Operation = {
   readonly label: string;
   readonly act: (adapter: DBAdapter) => Promise<unknown>;
-  /** The call named an order; otherwise rows are compared as a set. */
   readonly ordered?: boolean;
 };
 
@@ -166,13 +140,7 @@ const findMany = (model: string, clauses: Where[]) => ({
   act: (adapter: DBAdapter) => adapter.findMany({ model, where: clauses }),
 });
 
-/**
- * The script: every method, every operator, the organization plugin's remapped
- * models and fields, in an order where each step's state is the one the
- * previous steps left.
- */
 const SCRIPT: Operation[] = [
-  // Fixtures, through `create`: what comes back is compared too.
   ...[
     user('u1', 'Ada Lovelace', 'ada@example.com', true, 'en', 1),
     user('u2', 'Bob_Builder', 'bob@example.com', false, null, 2),
@@ -295,7 +263,6 @@ const SCRIPT: Operation[] = [
       }),
   },
 
-  // findOne
   {
     label: 'findOne user by email',
     act: (adapter) =>
@@ -356,7 +323,6 @@ const SCRIPT: Operation[] = [
       }),
   },
 
-  // findMany: every operator
   findMany('user', [eq('locale', null)]),
   findMany('user', [where('locale', 'ne', null)]),
   findMany('user', [eq('emailVerified', true)]),
@@ -376,8 +342,6 @@ const SCRIPT: Operation[] = [
   ]),
   findMany('user', [where('name', 'contains', 'Bob')]),
   findMany('user', [where('name', 'contains', 'bob', { mode: 'insensitive' })]),
-  // `_` and `%` are the caller's characters, not wildcards: the memory
-  // adapter matches them literally, and so must this one.
   findMany('user', [where('name', 'contains', 'b_b', { mode: 'insensitive' })]),
   findMany('user', [where('name', 'contains', '100%')]),
   findMany('user', [where('name', 'ends_with', '\\path')]),
@@ -393,9 +357,8 @@ const SCRIPT: Operation[] = [
   findMany('user', [where('createdAt', 'gte', at(3))]),
   findMany('user', [where('createdAt', 'lt', at(3))]),
   findMany('user', [where('createdAt', 'lte', at(3))]),
-  // Mixed connectors, `OR` clauses first: the one order in which the memory
-  // adapter's left fold and the drizzle grouping this adapter follows agree.
-  // The grouping itself is asserted against the drizzle adapter below.
+  // `OR` clauses first: the one order in which the memory adapter's left fold
+  // and the drizzle grouping this adapter follows agree.
   findMany('user', [
     where('email', 'eq', 'ada@example.com', { connector: 'OR' }),
     where('email', 'eq', 'bob@example.com', { connector: 'OR' }),
@@ -417,7 +380,6 @@ const SCRIPT: Operation[] = [
       }),
   },
 
-  // Order, limit and offset
   {
     label: 'findMany user sorted by createdAt desc, limit 3',
     ordered: true,
@@ -459,7 +421,6 @@ const SCRIPT: Operation[] = [
       }),
   },
 
-  // count
   { label: 'count user', act: (adapter) => adapter.count({ model: 'user' }) },
   {
     label: 'count user where emailVerified',
@@ -472,7 +433,6 @@ const SCRIPT: Operation[] = [
       adapter.count({ model: 'member', where: [eq('organizationId', 't1')] }),
   },
 
-  // update, updateMany, incrementOne
   {
     label: 'update user u2',
     act: (adapter) =>
@@ -541,10 +501,7 @@ const SCRIPT: Operation[] = [
   },
   findMany('invitation', []),
 
-  // consumeOne, delete, deleteMany
   {
-    // Sequential: on the harness's one application connection two calls
-    // cannot race. The race is the two-client case below.
     label: 'consumeOne twice over one row: the second finds nothing',
     act: async (adapter) => [
       await adapter.consumeOne({
@@ -615,7 +572,6 @@ const SCRIPT: Operation[] = [
   findMany('member', []),
 ];
 
-/** The memory adapter's tables, keyed by the physical model names. */
 const emptyMemory = () =>
   Object.fromEntries(
     Object.values(AUTH_TABLES).map((table) => [getTableName(table), []]),
@@ -653,9 +609,6 @@ describe.skipIf(!testDb)(
 
     it('counts a bigint column as a number, and increments it', async () => {
       if (!bridge) throw new Error('the bridge was not built');
-      // `rateLimit` is declared but unused while the limiter counts in Valkey;
-      // it is the one auth model with numeric columns, and `lastRequest` is
-      // `int8`, which rc.115 decodes as a `bigint`.
       const options: BetterAuthOptions = {
         ...STUDIO_OPTIONS,
         rateLimit: { ...STUDIO_OPTIONS.rateLimit, storage: 'database' },
@@ -693,7 +646,6 @@ describe.skipIf(!testDb)(
     });
 
     describe('where it deliberately differs', () => {
-      /** Two members of one fresh team, each of them a plain member. */
       async function twoMembers(adapter: DBAdapter, team: string) {
         await adapter.create({
           model: 'organization',
@@ -739,8 +691,6 @@ describe.skipIf(!testDb)(
             });
           }),
         );
-        // better-auth's contract: "Update a single row matching the where
-        // clause". If a better-auth flow ever needs more, this is what fails.
         expect(promoted).toEqual([1, 2]);
       });
 
@@ -773,7 +723,6 @@ describe.skipIf(!testDb)(
           )
             .map((row) => row.name)
             .toSorted();
-        // `snakeXcase` is what an unescaped `_` matches.
         expect(await names(studio)).toEqual(['snake_case']);
         expect(await names(drizzleOver)).toEqual(['snakeXcase', 'snake_case']);
       });
@@ -788,8 +737,6 @@ describe.skipIf(!testDb)(
             schema: AUTH_TABLES,
           },
         )(STUDIO_OPTIONS);
-        // `AND` first: the memory adapter folds left to `(a and a) or b or c`;
-        // better-auth's callers assume `a and (b or c)`.
         const clauses: Where[] = [
           eq('emailVerified', true),
           where('email', 'eq', 'ada@example.com', { connector: 'OR' }),
@@ -811,7 +758,6 @@ describe.skipIf(!testDb)(
 
     it('refuses a model or a column db/auth-schema.ts does not declare', async () => {
       if (!bridge) throw new Error('the bridge was not built');
-      // A model better-auth knows but Studio's schema does not ...
       const renamed = studioAuthAdapter(bridge)({
         ...STUDIO_OPTIONS,
         rateLimit: { storage: 'database', modelName: 'rate_limits' },
@@ -823,8 +769,6 @@ describe.skipIf(!testDb)(
         renamed.findOne({ model: 'rateLimit', where: [eq('key', 'k')] }),
       ).rejects.toThrow(/refuses the model "rate_limits"/);
 
-      // ... and a field it knows that has no column: what an upgrade adding one
-      // would look like.
       const widened = studioAuthAdapter(bridge)({
         ...STUDIO_OPTIONS,
         user: {
@@ -878,7 +822,6 @@ describe.skipIf(!testDb)(
   },
 );
 
-/** The `cookie` header a browser would send back after `set-cookie`s. */
 function cookieFrom(headers: Headers): Headers {
   const cookie = headers
     .getSetCookie()
@@ -989,7 +932,6 @@ describe.skipIf(!testDb)(
       expect(sent).toHaveLength(1);
       const token = new URL(sent[0]!.url).searchParams.get('token');
       if (token === null) throw new Error('the magic link carries no token');
-      // `storeToken: 'hashed'`: what is stored is not the token itself.
       expect(
         await rows('select 1 from verification where identifier = $1', [token]),
       ).toEqual([]);
@@ -1005,7 +947,6 @@ describe.skipIf(!testDb)(
         ]),
       ).toEqual([{ emailVerified: true }]);
 
-      // Consumed: the same link does not sign anyone in twice.
       await expect(
         auth.api.magicLinkVerify({ query: { token }, headers: new Headers() }),
       ).rejects.toThrow();
@@ -1042,7 +983,6 @@ describe.skipIf(!testDb)(
           [team.id],
         ),
       ).toEqual([{ user_id: owner.id, role: 'owner' }]);
-      // `activeOrganizationId` is `session.activeTeamId`.
       expect(
         await rows(
           'select distinct "activeTeamId" from session where "userId" = $1 and "activeTeamId" is not null',
@@ -1117,7 +1057,6 @@ describe.skipIf(!testDb)(
                 updatedAt: new Date(),
               },
             });
-            // Written inside, so visible inside.
             expect(
               await trx.findOne({ model: 'user', where: [eq('email', email)] }),
             ).not.toBeNull();
@@ -1140,10 +1079,6 @@ describe.skipIf(!testDb)(
           { providerId: 'google', accountId },
         );
 
-        // The same Google identity again, for a new address: `createOAuthUser`
-        // writes the user and then the account inside one `runWithTransaction`,
-        // and the account violates `account_providerId_accountId_idx`. With
-        // better-auth's as-is fallback the user would stay behind.
         const second = `${randomUUID()}@example.com`;
         await expect(
           context.internalAdapter.createOAuthUser(
@@ -1160,14 +1095,6 @@ describe.skipIf(!testDb)(
       });
     });
 
-    /**
-     * `act` on two application clients at once, over a row the owner holds
-     * locked until both have queued on it. Two clients, so the two calls are
-     * genuinely concurrent: the suite's application client has one connection.
-     * Both racers are past any read of the row before either may write it, so
-     * the one that goes second meets the first one's write — and an operation
-     * that is safe only because it reads and writes in one statement shows it.
-     */
     async function raceOverLockedRow<A>(
       table: string,
       id: string,
@@ -1249,9 +1176,6 @@ describe.skipIf(!testDb)(
         },
       });
 
-      // The second writer must see the first one's `accepted` and write
-      // nothing — which it does only if the guard is re-checked on the row it
-      // finally locks.
       const outcomes = await raceOverLockedRow(
         'team_invitations',
         invitation.id,
@@ -1281,8 +1205,6 @@ describe.skipIf(!testDb)(
         },
       });
 
-      // A magic-link token's single use: a consume that selects and then
-      // deletes would hand the row to both.
       const outcomes = await raceOverLockedRow(
         'verification',
         token.id,

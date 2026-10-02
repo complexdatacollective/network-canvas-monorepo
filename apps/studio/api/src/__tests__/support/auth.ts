@@ -1,5 +1,4 @@
 import { Context, Effect, Layer, Predicate } from 'effect';
-import type pg from 'pg';
 import { expect } from 'vitest';
 
 import { createStudio } from '../../app.ts';
@@ -12,11 +11,6 @@ import { SecretsCipher } from '../../secrets/services.ts';
 import { composeStudio } from './serve.ts';
 import { limiterWithoutStore } from './valkey.ts';
 
-/**
- * An auth service that answers every method with its null case; a suite states
- * only what it overrides. Growing the service then touches this file, not every
- * suite that stubs it.
- */
 export const authServiceStub = (
   overrides: Partial<AuthService['Service']> = {},
 ): AuthService['Service'] =>
@@ -30,23 +24,14 @@ export const authServiceStub = (
     ...overrides,
   });
 
-/** The same stub as a layer, for a suite that provides services rather than building a Studio. */
 export const AuthServiceStub = (
   overrides?: Partial<AuthService['Service']>,
 ): Layer.Layer<AuthService> =>
   Layer.succeed(AuthService)(authServiceStub(overrides));
 
 /**
- * The production auth service over a suite's scratch schema: `AuthService.layer`
- * built from the suite's own services (`openTestDatabase().services`), so the
- * adapter, the membership reads and the sign-in mail hook all run on the
- * scratch schema's application client.
- *
  * The limiter defaults to one over no store, which admits everything: every
- * vitest process resolves to the same localhost address, and a shared
- * per-address bucket would 429 one file's sign-in because another file signed
- * in (#1909). `jobs` replaces the queue the hook enqueues on, for a suite that
- * reads the magic link back out of a recording.
+ * vitest process resolves to the same localhost address.
  */
 export const liveAuthService = (
   env: StudioEnv,
@@ -54,7 +39,6 @@ export const liveAuthService = (
   options: {
     readonly limiter?: RateLimiter['Service'];
     readonly jobs?: Context.Context<Jobs>;
-    /** The cipher OAuth tokens are sealed with, for a suite that seeded under a keyring of its own. */
     readonly cipher?: SecretsCipher['Service'];
   } = {},
 ): AuthService['Service'] => {
@@ -79,7 +63,6 @@ export const liveAuthService = (
   );
 };
 
-/** The one `sign-in-email` a recording holds, as the worker would read it. */
 function sentLink(recorded: RecordedJobs['Service']): {
   email: string;
   url: string;
@@ -99,22 +82,9 @@ function sentLink(recorded: RecordedJobs['Service']): {
   return { email: payload.email, url: payload.url };
 }
 
-/**
- * Signs a fresh user in end to end against a provisioned scratch schema,
- * asserting each step of the flow, and hands back the session cookie.
- *
- * The auth service is the production one over the suite's services, with the
- * sign-in mail queued on a recording rather than the scratch schema's queue —
- * the link is read back from there, which is where the worker would read it.
- * Its better-auth instance counts sign-in attempts in no store, so it enforces
- * no per-address limit of its own; the app's per-email limit still applies,
- * and the address below is fresh.
- */
 export async function signInWithMagicLink(
   env: StudioEnv,
-  pool: pg.Pool,
   prefix: string,
-  /** The Effect data layer over the same scratch schema (`scratch.services()`). */
   services: Context.Context<StudioServices>,
 ) {
   if (!env.auth) throw new Error('dev env must configure auth');
@@ -124,11 +94,7 @@ export async function signInWithMagicLink(
     ),
   );
   const auth = liveAuthService(env, services, { jobs });
-  // The same pool the rpc handlers are wired with, so procedures address the
-  // scratch schema too rather than whatever DATABASE_URL points at. The whole
-  // Studio, composed: `/api/auth/*` and `/rpc` are both the Effect shell's,
-  // and a suite driving `/rpc` needs `studio.rpc` (see support/rpc.ts).
-  const studio = createStudio(env, { auth, pool, services });
+  const studio = createStudio(env, { auth, services });
   const stack = composeStudio(env, studio);
   const email = `${prefix}-${Date.now()}@example.com`;
 

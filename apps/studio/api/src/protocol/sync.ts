@@ -16,36 +16,10 @@ import {
   withPlaceholderAssetKeyEntries,
 } from './asset-keys.ts';
 
-/**
- * A sync-server operation that runs in a transaction of its own.
- *
- * The sync package used to declare this union, because it opened those
- * transactions itself through an executor Studio handed it. It no longer does:
- * every operation requires the caller's `Transaction`, so the transaction — and
- * therefore the no-audit policy it runs under — belongs to the caller. The
- * union moves here with it.
- *
- * Written against `keyof SyncServer` rather than by hand, so an operation that
- * is renamed or removed upstream is a type error here instead of a registry
- * entry that quietly stops being reachable. Three members are excluded because
- * they are not operations a caller opens a transaction *for*: `ttlMs` is a
- * configured value, and `getSection` and `manifestChain` are reads a caller
- * folds into a transaction it already holds. `forceExpireForTest` is added
- * because it is exported beside the server rather than from it.
- */
 type SyncTransactionOperation =
   | Exclude<keyof SyncServer, 'ttlMs' | 'getSection' | 'manifestChain'>
   | 'forceExpireForTest';
 
-/**
- * The registry entry each sync transaction runs under.
- *
- * The invariant this expresses is unchanged: every transaction a sync
- * operation needs is a *registered, reasoned* no-audit operation. What changed
- * is which type says "registered and reasoned" — it used to be the sync
- * package's executor signature, and it is now `NoAuditTransactionOperation`
- * directly, which is the registry's own key type.
- */
 export const SYNC_TRANSACTION_POLICIES = {
   createDraft: 'sync.createDraft',
   acquire: 'sync.acquire',
@@ -105,14 +79,6 @@ const assertProtocolSectionValid: SectionValidator = (
   ]);
 };
 
-/**
- * Studio's sync server: the shared state machine plus Studio's own section
- * validation.
- *
- * It takes no database handle and opens no transaction. Every operation
- * requires the `Transaction` service, so the caller's scope is what it runs in
- * — which is how a host lands a lease change and its own rows together.
- */
 export function createProtocolSyncServer(ttlMs?: number): SyncServer {
   return makeSyncServer({
     ttlMs,

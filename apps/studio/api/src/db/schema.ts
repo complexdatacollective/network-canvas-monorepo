@@ -1,7 +1,7 @@
 import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { Effect } from 'effect';
-import type { SqlClient } from 'effect/unstable/sql';
+import type { SqlClient } from 'effect/sql';
 import type pg from 'pg';
 
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
@@ -272,18 +272,8 @@ export function schemaProblemMessage(
 }
 
 /**
- * `checkSchema` and `stampFingerprint`, as Effects on a client.
- *
- * Both shapes exist on purpose and neither is a wrapper of the other. The
- * node-postgres pair above is what `scripts/apply.ts`, `apply-schema.ts` and
- * `db-reset.ts` run: drizzle-kit's `pushSchema` takes a node-postgres handle
- * and has no Effect driver, so a checkout lane without node-postgres is not
- * available at any price. The Effect pair below is what the deployed
- * `studio-api migrate` runs, because that process carries no `pg` at all.
- *
- * They read and write the same two statements. `db/__tests__/migrate.test.ts`
- * applies through the Effect pair and reads the result back through the
- * node-postgres `checkSchema`, so both are held to the same databases.
+ * Not a wrapper of the node-postgres pair above: drizzle-kit's `pushSchema`
+ * needs node-postgres, and the deployed `studio-api migrate` carries no `pg`.
  */
 export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
   client: SqlClient.SqlClient,
@@ -299,7 +289,7 @@ export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
   if (stamped) {
     const recorded = yield* client.unsafe<{
       fingerprint: string;
-      appliedAt: Date | number;
+      appliedAt: Date;
     }>('select "fingerprint", "appliedAt" from "schemaFingerprint"');
     const row = recorded[0];
     if (row) {
@@ -308,12 +298,7 @@ export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
           kind: 'stale',
           reason: 'mismatch',
           found: row.fingerprint,
-          // Converted at the seam: this is a raw read, and on
-          // `@effect/sql-pg` 4.0.0-rc.115 a `timestamptz` arrives as epoch
-          // milliseconds rather than a `Date` (#1927 §20 Q6, fallback A).
-          // rc.116's #8241 removes the need for this line, not the line's
-          // correctness.
-          appliedAt: new Date(row.appliedAt),
+          appliedAt: row.appliedAt,
         } satisfies StaleSchema;
       }
       return { kind: 'current' } satisfies SchemaState;

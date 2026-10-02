@@ -766,8 +766,6 @@ describe('the marker a refused write leaves behind', () => {
           Submit: (input) => {
             if (drop) {
               drop = false;
-              // What a dropped socket is: the host took the lock and handed
-              // back the document, and the answer to the write never arrived.
               return Effect.die(new Error('the connection dropped'));
             }
             return host.handle.Submit(input);

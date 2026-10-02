@@ -1,29 +1,8 @@
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
-// The queue's own schema, in the shape Studio's other sidecars take
-// (src/db/access.ts and the per-area schema.ts modules): one SQL string,
-// installed once, hashed into the schema fingerprint. What pg-boss installs
-// through `getConstructionPlans` is ~40 statements across nine tables, seven
-// functions and a version row; this is two tables, six indexes and one trigger,
-// because Studio uses five queues, two policies and no flows, dependencies,
-// priorities, groups or heartbeats.
-//
-// Every statement names its schema so the same DDL can be installed into a
-// scratch schema per suite without a `search_path` — rc.115 has no
-// `startupParameters`, so a search path could not be pinned per connection
-// anyway (see src/db/client.ts).
-
-/** Interpolated into DDL, so it is checked rather than trusted. */
 const SCHEMA_NAME = /^[a-z_][a-z0-9_]*$/;
 
-/**
- * Postgres's `NAMEDATALEN - 1`. A longer name is not a style question:
- * `CREATE SCHEMA` truncates it silently, so the install would appear to work,
- * while `pg_notify` on the same name (the trigger below) raises outright and
- * `validateChannelName` in `@effect/sql-pg` refuses the matching `LISTEN` —
- * which `worker.ts` turns into a dead layer. Refusing at the name is what
- * makes that a start-up error instead of a runtime one.
- */
+/** `CREATE SCHEMA` truncates a longer name silently, while `pg_notify` and `LISTEN` refuse it. */
 const MAX_IDENTIFIER_BYTES = 63;
 
 export function assertSchemaName(schema: string): string {
@@ -38,16 +17,6 @@ export function assertSchemaName(schema: string): string {
   return schema;
 }
 
-/**
- * The five states a job passes through. `created` and `active` are the live
- * ones the singleton index arbitrates over; `completed`, `failed` and `dead`
- * are terminal and are what retention deletes.
- *
- * `dead` is what a job on a dead-letter queue is *not*: a dead-lettered job is
- * a new `created` row on the dead-letter queue, exactly as pg-boss does it, and
- * the original becomes `failed`. `dead` is reserved for a row whose payload no
- * longer decodes, which no retry can fix and no dead-letter copy should carry.
- */
 export const JOB_STATES = [
   'created',
   'active',
@@ -58,29 +27,10 @@ export const JOB_STATES = [
 
 export type JobState = (typeof JOB_STATES)[number];
 
-/**
- * The `NOTIFY` channel a schema's jobs announce themselves on: the schema name
- * itself, so two installations in one database (production's `studio_jobs` and
- * a suite's scratch sibling) never wake each other's workers. The payload is
- * the queue name, which is all a worker needs to know which poll fiber to
- * release.
- *
- * A channel name is an identifier, so the same rule the DDL is checked against
- * covers it, and Postgres's 63-byte identifier limit applies to both.
- */
 export function jobNotifyChannel(schema: string): string {
   return assertSchemaName(schema);
 }
 
-/**
- * One string, the way `ACCESS_SIDECAR_SQL` and the area sidecars are one
- * string. Split by `splitStatements` at install time (#1927 §9) — stage 2a's
- * dollar-quote-aware splitter, which the trigger function below now requires.
- *
- * Every statement is idempotent (`IF NOT EXISTS` / `OR REPLACE`), because
- * `src/db/migrate.ts` and `scripts/apply.ts` install it into a database that
- * may already carry it.
- */
 export function jobSchemaSql(schema: string): string {
   const s = assertSchemaName(schema);
   return `
@@ -177,16 +127,7 @@ CREATE OR REPLACE TRIGGER jobs_notify_trigger
 `;
 }
 
-/**
- * The same division of labour Studio made over pg-boss's own schema: the
- * application may create a job and learn its id, and nothing more — it cannot
- * read a payload, claim, retry, cancel or delete one, which keeps every team's
- * queued work invisible to the role that serves requests. The worker runs as
- * maintenance and owns both tables.
- *
- * `SELECT (id)` alone is what the `INSERT … RETURNING id` reads back. Widening
- * it is a schema change.
- */
+/** The application may only create a job and read back its id (`INSERT … RETURNING id`). */
 export function jobSchemaGrantsSql(schema: string): string {
   const s = assertSchemaName(schema);
   const { app, maintenance } = TENANT_ROLES;
@@ -195,15 +136,12 @@ export function jobSchemaGrantsSql(schema: string): string {
     `GRANT INSERT ON ${s}.jobs TO ${app};`,
     `GRANT SELECT (id) ON ${s}.jobs TO ${app};`,
     `GRANT ALL ON ${s}.jobs, ${s}.job_schedules TO ${maintenance};`,
-    // A trigger function runs as the role that fired it, so the application
-    // needs EXECUTE to insert at all. New functions grant EXECUTE to PUBLIC,
-    // which would make this redundant — until someone revokes that, which is
-    // an ordinary hardening step and would otherwise break every enqueue.
+    // A trigger function runs as the role that fired it. Granted explicitly so
+    // revoking PUBLIC's default EXECUTE does not break every enqueue.
     `GRANT EXECUTE ON FUNCTION ${s}.notify_job() TO ${app}, ${maintenance};`,
   ].join('\n');
 }
 
-/** Installed and dropped together; the suites drop the schema outright. */
 export function dropJobSchemaSql(schema: string): string {
   return `DROP SCHEMA IF EXISTS ${assertSchemaName(schema)} CASCADE;`;
 }

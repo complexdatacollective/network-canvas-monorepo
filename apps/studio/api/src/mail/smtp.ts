@@ -9,9 +9,7 @@ import {
 } from './mailer.ts';
 
 // The only module in the server that imports nodemailer, which
-// src/__tests__/process-separation.test.ts holds: a transport reachable from
-// the web process's graph would put SMTP credentials in a process that has no
-// business holding them (#1895).
+// src/__tests__/process-separation.test.ts holds.
 
 export function MailerSmtp(transport: {
   readonly url: string;
@@ -20,17 +18,7 @@ export function MailerSmtp(transport: {
   return Layer.effect(
     Mailer,
     Effect.gen(function* () {
-      // nodemailer's defaults — 2 minutes to connect, 30 seconds for a
-      // greeting, 10 minutes of socket inactivity — are longer than anything
-      // that waits on a send: the invitation queue expires an attempt after 60
-      // seconds, and the worker gives an in-flight handler 25 seconds when a
-      // container stops it, after which the scope interrupts it and the row
-      // stays `active` until its lease expires. These bounds fit inside both.
-      //
-      // Before nodemailer 10, `createTransport` discarded every other key of a
-      // configuration object that carried a `url`, so these timeouts had to be
-      // set through an SMTPTransport built by hand. 10.0.0 applies them beside
-      // the URL; src/mail/__tests__/smtp.test.ts holds the bound either way.
+      // nodemailer's defaults are longer than anything that waits on a send.
       const sender = yield* Effect.acquireRelease(
         Effect.sync(() =>
           nodemailer.createTransport({

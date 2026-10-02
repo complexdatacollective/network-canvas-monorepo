@@ -172,11 +172,6 @@ function useStudySegment(
   const intl = useAppIntl();
   const navigate = useNavigate();
 
-  // `skipToken` rather than a disabled query with a placeholder payload: the
-  // two identifiers these are addressed by are branded, and there is no string
-  // that stands in for one. A payload built from `studyId ?? ''` would be a
-  // query keyed on, and one `enabled` mistake away from asking about, a study
-  // that cannot exist.
   const study = useQuery(
     studyId === undefined
       ? { queryKey: rpcKey('studies.get'), queryFn: skipToken }
@@ -297,8 +292,6 @@ export default function EntityLockup({ className }: { className?: string }) {
   // without this only the ACTIVE team could carry one and every other row
   // would be silent about what the researcher may do there.
   const me = useQuery(rpcQuery('me', undefined));
-  // Keyed by plain string, because it is looked up by the ids Better Auth's
-  // own team list reports, which carry no brand.
   const roles = new Map<string, string>(
     (me.data?.teams ?? []).map((membership) => [
       membership.teamId,

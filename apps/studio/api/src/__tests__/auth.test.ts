@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Cause, Effect, Exit, Option, Predicate } from 'effect';
-import { type Headers, HttpServerRequest } from 'effect/unstable/http';
+import { type Headers, HttpServerRequest } from 'effect/http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TeamId } from '@codaco/studio-contract/schema/ids';
@@ -38,7 +38,6 @@ import {
   REDIS_DATABASES,
 } from './support/valkey.ts';
 
-/** `me` over the rpc plane, with the harness disposed however the case ends. */
 async function meOver(studio: Studio, headers?: Record<string, string>) {
   const client = await createRpcClient(studio, headers);
   try {
@@ -48,7 +47,6 @@ async function meOver(studio: Studio, headers?: Record<string, string>) {
   }
 }
 
-/** The same call, asserted to be refused as `Unauthorized`. */
 async function expectMeUnauthorized(
   studio: Studio,
   headers?: Record<string, string>,
@@ -64,15 +62,6 @@ async function expectMeUnauthorized(
   }
 }
 
-/**
- * The `exit` of the one `Exit` frame in an ndjson `/rpc` response body — the
- * shape `rpc-setup.test.ts` reads a response with, left unnarrowed because the
- * cases below are about how a call was refused rather than what it returned.
- *
- * Note that a refusal is still a 200: the rpc server answers the transport and
- * puts the verdict in the frame, so a case that only read the status would pass
- * on every one of these.
- */
 async function exitFrameOf(response: Response): Promise<unknown> {
   const frames = (await response.text())
     .split('\n')
@@ -87,7 +76,6 @@ async function exitFrameOf(response: Response): Promise<unknown> {
   return frame.exit;
 }
 
-/** The instance descriptor over the rpc plane. */
 async function statusOver(studio: Studio) {
   const client = await createRpcClient(studio);
   try {
@@ -103,7 +91,6 @@ const PRINCIPAL: SessionPrincipal = {
   email: 'researcher@example.com',
   emailVerified: true,
   name: 'Researcher',
-  // Non-null so `me` passing the preference through is observable below.
   locale: 'en-GB',
   sessionId: 'session-1',
 };
@@ -112,10 +99,6 @@ describe('principal resolution', () => {
   it('resolves the cookie session into the RPC context', async () => {
     const auth = authServiceStub({
       getSession: () => Effect.succeedSome(PRINCIPAL),
-      // Better Auth's own team list drops the caller's role, so `me` is what
-      // carries it — including a legacy membership stored as one
-      // comma-separated value, which the wire schema takes as a plain string
-      // rather than rejecting the whole response over.
       listMemberships: () =>
         Effect.succeed([
           { teamId: 'team-a', role: 'owner' },
@@ -150,22 +133,10 @@ describe('principal resolution', () => {
     });
     expect(me.userId).toBe('user-1');
     expect(asked?.['cookie']).toBe('studio.session_token=opaque');
-    // The provider is handed a request rather than a cookie: which headers
-    // its endpoint consults is its own business, so the whole set goes
-    // through — the same set the HTTP gates hand it
-    // (`http/middleware/principal.ts`). This client talks to the handlers in process, so the set it
-    // presents is the only one there is; the case below is where a real
-    // request and a message that contradicts it are told apart.
     expect(asked?.['user-agent']).toBe('Studio Test Agent');
   });
 
   it('asks the provider with the headers the request carried, not ones a message attached', async () => {
-    // `RpcServer` merges each message's own headers over the request's, so
-    // `options.headers` is partly caller-supplied. A header a caller attaches
-    // with `RpcClient.withHeaders` must not reach the auth provider as though
-    // the deployment had received it: with `TRUSTED_PROXIES` set, the address
-    // better-auth resolves comes off `x-forwarded-for`, and the forgery would
-    // arrive in the request body where no reverse proxy can correct it.
     let asked: Headers.Headers | undefined;
     const auth = authServiceStub({
       getSession: (headers) => {
@@ -173,8 +144,6 @@ describe('principal resolution', () => {
         return Effect.succeedSome(PRINCIPAL);
       },
     });
-    // Over the transport, because that is the only place the two sets differ:
-    // the in-process client has no HTTP request behind it at all.
     const configured = readEnv();
     const stack = composeStudio(configured, createStudio(configured, { auth }));
     try {
@@ -200,11 +169,7 @@ describe('principal resolution', () => {
       expect(response.status).toBe(200);
 
       expect(asked?.['user-agent']).toBe('The Real Agent');
-      // Not overwritten and not invented: a header the request never carried
-      // stays absent however loudly the message names it.
       expect(asked?.['x-forwarded-for']).toBeUndefined();
-      // Still the request's own credential, which is the point of forwarding
-      // the set at all.
       expect(asked?.['cookie']).toBe('studio.session_token=opaque');
     } finally {
       await stack.dispose();
@@ -229,17 +194,11 @@ describe('principal resolution', () => {
     const me = await meOver(studio);
     expect(me.userId).toBe('user-1');
 
-    // With the header, the request is on the token plane (#1248): the cookie
-    // session must not even be consulted.
     await expectMeUnauthorized(studio, { authorization: 'Bearer some-token' });
     expect(getSessionCalls).toBe(1);
   });
 
   it('resolves an HTTP request by the same rule, token plane included', async () => {
-    // `principalFromRequest` is what the HTTP gates ask (`/storage`, `/ws`),
-    // over the request being served rather than an rpc frame. One rule for
-    // both planes: a cookie resolves, and an Authorization header is the token
-    // plane, which resolves to nobody without the session being consulted.
     let getSessionCalls = 0;
     const auth = authServiceStub({
       getSession: () => {
@@ -275,18 +234,6 @@ describe('principal resolution', () => {
   });
 
   it('refuses the token plane even when the message erases the header', async () => {
-    // The bypass a guard reading the merged set leaves open, and the reason
-    // the case above cannot stand for this one: it drives the in-process
-    // client, where the request's headers and the message's are one set, so it
-    // passes whichever set the guard asks.
-    //
-    // A message's headers are raw `JSON.parse` output — `layerNdjson` parses
-    // the envelope and never decodes it against `RequestEncoded` — so a caller
-    // may put a one-element entry there, which `Headers.fromInput` merges as
-    // `authorization: undefined`. The merged set then answers `undefined` to a
-    // `!== undefined` guard while the request still carries a real
-    // `Authorization`, and the cookie beside it would be the silent
-    // token-to-cookie fallback #1248 forbids.
     let getSessionCalls = 0;
     const auth = authServiceStub({
       getSession: () => {
@@ -321,9 +268,6 @@ describe('principal resolution', () => {
         _tag: 'Failure',
         cause: [{ _tag: 'Fail', error: { _tag: 'Unauthorized' } }],
       });
-      // And refused before the provider was consulted at all: a call that
-      // reached `getSession` had already handed it the cookie and the token
-      // together, whatever it went on to answer.
       expect(getSessionCalls).toBe(0);
     } finally {
       await stack.dispose();
@@ -331,16 +275,6 @@ describe('principal resolution', () => {
   });
 
   it('refuses a payload the contract rejects, at the server boundary', async () => {
-    // The server-side half of `expectPayloadRejected` (`support/rpc.ts`),
-    // which can only ever see the *client's* encoder refuse: under
-    // `RpcTest.makeClient` the payload never leaves the process. Over the
-    // transport the bytes arrive as sent, and it is `RpcServer`'s decode that
-    // refuses — a different code path, and the one a caller who is not using
-    // our client reaches.
-    //
-    // `setup.complete` because it is public: the refusal has to be the
-    // payload's, not a middleware's, and this way nothing else could have
-    // produced it.
     const configured = readEnv();
     const stack = composeStudio(
       configured,
@@ -359,7 +293,6 @@ describe('principal resolution', () => {
           tag: 'setup.complete',
           payload: {
             token: 'a-token',
-            // Blank once trimmed, which the contract refuses.
             instanceName: '   ',
             owner: {
               name: 'First Owner',
@@ -372,19 +305,11 @@ describe('principal resolution', () => {
       });
       expect(response.status).toBe(200);
 
-      // A `Die`, not a declared failure: a payload the schema refuses is not
-      // one of the procedure's errors.
       const exit = await exitFrameOf(response);
       expect(exit).toMatchObject({
         _tag: 'Failure',
         cause: [{ _tag: 'Die' }],
       });
-      // And the defect — `SchemaIssue.defaultFormatter`'s rendering of the
-      // refusal — has to name the field. "Died" alone is the same shape a call
-      // produces when it is admitted and then throws, which is the argument
-      // `expectPayloadRejected` makes for taking `field` at all; here it is
-      // also what says the decode refused this payload rather than the
-      // envelope around it.
       const defect =
         Predicate.hasProperty(exit, 'cause') &&
         Predicate.hasProperty(exit.cause, 0) &&
@@ -408,10 +333,6 @@ describe('principal resolution', () => {
   });
 
   it('offers magic-link sign-in even where no mail transport is configured', async () => {
-    // Delivery is the worker's (#1895): with no transport anywhere, a sign-in
-    // email waits on the queue rather than the method being withdrawn. The
-    // capability answers whether the method exists, and `mail` is the worker's
-    // resolution — the web process's read leaves it undefined entirely.
     const base = readEnv();
     const status = await statusOver(
       createStudio({ ...base, mail: { kind: 'refuse' } }),
@@ -437,12 +358,6 @@ describe('principal resolution', () => {
   });
 });
 
-// The same procedure over the websocket transport is not a case here, and
-// that is not an omission: `StudioRpcs` is mounted on `/rpc` alone
-// (`http/rpc-routes.ts`, the group's only `RpcServer` mount), and `/ws` serves
-// the protocol-builder group alone.
-
-/** The call the limiter admitted: nothing behind this Studio can serve it, so it dies there. */
 function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {
   expect(Exit.isFailure(exit)).toBe(true);
   if (Exit.isFailure(exit)) expect(Cause.hasDies(exit.cause)).toBe(true);
@@ -451,22 +366,12 @@ function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {
 const planeRedis = await reachableRedis(REDIS_DATABASES.authPlane);
 
 describe.skipIf(!planeRedis)('what the middleware charges', () => {
-  // The ordering the `Authenticated` middleware makes structural (#1932 §3,
-  // §12): the caller's own budget is spent once the principal is known and
-  // before the handler runs, so before any database work. The two narrower
-  // scopes are the procedures' own, and their ordering oracles are where the
-  // procedures are exercised: `rpc_team` only after membership in
-  // `rate-limit-routes.test.ts` ('charges the team nothing for a caller who is
-  // not in it') and `rpc/__tests__/team-scope.test.ts`, and `invitation_accept`
-  // before the token lookup in `rate-limit-routes.test.ts` ('refuses a third
-  // acceptance of one invitation token').
   let limits: OpenRateLimitStore;
   beforeAll(async () => {
     limits = await openRateLimitStore(planeRedis);
   });
   afterAll(() => limits.dispose());
 
-  /** A caller of their own per case, since the window is keyed by user and outlives the test. */
   const caller = (): SessionPrincipal => {
     const userId = `plane-${randomUUID()}`;
     return { ...PRINCIPAL, userId, sessionId: `session-${userId}` };
@@ -493,13 +398,9 @@ describe.skipIf(!planeRedis)('what the middleware charges', () => {
     });
     const client = await createRpcClient(studio);
     try {
-      // The one call the window holds, and the read `me` makes for it.
       await client.call(client.rpc('me', undefined));
       expect(reads.memberships).toBe(1);
 
-      // Spent: refused with the interval, and neither `me`'s membership list
-      // nor a team procedure's membership read happened — the handler never
-      // ran, which a charge taken after the read could not say.
       const refused = await expectRpcFailure(
         client.callExit(client.rpc('me', undefined)),
         'RateLimited',
@@ -532,10 +433,6 @@ describe.skipIf(!planeRedis)('what the middleware charges', () => {
         client.rpc('studies.list', { teamId: TeamId.make('team-a') }),
       );
     try {
-      // Two calls for a window of two: a scope helper that still charged
-      // `rpc_user` beside the middleware would have spent the window on the
-      // first and refused the second. Each is admitted and dies where this
-      // Studio has no database to open the tenant on.
       expectAdmitted(await list());
       expectAdmitted(await list());
       await expectRpcFailure(list(), 'RateLimited');
@@ -554,7 +451,6 @@ describe('unconfigured auth', () => {
     db: undefined,
     auth: undefined,
     mail: undefined,
-    // No database, so nothing to hold a secret and nothing to encrypt it with.
     secrets: undefined,
     redis: undefined,
     trustedProxies: undefined,
@@ -591,10 +487,8 @@ describe('unconfigured auth', () => {
   });
 });
 
-// Runs in its own Postgres schema, like the fingerprint suite: this test
-// needs an empty rate-limit table to start from, and clearing that in the
-// shared database would delete durable security counters from whatever
-// DATABASE_URL happens to point at.
+// Runs in its own Postgres schema: clearing the rate-limit table in the
+// shared database would delete durable security counters.
 
 const env = readEnv();
 
@@ -624,16 +518,11 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
   it('queues the email for the worker rather than sending it', async () => {
     const database = await openTestDatabase();
     try {
-      // The production wiring: the live auth service over the Effect
-      // services the sign-in mail is queued on, and no mailer for it to reach
-      // for — src/__tests__/process-separation.test.ts pins that nodemailer is
-      // not even in this process's module graph.
       const app = composeStudio(
         env,
         createStudio(env, {
           auth: liveAuthService(env, database.services),
           services: database.services,
-          pool: database.appPool,
         }),
       );
       const email = `queued-${Date.now()}@example.com`;
@@ -664,8 +553,6 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
         },
       ]);
 
-      // The link in the payload is the real one: the worker sends what is
-      // here, so a job carrying anything else would sign nobody in.
       const { url } = queued[0]!.payload as { url: string };
       const verify = await app.request(url);
       expect([302, 200]).toContain(verify.status);
@@ -681,7 +568,6 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
     try {
       const { studio, email, cookie } = await signInWithMagicLink(
         env,
-        database.appPool,
         'researcher',
         database.services,
       );
@@ -698,22 +584,8 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
 });
 
 describe.skipIf(!testDb)('email/password sign-in', () => {
-  // Exercises the seed script's credential account (scripts/seed/seed.ts) against
-  // the real better-auth handler end to end — the same path that regressed
-  // silently when the account table did not match better-auth's own account
-  // key (auth-schema.ts), because until this account existed nothing in this
-  // suite ever queried that table by provider.
-  //
-  // Seeded once for every case here; none of them writes anything another can
-  // see. `tiny` because these cases need the admin, a team and that team's
-  // tenant data — not the demo corpus's volume — and a demo seed is most of a
-  // second here and well over a minute on the CI runner, where every affected
-  // package's vitest workers share two vCPUs with the Postgres service
-  // container. The bound stays generous: it is here to fail a seed that has
-  // hung, not one sharing a machine.
   const SEEDING_TIMEOUT_MS = 180_000;
 
-  /** Well past what this file asks for, so repeated local runs never meet it. */
   const SIGN_IN_ALLOWANCE = { max: 1000, windowMs: 60_000 };
 
   let database: TestDatabaseRuntime | undefined;
@@ -721,9 +593,6 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
   let studio: Studio;
   let stack: ReturnType<typeof composeStudio> | undefined;
 
-  // Through the composed stack's auth mount, which reads the body for the
-  // per-email limit before better-auth does: a sign-in that succeeds on the
-  // right password is better-auth having received it.
   const signIn = (password: string) => {
     if (!env.auth || !stack) throw new Error('dev env must configure auth');
     return stack.request('/api/auth/sign-in/email', {
@@ -741,15 +610,8 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
     if (!env.auth) throw new Error('dev env must configure auth');
     database = await openTestDatabase();
     await database.run(seed({ scale: 'tiny', secrets: testKeyring() }));
-    // Every case here signs the one seeded account in, so they all count
-    // against one `sign_in_email` bucket — and the shipped limit is five in
-    // ten minutes, which a developer re-running this file would reach on the
-    // third run. The limiter is not what this file is about, so it states a
-    // limit of its own rather than sharing the constant's window (#1909).
     limits = await openRateLimitStore(env.redis);
     studio = createStudio(env, {
-      // The seed sealed its rows under the test keyring, so the instance
-      // opens them with the same one.
       auth: liveAuthService(env, database.services, { cipher: testCipher() }),
       limiter: limits.limiter({ sign_in_email: SIGN_IN_ALLOWANCE }),
     });
@@ -789,16 +651,13 @@ describe.skipIf(!testDb)('teams (organization plugin)', () => {
     try {
       const { studio, auth, cookie } = await signInWithMagicLink(
         env,
-        database.appPool,
         'owner',
         database.services,
       );
       const me = await meOver(studio, { cookie });
 
-      // Call the plugin handler directly in this integration test. Studio's
-      // public forwarding boundary blocks organization creation until the
-      // application owns an audited command, while this still exercises the
-      // adapter against the folded team tables end to end.
+      // Call the plugin handler directly: Studio's public forwarding boundary
+      // blocks organization creation.
       const create = await callBetterAuthOrganizationRoute(
         auth,
         '/api/auth/organization/create',
@@ -817,9 +676,6 @@ describe.skipIf(!testDb)('teams (organization plugin)', () => {
       expect(await membership(me.userId, 'not-a-team')).toEqual(Option.none());
       expect(await membership('someone-else', team.id)).toEqual(Option.none());
 
-      // The plugin only check-then-inserts memberships, so the composite
-      // unique index is what keeps that single-row read unambiguous. Omitting
-      // created_at also exercises its default.
       const refused = await database.run(
         refusalOf(
           ownerAffected(
@@ -840,7 +696,6 @@ describe.skipIf(!testDb)('teams (organization plugin)', () => {
     try {
       const { auth, cookie } = await signInWithMagicLink(
         env,
-        database.appPool,
         'owner',
         database.services,
       );
@@ -853,8 +708,6 @@ describe.skipIf(!testDb)('teams (organization plugin)', () => {
       expect(create.status).toBe(200);
       const team = (await create.json()) as { id: string };
 
-      // The owner would otherwise be allowed to delete it, orphaning every
-      // sync-side row that names the team without a foreign key.
       const deleted = await callBetterAuthOrganizationRoute(
         auth,
         '/api/auth/organization/delete',

@@ -28,11 +28,6 @@ import {
 
 const { protocolAssetKeys } = PROTOCOL_TABLES;
 
-/**
- * Whether a `bytea` arrives as node's `Buffer` through `@effect/sql-pg`'s
- * driver, which is what the case below pins: the cipher takes the wider
- * `Uint8Array`, and this records which of the two it is actually handed.
- */
 const EFFECT_SQL_PG_YIELDS_BUFFER = false;
 
 const MAPBOX_KEY = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJub3QtYS1yZWFsLWtleSJ9';
@@ -192,18 +187,13 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
     );
     expect(stored!.key_id).toBe('test-1');
     // A `bytea` arrives as a plain `Uint8Array`, whose own `toString` ignores
-    // the encoding, so it goes through `Buffer` to be read as text.
+    // the encoding.
     const ciphertext = Buffer.from(stored!.ciphertext);
     expect(ciphertext.toString('utf8')).not.toContain(MAPBOX_KEY);
     expect(ciphertext.toString('base64')).not.toContain(MAPBOX_KEY);
   });
 
   it('reads the ciphertext back as the byte array the cipher takes', async () => {
-    // `bytea` decodes as a `Buffer` through node-postgres and as a plain
-    // `Uint8Array` through `@effect/sql-pg`, and drizzle declares the column
-    // as the former. What the cipher is handed is therefore whatever the
-    // driver produced, and this says which — so a cipher narrowed to `Buffer`
-    // would fail here rather than in production.
     await seal('shape', MAPBOX_KEY);
     const ciphertext = await run(
       Effect.gen(function* () {

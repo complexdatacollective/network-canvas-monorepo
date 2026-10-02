@@ -3,9 +3,6 @@
 /*
  * The whole reference stack, on this machine (#1909).
  *
- *   pnpm --filter @codaco/studio-api dev:stack
- *   pnpm --filter @codaco/studio-api dev:stack:down
- *
  * `dev` runs the backing services in containers and the Studio processes from
  * source; this runs what a self-hoster runs — Traefik terminating TLS, nginx
  * serving the built client, the API and the worker from the `studio-api`

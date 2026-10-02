@@ -1,22 +1,9 @@
-// The network module's database-enforced promises: every CHECK, the composite
-// foreign keys that prove same-team membership, the endpoint keys that make a
-// dangling edge impossible, the snapshot's write-once-at-finalization rule and
-// the deferred constraint that makes it compulsory, and the statement-level
-// guard that makes a finalized session's and a closed study's collected data
-// read-only.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger,
-// the SQLSTATE for a policy — so a guard that stopped firing cannot pass as
-// "no error". `refusalOf` is what makes that hold: each field reads the literal
-// `'no failure'` when the statement was not refused at all, so a case that
-// stops refusing fails on the value rather than passing vacuously.
 import { randomUUID } from 'node:crypto';
 
 import type { PgClient } from '@effect/sql-pg';
 import { layer } from '@effect/vitest';
 import { Effect, Layer, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 import { describe, expect } from 'vitest';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
@@ -46,17 +33,11 @@ const TEAM_B = 'team-b';
 
 type Team = typeof TEAM_A | typeof TEAM_B;
 
-/**
- * The membership a tenant scope stands in for. These cases prove what the
- * database does under the application role; the membership checks that mint a
- * real `TeamAccess` are proved by the commands in production.
- */
 const access = (teamId: Team) => unsafeMakeTeamAccess(teamId, 'owner');
 
 /**
  * `RETURNING` rather than a row count: `@effect/sql-pg` surfaces the rows a
- * statement returned and not its command tag, so "one row was written" is
- * asserted by the row coming back.
+ * statement returned and not its command tag.
  */
 const FINALIZE_SQL = `UPDATE interview_sessions
    SET status = 'completed', completed_at = now() WHERE id = $1
@@ -64,7 +45,6 @@ const FINALIZE_SQL = `UPDATE interview_sessions
 
 type Row = Record<string, unknown>;
 
-/** A study, its wave, its participant and one in-progress session for them. */
 type Fixture = {
   studyId: string;
   waveId: string;
@@ -72,8 +52,6 @@ type Fixture = {
   sessionId: string;
 };
 
-// One protocol line per team and one published version on it, minted here so
-// the seed and the cases agree on the ids without a shared mutable map.
 const protocolOf: Record<Team, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -102,7 +80,6 @@ const placeholders = (row: Row) =>
     .map((_, index) => `$${index + 1}`)
     .join(', ');
 
-/** Inserts `row` as the connecting login and answers with the row it wrote. */
 const insert = (table: string, row: Row) =>
   ownerRows(
     `INSERT INTO ${table} (${columnList(row)})
@@ -111,11 +88,6 @@ const insert = (table: string, row: Row) =>
     Object.values(row),
   );
 
-/**
- * The seed every case builds on: the two teams, a protocol line each and one
- * published version on each line. A layer rather than a `beforeAll`, so it runs
- * once when the suite's scratch schema is built and the cases stay effects.
- */
 const seedTeams = Effect.gen(function* () {
   const harness = yield* TestDatabase;
   yield* harness.onOwner(
@@ -128,8 +100,7 @@ const seedTeams = Effect.gen(function* () {
         yield* sql`insert into protocols (id, team_id, name)
                    values (${protocolOf[teamId]}, ${teamId}, ${`${teamId} protocol`})`;
         // `manifest` is jsonb and this is a raw statement, so the value goes
-        // over as a JSON string; only the drizzle builder's codec stringifies
-        // an object for you.
+        // over as a JSON string.
         yield* sql`insert into protocol_versions
                      (id, protocol_id, team_id, version_number, version_hash,
                       manifest, schema_version, source_manifest_hash)
@@ -151,10 +122,6 @@ const newFixture = Effect.fnUntraced(function* (teamId: Team = TEAM_A) {
   const waveId = randomUUID();
   const participantId = randomUUID();
   const sessionId = randomUUID();
-  // The study names its team's protocol line and the wave pins that line's
-  // published version, because `study_waves_version_own_line` refuses a pin
-  // whose study has no line and `interview_sessions_version_wave_pin`
-  // refuses a session under a wave that pins nothing.
   yield* insert('studies', {
     id: studyId,
     team_id: teamId,
@@ -240,7 +207,6 @@ const histRow = (fixture: Fixture, overrides: Row = {}): Row => ({
   ...overrides,
 });
 
-/** Adds a node to `sessionId` and returns its network-local id. */
 const newNode = Effect.fnUntraced(function* (
   sessionId: string,
   overrides: Row = {},
@@ -257,10 +223,6 @@ const closeStudy = (studyId: string) =>
     [studyId],
   );
 
-/**
- * The snapshot a finalization has to write, derived from the session so any
- * fixture can be finalized without naming its study or its version pin.
- */
 const SNAPSHOT_SQL = `INSERT INTO session_snapshots
      (session_id, team_id, study_id, protocol_version_id,
       schema_version, payload, payload_hash)
@@ -272,18 +234,12 @@ const SNAPSHOT_SQL = `INSERT INTO session_snapshots
    WHERE s.id = $1
    RETURNING session_id`;
 
-/** The snapshot a case writes by hand, under whichever team it names. */
 const SNAPSHOT_INSERT_SQL = `INSERT INTO session_snapshots
      (session_id, team_id, study_id, protocol_version_id,
       schema_version, payload, payload_hash)
    VALUES ($1, $2, $3, $4, 8, '{}'::jsonb, 'sha256:cafe')
    RETURNING session_id`;
 
-/**
- * Runs `work` inside the transaction that flips the session to completed — the
- * only window in which a snapshot may be written. The transaction rolls back
- * when the work fails, so a rejected case leaves the session in progress.
- */
 const finalizing = <A, E, R>(
   sessionId: string,
   work: (sql: PgClient.PgClient) => Effect.Effect<A, E, R>,
@@ -296,19 +252,9 @@ const finalizing = <A, E, R>(
     ),
   );
 
-/**
- * Finalizes `sessionId` in its own committed transaction, snapshot and all:
- * `interview_sessions_completion_snapshot` is deferred to commit, so the flip
- * and the snapshot have to travel together.
- */
 const finalize = (sessionId: string) =>
   finalizing(sessionId, (sql) => sql.unsafe(SNAPSHOT_SQL, [sessionId]));
 
-/**
- * A tenant transaction that also presents the erasure marker, the way the
- * audited erasure command will. `set_config(..., true)` is `SET LOCAL`, the
- * form `db/tenant.ts` uses for the team GUC.
- */
 const erasing = (
   participantId: string,
   statement: string,
@@ -323,15 +269,8 @@ const erasing = (
     }),
   );
 
-/**
- * A raw read of a `timestamptz`: `@effect/sql-pg` rc.115 decodes one to epoch
- * milliseconds, where drizzle's own column mapper hands back a `Date`. Decoding
- * says so rather than trusting the driver to keep doing it, and the instant is
- * then weighed against a clock read the case took itself — which is a stronger
- * oracle than the `instanceof Date` this replaces, since a column that
- * defaulted to some other instant would still have been a `Date`.
- */
-const instantOf = Schema.decodeUnknownSync(Schema.Number);
+const decodeInstant = Schema.decodeUnknownSync(Schema.Date);
+const instantOf = (value: unknown): number => decodeInstant(value).getTime();
 
 type RejectionCase = readonly [
   label: string,
@@ -472,9 +411,6 @@ describe.skipIf(!testDb)('network schema', () => {
 
         it.effect('accepts a roster-format node id', () =>
           Effect.gen(function* () {
-            // `${subjectType}_${objectHash}` is what loadExternalData mints for
-            // a roster-sourced node. This is the probe that fails against the
-            // uuid column the datastore spike used.
             const { sessionId } = yield* newFixture();
             const rosterId = `person_3f2a9c${randomUUID().replaceAll('-', '')}`;
             expect(
@@ -494,15 +430,12 @@ describe.skipIf(!testDb)('network schema', () => {
           () =>
             Effect.gen(function* () {
               const { sessionId } = yield* newFixture();
-              // NcEntity['_secureAttributes']: per-variable {iv, salt} byte arrays.
               const secureAttributes = {
                 'b8b2b0e0-0000-4000-8000-000000000001': {
                   iv: [12, 0, 255, 7, 128],
                   salt: [1, 2, 3, 4, 5, 6, 7, 8],
                 },
               };
-              // Order and duplicates are meaningful: promptIDs records which
-              // prompts created the node, in the order they did.
               const promptIds = ['prompt-2', 'prompt-1', 'prompt-2'];
               const nodeId = yield* newNode(sessionId, {
                 secure_attributes: JSON.stringify(secureAttributes),
@@ -548,7 +481,6 @@ describe.skipIf(!testDb)('network schema', () => {
               ),
             ).toBe('nodes_pkey');
 
-            // The same id in another session is a different node, and allowed.
             const other = yield* newFixture();
             expect(
               yield* insert(
@@ -597,8 +529,6 @@ describe.skipIf(!testDb)('network schema', () => {
 
         it.effect('rejects an endpoint id past 128 characters', () =>
           Effect.gen(function* () {
-            // The length check fires before the endpoint key can, so this case
-            // proves the check rather than the foreign key.
             const { sessionId } = yield* newFixture();
             const to = yield* newNode(sessionId);
             expect(
@@ -681,18 +611,12 @@ describe.skipIf(!testDb)('network schema', () => {
             Effect.gen(function* () {
               const fixture = yield* newFixture();
 
-              // In progress: there is nothing to snapshot yet.
               expect(
                 yield* failureOf(
                   insert('session_snapshots', snapshotRow(fixture)),
                 ),
               ).toContain(SNAPSHOT_WINDOW);
 
-              // Completed, but in an earlier transaction: the window has
-              // closed. Finalizing now has to write the snapshot, so the
-              // audited erasure is what takes it away again — leaving a
-              // completed session whose window shut with the commit before this
-              // one.
               yield* finalize(fixture.sessionId);
               yield* erasing(
                 fixture.participantId,
@@ -714,9 +638,6 @@ describe.skipIf(!testDb)('network schema', () => {
               const fixture = yield* newFixture();
               const harness = yield* TestDatabase;
 
-              // Deferred: the flip itself is accepted, and only the commit weighs
-              // it. Asserting the update returns its row is what proves the
-              // deferral — an immediate check would have raised there instead.
               expect(
                 yield* failureOf(
                   harness.onOwner(
@@ -731,15 +652,12 @@ describe.skipIf(!testDb)('network schema', () => {
                 ),
               ).toContain(SNAPSHOT_COMPULSORY);
 
-              // The refused commit took the flip with it, so the session is still
-              // collectable rather than frozen with nothing to export.
               const after = yield* ownerRows<{ status: string }>(
                 `SELECT status FROM interview_sessions WHERE id = $1`,
                 [fixture.sessionId],
               );
               expect(after[0]?.status).toBe('in_progress');
 
-              // And the same flip, carrying its snapshot, commits.
               expect(yield* finalize(fixture.sessionId)).toHaveLength(1);
             }),
         );
@@ -748,13 +666,8 @@ describe.skipIf(!testDb)('network schema', () => {
           'requires the snapshot of a session inserted already completed',
           () =>
             Effect.gen(function* () {
-              // The seed's shape: sessions are inserted `completed` and their
-              // snapshots written later in the same transaction, which is
-              // exactly what deferring the check to commit admits.
               const { studyId, waveId } = yield* newFixture();
               const harness = yield* TestDatabase;
-              // Anonymous sessions, because the fixture's participant already
-              // holds the wave's one live session.
               const session = (id: string) => [
                 id,
                 studyId,
@@ -789,8 +702,7 @@ describe.skipIf(!testDb)('network schema', () => {
               );
 
               // `$1` is bound as `text[]`, so the comparison against a `uuid`
-              // column names the cast the old text-protocol driver did not
-              // need.
+              // column names the cast.
               const stored = yield* ownerRows<{ id: string }>(
                 `SELECT id FROM interview_sessions WHERE id = ANY($1::uuid[])`,
                 [[orphan, withSnapshot]],
@@ -881,8 +793,6 @@ describe.skipIf(!testDb)('network schema', () => {
           () =>
             Effect.gen(function* () {
               const fixture = yield* newFixture();
-              // A second version of the same team's line: the team-scoped key
-              // admits it, and only the session knows it is the wrong one.
               const otherVersionId = randomUUID();
               yield* insert('protocol_versions', {
                 id: otherVersionId,
@@ -929,16 +839,6 @@ describe.skipIf(!testDb)('network schema', () => {
           'checks the snapshot under the tenant that wrote it, not the transaction’s last',
           () =>
             Effect.gen(function* () {
-              // The deferred completion check reads `session_snapshots` under
-              // row-level security. A transaction that writes one team's
-              // completed session and snapshot and then re-stamps the team GUC
-              // — the seed, which populates every team in one transaction —
-              // commits under the LAST team, where a policy-bound role sees
-              // none of the first team's snapshots. The seed settles each
-              // team's deferred checks before moving on; this proves both the
-              // hazard and that remedy, under the application role the policy
-              // binds (the fixture superuser bypasses it and would prove
-              // nothing).
               const completedSession = Effect.gen(function* () {
                 const { sql } = yield* Transaction;
                 const studyId = randomUUID();
@@ -986,8 +886,7 @@ describe.skipIf(!testDb)('network schema', () => {
                       const { sql } = yield* Transaction;
                       yield* completedSession;
                       // Two statements, not one string: `@effect/sql-pg` has no
-                      // simple-query path, so a multi-command string is refused
-                      // with SQLSTATE 42601.
+                      // simple-query path.
                       yield* sql.unsafe('SET CONSTRAINTS ALL IMMEDIATE');
                       yield* sql.unsafe('SET CONSTRAINTS ALL DEFERRED');
                       yield* switchTeam;
@@ -1020,7 +919,6 @@ describe.skipIf(!testDb)('network schema', () => {
                   ),
                 ),
               ).toContain('session snapshots are immutable');
-              // Even a no-op update: immutability is not about what changed.
               expect(
                 yield* failureOf(
                   ownerRows(
@@ -1136,9 +1034,6 @@ describe.skipIf(!testDb)('network schema', () => {
           () =>
             Effect.gen(function* () {
               const fixture = yield* newFixture();
-              // A second wave and a second participant of the SAME study: the
-              // same-study keys admit both, and only the session says they are
-              // not this session's.
               const otherWaveId = randomUUID();
               yield* insert('study_waves', {
                 id: otherWaveId,
@@ -1235,8 +1130,6 @@ describe.skipIf(!testDb)('network schema', () => {
                 yield* failureOf(insert('edges', edgeRow(sessionId, from, to))),
               ).toContain(READ_ONLY);
 
-              // The session is named, so a multi-session statement says which row
-              // stopped it.
               expect(
                 yield* failureOf(insert('nodes', nodeRow(sessionId))),
               ).toContain(sessionId);
@@ -1258,9 +1151,6 @@ describe.skipIf(!testDb)('network schema', () => {
                   Effect.gen(function* () {
                     const { sql } = yield* Transaction;
                     yield* sql.unsafe(FINALIZE_SQL, [fixture.sessionId]);
-                    // Both of these touch guarded tables under a session whose
-                    // status is already 'completed'; only the same-transaction
-                    // xmin test lets them through.
                     yield* refreshSessionProjections({
                       teamId: TEAM_A,
                       sessionId: fixture.sessionId,
@@ -1282,9 +1172,6 @@ describe.skipIf(!testDb)('network schema', () => {
               );
               expect(stats[0]?.node_count).toBe(2);
 
-              // And the window is exactly one transaction wide: the next
-              // refresh is refused, which is what makes the escape narrow
-              // rather than a hole.
               expect(
                 yield* failureOf(
                   TenantScope.open(
@@ -1303,10 +1190,6 @@ describe.skipIf(!testDb)('network schema', () => {
           'freezes the as-collected rows once the finalizing transaction has taken its snapshot',
           () =>
             Effect.gen(function* () {
-              // The window closes at the snapshot: a node or edge written after
-              // it would disagree with the payload that claims to be their
-              // copy, while the projections stay writable for the rest of the
-              // transaction.
               const fixture = yield* newFixture();
               yield* newNode(fixture.sessionId);
               const insertNode = Effect.flatMap(Transaction, ({ sql }) => {
@@ -1335,8 +1218,6 @@ describe.skipIf(!testDb)('network schema', () => {
                       teamId: TEAM_A,
                       sessionId: fixture.sessionId,
                     });
-                    // A savepoint, so the refusal undoes only itself and the
-                    // transaction it is measured in still commits.
                     expect(yield* failureOf(savepoint(insertNode))).toContain(
                       READ_ONLY,
                     );
@@ -1376,8 +1257,6 @@ describe.skipIf(!testDb)('network schema', () => {
               ),
             ).toContain('a network row cannot change session or team');
 
-            // Everything else about an in-progress session's node stays
-            // editable.
             expect(
               yield* ownerRows(
                 `UPDATE nodes SET type = 'place' WHERE node_id = $1
@@ -1399,11 +1278,6 @@ describe.skipIf(!testDb)('network schema', () => {
               const to = yield* newNode(fixture.sessionId);
               yield* insert('edges', edgeRow(fixture.sessionId, from, to));
 
-              // The runtime removes a node and its edges whenever a participant
-              // changes their mind. Bottom-up, the order every delete path
-              // follows: edges before the nodes they prove — the endpoint key
-              // is an AFTER ROW constraint trigger, which fires before this
-              // statement-level guard.
               expect(
                 yield* tenantRows(
                   TEAM_A,
@@ -1468,9 +1342,6 @@ describe.skipIf(!testDb)('network schema', () => {
                 ),
               ),
             ).toContain(markerRefused);
-            // A statement that reaches past the marked participant is refused
-            // whole, even though one of the rows it names would have been
-            // allowed.
             expect(
               yield* failureOf(
                 erasing(
@@ -1513,10 +1384,6 @@ describe.skipIf(!testDb)('network schema', () => {
 
         it.effect('lets the projection refresh rewrite its own histogram', () =>
           Effect.gen(function* () {
-            // The refresh deletes and reinserts session_degree_hist on every
-            // call; on a live session that is an ordinary edit under the
-            // parent-writable rule, like every other unmarked application-role
-            // delete.
             const fixture = yield* newFixture();
             yield* newNode(fixture.sessionId);
             const refresh = TenantScope.open(
@@ -1537,11 +1404,6 @@ describe.skipIf(!testDb)('network schema', () => {
               ),
             ).toHaveLength(1);
 
-            // And the relaxation stops at the parent: a finalized session's
-            // histogram is still off limits without the marker. The refresh
-            // puts the row back first, so the delete below has something to
-            // delete — an empty transition table names no offender and would
-            // pass.
             yield* refresh;
             yield* finalize(fixture.sessionId);
             expect(
@@ -1562,12 +1424,6 @@ describe.skipIf(!testDb)('network schema', () => {
           'rejects a mismatched team before the statement guard can run',
           () =>
             Effect.gen(function* () {
-              // The probe behind the guard function deliberately not being
-              // SECURITY DEFINER: the fail-open a definer would close — a
-              // `changed` row whose parent session is invisible under the
-              // transaction's policy — is already closed by the row's own WITH
-              // CHECK policy, which rejects the write before the AFTER trigger
-              // ever sees it.
               const { sessionId } = yield* newFixture(TEAM_B);
 
               const rejection = yield* refusalOf(

@@ -5,21 +5,15 @@ import { StudyParticipationMode } from '@codaco/studio-contract/schema/study';
 import { TeamRole } from '@codaco/studio-contract/schema/team';
 
 /**
- * Copied from zod 4.5.4's `uuid()` pattern with no version given
- * (`zod/v4/core/regexes.js`, the `uuid` export), which is what `z.uuid()`
- * installed here. `Schema.isUUID()` is not the same rule: its max-UUID
- * alternative is `[fF]{8}-…`, so it also admits the upper-case max UUID that
- * zod refused, and a request id the log refused before would be recorded.
+ * zod 4.5.4's `uuid()` pattern. `Schema.isUUID()` also admits the upper-case
+ * max UUID that zod refused.
  */
 const UUID_PATTERN =
   /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
 
 /**
- * zod 4.5.4's `datetime({ offset: true })` pattern (`zod/v4/core/regexes.js`,
- * `datetime` with `local: false` and `precision: null`, the defaults
- * `_isoDateTime` in `zod/v4/core/api.js` supplies), expanded: a calendar-valid
- * date, seconds required, any fractional digits, and `Z` or a `±hh:mm`
- * offset. Effect 4 has no ISO date-time string check to defer to.
+ * zod 4.5.4's `datetime({ offset: true })` pattern; Effect 4 has no ISO
+ * date-time string check to defer to.
  */
 const OFFSET_DATETIME_PATTERN =
   /^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
@@ -52,11 +46,8 @@ const TeamRoles = Schema.Array(TeamRole).check(
 );
 
 /**
- * Every event schema below is a closed shape, `details` included: a field the
- * registry never declared must be refused rather than recorded or dropped.
- * `Schema.Struct` strips an undeclared key unless decoded with this option,
- * which reaches every nested struct, so every event-schema decode in this
- * module applies it — as `z.strictObject` did at each level before.
+ * An undeclared key must be refused, and `Schema.Struct` strips one unless
+ * decoded with this option.
  */
 export const AUDIT_EVENT_PARSE_OPTIONS = {
   onExcessProperty: 'error',
@@ -808,8 +799,6 @@ export function auditEventDefinition(
   return AUDIT_EVENT_REGISTRY[auditEventKey(event)];
 }
 
-// Not strict: it reads the two keys that route to a definition, and the
-// definition's own schema is what refuses everything else.
 const decodeAuditEventIdentity = Schema.decodeUnknownSync(
   Schema.Struct({
     eventType: Schema.String,

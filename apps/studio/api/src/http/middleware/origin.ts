@@ -1,20 +1,8 @@
 import { Effect } from 'effect';
-import {
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
-// Cross-site request forgery protection for the cookie plane (#1248):
-// better-auth's own protections cover only /api/auth/*, so unsafe methods on
-// every other cookie-principal surface are validated here. SameSite cookies
-// remain defense-in-depth, not the mechanism.
-//
-// Route-scoped rather than global: the gate only means something where a
-// cookie is a credential, so each surface that takes one provides it — `/rpc`,
-// the unsafe `/storage` methods and the `/ws` upgrade. Both gates answer with a
-// response rather than failing: a router middleware may not handle errors, and
-// a refusal a caller cannot read is not a refusal.
+// CSRF protection for the cookie plane: better-auth's own protections cover
+// only /api/auth/*.
 
 const SAFE_METHODS: ReadonlySet<string> = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -24,13 +12,6 @@ const refused = () =>
     { status: 403, contentType: 'application/problem+json' },
   );
 
-/**
- * Unsafe methods must provably come from our own origin: modern browsers
- * assert `Sec-Fetch-Site: same-origin` (or `none` for direct navigation);
- * otherwise an `Origin` header matching the configured browser-facing origin
- * is required. Requests that carry neither — including non-browser clients,
- * which belong on the token plane (#1288) — are refused.
- */
 export const requireSameOrigin = (baseUrl: string) => {
   const allowedOrigin = new URL(baseUrl).origin;
   return HttpRouter.middleware((httpEffect) =>
@@ -54,8 +35,7 @@ export const requireSameOrigin = (baseUrl: string) => {
 
 /**
  * The WebSocket upgrade is a GET, so `requireSameOrigin` cannot gate it and
- * SameSite offers no protection on the handshake. Browsers always send
- * `Origin` on upgrade requests; anything else is not our SPA.
+ * SameSite offers no protection on the handshake.
  */
 export const requireWsOrigin = (baseUrl: string) => {
   const allowedOrigin = new URL(baseUrl).origin;

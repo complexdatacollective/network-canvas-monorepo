@@ -1,6 +1,6 @@
 import { Layer } from 'effect';
-import { type HttpRouter } from 'effect/unstable/http';
-import { RpcSerialization, RpcServer } from 'effect/unstable/rpc';
+import { type HttpRouter } from 'effect/http';
+import { RpcSerialization, RpcServer } from 'effect/rpc';
 
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
@@ -13,24 +13,6 @@ import { SetCookiesMiddleware } from '../rpc/set-cookies.ts';
 import { TeamAdministrationLive } from '../rpc/team-administration.ts';
 import { requireSameOrigin } from './middleware/origin.ts';
 
-/**
- * `POST /rpc`: the SPA's twenty procedures, served by Effect's rpc server over
- * ndjson.
- *
- * ndjson rather than JSON because the framing is what lets a response be a
- * stream: a batch's results leave as they finish, and the streaming procedures
- * #1899 adds need no second transport. One `RpcServer.layerHttp`
- * registers the POST route on the shell's own router, so the request goes
- * through the same global middlewares (problem JSON, request id, client
- * address) as every other route.
- *
- * The two route-scoped middlewares are provided here rather than registered
- * globally, because both are about this route: `SetCookiesMiddleware` gives the
- * request the holder `setup.complete` signs a browser in through, and
- * `requireSameOrigin` is the cookie plane's CSRF gate, which only applies where a
- * cookie is a credential. `RpcServer` registers its route while these are in
- * its build context, so the route captures them.
- */
 export const RpcRoutes = (
   deps: RpcDeps,
   env: StudioEnv,
@@ -47,7 +29,6 @@ export const RpcRoutes = (
     Layer.provide(RpcSerialization.layerNdjson),
     Layer.provide(SetCookiesMiddleware.layer),
   );
-  // An instance with no auth configured has no cookie to forge a call with.
   return env.auth === undefined
     ? served
     : served.pipe(Layer.provide(requireSameOrigin(env.auth.baseUrl).layer));

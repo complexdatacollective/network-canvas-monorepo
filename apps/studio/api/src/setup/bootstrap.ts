@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
@@ -19,12 +19,6 @@ import { SETUP_TABLES } from './schema.ts';
 // and prints the new one (recorded decision, 2026-09-15). Running it against
 // an owned database prints nothing and stores nothing, so an instance that has
 // been set up can never be captured by re-running a deploy command.
-//
-// Which identity runs which statement is the security property, and it is the
-// scope each caller opens rather than a convention: `issueBootstrapToken` is
-// run by the schema step on the **connecting login**, because neither
-// application role holds INSERT on `installation` precisely so that arming an
-// instance is not something the server itself can do.
 
 const { installation } = SETUP_TABLES;
 
@@ -46,12 +40,6 @@ export type Installation = {
   bootstrapTokenHash: string | null;
 };
 
-/**
- * The installation row, or null on a database whose row was never created — a
- * scratch schema, or a database provisioned by DDL alone. Callers treat null
- * as "no owner and no token": setup is open and no token is spendable, which
- * is what such a database actually offers.
- */
 export const readInstallation: () => Effect.Effect<
   Installation | null,
   SqlError.SqlError,
@@ -95,10 +83,8 @@ export function bootstrapTokenMatches(
  * Creates the installation row if it is missing, then arms it with a fresh
  * token — unless it already has an owner, in which case nothing is written.
  *
- * Runs inside the caller's transaction, and the caller is the schema step,
- * which opens an `OwnerScope`. The application roles hold no INSERT on this
- * table, so the same statements run by the server would be refused by the
- * database rather than by a check here.
+ * The application roles hold no INSERT on this table, so the server itself
+ * cannot arm an instance.
  */
 export const issueBootstrapToken: () => Effect.Effect<
   BootstrapTokenOutcome,
@@ -114,9 +100,7 @@ export const issueBootstrapToken: () => Effect.Effect<
 
   const token = randomBytes(TOKEN_BYTES).toString('base64url');
   // `.returning()` is what makes the `owned` branch real: without it the
-  // builder answers with the driver's own result object, typed as a row array
-  // and not one, so an owned instance would read as freshly armed and the
-  // operator would be handed a token that spends nothing.
+  // builder answers with the driver's own result object.
   const armed = yield* tx
     .update(installation)
     .set({
@@ -124,9 +108,8 @@ export const issueBootstrapToken: () => Effect.Effect<
       bootstrapTokenIssuedAt: sql`now()`,
       updatedAt: sql`now()`,
     })
-    // The ownerlessness is a predicate on the write, not a prior read: two
-    // schema steps racing must not both arm, and an instance claimed between a
-    // read and this write must not be re-armed at all.
+    // A predicate on the write, not a prior read: two schema steps racing must
+    // not both arm.
     .where(and(eq(installation.id, 1), isNull(installation.ownerUserId)))
     .returning({ id: installation.id });
 

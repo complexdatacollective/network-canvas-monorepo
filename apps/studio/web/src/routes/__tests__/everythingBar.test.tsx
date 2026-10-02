@@ -53,12 +53,6 @@ import { installRpcHarness } from '../../test/rpcHarness.ts';
  */
 
 const fixtures = vi.hoisted(() => {
-  // Read at call time, so a test can put the client on a self-hosted instance
-  // before it renders. Annotated rather than asserted: a hoisted factory infers
-  // `mode` as `string`, and an assertion would silence that widening rather
-  // than check it; the binding's own type is what makes a mode the status
-  // document has no member for a type error here, and it still admits the
-  // `self-hosted` the tests below reassign.
   const deployment: InstanceStatus['deployment'] = {
     mode: 'managed',
     billing: false,
@@ -71,10 +65,6 @@ const fixtures = vi.hoisted(() => {
   };
 });
 
-/**
- * Study, protocol and draft ids are UUIDs in the contract, and the payload
- * schema checks them at the call, so the study URLs below carry real ones.
- */
 const STUDY_ID = '11111111-1111-4111-8111-111111111111';
 const STUDY_PATH = `/study/${STUDY_ID}`;
 
@@ -129,8 +119,6 @@ const ME: Me = {
   email: 'researcher@example.org',
   emailVerified: true,
   name: 'Researcher',
-  // `me` carries the account's UI-language preference; null means
-  // "follow the browser" (2026-09-04 localization design §5.2).
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -228,9 +216,6 @@ beforeEach(() => {
   // otherwise: an activation in one test would seed the empty state of the next.
   window.localStorage.clear();
   clearSurfaceRequest();
-  // The in-process rpc client. The study sidebar's counts answer an empty
-  // study: the bar never renders one, so that is the honest fixture — a
-  // result's label is its destination's name and nothing else.
   installRpcHarness({
     'me': () => Effect.succeed(ME),
     'status': () =>

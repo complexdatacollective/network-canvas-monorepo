@@ -17,21 +17,13 @@ import {
   parseMaintenanceArguments,
 } from '../maintenance.ts';
 
-// `studio-api maintenance on|off` against a scratch schema: the arguments as
-// the entry hands them over, and the write on the command's own client. The
-// process around it — the environment, the exit codes, what a refusal prints —
-// is src/__tests__/command-entrypoints.test.ts's. The cases share one row and
-// put it back.
-
 const storedRow = ownerRows<{ maintenance: boolean; reason: string | null }>(
   'select maintenance, reason from deployment_state',
 );
 
-/** The command's work from its arguments, as `MaintenanceProgram` runs it. */
 const run = (args: ReadonlyArray<string>) =>
   Effect.flatMap(parseMaintenanceArguments(args), applyMaintenanceWindow);
 
-/** The sentence a refused run prints; a run that succeeds fails the case. */
 const refusedWith = (args: ReadonlyArray<string>) =>
   Effect.map(Effect.flip(run(args)), (refusal) => refusal.message);
 
@@ -47,7 +39,6 @@ describe.skipIf(!testDb)('the maintenance command', () => {
           assert.deepStrictEqual(yield* storedRow, [
             { maintenance: true, reason: 'Upgrading to 0.3' },
           ]);
-          // What the web process reads, as the application role.
           const read = yield* readDeploymentState();
           assert.strictEqual(read.maintenance, true);
           assert.strictEqual(read.reason, 'Upgrading to 0.3');
@@ -86,7 +77,6 @@ describe.skipIf(!testDb)('the maintenance command', () => {
                 JSON.stringify(args),
               );
             }
-            // The longest reason the check admits is admitted.
             yield* run(['on', 'x'.repeat(280)]);
             yield* run(['off']);
             assert.deepStrictEqual(yield* storedRow, [
@@ -110,9 +100,6 @@ describe.skipIf(!testDb)('the maintenance command', () => {
         }),
       );
 
-      // Both readers see what the command wrote, each on its own client: the
-      // web process's gate as the application role, the worker's pause on
-      // the maintenance client it runs every job on.
       it.effect('is read by the web process and by the worker', () =>
         Effect.gen(function* () {
           const flags = Effect.gen(function* () {
@@ -136,9 +123,6 @@ describe.skipIf(!testDb)('the maintenance command', () => {
         }),
       );
 
-      // The write is the maintenance role's alone: the same command handed
-      // the application client in the maintenance client's place is refused
-      // by the grants, not by anything the command checks.
       it.effect('cannot be run as the application role', () =>
         Effect.gen(function* () {
           const { app } = yield* TestDatabase;

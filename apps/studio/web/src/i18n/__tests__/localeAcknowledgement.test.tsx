@@ -31,13 +31,7 @@ import { StudioI18nProvider, useStudioLocale } from '../StudioI18nProvider.tsx';
  * two replies racing.
  */
 
-/**
- * The account write, as the procedure's own handler minus the options argument
- * the harness passes it. Typed from the contract, so a fixture that has
- * drifted from `account.updateLocale` fails `tsc` rather than passing here.
- */
 type UpdateLocaleHandler = StudioHandlers['account.updateLocale'];
-/** What the procedure answers with; the schema module exports no type alias. */
 type LocaleResult = (typeof UpdateAccountLocaleResult)['Type'];
 const updateLocale =
   vi.fn<
@@ -104,8 +98,6 @@ beforeEach(() => {
     configurable: true,
   });
   updateLocale.mockReturnValue(Effect.succeed({ locale: null }));
-  // The in-process rpc client, installed per test: the provider's write goes
-  // through `rpcCall`, so the procedure itself is what these cases drive.
   installRpcHarness({
     'account.updateLocale': (payload) => updateLocale(payload),
   });

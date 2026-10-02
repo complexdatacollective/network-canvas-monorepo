@@ -1,9 +1,3 @@
-// The account namespace: personal, not team-scoped — the caller's own budget
-// only, no tenant, and deliberately no audit row (2026-09-04 localization
-// design §5.2, decision 7). Runs against the real better-auth service so the
-// whole loop closes: account.updateLocale writes user.locale through the plain
-// pool, and the next session lookup carries the stored value back out
-// through `me`.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -42,7 +36,6 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
     database = await openTestDatabase();
     ({ studio, cookie } = await signInWithMagicLink(
       env,
-      database.appPool,
       'locale',
       database.services,
     ));
@@ -72,17 +65,12 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
   };
 
   it('stores every supported tag and hands it back through me', async () => {
-    // A fresh sign-up starts with no preference.
     expect((await me()).locale).toBeNull();
 
-    // Two tags today ('en', 'en-GB'); a registry change must revisit this
-    // suite rather than slide through it.
     expect(SUPPORTED_STUDIO_LOCALES).toEqual(['en', 'en-GB']);
     for (const locale of SUPPORTED_STUDIO_LOCALES) {
       expect(await updateLocale(locale)).toEqual({ locale });
-      // The row itself, not just the echo …
       expect(await storedLocale()).toBe(locale);
-      // … and the value the client's LocaleSync will actually watch.
       expect((await me()).locale).toBe(locale);
     }
   });
@@ -97,9 +85,7 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
   it('refuses an unknown tag as a validation error, storing nothing', async () => {
     await updateLocale('en');
     // The contract type refuses this at compile time; the server must refuse
-    // it at runtime too — unknown tags are a validation error, never a
-    // silent store (§5.2). The cast exists precisely to defeat that
-    // narrowing, which is the point of the schema.
+    // it at runtime too.
     const rejected = await client.callExit(
       client.rpc('account.updateLocale', {
         locale: 'fr' as unknown as SupportedStudioLocale,
@@ -110,8 +96,6 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
   });
 
   it('refuses a malformed tag the same way it refuses an unknown one', async () => {
-    // "Not a tag at all" and "a tag we do not offer" must fail identically:
-    // one payload rejection, no write. Same cast, same reason.
     await updateLocale('en');
     const rejected = await client.callExit(
       client.rpc('account.updateLocale', {
@@ -124,13 +108,7 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
 
   it('refuses a supported tag spelled with different case', async () => {
     // BCP 47 tags are case-insensitive, so `EN-gb` does name `en-GB` — and
-    // this endpoint still refuses it, deliberately. Accepting case variants
-    // would mean widening the contract's input from the supported-locale
-    // union to `string`, and the compile-time narrowing is worth more than a
-    // spelling the only caller — the typed client, sending tags from its own
-    // registry — cannot produce. Leniency belongs where tags are actually
-    // uncontrolled: `resolveAppLocale` canonicalises what the browser asks
-    // for, and canonicalises the stored value on the way back out.
+    // this endpoint still refuses it, deliberately.
     await updateLocale('en');
     const rejected = await client.callExit(
       client.rpc('account.updateLocale', {
@@ -151,11 +129,8 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
   });
 
   it('cannot be written through better-auth’s own update endpoint', async () => {
-    // input: false on the additionalField declaration is what keeps
-    // update-user from accepting the field; dropping it must fail here.
     if (!env.auth) throw new Error('dev env must configure auth');
     await updateLocale('en');
-    // Through the composed stack, whose auth mount is the route to it.
     const stack = composeStudio(env, studio);
     const response = await stack
       .request('/api/auth/update-user', {
@@ -168,8 +143,6 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
         body: JSON.stringify({ locale: 'en-GB' }),
       })
       .finally(() => stack.dispose());
-    // Whether better-auth ignores the stripped field or refuses the empty
-    // update, the stored preference must be untouched.
     expect(response.status).toBeLessThan(500);
     expect(await storedLocale()).toBe('en');
   });

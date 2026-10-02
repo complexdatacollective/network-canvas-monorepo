@@ -16,18 +16,11 @@ import {
   type SyncFacade,
 } from './helpers.ts';
 
-/**
- * A facade whose next getSection parks until released — the deterministic
- * stand-in for a slow read overtaken by a concurrent commit. It wraps the
- * shared facade rather than subclassing a server: the operations are Effects
- * now, and what the client actually holds is this transport.
- */
 function gatedFacade(server: SyncFacade) {
   let gate: PromiseWithResolvers<void> | null = null;
   let arrival: PromiseWithResolvers<void> | null = null;
   return {
     ...server,
-    /** Park the next getSection; `reached` resolves once that call arrives. */
     armGetSection() {
       const nextGate = Promise.withResolvers<void>();
       const nextArrival = Promise.withResolvers<void>();

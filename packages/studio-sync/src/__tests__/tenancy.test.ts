@@ -29,8 +29,6 @@ describe.skipIf(!dbAvailable)('team isolation', () => {
   beforeAll(async () => {
     let run;
     ({ db, run, server, dispose } = await makeServer('sync_tenancy'));
-    // The same database, the same client, a different team stamped on every
-    // transaction — which is the only thing standing between the two.
     otherServer = makeSyncFacade((body, options) =>
       run(body, { ...options, teamId: OTHER_TEAM_ID }),
     );

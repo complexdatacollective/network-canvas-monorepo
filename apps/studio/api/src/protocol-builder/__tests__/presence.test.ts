@@ -15,8 +15,6 @@ const viewer = {
 } as const;
 
 describe('Presence', () => {
-  // Mutation: drop the release of `join`'s `acquireRelease` → the editing
-  // entry outlives the connection.
   it.effect('goes with the connection, whatever a lock made of it', () =>
     Effect.gen(function* () {
       const presence = yield* Presence;

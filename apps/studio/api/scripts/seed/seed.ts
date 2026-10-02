@@ -147,11 +147,8 @@ const SCALES: Record<
 };
 
 /**
- * `schemaFingerprint` and `deployment_state` are kept: both describe the
- * deployment rather than hold its data, and both rows are written only by the
- * schema step — `deployment_state`'s singleton cannot be re-inserted by either
- * application role, so truncating it here would leave `maintenance on|off`
- * failing on a missing row until the schema step ran again.
+ * `schemaFingerprint` and `deployment_state` are kept: both rows are written
+ * only by the schema step.
  *
  * Driven off `pg_tables` rather than a hardcoded list, so a table added to
  * the schema later is wiped too instead of silently accumulating stale rows

@@ -30,8 +30,6 @@ import {
   type RpcTestClient,
 } from './support/rpc.ts';
 
-// The payloads are branded, so the ids are built through the contract's own
-// schemas rather than passed as bare strings.
 const TEAM_ID = TeamId.make(uniqueTeamId('rpc-studies-team'));
 const OTHER_TEAM_ID = TeamId.make('rpc-studies-other-team');
 
@@ -69,11 +67,6 @@ const MEMBER = researcher('member', TEAM_ID, 'member');
 const OUTSIDER = researcher('outsider', OTHER_TEAM_ID, 'owner');
 
 describe.skipIf(!testDb)('the studies RPC', () => {
-  /**
-   * The scratch schema and the Effect data layer over it, which is what every
-   * `/rpc` handler runs its reads and writes on. Shared by every Studio rather
-   * than built per Studio: the clients underneath it are connection pools.
-   */
   let database: TestDatabaseRuntime;
   let clients: Map<Researcher, RpcTestClient>;
 
@@ -120,7 +113,6 @@ describe.skipIf(!testDb)('the studies RPC', () => {
         await createRpcClient(
           createStudio(readEnv(), {
             auth,
-            pool: database.appPool,
             services: database.services,
           }),
         ),
@@ -414,10 +406,6 @@ describe.skipIf(!testDb)('the studies RPC', () => {
       draftId: DraftId.make(randomUUID()),
       name: 'Must not be created',
     };
-    // The command's own refusal, with its own code: `StudyCommandError` is no
-    // longer flattened into a bare status on the way out, so `FORBIDDEN` —
-    // the code the oRPC plane answered with — is now a field on the declared
-    // error rather than the whole of it.
     const refused = await expectRpcFailure(
       asClient(MEMBER).callExit(asClient(MEMBER).rpc('studies.create', input)),
       'StudyCommandError',

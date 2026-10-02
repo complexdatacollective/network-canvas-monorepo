@@ -72,11 +72,6 @@ describe.skipIf(!db)('the web entrypoint', () => {
         );
         expect(queued.rows).toEqual([{ queue: 'sign-in-email' }]);
 
-        // Maintenance mode, as this process is wired for it (#1901): the flag
-        // `studio-api maintenance on` writes closes every surface within the
-        // gate's one-second reading, and readiness names it, while liveness
-        // stays up. Written here as the owner; the command's own round trip
-        // is src/programs/__tests__/maintenance.test.ts's.
         await scratch.pool.query(
           `update deployment_state set maintenance = true, reason = 'Upgrading'`,
         );

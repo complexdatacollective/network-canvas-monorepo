@@ -29,13 +29,6 @@ const PURPOSE: SecretPurpose = 'secrets';
 /** A ciphertext and the id of the key it was sealed under, stored beside it. */
 export type SealedSecret = { ciphertext: Buffer; keyId: string };
 
-/**
- * The same pair as a row hands it back, which is the wider of the two shapes a
- * `bytea` decodes to: node-postgres returns a `Buffer`, `@effect/sql-pg`
- * returns a plain `Uint8Array`. Every read takes this, so a column that has
- * been moved from one client to the other opens the same either way; a seal
- * still returns the `Buffer` the pg parameter binding needs.
- */
 export type StoredSecret = { ciphertext: Uint8Array; keyId: string };
 
 /**

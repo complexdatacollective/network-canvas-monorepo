@@ -1,25 +1,10 @@
-// One protocol line per team, published twice, written through the protocol
-// store — the sectioned store is the only correct writer of `protocols`,
+// The sectioned store is the only correct writer of `protocols`,
 // `protocol_versions` and `version_sections`, and reimplementing its
 // sectionize/manifest/pin sequence in the seed is the dual-implementation trap
 // ADR #1246 names three times.
 //
-// Every store function runs on the caller's `Transaction` and opens no scope of
-// its own, so these writes join the seed's one transaction as they are. That
-// is a requirement rather than a convenience: `version_sections_insert_frozen`
-// admits a pin only when its version row's `xmin` equals
-// `pg_current_xact_id()`, which is the top-level transaction id. A row written
-// inside a savepoint carries the subtransaction's id instead, so publishing
-// through one is refused outright ("published protocol versions are
-// immutable"). The same proof backs `template_version_sections_insert_frozen`
-// and `session_snapshots_insert_frozen`, so no phase of the seed may sit in a
-// subtransaction. Nothing is lost: the seed has no recoverable failure — any
-// error rolls the whole transaction back and leaves the previous dataset in
-// place, which is the contract `seed.test.ts` pins.
-//
-// The GUC the row-level security policies read is stamped by the caller for
-// the team currently being populated, so every statement here is already
-// inside that team's scope.
+// No phase of the seed may sit in a savepoint: `version_sections_insert_frozen`
+// admits a pin only when its version row's `xmin` is the top-level transaction id.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 

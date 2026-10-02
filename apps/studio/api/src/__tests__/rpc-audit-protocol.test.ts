@@ -46,10 +46,6 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'rpc-audit-protocol-owner-session',
 };
 
-/**
- * The protocol-builder host beside the rpc plane, driven in process over the
- * same `Studio`, so an edit made through one is the edit the other reads back.
- */
 const BUILDER_CALLER: Caller = {
   principal: PRINCIPAL,
   connection: `${PRINCIPAL.userId}-connection`,
@@ -85,15 +81,11 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
         Effect.succeed(
           Option.fromNullishOr(teamId === TEAM_ID ? { role: 'owner' } : null),
         ),
-      // The protocol-builder host takes no teamId: it derives the tenant from
-      // the caller's own memberships, so a stub that lists none would refuse
-      // every write here for a reason this file is not about.
       listMemberships: () =>
         Effect.succeed([{ teamId: TEAM_ID, role: 'owner' }]),
     });
     const studio = createStudio(readEnv(), {
       auth,
-      pool: database.appPool,
       services: database.services,
     });
     client = await createRpcClient(studio);
@@ -131,8 +123,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
         ),
       ),
     ).toEqual([{ event_type: 'protocol.created' }]);
-    // The caller may retry after losing the first response. Returning the
-    // existing identity is not a second creation and must not add an event.
     await expect(
       client.call(client.rpc('protocols.create', createInput)),
     ).resolves.toEqual({
@@ -161,7 +151,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
         expectedRevision: beforeMove.revision.sequence,
       }),
     );
-    // A move to the current index is a successful no-op, not another commit.
     await expect(
       client.call(
         client.rpc('protocols.moveStage', {
@@ -172,10 +161,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
         }),
       ),
     ).resolves.toEqual(moved);
-    // A stale revision is another editor having moved the draft on — the
-    // declared `Conflict` the client re-reads on, not a fault. (It used to
-    // die, and on this transport a dying tagged error escaped as a
-    // protocol-level `Defect` frame rather than the call's own `Exit`.)
     const staleMove = await expectRpcFailure(
       client.callExit(
         client.rpc('protocols.moveStage', {
@@ -206,8 +191,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       BUILDER_CALLER,
       builder.rpc('Submit', submitInput),
     );
-    // The same request id: a client whose answer was lost. It must be answered
-    // with what the first attempt wrote, and add no second event.
     await expect(
       builder.call(BUILDER_CALLER, builder.rpc('Submit', submitInput)),
     ).resolves.toEqual(committed);
@@ -370,9 +353,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     );
     expect(eventCount).toEqual([{ count: 2 }]);
 
-    // The write receipt rolled back too, so a retry carrying the same request
-    // id is a real first write rather than a replay of one that never
-    // happened — which is what would otherwise hide the missing audit event.
     await expect(
       builder.call(BUILDER_CALLER, builder.rpc('Submit', submitInput)),
     ).resolves.toEqual({
@@ -410,9 +390,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
         [actor.userId, actor.name, actor.email],
       ),
     );
-    // An Admin, so the middleware admits the request and the refusal below can
-    // only come from the locked membership re-read inside the transaction —
-    // which is what this test is about.
     await database.run(
       ownerRows(
         `INSERT INTO team_members (id, team_id, user_id, role)
@@ -427,7 +404,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     });
     const revokedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: database.appPool,
         services: database.services,
         auth: authServiceStub({
           getSession: () => Effect.succeedSome(actor),
@@ -442,8 +418,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     const protocolId = ProtocolId.make(randomUUID());
     const draftId = DraftId.make(randomUUID());
     const { harness } = database;
-    // One owner transaction holds the team row while the request runs, and
-    // revokes the membership before letting go; a failure rolls it back.
     const { request } = await database.run(
       harness.onOwner(
         Effect.gen(function* () {
@@ -469,8 +443,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       ),
     );
 
-    // The protocol tier's own refusal for a membership that lost its role
-    // under the lock.
     await expectRpcFailure(request, 'ProtocolAuthorizationError');
     expect(
       await database.run(

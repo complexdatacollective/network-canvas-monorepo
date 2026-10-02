@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import type { RpcClientError } from 'effect/unstable/rpc/RpcClientError';
+import type { RpcClientError } from 'effect/rpc/RpcClientError';
 
 import type { ErrorOf, PayloadOf, SuccessOf } from '@codaco/effect-query/types';
 import {
@@ -11,13 +11,6 @@ import type { HostUnauthorized } from '@codaco/protocol-builder-core/contract/se
 
 import type { ProtocolBuilderAdapter } from './context.ts';
 
-/**
- * What a host can answer a procedure with instead of its result: the errors the
- * procedure itself declares. A transport failure is not one — the host never
- * answered — and neither is the session middleware's `HostUnauthorized`, which
- * every caller here treats as a call that reached no answer, as it did when a
- * host's `UNAUTHORIZED` was not part of the contract.
- */
 export type Refusal<Tag extends ProtocolBuilderTag> =
   Tag extends ProtocolBuilderTag
     ? Exclude<
@@ -35,7 +28,6 @@ type Attempt<Tag extends ProtocolBuilderTag> =
   | Readonly<{
       isSuccess: false;
       data: undefined;
-      /** Absent when the call never reached an answer. */
       refusal: Refusal<Tag> | undefined;
     }>;
 
@@ -50,10 +42,6 @@ function refusalCheck(tag: ProtocolBuilderTag): (error: unknown) => boolean {
   return check;
 }
 
-/**
- * Whether `error` is one of the refusals the group declares for `tag`, read
- * from the group itself so a refusal added there is recognised here.
- */
 export function isRefusalOf<Tag extends ProtocolBuilderTag>(
   tag: Tag,
   error: unknown,
@@ -61,11 +49,6 @@ export function isRefusalOf<Tag extends ProtocolBuilderTag>(
   return refusalCheck(tag)(error);
 }
 
-/**
- * Calls a procedure and answers with its result or its refusal, never a
- * rejection: every caller here decides for itself what an unanswered call
- * means, and a bare rejection from a best-effort call would go unhandled.
- */
 export async function attempt<Tag extends ProtocolBuilderTag>(
   adapter: ProtocolBuilderAdapter,
   tag: Tag,

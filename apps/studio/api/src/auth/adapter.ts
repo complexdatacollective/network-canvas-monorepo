@@ -10,40 +10,19 @@ import {
 import type { BetterAuthOptions, DBAdapter } from 'better-auth/types';
 import { getColumns, getTableName } from 'drizzle-orm';
 import { Predicate } from 'effect';
-import type { Statement } from 'effect/unstable/sql';
+import type { Statement } from 'effect/sql';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { SqlBridge } from './sql-bridge.ts';
 
-// better-auth's database adapter, over `@effect/sql-pg` (#1927 §12, S6 §3).
-//
-// Statements are written with the client's `sql` template rather than drizzle's
-// builder, and that is deliberate: better-auth hands an adapter *dynamic* model
-// and field strings, so a typed builder would be indexed by `string` and need
-// `any` at every access (which is how the drizzle adapter reads). What the
-// builder would have guaranteed is guaranteed instead by two rules:
-//
-// 1. **An identifier allowlist.** Every table and column a call names is looked
-//    up in `db/auth-schema.ts` and refused with a `BetterAuthError` when it is
-//    not there. A better-auth upgrade that adds a model or a column fails
-//    loudly at first use instead of writing somewhere unexpected.
-// 2. **Escaped identifiers, bound values.** Identifiers go through `sql(name)`
-//    and every value is a template interpolation, which is a bind parameter.
-//    `sql.unsafe` is never used here.
-//
-// Two answers differ from both reference adapters on purpose, and
-// `__tests__/adapter-conformance.test.ts` asserts each: `update` touches one
-// row, as better-auth's contract documents and neither reference adapter does;
-// and a pattern operator matches the caller's `%`, `_` and `\` literally
-// rather than as wildcards the caller never asked for.
+// Identifiers are checked against `db/auth-schema.ts` and escaped; values are
+// bound. `sql.unsafe` is never used here.
+// Deliberate deviations from both reference adapters: `update` touches one
+// row, and pattern operators match `%`, `_` and `\` literally.
 
 type Sql = PgClient.PgClient;
 type Fragment = Statement.Fragment;
 
-/**
- * Every auth table's physical columns, walked once out of the drizzle
- * declarations the schema is generated from.
- */
 const AUTH_COLUMNS: ReadonlyMap<string, ReadonlySet<string>> = new Map(
   Object.values(AUTH_TABLES).map((table) => [
     getTableName(table),
@@ -72,7 +51,6 @@ function columnOf(table: Table, column: string): string {
   return column;
 }
 
-/** A write's columns, each checked, with the values it binds. */
 function assignmentsOf(table: Table, values: unknown): [string, unknown][] {
   if (!Predicate.isObject(values)) {
     throw new BetterAuthError(
@@ -84,7 +62,6 @@ function assignmentsOf(table: Table, values: unknown): [string, unknown][] {
     .map(([column, value]) => [columnOf(table, column), value]);
 }
 
-/** `\`, `%` and `_` stand for themselves under `escape '\'`. */
 const escapeLike = (value: string): string =>
   value.replaceAll(/[\\%_]/g, (character) => `\\${character}`);
 
@@ -115,12 +92,8 @@ function listOf(where: CleanedWhere): ReadonlyArray<unknown> {
 }
 
 /**
- * One clause, clause for clause the drizzle adapter's semantics. `mode:
- * 'insensitive'` applies only where the value is a string or an array of them,
- * as it does there: `lower()` for the equality family, `ilike` for patterns.
- *
  * An empty list is a constant rather than a bound array: `in ()` is a syntax
- * error, and rc.115 cannot infer a type for an empty array parameter.
+ * error, and the driver cannot infer a type for an empty array parameter.
  */
 function condition(sql: Sql, table: Table, where: CleanedWhere): Fragment {
   const column = sql(columnOf(table, where.field));
@@ -170,11 +143,6 @@ function condition(sql: Sql, table: Table, where: CleanedWhere): Fragment {
   }
 }
 
-/**
- * The drizzle adapter's grouping, which better-auth's callers assume: every
- * `AND` clause and, when there are any, the `OR` clauses as one disjunction —
- * `(a and b) and (c or d)`. No clause at all matches every row.
- */
 function whereOf(
   sql: Sql,
   table: Table,
@@ -191,13 +159,8 @@ function whereOf(
 }
 
 /**
- * The one row a single-row statement acts on: chosen by the sub-select, and
- * re-checked by the outer predicate. The re-check is what makes `incrementOne`
- * a compare-and-swap. Under read committed a statement that waited on a row
- * lock re-evaluates only its own `where` against the row's new version, not the
- * sub-select, so a guard written only inside the sub-select would pass on the
- * value it read before the wait — two concurrent decrements of a counter at 1
- * would both succeed.
+ * The outer predicate re-checks the row: under read committed a statement that
+ * waited on a row lock re-evaluates only its own `where`, not the sub-select.
  */
 function oneRow(sql: Sql, table: Table, where: Fragment): Fragment {
   return sql`id in (select id from ${sql(table.name)} where ${where} limit 1) and ${where}`;
@@ -210,10 +173,8 @@ function assignmentList(sql: Sql, assignments: [string, unknown][]): Fragment {
 }
 
 /**
- * The adapter over one bridge. `select` and `sortBy.field` arrive as
- * better-auth field names and are mapped here; `where[].field` arrives already
- * mapped to the physical column by the factory's `transformWhereClause`, and
- * mapping it again would be mapping the wrong thing (#1927 §12).
+ * `where[].field` arrives already mapped to the physical column by the
+ * factory's `transformWhereClause`; mapping it again would be wrong.
  */
 const customAdapter =
   (bridge: SqlBridge) =>
@@ -234,7 +195,6 @@ const customAdapter =
             ),
           );
 
-    /** Refused rather than ignored: see the `joins` note on `studioAuthAdapter`. */
     const refuseJoin = (join: unknown): void => {
       if (join !== undefined) {
         throw new BetterAuthError(
@@ -318,8 +278,7 @@ const customAdapter =
 
       count: async ({ model, where }) => {
         const table = tableFor(model);
-        // `::int`: an uncast `count(*)` is `int8`, which decodes to a `bigint`
-        // and breaks better-auth's `number`.
+        // `::int`: an uncast `count(*)` is `int8`, which decodes to a `bigint`.
         const [row] = await bridge.run(
           PgClient.PgClient.use(
             (sql) =>
@@ -367,8 +326,6 @@ const customAdapter =
         return rows.length;
       },
 
-      // Every match, as both reference adapters do; an empty `where` deletes
-      // nothing, as the memory adapter's does (`deleteMany` is the bulk form).
       delete: async ({ model, where }) => {
         const table = tableFor(model);
         if (where.length === 0) return;
@@ -393,8 +350,6 @@ const customAdapter =
         return rows.length;
       },
 
-      // One round trip, and at most one row: what the magic-link token's
-      // single use rests on.
       consumeOne: async <T>({
         model,
         where,
@@ -442,20 +397,8 @@ const customAdapter =
     };
   };
 
-/**
- * A `timestamptz` decodes as epoch milliseconds on rc.115 and as a `Date` from
- * rc.116; better-auth wants a `Date` either way, which is also what the drizzle
- * adapter hands it. An `int8` decodes as a `bigint`, and better-auth's
- * `number` fields — `rateLimit.lastRequest` is the one declared `bigint` — are
- * millisecond timestamps well inside a double's exact range.
- */
 const valueOut = (type: unknown, value: unknown): unknown => {
-  if (
-    type === 'date' &&
-    (Predicate.isNumber(value) || Predicate.isString(value))
-  ) {
-    return new Date(value);
-  }
+  if (type === 'date' && Predicate.isString(value)) return new Date(value);
   if (type === 'number' && Predicate.isBigInt(value)) return Number(value);
   return value;
 };
@@ -465,16 +408,10 @@ const CONFIG = {
   adapterName: 'Studio @effect/sql-pg adapter',
   usePlural: false,
   debugLogs: false,
-  // Every id column is `text`, minted by better-auth. `false` also makes
-  // `advanced.database.generateId: 'serial'` refuse at construction rather
-  // than write numbers into text ids.
   supportsNumericIds: false,
   supportsUUIDs: false,
-  // A `Date` binds as a `timestamptz` parameter and round-trips exactly (the
-  // stage-4 probe); what comes back is coerced below.
   supportsDates: true,
   supportsBooleans: true,
-  // No auth column is json or an array; a future one is stringified into text.
   supportsJSON: false,
   supportsArrays: false,
   disableIdGeneration: false,
@@ -482,24 +419,6 @@ const CONFIG = {
     valueOut(fieldAttributes.type, data),
 } satisfies AdapterFactoryConfig;
 
-/**
- * better-auth's adapter over the bridge.
- *
- * Its `transaction` is a real Postgres transaction. Studio's better-auth
- * transactions were sequential until this adapter: `drizzleAdapter`'s
- * `transaction` defaults to `false` and Studio never set it, so better-auth ran
- * its as-is fallback. Turning it on is stage 4's one deliberate behaviour
- * change (#1927 §12): sign-up's user, account and session land together or not
- * at all, and `withSecretsAdapter`'s transaction branch protects something
- * real. The transaction adapter is this factory again over the transaction's
- * bridge, with `transaction: false` — the drizzle adapter's own pattern.
- *
- * **Joins are not implemented.** better-auth forwards a `join` only while
- * `advanced.database.joins` is set, and otherwise resolves the relation itself
- * with further `findOne`/`findMany` calls. Studio leaves the flag unset (a
- * source test pins it), and the adapter throws if a join ever arrives, so
- * enabling it is a compile-and-test event rather than a silently degraded read.
- */
 export const studioAuthAdapter =
   (bridge: SqlBridge) =>
   (options: BetterAuthOptions): DBAdapter =>

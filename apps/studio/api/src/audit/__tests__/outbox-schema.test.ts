@@ -1,15 +1,3 @@
-// The two audit outbox tables: the staged export job (#1520) and the alert
-// outbox (#1521). What is proved here is the database half of "no handle or
-// partial artifact is released", the single-use handle, the immutability of an
-// export request and of an alert's link to its immutable event, and the
-// deliberate policy divergence — both tables carry the ordinary
-// `team_isolation` policy, so the workers that drive them can reach a row of
-// any team while `audit_events` itself stays behind the strict policy.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK or foreign-key violation, the SQLSTATE for a privilege
-// refusal, the message for a trigger — so a guard that stopped firing cannot
-// pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -42,15 +30,9 @@ type Row = Record<string, unknown>;
 
 const hex64 = () => randomBytes(32).toString('hex');
 
-/** Distinct per-team audit sequences, which are uniquely indexed. */
 let nextSequence = 0;
 const sequence = () => String(++nextSequence);
 
-/**
- * The five columns an outbox row pins through: the link, its team, and the
- * three the row copies out of the event so the worker can route without
- * reading it.
- */
 type EventIdentity = {
   id: string;
   sequence: string;
@@ -58,7 +40,6 @@ type EventIdentity = {
   event_version: number;
 };
 
-/** The seven columns a ready job must carry, all or none. */
 const READY_COLUMNS = [
   'handle_hash',
   'handle_expires_at',
@@ -113,9 +94,6 @@ const jobRow = (overrides: Row = {}): Row => ({
   ...overrides,
 });
 
-// The copied columns default to the event's own, because the composite key
-// binds them to it: an alert that cites one event and describes another is
-// a foreign-key violation, not an accepted row.
 const outboxRow = (event: EventIdentity, overrides: Row = {}): Row => ({
   id: randomUUID(),
   team_id: TEAM_A,
@@ -151,7 +129,6 @@ const newOutboxRow = Effect.fnUntraced(function* (overrides: Row = {}) {
   return row.id as string;
 });
 
-/** Both teams, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) => insertTeam(teamId)),
 ).pipe(Layer.provideMerge(TestDatabaseLive));
@@ -203,8 +180,6 @@ describe.skipIf(!testDb)('audit outbox schema', () => {
 
       it.effect('refuses a complete artifact on a job that is not ready', () =>
         Effect.gen(function* () {
-          // The other half of the same equality: the handle and the artifact
-          // coordinates may not be released before the completing commit.
           const refused = yield* refusalOf(
             ownerInsert(
               'audit_export_jobs',
@@ -520,9 +495,6 @@ describe.skipIf(!testDb)('audit outbox schema', () => {
         Effect.gen(function* () {
           const theirEvent = yield* newEvent({ team_id: TEAM_B });
 
-          // Referential integrity bypasses row-level security, so a
-          // single-column foreign key here would be a cross-team existence
-          // oracle.
           const refused = yield* refusalOf(
             ownerInsert(
               'audit_alert_outbox',
@@ -562,11 +534,6 @@ describe.skipIf(!testDb)('audit outbox schema', () => {
         }),
       );
 
-      // The alert policy decides from `event_type` and `event_version`, and the
-      // worker orders and rate-limits on `audit_event_sequence`. A key that
-      // proved only (audit_event_id, team_id) would let a row cite a real event
-      // and describe a different one, routing a real alert under a fabricated
-      // description.
       it.effect.each<readonly [label: string, overrides: Row]>([
         ['another event’s sequence', { audit_event_sequence: '999999' }],
         ['another event type', { event_type: 'study.deleted' }],
@@ -804,7 +771,6 @@ describe.skipIf(!testDb)('audit outbox schema', () => {
             const eventIds = events.map((row) => row.id);
             expect(eventIds).toHaveLength(2);
 
-            // The worker reads a queued alert with no team context at all.
             const claimable = yield* maintenanceRows<{ n: number }>(
               `SELECT count(*)::int AS n FROM audit_alert_outbox
                WHERE id = ANY($1::uuid[])`,
@@ -812,15 +778,12 @@ describe.skipIf(!testDb)('audit outbox schema', () => {
             );
             expect(claimable[0]).toEqual({ n: 2 });
 
-            // The history those alerts point at stays behind the strict
-            // policy: the escape buys reaching the row, not the events.
             const history = yield* maintenanceRows<{ n: number }>(
               `SELECT count(*)::int AS n FROM audit_events WHERE id = ANY($1::uuid[])`,
               [eventIds],
             );
             expect(history[0]).toEqual({ n: 0 });
 
-            // The connecting login is the oracle that the rows really are there.
             const actual = yield* ownerRows<{ n: number }>(
               `SELECT count(*)::int AS n FROM audit_events WHERE id = ANY($1::uuid[])`,
               [eventIds],

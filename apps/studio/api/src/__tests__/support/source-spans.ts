@@ -5,12 +5,6 @@ import { SyntaxKind } from 'typescript/unstable/ast';
 
 import { type SourceToken, tokenName } from './source-tokens.ts';
 
-// The structure the call-site policies read off a token stream: which
-// parenthesis closes which, which `Effect.fn` a token sits in, and which
-// tokens are only an import or export clause naming a binding rather than a
-// use of it.
-
-/** Every production `.ts` under `root`: no `__tests__` directory, no `.test.ts`, no declaration file. */
 export function productionFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const path = resolve(root, entry.name);
@@ -31,7 +25,6 @@ export function productionFiles(root: string): string[] {
 const isName = (token: SourceToken | undefined, name: string) =>
   token?.kind === SyntaxKind.Identifier && token.raw === name;
 
-/** The index of the parenthesis closing the one opened at `open`. */
 export function closingParen(tokens: SourceToken[], open: number): number {
   let depth = 0;
   for (let index = open; index < tokens.length; index += 1) {
@@ -45,7 +38,6 @@ export function closingParen(tokens: SourceToken[], open: number): number {
   return tokens.length - 1;
 }
 
-/** The index just past a balanced `<…>` starting at `start`, or `start`. */
 export function skipTypeArguments(
   tokens: SourceToken[],
   start: number,
@@ -64,13 +56,6 @@ export function skipTypeArguments(
 
 type Span = { name: string; start: number; end: number };
 
-/**
- * The `Effect.fn` bodies in a file, each owning every token up to the
- * parenthesis that closes it. `Effect.fn('<span>')(…)` is named by its span;
- * `const <name> = Effect.fn(…)` / `Effect.fnUntraced(…)`, which carry none, by
- * the binding — so a site in `openTeam` is charged to `openTeam` rather than
- * to the file.
- */
 export function spansOf(tokens: SourceToken[]): Span[] {
   const spans: Span[] = [];
   for (let index = 0; index + 4 < tokens.length; index += 1) {
@@ -113,7 +98,6 @@ export function spansOf(tokens: SourceToken[]): Span[] {
   return spans;
 }
 
-/** The innermost span enclosing `index`, or `null`. */
 export function enclosingSpan(spans: Span[], index: number): string | null {
   return (
     spans.filter((span) => span.start < index && index < span.end).at(-1)
@@ -121,12 +105,6 @@ export function enclosingSpan(spans: Span[], index: number): string | null {
   );
 }
 
-/**
- * The indices of every token inside an `import … from` or `export { … }`
- * clause: a name there binds or re-exports, it does not use. A renaming
- * (`x as y`) is reported by the caller, not hidden here — this only says where
- * a clause is.
- */
 export function moduleClauseTokens(tokens: SourceToken[]): Set<number> {
   const inside = new Set<number>();
   for (let index = 0; index < tokens.length; index += 1) {

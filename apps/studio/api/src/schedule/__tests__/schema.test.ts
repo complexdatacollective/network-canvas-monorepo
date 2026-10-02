@@ -1,15 +1,3 @@
-// The scheduling and messaging module's database-enforced promises: the
-// cross-field CHECKs that make a malformed recurrence grammar unrepresentable,
-// the two triggers that refuse a time zone Postgres does not know, the
-// idempotency keys on occurrences and deliveries, the immutability of a
-// published template, of a delivery's addressing, and of a provider callback,
-// and every composite foreign key's cross-team and cross-study refusal.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger
-// — so a guard that stopped firing cannot pass as "no error". `refusalOf`
-// reads the literal 'no failure' in every field of an admitted statement, so a
-// case that stops refusing fails on the value rather than passing vacuously.
 import { createHash, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -36,18 +24,15 @@ type Team = typeof TEAM_A | typeof TEAM_B;
 
 type Row = Record<string, unknown>;
 
-/** A 64-character lowercase hex digest, the shape both hash columns demand. */
 const hex = (seed: string) => createHash('sha256').update(seed).digest('hex');
 
 // Postgres truncates an identifier at 63 bytes, and drizzle's generated names
-// for these two constraints are longer than that. The truncated forms are what
-// a violation actually reports, so they are what the oracles must expect.
+// for these two constraints are longer than that.
 const OCCURRENCE_IDENTITY_KEY =
   'schedule_occurrences_schedule_id_participant_id_occurrence_inde';
 const DELIVERY_EVENT_IDENTITY_KEY =
   'message_delivery_events_delivery_id_provider_provider_event_id_';
 
-/** Per team: one study, one wave, one participant, all open. */
 const studyOf: Record<Team, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -60,11 +45,8 @@ const participantOf: Record<Team, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
 };
-/** A second study in team A, for the cross-study composite-FK oracles. */
 const otherStudyId = randomUUID();
 const otherParticipantId = randomUUID();
-
-// ---- row builders ---------------------------------------------------------
 
 const scheduleRow = (overrides: Row = {}): Row => ({
   id: randomUUID(),
@@ -92,16 +74,8 @@ const occurrenceRow = (scheduleId: string, overrides: Row = {}): Row => ({
   ...overrides,
 });
 
-// The identity key is NULLS NOT DISTINCT, so every team-level default with
-// the same (kind, channel, locale, version) is the same template. Fixtures
-// that only need *a* template take a fresh version; the cases that exercise
-// the key itself pass an explicit one.
 let nextTemplateVersion = 1000;
 
-// Published by default, because an enqueue may only cite a published
-// template: a draft fixture would make every accepting delivery case fail
-// for a reason it was not written to test. The cases about the draft
-// lifecycle ask for `state: 'draft'` explicitly.
 const templateRow = (overrides: Row = {}): Row => ({
   id: randomUUID(),
   team_id: TEAM_A,
@@ -169,15 +143,9 @@ const newDelivery = (overrides: Row = {}) =>
     return row.id as string;
   });
 
-/**
- * A delivery the dispatcher has already handed to a provider. Every callback
- * fixture sits on one, because an event must name the provider that sent its
- * delivery and a delivery with no provider has been sent by nobody.
- */
 const newAttemptedDelivery = (overrides: Row = {}) =>
   newDelivery({ provider: 'postmark', ...overrides });
 
-/** Both teams with a study, a wave and a participant each, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.gen(function* () {
     for (const teamId of [TEAM_A, TEAM_B] as const) {
@@ -201,8 +169,6 @@ const Fixtures = Layer.effectDiscard(
       });
     }
 
-    // A second team-A study, so a cross-study rejection is not also a
-    // cross-team one: the three-column keys must catch it on study_id alone.
     yield* ownerInsert('studies', {
       id: otherStudyId,
       team_id: TEAM_A,
@@ -258,7 +224,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
       );
 
       it.effect.each<RejectionCase>([
-        // --- state, name, settings, channels ---
         [
           'an unknown state',
           { state: 'archived' },
@@ -276,8 +241,7 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           'study_schedules_settings_object_check',
         ],
         // The driver cannot infer an element type for an empty JS array, so
-        // the empty array goes as Postgres' own literal, which binds untyped
-        // and is read as the column's text[].
+        // the empty array goes as Postgres' own literal.
         [
           'no channel at all',
           { channels: '{}' },
@@ -293,8 +257,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           { channels: ['email', 'sms', 'email'] },
           'study_schedules_channels_check',
         ],
-        // Two elements, both allowed, within the length bound — and still one
-        // channel, sent to twice.
         [
           'the same channel twice',
           { channels: ['email', 'email'] },
@@ -306,7 +268,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           'study_schedules_channels_check',
         ],
 
-        // --- anchor ---
         [
           'an unknown anchor kind',
           { anchor_kind: 'phase_of_moon' },
@@ -328,7 +289,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           'study_schedules_anchor_check',
         ],
 
-        // --- recurrence: each kind carries exactly its own parameters ---
         [
           'an unknown recurrence kind',
           { recurrence_kind: 'fortnightly' },
@@ -369,8 +329,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           },
           'study_schedules_recurrence_check',
         ],
-        // K per period without a period, and a min gap without a K: the
-        // sample parameters stand or fall together.
         [
           'a sample count with no period',
           {
@@ -400,7 +358,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           'study_schedules_recurrence_check',
         ],
 
-        // --- recurrence bounds ---
         [
           'a zero-day interval',
           { recurrence_kind: 'fixed_interval', interval_days: 0 },
@@ -437,7 +394,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           'study_schedules_recurrence_bounds_check',
         ],
 
-        // --- window ---
         [
           'a window that ends before it starts',
           { window_start_minute: 1260, window_end_minute: 1080 },
@@ -464,7 +420,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           'study_schedules_window_check',
         ],
 
-        // --- quiet hours and the per-day constraints ---
         [
           'a quiet-hours start with no end',
           { quiet_hours_start_minute: 1320 },
@@ -751,8 +706,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
               constraint: OCCURRENCE_IDENTITY_KEY,
             });
 
-            // A second index, and the same index for a different participant,
-            // are both distinct draws rather than collisions.
             expect(
               yield* ownerInsert(
                 'schedule_occurrences',
@@ -803,8 +756,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
         Effect.gen(function* () {
           const occurrenceId = yield* newOccurrence(yield* newSchedule());
 
-          // A zone change or a DST transition re-resolves the same local
-          // intent to another instant …
           expect(
             yield* ownerAffected(
               `UPDATE schedule_occurrences
@@ -819,7 +770,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             ),
           ).toBe(1);
 
-          // … and the occurrence still runs through its own lifecycle.
           expect(
             yield* ownerAffected(
               `UPDATE schedule_occurrences SET state = 'dispatched' WHERE id = $1`,
@@ -959,9 +909,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           };
           yield* newTemplate(identity);
 
-          // NULLS NOT DISTINCT is the whole point: with ordinary NULL
-          // semantics this second team-level default would be admitted and
-          // the resolver would pick between them arbitrarily.
           const refused = yield* refusalOf(
             ownerInsert('message_templates', templateRow(identity)),
           );
@@ -970,7 +917,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             constraint: 'message_templates_identity_key',
           });
 
-          // A study override of the same key is a different template.
           expect(
             yield* ownerInsert(
               'message_templates',
@@ -1008,9 +954,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             `kind = 'reminder'`,
             `locale = 'fr-FR'`,
             `version = 2`,
-            // The scope is cited too: moved between the team default and a
-            // study, the template would no longer apply where its deliveries
-            // went.
             `study_id = '${studyOf[TEAM_A]}'`,
           ]) {
             const refused = yield* refusalOf(
@@ -1024,8 +967,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             );
           }
 
-          // Retiring a published template is the one transition it still
-          // allows: the guard protects the content, not the lifecycle.
           expect(
             yield* ownerAffected(
               `UPDATE message_templates SET state = 'retired' WHERE id = $1`,
@@ -1038,8 +979,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
       it.effect('never returns a published template to draft', () =>
         Effect.gen(function* () {
           const templateId = yield* newTemplate();
-          // Back to draft would reopen the body for rewording under the same
-          // id and version, which existing deliveries cite as evidence.
           const refused = yield* refusalOf(
             ownerAffected(
               `UPDATE message_templates SET state = 'draft' WHERE id = $1`,
@@ -1060,8 +999,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
 
       it.effect('never revives a retired template', () =>
         Effect.gen(function* () {
-          // Retirement is one-way too: revived, the template would satisfy
-          // message_deliveries_template_applies again after its replacement.
           const templateId = yield* newTemplate({ state: 'retired' });
           for (const state of ['published', 'draft']) {
             const refused = yield* refusalOf(
@@ -1230,7 +1167,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             constraint: 'message_deliveries_occurrence_id_channel_idx',
           });
 
-          // The other channel for the same occurrence is a different send.
           expect(
             yield* ownerInsert(
               'message_deliveries',
@@ -1241,8 +1177,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             ),
           ).toBe(1);
 
-          // And the partial predicate leaves unscheduled sends uncounted, so
-          // two invitations on the same channel do not collide.
           expect(
             yield* ownerInsert('message_deliveries', deliveryRow(templateId)),
           ).toBe(1);
@@ -1375,8 +1309,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
       it.effect('refuses an occurrence resolved for another participant', () =>
         Effect.gen(function* () {
           const occurrenceId = yield* newOccurrence(yield* newSchedule());
-          // A second participant of the same study: the team-scoped key
-          // admitted this before; the four-column key refuses it.
           const otherId = randomUUID();
           yield* ownerInsert('participants', {
             id: otherId,
@@ -1426,15 +1358,12 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             expect(
               yield* refusal(yield* newTemplate({ study_id: otherStudyId })),
             ).toContain(refusedBy);
-            // Unreviewed wording, and withdrawn wording: neither is what a
-            // participant may be sent, however well the rest of the key matches.
             expect(
               yield* refusal(yield* newTemplate({ state: 'draft' })),
             ).toContain(refusedBy);
             expect(
               yield* refusal(yield* newTemplate({ state: 'retired' })),
             ).toContain(refusedBy);
-            // The team default and the study's own override both apply.
             expect(
               yield* deliveryWith(
                 yield* newTemplate({ study_id: studyOf[TEAM_A] }),
@@ -1450,7 +1379,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           Effect.gen(function* () {
             const deliveryId = yield* newDelivery();
 
-            // The application role enqueues inside its audited transaction …
             const templateId = yield* newTemplate();
             const enqueued = deliveryRow(templateId);
             const columns = Object.keys(enqueued);
@@ -1463,8 +1391,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
               ),
             ).toBe(1);
 
-            // … and cannot advance it afterwards: the sidecar's REVOKE holds
-            // because the broad access grant runs before every module sidecar.
             const refused = yield* refusalOf(
               tenantAffected(
                 TEAM_A,
@@ -1474,7 +1400,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             );
             expect(refused.state).toBe('42501');
 
-            // The dispatcher is exactly the role that may.
             expect(
               yield* maintenanceAffected(
                 `UPDATE message_deliveries SET attempt_count = 1 WHERE id = $1`,
@@ -1492,10 +1417,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             const refusedBy =
               'message deliveries are deleted only by an audited erasure or the maintenance retention path';
 
-            // DELETE is a privilege the application role holds — participant
-            // erasure runs as that role and the participant key does not
-            // cascade — so the guard is a trigger, and an unmarked delete is
-            // refused by it.
             const unmarked = yield* refusalOf(
               tenantAffected(
                 TEAM_A,
@@ -1505,8 +1426,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             );
             expect(unmarked.message).toContain(refusedBy);
 
-            // A marker naming somebody else authorizes nothing: it is proven
-            // against the delivery's own participant.
             const misnamed = yield* refusalOf(
               erasing(
                 TEAM_A,
@@ -1526,7 +1445,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
               ),
             ).toBe(1);
 
-            // And the retention path needs no marker at all.
             const purgeable = yield* newDelivery();
             expect(
               yield* maintenanceAffected(
@@ -1596,7 +1514,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             constraint: DELIVERY_EVENT_IDENTITY_KEY,
           });
 
-          // A genuinely different callback from the same provider still lands.
           expect(
             yield* ownerInsert('message_delivery_events', eventRow(deliveryId)),
           ).toBe(1);
@@ -1627,8 +1544,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           const refusedBy =
             'a delivery event must name the provider that sent its delivery';
 
-          // An allowed provider name, a real delivery of the event's own team
-          // — and still not the provider that made the send.
           const deliveryId = yield* newAttemptedDelivery();
           const wrongProvider = yield* refusalOf(
             ownerInsert(
@@ -1638,15 +1553,12 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           );
           expect(wrongProvider.message).toContain(refusedBy);
 
-          // A delivery still waiting in the outbox has been sent by nobody, so
-          // no callback about it can be genuine.
           const pendingId = yield* newDelivery();
           const unsent = yield* refusalOf(
             ownerInsert('message_delivery_events', eventRow(pendingId)),
           );
           expect(unsent.message).toContain(refusedBy);
 
-          // The provider that did send it is admitted.
           const smsTemplateId = yield* newTemplate({
             channel: 'sms',
             subject: null,
@@ -1680,8 +1592,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
           expect(rewritten.message).toContain(
             'message delivery payload is immutable',
           );
-          // Even a write that changes nothing meaningful is refused: the
-          // trigger guards the row, not a column list.
           const annotated = yield* refusalOf(
             ownerAffected(
               `UPDATE message_delivery_events SET detail = '{"code":1}'::jsonb
@@ -1705,9 +1615,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             const refusedBy =
               'message delivery events are deleted only by an audited erasure or the maintenance retention path';
 
-            // Evidence an ordinary application-role write cannot destroy — and,
-            // because the identity key would then admit the same provider event
-            // again, cannot replace either.
             const unmarked = yield* refusalOf(
               tenantAffected(
                 TEAM_A,
@@ -1717,9 +1624,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             );
             expect(unmarked.message).toContain(refusedBy);
 
-            // An event carries no participant, so the marker is proven through
-            // the delivery it describes — and one naming somebody else proves
-            // nothing.
             const misnamed = yield* refusalOf(
               erasing(
                 TEAM_A,
@@ -1800,7 +1704,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             constraint: 'participant_contact_optouts_pkey',
           });
 
-          // The same address on the other channel is a separate decision …
           expect(
             yield* ownerInsert(
               'participant_contact_optouts',
@@ -1808,8 +1711,6 @@ describe.skipIf(!testDb)('schedule and messaging schema', () => {
             ),
           ).toBe(1);
 
-          // … and so is the same address in another team: opting out of one
-          // lab's study has not consented away another's.
           expect(
             yield* ownerInsert(
               'participant_contact_optouts',

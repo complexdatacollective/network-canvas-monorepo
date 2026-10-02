@@ -70,7 +70,6 @@ export class KeyringError extends Error {
   }
 }
 
-/** Parsed key material, as everything that seals or opens a secret sees it. */
 export type KeyringApi = {
   /** The key everything is sealed under; every other id is readable only. */
   readonly currentId: string;
@@ -96,14 +95,8 @@ export type KeyringApi = {
 };
 
 /**
- * Takes already-validated entries, current first: `parseKeyring` below is the
- * only caller, so every keyring in the process came through the parse.
- *
- * A closure rather than a class, so the roots live in a `Map` that only the
- * functions returned here close over: nothing reaches them by walking
- * properties, cloning the value, or stringifying an object graph. `toJSON` and
- * the inspect hook state what the two printers do with it, rather than leaving
- * the safe behaviour to be incidental.
+ * A closure rather than a class, so nothing reaches the roots by walking
+ * properties, cloning the value, or stringifying an object graph.
  */
 function makeKeyring(
   entries: readonly { id: string; key: KeyObject }[],

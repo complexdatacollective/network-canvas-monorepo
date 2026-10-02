@@ -45,10 +45,6 @@ try {
   // rule: back it up with the database, because without it every stored secret
   // is unreadable. Before the bootstrap token, so a refused database never
   // prints a token nobody should use.
-  // The same effect `migrate` and the gate run, so the script and the image
-  // refuse on exactly the same conditions in exactly the same order. A refusal
-  // is printed as its one sentence rather than a stack, which would bury what
-  // to do; a defect is caught too, so it is never an unhandled rejection.
   const verified = await Effect.runPromiseExit(
     verifyKeyring.pipe(
       Effect.provide(SecretsCipher.layerFromEnvironment),
@@ -65,14 +61,10 @@ try {
   // is part of it, and on every run, because an ownerless instance whose token
   // was lost is recovered by running this again. An owned instance issues
   // nothing and prints nothing.
-  // The apply above stays on node-postgres — one multi-command simple query is
-  // what makes it one transaction — but the token is issued through the same
-  // owner scope the `migrate` command uses, so both lanes arm an instance with
-  // exactly the same statements under exactly the same identity.
   printBootstrapToken(
     await Effect.runPromise(
       OwnerScope.open(issueBootstrapToken()).pipe(
-        Effect.provide(OwnerDatabase.layer({ url: env.db.url })),
+        Effect.provide(OwnerDatabase.layer(env.db)),
         Effect.scoped,
       ),
     ),

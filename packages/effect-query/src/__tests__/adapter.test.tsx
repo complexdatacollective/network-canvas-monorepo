@@ -23,7 +23,7 @@ import {
   RpcGroup,
   RpcMiddleware,
   RpcTest,
-} from 'effect/unstable/rpc';
+} from 'effect/rpc';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +68,6 @@ class StreamBroke extends Schema.TaggedError<StreamBroke>()('StreamBroke', {
   after: Schema.Number,
 }) {}
 
-/** Emits `1..after`, then fails: the stream's own typed error, mid-stream. */
 const Broken = Rpc.make('Broken', {
   payload: { after: Schema.Number },
   success: Schema.Number,
@@ -89,15 +88,8 @@ class Client extends Context.Service<
   RpcClient.RpcClient.Flat<Rpcs, RpcClientError.RpcClientError>
 >()('effect-query/test/Client') {}
 
-/**
- * A countdown of 100 chunks 20 ms apart, so a stream left to run takes 2 s to
- * reach its finaliser. The unmount test holds `released` to a window far shorter
- * than that, and to a chunk count far below `COUNTDOWN_FROM`, so a leaked stream
- * cannot be mistaken for an interrupted one.
- */
 const COUNTDOWN_FROM = 100;
 const COUNTDOWN_GAP = '20 millis';
-/** Well under the 2 s a leaked countdown needs, well over an interrupt. */
 const COUNTDOWN_INTERRUPT_BUDGET = 1_000;
 
 let getUserCalls = 0;
@@ -248,8 +240,7 @@ describe('makeRpcAdapter', () => {
       (error: unknown) => error,
     );
 
-    // jsdom's `DOMException` constructor is not the one this module's realm sees, so
-    // the abort is identified by its name rather than by `instanceof`.
+    // jsdom's `DOMException` is from another realm, so match by name, not `instanceof`.
     const name =
       Predicate.hasProperty(rejection, 'name') &&
       Predicate.isString(rejection.name)
@@ -281,8 +272,6 @@ describe('makeRpcAdapter', () => {
     await waitFor(() => expect(released).toBe(true), {
       timeout: COUNTDOWN_INTERRUPT_BUDGET,
     });
-    // The finaliser ran while most of the countdown was still ahead of it, so the
-    // stream was cut short rather than abandoned and left to finish on its own.
     expect(chunks.length).toBeLessThan(COUNTDOWN_FROM / 2);
   });
 
@@ -461,11 +450,7 @@ describe('makeRpcAdapter', () => {
   });
 });
 
-/**
- * Never called and never exported — `tsc` still checks the body, and that is the
- * point: each `@ts-expect-error` fails the typecheck if the mistake below it ever
- * becomes legal.
- */
+/** Never called: `tsc` checks each `@ts-expect-error` in the probes below. */
 const _typeProbes = (probe: RpcAdapter<Rpcs>) => {
   // @ts-expect-error — 'Nope' is not a tag in the group.
   probe.rpcQuery('Nope', { id: 'x' });
@@ -477,12 +462,6 @@ const _typeProbes = (probe: RpcAdapter<Rpcs>) => {
   probe.rpcMutation('Nope');
 };
 
-/**
- * Pins what the adapter's two casts assume about a flat client, for a concrete
- * group: a unary tag answers with an `Effect` of the rpc's success and error
- * types, a streaming tag with a `Stream` of its chunks. If an Effect release
- * reshapes `RpcClient.Flat`, this stops compiling before the casts can lie.
- */
 const _flatClientShapeProbe = (
   flat: RpcClient.RpcClient.Flat<Rpcs, RpcClientError.RpcClientError>,
 ) => {
@@ -501,11 +480,6 @@ const _flatClientShapeProbe = (
   return { unary, streaming, failing };
 };
 
-/**
- * Pins the error type a screen reads off `useQuery`, in the same never-called way.
- * Both assignments together make it an equality rather than a one-way bound: the
- * first fails if the slot widens, the second if it narrows.
- */
 const _errorNarrowingProbe = (probe: RpcAdapter<Rpcs>) => {
   const result = useQuery(probe.rpcQuery('GetUser', { id: 'x' }));
   const narrowed: UserNotFound | RpcClientError.RpcClientError | null =

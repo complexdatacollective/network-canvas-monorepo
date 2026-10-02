@@ -1,8 +1,5 @@
-// Who is calling a protocol-builder procedure, and on which protocol. A caller
-// who cannot reach a protocol is refused exactly as for one that does not
-// exist, so this is no more an existence oracle than `studies.get`.
 import { Clock, Context, Effect, Layer, Option } from 'effect';
-import type * as Headers from 'effect/unstable/http/Headers';
+import type * as Headers from 'effect/http/Headers';
 
 import { ProtocolNotFound } from '@codaco/protocol-builder-core/contract/errors';
 import {
@@ -32,28 +29,19 @@ import { StagedImports } from './resources.ts';
 import { resolveProtocolSession } from './tenancy.ts';
 
 /**
- * The socket a `/ws` call arrived on, provided by the route to the upgrade's
- * fiber, which the rpc server runs that socket's handlers under. Minted per
- * socket rather than taken from the rpc server's client counter, which
- * restarts with the process: a caller naming no tab owns its locks by it.
+ * Minted per socket rather than taken from the rpc server's client counter,
+ * which restarts with the process.
  */
 export class WsConnection extends Context.Service<
   WsConnection,
   { readonly connectionId: string }
 >()('@studio/protocol-builder/WsConnection') {}
 
-/**
- * When a stream on this call's plane must end. The unary route provides it:
- * the maintenance gate sees only the request, so a `WatchProtocol` opened
- * there before an operator's window ends when the window opens, as `/ws`
- * closes its socket.
- */
 export class WatchCutoff extends Context.Service<
   WatchCutoff,
   { readonly reached: Effect.Effect<void> }
 >()('@studio/protocol-builder/WatchCutoff') {}
 
-/** The principal `HostSessionLive` provided; absent is a wiring bug. */
 const callerPrincipal: Effect.Effect<Principal['Service']> = Effect.flatMap(
   Effect.serviceOption(Principal),
   Option.match({
@@ -63,31 +51,20 @@ const callerPrincipal: Effect.Effect<Principal['Service']> = Effect.flatMap(
   }),
 );
 
-/**
- * A spent window, as a defect: `RateLimited` is not on the group (#1927 §20
- * Q11), and with fatal defects off it fails that call alone.
- */
 const charge = (
   scope: RateLimitScope,
   subject: string,
 ): Effect.Effect<void, never, RateLimiter> =>
   Effect.orDie(enforceRateLimit(scope, subject));
 
-/**
- * Studio's `HostSession`. The connection is the presence identity: a `/ws`
- * call's socket, or the cookie session for a unary call. The tab owns locks,
- * read from `CLIENT_SESSION_HEADER` on the request itself (the `/ws` route
- * moves its upgrade query there); a client naming none owns them by its
- * connection.
- */
 export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
   Layer.effect(HostSession)(
     Effect.gen(function* () {
       const auth = yield* AuthService;
       return (effect, options) =>
         Effect.gen(function* () {
-          // On `/ws` these are the upgrade's headers, asked again on every
-          // call so that a session revoked while its socket is open is refused.
+          // Asked again on every call so that a session revoked while its
+          // socket is open is refused.
           const headers = yield* transportHeaders(options.headers);
           const principal = yield* Effect.provideService(
             Effect.map(principalFromHeaders(headers), Option.map(principalOf)),
@@ -122,11 +99,6 @@ export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
     }),
   );
 
-/**
- * Dies unless the session a stream was admitted on still resolves to its
- * caller: `HostSession` runs once per call, and a watch is one call for as
- * long as the protocol is open.
- */
 export const stillSignedIn = Effect.fnUntraced(function* (
   headers: Headers.Headers,
 ) {
@@ -139,16 +111,12 @@ export const stillSignedIn = Effect.fnUntraced(function* (
   }
 });
 
-/** Everything one owner has staged in one draft, whichever edit staged it. */
 export const ownerPrefix = (session: ProtocolBuilderSession): string =>
   `${session.draftId}\u0000${sessionOwner(session)}\u0000`;
 
 /**
- * Resolves the protocol a call names to a session. The caller's budget is
- * charged before any query; the team's only once the team is known, so a
- * stranger cannot spend a team's quota with calls that are all refused. A call
- * is the unary plane's only sign of life, so it also touches this owner and
- * expires whoever has made none for the idle bound.
+ * The team's budget is charged only once the team is known, so a stranger
+ * cannot spend a team's quota.
  */
 export const openSession = Effect.fn('protocolBuilder.openSession')(function* (
   protocolId: string,

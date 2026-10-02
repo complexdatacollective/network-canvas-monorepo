@@ -13,27 +13,12 @@ import {
 } from '../../__tests__/support/source-spans.ts';
 import { sourceTokens } from '../../__tests__/support/source-tokens.ts';
 
-// Where a `TeamAccess` may be minted (#1927 §10).
-//
-// `TenantScope.open` takes a `TeamAccess` rather than a team id, so a tenant
-// transaction cannot be opened without one — but that is only "tenancy implies
-// authorization" while every mint has just proved something. The brand makes
-// the token impossible to fake; this is what makes its constructor impossible
-// to call somewhere new without saying why.
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER_ROOT = resolve(HERE, '../../..');
 const REPO_ROOT = resolve(SERVER_ROOT, '../../..');
 
 const CONSTRUCTOR = 'unsafeMakeTeamAccess';
 
-/**
- * Every use of the constructor in `source`, by the `Effect.fn` it sits in
- * (`null` outside one). A use is any mention that is not the declaration or an
- * import/export clause naming it: a call, a reference handed on, a member of a
- * namespace import, a computed `['unsafeMakeTeamAccess']`. A renaming import
- * counts too, because the calls under the new name are otherwise invisible.
- */
 function constructorUses(source: string): (string | null)[] {
   const tokens = sourceTokens(source);
   const spans = spansOf(tokens);
@@ -70,12 +55,6 @@ function inventory(): Map<string, number> {
 
 const SERVER = 'apps/studio/api';
 
-/**
- * Every production mint of a `TeamAccess`, and what it has proved first.
- * Exact in both directions, like the raw SQL allowlist: a new mint fails until
- * it is listed with its reason, and an entry whose mint has gone fails until
- * it is removed.
- */
 const MINTS: Record<string, { count: number; why: string }> = {
   [`${SERVER}/src/rpc/team-scope.ts › openTeam`]: {
     count: 1,
@@ -128,8 +107,6 @@ describe('the TeamAccess constructor', () => {
   });
 });
 
-// The collector is itself under test: a form it missed would be a mint the
-// list above never sees.
 describe('the mint collector', () => {
   it('finds a call, a handed-on reference and a renaming import', () => {
     const source = `

@@ -1,11 +1,8 @@
-// The protocol-builder host contract, implemented against Studio: every
-// procedure resolves its protocol (`session.ts`), runs the host command
-// (`host.ts`), publishes the events it logged and answers its outcome.
 import { randomUUID } from 'node:crypto';
 
 import { Clock, Effect, Option, Predicate, Result, Stream } from 'effect';
 import type * as Layer from 'effect/Layer';
-import type * as Rpc from 'effect/unstable/rpc/Rpc';
+import type * as Rpc from 'effect/rpc/Rpc';
 
 import {
   ProtocolBuilderGroup,
@@ -73,14 +70,8 @@ import {
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
 
-/** How long a watcher's session and membership are trusted before re-reading. */
 export const REAUTHORIZE_MS = RENEW_INTERVAL_MS;
 
-/**
- * A caller whose role or grant was taken away since `openSession` is refused
- * inside the command's transaction, as one who never had the protocol; every
- * other failure is a fault the contract has no word for, so a defect.
- */
 const command = <A, E, R>(
   protocolId: string,
   self: Effect.Effect<A, E, R>,
@@ -94,10 +85,7 @@ const command = <A, E, R>(
     ),
   );
 
-/**
- * Keyed by edit rather than connection or owner: an edit outlives a dropped
- * socket, and one owner's two open edits must not cancel each other's imports.
- */
+// Keyed by edit, not connection or owner: an edit outlives a dropped socket.
 const stagingKey = (session: ProtocolBuilderSession, editId: string) =>
   `${ownerPrefix(session)}${editId}`;
 
@@ -107,13 +95,11 @@ const writeKey = (
   requestId: string,
 ) => ({ draftId: session.draftId, operation, requestId });
 
-/** A recorded submit, answered as the contract answers a fresh one. */
 const submitted = (receipt: WriteReceipt) => ({
   revision: receipt.revision,
   ...(receipt.promoted === undefined ? {} : { promoted: receipt.promoted }),
 });
 
-/** A recorded create, which always names the section that attempt made. */
 const created = (receipt: WriteReceipt) =>
   receipt.createdSection === undefined
     ? Effect.die(new Error('a create receipt names no section'))
@@ -125,10 +111,6 @@ const created = (receipt: WriteReceipt) =>
           : { promoted: receipt.promoted }),
       });
 
-/**
- * A missing subject is neither a protocol nor a section, which is all the
- * contract's errors name, so it is a defect where it was oRPC's `NOT_FOUND`.
- */
 const applied = (outcome: RefactorOutcome | undefined) => {
   if (outcome === undefined) {
     return Effect.die(new Error('no such codebook subject'));
@@ -145,18 +127,14 @@ const applied = (outcome: RefactorOutcome | undefined) => {
   });
 };
 
-/** Presence carries no cursor: it is not replayable. */
 const onTheWire = (entry: LoggedProtocolEvent): ProtocolEvent =>
   entry.cursor === undefined || entry.event.type === 'presence'
     ? entry.event
     : { ...entry.event, cursor: entry.cursor };
 
 /**
- * Every procedure of the group, over per-process state both mounts share.
- *
- * A write is uninterruptible from its command on: the rpc server interrupts a
- * departed client's calls, and once the command has committed its events,
- * the keeper's lease and the promotion's bookkeeping must follow regardless.
+ * A write is uninterruptible from its command on: once the command has
+ * committed, the lease and promotion bookkeeping must follow.
  */
 export const ProtocolBuilderHandlers: Layer.Layer<
   Rpc.ToHandler<ProtocolBuilderRpcs>,
@@ -205,17 +183,12 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         (assets) => assets?.document ?? {},
       );
 
-    /**
-     * What an owner whose reconnection never came gives back, run by the
-     * keeper once the grace is up, in the keeper's scope.
-     */
     const endOwner = (session: ProtocolBuilderSession): Effect.Effect<void> =>
       Effect.gen(function* () {
         const owner = sessionOwner(session);
         const held = yield* leases.heldSections(session.draftId, owner);
         // Dropped before the release, which may fail: a keeper left renewing
-        // a departed tab's leases would hold them forever, where an
-        // unreachable database costs one lease expiry.
+        // would hold them forever.
         for (const sectionId of held) {
           yield* leases.drop(session.draftId, sectionId, owner);
         }
@@ -224,11 +197,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         yield* publish(session, released.events);
       }).pipe(Effect.provideService(Database, database));
 
-    /**
-     * Fills a committed API key's value in from `protocol_asset_keys` (#1900):
-     * the manifest never carries it, and the editor's map preview needs it.
-     * The only read path that decrypts one; a staged key already has its value.
-     */
     const withCommittedAssetKey = Effect.fnUntraced(function* (
       session: ProtocolBuilderSession,
       resourceId: string,
@@ -247,7 +215,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           }),
         ),
       );
-      // No sealed row: a protocol older than #1900, answered without a value.
       if (value === undefined) return outcome;
       return {
         status: 'ok' as const,
@@ -282,9 +249,8 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 sectionId,
                 owner: sessionOwner(session),
               });
-              // A unary caller's fallback connection is the cookie session,
-              // shared by every tab and never ended: a participant joined for
-              // it could never be removed.
+              // A unary caller's connection is the cookie session, never ended:
+              // a participant joined for it could never be removed.
               if (Option.isSome(yield* Effect.serviceOption(WsConnection))) {
                 yield* presence.put(
                   session.draftId,
@@ -312,8 +278,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             );
             const owner = sessionOwner(session);
             yield* leases.drop(session.draftId, sectionId, owner);
-            // A tab may hold a second section (a codebook dialog over a stage
-            // editor), so presence follows what it still holds.
             const [stillHeld] = yield* leases.heldSections(
               session.draftId,
               owner,
@@ -359,18 +323,15 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           Effect.gen(function* () {
             const session = yield* openSession(protocolId);
             // Subscribed before the backlog is read, so an event committed
-            // between the two is queued rather than lost; the cursor check
-            // below drops the overlap.
+            // between the two is queued rather than lost.
             const live = yield* events.subscribe(session.draftId);
-            // While the channel runs, its owner's leases are renewed; its end
-            // starts the reconnect grace, after which `endOwner` runs.
             yield* leases.connect(
               sessionOwner(session),
               session.draftId,
               endOwner(session),
             );
             // Registered before the join, so it runs after the join's own
-            // release has taken this watcher out.
+            // release.
             yield* Effect.addFinalizer(() => publishPresence(session));
             yield* presence.join(
               session.draftId,
@@ -392,14 +353,11 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);
             let authorizedAt = yield* Clock.currentTimeMillis;
             const delivered = live.pipe(
-              // Dropped to the replay path: not a refusal the contract names.
               Stream.catchTag('SubscriberOverflow', (overflow) =>
                 Stream.die(overflow),
               ),
               Stream.filterMapEffect((entry) =>
                 Effect.gen(function* () {
-                  // Asked before an event is handed over rather than on a
-                  // timer, so an idle watch costs nothing.
                   const at = yield* Clock.currentTimeMillis;
                   if (at - authorizedAt >= REAUTHORIZE_MS) {
                     yield* stillSignedIn(headers);
@@ -438,8 +396,8 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         promote,
       }) {
         const session = yield* openSession(protocolId);
-        // A retry of a committed attempt, asked before planning: the first
-        // attempt already took the staged resources a new plan would need.
+        // Asked before planning: the first attempt already took the staged
+        // resources a new plan would need.
         const already = yield* Effect.orDie(
           TenantScope.open(
             session.access,
@@ -454,8 +412,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           promote === undefined
             ? undefined
             : yield* stagingFor(session, promote.editId);
-        // Planned before anything is written: the bytes it stores are named
-        // only by the section write, so a refusal leaves everything staged.
         const planned =
           promote === undefined || store === undefined
             ? undefined
@@ -485,7 +441,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             if (outcome === undefined) {
               return yield* new SectionNotFound({ sectionId });
             }
-            // Another call with this request id committed first: this is its retry.
             if (outcome.status === 'replayed')
               return submitted(outcome.receipt);
             if (outcome.status === 'notLockHolder') {
@@ -526,8 +481,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         promote,
       }) {
         const session = yield* openSession(protocolId);
-        // A retry of a committed attempt is answered from its record rather
-        // than minting a second copy of the stage.
         const already = yield* Effect.orDie(
           TenantScope.open(
             session.access,
@@ -542,8 +495,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           promote === undefined
             ? undefined
             : yield* stagingFor(session, promote.editId);
-        // Planned before anything is written; the refusal names no section
-        // because none has been minted.
         const planned =
           promote === undefined || store === undefined
             ? undefined
@@ -571,7 +522,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             );
             yield* publish(session, result.events);
             const outcome = result.outcome;
-            // Another call with this request id committed first: this is its retry.
             if (outcome.status === 'replayed') {
               return yield* created(outcome.receipt);
             }

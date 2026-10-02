@@ -1,24 +1,8 @@
-// Cutting a Postgres script into the single commands a prepared-statement
-// protocol will accept.
-//
-// `@effect/sql-pg` has no simple-query path: every statement goes through
-// Parse/Bind/Execute, and the extended protocol refuses a multi-command string
-// outright — SQLSTATE 42601, "cannot insert multiple commands into a prepared
-// statement". Everything Studio applies its schema from is a multi-command
-// string: drizzle-kit's rendered DDL, the nineteen sidecars in src/db/schema.ts,
-// and the job queue's schema and grants (src/jobs/schema.ts). Several of
-// those carry dollar-quoted plpgsql function bodies of their own, so splitting
-// on `;` would cut a function in half.
-//
-// Splitting happens at execution time only. The schema fingerprint is computed
-// over the unsplit strings, so nothing here can move it.
+// `@effect/sql-pg` refuses a multi-command string (SQLSTATE 42601), and the
+// schema scripts carry dollar-quoted plpgsql bodies, so splitting on `;` would
+// cut a function in half.
 
-/**
- * The tag of a dollar-quoted string follows the rules of an unquoted
- * identifier, except that it cannot contain a dollar sign — so `$` is excluded
- * here and included by `isNameCharacter` below, which asks a different
- * question.
- */
+/** A dollar-quote tag cannot contain `$`, unlike `isNameCharacter`. */
 function isTagStart(character: string | undefined): boolean {
   if (character === undefined) return false;
   return (
@@ -34,17 +18,10 @@ function isTagCharacter(character: string | undefined): boolean {
   return isTagStart(character) || (character >= '0' && character <= '9');
 }
 
-/** Whether a character could be part of the identifier ending at it. */
 function isNameCharacter(character: string | undefined): boolean {
   return character === '$' || isTagCharacter(character);
 }
 
-/**
- * The index just past the opening delimiter of a dollar-quoted string starting
- * at `open`, or -1 when `open` is an ordinary `$` — a positional parameter
- * (`$1`, `$2::jsonb`) is the case that matters, since the statements a driver
- * sends carry those beside dollar-quoted bodies.
- */
 function dollarQuoteBodyStart(script: string, open: number): number {
   let index = open + 1;
   if (script[index] === '$') return index + 1;
@@ -58,21 +35,14 @@ function scanDollarQuoted(
   open: number,
   bodyStart: number,
 ): number {
-  // The closing delimiter must match the opening tag exactly, so a `$$` inside
-  // a `$body$…$body$` body is body text rather than a terminator.
   const delimiter = script.slice(open, bodyStart);
   const close = script.indexOf(delimiter, bodyStart);
   return close === -1 ? script.length : close + delimiter.length;
 }
 
 /**
- * @param escapes the `E'…'` form, where a backslash escapes the next character
- *   (so `E'\''` holds one quote and does not end there). A plain `'…'` is read
- *   as `standard_conforming_strings = on`, which every supported server has
- *   defaulted to for a decade: a backslash there is an ordinary character, and
- *   `''` is the only way to write a quote. `U&'…'` needs no case of its own —
- *   its backslashes introduce code points rather than escaping a quote, and it
- *   doubles quotes like any standard string.
+ * A plain `'…'` is read as `standard_conforming_strings = on`, where a
+ * backslash is an ordinary character.
  */
 function scanSingleQuoted(
   script: string,
@@ -113,7 +83,6 @@ function scanDoubleQuoted(script: string, open: number): number {
   return script.length;
 }
 
-/** Stops on the newline rather than past it; the caller treats it as space. */
 function scanLineComment(script: string, open: number): number {
   const end = script.indexOf('\n', open + 2);
   return end === -1 ? script.length : end;
@@ -152,26 +121,13 @@ function isWhitespace(character: string): boolean {
 }
 
 /**
- * Splits a Postgres script into single commands.
- *
- * Each command is returned as its own original bytes with the surrounding
- * whitespace trimmed and the terminating `;` dropped — comments inside a
- * command are kept rather than stripped, so a sidecar's plpgsql arrives with
- * the prose that explains it. A fragment holding nothing but whitespace and
- * comments is not a command and is dropped; a trailing command with no
- * terminator is returned like any other.
- *
- * A quote, dollar quote or block comment left open at the end of the input is
- * returned as part of the last command rather than raised: this splits input
- * that Postgres is about to parse anyway, and handing the malformed tail to
- * the server produces the syntax error a caller can act on, at the statement
- * that caused it, instead of a second error message from here.
+ * An unterminated quote, dollar quote or block comment is returned as part of
+ * the last command rather than raised, so the server reports the syntax error.
  */
 export function splitStatements(script: string): readonly string[] {
   const statements: string[] = [];
   let start = 0;
   let index = 0;
-  /** Whether anything but whitespace and comments has been seen since `start`. */
   let hasCommand = false;
 
   const flush = (end: number) => {
@@ -200,8 +156,6 @@ export function splitStatements(script: string): readonly string[] {
     }
 
     if (character === "'") {
-      // `E'…'` only when the `E` is a token of its own: in `nameE'x'` the
-      // lexer has already read an identifier, and the string is a plain one.
       const previous = script[index - 1];
       const escapes =
         (previous === 'E' || previous === 'e') &&
@@ -217,9 +171,6 @@ export function splitStatements(script: string): readonly string[] {
       continue;
     }
 
-    // A dollar quote must be separated from a preceding identifier: in
-    // `my$tbl$name` the `$` continues the identifier, and Postgres reads the
-    // whole thing as one name rather than as `my` followed by a quote.
     if (character === '$' && !isNameCharacter(script[index - 1])) {
       const bodyStart = dollarQuoteBodyStart(script, index);
       if (bodyStart !== -1) {

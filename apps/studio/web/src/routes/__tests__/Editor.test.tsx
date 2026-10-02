@@ -57,11 +57,6 @@ import {
   type StudioHandlers,
 } from '../../test/rpcHarness.ts';
 
-/**
- * Each procedure's own handler, minus the options argument the harness passes
- * it: a fixture that has drifted from the contract fails `tsc` rather than
- * passing here.
- */
 type Answer<Tag extends keyof StudioHandlers> = (
   payload: Parameters<StudioHandlers[Tag]>[0],
 ) => ReturnType<StudioHandlers[Tag]>;
@@ -73,10 +68,6 @@ const queryDraft = vi.hoisted(() => vi.fn<Answer<'protocols.draft'>>());
 const addInformationStage = vi.fn<Answer<'protocols.addInformationStage'>>();
 const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
 
-/**
- * The study and the protocol line it points at share this identifier here, the
- * way `TeamStudies` mints them: one UUID, two brands.
- */
 const PROTOCOL_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 const DRAFT = {
@@ -146,10 +137,6 @@ const tenancy = {
 
 const STUDY_ID = StudyId.make(PROTOCOL_UUID);
 
-/**
- * The study as `studies.get` answers it, for the team that owns it. The schema
- * module exports no type alias, so the shape is read off the schema itself.
- */
 function studyDetail(owner: string): (typeof StudyDetail)['Type'] {
   return {
     teamId: TeamId.make(owner),
@@ -167,14 +154,11 @@ function studyDetail(owner: string): (typeof StudyDetail)['Type'] {
   };
 }
 
-/** The signed-in researcher; nothing here turns on any of it. */
 const ME: Me = {
   userId: 'user-1',
   email: 'researcher@example.org',
   emailVerified: true,
   name: 'Researcher',
-  // `me` carries the account's UI-language preference; null means
-  // "follow the browser" (2026-09-04 localization design §5.2).
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -195,7 +179,6 @@ const STATUS: InstanceStatus = {
 /** The host these tests seed, kept so a second caller can be made from it. */
 let host: ReturnType<typeof createInMemoryHost>;
 
-/** Who this tab's editor is to the host. */
 const EDITOR = { sessionId: 'session-1', userId: 'user-1', displayName: 'Ada' };
 
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
@@ -236,11 +219,6 @@ function commandWriteFor(id: string): SectionDoc | undefined {
   return commandWrote.get(sectionId(parseSectionId(id)));
 }
 
-/**
- * The seeded host's procedures, with the reads answered the way a host that
- * Studio's own commands have written to — and that has not answered for every
- * section it listed — answers them.
- */
 function servedBy(handle: InMemoryHandlers): HandlersLayer {
   return ProtocolBuilderGroup.toLayer({
     ...handle,
@@ -283,7 +261,6 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
   });
 }
 
-/** Seeds the host the editor is served by, in process, as this tab's editor. */
 async function seedHost(sections: Readonly<Record<string, SectionDoc>>) {
   host = createInMemoryHost({ protocolId: DRAFT.protocol.id, sections });
   await installInProcessHost(servedBy(host.handle), hostSessionFor(EDITOR));
@@ -305,7 +282,6 @@ function collaborator() {
   });
 }
 
-/** A screen a collaborator adds, through the contract's own `Create`. */
 async function collaboratorAddsScreen(label: string): Promise<void> {
   await collaborator().rpcCall('Create', {
     protocolId: DRAFT.protocol.id,
@@ -315,7 +291,6 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
   });
 }
 
-/** A screen a collaborator renames, through the contract's own `Submit`. */
 async function collaboratorRenamesScreen(
   stageId: string,
   label: string,
@@ -359,7 +334,6 @@ async function collaboratorRepairsStageOrder(): Promise<void> {
   });
 }
 
-/** A screen a collaborator removes, through the contract's own `Delete`. */
 async function collaboratorDeletesScreen(stageId: string): Promise<void> {
   await collaborator().rpcCall('Delete', {
     protocolId: DRAFT.protocol.id,
@@ -430,9 +404,6 @@ beforeEach(async () => {
   );
   moveStage.mockReset();
   moveStage.mockReturnValue(Effect.succeed({ sequence: '3', hash: 'r3' }));
-  // The in-process rpc client for Studio's own procedures. `tenancy.owner`
-  // being null is the server refusing the study altogether, which is what the
-  // URL of a study in somebody else's team looks like from here (§6.3).
   installRpcHarness({
     'me': () => Effect.succeed(ME),
     'status': () => Effect.succeed(STATUS),
@@ -811,8 +782,6 @@ describe('Studio editor shell', () => {
     const { router } = renderEditor();
     await findStageNameField();
 
-    // `/ws` rechecks the session on every call, so an ended session is first
-    // heard of as the host's refusal, not as a 401 from `/rpc`.
     vi.mocked(authClient.getSession).mockResolvedValue({
       data: null,
       error: null,
@@ -1243,13 +1212,6 @@ describe('what a collaborator changes', () => {
   });
 });
 
-/**
- * The editor over the socket it really opens: the shipped `HostClient.layer`,
- * through a WebSocket stand-in whose far end is an rpc server on `/ws`'s own
- * serialization. The server authenticates a socket once, at its handshake, as
- * whoever the browser's cookie says — which is the whole reason a socket must
- * never outlive the session that opened it.
- */
 describe('the socket the editor opens', () => {
   const RESEARCHER: HostAccount = { userId: 'user-1', displayName: 'Ada' };
   const NEXT_ACCOUNT: HostAccount = { userId: 'user-9', displayName: 'Cy' };
@@ -1263,7 +1225,6 @@ describe('the socket the editor opens', () => {
     ({ served } = await installSocketHost(servedBy(host.handle)));
   });
 
-  /** What the server ran, and as whom. */
   const servedAs = () =>
     served.map(({ tag, userId, socket }) => ({ tag, userId, socket }));
 
@@ -1302,13 +1263,7 @@ describe('the socket the editor opens', () => {
     });
   });
 
-  /**
-   * No close code is a signal. A deploy closes the socket with no status code
-   * (1005) and a killed container or a dropped network with none at all
-   * (1006); both are a blip the researcher must not notice, and neither is the
-   * end of their session — only `closeStudioEditorSessions()` is.
-   */
-  it.each([1005, 1006] as const)(
+  it.each([1000, 1005, 1006] as const)(
     'keeps editing across a %i close, and hears what changed during it',
     async (code) => {
       renderEditor();
@@ -1317,8 +1272,6 @@ describe('the socket the editor opens', () => {
 
       FakeWebSocket.opened[0]?.drop(code);
 
-      // The channel resumes on the socket that replaced it, as the same
-      // researcher: the session did not end.
       await waitFor(() => expect(watchesOn(2)).toHaveLength(1), {
         timeout: 10_000,
       });
@@ -1337,18 +1290,9 @@ describe('the socket the editor opens', () => {
     20_000,
   );
 
-  /**
-   * A server killed mid-call fails everything that was in flight on it. The
-   * stream is resumed by the package's channel from the last cursor it saw,
-   * and a section read — a query — is asked again by the query's own retry, on
-   * the socket that replaced the dead one. Nothing is replayed by the
-   * transport: the read the dead server was holding is not the one that
-   * answers.
-   */
   it('resumes the stream and asks again for the read a killed server had in flight', async () => {
     renderEditor();
     await screen.findByRole('button', { name: 'Follow-upInformation' });
-    // An event with a cursor, so the resumed stream has a place to resume from.
     await act(async () => {
       await collaboratorRenamesScreen(STAGE_B, 'Follow-up, renamed');
     });
@@ -1356,9 +1300,6 @@ describe('the socket the editor opens', () => {
       name: 'Follow-up, renamedInformation',
     });
 
-    // A reorder reads the protocol back, and the server sits on one screen of
-    // that read — so the read is in flight, beside the open stream, when the
-    // server dies.
     unreadableSections.set(
       sectionId({ kind: 'stage', stageId: STAGE_B }),
       'withheld',
@@ -1373,13 +1314,10 @@ describe('the socket the editor opens', () => {
 
     FakeWebSocket.opened[0]?.drop(1006);
 
-    // The stream resumes on the socket that replaced the dead one, from the
-    // last cursor it was given …
     await waitFor(() => expect(watchesOn(2).length).toBeGreaterThan(0), {
       timeout: 10_000,
     });
     expect(watchesOn(2)[0]?.payload).toHaveProperty('since');
-    // … and the read is asked again there, by the query's own retry.
     await waitFor(
       () =>
         expect(
@@ -1397,8 +1335,6 @@ describe('the socket the editor opens', () => {
     expect(
       await screen.findByRole('button', { name: 'ConsentInformation' }),
     ).toBeInTheDocument();
-    // The re-read answered, so the reorder is confirmed rather than left in
-    // doubt.
     expect(
       screen.queryByText(/could not confirm the new screen order/i),
     ).toBeNull();
@@ -1435,12 +1371,6 @@ describe('the socket the editor opens', () => {
 
   /**
    * And the reconnection stops with it, not just the socket.
-   *
-   * A call in flight when the researcher signs out is waiting inside the
-   * transport — on a socket that is still connecting, or on the delay before
-   * the next attempt — and `shell/useSignOut.ts` ends the editor's sessions
-   * while the cookie is still valid, so the socket such an attempt opened
-   * would be upgraded as the researcher who just left.
    */
   it('opens nothing more once the sessions have ended, with the cookie still valid', async () => {
     FakeWebSocket.openImmediately = false;
@@ -1456,12 +1386,6 @@ describe('the socket the editor opens', () => {
     expect(served).toEqual([]);
   });
 
-  /**
-   * And a call the ended session was holding is never carried on the next
-   * one. Each session is a runtime of its own, and ending it interrupts every
-   * call that ran on it, so the parked call has nothing left to wake up in —
-   * least of all the socket the next account has just opened.
-   */
   it('never carries a call the ended session parked onto the next account’s socket', async () => {
     FakeWebSocket.openImmediately = false;
     askTheHost('AcquireLock');
@@ -1469,13 +1393,10 @@ describe('the socket the editor opens', () => {
 
     await closeStudioEditorSessions();
 
-    // The next account opens the editor inside the delay the parked call
-    // would be waiting out, which is exactly what it would wake up into.
     FakeWebSocket.openImmediately = true;
     FakeWebSocket.account = NEXT_ACCOUNT;
     askTheHost('ListSections');
     await socketNumber(2);
-    // And the ended session's handshake completing late changes nothing.
     parked.open();
 
     await new Promise((resolve) => setTimeout(resolve, PAST_RECONNECT_DELAY));
@@ -1484,20 +1405,12 @@ describe('the socket the editor opens', () => {
     ]);
   });
 
-  /**
-   * One host for the life of the tab. `ProtocolBuilder` keys its channel and
-   * every lock on the adapter's identity, so an adapter minted per render
-   * would reopen the channel and take the locks again each time the route
-   * re-rendered.
-   */
   it('keeps one channel open while the screen around it re-renders', async () => {
     const { queryClient } = renderEditor();
     await findStageNameField();
     await waitFor(() => expect(watchesOn(1)).toHaveLength(1));
     const locksTaken = served.filter(({ tag }) => tag === 'AcquireLock').length;
 
-    // A fresh reading of Studio's own draft re-renders the route that holds
-    // the protocol builder.
     act(() => {
       queryClient.setQueriesData<typeof DRAFT>(
         { queryKey: ['rpc', 'protocols.draft'] },
@@ -1520,15 +1433,10 @@ describe('the socket the editor opens', () => {
 });
 
 /**
- * Long enough for the transport's next reconnection attempts to have happened.
- *
- * After a failure the socket protocol retries 500 ms later, then 750 ms after
- * that (`RpcClient`'s default retry policy), so a shorter wait would answer
- * "nothing reconnected" before anything could have.
+ * Past `RpcClient`'s default reconnection delays: 500 ms, then 750 ms after that.
  */
 const PAST_RECONNECT_DELAY = 1_500;
 
-/** A host call through the editor's own runtime, whatever the session in force. */
 function callTheHost(tag: 'AcquireLock' | 'ListSections'): Promise<unknown> {
   const protocolId = DRAFT.protocol.id;
   if (tag === 'AcquireLock') {
@@ -1548,11 +1456,6 @@ function callTheHost(tag: 'AcquireLock' | 'ListSections'): Promise<unknown> {
   );
 }
 
-/**
- * A call that opens the session's socket. Its answer is not the subject, and
- * it is abandoned rather than awaited: a session ended under it rejects it,
- * which is swallowed here so it is not reported as unhandled.
- */
 function askTheHost(tag: 'AcquireLock' | 'ListSections'): void {
   void callTheHost(tag).catch(() => undefined);
 }
