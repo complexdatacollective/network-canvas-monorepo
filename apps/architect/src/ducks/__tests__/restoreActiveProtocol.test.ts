@@ -2,6 +2,7 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { APP_SCHEMA_VERSION } from '~/config';
 import { messageFields } from '~/test/messageText';
 import { admitStoredProtocol } from '~/utils/storedProtocolAdmission';
 
@@ -305,13 +306,17 @@ describe('restoreActiveProtocolFromLibrary', () => {
     });
 
     it('refuses a row written by a newer Architect', async () => {
+      const newerSchemaVersion = APP_SCHEMA_VERSION + 1;
       const store = makeStore();
       store.dispatch(setActiveProtocolId('newer'));
       getStoredProtocol.mockResolvedValue({
         id: 'newer',
         name: 'Future study',
-        schemaVersion: 9,
-        protocol: { ...makeProtocol('Future study'), schemaVersion: 9 },
+        schemaVersion: newerSchemaVersion,
+        protocol: {
+          ...makeProtocol('Future study'),
+          schemaVersion: newerSchemaVersion,
+        },
         validated: true,
         createdAt: 0,
         updatedAt: 0,
@@ -328,7 +333,7 @@ describe('restoreActiveProtocolFromLibrary', () => {
       expect(store.getState().activeProtocol.present).toBeNull();
       expect(onInvalid).toHaveBeenCalledWith({
         status: 'app-upgrade-required',
-        protocolSchemaVersion: 9,
+        protocolSchemaVersion: newerSchemaVersion,
       });
       expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
     });

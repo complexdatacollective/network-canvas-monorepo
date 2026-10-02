@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
@@ -44,7 +45,7 @@ function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
   const protocol = {
     name: 'Test',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     codebook: {},
     stages,
   } as unknown as CurrentProtocol;
@@ -52,7 +53,7 @@ function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
     id: 'test',
     hash: 'hash',
     name: 'Test',
-    schemaVersion: 8,
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     importedAt: '2026-07-01T00:00:00.000Z',
     description: '',
     codebook: {},
