@@ -32,6 +32,12 @@ export const supportedSiteLocales = [
     compactLabel: 'zh',
   },
   {
+    locale: 'de',
+    nativeName: 'Deutsch',
+    englishName: 'German',
+    compactLabel: 'de',
+  },
+  {
     locale: 'nl',
     nativeName: 'Nederlands',
     englishName: 'Dutch',

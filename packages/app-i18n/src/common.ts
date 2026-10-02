@@ -13,6 +13,7 @@ import type { CatalogMessages } from './locales.ts';
 // caller would need the catalog re-expressed as a module rather than JSON,
 // which is a change to the translator-facing format and not worth making for
 // a caller that does not exist.
+import de from './locales/de.json';
 import enGbOverrides from './locales/en-GB.json';
 import es from './locales/es.json';
 import nl from './locales/nl.json';
@@ -101,5 +102,6 @@ export const commonCatalogs: Readonly<Record<string, CatalogMessages>> = {
   'en-GB': enGbOverrides as CatalogMessages,
   es,
   'zh-Hans': zhHans,
+  de,
   nl,
 };

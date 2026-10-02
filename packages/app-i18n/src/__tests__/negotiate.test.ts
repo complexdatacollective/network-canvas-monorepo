@@ -116,6 +116,26 @@ describe('resolveAppLocale', () => {
     }
   });
 
+  it('resolves German from Germany, Austria, Switzerland and bare de to the shipped catalog', () => {
+    for (const tag of ['de-DE', 'de-AT', 'de-CH', 'de']) {
+      expect(
+        resolveAppLocale({
+          requested: [tag, 'en'],
+          locales: ecosystemLocales,
+          defaultLocale: 'en',
+        }),
+      ).toEqual({ locale: 'de', source: 'negotiated' });
+      expect(
+        resolveAppLocale({
+          stored: tag,
+          requested: ['en-US'],
+          locales: ecosystemLocales,
+          defaultLocale: 'en',
+        }),
+      ).toEqual({ locale: 'de', source: 'stored' });
+    }
+  });
+
   it('negotiates Dutch from the Netherlands, Belgium and bare nl to nl', () => {
     for (const requested of [
       ['nl-NL', 'en'],
