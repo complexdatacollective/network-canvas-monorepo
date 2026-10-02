@@ -118,7 +118,7 @@ function renderInterface({
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: buildCodebook(validation, omitComponent),
         stages: [stage],
       } as never,

@@ -20,6 +20,8 @@ type Row = {
   schema7: Status;
   /** How this app handles a schema 8 protocol. */
   schema8: Status;
+  /** How this app handles a schema 9 protocol. */
+  schema9: Status;
 };
 
 type Group = {
@@ -38,42 +40,48 @@ const GROUPS: Group[] = [
         platform: 'Desktop & tablet',
         schema7: 'native',
         schema8: 'unsupported',
+        schema9: 'unsupported',
       },
       {
         app: 'Architect Classic 6.x.x',
         platform: 'Desktop',
         schema7: 'native',
         schema8: 'unsupported',
+        schema9: 'unsupported',
       },
       {
         app: 'Fresco 3.x.x',
         platform: 'Browser',
         schema7: 'native',
         schema8: 'unsupported',
+        schema9: 'unsupported',
       },
     ],
   },
   {
     label: 'New generation',
-    schema: 8,
+    schema: 9,
     rows: [
       {
-        app: 'Interviewer 8.x.x',
+        app: 'Interviewer 9.x.x',
         platform: 'Desktop & tablet',
         schema7: 'migrate',
-        schema8: 'native',
+        schema8: 'migrate',
+        schema9: 'native',
       },
       {
-        app: 'Architect',
+        app: 'Architect 9.x.x',
         platform: 'Browser',
         schema7: 'migrate',
-        schema8: 'native',
+        schema8: 'migrate',
+        schema9: 'native',
       },
       {
-        app: 'Fresco 4.x.x',
+        app: 'Fresco 5.x.x',
         platform: 'Browser',
         schema7: 'migrate',
-        schema8: 'native',
+        schema8: 'migrate',
+        schema9: 'native',
       },
     ],
   },
@@ -86,7 +94,13 @@ const SUCCESS_TEXT =
 const WARNING_TEXT =
   'text-[color-mix(in_oklab,var(--warning)_64%,var(--text))]';
 
-const StatusCell = ({ status }: { status: Status }) => {
+const StatusCell = ({
+  status,
+  targetSchema,
+}: {
+  status: Status;
+  targetSchema: number;
+}) => {
   if (status === 'native') {
     return <span className={cx(SUCCESS_TEXT, 'font-semibold')}>Native</span>;
   }
@@ -100,7 +114,7 @@ const StatusCell = ({ status }: { status: Status }) => {
         )}
       >
         <ArrowUp className="h-4 w-4 shrink-0" aria-hidden />
-        Migrates to 8
+        Migrates to {targetSchema}
       </span>
     );
   }
@@ -125,6 +139,7 @@ const AppCompatibilityTable = () => (
           <TableHead scope="col">Platform</TableHead>
           <TableHead scope="col">Schema 7 protocols</TableHead>
           <TableHead scope="col">Schema 8 protocols</TableHead>
+          <TableHead scope="col">Schema 9 protocols</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -133,7 +148,7 @@ const AppCompatibilityTable = () => (
             <TableRow className="bg-accent/15">
               <TableHead
                 scope="colgroup"
-                colSpan={4}
+                colSpan={5}
                 className="text-text/80 text-xs font-semibold tracking-wide uppercase"
               >
                 {group.label}
@@ -148,10 +163,22 @@ const AppCompatibilityTable = () => (
                 <TableCell className="text-text font-bold">{row.app}</TableCell>
                 <TableCell className="text-text/70">{row.platform}</TableCell>
                 <TableCell>
-                  <StatusCell status={row.schema7} />
+                  <StatusCell
+                    status={row.schema7}
+                    targetSchema={group.schema}
+                  />
                 </TableCell>
                 <TableCell>
-                  <StatusCell status={row.schema8} />
+                  <StatusCell
+                    status={row.schema8}
+                    targetSchema={group.schema}
+                  />
+                </TableCell>
+                <TableCell>
+                  <StatusCell
+                    status={row.schema9}
+                    targetSchema={group.schema}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -170,9 +197,11 @@ const AppCompatibilityTable = () => (
         <strong className={cx(WARNING_TEXT, 'font-semibold')}>
           Migration is one-way.
         </strong>{' '}
-        Schema 8 apps cannot export or save protocols in schema 7 format. Keep a
+        Apps cannot export or save protocols in an older schema version. Keep a
         copy of your original protocol file if you need to continue using apps
-        from the previous generation.
+        that only support an older schema. Releases of Interviewer and Fresco
+        made before schema 9 open schema 7 and 8 protocols only, so update them
+        before you use a schema 9 protocol.
       </p>
     </div>
   </div>

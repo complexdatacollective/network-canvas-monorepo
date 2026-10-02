@@ -13,6 +13,7 @@ import {
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { variableNameScope } from './variableNameRules.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
 const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
@@ -57,6 +58,15 @@ function AttributePicker({
   readOnly = false,
 }: Readonly<{ canCreate?: boolean; readOnly?: boolean }>) {
   const options = useAttributeOptions(PERSON);
+  const protocolContext = useProtocolContext();
+  const nameScope = useMemo(
+    () =>
+      variableNameScope(
+        PERSON.entity,
+        variablesForSubject(protocolContext, PERSON),
+      ),
+    [protocolContext],
+  );
   return (
     <Field<typeof VariablePickerField>
       name="nodeConfig.egoVariable"
@@ -64,7 +74,7 @@ function AttributePicker({
       label={FIELD_LABEL}
       hint="Every answer to this question is stored under this attribute."
       options={options}
-      namesInUse={options.map(({ label }) => label)}
+      nameScope={nameScope}
       required={REQUIRED}
       readOnly={readOnly}
       {...(canCreate
@@ -281,19 +291,21 @@ export const InventingOne: Story = {
 };
 
 /**
- * A name the type already holds is refused before it is asked for: the row
- * states the reason and does nothing, rather than spending a round trip to
- * come back with a duplicate complaint about a name still on screen.
+ * A name that would write a column the export already writes is refused before
+ * it is asked for: the row states the reason and does nothing, rather than
+ * spending a round trip to come back with a complaint about a name still on
+ * screen. Here `contactType` is a categorical attribute with an option `call`,
+ * which the export writes to a column of exactly this name.
  */
 export const ANameThatCannotBeUsed: Story = {
   args: { children: <AttributePicker canCreate /> },
   play: async ({ canvasElement }) => {
     const dialog = await openThePicker(canvasElement);
 
-    await userEvent.keyboard('nominated early');
+    await userEvent.keyboard('contactType_call');
     await expect(
       dialog.getByRole('option', {
-        name: 'Cannot create attribute named “nominated early”: only letters, numbers and the symbols ._-: can be used in a name',
+        name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
       }),
     ).toHaveAttribute('aria-disabled', 'true');
   },

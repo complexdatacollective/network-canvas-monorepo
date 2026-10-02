@@ -1,7 +1,7 @@
 {
   "name": "Transnational Networks",
   "description": "An example template for studying the personal networks of people who have migrated. It pairs separate name generators for important people in the host country and abroad with a geospatial stage that places those people on a world map.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-07-09T13:28:12.372Z",
   "assetManifest": {
     "mapbox-testing-token": {

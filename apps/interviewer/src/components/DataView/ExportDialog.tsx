@@ -17,6 +17,7 @@ import { ExternalLink } from '~/components/ExternalLink';
 import { APP_VERSION } from '~/lib/appVersion';
 import { saveAction, type SaveAction } from '~/lib/files/download';
 
+import { ExportWarningAlerts } from './ExportWarnings';
 import type { ExportFlow } from './useSessionMutations';
 
 /** Every phase that has a dialog to show — anything but `idle`. */
@@ -419,6 +420,7 @@ export function ExportDialog({
             })}
           </Alert>
         )}
+        <ExportWarningAlerts warnings={shown.warnings} />
       </>
     );
   }

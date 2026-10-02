@@ -1,8 +1,9 @@
-# Network Canvas Protocol Authoring Guide (schema v8)
+# Network Canvas Protocol Authoring Guide (schema v9)
 
 A precise, self-contained reference for hand-authoring a **valid** `protocol.json`. Everything
 here was derived directly from the Zod schema in
-`packages/protocol-validation/src/schemas/8/`. Follow it exactly.
+`packages/protocol-validation/src/schemas/8/`, which schema 9 shares (`schemas/9/schema.ts`).
+Follow it exactly.
 
 ## 0. Success criterion & how to validate
 
@@ -26,7 +27,7 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
 {
   "name": "My Protocol",          // REQUIRED, non-empty string
   "description": "…",             // optional
-  "schemaVersion": 8,              // REQUIRED, literal 8 (discriminator — omitting it fails)
+  "schemaVersion": 9,              // REQUIRED, literal 9 (discriminator — omitting it fails)
   "lastModified": "2026-06-15T00:00:00.000Z", // optional ISO datetime
   "codebook": { … },              // REQUIRED (see §3)
   "stages": [ … ],                // REQUIRED array (see §5)
@@ -43,9 +44,11 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
 3. **IDs must be unique** in their scope: `stages[].id` (across all stages); `prompts[].id`
    (within a stage); `presets[].id`, `items[].id`, `panels[].id`, filter `rules[].id`.
    Use short readable slugs (`"ng-support"`, `"p1"`) or UUIDs.
-4. **Variable record-keys AND every variable `name` must match `^[A-Za-z0-9._:-]+$`** — i.e.
-   letters, digits, `. _ - :` only. **NO SPACES.** Use snake_case: `alter_age`, `close_feeling`.
-   Simplest: make the record-key and the `name` identical.
+4. **Variable record-keys must match `^[A-Za-z0-9._:-]+$`** — i.e. letters, digits, `. _ - :`
+   only. **NO SPACES** in a key. Use snake_case: `alter_age`, `close_feeling`. A variable's
+   `name` is what researchers see in exports: it may use letters from any language, digits,
+   spaces and punctuation, but must not be empty, start or end with a space, or contain control
+   characters (tabs, line breaks). Simplest: make the record-key and the `name` identical.
 5. **Variable `name` values must be unique within an entity** (within a node type / edge type /
    ego). **Entity display names** (`node.name`, `edge.name`) must be unique across the whole
    codebook (a node and an edge can't both be named "Person").

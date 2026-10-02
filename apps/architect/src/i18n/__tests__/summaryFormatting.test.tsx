@@ -11,7 +11,7 @@ import { ARCHITECT_LOCALE_KEY } from '../preference';
 
 const protocol = {
   name: 'Authored protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   codebook: {},
   assetManifest: {},
   stages: [

@@ -103,7 +103,7 @@ const stageFields: SectionDoc = {
 };
 
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Operand table', schemaVersion: 8 },
+  [settingsSection]: { name: 'Operand table', schemaVersion: 9 },
   [stageOrderSection]: { stages: ['stage-1'] },
   [STAGE_SECTION]: { id: 'stage-1', type: 'AlterForm', ...stageFields },
   [personSection]: personDefinition,
@@ -255,7 +255,7 @@ const buildRule = async (
  */
 const protocolWith = (rule: RuleDraft): unknown => ({
   name: 'Operand table',
-  schemaVersion: 8,
+  schemaVersion: 9,
   codebook,
   stages: [
     {

@@ -22,7 +22,7 @@ const protocol: ProtocolWithInterviews = {
   id: 'protocol-1',
   hash: 'hash',
   name: 'My Protocol.netcanvas',
-  schemaVersion: 8,
+  schemaVersion: 9,
   description: null,
   importedAt: new Date(0),
   lastModified: new Date(0),

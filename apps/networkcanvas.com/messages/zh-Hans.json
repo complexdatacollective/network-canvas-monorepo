@@ -314,7 +314,7 @@
       "bestFor": "最适合",
       "downloadVersion": "下载 {version} 版",
       "platformAccessibleName": "适用于 {platform} 的 {app}",
-      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持架构 7 协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用架构 8，其中包含最新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始的架构 7 文件。",
+      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持架构 7 协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用架构 9，其中包含最新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始的架构 7 文件。",
       "schemaVersionLink": "了解架构版本"
     },
     "platforms": {

@@ -78,14 +78,14 @@ describe('golden hashes', () => {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "codebook:edge:knows": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
         "codebook:node:person": "5b62bc580a031a23de667d9f7c0005e797a1f97b8e375362b9c5cd7c21375372",
-        "settings": "33bcea42c6ed2254d837ad0b27e16e5fc5d2f796315a6428b8cd83afe987e191",
+        "settings": "07552feca4541e7412a3c7c85ce17db2ac8888a65126530aed4edd173f760f54",
         "stage:nameGenerator1": "1265ee53d3b674bfade2198f10f9eade5de22d0fbd8252dc4ba151556ff3d1e3",
         "stage:sociogram1": "d0bb5c8d94f3b1cc558bd85a5905ca79e38713c8c145a924f0bf1a36f618b6c9",
         "stageOrder": "491ca26e923314c49ae7caba154c45712202c684d50a7f6b959267bd75e3a400",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"d9436b37cd02263b026e25ac357fe89f0ebef0a9da97e9e1812511a46e1ea056"`,
+      `"f86b9bf3551144471e24e6461f870b901f86068831f88056ee22e35e5aae6509"`,
     );
   });
 });

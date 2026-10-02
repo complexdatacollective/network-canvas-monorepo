@@ -21,7 +21,7 @@ function makeProtocol(overrides?: Partial<ProtocolPayload>): ProtocolPayload {
     name: 'Test Protocol',
     description: '',
     lastModified: '2026-01-01T00:00:00.000Z',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: { node: {}, edge: {}, ego: {} },
     stages: [],
     assets: [],

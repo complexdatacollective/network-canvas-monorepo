@@ -37,9 +37,9 @@ export const COLOR_PALETTE_BY_ENTITY = {
  * schemas Architect actually validates against, and every compatibility
  * decision — open, migrate, refuse — is made against this number.
  *
- * Typed as the package's own literal (currently `8`) rather than widened to
- * `number`, so it stays assignable to `SchemaVersion` and every protocol-type
- * derivation keeps flowing through it.
+ * Typed as the package's own literal rather than widened to `number`, so it
+ * stays assignable to `SchemaVersion` and every protocol-type derivation keeps
+ * flowing through it.
  */
 export const APP_SCHEMA_VERSION: typeof CURRENT_SCHEMA_VERSION =
   CURRENT_SCHEMA_VERSION;

@@ -832,8 +832,8 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     });
 
     it('admits a sync commit on the assets section of a protocol with a sealed key', async () => {
-      // The stored manifest carries the key entry WITHOUT its value, and
-      // schema 8 requires an `apikey` asset to have one. Validating the merged
+      // The stored manifest carries the key entry WITHOUT its value, and the
+      // schema requires an `apikey` asset to have one. Validating the merged
       // section as it is stored therefore refused every later edit of the
       // assets section — adding a geojson beside a promoted key — with an
       // issue at [mapKey, value] that no client could ever satisfy.

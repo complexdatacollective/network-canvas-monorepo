@@ -3,10 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import type {
-  CreateFormFieldProps,
-  FieldValue,
-} from '@codaco/fresco-ui/form/Field/types';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -31,7 +28,10 @@ import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { type FormattedConfig, formatConfig } from '~/i18n/formatConfig';
 import { toSubmissionError } from '~/i18n/submissionErrors';
 import { getVariablesForSubject } from '~/selectors/codebook';
-import safeName from '~/utils/safeName';
+import {
+  findExportColumnConflictMessage,
+  toExportColumnCandidate,
+} from '~/utils/exportColumnConflicts';
 const additionalMessages = defineMessages({
   createNewOption: {
     id: 'architect.additional.newVariableWindow.newVariableWindow.createNewOption',
@@ -144,37 +144,11 @@ export type LockedVariableOptions = readonly VariableOption[];
 /** Stable empty list: `initialValue` is a register-effect dependency. */
 const NO_OPTIONS: OptionValue[] = [];
 
-type VariableNameFieldProps = CreateFormFieldProps<
-  string,
-  'input',
-  {
-    // Narrows the `size` an <input> would otherwise contribute (a number) to
-    // the control-size scale `InputField` expects.
-    size?: 'sm' | 'md' | 'lg' | 'xl';
-  }
->;
-
-/**
- * Variable names are NMTOKENs, so the characters `safeName` strips can never
- * be part of one, so the value is filtered on change rather than only
- * validated.
- */
-const VariableNameField = ({
-  value,
-  onChange,
-  ...props
-}: VariableNameFieldProps) => (
-  <InputField
-    {...props}
-    value={value ?? ''}
-    onChange={(nextValue) => onChange?.(safeName(nextValue ?? ''))}
-  />
-);
-
 export type Entity = 'node' | 'edge' | 'ego';
 
 type NewVariableFieldsProps = {
-  existingVariableNames: string[];
+  entity: Entity;
+  existingVariables: Variable[];
   variableTypeOptions: FormattedConfig<typeof VARIABLE_OPTIONS>;
   initialValues: Record<string, unknown>;
   typeLocked: boolean;
@@ -182,7 +156,8 @@ type NewVariableFieldsProps = {
 };
 
 const NewVariableFields = ({
-  existingVariableNames,
+  entity,
+  existingVariables,
   variableTypeOptions,
   initialValues,
   typeLocked,
@@ -196,6 +171,27 @@ const NewVariableFields = ({
   const initialOptions = Array.isArray(initialValues.options)
     ? (initialValues.options as OptionValue[])
     : NO_OPTIONS;
+  const existingVariableNames = existingVariables.map(({ name }) => name);
+
+  // The name sets the export columns of a layout attribute and prefixes those
+  // of a categorical one, so it is checked against the other attributes'
+  // columns. The options field reports the option columns, unless the options
+  // are locked and have no field of their own to report them.
+  const exportColumnConflict = (
+    name: unknown,
+    formValues: Record<string, unknown> = {},
+  ) =>
+    findExportColumnConflictMessage({
+      entity,
+      intl,
+      siblings: existingVariables,
+      origins: lockedOptions ? undefined : ['name', 'layout'],
+      candidate: toExportColumnCandidate({
+        name,
+        type: formValues.type,
+        options: lockedOptions,
+      }),
+    });
 
   return (
     <Section
@@ -213,7 +209,7 @@ const NewVariableFields = ({
           name="name"
           label={intl.formatMessage(messages.attributeName)}
           hint={intl.formatMessage(messages.theAttributeNameIsHowYou)}
-          component={VariableNameField}
+          component={InputField}
           placeholder={intl.formatMessage(messages.eGNickname)}
           initialValue={
             typeof initialValues.name === 'string'
@@ -223,7 +219,8 @@ const NewVariableFields = ({
           validation={{
             required: true,
             uniqueByList: existingVariableNames,
-            allowedVariableName: true,
+            codebookName: true,
+            exportColumnConflict,
           }}
         />
       </Section>
@@ -272,7 +269,10 @@ const NewVariableFields = ({
                   additionalMessages.createNewOption,
                 )}
                 initialValue={initialOptions}
-                validation={optionsValidation(intl)}
+                validation={optionsValidation(intl, {
+                  entity,
+                  siblings: existingVariables,
+                })}
               />
             )}
           </Section>
@@ -311,8 +311,8 @@ export default function NewVariableWindow({
   const existingVariables = useAppSelector((state) =>
     getVariablesForSubject(state, subject),
   );
-  const existingVariableNames = useMemo(
-    () => values(existingVariables).map(({ name }: Variable) => name),
+  const siblings = useMemo(
+    () => values(existingVariables),
     [existingVariables],
   );
   const filteredVariableOptions = useMemo(
@@ -408,7 +408,8 @@ export default function NewVariableWindow({
       onSubmit={handleSubmit}
     >
       <NewVariableFields
-        existingVariableNames={existingVariableNames}
+        entity={entity}
+        existingVariables={siblings}
         variableTypeOptions={filteredVariableOptions}
         initialValues={mergedInitialValues}
         typeLocked={!!initialValues?.type || !!lockedOptions}

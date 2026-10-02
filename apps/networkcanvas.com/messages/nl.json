@@ -314,7 +314,7 @@
       "bestFor": "Ideaal voor",
       "downloadVersion": "Versie {version} downloaden",
       "platformAccessibleName": "{platform} voor {app}",
-      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 8, met alle nieuwste functies. Het omzetten van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
+      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 9, met alle nieuwste functies. Het omzetten van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
       "schemaVersionLink": "Meer over schemaversies"
     },
     "platforms": {

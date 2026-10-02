@@ -34,11 +34,6 @@ import RowField from './RowField';
 // Punctuation only, separating two unchanged researcher-authored values.
 const OPTION_VALUE_SEPARATOR = ' — ';
 const messages = defineMessages({
-  optionValue: {
-    id: 'architect.form.arrayFields.option.optionValue',
-    defaultMessage: 'option value',
-    description: 'Subject of the invalid option-value identifier guidance.',
-  },
   removeOption: {
     id: 'architect.form.arrayFields.option.removeOption',
     defaultMessage: 'Remove option',
@@ -355,8 +350,8 @@ const Option = ({
         }
         validation={{
           required: true,
-          uniqueArrayAttribute: true,
-          allowedVariableName: intl.formatMessage(messages.optionValue),
+          uniqueArrayName: true,
+          codebookName: true,
         }}
         allValues={allValues}
         forceShowErrors={forceShowErrors}

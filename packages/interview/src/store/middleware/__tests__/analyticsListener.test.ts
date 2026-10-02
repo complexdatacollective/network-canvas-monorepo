@@ -43,7 +43,7 @@ function buildStore(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: { person: { name: 'Person', color: 'blue', variables: {} } },
         },

@@ -30,9 +30,10 @@ const categoricalOptions = [
 // gets its own stage (rather than sharing one AlterForm/CategoricalBin stage
 // with two fields/prompts) so every array field section holds exactly one row
 // — no need to disambiguate rows by index or preview text.
-// Variable "name"s (not just their codebook keys) must satisfy
-// VariableNameSchema's `/^[a-zA-Z0-9._:-]+$/` — no spaces — since that field
-// is what the alert/picker render as the visible label.
+// Variable "name"s are what the alert/picker render as the visible label, so
+// they are kept short and plain here. A name may be any text a
+// `CodebookNameSchema` accepts, spaces and any script included; only the
+// codebook keys are held to `CodebookIdSchema`'s `/^[a-zA-Z0-9._:-]+$/`.
 // Passed through CurrentProtocolSchema.parse (like
 // helpers/load-fixture.ts's loadAllInterfacesFixture) rather than typed
 // directly as CurrentProtocol: entityAttributeReference's branded string
@@ -43,7 +44,7 @@ const categoricalOptions = [
 function conflictProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse({
     name: 'Variable Role Conflicts E2E',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: {
       node: {
         person: {

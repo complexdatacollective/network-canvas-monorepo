@@ -27,7 +27,7 @@ import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
 const makeProtocol = (name: string): CurrentProtocol =>
   ({
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: {},
   }) as CurrentProtocol;

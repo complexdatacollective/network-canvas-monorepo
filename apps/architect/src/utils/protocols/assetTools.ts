@@ -1,15 +1,20 @@
 /* eslint-disable import/prefer-default-export */
 
-import csv from 'csvtojson';
 import { get } from 'es-toolkit/compat';
 
 import {
+  findCollidingAttributeNames,
+  findRosterCharacterProblems,
   getVariableNamesFromNetwork,
   type Network,
+  readRosterCsv,
+  type RosterFormat,
   validateNames,
 } from '@codaco/protocol-validation';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import { getAssetById, MissingAssetDataError } from '~/utils/assetUtils';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
+import { RosterCharacterError } from '~/utils/protocols/rosterCharacterError';
 
 type ReaderFunc = (...args: string[]) => Promise<unknown>;
 type ExtensionConfig = Record<string, ReaderFunc>;
@@ -48,6 +53,30 @@ const readJsonNetwork = async (assetId: string): Promise<Network> => {
   return JSON.parse(text) as Network;
 };
 
+/**
+ * A CSV roster as the interview reads it, so the columns Architect offers are
+ * the ones the interview holds. A row with more or fewer cells than the header
+ * has columns is refused rather than read short.
+ */
+const parseCsvNetwork = async (text: string) => {
+  const { columns, rows } = await readRosterCsv(text);
+
+  if (rows.some(({ cells }) => cells !== columns.length)) {
+    const error: CodedError = new Error(
+      'A row of this file has more or fewer cells than the header has columns.',
+    );
+    error.code = 'COLUMN_MISMATCHED';
+    throw error;
+  }
+
+  const records = rows.map(({ values }) => values);
+  const network: Network = {
+    nodes: records.map((values) => ({ [entityAttributesProperty]: values })),
+    edges: [],
+  };
+  return { network, records };
+};
+
 const readCsvNetwork = async (assetId: string): Promise<Network> => {
   const asset = await getAssetById(assetId);
 
@@ -59,24 +88,8 @@ const readCsvNetwork = async (assetId: string): Promise<Network> => {
     throw new Error('Expected Blob data for CSV asset');
   }
 
-  const data = await asset.data.text();
-
-  let nodes: Network['nodes'];
-  try {
-    const rows = await csv({ checkColumn: true }).fromString(data);
-    nodes = rows.map((attributes) => ({ attributes })) as Network['nodes'];
-  } catch (e: unknown) {
-    const error = e as CodedError;
-    if (error.toString().includes('column_mismatched')) {
-      error.code = 'COLUMN_MISMATCHED';
-    }
-    throw error;
-  }
-
-  return {
-    nodes,
-    edges: [],
-  };
+  const { network } = await parseCsvNetwork(await asset.data.text());
+  return network;
 };
 
 export const networkReader = withExtensionSwitch({
@@ -102,7 +115,9 @@ type ValidationResult = {
   duplicateCount: number;
 };
 
-const countDuplicateRows = (rows: Record<string, unknown>[]): number => {
+const countDuplicateRows = (
+  rows: readonly Readonly<Record<string, unknown>>[],
+): number => {
   const seen = new Set<string>();
   let count = 0;
   for (const row of rows) {
@@ -116,6 +131,19 @@ const countDuplicateRows = (rows: Record<string, unknown>[]): number => {
   return count;
 };
 
+// First, so a roster is refused for the character itself rather than for a
+// parse failure the character caused.
+const refuseUnsupportedCharacters = async (
+  text: string,
+  format: RosterFormat,
+) => {
+  const { problems, total } = await findRosterCharacterProblems(text, format);
+  const [first] = problems;
+  if (first !== undefined) {
+    throw new RosterCharacterError(first, total);
+  }
+};
+
 const validateNetwork = async (file: File): Promise<ValidationResult> => {
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
 
@@ -124,25 +152,14 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
 
   if (extension === 'json') {
     const text = await file.text();
+    await refuseUnsupportedCharacters(text, 'json');
     network = JSON.parse(text) as Network;
   } else if (extension === 'csv') {
     const text = await file.text();
-    const csvModule = await import('csvtojson');
-    let nodes: Network['nodes'];
-    try {
-      const rows = await csvModule
-        .default({ checkColumn: true })
-        .fromString(text);
-      duplicateCount = countDuplicateRows(rows);
-      nodes = rows.map((attributes) => ({ attributes })) as Network['nodes'];
-    } catch (e: unknown) {
-      const error = e as CodedError;
-      if (error.toString().includes('column_mismatched')) {
-        error.code = 'COLUMN_MISMATCHED';
-      }
-      throw error;
-    }
-    network = { nodes, edges: [] };
+    await refuseUnsupportedCharacters(text, 'csv');
+    const parsed = await parseCsvNetwork(text);
+    duplicateCount = countDuplicateRows(parsed.records);
+    network = parsed.network;
   }
 
   if (
@@ -160,6 +177,18 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
   }
 
   const variableNames = getVariableNamesFromNetwork(network as Network);
+
+  // Checked before validateNames, which reports these too, so they carry
+  // their own code and researcher-facing message.
+  const collisions = findCollidingAttributeNames(variableNames);
+
+  if (collisions.length > 0) {
+    const error: CodedError = new Error(
+      `Column headers that are the same name written in different ways: ${collisions.map((group) => group.map((name) => JSON.stringify(name)).join(' and ')).join(', ')}.`,
+    );
+    error.code = 'DUPLICATE_COLUMN';
+    throw error;
+  }
 
   const errorString = validateNames(variableNames);
 

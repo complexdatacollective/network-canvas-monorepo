@@ -45,7 +45,7 @@ export const authoredFieldLabel = (field: {
  * comparison against a variable answered on an earlier stage gets, since it has
  * no caption on this screen.
  *
- * ACCUMULATED THROUGH A MAP. `VariableNameSchema` is `/^[a-zA-Z0-9._:-]+$/`,
+ * ACCUMULATED THROUGH A MAP. `CodebookIdSchema` is `/^[a-zA-Z0-9._:-]+$/`,
  * which admits `__proto__` as a codebook variable id, and
  * `labels.__proto__ = 'How old are you?'` on an ordinary object hits
  * `Object.prototype`'s setter rather than defining anything: the caption is

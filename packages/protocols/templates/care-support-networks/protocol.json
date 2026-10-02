@@ -1,7 +1,7 @@
 {
   "name": "Care & Support Networks",
   "description": "An example of a study that looks at who supports a participant through a period of care, and the kinds of support they provide — emotional, practical, informational, and financial — across both informal and professional sources. Configured here for the perinatal period (pregnancy and new parenthood).",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
     "ego": {

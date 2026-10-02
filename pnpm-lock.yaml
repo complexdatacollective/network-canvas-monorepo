@@ -491,9 +491,6 @@ importers:
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       cva:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(typescript@7.0.2)
@@ -2579,9 +2576,6 @@ importers:
       concaveman:
         specifier: ^2.0.0
         version: 2.0.0
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       d3-force:
         specifier: ^3.0.0
         version: 3.0.0
@@ -2876,9 +2870,6 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.104.0(react@19.3.0)
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       es-toolkit:
         specifier: 'catalog:'
         version: 1.52.0
@@ -3080,6 +3071,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
+      csvtojson:
+        specifier: 'catalog:'
+        version: 2.0.14
       jszip:
         specifier: 'catalog:'
         version: 3.10.2

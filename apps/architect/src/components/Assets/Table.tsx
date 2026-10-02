@@ -38,6 +38,12 @@ const renderCellValue = (value: unknown): ReactNode => {
   return String(value);
 };
 
+// A column is named by the researcher, so it can share its name with a
+// property every object inherits (`constructor`, `toString`): only a value the
+// row holds itself is that column's value.
+const cellValue = (row: Record<string, unknown>, column: string): unknown =>
+  Object.hasOwn(row, column) ? row[column] : undefined;
+
 const getSortIcon = (column: TableColumn, sort: SortState | null) => {
   if (!sort || sort.id !== column.accessor) {
     return null;
@@ -93,8 +99,8 @@ const Table = ({ data, columns }: TableProps) => {
       (rowA, rowB) =>
         direction *
         collator.compare(
-          String(rowA[sort.id] ?? ''),
-          String(rowB[sort.id] ?? ''),
+          String(cellValue(rowA, sort.id) ?? ''),
+          String(cellValue(rowB, sort.id) ?? ''),
         ),
     );
   }, [data, sort, collator]);
@@ -138,7 +144,7 @@ const Table = ({ data, columns }: TableProps) => {
           <tr key={rowIndex}>
             {columns.map((column) => (
               <td key={column.accessor}>
-                {renderCellValue(row[column.accessor])}
+                {renderCellValue(cellValue(row, column.accessor))}
               </td>
             ))}
           </tr>

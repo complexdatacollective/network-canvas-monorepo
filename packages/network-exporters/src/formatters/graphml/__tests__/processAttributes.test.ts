@@ -9,6 +9,7 @@ import {
 
 import type { NodeWithResequencedID } from '../../../input';
 import type { ExportOptions } from '../../../options';
+import getKeyElementGenerator from '../generateKeyElements';
 import processAttributes from '../processAttributes';
 
 const mockExportOptions: ExportOptions = {
@@ -20,6 +21,14 @@ const mockExportOptions: ExportOptions = {
     screenLayoutWidth: 1920,
   },
 };
+
+const keyIdsFor = async (codebook: Codebook, node: NodeWithResequencedID) =>
+  (
+    await getKeyElementGenerator(
+      codebook,
+      mockExportOptions,
+    )({ ego: [], node: [node], edge: [] })
+  ).keyIds;
 
 // Helper to extract data elements from the document fragment
 const getDataElements = (fragment: XmlDomDocumentFragment) => {
@@ -64,11 +73,11 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(
+      const result = processAttributes(
         node,
         codebook,
         mockExportOptions,
-        new Map(),
+        await keyIdsFor(codebook, node),
       );
       const dataElements = getDataElements(result);
 
@@ -113,11 +122,11 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(
+      const result = processAttributes(
         node,
         codebook,
         mockExportOptions,
-        new Map(),
+        await keyIdsFor(codebook, node),
       );
       const dataElements = getDataElements(result);
 

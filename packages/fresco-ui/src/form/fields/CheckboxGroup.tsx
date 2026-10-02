@@ -119,11 +119,13 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
         disabled={disabled}
       >
         {options.length === 0 && emptyState}
-        {options.map((option) => {
+        {options.map((option, index) => {
           const isOptionDisabled =
             Boolean(disabled) || Boolean(option.disabled);
           const isChecked = currentValues.includes(option.value);
-          const optionId = `${optionIdPrefix}-${option.value}`;
+          // Positional, not the option's value: an option value is whatever
+          // the researcher typed, and an element id may not contain whitespace.
+          const optionId = `${optionIdPrefix}-${index}`;
 
           return (
             <label

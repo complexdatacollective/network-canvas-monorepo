@@ -113,7 +113,7 @@ function renderInterface(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: codebookOverride,
         stages: [stage],
       } as never,

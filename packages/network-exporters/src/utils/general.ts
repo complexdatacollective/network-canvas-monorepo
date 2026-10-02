@@ -10,25 +10,6 @@ import {
 import type { SessionWithResequencedIDs } from '../input';
 import type { ExportFormat } from '../options';
 
-const escapeFilePart = (part: string) => part.replace(/\W/g, '');
-
-export const makeFilename = (
-  prefix: string,
-  entityName: string | undefined,
-  exportFormat: string,
-  extension: string,
-) => {
-  let name = prefix;
-  if (extension !== `.${exportFormat}`) {
-    name += name ? '_' : '';
-    name += exportFormat;
-  }
-  if (entityName) {
-    name += `_${escapeFilePart(entityName)}`;
-  }
-  return `${name}${extension}`;
-};
-
 const EXTENSIONS = {
   graphml: '.graphml',
   csv: '.csv',
@@ -77,3 +58,21 @@ export const isCategoricalOptionSelected = (
 
 export const getEntityAttributes = (entity: NcEntity) =>
   entity[entityAttributesProperty];
+
+/**
+ * Looks a researcher-authored key (a variable id or an entity type id) up in a
+ * record without reaching `Object.prototype`: `variables['constructor']` is a
+ * function, not a missing variable.
+ */
+export function getOwn<Entries extends Readonly<Record<string, unknown>>>(
+  record: Entries | undefined,
+  key: string,
+): Entries[string] | undefined;
+export function getOwn(
+  record: Readonly<Record<string, unknown>> | undefined,
+  key: string,
+): unknown {
+  return record !== undefined && Object.hasOwn(record, key)
+    ? record[key]
+    : undefined;
+}

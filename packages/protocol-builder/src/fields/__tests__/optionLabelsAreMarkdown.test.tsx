@@ -12,7 +12,9 @@ import VariableEditor, {
 } from '../../codebook/components/VariableEditor.tsx';
 import type { CodebookWriteOutcome } from '../../codebook/writes.ts';
 import { createStageDraftProbe } from '../../form/__tests__/stageDraftProbe.tsx';
-import Options, { optionsValidation } from '../../form/arrayFields/Options.tsx';
+import Options, {
+  optionsValidationFor,
+} from '../../form/arrayFields/Options.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { richTextOf } from '../../testing/text.ts';
@@ -304,7 +306,7 @@ function renderInlineList(options: readonly unknown[]) {
           label="Answer options"
           component={Options}
           addButtonLabel="Create new option"
-          {...optionsValidation}
+          {...optionsValidationFor()}
         />
       </BuilderSection>
     ),

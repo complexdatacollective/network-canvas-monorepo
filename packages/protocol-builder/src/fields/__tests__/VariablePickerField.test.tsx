@@ -622,14 +622,16 @@ describe('inventing an attribute from the picker', () => {
     expect(offered[0]).toHaveAccessibleName('flagged');
   });
 
-  it('switches off the create row for a name the codebook cannot store', async () => {
+  it('switches off the create row for a name that would write a column the export already writes', async () => {
     const harness = renderRows(<StampedAttributes />);
     await addRow(harness);
     const dialog = await openAttributePicker(harness.user, picker());
 
-    await search(harness, dialog, 'nominated early');
+    // `contactType` is a categorical attribute with an option `call`, which
+    // the export writes to a column of exactly this name.
+    await search(harness, dialog, 'contactType_call');
     const refused = within(dialog).getByRole('option', {
-      name: 'Cannot create attribute named “nominated early”: only letters, numbers and the symbols ._-: can be used in a name',
+      name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
 
@@ -638,7 +640,39 @@ describe('inventing an attribute from the picker', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(
       Object.values(personVariables(harness)).map((variable) => variable.name),
-    ).not.toContain('nominated early');
+    ).not.toContain('contactType_call');
+  });
+
+  it.each(['nominated early', '友人', 'amigo cercano', 'Collègue'])(
+    'offers to create %j, which the codebook can store',
+    async (name) => {
+      const harness = renderRows(<StampedAttributes />);
+      await addRow(harness);
+      const dialog = await openAttributePicker(harness.user, picker());
+
+      await search(harness, dialog, name);
+
+      expect(createRow(dialog, name)).not.toHaveAttribute('aria-disabled');
+    },
+  );
+
+  it('offers to create a name stored trimmed, under the name it will have', async () => {
+    const harness = renderRows(<StampedAttributes />);
+    await addRow(harness);
+    const dialog = await openAttributePicker(harness.user, picker());
+
+    // Not through `search`, which waits for a list built from exactly what
+    // was typed: the row is built from the name as it will be stored.
+    const box = within(dialog).getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    await harness.user.type(box, '  amigo cercano  ');
+
+    expect(
+      await within(dialog).findByRole('option', {
+        name: 'Create new attribute called “amigo cercano”.',
+      }),
+    ).not.toHaveAttribute('aria-disabled');
   });
 
   /**
@@ -656,7 +690,10 @@ describe('inventing an attribute from the picker', () => {
             component={VariablePickerField}
             label="Attribute the tap marks"
             options={[]}
-            namesInUse={['age']}
+            nameScope={{
+              entity: 'node',
+              variables: [{ id: 'age', name: 'age', type: 'number' }],
+            }}
             onCreateOption={async () => ({ status: 'created' })}
           />
         </Section>
@@ -1273,12 +1310,12 @@ describe('the attribute picker, read in Spanish', () => {
       within(dialog).getByRole('searchbox', {
         name: 'Busca o crea un atributo',
       }),
-      'nominado pronto',
+      'age',
     );
 
     expect(
       within(dialog).getByRole('option', {
-        name: 'No se puede crear un atributo llamado «nominado pronto»: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
+        name: 'No se puede crear un atributo llamado «age»: este tipo ya tiene un atributo con ese nombre',
       }),
     ).toHaveAttribute('aria-disabled', 'true');
   });
@@ -1728,8 +1765,8 @@ describe('renaming the attribute a picker holds', () => {
   });
 
   /**
-   * An empty box is not a name with the wrong characters in it. The charset
-   * rule refuses `''` as firmly as it refuses a space, so asked in the wrong
+   * An empty box is not a name with the wrong characters in it. The name
+   * rule refuses `''` as firmly as it refuses a tab, so asked in the wrong
    * order a researcher who cleared the box would be sent looking for a
    * character that is not there. Architect asked them in this order too.
    */
@@ -1747,27 +1784,46 @@ describe('renaming the attribute a picker holds', () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByText(
-        'only letters, numbers and the symbols ._-: can be used in a name',
+        'a name cannot contain line breaks, tabs or other control characters',
       ),
     ).toBeNull();
   });
 
-  it('refuses a name the export formats cannot carry', async () => {
+  it('refuses a name that would write a column the export already writes', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: <HoldingPicker />,
     });
 
     const box = await openTheEditor(harness);
-    await typeName(harness, box, 'full name');
+    await typeName(harness, box, 'contactType_call');
 
     expect(
       await screen.findByText(
-        'only letters, numbers and the symbols ._-: can be used in a name',
+        'The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
   });
+
+  it.each(['full name', '友人', 'amigo cercano', 'Collègue'])(
+    'takes the name %j, which the codebook can store',
+    async (name) => {
+      const harness = renderStageEditor({
+        stageId: 'name-generator-1',
+        sections: <HoldingPicker />,
+      });
+
+      const box = await openTheEditor(harness);
+      await typeName(harness, box, name);
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Save Changes' }),
+        ).toBeEnabled(),
+      );
+    },
+  );
 
   it('offers no rename at all while the field is read-only', async () => {
     renderStageEditor({

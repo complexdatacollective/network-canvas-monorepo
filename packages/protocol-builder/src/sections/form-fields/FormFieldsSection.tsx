@@ -97,7 +97,7 @@ import AttributeValueFields, {
   ATTRIBUTE_OPTIONS_FIELD,
 } from '../AttributeValueFields.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
-import { useSubjectVariableNames } from '../canvas/codebookChoices.ts';
+import { useSubjectVariableScope } from '../canvas/codebookChoices.ts';
 import {
   allControlGroups,
   controlsForType,
@@ -1559,7 +1559,9 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         variableId={control.chosen === '' ? undefined : control.chosen}
         rowComponent={liveControl ?? ''}
         revealWhenChosenIn={INPUT_CONTROL}
-        {...(inventing && newType !== '' ? { invented: newType } : {})}
+        {...(inventing && newType !== ''
+          ? { invented: newType, inventedName }
+          : {})}
       />
       <AttributeParameterFields
         subject={subject}
@@ -1910,7 +1912,7 @@ function AttributePicker({
     asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
   const inventedType =
     variableTypeForComponent(asString(useRowValue(INPUT_CONTROL)) ?? '') ?? '';
-  const namesInUse = useSubjectVariableNames(subject);
+  const nameScope = useSubjectVariableScope(subject);
 
   const roleMap = useUnvalidatedWriterMap(answeredFor);
 
@@ -2018,7 +2020,12 @@ function AttributePicker({
       options={offered}
       initialValue={committed}
       required={intl.formatMessage(messages.attributeRequired)}
-      {...(subject === undefined ? {} : { onCreateOption: invent, namesInUse })}
+      {...(subject === undefined
+        ? {}
+        : {
+            onCreateOption: invent,
+            ...(nameScope === undefined ? {} : { nameScope }),
+          })}
     />
   );
 }

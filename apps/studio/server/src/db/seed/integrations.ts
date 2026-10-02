@@ -569,7 +569,7 @@ export async function seedFeedback(
         ? JSON.stringify({
             route: '/study/overview',
             appVersion: '0.2.0',
-            schemaVersion: 8,
+            schemaVersion: 9,
           })
         : JSON.stringify({}),
       withContext,

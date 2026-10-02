@@ -44,7 +44,7 @@ function StageTitleInTheRoute({
       sections: {
         [sectionId({ kind: 'settings' })]: {
           name: 'Stage title proof host',
-          schemaVersion: 8,
+          schemaVersion: 9,
         },
         [sectionId({ kind: 'stageOrder' })]: { stages: [STAGE_ID] },
         [sectionId({ kind: 'assets' })]: {},

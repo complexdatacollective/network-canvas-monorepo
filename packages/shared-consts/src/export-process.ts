@@ -10,3 +10,6 @@ export const ncSessionProperty = 'networkCanvasSessionID';
 export const ncUUIDProperty = 'networkCanvasUUID';
 export const ncSourceUUID = 'networkCanvasSourceUUID';
 export const ncTargetUUID = 'networkCanvasTargetUUID';
+export const appVersionProperty = 'APP_VERSION';
+export const commitHashProperty = 'COMMIT_HASH';
+export const graphMLLabelKey = 'label';

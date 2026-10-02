@@ -85,6 +85,7 @@ async function buildReadyArchive(
     result: {
       successfulExports: [{ sessionId: 's1' }],
       failedExports: [],
+      warnings: [],
     },
     blob: new Blob(['x']),
     fileName: 'export.zip',
@@ -281,6 +282,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
       result: {
         successfulExports: [{ sessionId: 's1' }],
         failedExports: [],
+        warnings: [],
       },
       blob: new Blob(['x']),
       fileName: 'export.zip',
@@ -308,6 +310,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
       result: {
         successfulExports: [{ sessionId: 's1' }],
         failedExports: [],
+        warnings: [],
       },
       blob: new Blob(['x']),
       fileName: 'export.zip',
@@ -566,6 +569,150 @@ describe('useSessionMutations — export flow lifecycle', () => {
       sessionIds: ['s1'],
       failedCount: 1,
     });
+    expect(toastAdd).not.toHaveBeenCalled();
+  });
+
+  it('carries the export warnings onto the ready state and keeps them while saving', async () => {
+    const warning = {
+      kind: 'xml-illegal-characters',
+      sessionId: 's1',
+      caseId: 'P-7',
+      variables: ['Nickname'],
+      caseIdChanged: false,
+    };
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+        warnings: [warning],
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    let finishSave: (outcome: { saved: boolean }) => void = () => undefined;
+    saveBlob.mockReturnValue(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'ready',
+      warnings: [warning],
+    });
+
+    let saving: Promise<void> | undefined;
+    act(() => {
+      saving = result.current.handleShareReady();
+    });
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'saving',
+      warnings: [warning],
+    });
+
+    await act(async () => {
+      finishSave({ saved: false });
+      await saving;
+    });
+    expect(result.current.exportFlow).toMatchObject({
+      phase: 'ready',
+      warnings: [warning],
+    });
+  });
+
+  it('raises a toast for each kind of warning after a successful save, kept until dismissed', async () => {
+    const warnings = [
+      {
+        kind: 'xml-illegal-characters',
+        sessionId: 's1',
+        caseId: 'P-7',
+        variables: ['Nickname'],
+        caseIdChanged: false,
+      },
+      {
+        kind: 'column-renamed',
+        protocolName: 'Friendship study',
+        format: 'csv',
+        entity: 'node',
+        entityTypeName: 'Person',
+        variable: 'nodeID',
+        column: 'nodeID',
+        renamedTo: 'nodeID_2',
+      },
+    ];
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+        warnings,
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    saveBlob.mockResolvedValue({ saved: true });
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+    await act(async () => {
+      await result.current.handleShareReady();
+    });
+
+    expect(result.current.exportFlow.phase).toBe('idle');
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ title: renderedMessage('Export complete') }),
+    );
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Some characters were removed from the GraphML files',
+        timeout: 0,
+      }),
+    );
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Some columns were given new names',
+        timeout: 0,
+      }),
+    );
+    expect(toastAdd).toHaveBeenCalledTimes(3);
+  });
+
+  it('raises no warning toast when a save is cancelled', async () => {
+    runExport.mockResolvedValue({
+      result: {
+        successfulExports: [{ sessionId: 's1' }],
+        failedExports: [],
+        warnings: [
+          {
+            kind: 'column-renamed',
+            protocolName: 'Friendship study',
+            format: 'csv',
+            entity: 'ego',
+            variable: 'caseId',
+            column: 'caseId',
+            renamedTo: 'caseId_2',
+          },
+        ],
+      },
+      blob: new Blob(['x']),
+      fileName: 'export.zip',
+    });
+    saveBlob.mockResolvedValue({ saved: false });
+    const { result } = makeHook();
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+    await act(async () => {
+      await result.current.handleShareReady();
+    });
+
+    expect(result.current.exportFlow.phase).toBe('ready');
     expect(toastAdd).not.toHaveBeenCalled();
   });
 

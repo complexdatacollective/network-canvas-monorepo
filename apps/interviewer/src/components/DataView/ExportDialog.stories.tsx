@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { type ComponentProps, useEffect, useState } from 'react';
-import { expect, fn, screen, userEvent, waitFor } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
+
+import type { ExportWarning } from '@codaco/network-exporters/output';
 
 import { ExportDialog } from './ExportDialog';
 import type { ExportFlow } from './useSessionMutations';
+import { useShowExportWarnings } from './useShowExportWarnings';
 
 const archiveBlob = new Blob(['export-bytes'], { type: 'application/zip' });
 
@@ -26,7 +29,7 @@ function AfterBuildHarness(props: ComponentProps<typeof ExportDialog>) {
   return <ExportDialog {...props} flow={flow} />;
 }
 
-const readyFlow = {
+const readyFlow: Extract<ExportFlow, { phase: 'ready' | 'saving' }> = {
   phase: 'ready',
   blob: archiveBlob,
   fileName: 'networkCanvasExport-1722772800000.zip',
@@ -34,7 +37,8 @@ const readyFlow = {
   exportGraphML: true,
   exportCSV: true,
   failedCount: 0,
-} as const;
+  warnings: [],
+};
 
 const meta = {
   title: 'Components/DataView/ExportDialog',
@@ -171,6 +175,187 @@ export const Ready: Story = {
 export const ReadyPartialFailure: Story = {
   args: {
     flow: { ...readyFlow, failedCount: 3 },
+  },
+};
+
+const removedCharacterWarnings: ExportWarning[] = [
+  {
+    kind: 'xml-illegal-characters',
+    sessionId: 'session-3',
+    caseId: 'P-007',
+    variables: ['Nickname', 'ニックネーム'],
+    caseIdChanged: false,
+  },
+  {
+    kind: 'xml-illegal-characters',
+    sessionId: 'session-8',
+    caseId: 'P-012',
+    variables: ['Notes'],
+    caseIdChanged: true,
+  },
+  {
+    kind: 'xml-illegal-characters-in-protocol',
+    protocolName: 'Friendship study',
+    text: 'node-type-name',
+    name: 'Person',
+    removed: ['U+0007', 'U+0001'],
+  },
+];
+
+const renamedColumnWarnings: ExportWarning[] = [
+  {
+    kind: 'column-renamed',
+    protocolName: 'Friendship study',
+    format: 'csv',
+    entity: 'node',
+    entityTypeName: 'Person',
+    variable: 'nodeID',
+    column: 'nodeID',
+    renamedTo: 'nodeID_2',
+  },
+  {
+    kind: 'column-renamed',
+    protocolName: 'Friendship study',
+    format: 'graphml',
+    entity: 'node',
+    entityTypeName: 'Person',
+    variable: 'Colour',
+    column: 'Colour_red',
+    renamedTo: 'Colour_red_2',
+  },
+];
+
+// Answers, and the protocol's own text, held characters GraphML cannot store:
+// the dialog names each affected interview, variable and name, and says the
+// CSV files keep the answers unchanged.
+export const ReadyWithRemovedCharacters: Story = {
+  args: {
+    flow: { ...readyFlow, warnings: removedCharacterWarnings },
+  },
+  play: async () => {
+    await expect(
+      await screen.findByText(
+        'Some characters were removed from the GraphML files',
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(/The CSV files keep every answer unchanged/),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText('Interview P-007: Nickname and ニックネーム'),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText('Interview P-012: Case ID and Notes'),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(
+        'Some characters were removed from protocol text in the GraphML files',
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(
+        'The node type name “Person” in Friendship study, with U+0007 and U+0001 removed',
+      ),
+    ).toBeInTheDocument();
+  },
+};
+
+// Columns that would have shared a name with another column in the same file
+// were written under a numbered name, and the dialog lists each one.
+export const ReadyWithRenamedColumns: Story = {
+  args: {
+    flow: { ...readyFlow, warnings: renamedColumnWarnings },
+  },
+  play: async () => {
+    await expect(
+      await screen.findByText('Some columns were given new names'),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(
+        'In the CSV files of Friendship study, the Person column “nodeID” was written as “nodeID_2”.',
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(
+        'In the GraphML files of Friendship study, the Person column “Colour_red”, from the variable Colour, was written as “Colour_red_2”.',
+      ),
+    ).toBeInTheDocument();
+  },
+};
+
+// Stands in for useSessionMutations' successful save: the dialog closes and
+// the warnings it showed are raised as toasts.
+function SaveWithWarningsHarness(props: ComponentProps<typeof ExportDialog>) {
+  const [flow, setFlow] = useState<ExportFlow>(props.flow);
+  const showExportWarnings = useShowExportWarnings();
+  return (
+    <ExportDialog
+      {...props}
+      flow={flow}
+      onSave={() => {
+        props.onSave();
+        if (flow.phase !== 'ready') return;
+        showExportWarnings(flow.warnings);
+        setFlow({ phase: 'idle' });
+      }}
+    />
+  );
+}
+
+// After a successful save the dialog closes, and each kind of warning stays
+// on screen as a toast until the researcher dismisses it.
+export const SavedWithWarnings: Story = {
+  args: {
+    flow: {
+      ...readyFlow,
+      warnings: [...removedCharacterWarnings, ...renamedColumnWarnings],
+    },
+  },
+  render: (args) => <SaveWithWarningsHarness {...args} />,
+  play: async ({ args }) => {
+    await userEvent.click(await screen.findByTestId('data-save-export'));
+    await expect(args.onSave).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(screen.queryByText('Archive ready')).not.toBeInTheDocument(),
+    );
+
+    const protocolTextTitle =
+      'Some characters were removed from protocol text in the GraphML files';
+    const titles = [
+      'Some characters were removed from the GraphML files',
+      protocolTextTitle,
+      'Some columns were given new names',
+    ];
+    for (const name of titles) {
+      await expect(
+        await screen.findByRole('heading', { name }),
+      ).toBeInTheDocument();
+    }
+    await expect(
+      within(screen.getByRole('dialog', { name: protocolTextTitle })).getByText(
+        'The node type name “Person” in Friendship study, with U+0007 and U+0001 removed',
+      ),
+    ).toBeInTheDocument();
+
+    // Longer than a toast's default timeout: these have none.
+    await new Promise((resolve) => setTimeout(resolve, 5500));
+    for (const name of titles) {
+      await expect(screen.getByRole('heading', { name })).toBeInTheDocument();
+    }
+
+    // The stack spreads out, and shows its close buttons, under the pointer.
+    const newest = titles.at(-1);
+    const toast = screen.getByRole('dialog', { name: newest });
+    await userEvent.hover(toast);
+    await userEvent.click(
+      await within(toast).findByRole('button', { name: 'Close' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: newest })).toBeNull(),
+    );
+    for (const name of titles.slice(0, -1)) {
+      await expect(screen.getByRole('heading', { name })).toBeInTheDocument();
+    }
   },
 };
 

@@ -18,7 +18,7 @@ import {
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportFileNetwork } from '../../session/exportFile';
-import { getEntityAttributes } from '../../utils/general';
+import { getEntityAttributes, getOwn } from '../../utils/general';
 
 export function getCodebookVariablesForEntity(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
@@ -29,10 +29,10 @@ export function getCodebookVariablesForEntity(
   }
 
   if (edgeSourceProperty in entity) {
-    return codebook.edge?.[entity.type]?.variables ?? {};
+    return getOwn(codebook.edge, entity.type)?.variables ?? {};
   }
 
-  return codebook.node?.[entity.type]?.variables ?? {};
+  return getOwn(codebook.node, entity.type)?.variables ?? {};
 }
 
 export function createDocumentFragment() {
@@ -41,6 +41,11 @@ export function createDocumentFragment() {
 
   return fragment;
 }
+
+// Named once so the code that reports a change to the case ID, or to the
+// protocol's name, finds the attribute `setUpXml` writes it to.
+export const caseIdAttribute = 'nc:caseId';
+export const protocolNameAttribute = 'nc:protocolName';
 
 export const setUpXml = (
   sessionVariables: ExportFileNetwork['sessionVariables'],
@@ -69,9 +74,9 @@ export const setUpXml = (
 
   // Add attributes
   graph.setAttribute('edgedefault', 'undirected');
-  graph.setAttribute('nc:caseId', sessionVariables[caseProperty]);
+  graph.setAttribute(caseIdAttribute, sessionVariables[caseProperty]);
   graph.setAttribute('nc:sessionUUID', sessionVariables[sessionProperty]);
-  graph.setAttribute('nc:protocolName', sessionVariables[protocolName]);
+  graph.setAttribute(protocolNameAttribute, sessionVariables[protocolName]);
   graph.setAttribute('nc:protocolUID', sessionVariables[protocolProperty]);
   graph.setAttribute('nc:codebookHash', sessionVariables[codebookHashProperty]);
   graph.setAttribute(
@@ -138,12 +143,12 @@ export const getGraphMLTypeForKey = (
   key: string,
 ): GraphMLKeyType =>
   data.reduce<GraphMLKeyType | null>((result, value) => {
-    const attrs = getEntityAttributes(value);
+    const attribute = getOwn(getEntityAttributes(value), key);
 
     // If the attribute is not present, return the current result
-    if (attrs[key] === undefined) return result;
+    if (attribute === undefined) return result;
 
-    const currentType = getAttributeType(attrs[key]);
+    const currentType = getAttributeType(attribute);
 
     // If we haven't yet set a type, set it to whatever we detected the type as
     if (result === null) return currentType;

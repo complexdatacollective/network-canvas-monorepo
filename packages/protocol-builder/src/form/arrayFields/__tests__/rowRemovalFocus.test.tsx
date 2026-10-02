@@ -24,7 +24,7 @@ import MultiSelect, {
   makeMultiSelectValidation,
   type PropertyField,
 } from '../MultiSelect.tsx';
-import Options, { optionsValidation } from '../Options.tsx';
+import Options, { optionsValidationFor } from '../Options.tsx';
 import { promptItemLabel } from './itemLabel.ts';
 
 /**
@@ -181,7 +181,7 @@ describe('a row removal confirm', () => {
         label="Answer options"
         component={Options}
         addButtonLabel="Create new option"
-        {...optionsValidation}
+        {...optionsValidationFor()}
       />,
     );
 
@@ -210,7 +210,7 @@ describe('a row removal confirm', () => {
         label="Answer options"
         component={Options}
         addButtonLabel="Create new option"
-        {...optionsValidation}
+        {...optionsValidationFor()}
       />,
     );
 
@@ -323,7 +323,7 @@ describe('a row removal confirm', () => {
           label="Answer options"
           component={Options}
           addButtonLabel="Create new option"
-          {...optionsValidation}
+          {...optionsValidationFor()}
         />,
         { duration: 10 },
       );

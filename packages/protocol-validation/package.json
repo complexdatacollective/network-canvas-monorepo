@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@codaco/shared-consts": "workspace:^",
+    "csvtojson": "catalog:",
     "jszip": "catalog:",
     "ohash": "^2.0.12",
     "zod": "catalog:"

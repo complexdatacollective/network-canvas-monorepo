@@ -425,12 +425,12 @@ export default function NodeShapeMappingFields({
           {selected !== undefined && mapping.type === 'discrete' && (
             <div className="flex flex-col gap-3">
               {groupHeading(intl.formatMessage(messages.shapeForEachValue))}
-              {answers.map((answer) => (
+              {answers.map((answer, index) => (
                 <div key={JSON.stringify(answer.value)} className={ROW_CLASSES}>
                   <span className="min-w-0 flex-1 text-sm">{answer.label}</span>
                   <div className="w-48 shrink-0">
                     <UnconnectedField
-                      name={`shape-for-${String(answer.value)}`}
+                      name={`shape-for-${index + 1}`}
                       label={intl.formatMessage(messages.shapeForValue, {
                         value1: answer.label,
                       })}

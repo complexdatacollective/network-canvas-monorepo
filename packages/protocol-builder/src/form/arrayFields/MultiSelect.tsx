@@ -173,7 +173,7 @@ const completeRows =
 
 /**
  * Every array-level rule a MultiSelect owner needs, as one object to SPREAD
- * onto the owning `<Field>` — the `Options.tsx` `optionsValidation`
+ * onto the owning `<Field>` — the `Options.tsx` `optionsValidationFor`
  * idiom, so a call site cannot keep some and drop others.
  *
  * A factory because the rule has to know the columns, and — where a column

@@ -34,7 +34,7 @@ describe('validateSection', () => {
   it('rejects an unknown settings key', () => {
     const result = validateSection('settings', {
       name: 'P',
-      schemaVersion: 8,
+      schemaVersion: 9,
       unknown: true,
     });
     expect(result.success).toBe(false);

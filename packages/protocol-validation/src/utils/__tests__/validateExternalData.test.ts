@@ -4,9 +4,14 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { Network } from '../validateExternalData.ts';
 import {
+  findCollidingAttributeNames,
   getVariableNamesFromNetwork,
+  isUsableExternalAttributeName,
   validateNames,
 } from '../validateExternalData.ts';
+
+const cafe = `caf${String.fromCharCode(0xe9)}`;
+const cafeDecomposed = `cafe${String.fromCharCode(0x301)}`;
 
 describe('validateExternalData', () => {
   describe('getVariableNamesFromNetwork', () => {
@@ -157,7 +162,62 @@ describe('validateExternalData', () => {
     });
   });
 
+  describe('isUsableExternalAttributeName', () => {
+    it.each([
+      ['a name in any script, with spaces and punctuation', '年龄 (years)'],
+      ['a name spelled decomposed', 'Cafe\u0301'],
+      ['__proto__', '__proto__'],
+    ])('accepts %s', (_description, name) => {
+      expect(isUsableExternalAttributeName(name)).toBe(true);
+    });
+
+    it.each([
+      ['an empty name', ''],
+      ['a leading space', ' notes'],
+      ['a trailing space', 'notes '],
+      ['a trailing no-break space', 'notes\u00A0'],
+      ['a tab', 'first\tname'],
+      ['a control character', 'no\u0007tes'],
+    ])('refuses %s', (_description, name) => {
+      expect(isUsableExternalAttributeName(name)).toBe(false);
+    });
+  });
+
+  describe('findCollidingAttributeNames', () => {
+    it('groups a name written composed and decomposed, as written', () => {
+      expect(
+        findCollidingAttributeNames(['age', cafe, 'name', cafeDecomposed]),
+      ).toEqual([[cafe, cafeDecomposed]]);
+    });
+
+    it('does not group names that differ only in case', () => {
+      expect(findCollidingAttributeNames(['Name', 'name'])).toEqual([]);
+    });
+
+    it('does not group a name repeated exactly as written', () => {
+      expect(findCollidingAttributeNames([cafe, cafe])).toEqual([]);
+    });
+  });
+
   describe('validateNames', () => {
+    it('should reject a name written composed and decomposed', () => {
+      expect(validateNames([cafe, cafeDecomposed])).toBe(
+        `Attribute names that are the same name written in different ways (${JSON.stringify(cafe)} and ${JSON.stringify(cafeDecomposed)}). Rename or remove all but one of each.`,
+      );
+    });
+
+    it('should allow names that differ only in case', () => {
+      expect(validateNames(['Name', 'name'])).toBe(false);
+    });
+
+    it('should report unusable and duplicated names together', () => {
+      const result = validateNames(['notes ', cafe, cafeDecomposed]);
+      expect(result).toContain('Attribute name not allowed ("notes ")');
+      expect(result).toContain(
+        'Attribute names that are the same name written in different ways',
+      );
+    });
+
     it('should return false for valid variable names', () => {
       const validNames = [
         'name',
@@ -173,23 +233,21 @@ describe('validateExternalData', () => {
       expect(result).toBe(false);
     });
 
-    it('should return error message for names with spaces', () => {
-      const invalidNames = ['first name', 'last name'];
-
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
-      expect(result).toContain('first name');
-      expect(result).toContain('last name');
+    it('should allow spaces inside names', () => {
+      expect(validateNames(['first name', 'last name'])).toBe(false);
     });
 
-    it('should return error message for names with special characters', () => {
-      const invalidNames = ['name!', 'age@', 'data#field'];
+    it('should allow punctuation and symbols', () => {
+      expect(validateNames(['name!', 'age@', 'data#field', 'a/b (c)'])).toBe(
+        false,
+      );
+    });
 
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
-      expect(result).toContain('name!');
-      expect(result).toContain('age@');
-      expect(result).toContain('data#field');
+    it('should return error message for names that start or end with a space', () => {
+      const result = validateNames([' first name', 'last name ']);
+      expect(result).toBe(
+        'Attribute name not allowed (" first name", "last name "). Names must not be empty, start or end with a space, or contain control characters.',
+      );
     });
 
     it('should allow underscores', () => {
@@ -237,34 +295,43 @@ describe('validateExternalData', () => {
       expect(result).toBe(false);
     });
 
-    it('should reject names starting with numbers if they contain invalid characters', () => {
-      const invalidNames = ['1name!', '2field@'];
-
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
-    });
-
     it('should identify only invalid names in mixed array', () => {
       const mixedNames = [
         'validName',
-        'invalid name',
+        'invalid\tname',
         'anotherValid',
-        'bad@name',
+        'bad name ',
       ];
 
       const result = validateNames(mixedNames);
       expect(result).toContain('Attribute name not allowed');
-      expect(result).toContain('invalid name');
-      expect(result).toContain('bad@name');
+      expect(result).toContain('"invalid\\tname"');
+      expect(result).toContain('"bad name "');
       expect(result).not.toContain('validName');
       expect(result).not.toContain('anotherValid');
     });
 
-    it('should reject unicode characters', () => {
-      const invalidNames = ['namé', 'naïve', '名前'];
+    it('should allow letters from any language', () => {
+      expect(validateNames(['namé', 'naïve', '名前', 'имя', 'اسم'])).toBe(
+        false,
+      );
+    });
 
-      const result = validateNames(invalidNames);
-      expect(result).toContain('Attribute name not allowed');
+    it.each([
+      ['a tab', 'first\tname'],
+      ['a line break', 'first\nname'],
+      ['a null character', 'name\u0000'],
+      ['a C1 control character', 'name\u0085'],
+      ['a noncharacter', 'name\uFFFE'],
+      ['a lone surrogate', 'name\uD800'],
+    ])('should reject a name with %s', (_description, name) => {
+      expect(validateNames([name])).toContain('Attribute name not allowed');
+    });
+
+    // The interview compares names in NFC, so this heading reaches the
+    // variable called `namé`.
+    it('should allow a name spelled with a decomposed accent', () => {
+      expect(validateNames(['nam\u0065\u0301'])).toBe(false);
     });
 
     it('should reject empty string', () => {
