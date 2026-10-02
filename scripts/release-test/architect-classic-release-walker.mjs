@@ -37,6 +37,7 @@ import {
   findPackagedBinary,
   launchElectron,
   mainWindow,
+  pdfText,
   playwrightDriver,
   queueDialog,
   readAppVersion,
@@ -555,10 +556,19 @@ async function walk(driver, page, pageErrors) {
           )
           .catch(() => {});
         if (!written) throw new Error('PDF not written');
-        const header = fs.readFileSync(pdf).subarray(0, 4).toString();
+        // Read the saved file itself: a blank or truncated PDF passes any
+        // check made against the summary window.
+        const pages = await pdfText(fs.readFileSync(pdf));
+        const squash = (t) => t.replace(/\s+/g, '').toLowerCase();
+        const text = squash(pages.join(' '));
+        const missing = ['Protocol Summary', 'RT renamed stage'].filter(
+          (want) => !text.includes(squash(want)),
+        );
         return {
-          ok: header === '%PDF',
-          note: `${fs.statSync(pdf).size} bytes`,
+          ok: missing.length === 0,
+          note: missing.length
+            ? `PDF (${pages.length} pages) is missing: ${missing.join(', ')}`
+            : `${pages.length} pages`,
         };
       },
     );

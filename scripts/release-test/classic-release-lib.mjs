@@ -715,6 +715,28 @@ export async function inspectInterviewerExport(zipBuffer, expected) {
   return checks;
 }
 
+// The text of a PDF, page by page (pdf.js), so a check can read what a user
+// would see in the saved file rather than trust the window it was printed from.
+export async function pdfText(buffer) {
+  const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = getDocument({
+    data: new Uint8Array(buffer),
+    isEvalSupported: false,
+    verbosity: 0,
+  });
+  try {
+    const doc = await task.promise;
+    const pages = [];
+    for (let i = 1; i <= doc.numPages; i += 1) {
+      const content = await (await doc.getPage(i)).getTextContent();
+      pages.push(content.items.map((item) => item.str ?? '').join(' '));
+    }
+    return pages;
+  } finally {
+    await task.destroy();
+  }
+}
+
 // Interviewer's native projects carry their own version stamps
 // (android/app/build.gradle versionName, the iOS project's MARKETING_VERSION)
 // that `pnpm version:sync` copies from package.json. A release that skips it

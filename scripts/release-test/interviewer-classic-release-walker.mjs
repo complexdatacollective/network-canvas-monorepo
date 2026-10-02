@@ -580,7 +580,20 @@ async function iosPlatform() {
     { stdio: 'ignore' },
   );
   proxy.on('error', () => {});
-  const webkit = await connectWebKit(9222, 'capacitor://');
+  // Until this platform handle is returned, nothing else can stop the proxy:
+  // a setup failure tears it down here so a rerun finds port 9222 free.
+  let webkit;
+  let dataContainer;
+  try {
+    webkit = await connectWebKit(9222, 'capacitor://');
+    dataContainer = (
+      await simctl('get_app_container', udid, bundleId, 'data')
+    ).trim();
+  } catch (error) {
+    webkit?.close();
+    proxy.kill();
+    throw error;
+  }
   const driver = {
     eval: (expression, arg) => webkit.evaluate(expression, arg),
     async screenshot(name) {
@@ -592,9 +605,6 @@ async function iosPlatform() {
       ).catch(() => {});
     },
   };
-  const dataContainer = (
-    await simctl('get_app_container', udid, bundleId, 'data')
-  ).trim();
   const cacheDir = path.join(dataContainer, 'Library', 'Caches');
   const cacheZips = () =>
     fs.existsSync(cacheDir)
@@ -1133,6 +1143,8 @@ async function importProtocols(p, check, waitOrError, state) {
             label: 'install success toast',
           },
         );
+        // The fixture must be the protocol that was stored, with its own name
+        // and schema version — not merely one more protocol than before.
         const s = await waitFor(
           driver,
           `(async () => { const s = await ${STATE}; return s && s.protocols.length > ${before} ? s : null; })()`,
@@ -1140,9 +1152,13 @@ async function importProtocols(p, check, waitOrError, state) {
             label: 'protocol persisted',
           },
         );
-        const added =
-          s.protocols.find((x) => x.name === f.name) ?? s.protocols.at(-1);
-        return `installed as ${added.name}`;
+        const added = s.protocols.find((x) => x.name === f.name);
+        return {
+          ok: added?.schemaVersion === f.schemaVersion,
+          note: added
+            ? `installed as ${added.name}, schema ${added.schemaVersion}`
+            : `no protocol named ${f.name}; installed: ${s.protocols.map((x) => `${x.name} (schema ${x.schemaVersion})`).join(', ')}`,
+        };
       },
     );
     // Let the success toast clear so the next import's toast is its own.
