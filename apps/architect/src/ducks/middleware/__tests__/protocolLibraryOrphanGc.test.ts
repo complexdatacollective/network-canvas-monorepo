@@ -156,7 +156,7 @@ const makeStore = (preloadedState?: Partial<TestState>) =>
 const makeProtocol = (manifestKeys: string[]): CurrentProtocol =>
   ({
     name: 'Study',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: Object.fromEntries(
@@ -172,7 +172,7 @@ describe('protocolLibraryListener — undo-safe orphan asset GC (#803)', () => {
     db.protocolRows.set('p1', {
       id: 'p1',
       name: 'Study',
-      schemaVersion: 8,
+      schemaVersion: 9,
       protocol: makeProtocol(['a1', 'a2']),
       createdAt: 0,
       updatedAt: 0,

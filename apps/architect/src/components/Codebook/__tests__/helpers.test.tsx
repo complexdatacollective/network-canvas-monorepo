@@ -278,7 +278,7 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
     const testState = getMockState({
       activeProtocol: {
         present: {
-          schemaVersion: 8,
+          schemaVersion: 9,
           name: 'test',
           codebook: {
             node: {
@@ -317,7 +317,7 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
     const testState = getMockState({
       activeProtocol: {
         present: {
-          schemaVersion: 8,
+          schemaVersion: 9,
           name: 'test',
           codebook: {
             node: {

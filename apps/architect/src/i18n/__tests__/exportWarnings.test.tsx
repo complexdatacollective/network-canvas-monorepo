@@ -36,7 +36,7 @@ const fixture = vi.hoisted(() => ({
     updatedAt: 1700000000000,
     protocol: {
       name: 'Research_Protocol',
-      schemaVersion: 8,
+      schemaVersion: 9,
       stages: [],
       codebook: {},
     },

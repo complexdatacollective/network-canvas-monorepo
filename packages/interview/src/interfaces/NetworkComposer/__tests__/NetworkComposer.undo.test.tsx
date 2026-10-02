@@ -98,7 +98,7 @@ function makeStore(preloadedNodes: unknown[] = []) {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook,
         stages: [stage],
       } as never,
@@ -333,7 +333,7 @@ describe('NetworkComposer keyboard delete (single-select edge)', () => {
         protocol: {
           id: 'p',
           hash: 'h',
-          schemaVersion: 8,
+          schemaVersion: 9,
           codebook,
           stages: [stage],
         } as never,

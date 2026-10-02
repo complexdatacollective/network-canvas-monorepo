@@ -75,7 +75,7 @@ const personDefinition: SectionDoc = {
  * option builder, in `stageDestination.test.ts`.
  */
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Field localization', schemaVersion: 8 },
+  [settingsSection]: { name: 'Field localization', schemaVersion: 9 },
   [stageOrderSection]: { stages: ['stage-1', 'stage-2', 'stage-3'] },
   [STAGE_SECTION]: { id: 'stage-1', type: 'Information', ...stageFields },
   [sectionId({ kind: 'stage', stageId: 'stage-2' })]: informationStage(

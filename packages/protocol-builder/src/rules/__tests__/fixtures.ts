@@ -80,7 +80,7 @@ const stageOrderSection = sectionId({ kind: 'stageOrder' });
  * and `"1"` can be told apart, and one attribute no rule can be built on.
  */
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Rule editing', schemaVersion: 8 },
+  [settingsSection]: { name: 'Rule editing', schemaVersion: 9 },
   [stageOrderSection]: { stages: ['stage-1'] },
   [stageSection]: {
     id: 'stage-1',

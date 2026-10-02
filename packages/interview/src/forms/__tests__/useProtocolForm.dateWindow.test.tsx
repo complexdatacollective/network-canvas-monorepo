@@ -54,7 +54,7 @@ function makeWrapper(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {
             [NODE_TYPE]: {

@@ -45,7 +45,7 @@ describe('StagesMenu route status', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
           codebook: { node: {}, edge: {}, ego: { variables: {} } },
           stages: [
             {

@@ -55,7 +55,7 @@ function StageEditorHost({
       sections: {
         [sectionId({ kind: 'settings' })]: {
           name: 'Protocol builder proof host',
-          schemaVersion: 8,
+          schemaVersion: 9,
         },
         [sectionId({ kind: 'stageOrder' })]: { stages: [STAGE_ID] },
         [sectionId({ kind: 'assets' })]: {},
