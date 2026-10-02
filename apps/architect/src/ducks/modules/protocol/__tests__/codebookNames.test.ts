@@ -129,6 +129,34 @@ describe('renaming an attribute', () => {
       .unwrap();
     expect(personVariables(store)[variable]?.name).toBe('Collègue');
   });
+
+  it('saves edited option values trimmed and composed, without the type', async () => {
+    const store = makeStore();
+    const { variable } = await createPersonVariable(store, {
+      name: 'closeness',
+      type: 'ordinal',
+      options: [{ label: 'Close', value: 'close' }],
+    });
+
+    await store
+      .dispatch(
+        updateVariableByUUID(variable, {
+          options: [
+            { label: 'Close', value: ' close ' },
+            { label: 'Colleague', value: 'Colle\u0300gue' },
+            { label: 'One', value: 1 },
+          ],
+        }),
+      )
+      .unwrap();
+
+    const saved = personVariables(store)[variable];
+    expect(saved && 'options' in saved ? saved.options : undefined).toEqual([
+      { label: 'Close', value: 'close' },
+      { label: 'Colleague', value: 'Collègue' },
+      { label: 'One', value: 1 },
+    ]);
+  });
 });
 
 describe('type names', () => {

@@ -131,15 +131,12 @@ const normalizedName = (name: unknown) =>
   typeof name === 'string' ? { name: normalizeCodebookName(name) } : {};
 
 // Only categorical and ordinal options carry text a researcher typed; a boolean
-// variable's options are true and false.
+// variable's options are true and false, and numeric values are left alone. The
+// variable's type is not checked because an edit sends only what changed.
 const withNormalizedOptionValues = (
   configuration: Partial<Variable>,
 ): Partial<Variable> => {
-  if (
-    (configuration.type !== 'categorical' &&
-      configuration.type !== 'ordinal') ||
-    !Array.isArray(configuration.options)
-  ) {
+  if (!('options' in configuration) || !Array.isArray(configuration.options)) {
     return configuration;
   }
   return {
@@ -334,7 +331,7 @@ const updateVariableAsync = createAppAsyncThunk(
     const payload: UpdateVariablePayload = {
       variable,
       configuration: prune({
-        ...configuration,
+        ...withNormalizedOptionValues(configuration),
         ...normalizedName(get(configuration, 'name')),
       }),
       replaceProperties,
