@@ -167,6 +167,18 @@ describe('the rule for an attribute name', () => {
       );
     });
 
+    it('refuses a name the export writes the way another attribute’s is written', () => {
+      const scope = scopeOf([
+        { id: 'v-close', name: 'close_friend', type: 'text' },
+      ]);
+      expect(variableNameRefusal('close friend', { intl, scope })).toBe(
+        'In the export, the name “close friend” and the column “close_friend” of the attribute “close_friend” would become the same column, “close_friend”. Choose a different name.',
+      );
+      expect(variableNameRefusal('close-friend', { intl, scope })).toBe(
+        undefined,
+      );
+    });
+
     it('judges a new name as one column, unless it says what it will be', () => {
       const scope = scopeOf([{ id: 'v-x', name: 'pos_x', type: 'text' }]);
       expect(variableNameRefusal('pos', { intl, scope })).toBe(undefined);
@@ -231,9 +243,10 @@ describe('the attributes of one type as the rule reads them', () => {
  * what the attribute being saved writes against what another attribute — or the
  * export itself — already writes.
  *
- * Two layout attributes cannot meet, and nor can a layout attribute and a
- * built-in column: no position suffix ends the way another one does, and no
- * built-in column ends in one. Those sentences exist so the lookup is total.
+ * Two layout attributes cannot meet as the same text, and nor can a layout
+ * attribute and a built-in column: no position suffix ends the way another one
+ * does, and no built-in column ends in one. Those sentences exist so the lookup
+ * is total.
  */
 describe('the export columns an attribute would write', () => {
   const refusals = (
@@ -382,6 +395,61 @@ describe('the export columns an attribute would write', () => {
         { name: 'foo_bar', type: 'text' },
       ]),
     ).toEqual([]);
+  });
+
+  it('refuses a name GraphML writes as another attribute’s column', () => {
+    expect(
+      refusals({ name: 'close friend', type: 'text' }, [
+        { name: 'close_friend', type: 'text' },
+      ]),
+    ).toEqual([
+      {
+        origin: 'name',
+        text: 'In the export, the name “close friend” and the column “close_friend” of the attribute “close_friend” would become the same column, “close_friend”. Choose a different name.',
+      },
+    ]);
+  });
+
+  it('refuses a name CSV writes as another attribute’s column', () => {
+    expect(
+      refusals({ name: '=total', type: 'text' }, [
+        { name: "'=total", type: 'text' },
+      ]),
+    ).toEqual([
+      {
+        origin: 'name',
+        text: "In the export, the name “=total” and the column “'=total” of the attribute “'=total” would become the same column, “'=total”. Choose a different name.",
+      },
+    ]);
+  });
+
+  it('refuses an option GraphML writes as another attribute’s column', () => {
+    expect(
+      refusals(
+        { name: 'close', type: 'categorical', options: [{ value: 'friend' }] },
+        [{ name: 'close friend', type: 'text' }],
+      ),
+    ).toEqual([
+      {
+        origin: 'option',
+        text: 'In the export, the column “close_friend” for option “friend” of “close” and the column “close friend” of the attribute “close friend” would become the same column, “close_friend”. Change the option value or the attribute name.',
+      },
+    ]);
+  });
+
+  it('refuses a layout position GraphML writes as another layout attribute’s', () => {
+    const [first, ...rest] = refusals({ name: 'a b', type: 'layout' }, [
+      { name: 'a_b', type: 'layout' },
+    ]);
+    expect(first).toEqual({
+      origin: 'layout',
+      text: 'In the export, the position column “a b_X” of the layout attribute “a b” and the column “a_b_X” of the attribute “a_b” would become the same column, “a_b_X”. Choose a different name.',
+    });
+    expect(rest.map(({ origin }) => origin)).toEqual([
+      'layout',
+      'layout',
+      'layout',
+    ]);
   });
 
   it('leaves two attributes of the same name to the duplicate-name check', () => {

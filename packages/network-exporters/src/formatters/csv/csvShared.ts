@@ -1,3 +1,5 @@
+import { neutralizeCsvFormula } from '@codaco/shared-consts';
+
 export const csvEOL = '\r\n';
 
 const DIFFICULT_CHARACTERS = ['"', ',', '\r', '\n'];
@@ -10,23 +12,12 @@ const quoteValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 const quoteIfNeeded = (value: string) =>
   containsDifficultCharacters(value) ? quoteValue(value) : value;
 
-// Characters that trigger formula evaluation in spreadsheet applications when
-// they appear at the start of a cell. Prefixing the value with a single quote
-// forces the cell to be treated as literal text, neutralizing CSV/formula
-// injection (OWASP) from untrusted, participant-entered interview data.
-const FORMULA_TRIGGERS = ['=', '+', '-', '@', '\t', '\r'];
-
-const neutralizeFormula = (value: string) =>
-  value.length > 0 && FORMULA_TRIGGERS.includes(value[0]!)
-    ? `'${value}`
-    : value;
-
 /**
  * A header cell. A variable's name can begin with a formula trigger, and a
  * protocol may come from someone else, so a header is guarded like an answer.
  */
 export const csvHeaderCell = (header: string): string =>
-  quoteIfNeeded(neutralizeFormula(header));
+  quoteIfNeeded(neutralizeCsvFormula(header));
 
 export function sanitizeCellValue(
   value: unknown,
@@ -44,7 +35,7 @@ export function sanitizeCellValue(
     return quoteValue(serialized);
   }
   if (typeof value === 'string') {
-    return quoteIfNeeded(neutralizeFormula(value));
+    return quoteIfNeeded(neutralizeCsvFormula(value));
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
     return value;

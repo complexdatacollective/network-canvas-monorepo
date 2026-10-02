@@ -154,11 +154,63 @@ describe('export column conflicts, where there is none', () => {
   });
 
   it('lets a name through that merely looks alike', () => {
-    expect(messageFor(text('foo bar'), [categorical('foo', 'bar')])).toBe(
-      undefined,
-    );
     expect(messageFor(text('foo-bar'), [categorical('foo', 'bar')])).toBe(
       undefined,
+    );
+    expect(messageFor(text('foo.bar'), [categorical('foo', 'bar')])).toBe(
+      undefined,
+    );
+  });
+});
+
+describe('export column conflicts between names an export writes the same way', () => {
+  it('explains a name GraphML writes as another attribute’s column', () => {
+    expect(messageFor(text('close friend'), [text('close_friend')])).toBe(
+      'In exported data, this name and the attribute “close_friend” would become the same column, “close_friend”. Choose a different name.',
+    );
+    expect(messageFor(text('close_friend'), [text('close friend')])).toBe(
+      'In exported data, this name and the attribute “close friend” would become the same column, “close_friend”. Choose a different name.',
+    );
+    expect(messageFor(text('a b'), [text('a?b')])).toBe(
+      'In exported data, this name and the attribute “a?b” would become the same column, “a_b”. Choose a different name.',
+    );
+  });
+
+  it('explains a name CSV writes as another attribute’s column', () => {
+    expect(messageFor(text('=total'), [text("'=total")])).toBe(
+      "In exported data, this name and the attribute “'=total” would become the same column, “'=total”. Choose a different name.",
+    );
+  });
+
+  it('explains a name GraphML writes as a categorical option’s column', () => {
+    expect(messageFor(text('foo bar'), [categorical('foo', 'bar')])).toBe(
+      'In exported data, this name and the option “bar” of the attribute “foo” would become the same column, “foo_bar”. Choose a different name.',
+    );
+  });
+
+  it('explains a name GraphML writes as a layout attribute’s coordinate column', () => {
+    expect(messageFor(text('pos x'), [layout('pos')])).toBe(
+      'In exported data, this name and a position of the layout attribute “pos” would become the same column, “pos_x”. Choose a different name.',
+    );
+  });
+
+  it('explains an option whose column GraphML writes as another attribute’s column', () => {
+    expect(
+      messageFor(categorical('close', 'friend'), [text('close friend')]),
+    ).toBe(
+      'In exported data, the option “friend” and the attribute “close friend” would become the same column, “close_friend”. Change the option’s value or the attribute’s name.',
+    );
+  });
+
+  it('explains a layout attribute whose coordinate columns GraphML writes as another layout attribute’s', () => {
+    expect(messageFor(layout('a b'), [layout('a_b')])).toBe(
+      'In exported data, a position of this layout attribute and a position of the layout attribute “a_b” would become the same column, “a_b_X”. Choose a different name.',
+    );
+  });
+
+  it('keeps the plain message when the two columns are the same text', () => {
+    expect(messageFor(text('=x_y'), [categorical('=x', 'y')])).toBe(
+      'Exported data already includes the column “=x_y” for the option “y” of the attribute “=x”, so an attribute can’t use this name.',
     );
   });
 });

@@ -188,13 +188,14 @@ This means two different names can still produce the same column. Architect chec
 
 Architect refuses a name or option in each of these situations:
 
-| What clashes                                         | Example                                                                                                                                                        |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A variable's name and another variable's option      | A categorical variable `support` has the option `emotional`, so it writes the column `support_emotional`. Another variable can't be named `support_emotional`. |
-| An option and another variable's name                | The reverse: if a variable named `support_emotional` already exists, you can't add the option `emotional` to `support`.                                        |
-| Two options of different variables                   | `contact` with the option `in_person` and `contact_in` with the option `person` would both write `contact_in_person`.                                          |
-| A variable's name and a layout variable's coordinate | A layout variable `position` writes `position_x` and `position_y`, so another variable can't be named `position_x` (or `Position_X`).                          |
-| A variable's name and a built-in column              | Every export file has columns that Network Canvas writes itself, such as `nodeID`. A node variable can't be named `nodeID`.                                    |
+| What clashes                                         | Example                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A variable's name and another variable's option      | A categorical variable `support` has the option `emotional`, so it writes the column `support_emotional`. Another variable can't be named `support_emotional`.                                                                                                                                |
+| An option and another variable's name                | The reverse: if a variable named `support_emotional` already exists, you can't add the option `emotional` to `support`.                                                                                                                                                                       |
+| Two options of different variables                   | `contact` with the option `in_person` and `contact_in` with the option `person` would both write `contact_in_person`.                                                                                                                                                                         |
+| A variable's name and a layout variable's coordinate | A layout variable `position` writes `position_x` and `position_y`, so another variable can't be named `position_x` (or `Position_X`).                                                                                                                                                         |
+| A variable's name and a built-in column              | Every export file has columns that Network Canvas writes itself, such as `nodeID`. A node variable can't be named `nodeID`.                                                                                                                                                                   |
+| Two columns that an export writes the same way       | GraphML files replace spaces and most punctuation with `_`, so `close friend` and `close_friend` would both be written as `close_friend`. CSV files put an apostrophe in front of a name that starts with `=`, `+`, `-` or `@`, so `=total` and `'=total` would both be written as `'=total`. |
 
 These are the built-in column names that variables can't use, in any capitalization. Option columns and layout columns can't use them either.
 
@@ -342,7 +343,7 @@ CSV files use each name exactly as it appears in the codebook, including any spa
 
 <AppOnly app="current">
 
-Architect refuses names that would give two variables the same column (see [Names that would clash in exported data](#names-that-would-clash-in-exported-data)). If a protocol created before that check has such a clash, the export renames the later column with a `_2` suffix (or `_3`, and so on) and shows a warning. Architect doesn't refuse two names that only become the same in GraphML, once spaces and punctuation are replaced, such as `close friend` and `close_friend`. In GraphML files, the name that was already valid keeps it, and the export gives the other a `_2` suffix and shows a warning.
+Architect refuses names that would give two variables the same column, including names that only become the same once an export writes them, such as `close friend` and `close_friend` in GraphML (see [Names that would clash in exported data](#names-that-would-clash-in-exported-data)). If a protocol created before that check has such a clash, the export renames the later column with a `_2` suffix (or `_3`, and so on) and shows a warning. When two names only become the same in GraphML, the name that was already valid keeps it, and the other gets the suffix.
 
 </AppOnly>
 

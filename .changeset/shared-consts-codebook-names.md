@@ -28,7 +28,15 @@ New exports:
   `ExportColumnConflict`. Call
   `findExportColumnConflicts({ entity, candidate, siblings })` to refuse a name
   whose exported columns would clash with a built-in column or with another
-  variable's columns.
+  variable's columns. Columns are compared as each format writes them, so two
+  names that only become the same once written clash too: `close friend` and
+  `close_friend` in GraphML, `=total` and `'=total` in CSV. Each conflict lists
+  the `formats` it occurs in, and a clash between two different texts carries
+  the column as written in `writtenColumn`.
+- How the exports write a column name: `toGraphMLAttrName` replaces each
+  character an XML name token can't hold with `_`, and `neutralizeCsvFormula`
+  puts an apostrophe before text that starts with `=`, `+`, `-`, `@`, a tab or
+  a carriage return.
 - XML 1.0 character checks: `hasXmlIllegalCharacters`, `xmlIllegalCodePoints`
   and `stripXmlIllegalCharacters`.
 - The export column names `appVersionProperty`, `commitHashProperty` and

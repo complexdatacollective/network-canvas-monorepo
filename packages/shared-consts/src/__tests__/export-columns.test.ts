@@ -171,6 +171,7 @@ describe('findExportColumnConflicts', () => {
         sibling: foo,
         siblingColumn: 'foo_bar',
         siblingOrigin: { kind: 'option', value: 'bar' },
+        formats: ['csv', 'graphml'],
       },
     ]);
   });
@@ -187,6 +188,7 @@ describe('findExportColumnConflicts', () => {
         sibling: fooBar,
         siblingColumn: 'foo_bar',
         siblingOrigin: { kind: 'name' },
+        formats: ['csv', 'graphml'],
       },
     ]);
   });
@@ -211,6 +213,7 @@ describe('findExportColumnConflicts', () => {
         sibling: a,
         siblingColumn: 'a_b_c',
         siblingOrigin: { kind: 'option', value: 'b_c' },
+        formats: ['csv', 'graphml'],
       },
     ]);
   });
@@ -226,6 +229,7 @@ describe('findExportColumnConflicts', () => {
         sibling: pos,
         siblingColumn: 'pos_x',
         siblingOrigin: { kind: 'layout', axis: 'x' },
+        formats: ['csv', 'graphml'],
       },
     ]);
     // GraphML's spelling.
@@ -248,6 +252,7 @@ describe('findExportColumnConflicts', () => {
         sibling: posY,
         siblingColumn: 'pos_y',
         siblingOrigin: { kind: 'name' },
+        formats: ['csv', 'graphml'],
       },
     ]);
   });
@@ -275,6 +280,7 @@ describe('findExportColumnConflicts', () => {
         sibling: cafe,
         siblingColumn: `Caf${char(0xe9)}_Bar`,
         siblingOrigin: { kind: 'option', value: 'Bar' },
+        formats: ['csv', 'graphml'],
       },
     ]);
   });
@@ -286,6 +292,128 @@ describe('findExportColumnConflicts', () => {
     expect(conflicts(text('foobar'), [foo])).toEqual([]);
     expect(conflicts(text('foo_bar_'), [foo])).toEqual([]);
     expect(conflicts(text('pos_z'), [layout('pos')])).toEqual([]);
+    expect(conflicts(text('foo-bar'), [foo])).toEqual([]);
+  });
+
+  describe('compares columns as each format writes them', () => {
+    // GraphML writes `attr.name` as an NMTOKEN, with `_` for each space or
+    // punctuation mark it cannot hold.
+    it('refuses two names GraphML writes as the same attribute name', () => {
+      const aQuestionB = text('a?b');
+
+      expect(conflicts(text('a b'), [aQuestionB])).toEqual([
+        {
+          kind: 'sibling',
+          column: 'a b',
+          origin: { kind: 'name' },
+          sibling: aQuestionB,
+          siblingColumn: 'a?b',
+          siblingOrigin: { kind: 'name' },
+          formats: ['graphml'],
+          writtenColumn: 'a_b',
+        },
+      ]);
+    });
+
+    it('refuses a name GraphML writes as a sibling’s own name', () => {
+      const closeFriend = text('close_friend');
+
+      expect(conflicts(text('close friend'), [closeFriend])).toEqual([
+        {
+          kind: 'sibling',
+          column: 'close friend',
+          origin: { kind: 'name' },
+          sibling: closeFriend,
+          siblingColumn: 'close_friend',
+          siblingOrigin: { kind: 'name' },
+          formats: ['graphml'],
+          writtenColumn: 'close_friend',
+        },
+      ]);
+    });
+
+    it('refuses an option column GraphML writes as a sibling’s name', () => {
+      const closeFriend = text('close friend');
+
+      expect(conflicts(categorical('close', 'friend'), [closeFriend])).toEqual([
+        {
+          kind: 'sibling',
+          column: 'close_friend',
+          origin: { kind: 'option', value: 'friend' },
+          sibling: closeFriend,
+          siblingColumn: 'close friend',
+          siblingOrigin: { kind: 'name' },
+          formats: ['graphml'],
+          writtenColumn: 'close_friend',
+        },
+      ]);
+    });
+
+    it('refuses two layout variables whose GraphML position columns meet', () => {
+      expect(clashingColumns(layout('a b'), [layout('a_b')])).toEqual([
+        'a b_screenspacex',
+        'a b_screenspacey',
+        'a b_x',
+        'a b_y',
+      ]);
+    });
+
+    // A CSV header that begins like a formula is written with a `'` in front,
+    // so `=total` is written as the header a variable called `'=total` has.
+    it('refuses two names CSV writes as the same header', () => {
+      const guarded = text("'=total");
+
+      expect(conflicts(text('=total'), [guarded])).toEqual([
+        {
+          kind: 'sibling',
+          column: '=total',
+          origin: { kind: 'name' },
+          sibling: guarded,
+          siblingColumn: "'=total",
+          siblingOrigin: { kind: 'name' },
+          formats: ['csv'],
+          writtenColumn: "'=total",
+        },
+      ]);
+    });
+
+    it.each([
+      [text('a b'), text('a?b')],
+      [text('close friend'), text('close_friend')],
+      [text('=total'), text("'=total")],
+      [categorical('close', 'friend'), text('close friend')],
+      [layout('a b'), layout('a_b')],
+    ])('refuses %j beside %j and the other way round', (left, right) => {
+      const written = (
+        candidate: ExportColumnVariable,
+        sibling: ExportColumnVariable,
+      ) =>
+        conflicts(candidate, [sibling])
+          .map((conflict) =>
+            conflict.kind === 'sibling' ? conflict.writtenColumn : undefined,
+          )
+          .toSorted((a, b) => (a ?? '').localeCompare(b ?? ''));
+
+      expect(written(left, right)).not.toEqual([]);
+      expect(written(left, right)).not.toContain(undefined);
+      expect(written(left, right)).toEqual(written(right, left));
+    });
+
+    it('reports a clash both formats make once, naming both', () => {
+      const ex = categorical('=x', 'y');
+
+      expect(conflicts(text('=x_y'), [ex])).toEqual([
+        {
+          kind: 'sibling',
+          column: '=x_y',
+          origin: { kind: 'name' },
+          sibling: ex,
+          siblingColumn: '=x_y',
+          siblingOrigin: { kind: 'option', value: 'y' },
+          formats: ['csv', 'graphml'],
+        },
+      ]);
+    });
   });
 
   // A duplicate name is the editors' duplicate-name check to refuse, with its

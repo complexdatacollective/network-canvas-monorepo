@@ -5,7 +5,8 @@
 The documentation now covers protocol schema 9, which lets variables, node
 and edge types, and answer options be named in any language, with spaces and
 punctuation. The Variables page explains what a name can contain and which
-names Architect refuses because they would clash in exported data. The roster
+names Architect refuses because they would clash in exported data, including
+names that an export would write the same way. The roster
 tutorial explains the rules for column headings and values, and how to fix a
 roster that Architect refuses. The Data Export page and the Export Data
 Dictionary explain how export files and GraphML attributes are named, why some

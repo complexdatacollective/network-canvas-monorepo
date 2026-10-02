@@ -11,8 +11,14 @@ import {
 // One message for each of the candidate's own columns that can clash, each
 // naming what it clashes with. `clashesWith` is `reserved`, `option`,
 // `layout`, or (as `other`) the plain name of another attribute. A layout
-// attribute's columns cannot clash with another layout attribute's, which are
-// named after a different attribute, so that message has no `layout` branch.
+// attribute's columns cannot be the same text as another layout attribute's,
+// which are named after a different attribute, so that message has no
+// `layout` branch.
+//
+// The `Written` messages are for two columns that are different text but that
+// an export writes the same way (GraphML's `close friend` and `close_friend`),
+// and name the column as written. No other text is written the same way as a
+// built-in column, so they have no `reserved` branch.
 const messages = defineMessages({
   nameColumn: {
     id: 'architect.exportColumnConflict.nameColumn',
@@ -34,6 +40,27 @@ const messages = defineMessages({
       '{clashesWith, select, reserved {A layout attribute is exported as one column for each coordinate, and the column “{column}” is a built-in column in exported data. Choose a different name.} option {A layout attribute is exported as one column for each coordinate, and the column “{column}” is already used by the option “{siblingOption}” of the attribute “{sibling}”. Choose a different name.} other {A layout attribute is exported as one column for each coordinate, and the column “{column}” is already used by the attribute “{sibling}”. Choose a different name.}}',
     description:
       'Validation error below the field where a researcher names a layout attribute, which stores a position on a canvas: exported data (CSV and GraphML files) has one column for each coordinate, and one of them would have the same name as another column. Text inside curly quotes is a name the researcher typed or a fixed column name; keep it exactly as given.',
+  },
+  nameColumnWritten: {
+    id: 'architect.exportColumnConflict.nameColumnWritten',
+    defaultMessage:
+      '{clashesWith, select, option {In exported data, this name and the option “{siblingOption}” of the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} layout {In exported data, this name and a position of the layout attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} other {In exported data, this name and the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.}}',
+    description:
+      'Validation error below the field where a researcher names an attribute: the name is different from another attribute’s, but exported data would write both as the same column name. Exported files change some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. writtenColumn is the column name as it would be written. Text inside curly quotes is a name, value or column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate.',
+  },
+  optionColumnWritten: {
+    id: 'architect.exportColumnConflict.optionColumnWritten',
+    defaultMessage:
+      '{clashesWith, select, option {In exported data, the option “{optionValue}” and the option “{siblingOption}” of the attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.} layout {In exported data, the option “{optionValue}” and a position of the layout attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.} other {In exported data, the option “{optionValue}” and the attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.}}',
+    description:
+      'Validation error below the list of options of a categorical attribute: exported data has a column for each option, and this option’s column is different from another column but would be written as the same column name. Exported files change some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. writtenColumn is the column name as it would be written. Text inside curly quotes is a name, value or column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate.',
+  },
+  layoutColumnWritten: {
+    id: 'architect.exportColumnConflict.layoutColumnWritten',
+    defaultMessage:
+      '{clashesWith, select, option {In exported data, a position of this layout attribute and the option “{siblingOption}” of the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} layout {In exported data, a position of this layout attribute and a position of the layout attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} other {In exported data, a position of this layout attribute and the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.}}',
+    description:
+      'Validation error below the field where a researcher names a layout attribute, which stores a position on a canvas and is exported as one column for each coordinate: one of those columns is different from another column but would be written as the same column name. Exported files change some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. writtenColumn is the column name as it would be written. Text inside curly quotes is a name or column name; keep it exactly as given.',
   },
 });
 
@@ -100,15 +127,26 @@ const exportColumnConflictMessage = (
       siblingConflict?.siblingOrigin.kind === 'option'
         ? String(siblingConflict.siblingOrigin.value)
         : '',
+    writtenColumn: siblingConflict?.writtenColumn ?? '',
   };
+  const written = siblingConflict?.writtenColumn !== undefined;
 
   switch (origin.kind) {
     case 'option':
-      return intl.formatMessage(messages.optionColumn, values);
+      return intl.formatMessage(
+        written ? messages.optionColumnWritten : messages.optionColumn,
+        values,
+      );
     case 'layout':
-      return intl.formatMessage(messages.layoutColumn, values);
+      return intl.formatMessage(
+        written ? messages.layoutColumnWritten : messages.layoutColumn,
+        values,
+      );
     case 'name':
-      return intl.formatMessage(messages.nameColumn, values);
+      return intl.formatMessage(
+        written ? messages.nameColumnWritten : messages.nameColumn,
+        values,
+      );
   }
 };
 

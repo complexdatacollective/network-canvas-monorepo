@@ -191,8 +191,10 @@ inside the key:
 A `<desc>` element is only written when `attr.name` differs from the name in
 your codebook. Replacing characters this way doesn't give a warning.
 
-Architect refuses names that would give two variables the same column. In a
-protocol created before that check, two variables can still produce the same
+Architect refuses names that would give two variables the same column,
+including names that only become the same once an export writes them, such as
+`close friend` and `close_friend` in GraphML. In a protocol created before that
+check, two variables can still produce the same
 column name in one file, for example a variable named `support_emotional` and
 a categorical variable `support` with the option `emotional`. A roster column
 that isn't a variable in your codebook can also have the same name as a
@@ -201,9 +203,9 @@ as `nodeID` always keep their names, the variable that comes first in your
 codebook keeps the name, and each later column is renamed with the first free
 suffix of `_2`, `_3`, and so on. Names that differ only in capitalization, such
 as `Age` and `age`, are not renamed. The same suffixes are used when two names
-become the same in GraphML after spaces and punctuation are replaced, as with
-`close friend` and `close_friend`: the name that was already valid keeps it,
-and the other is renamed.
+in such a protocol become the same in GraphML after spaces and punctuation are
+replaced, as with `close friend` and `close_friend`: the name that was already
+valid keeps it, and the other is renamed.
 
 Whenever a column is renamed, the export shows a warning titled "Some columns
 were given new names". See

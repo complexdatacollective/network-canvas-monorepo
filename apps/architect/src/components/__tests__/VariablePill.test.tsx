@@ -343,9 +343,17 @@ describe('ConnectedVariablePill', () => {
       );
     });
 
+    it('refuses a name that an export writes as a sibling’s column', async () => {
+      await expectRefused(
+        'node-subject',
+        'colour red',
+        'In exported data, this name and the option “red” of the attribute “colour” would become the same column, “colour_red”. Choose a different name.',
+      );
+    });
+
     it('lets a name through that only resembles a sibling’s column', async () => {
       const input = await startEditing('node-subject');
-      fireEvent.change(input, { target: { value: 'colour red' } });
+      fireEvent.change(input, { target: { value: 'colour-red' } });
 
       expect(screen.queryByTestId('variable-name-field-error')).toBeNull();
       expect(

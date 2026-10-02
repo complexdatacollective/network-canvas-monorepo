@@ -135,11 +135,42 @@ const siblingLayoutMessages = defineMessages({
   },
 });
 
+/*
+ * For two columns that are different text but that the export writes the same
+ * way, such as GraphML's `close friend` and `close_friend`. Keyed by what
+ * produces the column being saved; the column it meets is named as it is, so
+ * one sentence serves whatever produces it.
+ */
+const writtenMessages = defineMessages({
+  name: {
+    id: 'protocolBuilder.exportColumn.writtenName',
+    defaultMessage:
+      'In the export, the name “{column}” and the column “{siblingColumn}” of the attribute “{siblingName}” would become the same column, “{writtenColumn}”. Choose a different name.',
+    description:
+      'Refusal shown when the name typed for an attribute differs from a column another attribute already writes, but the export would write both as the same column name. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. column is the name typed; siblingColumn is the other column; siblingName is the other attribute; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated.',
+  },
+  option: {
+    id: 'protocolBuilder.exportColumn.writtenOption',
+    defaultMessage:
+      'In the export, the column “{column}” for option “{value}” of “{name}” and the column “{siblingColumn}” of the attribute “{siblingName}” would become the same column, “{writtenColumn}”. Change the option value or the attribute name.',
+    description:
+      'Refusal shown when an option of a categorical attribute would be exported to a column that differs from a column another attribute already writes, but the export would write both as the same column name. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. name is the categorical attribute; value is the option; column is where it would be written; siblingName is the other attribute; siblingColumn is its column; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated.',
+  },
+  layout: {
+    id: 'protocolBuilder.exportColumn.writtenLayout',
+    defaultMessage:
+      'In the export, the position column “{column}” of the layout attribute “{name}” and the column “{siblingColumn}” of the attribute “{siblingName}” would become the same column, “{writtenColumn}”. Choose a different name.',
+    description:
+      'Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to a column that differs from a column another attribute already writes, but the export would write both as the same column name. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. name is the layout attribute; column is the position column; siblingName is the other attribute; siblingColumn is its column; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated.',
+  },
+});
+
 /**
  * Keyed by what produces the column being saved, then by what produces the one
- * it meets. A name meeting a name cannot happen — equal columns mean equal
- * names, which the duplicate-name check refuses first — but the pair is kept so
- * the lookup is total and a column is never left without a sentence.
+ * it meets. A name meeting a name as the same text cannot happen — equal
+ * columns mean equal names, which the duplicate-name check refuses first — but
+ * the pair is kept so the lookup is total and a column is never left without a
+ * sentence.
  */
 const siblingMessages = {
   name: siblingNameMessages,
@@ -188,8 +219,20 @@ const refusalValues = (
         ...(conflict.siblingOrigin.kind === 'option'
           ? { siblingValue: String(conflict.siblingOrigin.value) }
           : {}),
+        ...(conflict.writtenColumn === undefined
+          ? {}
+          : { writtenColumn: conflict.writtenColumn }),
       }),
 });
+
+const refusalMessage = (conflict: ExportColumnConflict): MessageDescriptor => {
+  if (conflict.kind === 'reserved') {
+    return reservedMessages[conflict.origin.kind];
+  }
+  return conflict.writtenColumn === undefined
+    ? siblingMessages[conflict.origin.kind][conflict.siblingOrigin.kind]
+    : writtenMessages[conflict.origin.kind];
+};
 
 /**
  * Every way the export would write two things to one column if `candidate`
@@ -217,9 +260,7 @@ export const exportColumnRefusals = ({
     (conflict) => ({
       origin: conflict.origin,
       message: createMessageError(
-        conflict.kind === 'reserved'
-          ? reservedMessages[conflict.origin.kind]
-          : siblingMessages[conflict.origin.kind][conflict.siblingOrigin.kind],
+        refusalMessage(conflict),
         refusalValues(candidate.name, conflict),
       ),
     }),

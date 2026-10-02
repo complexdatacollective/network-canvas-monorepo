@@ -3,6 +3,7 @@ export * from './date-fields.ts';
 export * from './ensure-error.ts';
 export * from './export-columns.ts';
 export * from './export-process.ts';
+export * from './export-text.ts';
 export * from './network.ts';
 export * from './posthog.ts';
 export * from './session.ts';

@@ -1,25 +1,4 @@
-// The characters XML 1.0 (5th edition) allows in a Name, production [4a]
-// NameChar: https://www.w3.org/TR/xml/#NT-NameChar. GraphML types `attr.name`
-// as an xs:NMTOKEN, which is any run of them, so every Unicode letter is valid
-// and spaces and most punctuation are not.
-const NAME_CHARACTERS = [
-  ':A-Z_a-z\\-.0-9',
-  '\\u00B7',
-  '\\u00C0-\\u00D6',
-  '\\u00D8-\\u00F6',
-  '\\u00F8-\\u037D',
-  '\\u037F-\\u1FFF',
-  '\\u200C-\\u200D',
-  '\\u203F-\\u2040',
-  '\\u2070-\\u218F',
-  '\\u2C00-\\u2FEF',
-  '\\u3001-\\uD7FF',
-  '\\uF900-\\uFDCF',
-  '\\uFDF0-\\uFFFD',
-  '\\u{10000}-\\u{EFFFF}',
-].join('');
-
-const NOT_A_NAME_CHARACTER = new RegExp(`[^${NAME_CHARACTERS}]`, 'gu');
+import { toGraphMLAttrName } from '@codaco/shared-consts';
 
 type AttrNameTarget = 'graph' | 'node' | 'edge' | 'all';
 
@@ -36,14 +15,6 @@ type AttrNameKey = {
   readonly scopes?: readonly string[];
 };
 
-/**
- * A valid NMTOKEN for `name`: every NameChar kept, every other character
- * (a space, `(`, `/`, ...) replaced by `_`. A name that is already a valid
- * NMTOKEN is returned unchanged.
- */
-export const deriveAttrName = (name: string): string =>
-  name.replace(NOT_A_NAME_CHARACTER, '_');
-
 const overlaps = (a: AttrNameTarget, b: AttrNameTarget) =>
   a === 'all' || b === 'all' || a === b;
 
@@ -56,7 +27,7 @@ const neverMeet = (a: AttrNameKey, b: AttrNameKey) =>
 /**
  * The `attr.name` to write for each key.
  *
- * Two names that differ only in characters `deriveAttrName` replaces (`a b`
+ * Two names that differ only in characters `toGraphMLAttrName` replaces (`a b`
  * and `a?b`) derive the same `attr.name`, and so does a variable named `label`
  * beside the `label` key every export declares. Keys whose domains overlap must
  * not share an `attr.name`, so a clash is settled in a fixed order:
@@ -97,7 +68,7 @@ export const resolveAttrNames = <Key extends AttrNameKey>(
 
   const deferred: Key[] = [];
   for (const key of keys.filter(({ builtIn }) => !builtIn)) {
-    if (deriveAttrName(key.name) === key.name && isFree(key.name, key)) {
+    if (toGraphMLAttrName(key.name) === key.name && isFree(key.name, key)) {
       claim(key, key.name);
     } else {
       deferred.push(key);
@@ -105,7 +76,7 @@ export const resolveAttrNames = <Key extends AttrNameKey>(
   }
 
   for (const key of deferred) {
-    const derived = deriveAttrName(key.name);
+    const derived = toGraphMLAttrName(key.name);
     let attrName = derived;
     for (let suffix = 2; !isFree(attrName, key); suffix += 1) {
       attrName = `${derived}_${suffix}`;

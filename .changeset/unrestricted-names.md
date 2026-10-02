@@ -37,7 +37,11 @@ In Architect:
   option, and a layout attribute as one column for each coordinate. So an
   attribute called "age_1" can't sit beside a categorical "age" attribute that
   has the option "1", and no attribute can take the name of a column every
-  export includes, such as "nodeID" or "label".
+  export includes, such as "nodeID" or "label". Names that an export would
+  write the same way are refused too: GraphML files replace spaces and most
+  punctuation with "_", so "close friend" and "close_friend" can't both be
+  used, and CSV files put an apostrophe before a name that starts with "=",
+  "+", "-" or "@", so "=total" and "'=total" can't either.
 - Two options of one attribute that would be exported to the same column, such
   as the number 1 and the text "1", are refused.
 - A participant data file (roster) is checked for characters that exported data

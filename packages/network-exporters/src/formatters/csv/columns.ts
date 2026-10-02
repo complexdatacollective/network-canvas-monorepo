@@ -3,6 +3,7 @@ import {
   type ExportColumnEntity,
   type ExportColumnOrigin,
   type LayoutColumnAxis,
+  neutralizeCsvFormula,
   reservedExportColumns,
   toCanonicalText,
   variableExportColumnEntries,
@@ -11,7 +12,6 @@ import {
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
 import { getOwn, isCategoricalOptionSelected } from '../../utils/general';
-import { csvHeaderCell } from './csvShared';
 
 type Attributes = Readonly<Record<string, unknown>>;
 
@@ -80,7 +80,8 @@ const layoutCell = (
 
 // Headers are compared as they are written, so `=a`, written `'=a`, clashes
 // with a variable named `'=a`.
-const headerKey = (column: string) => toCanonicalText(csvHeaderCell(column));
+const headerKey = (column: string) =>
+  toCanonicalText(neutralizeCsvFormula(column));
 
 const variableCell =
   (

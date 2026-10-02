@@ -14,6 +14,7 @@ import {
   ncUUIDProperty,
   nodeExportIDProperty,
 } from './export-process.ts';
+import { neutralizeCsvFormula, toGraphMLAttrName } from './export-text.ts';
 import {
   edgeSourceProperty,
   edgeTargetProperty,
@@ -32,10 +33,11 @@ import {
  * A variable's name becomes a CSV column header and a GraphML `attr.name`, and
  * categorical and layout variables expand into several columns named after
  * it. Two variables with different names can therefore still write the same
- * column. The exporters derive their columns through the functions here, and
- * the editors refuse a name through `findExportColumnConflicts`, which derives
- * them the same way, so the editors refuse exactly what the export would
- * collide on.
+ * column, and so can two columns that differ only in what a format changes as
+ * it writes them (`export-text.ts`). The exporters derive their columns
+ * through the functions here, and the editors refuse a name through
+ * `findExportColumnConflicts`, which derives and writes them the same way, so
+ * the editors refuse exactly what the export would collide on.
  */
 
 export type ExportColumnFormat = 'csv' | 'graphml';
@@ -225,7 +227,7 @@ export const reservedExportColumns = {
  * One way a variable's would-be columns clash with what the export already
  * writes. `column` and `origin` describe the candidate's own column; the rest
  * describes what it clashes with: a built-in column, or one of a sibling
- * variable's columns.
+ * variable's columns. `formats` are the export formats in which they clash.
  */
 export type ExportColumnConflict<
   Sibling extends ExportColumnVariable = ExportColumnVariable,
@@ -244,7 +246,17 @@ export type ExportColumnConflict<
       readonly sibling: Sibling;
       readonly siblingColumn: string;
       readonly siblingOrigin: ExportColumnOrigin;
+      readonly formats: readonly ExportColumnFormat[];
+      /**
+       * Set when `column` and `siblingColumn` are different text that a format
+       * writes the same way, such as GraphML's `close friend` and
+       * `close_friend`: the column as that format writes it.
+       */
+      readonly writtenColumn?: string;
     };
+
+const writtenColumn = (format: ExportColumnFormat, column: string): string =>
+  format === 'csv' ? neutralizeCsvFormula(column) : toGraphMLAttrName(column);
 
 type ComparableEntry = ExportColumnEntry & { readonly key: string };
 
@@ -259,43 +271,25 @@ const originKey = (origin: ExportColumnOrigin): string => {
   }
 };
 
-// Every format, screen-space columns included: a name is chosen long before
-// anyone picks the format or the options it will be exported with. The same
-// column from both formats (`pos_x` and `pos_X`) is kept once.
+// Screen-space columns included: a name is chosen long before anyone picks
+// the options it will be exported with.
 const comparableEntries = (
+  format: ExportColumnFormat,
   variable: ExportColumnVariable,
-): ComparableEntry[] => {
-  const seen = new Set<string>();
-  const entries: ComparableEntry[] = [];
-  for (const format of FORMATS) {
-    for (const entry of columnEntries(format, variable, true)) {
-      const key = normalizeForComparison(entry.column);
-      const identity = JSON.stringify([key, originKey(entry.origin)]);
-      if (seen.has(identity)) continue;
-      seen.add(identity);
-      entries.push({ ...entry, key });
-    }
-  }
-  return entries;
-};
+): ComparableEntry[] =>
+  columnEntries(format, variable, true).map((entry) => ({
+    ...entry,
+    key: normalizeForComparison(writtenColumn(format, entry.column)),
+  }));
 
 const reservedColumnsFor = (
+  format: ExportColumnFormat,
   entity: ExportColumnEntity,
-): Map<string, { column: string; formats: ExportColumnFormat[] }> => {
-  const reserved = new Map<
-    string,
-    { column: string; formats: ExportColumnFormat[] }
-  >();
-  for (const format of FORMATS) {
-    for (const column of reservedExportColumns[format][entity]) {
-      const key = normalizeForComparison(column);
-      const existing = reserved.get(key);
-      if (!existing) {
-        reserved.set(key, { column, formats: [format] });
-      } else if (!existing.formats.includes(format)) {
-        existing.formats.push(format);
-      }
-    }
+): Map<string, string> => {
+  const reserved = new Map<string, string>();
+  for (const column of reservedExportColumns[format][entity]) {
+    const key = normalizeForComparison(writtenColumn(format, column));
+    if (!reserved.has(key)) reserved.set(key, column);
   }
   return reserved;
 };
@@ -310,8 +304,11 @@ const reservedColumnsFor = (
  * symmetric, so a rename, a new option and a new variable are all judged by
  * the same call.
  *
- * Columns are compared with `normalizeForComparison`, the comparison the
- * editors' duplicate-name check makes. A sibling whose name is the
+ * Each format's columns are compared as that format writes them, and only
+ * with that format's columns: a CSV header never shares a file with a GraphML
+ * attribute. Written columns are compared with `normalizeForComparison`, the
+ * comparison the editors' duplicate-name check makes. A clash found in both
+ * formats is reported once, with both formats. A sibling whose name is the
  * candidate's own is skipped: that is a duplicate name, which the editors
  * already refuse with their own message.
  */
@@ -326,37 +323,96 @@ export const findExportColumnConflicts = <
   candidate: ExportColumnVariable;
   siblings: readonly Sibling[];
 }>): ExportColumnConflict<Sibling>[] => {
-  const reserved = reservedColumnsFor(entity);
   const candidateName = normalizeForComparison(candidate.name);
-  const others = siblings
-    .filter((sibling) => normalizeForComparison(sibling.name) !== candidateName)
-    .map((sibling) => ({ sibling, entries: comparableEntries(sibling) }));
+  const others = siblings.filter(
+    (sibling) => normalizeForComparison(sibling.name) !== candidateName,
+  );
 
-  const conflicts: ExportColumnConflict<Sibling>[] = [];
-  for (const { column, origin, key } of comparableEntries(candidate)) {
-    const builtIn = reserved.get(key);
-    if (builtIn) {
-      conflicts.push({
-        kind: 'reserved',
-        column,
-        origin,
-        reservedColumn: builtIn.column,
-        formats: builtIn.formats,
-      });
+  // Keyed by the two columns as text, so the same clash found in a second
+  // format adds that format rather than a second conflict.
+  const found = new Map<
+    string,
+    {
+      readonly conflict: ExportColumnConflict<Sibling>;
+      readonly formats: ExportColumnFormat[];
     }
-    for (const { sibling, entries } of others) {
-      for (const entry of entries) {
-        if (entry.key !== key) continue;
-        conflicts.push({
-          kind: 'sibling',
-          column,
-          origin,
-          sibling,
-          siblingColumn: entry.column,
-          siblingOrigin: entry.origin,
-        });
+  >();
+  const record = (
+    identity: readonly (string | number)[],
+    format: ExportColumnFormat,
+    conflict: (formats: ExportColumnFormat[]) => ExportColumnConflict<Sibling>,
+  ) => {
+    const key = JSON.stringify(identity);
+    const existing = found.get(key);
+    if (existing) {
+      existing.formats.push(format);
+      return;
+    }
+    const formats = [format];
+    found.set(key, { conflict: conflict(formats), formats });
+  };
+
+  for (const format of FORMATS) {
+    const reserved = reservedColumnsFor(format, entity);
+    const siblingEntries = others.map((sibling, index) => ({
+      sibling,
+      index,
+      entries: comparableEntries(format, sibling),
+    }));
+    for (const { column, origin, key } of comparableEntries(
+      format,
+      candidate,
+    )) {
+      const ownColumn = normalizeForComparison(column);
+      const reservedColumn = reserved.get(key);
+      if (reservedColumn !== undefined) {
+        record(
+          [
+            'reserved',
+            ownColumn,
+            originKey(origin),
+            normalizeForComparison(reservedColumn),
+          ],
+          format,
+          (formats) => ({
+            kind: 'reserved',
+            column,
+            origin,
+            reservedColumn,
+            formats,
+          }),
+        );
+      }
+      for (const { sibling, index, entries } of siblingEntries) {
+        for (const entry of entries) {
+          if (entry.key !== key) continue;
+          const siblingColumn = normalizeForComparison(entry.column);
+          record(
+            [
+              'sibling',
+              ownColumn,
+              originKey(origin),
+              index,
+              siblingColumn,
+              originKey(entry.origin),
+            ],
+            format,
+            (formats) => ({
+              kind: 'sibling',
+              column,
+              origin,
+              sibling,
+              siblingColumn: entry.column,
+              siblingOrigin: entry.origin,
+              formats,
+              ...(siblingColumn === ownColumn
+                ? {}
+                : { writtenColumn: writtenColumn(format, column) }),
+            }),
+          );
+        }
       }
     }
   }
-  return conflicts;
+  return [...found.values()].map(({ conflict }) => conflict);
 };

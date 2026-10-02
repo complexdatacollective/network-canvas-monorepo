@@ -41,10 +41,13 @@ What the exports now do:
 - Columns that would share a name in one file, as a CSV header or a GraphML
   `attr.name`, are renamed `_2`, `_3`, ... in codebook order, with a
   `'column-renamed'` warning. Built-in columns keep their names. Before, CSV
-  merged them and one variable's values were lost.
+  merged them and one variable's values were lost. The protocol editors refuse
+  such names in new protocols, so this mostly applies to older ones.
 - GraphML `attr.name` is an XML name token, so a character it can't hold (a
   space, `(`, `/`, ...) is replaced with `_`, and the name as written is kept
-  in the key's `<desc>`.
+  in the key's `<desc>`. This replacement and the CSV apostrophe below are
+  `toGraphMLAttrName` and `neutralizeCsvFormula` from `@codaco/shared-consts`,
+  which the editors' clash check uses too.
 - Characters XML 1.0 forbids (C0 controls other than tab, line feed and
   carriage return, unpaired surrogates, U+FFFE and U+FFFF) are stripped from
   the finished GraphML document, with a warning. CSV output keeps the data

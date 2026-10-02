@@ -7,13 +7,14 @@ import {
   type NcEgo,
   categoricalOptionColumn,
   layoutColumn,
+  toGraphMLAttrName,
   variableExportColumnEntries,
 } from '@codaco/shared-consts';
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
 import { getEntityAttributes, getOwn } from '../../utils/general';
-import { deriveAttrName, resolveAttrNames } from './attrNames';
+import { resolveAttrNames } from './attrNames';
 import { createDocumentFragment, getGraphMLTypeForKey, sha1 } from './helpers';
 import {
   builtInKeys,
@@ -408,7 +409,7 @@ export default function getKeyElementGenerator(
       fragment.appendChild(keyElement);
 
       // Making a name an NMTOKEN is not a rename; numbering it is.
-      const column = deriveAttrName(key.name);
+      const column = toGraphMLAttrName(key.name);
       if (!key.builtIn && attrName !== column) {
         for (const owner of key.owners) {
           renamedColumns.push({
