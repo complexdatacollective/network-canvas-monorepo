@@ -17,6 +17,7 @@ import { ecosystemLocales } from '@codaco/app-i18n/locales';
 
 import { interviewLocales } from '../../i18n/locales';
 import { interviewCatalogs } from '../catalogs';
+import de from '../de.json';
 import ptBR from '../pt-BR.json';
 
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -25,6 +26,9 @@ const committedEn = JSON.parse(
 ) as ExtractedCatalog;
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
+const deSources = readTranslationSources(localesDir, 'de');
+const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
@@ -48,7 +52,16 @@ describe('the interview package built-in message catalogs', () => {
 
   it('ships every ecosystem language without assuming the host registry', () => {
     const declared = interviewLocales.map(({ locale }) => locale);
-    expect(declared).toEqual(['en', 'en-GB', 'es', 'zh-Hans', 'pt-BR']);
+    expect(declared).toEqual([
+      'en',
+      'en-GB',
+      'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+    ]);
     expect(ecosystemLocales.map(({ locale }) => locale).toSorted()).toEqual(
       declared.toSorted(),
     );
@@ -69,6 +82,24 @@ describe('the interview package built-in message catalogs', () => {
       readFileSync(join(localesDir, 'zh-Hans.json'), 'utf8'),
     ) as Record<string, string>;
     expect(checkFullLocale(committedEn, zhHans, zhHansSources)).toEqual([]);
+  });
+
+  it('provides complete nonblank Traditional Chinese with ICU and rich-text token parity', () => {
+    const zhHant = JSON.parse(
+      readFileSync(join(localesDir, 'zh-Hant.json'), 'utf8'),
+    ) as Record<string, string>;
+    expect(checkFullLocale(committedEn, zhHant, zhHantSources)).toEqual([]);
+  });
+
+  it('provides complete nonblank German with ICU and rich-text token parity', () => {
+    expect(checkFullLocale(committedEn, de, deSources)).toEqual([]);
+  });
+
+  it('provides complete nonblank Dutch with ICU and rich-text token parity', () => {
+    const nl = JSON.parse(
+      readFileSync(join(localesDir, 'nl.json'), 'utf8'),
+    ) as Record<string, string>;
+    expect(checkFullLocale(committedEn, nl, nlSources)).toEqual([]);
   });
 
   it('provides complete nonblank Brazilian Portuguese with ICU and rich-text token parity', () => {

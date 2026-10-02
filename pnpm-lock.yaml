@@ -2153,6 +2153,9 @@ importers:
 
   packages/app-i18n:
     dependencies:
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../shared-consts
       '@formatjs/cli-lib':
         specifier: 'catalog:'
         version: 10.0.8

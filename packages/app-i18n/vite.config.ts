@@ -25,6 +25,7 @@ export default defineConfig({
     },
     rolldownOptions: {
       external: [
+        '@codaco/shared-consts',
         'react',
         'react/jsx-runtime',
         'react-intl',

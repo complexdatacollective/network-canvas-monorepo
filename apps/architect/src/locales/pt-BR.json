@@ -98,7 +98,7 @@
   "architect.chrome.codebook.entityTypeDialog.node": "nó",
   "architect.chrome.home.libraryPanel.anExampleIntroducingTheKeyFeatures": "Um exemplo que apresenta as principais funcionalidades e técnicas disponíveis no Network Canvas.",
   "architect.chrome.home.libraryPanel.thisProtocolHasNoDescription": "Este protocolo não tem descrição.",
-  "architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn": "{protocolCount, plural, one {Seu protocolo fica salvo apenas neste dispositivo. Ele nunca é enviado a um servidor.} other {Seus # protocolos ficam salvos apenas neste dispositivo. Eles nunca são enviados a um servidor.}}",
+  "architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn": "{protocolCount, plural, one {Seus protocolos ficam salvos apenas neste dispositivo. Eles nunca são enviados a um servidor.} other {Seus # protocolos ficam salvos apenas neste dispositivo. Eles nunca são enviados a um servidor.}}",
   "architect.chrome.projectNav.projectActions.returnToStages": "Voltar às etapas",
   "architect.chrome.projectNav.projectActions.returnToStartScreen": "Voltar à tela inicial",
   "architect.chrome.projectNav.projectNav.untitledProtocol": "Protocolo sem título",

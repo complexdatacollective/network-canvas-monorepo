@@ -20,10 +20,13 @@ import { createAppIntl } from '@codaco/app-i18n/messages';
 import { interviewerProductionLocales } from '../../i18n/locales';
 import { buildDeleteProtocolMessage } from '../../routes/deleteProtocolMessage';
 import { interviewerCatalogs } from '../catalogs';
+import de from '../de.json';
 import enGb from '../en-GB.json';
 import es from '../es.json';
+import nl from '../nl.json';
 import ptBR from '../pt-BR.json';
 import zhHans from '../zh-Hans.json';
+import zhHant from '../zh-Hant.json';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const source = JSON.parse(
@@ -32,6 +35,9 @@ const source = JSON.parse(
 const localesDir = join(src, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
 const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
+const deSources = readTranslationSources(localesDir, 'de');
+const nlSources = readTranslationSources(localesDir, 'nl');
 const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
@@ -51,6 +57,18 @@ describe('the complete administration catalog', () => {
   it('ships full Simplified Chinese with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, zhHans, zhHansSources)).toEqual([]);
   });
+  it('ships full Traditional Chinese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, zhHant, zhHantSources)).toEqual([]);
+  });
+
+  it('ships full German with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, de, deSources)).toEqual([]);
+  });
+
+  it('ships full Dutch with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, nl, nlSources)).toEqual([]);
+  });
+
   it('ships full Brazilian Portuguese with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, ptBR, ptBRSources)).toEqual([]);
   });
@@ -80,6 +98,9 @@ describe('the complete administration catalog', () => {
       'en-GB',
       'es',
       'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
       'pt-BR',
     ]);
     for (const entry of interviewerProductionLocales)
