@@ -1,5 +1,11 @@
 # @codaco/tailwind-config
 
+## 1.5.1
+
+### Patch Changes
+
+- 56e16d0: Update third-party dependencies to their latest minor and patch releases, including Base UI 1.8, React Aria Components 1.21, Tiptap 3.31.4, Mapbox GL 3.32, Motion 13.4, Lucide 1.49, the Inclusive Sans and Nunito variable fonts 5.3, PostHog, Prisma 7.10 and Electron 43.7.
+
 ## 1.5.0
 
 ### Minor Changes
