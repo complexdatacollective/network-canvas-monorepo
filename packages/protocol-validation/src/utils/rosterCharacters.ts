@@ -1,6 +1,6 @@
 import {
   entityAttributesProperty,
-  hasXmlIllegalCharacters,
+  xmlIllegalCodePoints,
 } from '@codaco/shared-consts';
 
 import { readRosterCsv } from './readRosterCsv.ts';
@@ -43,16 +43,8 @@ export type RosterCharacterReport = Readonly<{
 
 const MAX_PROBLEMS = 100;
 
-const codePointLabel = (character: string) =>
-  `U+${(character.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}`;
-
-const firstIllegalCharacter = (value: string): string | undefined => {
-  if (!hasXmlIllegalCharacters(value)) return undefined;
-  for (const character of value) {
-    if (hasXmlIllegalCharacters(character)) return codePointLabel(character);
-  }
-  return undefined;
-};
+const firstIllegalCharacter = (value: string): string | undefined =>
+  xmlIllegalCodePoints(value)[0];
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
