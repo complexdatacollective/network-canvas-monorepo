@@ -38,9 +38,19 @@ In Architect:
 - A new protocol asks which language you are writing it in. A protocol
   upgraded from an earlier version is marked as written in "Unspecified
   language", and the project navigation suggests you set its real language.
+- Once a protocol has more than one language, each text field in the stage
+  editors has a language menu that shows which languages its text still needs.
+  All the menus switch together, so you can work through a stage in one
+  language. Node type, edge type and attribute labels can be translated too.
 - The printable protocol summary can be printed in any of the protocol's
   languages.
-- The Language Chooser is in the New Stage menu.
+- The Language Chooser is in the New Stage menu. Its editor sets an optional
+  introduction and lists the languages participants will be offered: every
+  language the protocol is written in.
+- A preview opens in the language a participant with your browser would see,
+  rather than in Architect's own language. A "Preview language" menu above it
+  switches the interview to any of the protocol's languages while the preview
+  window is open.
 
 In Interviewer and Fresco:
 
