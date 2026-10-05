@@ -10,14 +10,24 @@ import type { Family } from './model';
  * Something the participant still needs to record about one person before
  * their family is complete enough to continue.
  *
- * - `parents`: the person has fewer than two biological parents. Every person
- *   has two, so a parent the participant knows nothing about is still added.
+ * - `parents`: the person has fewer than two biological parents (`missing` of
+ *   them). Every person has two, so a parent the participant knows nothing
+ *   about is still added.
  * - `siblings` / `children`: none are recorded and the participant has not
  *   said there are none, or that they don't know.
  */
-export type CompletenessGap = {
-  kind: 'parents' | 'siblings' | 'children';
-  personId: string;
+export type CompletenessItem =
+  | { kind: 'parents'; personId: string; missing: number }
+  | { kind: 'siblings' | 'children'; personId: string };
+
+export type CompletenessProgress = {
+  /** What is still needed, about people already in the family. */
+  items: CompletenessItem[];
+  /** Steps towards completion taken, and in total. */
+  done: number;
+  total: number;
+  /** `siblings:<id>` / `children:<id>` for every person asked about them. */
+  asked: ReadonlySet<string>;
 };
 
 // Gamete donors are biological parents; gestational carriers, adoptive and
@@ -59,10 +69,43 @@ const includes = (
   PEDIGREE_COMPLETENESS_SCOPES.indexOf(scope) >=
   PEDIGREE_COMPLETENESS_SCOPES.indexOf(level);
 
+/** Where a person sits relative to the participant, which decides what is
+ * asked about them. */
+type Role = 'ego' | 'parent' | 'sibling' | 'child' | 'auntOrUncle' | 'none';
+
+type Requirements = {
+  /** The role their parents have, when their parents are required. */
+  parents?: Role;
+  siblings?: Role;
+  children?: Role;
+};
+
+function requirementsFor(
+  role: Role,
+  scope: PedigreeCompletenessScope,
+): Requirements {
+  switch (role) {
+    case 'ego':
+      return includes(scope, 'firstDegree')
+        ? { parents: 'parent', siblings: 'sibling', children: 'child' }
+        : { parents: 'parent' };
+    case 'parent':
+      return includes(scope, 'grandparents')
+        ? { parents: 'none', siblings: 'auntOrUncle' }
+        : {};
+    case 'sibling':
+    case 'child':
+      return includes(scope, 'secondDegree') ? { children: 'none' } : {};
+    case 'auntOrUncle':
+      return includes(scope, 'thirdDegree') ? { children: 'none' } : {};
+    case 'none':
+      return {};
+  }
+}
+
 /**
- * What the participant still has to record for their family to reach the
- * researcher's completeness scope, nearest relatives first. Each scope adds to
- * the one before:
+ * How far the participant's family is from the researcher's completeness
+ * scope. Each scope adds to the one before:
  *
  * - `parents`: the participant's two biological parents.
  * - `firstDegree`: their siblings and children.
@@ -71,20 +114,26 @@ const includes = (
  * - `secondDegree`: each sibling's children and each child's children
  *   (nieces, nephews and grandchildren).
  * - `thirdDegree`: each aunt's and uncle's children (first cousins).
+ *
+ * Progress counts one step for every biological parent and every answered
+ * group of siblings or children. Steps belonging to a parent not yet added
+ * are counted too, so adding someone never makes the family look less
+ * complete — only adding a sibling or child, who brings questions of their
+ * own, can.
  */
-export function findCompletenessGaps(
+export function evaluateCompleteness(
   family: Family,
   scope: PedigreeCompletenessScope,
-): CompletenessGap[] {
+): CompletenessProgress {
+  // Each with how far its person is from the participant, to list the
+  // nearest first.
+  const found: { item: CompletenessItem; distance: number }[] = [];
+  const asked = new Set<string>();
+  let done = 0;
+  let total = 0;
   const egoId = family.egoId;
-  if (!egoId) return [];
-  const gaps: CompletenessGap[] = [];
+  if (!egoId) return { items: [], done, total, asked };
 
-  const needParents = (personId: string) => {
-    if (biologicalParentsOf(family, personId).length < 2) {
-      gaps.push({ kind: 'parents', personId });
-    }
-  };
   const answered = (
     personId: string,
     none: PedigreeRelativesNotRecorded,
@@ -93,49 +142,99 @@ export function findCompletenessGaps(
     const notRecorded = family.byId.get(personId)?.relativesNotRecorded ?? [];
     return notRecorded.includes(none) || notRecorded.includes(unknown);
   };
-  const needSiblings = (personId: string) => {
-    if (
-      biologicalSiblingsOf(family, personId).length === 0 &&
-      !answered(personId, 'noSiblings', 'siblingsUnknown')
-    ) {
-      gaps.push({ kind: 'siblings', personId });
-    }
-  };
-  const needChildren = (personId: string) => {
-    if (
-      biologicalChildrenOf(family, personId).length === 0 &&
-      !answered(personId, 'noChildren', 'childrenUnknown')
-    ) {
-      gaps.push({ kind: 'children', personId });
-    }
-  };
 
-  const parents = biologicalParentsOf(family, egoId);
-  const siblings = biologicalSiblingsOf(family, egoId);
-  const children = biologicalChildrenOf(family, egoId);
+  // Walk the requirements outwards from the participant. `personId` is null
+  // for someone not yet added, whose requirements are all still to do.
+  const visit = (personId: string | null, role: Role, distance: number) => {
+    const requirements = requirementsFor(role, scope);
 
-  needParents(egoId);
-  if (includes(scope, 'firstDegree')) {
-    needSiblings(egoId);
-    needChildren(egoId);
-  }
-  if (includes(scope, 'grandparents')) {
-    for (const parentId of parents) {
-      needParents(parentId);
-      needSiblings(parentId);
-    }
-  }
-  if (includes(scope, 'secondDegree')) {
-    for (const siblingId of siblings) needChildren(siblingId);
-    for (const childId of children) needChildren(childId);
-  }
-  if (includes(scope, 'thirdDegree')) {
-    for (const parentId of parents) {
-      for (const auntOrUncleId of biologicalSiblingsOf(family, parentId)) {
-        needChildren(auntOrUncleId);
+    if (requirements.parents) {
+      const parents = personId ? biologicalParentsOf(family, personId) : [];
+      for (let slot = 0; slot < 2; slot++) {
+        total += 1;
+        const parentId = parents[slot];
+        if (parentId) done += 1;
+        visit(parentId ?? null, requirements.parents, distance + 1);
+      }
+      if (personId && parents.length < 2) {
+        found.push({
+          item: { kind: 'parents', personId, missing: 2 - parents.length },
+          distance,
+        });
       }
     }
-  }
 
-  return gaps;
+    const group = (
+      kind: 'siblings' | 'children',
+      relatives: string[],
+      relativeRole: Role,
+      none: PedigreeRelativesNotRecorded,
+      unknown: PedigreeRelativesNotRecorded,
+    ) => {
+      total += 1;
+      if (!personId) return;
+      asked.add(`${kind}:${personId}`);
+      if (relatives.length > 0 || answered(personId, none, unknown)) {
+        done += 1;
+      } else {
+        found.push({ item: { kind, personId }, distance });
+      }
+      for (const relativeId of relatives) {
+        visit(relativeId, relativeRole, distance + 1);
+      }
+    };
+
+    if (requirements.siblings) {
+      group(
+        'siblings',
+        personId ? biologicalSiblingsOf(family, personId) : [],
+        requirements.siblings,
+        'noSiblings',
+        'siblingsUnknown',
+      );
+    }
+    if (requirements.children) {
+      group(
+        'children',
+        personId ? biologicalChildrenOf(family, personId) : [],
+        requirements.children,
+        'noChildren',
+        'childrenUnknown',
+      );
+    }
+  };
+
+  visit(egoId, 'ego', 0);
+  const items = found
+    .toSorted((a, b) => a.distance - b.distance)
+    .map(({ item }) => item);
+  return { items, done, total, asked };
+}
+
+/** The answers that stand in for siblings or children not recorded. */
+export const RELATIVES_NOT_RECORDED = {
+  siblings: { none: 'noSiblings', unknown: 'siblingsUnknown' },
+  children: { none: 'noChildren', unknown: 'childrenUnknown' },
+} as const satisfies Record<
+  'siblings' | 'children',
+  Record<'none' | 'unknown', PedigreeRelativesNotRecorded>
+>;
+
+/**
+ * Whether a person's details should ask if they have siblings, and children:
+ * when the requirement asks about them and none are recorded.
+ */
+export function relativesToAskAbout(
+  family: Family,
+  progress: CompletenessProgress,
+  personId: string,
+): { siblings: boolean; children: boolean } {
+  return {
+    siblings:
+      progress.asked.has(`siblings:${personId}`) &&
+      biologicalSiblingsOf(family, personId).length === 0,
+    children:
+      progress.asked.has(`children:${personId}`) &&
+      biologicalChildrenOf(family, personId).length === 0,
+  };
 }

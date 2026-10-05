@@ -178,3 +178,20 @@ export const PEDIGREE_COMPLETENESS_SCOPES = [
 
 export type PedigreeCompletenessScope =
   (typeof PEDIGREE_COMPLETENESS_SCOPES)[number];
+
+/**
+ * How the interface describes family members to the participant.
+ *
+ * - `gendered`: the usual kinship words, chosen by each person's gender
+ *   identity — mother, father, grandmother, aunt, nephew — and neutral words
+ *   (parent, sibling, cousin) for anyone who is neither a woman nor a man.
+ * - `gamete`: words that make no assumption about gender. Biological parents
+ *   are described by the gamete they gave (egg parent, sperm parent, read
+ *   from their recorded sex at birth), and every other relative by a neutral
+ *   word (grandparent, parent's sibling, sibling's child).
+ *
+ * The framing changes only what is shown; nothing it produces is stored.
+ */
+export const FRAMING_IDS = ['gendered', 'gamete'] as const;
+
+export type FramingId = (typeof FRAMING_IDS)[number];

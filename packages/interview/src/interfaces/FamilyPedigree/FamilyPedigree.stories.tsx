@@ -5,6 +5,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type {
+  FramingId,
   PedigreeCompletenessScope,
   PedigreeGenderIdentity,
   PedigreeRelationshipKind,
@@ -45,14 +46,26 @@ type Completeness = {
  * An interview whose pedigree stage opens on a seeded family, between two
  * information screens. With no family, only the participant is shown.
  */
-function buildInterview(
-  family?: Family,
+type StoryOptions = {
+  family?: Family;
+  withFormFields?: boolean;
+  completeness?: Completeness;
+  framing?: FramingId;
+};
+
+function buildInterview({
+  family,
   withFormFields = false,
-  completeness?: Completeness,
-) {
+  completeness,
+  framing,
+}: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
-  const stage = si.addStage('FamilyPedigree', { prompt: PROMPT, completeness });
+  const stage = si.addStage('FamilyPedigree', {
+    prompt: PROMPT,
+    completeness,
+    framing,
+  });
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
     stage.addFormField({
@@ -93,21 +106,19 @@ function PedigreeStory({
   family,
   withFormFields,
   completeness,
-}: {
-  family?: Family;
-  withFormFields?: boolean;
-  completeness?: Completeness;
-}) {
+  framing,
+}: StoryOptions) {
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(
-        buildInterview(
+        buildInterview({
           family,
           withFormFields,
           completeness,
-        ).getInterviewPayload({ currentStep: 1 }),
+          framing,
+        }).getInterviewPayload({ currentStep: 1 }),
       ),
-    [family, withFormFields, completeness],
+    [family, withFormFields, completeness, framing],
   );
 
   return (
@@ -117,13 +128,25 @@ function PedigreeStory({
   );
 }
 
-const meta: Meta = {
+type StoryArgs = { framing: FramingId };
+
+const meta: Meta<StoryArgs> = {
   title: 'Interfaces/FamilyPedigree',
   parameters: { layout: 'fullscreen' },
+  // The stage's framing: the words unnamed family members are described by.
+  args: { framing: 'gendered' },
+  argTypes: {
+    framing: {
+      control: 'inline-radio',
+      options: ['gendered', 'gamete'],
+      description:
+        'gendered: mother, father, grandmother… · gamete: egg parent, sperm parent, grandparent…',
+    },
+  },
 };
 
 export default meta;
-type Story = StoryObj;
+type Story = StoryObj<StoryArgs>;
 
 const expectPeople = (count: number) =>
   async function play({ canvasElement }: { canvasElement: HTMLElement }) {
@@ -135,7 +158,7 @@ const expectPeople = (count: number) =>
 
 /** The first visit: only the participant, with the add menu around them. */
 export const FirstVisit: Story = {
-  render: () => <PedigreeStory withFormFields />,
+  render: ({ framing }) => <PedigreeStory framing={framing} withFormFields />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() =>
@@ -154,8 +177,9 @@ export const FirstVisit: Story = {
  * and sex assigned at birth are still missing, so they carry a warning.
  */
 export const FamilyInProgress: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           {
@@ -205,8 +229,9 @@ export const FamilyInProgress: Story = {
  * surrogate hang from the child on auxiliary lines.
  */
 export const EggDonorAndGestationalCarrier: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           {
@@ -240,8 +265,9 @@ export const EggDonorAndGestationalCarrier: Story = {
  * through the donor and both mothers are parents to both.
  */
 export const SpermDonorWithTwoMothers: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           {
@@ -276,8 +302,9 @@ export const SpermDonorWithTwoMothers: Story = {
  * are biological parents, and neither carried the pregnancy.
  */
 export const GestationalSurrogacy: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           { id: 'ego', name: 'Noah', gender: 'man', sex: 'male', ego: true },
@@ -308,8 +335,9 @@ export const GestationalSurrogacy: Story = {
  * biological line of descent while they sit beneath their adoptive parents.
  */
 export const Adoption: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           { id: 'ego', name: 'Jun', gender: 'man', sex: 'male', ego: true },
@@ -351,8 +379,9 @@ export const Adoption: Story = {
  * stepfather is also a social parent to the participant.
  */
 export const BlendedFamily: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           {
@@ -398,8 +427,9 @@ export const BlendedFamily: Story = {
  * the double line.
  */
 export const ConsanguineousParents: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           { id: 'ego', name: 'Amir', gender: 'man', sex: 'male', ego: true },
@@ -451,8 +481,9 @@ export const ConsanguineousParents: Story = {
  * a trans woman.
  */
 export const GenderDiverseFamily: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           { id: 'ego', name: 'Eli', gender: 'man', sex: 'female', ego: true },
@@ -484,8 +515,9 @@ export const GenderDiverseFamily: Story = {
  * partner's child from an earlier relationship.
  */
 export const MultiplePartners: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           {
@@ -535,13 +567,15 @@ export const MultiplePartners: Story = {
 // ---------------------------------------------------------------------------
 
 /**
- * Nobody's name is known, so each person is shown by how they are related to
- * the participant, described through the nearest named person where there is
- * one ("Rob's mother").
+ * Only Rob's name is known, so everyone else is shown by their kinship to
+ * the participant. Switch the framing control to compare the gendered words
+ * (Maternal grandmother, Half-brother) with the gamete ones (Egg parent,
+ * Grandparent).
  */
 export const UnnamedRelatives: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       family={{
         people: [
           { id: 'ego', ego: true, gender: 'woman', sex: 'female' },
@@ -575,13 +609,16 @@ export const UnnamedRelatives: Story = {
   ),
   play: async (context) => {
     await expectPeople(11)(context);
+    if (context.args.framing !== 'gendered') return;
     const canvas = within(context.canvasElement);
     for (const name of [
       'Mother',
-      "Mother's mother",
-      "Rob's mother",
-      "Mother's sister",
+      'Maternal grandmother',
+      'Paternal grandmother',
+      'Maternal aunt',
+      'Cousin',
       'Half-brother',
+      'Stepmother',
       'Child 1',
     ]) {
       await expect(
@@ -592,12 +629,14 @@ export const UnnamedRelatives: Story = {
 };
 
 /**
- * The study requires both biological parents. Pressing Next opens a panel
- * listing what is still needed, with a button to add each.
+ * The study requires both biological parents. The ring in the corner fills
+ * as they are added; pressing Next before it is full opens the list of what
+ * is still needed.
  */
 export const RequiresBothParents: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       completeness={{ scope: 'parents', enforcement: 'required' }}
     />
   ),
@@ -606,12 +645,14 @@ export const RequiresBothParents: Story = {
 
 /**
  * The study recommends three generations. The participant has added their
- * parents and a brother; pressing Next lists their children, and each
- * parent's parents and siblings, with a choice to continue anyway.
+ * parents and a brother; the list asks about their children, and each
+ * parent's parents and siblings. Pressing Next with the list open continues
+ * anyway.
  */
 export const RecommendsThreeGenerations: Story = {
-  render: () => (
+  render: ({ framing }) => (
     <PedigreeStory
+      framing={framing}
       completeness={{ scope: 'grandparents', enforcement: 'recommended' }}
       family={{
         people: [

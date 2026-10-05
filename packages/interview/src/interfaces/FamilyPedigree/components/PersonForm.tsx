@@ -24,6 +24,7 @@ import {
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
+import { RELATIVES_NOT_RECORDED } from '../completeness';
 import { messages } from '../messages';
 import {
   type AddRelativeRequest,
@@ -80,6 +81,8 @@ const ROLE = {
   otherParent: 'pedigreeOtherParent',
   childKind: 'pedigreeChildKind',
   carrier: 'pedigreeCarrier',
+  hasSiblings: 'pedigreeHasSiblings',
+  hasChildren: 'pedigreeHasChildren',
 } as const;
 
 const NONE = '__none';
@@ -101,6 +104,8 @@ type PersonFormProps = {
   config: PedigreeConfig;
   formFields: FormField[];
   displayName: (personId: string) => string;
+  /** Edit only: ask whether the person has siblings, and children. */
+  askAbout?: { siblings: boolean; children: boolean };
   onSubmit: (result: PersonFormResult) => void;
 };
 
@@ -123,6 +128,7 @@ export default function PersonForm({
   config,
   formFields,
   displayName,
+  askAbout,
   onSubmit,
 }: PersonFormProps) {
   const intl = useAppIntl();
@@ -166,6 +172,35 @@ export default function PersonForm({
     const sex = asString(values[config.sexAssignedAtBirthVariable]);
     if (sex) set[config.sexAssignedAtBirthVariable] = [sex];
     else unset.push(config.sexAssignedAtBirthVariable);
+
+    // "No" and "Don't know" are recorded; "Yes" leaves the question to the
+    // siblings or children the participant goes on to add.
+    const notRecordedVariable = config.relativesNotRecordedVariable;
+    if (
+      person &&
+      notRecordedVariable &&
+      (askAbout?.siblings || askAbout?.children)
+    ) {
+      let recorded: string[] = person.relativesNotRecorded;
+      const answer = (
+        question: string,
+        group: (typeof RELATIVES_NOT_RECORDED)[keyof typeof RELATIVES_NOT_RECORDED],
+      ) => {
+        recorded = recorded.filter(
+          (value) => value !== group.none && value !== group.unknown,
+        );
+        const value = asString(values[question]);
+        if (value === 'no') recorded.push(group.none);
+        if (value === 'unknown') recorded.push(group.unknown);
+      };
+      if (askAbout.siblings) {
+        answer(ROLE.hasSiblings, RELATIVES_NOT_RECORDED.siblings);
+      }
+      if (askAbout.children) {
+        answer(ROLE.hasChildren, RELATIVES_NOT_RECORDED.children);
+      }
+      set[notRecordedVariable] = recorded;
+    }
 
     if (formFields.length > 0) {
       const patch = formValuesToAttributePatch(
@@ -272,6 +307,13 @@ export default function PersonForm({
             />
           </section>
         )}
+        {person && askAbout && (askAbout.siblings || askAbout.children) && (
+          <RelativesQuestions
+            person={person}
+            askAbout={askAbout}
+            displayName={displayName}
+          />
+        )}
         {mode.kind === 'edit' && (
           <ExistingRelationshipFields
             person={mode.person}
@@ -289,6 +331,63 @@ export default function PersonForm({
         )}
       </div>
     </FormWithoutProvider>
+  );
+}
+
+/**
+ * Whether the person has siblings, and children, asked when the family must
+ * account for them and none are recorded yet.
+ */
+function RelativesQuestions({
+  person,
+  askAbout,
+  displayName,
+}: {
+  person: Person;
+  askAbout: { siblings: boolean; children: boolean };
+  displayName: (personId: string) => string;
+}) {
+  const intl = useAppIntl();
+  const args = {
+    isYou: person.isEgo ? 'true' : 'false',
+    name: displayName(person.id),
+  };
+  const options = [
+    { value: 'yes', label: intl.formatMessage(messages.hasRelativesYes) },
+    { value: 'no', label: intl.formatMessage(messages.no) },
+    { value: 'unknown', label: intl.formatMessage(messages.dontKnow) },
+  ];
+  const initial = (
+    group: (typeof RELATIVES_NOT_RECORDED)[keyof typeof RELATIVES_NOT_RECORDED],
+  ) => {
+    if (person.relativesNotRecorded.includes(group.none)) return 'no';
+    if (person.relativesNotRecorded.includes(group.unknown)) return 'unknown';
+    return undefined;
+  };
+  return (
+    <section className="flex flex-col">
+      <Heading level="h3" margin="none" className="mb-4">
+        <AppMessage message={messages.familySection} />
+      </Heading>
+      {askAbout.siblings && (
+        <Field
+          component={RadioGroupField}
+          name={ROLE.hasSiblings}
+          label={intl.formatMessage(messages.hasSiblingsQuestion, args)}
+          options={options}
+          initialValue={initial(RELATIVES_NOT_RECORDED.siblings)}
+        />
+      )}
+      {askAbout.children && (
+        <Field
+          component={RadioGroupField}
+          name={ROLE.hasChildren}
+          label={intl.formatMessage(messages.hasChildrenQuestion, args)}
+          options={options}
+          initialValue={initial(RELATIVES_NOT_RECORDED.children)}
+        />
+      )}
+    </section>
   );
 }
 

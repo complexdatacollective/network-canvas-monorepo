@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { findCompletenessGaps } from '../completeness';
+import { evaluateCompleteness } from '../completeness';
 import { readFamily } from '../model';
 import { config, link, person } from './fixtures';
 
@@ -11,16 +11,16 @@ const family = (nodes: NcNode[], edges: NcEdge[]) =>
 
 const ego = person('ego', { isEgo: true });
 
-describe('findCompletenessGaps', () => {
+describe('evaluateCompleteness', () => {
   test('parents: both biological parents are needed', () => {
-    expect(findCompletenessGaps(family([ego], []), 'parents')).toEqual([
-      { kind: 'parents', personId: 'ego' },
+    expect(evaluateCompleteness(family([ego], []), 'parents').items).toEqual([
+      { kind: 'parents', personId: 'ego', missing: 2 },
     ]);
     const oneParent = family(
       [ego, person('mum')],
       [link('mum', 'ego', 'biological')],
     );
-    expect(findCompletenessGaps(oneParent, 'parents')).toHaveLength(1);
+    expect(evaluateCompleteness(oneParent, 'parents').items).toHaveLength(1);
   });
 
   test('parents: a gamete donor counts, a carrier or adoptive parent does not', () => {
@@ -33,14 +33,14 @@ describe('findCompletenessGaps', () => {
         link('adopt', 'ego', 'adoptive'),
       ],
     );
-    expect(findCompletenessGaps(donorConceived, 'parents')).toEqual([]);
+    expect(evaluateCompleteness(donorConceived, 'parents').items).toEqual([]);
 
     const adopted = family(
       [ego, person('a'), person('b')],
       [link('a', 'ego', 'adoptive'), link('b', 'ego', 'adoptive')],
     );
-    expect(findCompletenessGaps(adopted, 'parents')).toEqual([
-      { kind: 'parents', personId: 'ego' },
+    expect(evaluateCompleteness(adopted, 'parents').items).toEqual([
+      { kind: 'parents', personId: 'ego', missing: 2 },
     ]);
   });
 
@@ -52,7 +52,7 @@ describe('findCompletenessGaps', () => {
   test('first degree: siblings and children, or an answer about them', () => {
     const nodes = [ego, person('mum'), person('dad')];
     expect(
-      findCompletenessGaps(family(nodes, parented), 'firstDegree'),
+      evaluateCompleteness(family(nodes, parented), 'firstDegree').items,
     ).toEqual([
       { kind: 'siblings', personId: 'ego' },
       { kind: 'children', personId: 'ego' },
@@ -69,7 +69,7 @@ describe('findCompletenessGaps', () => {
       ],
       parented,
     );
-    expect(findCompletenessGaps(answered, 'firstDegree')).toEqual([]);
+    expect(evaluateCompleteness(answered, 'firstDegree').items).toEqual([]);
 
     const halfSibling = family(
       [...nodes, person('half'), person('kid')],
@@ -79,7 +79,7 @@ describe('findCompletenessGaps', () => {
         link('ego', 'kid', 'biological'),
       ],
     );
-    expect(findCompletenessGaps(halfSibling, 'firstDegree')).toEqual([]);
+    expect(evaluateCompleteness(halfSibling, 'firstDegree').items).toEqual([]);
   });
 
   test('grandparents: each biological parent needs parents and siblings', () => {
@@ -100,9 +100,9 @@ describe('findCompletenessGaps', () => {
         link('gramps', 'mum', 'biological'),
       ],
     );
-    expect(findCompletenessGaps(f, 'grandparents')).toEqual([
+    expect(evaluateCompleteness(f, 'grandparents').items).toEqual([
       { kind: 'siblings', personId: 'mum' },
-      { kind: 'parents', personId: 'dad' },
+      { kind: 'parents', personId: 'dad', missing: 2 },
     ]);
   });
 
@@ -132,15 +132,44 @@ describe('findCompletenessGaps', () => {
         link('dg2', 'dad', 'biological'),
       ],
     );
-    expect(findCompletenessGaps(f, 'grandparents')).toEqual([]);
-    expect(findCompletenessGaps(f, 'secondDegree')).toEqual([
+    expect(evaluateCompleteness(f, 'grandparents').items).toEqual([]);
+    expect(evaluateCompleteness(f, 'secondDegree').items).toEqual([
       { kind: 'children', personId: 'sis' },
       { kind: 'children', personId: 'kid' },
     ]);
-    expect(findCompletenessGaps(f, 'thirdDegree')).toEqual([
+    expect(evaluateCompleteness(f, 'thirdDegree').items).toEqual([
       { kind: 'children', personId: 'sis' },
       { kind: 'children', personId: 'kid' },
       { kind: 'children', personId: 'aunt' },
+    ]);
+  });
+
+  test('progress counts parents not yet added, so adding one never lowers it', () => {
+    const empty = evaluateCompleteness(family([ego], []), 'grandparents');
+    // Ego: 2 parents + siblings + children; each parent: 2 parents + siblings.
+    expect(empty).toMatchObject({ done: 0, total: 10 });
+    const oneParent = evaluateCompleteness(
+      family([ego, person('mum')], [link('mum', 'ego', 'biological')]),
+      'grandparents',
+    );
+    expect(oneParent).toMatchObject({ done: 1, total: 10 });
+    expect(oneParent.items).toContainEqual({
+      kind: 'parents',
+      personId: 'ego',
+      missing: 1,
+    });
+  });
+
+  test('records who is asked about their siblings and children', () => {
+    const { asked } = evaluateCompleteness(
+      family([ego, person('mum'), person('dad')], parented),
+      'grandparents',
+    );
+    expect([...asked].sort()).toEqual([
+      'children:ego',
+      'siblings:dad',
+      'siblings:ego',
+      'siblings:mum',
     ]);
   });
 });

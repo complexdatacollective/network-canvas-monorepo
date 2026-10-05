@@ -40,9 +40,14 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
-import { type CompletenessGap, findCompletenessGaps } from './completeness';
+import {
+  type CompletenessItem,
+  evaluateCompleteness,
+  RELATIVES_NOT_RECORDED,
+  relativesToAskAbout,
+} from './completeness';
 import AddRelativeMenu from './components/AddRelativeMenu';
-import CompletenessPanel from './components/CompletenessPanel';
+import CompletenessTracker from './components/CompletenessTracker';
 import PersonDrawer from './components/PersonDrawer';
 import PersonForm, {
   type PersonFormMode,
@@ -67,26 +72,14 @@ import {
   type Point,
 } from './spatialNavigation';
 
-type PanelMode = PersonFormMode | { kind: 'gaps' };
-
 type PanelState = {
   open: boolean;
   /** Changes for every opening, so the form starts fresh. */
   key: string;
-  mode: PanelMode;
-  /** Opened from the list of people still needed, and returns to it. */
-  returnToGaps?: boolean;
+  mode: PersonFormMode;
 } | null;
 
-const NOT_RECORDED_ANSWERS = {
-  siblings: { none: 'noSiblings', unknown: 'siblingsUnknown' },
-  children: { none: 'noChildren', unknown: 'childrenUnknown' },
-} as const;
-
-const FamilyPedigree = ({
-  stage,
-  getNavigationHelpers,
-}: StageProps<'FamilyPedigree'>) => {
+const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
@@ -170,7 +163,8 @@ const FamilyPedigree = ({
 
   // A person is shown by name, or by how they are related to the participant
   // when their name is not known.
-  const labels = useMemo(() => labelFamily(family), [family]);
+  const framing = stage.framing ?? 'gendered';
+  const labels = useMemo(() => labelFamily(family, framing), [family, framing]);
   const displayName = useCallback(
     (personId: string) => {
       const label = labels.get(personId);
@@ -239,68 +233,42 @@ const FamilyPedigree = ({
     });
   };
 
-  // The people the researcher requires (or recommends) before the participant
-  // continues, still to be added or answered about.
+  // How far the family is from what the researcher requires (or recommends)
+  // before the participant continues.
   const completeness = stage.completeness;
-  const gaps = useMemo(
+  const progress = useMemo(
     () =>
-      completeness ? findCompletenessGaps(family, completeness.scope) : [],
+      completeness ? evaluateCompleteness(family, completeness.scope) : null,
     [family, completeness],
   );
+  const [trackerOpen, setTrackerOpen] = useState(false);
 
-  const openGaps = () =>
-    setPanel({ open: true, key: uuid(), mode: { kind: 'gaps' } });
-
-  // Navigation this stage starts itself, once the participant chooses to
-  // continue from the panel, passes straight through.
-  const bypassCompleteness = useRef(false);
-  const continueToNextStage = () => {
-    bypassCompleteness.current = true;
-    closePanel();
-    getNavigationHelpers().moveForward();
-  };
-
+  // Next is held back, with the list of what is still needed shown, until
+  // the family is complete. A recommendation lets the participant through on
+  // pressing Next again with the list already open.
   useBeforeNext((direction) => {
-    if (direction !== 'forwards' || !completeness) return true;
-    if (bypassCompleteness.current) {
-      bypassCompleteness.current = false;
-      return true;
-    }
-    if (gaps.length === 0) return true;
-    openGaps();
+    if (direction !== 'forwards' || !progress || !completeness) return true;
+    if (progress.items.length === 0) return true;
+    if (completeness.enforcement === 'recommended' && trackerOpen) return true;
+    setTrackerOpen(true);
     return false;
   });
 
-  const addFromGaps = (personId: string, relation: Relation) => {
-    const anchor = family.byId.get(personId);
-    if (!anchor) return;
-    setPanel({
-      open: true,
-      key: uuid(),
-      mode: { kind: 'add', relation, anchor },
-      returnToGaps: true,
-    });
-  };
-
-  const answerGap = (gap: CompletenessGap, answer: 'none' | 'unknown') => {
-    const variable = config.relativesNotRecordedVariable;
-    const person = family.byId.get(gap.personId);
-    if (!variable || !person || gap.kind === 'parents') return;
-    void dispatch(
-      updateNode({
-        nodeId: person.id,
-        attributePatch: {
-          set: {
-            [variable]: [
-              ...person.relativesNotRecorded,
-              NOT_RECORDED_ANSWERS[gap.kind][answer],
-            ],
-          },
-          unset: [],
-        },
-        currentStep,
-      }),
-    );
+  // Each item in the list leads to where it is resolved: adding the missing
+  // parent, or the person's details, which ask about their siblings and
+  // children.
+  const handleTrackerItem = (item: CompletenessItem) => {
+    const person = family.byId.get(item.personId);
+    if (!person) return;
+    if (item.kind === 'parents') {
+      setPanel({
+        open: true,
+        key: uuid(),
+        mode: { kind: 'add', relation: 'parent', anchor: person },
+      });
+    } else {
+      openEdit(person.id);
+    }
   };
 
   const openEdit = (personId: string) => {
@@ -319,13 +287,6 @@ const FamilyPedigree = ({
 
   const closePanel = () =>
     setPanel((current) => (current ? { ...current, open: false } : null));
-
-  // Leaving an add or edit opened from the list of people still needed goes
-  // back to the list.
-  const finishPanel = () => {
-    if (panel?.returnToGaps) openGaps();
-    else closePanel();
-  };
 
   // Keyboard focus shows the menu; focus from a click (or returned there by
   // the panel after a click) does not, so for a mouse user the menu follows
@@ -431,8 +392,7 @@ const FamilyPedigree = ({
   const handleSubmit = async (result: PersonFormResult) => {
     if (!panel) return;
     const { mode } = panel;
-    finishPanel();
-    if (mode.kind === 'gaps') return;
+    closePanel();
 
     if (mode.kind === 'edit') {
       await dispatch(
@@ -520,8 +480,8 @@ const FamilyPedigree = ({
     ) {
       const group =
         request.relation === 'sibling'
-          ? NOT_RECORDED_ANSWERS.siblings
-          : NOT_RECORDED_ANSWERS.children;
+          ? RELATIVES_NOT_RECORDED.siblings
+          : RELATIVES_NOT_RECORDED.children;
       const answers: readonly string[] = [group.none, group.unknown];
       const affected = [mode.anchor.id];
       if (
@@ -589,9 +549,6 @@ const FamilyPedigree = ({
   const panelTitle = (() => {
     if (!panel) return '';
     const { mode } = panel;
-    if (mode.kind === 'gaps') {
-      return intl.formatMessage(messages.completenessTitle);
-    }
     const subject = mode.kind === 'add' ? mode.anchor : mode.person;
     const args = {
       isYou: subject.isEgo ? 'true' : 'false',
@@ -621,7 +578,7 @@ const FamilyPedigree = ({
 
   return (
     <div
-      className="interface flex h-full flex-col"
+      className="interface relative flex h-full flex-col"
       onPointerDown={handleStagePointerDown}
     >
       <div className="shrink-0">
@@ -690,6 +647,17 @@ const FamilyPedigree = ({
           />
         </div>
       </div>
+      {progress && completeness && (
+        <CompletenessTracker
+          progress={progress}
+          enforcement={completeness.enforcement}
+          open={trackerOpen}
+          onOpenChange={setTrackerOpen}
+          family={family}
+          displayName={displayName}
+          onItemSelect={handleTrackerItem}
+        />
+      )}
       <div aria-live="polite" className="sr-only">
         {announcement}
       </div>
@@ -698,76 +666,52 @@ const FamilyPedigree = ({
       <FormStoreProvider key={panel?.key ?? 'closed'}>
         <PersonDrawer
           open={panel?.open ?? false}
-          onClose={finishPanel}
+          onClose={closePanel}
           onClosed={() => setPanel(null)}
           returnFocus={() =>
             returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
           }
           title={panelTitle}
           footer={
-            panelMode?.kind === 'gaps' ? (
-              <>
-                <Button type="button" variant="text" onClick={closePanel}>
-                  <AppMessage message={messages.keepEditing} />
+            <>
+              {editedPerson && !editedPerson.isEgo && (
+                <Button
+                  type="button"
+                  variant="text"
+                  color="destructive"
+                  className="mr-auto"
+                  onClick={() => void handleRemove(editedPerson.id)}
+                >
+                  <AppMessage message={messages.remove} />
                 </Button>
-                {gaps.length === 0 ? (
-                  <Button type="button" onClick={continueToNextStage}>
-                    <AppMessage message={messages.continue} />
-                  </Button>
-                ) : (
-                  completeness?.enforcement === 'recommended' && (
-                    <Button type="button" onClick={continueToNextStage}>
-                      <AppMessage message={messages.continueAnyway} />
-                    </Button>
-                  )
-                )}
-              </>
-            ) : (
-              <>
-                {editedPerson && !editedPerson.isEgo && (
-                  <Button
-                    type="button"
-                    variant="text"
-                    color="destructive"
-                    className="mr-auto"
-                    onClick={() => void handleRemove(editedPerson.id)}
-                  >
-                    <AppMessage message={messages.remove} />
-                  </Button>
-                )}
-                <Button type="button" variant="text" onClick={finishPanel}>
-                  <AppMessage message={messages.cancel} />
-                </Button>
-                <SubmitButton form={formId}>
-                  <AppMessage
-                    message={
-                      panel?.mode.kind === 'edit' ? messages.save : messages.add
-                    }
-                  />
-                </SubmitButton>
-              </>
-            )
+              )}
+              <Button type="button" variant="text" onClick={closePanel}>
+                <AppMessage message={messages.cancel} />
+              </Button>
+              <SubmitButton form={formId}>
+                <AppMessage
+                  message={
+                    panel?.mode.kind === 'edit' ? messages.save : messages.add
+                  }
+                />
+              </SubmitButton>
+            </>
           }
         >
-          {panelMode?.kind === 'gaps' && completeness && (
-            <CompletenessPanel
-              gaps={gaps}
-              family={family}
-              enforcement={completeness.enforcement}
-              displayName={displayName}
-              onAdd={addFromGaps}
-              onAnswer={answerGap}
-            />
-          )}
-          {panel && panelMode && panelMode.kind !== 'gaps' && (
+          {panel && (
             <PersonForm
               key={panel.key}
               formId={formId}
-              mode={panelMode}
+              mode={panel.mode}
               family={family}
               config={config}
               formFields={formFields}
               displayName={displayName}
+              askAbout={
+                panel.mode.kind === 'edit' && progress
+                  ? relativesToAskAbout(family, progress, panel.mode.person.id)
+                  : undefined
+              }
               onSubmit={(result) => void handleSubmit(result)}
             />
           )}

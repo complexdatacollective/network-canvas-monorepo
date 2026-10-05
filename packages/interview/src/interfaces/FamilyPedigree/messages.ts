@@ -16,16 +16,16 @@ export const messages = defineMessages({
   relativeTerm: {
     id: 'interview.familyPedigree.relativeTerm',
     defaultMessage:
-      '{term, select, mother {Mother} father {Father} parent {Parent} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Stepmother} stepfather {Stepfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surrogate} daughter {Daughter} son {Son} child {Child} stepdaughter {Stepdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} partner {Partner} formerPartner {Former partner} other {Relative}}',
+      "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Stepmother} stepfather {Stepfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surrogate} daughter {Daughter} son {Son} child {Child} stepdaughter {Stepdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} stepsister {Stepsister} stepbrother {Stepbrother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grandmother} grandfather {Grandfather} grandparent {Grandparent} maternalGrandmother {Maternal grandmother} maternalGrandfather {Maternal grandfather} maternalGrandparent {Maternal grandparent} paternalGrandmother {Paternal grandmother} paternalGrandfather {Paternal grandfather} paternalGrandparent {Paternal grandparent} greatGrandmother {Great-grandmother} greatGrandfather {Great-grandfather} greatGrandparent {Great-grandparent} granddaughter {Granddaughter} grandson {Grandson} grandchild {Grandchild} greatGranddaughter {Great-granddaughter} greatGrandson {Great-grandson} greatGrandchild {Great-grandchild} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent's sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grandparent's sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling's child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daughter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
     description:
-      'Label for a family member whose name is not known, describing how they are related to the participant (for example, the participant’s mother). Display only; nothing here is saved as research data.',
+      'Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Display only; nothing here is saved as research data.',
   },
   relativeOf: {
     id: 'interview.familyPedigree.relativeOf',
     defaultMessage:
-      "{owner}'s {term, select, mother {mother} father {father} parent {parent} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {stepmother} stepfather {stepfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surrogate} daughter {daughter} son {son} child {child} stepdaughter {stepdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {child born through surrogacy} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} partner {partner} formerPartner {former partner} other {relative}}",
+      "{owner}'s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {stepmother} stepfather {stepfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surrogate} daughter {daughter} son {son} child {child} stepdaughter {stepdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {child born through surrogacy} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} stepsister {stepsister} stepbrother {stepbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} other {relative}}",
     description:
-      'Label for a family member whose name is not known, described through a relative of theirs: owner is that relative’s name or label (for example “Rob” or “Mother”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Display only.',
+      'Label for a family member whose name is not known and who has no everyday kinship word, described through a relative of theirs: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Display only.',
   },
   numberedRelative: {
     id: 'interview.familyPedigree.numberedRelative',
@@ -412,116 +412,84 @@ export const messages = defineMessages({
     description:
       'Explanation in the confirmation shown before removing a family member.',
   },
-  completenessTitle: {
-    id: 'interview.familyPedigree.completenessTitle',
-    defaultMessage: 'Before you continue',
-    description:
-      'Title of the side panel listing the family members the participant still needs to add (or answer about) before moving on.',
-  },
-  completenessRequiredIntro: {
-    id: 'interview.familyPedigree.completenessRequiredIntro',
+  trackerProgressLabel: {
+    id: 'interview.familyPedigree.trackerProgressLabel',
     defaultMessage:
-      'A few more people are needed before you can continue. If you don’t know who someone is, add them anyway and leave out what you don’t know.',
+      '{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.',
     description:
-      'Introduction in the side panel when the study requires these family members before the participant can continue.',
+      'Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1.',
   },
-  completenessRecommendedIntro: {
-    id: 'interview.familyPedigree.completenessRecommendedIntro',
+  trackerTitle: {
+    id: 'interview.familyPedigree.trackerTitle',
+    defaultMessage: 'Before you continue, please complete the following:',
+    description:
+      'Heading of the list of family members the participant still needs to add before moving on.',
+  },
+  trackerRecommendedNote: {
+    id: 'interview.familyPedigree.trackerRecommendedNote',
     defaultMessage:
-      'These would make your family tree more complete. You can add them now, or continue without them.',
+      'You can also continue without these by pressing Next again.',
     description:
-      'Introduction in the side panel when the study recommends, but does not require, these family members.',
+      'Note beneath the list of family members still needed, when the study recommends rather than requires them.',
   },
-  completenessDone: {
-    id: 'interview.familyPedigree.completenessDone',
-    defaultMessage: 'That’s everyone needed. You can continue.',
+  trackerComplete: {
+    id: 'interview.familyPedigree.trackerComplete',
+    defaultMessage: 'Your family tree has everything needed. You can continue.',
     description:
-      'Shown in the side panel once the participant has added or answered about every family member that was needed.',
+      'Shown in the list of family members still needed once nothing more is needed.',
   },
-  gapParents: {
-    id: 'interview.familyPedigree.gapParents',
+  trackerClose: {
+    id: 'interview.familyPedigree.trackerClose',
+    defaultMessage: 'Hide this list',
+    description:
+      'Accessible name of the button that shrinks the list of family members still needed back to its progress indicator.',
+  },
+  itemParents: {
+    id: 'interview.familyPedigree.itemParents',
     defaultMessage:
-      '{isYou, select, true {Your biological parents} other {The biological parents of {name}}}',
+      '{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}',
     description:
-      'One item in the list of family members still needed: this person needs both biological parents added. name is the person’s name or how they are related to the participant.',
+      'Item in the list of family members still needed. missing is how many biological parents the person still needs (1 or 2). name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor.',
   },
-  gapParentsHint: {
-    id: 'interview.familyPedigree.gapParentsHint',
+  itemSiblings: {
+    id: 'interview.familyPedigree.itemSiblings',
     defaultMessage:
-      'Everyone has two, including an egg or sperm donor if there was one.',
+      '{isYou, select, true {Add your brothers and sisters, or say you have none} other {Add brothers and sisters for “{name}”, or say they have none}}',
     description:
-      'Explanation beneath the item asking for both biological parents of a person.',
+      'Item in the list of family members still needed: the person’s siblings (including half-siblings), or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
   },
-  gapSiblings: {
-    id: 'interview.familyPedigree.gapSiblings',
+  itemChildren: {
+    id: 'interview.familyPedigree.itemChildren',
+    defaultMessage:
+      '{isYou, select, true {Add your children, or say you have none} other {Add children for “{name}”, or say they have none}}',
+    description:
+      'Item in the list of family members still needed: the person’s biological children, or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
+  },
+  familySection: {
+    id: 'interview.familyPedigree.familySection',
+    defaultMessage: 'Their family',
+    description:
+      'Heading of the questions in a family member’s details about whether they have siblings or children.',
+  },
+  hasSiblingsQuestion: {
+    id: 'interview.familyPedigree.hasSiblingsQuestion',
     defaultMessage:
       '{isYou, select, true {Do you have any brothers or sisters?} other {Does {name} have any brothers or sisters?}}',
     description:
-      'One item in the list of family members still needed: whether this person has siblings. name is the person’s name or how they are related to the participant.',
+      'Question in a family member’s details. Answering yes means the participant will add them to the family tree. Includes half-siblings who share one biological parent.',
   },
-  gapSiblingsHint: {
-    id: 'interview.familyPedigree.gapSiblingsHint',
-    defaultMessage: 'Include half-siblings who share one biological parent.',
-    description:
-      'Explanation beneath the item asking about a person’s siblings.',
-  },
-  gapChildren: {
-    id: 'interview.familyPedigree.gapChildren',
+  hasChildrenQuestion: {
+    id: 'interview.familyPedigree.hasChildrenQuestion',
     defaultMessage:
-      '{isYou, select, true {Do you have any children?} other {Does {name} have any children?}}',
+      '{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}',
     description:
-      'One item in the list of family members still needed: whether this person has children. name is the person’s name or how they are related to the participant.',
+      'Question in a family member’s details. Answering yes means the participant will add them to the family tree.',
   },
-  gapChildrenHint: {
-    id: 'interview.familyPedigree.gapChildrenHint',
-    defaultMessage:
-      '{isYou, select, true {Only count children you are a biological parent of.} other {Only count children they are a biological parent of.}}',
+  hasRelativesYes: {
+    id: 'interview.familyPedigree.hasRelativesYes',
+    defaultMessage: 'Yes — I’ll add them to the family tree',
     description:
-      'Explanation beneath the item asking about a person’s children: adopted and step-children do not answer this question.',
-  },
-  addParentAction: {
-    id: 'interview.familyPedigree.addParentAction',
-    defaultMessage: 'Add a parent',
-    description: 'Button in the list of family members still needed.',
-  },
-  addSiblingAction: {
-    id: 'interview.familyPedigree.addSiblingAction',
-    defaultMessage: 'Add a sibling',
-    description: 'Button in the list of family members still needed.',
-  },
-  addChildAction: {
-    id: 'interview.familyPedigree.addChildAction',
-    defaultMessage: 'Add a child',
-    description: 'Button in the list of family members still needed.',
-  },
-  answerNone: {
-    id: 'interview.familyPedigree.answerNone',
-    defaultMessage: 'No',
-    description:
-      'Answers a question in the list of family members still needed, such as “Do you have any children?”, with no.',
-  },
-  answerUnknown: {
-    id: 'interview.familyPedigree.answerUnknown',
-    defaultMessage: 'I don’t know',
-    description:
-      'Answers a question in the list of family members still needed, such as “Do you have any children?”, with “I don’t know”.',
-  },
-  keepEditing: {
-    id: 'interview.familyPedigree.keepEditing',
-    defaultMessage: 'Keep editing',
-    description: 'Closes the list of family members still needed.',
-  },
-  continueAnyway: {
-    id: 'interview.familyPedigree.continueAnyway',
-    defaultMessage: 'Continue anyway',
-    description:
-      'Moves on to the next part of the interview without adding the recommended family members.',
-  },
-  continue: {
-    id: 'interview.familyPedigree.continue',
-    defaultMessage: 'Continue',
-    description:
-      'Moves on to the next part of the interview once every needed family member has been added.',
+      'Answer to whether a family member has siblings or children: yes, and the participant will add them.',
   },
   addedAnnouncement: {
     id: 'interview.familyPedigree.addedAnnouncement',

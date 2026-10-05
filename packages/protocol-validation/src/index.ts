@@ -72,6 +72,8 @@ export * from './schemas/index.ts';
 // when a new version directory is created, so a host always reads the set the
 // version it targets defines.
 export {
+  FRAMING_IDS,
+  type FramingId,
   PEDIGREE_COMPLETENESS_SCOPES,
   PEDIGREE_GENDER_IDENTITIES,
   PEDIGREE_GENDER_IDENTITY_OPTIONS,

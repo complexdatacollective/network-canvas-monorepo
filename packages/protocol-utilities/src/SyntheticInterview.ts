@@ -725,6 +725,7 @@ export class SyntheticInterview {
         }),
       };
 
+      if (opts?.framing) entry.framing = opts.framing;
       if (opts?.completeness) {
         entry.completeness = {
           ...opts.completeness,
@@ -2516,6 +2517,7 @@ export class SyntheticInterview {
       config.personAttributes = stage.personAttributes;
       config.relationship = stage.relationship;
       if (stage.completeness) config.completeness = stage.completeness;
+      if (stage.framing) config.framing = stage.framing;
     }
 
     // Geospatial

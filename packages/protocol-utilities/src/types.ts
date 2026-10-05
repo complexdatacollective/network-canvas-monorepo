@@ -5,6 +5,7 @@ import type {
   FilterOperator,
   Item,
   NodeColorReference,
+  FramingId,
   OrdinalColorReference,
   PedigreeCompletenessScope,
   StageType,
@@ -303,6 +304,7 @@ export type StageEntry = {
   personAttributes?: FamilyPedigreePersonAttributesEntry;
   relationship?: FamilyPedigreeRelationshipEntry;
   completeness?: FamilyPedigreeCompletenessEntry;
+  framing?: FramingId;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -471,6 +473,7 @@ export type AddStageInput = {
   // created on those types.
   prompt?: string;
   relationshipType?: string;
+  framing?: FramingId;
   /** Creates the relatives-not-recorded variable when set. */
   completeness?: Omit<
     FamilyPedigreeCompletenessEntry,
