@@ -142,8 +142,7 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   FamilyPedigree: ['censusPrompt', 'edgeConfig', 'nodeConfig'],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
-  // Its choices are the protocol's own languages and its introduction is
-  // optional, so a name is all it needs.
+  // Its choices are the protocol's own languages, so a name is all it needs.
   LanguageChooser: [],
   NameGenerator: ['form', 'prompts', 'subject'],
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],

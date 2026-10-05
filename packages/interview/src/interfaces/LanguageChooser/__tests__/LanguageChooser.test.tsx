@@ -13,7 +13,6 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import {
   getLocaleMetadata,
   type LocalizationDeclaration,
-  type LocalizedString,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -71,10 +70,8 @@ const label = (locale: string) => getLocaleMetadata(locale).label;
 
 function makePayload({
   localization = ENGLISH_SPANISH_ARABIC,
-  introduction,
 }: {
   localization?: LocalizationDeclaration;
-  introduction?: LocalizedString;
 } = {}) {
   return {
     session: {
@@ -114,7 +111,6 @@ function makePayload({
           id: 'chooser',
           type: 'LanguageChooser',
           label: { [localization.defaultLocale]: 'Language' },
-          ...(introduction ? { introduction } : {}),
         },
         {
           id: 'after',
@@ -163,7 +159,7 @@ function liveStore() {
 }
 
 const languageGroup = (name = 'Choose a language') =>
-  screen.findByRole('radiogroup', { name });
+  screen.findByRole('listbox', { name });
 
 // The element that decides the language and direction a label is read in.
 const languageOf = (element: HTMLElement) => element.closest('[lang]');
@@ -173,9 +169,9 @@ describe('LanguageChooser', () => {
     renderChooser();
     const group = await languageGroup();
 
-    expect(within(group).getAllByRole('radio')).toEqual(
+    expect(within(group).getAllByRole('option')).toEqual(
       ['en', 'es', 'ar'].map((locale) =>
-        within(group).getByRole('radio', { name: label(locale) }),
+        within(group).getByRole('option', { name: label(locale) }),
       ),
     );
 
@@ -198,11 +194,11 @@ describe('LanguageChooser', () => {
     });
     const group = await languageGroup();
 
-    const radios = within(group).getAllByRole('radio');
-    expect(radios).toHaveLength(1);
+    const languages = within(group).getAllByRole('option');
+    expect(languages).toHaveLength(1);
     expect(
-      within(group).getByRole('radio', { name: label('fr') }),
-    ).toBeChecked();
+      within(group).getByRole('option', { name: label('fr') }),
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   it('preselects the language the interview is shown in', async () => {
@@ -210,11 +206,11 @@ describe('LanguageChooser', () => {
     const group = await languageGroup('Elige un idioma');
 
     expect(
-      within(group).getByRole('radio', { name: label('es') }),
-    ).toBeChecked();
+      within(group).getByRole('option', { name: label('es') }),
+    ).toHaveAttribute('aria-selected', 'true');
     expect(
-      within(group).getByRole('radio', { name: label('en') }),
-    ).not.toBeChecked();
+      within(group).getByRole('option', { name: label('en') }),
+    ).toHaveAttribute('aria-selected', 'false');
   });
 
   it('applies a choice at once to the interface and saves it as the stated preference', async () => {
@@ -222,21 +218,21 @@ describe('LanguageChooser', () => {
     const user = userEvent.setup();
     const group = await languageGroup();
     expect(
-      within(group).getByRole('radio', { name: label('en') }),
-    ).toBeChecked();
+      within(group).getByRole('option', { name: label('en') }),
+    ).toHaveAttribute('aria-selected', 'true');
 
-    await user.click(within(group).getByRole('radio', { name: label('es') }));
+    await user.click(within(group).getByRole('option', { name: label('es') }));
 
     expect(
       await screen.findByRole('heading', { name: 'Elige un idioma' }),
     ).toBeVisible();
     expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
-    expect(screen.getByRole('radiogroup', { name: 'Elige un idioma' })).toBe(
+    expect(screen.getByRole('listbox', { name: 'Elige un idioma' })).toBe(
       group,
     );
     expect(
-      within(group).getByRole('radio', { name: label('es') }),
-    ).toBeChecked();
+      within(group).getByRole('option', { name: label('es') }),
+    ).toHaveAttribute('aria-selected', 'true');
     await waitFor(() =>
       expect(onProtocolLocaleChange).toHaveBeenLastCalledWith(
         'chooser-session',
@@ -246,20 +242,31 @@ describe('LanguageChooser', () => {
     expect(liveStore().getState().session.localePreference).toBe('es');
   });
 
-  it('is operated from the keyboard, keeping focus on the chosen language', async () => {
+  it('is operated from the keyboard, choosing only the language it confirms', async () => {
     renderChooser();
     const user = userEvent.setup();
     const group = await languageGroup();
-    const english = within(group).getByRole('radio', { name: label('en') });
-    const spanish = within(group).getByRole('radio', { name: label('es') });
+    const english = within(group).getByRole('option', { name: label('en') });
+    const spanish = within(group).getByRole('option', { name: label('es') });
+    expect(english).toHaveAttribute('tabindex', '0');
+    expect(spanish).toHaveAttribute('tabindex', '-1');
 
     act(() => english.focus());
     await user.keyboard('{ArrowDown}');
 
+    expect(spanish).toHaveFocus();
+    expect(english).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('heading', { name: 'Choose a language' }),
+    ).toBeVisible();
+
+    await user.keyboard('{Enter}');
+
     expect(
       await screen.findByRole('heading', { name: 'Elige un idioma' }),
     ).toBeVisible();
-    expect(spanish).toBeChecked();
+    expect(spanish).toHaveAttribute('aria-selected', 'true');
+    expect(spanish).toHaveAttribute('tabindex', '0');
     expect(spanish).toHaveFocus();
   });
 
@@ -268,7 +275,7 @@ describe('LanguageChooser', () => {
     const user = userEvent.setup();
     const group = await languageGroup();
 
-    await user.click(within(group).getByRole('radio', { name: label('ar') }));
+    await user.click(within(group).getByRole('option', { name: label('ar') }));
 
     await waitFor(() =>
       expect(document.getElementById('stage')).toHaveAttribute('dir', 'rtl'),
@@ -278,8 +285,8 @@ describe('LanguageChooser', () => {
       screen.getByRole('heading', { name: 'Choose a language' }),
     ).toBeVisible();
     expect(
-      within(group).getByRole('radio', { name: label('ar') }),
-    ).toBeChecked();
+      within(group).getByRole('option', { name: label('ar') }),
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   it('names the unspecified language in the interface language', async () => {
@@ -294,60 +301,17 @@ describe('LanguageChooser', () => {
     const unspecified = within(group).getByText('Unspecified language');
     expect(languageOf(unspecified)).toBe(screen.getByRole('main'));
     expect(
-      within(group).getByRole('radio', { name: 'Unspecified language' }),
-    ).toBeChecked();
+      within(group).getByRole('option', { name: 'Unspecified language' }),
+    ).toHaveAttribute('aria-selected', 'true');
 
-    await user.click(within(group).getByRole('radio', { name: label('fr') }));
+    await user.click(within(group).getByRole('option', { name: label('fr') }));
 
     expect(
-      await within(group).findByRole('radio', { name: 'Langue non précisée' }),
-    ).not.toBeChecked();
+      await within(group).findByRole('option', { name: 'Langue non précisée' }),
+    ).toHaveAttribute('aria-selected', 'false');
   });
 
-  it('shows a formatted markdown introduction in the language it is written in', async () => {
-    renderChooser({
-      payload: makePayload({
-        introduction: {
-          en: "Choose the language you would like to use. Braces stay literal: '{'en'}'.\n\nYou can **change it** later.",
-          es: 'Elige el idioma que prefieras.\n\nPuedes **cambiarlo** más tarde.',
-        },
-      }),
-    });
-    const user = userEvent.setup();
-    await languageGroup();
-
-    const literal = screen.getByText(
-      'Choose the language you would like to use. Braces stay literal: {en}.',
-    );
-    expect(literal.tagName).toBe('P');
-    expect(screen.getByText('change it').tagName).toBe('STRONG');
-    expect(languageOf(literal)).toHaveAttribute('lang', 'en');
-    expect(languageOf(literal)).toHaveAttribute('dir', 'ltr');
-
-    await user.click(screen.getByRole('radio', { name: label('es') }));
-
-    const spanish = await screen.findByText('Elige el idioma que prefieras.');
-    expect(languageOf(spanish)).toHaveAttribute('lang', 'es');
-    expect(
-      screen.queryByText(/Choose the language you would like to use/),
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows an introduction in the unspecified language without claiming a language for it', async () => {
-    renderChooser({
-      payload: makePayload({
-        localization: { defaultLocale: 'und', locales: ['und'] },
-        introduction: { und: 'Welcome.' },
-      }),
-    });
-    await languageGroup();
-
-    expect(languageOf(screen.getByText('Welcome.'))).toBe(
-      screen.getByRole('main'),
-    );
-  });
-
-  it('shows only the heading and the languages without an introduction', async () => {
+  it('shows only the heading and the languages', async () => {
     renderChooser();
     await languageGroup();
 
@@ -366,7 +330,7 @@ describe('LanguageChooser', () => {
     const next = screen.getByRole('button', { name: 'Next Step' });
     expect(next).toBeEnabled();
 
-    await user.click(within(group).getByRole('radio', { name: label('es') }));
+    await user.click(within(group).getByRole('option', { name: label('es') }));
     await screen.findByRole('heading', { name: 'Elige un idioma' });
 
     expect(liveStore().getState().session.network).toEqual(networkBefore);

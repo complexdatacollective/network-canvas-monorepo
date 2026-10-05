@@ -13,7 +13,6 @@ import {
   mountedAs,
   stageNameInput,
 } from '../../__tests__/formEditorHarness.tsx';
-import { writeInto } from '../../__tests__/writeInto.ts';
 import { languageChooserStageEditor } from '../LanguageChooserStageEditor.ts';
 
 /** See `editors/__tests__/formEditorHarness.tsx` for why the stand-in. */
@@ -59,9 +58,6 @@ const openStage = (fields: SectionDoc = {}) => ({
   editor: mountedAs(languageChooserStageEditor.LanguageChooser),
 });
 
-const introductionBox = () =>
-  screen.getByRole('textbox', { name: 'Introduction text' });
-
 describe('the editor for the stage where a participant chooses a language', () => {
   it('lists the protocol languages by their own names, without letting the stage change them', () => {
     renderStageEditor({ ...openStage(), localization: THREE_LANGUAGES });
@@ -101,63 +97,9 @@ describe('the editor for the stage where a participant chooses a language', () =
     ).toBeInTheDocument();
   });
 
-  it('adds an introduction, in the default language, once it is switched on', async () => {
-    const harness = renderStageEditor(openStage());
-    await harness.opened();
-
-    expect(
-      screen.queryByRole('textbox', { name: 'Introduction text' }),
-    ).not.toBeInTheDocument();
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Introduction' }),
-    );
-    await writeInto(harness, introductionBox(), 'Which language {do} you use?');
-
-    const saved = await harness.submit();
-    expect(saved?.stageDocument.introduction).toEqual({
-      [FIXTURE_LANGUAGE]: escapeMessageText('Which language {do} you use?'),
-    });
-  });
-
-  it('writes the introduction only in the language being edited', async () => {
-    const harness = renderStageEditor({
-      ...openStage({
-        introduction: { [FIXTURE_LANGUAGE]: 'Choose the language you prefer.' },
-      }),
-      localization: ENGLISH_AND_FRENCH,
-    });
-    await harness.opened();
-
-    const [languageMenu] = screen.getAllByRole('button', {
-      name: /Editing language/,
-    });
-    if (languageMenu === undefined) throw new Error('No language menu');
-    await harness.user.click(languageMenu);
-    await harness.user.click(
-      await screen.findByRole('menuitemradio', { name: /^français/ }),
-    );
-    expect(introductionBox()).toHaveValue('');
-    await writeInto(harness, introductionBox(), 'Choisissez votre langue.');
-
-    const saved = await harness.submit();
-    expect(saved?.stageDocument.introduction).toEqual({
-      [FIXTURE_LANGUAGE]: 'Choose the language you prefer.',
-      fr: 'Choisissez votre langue.',
-    });
-    expect(saved?.stageDocument.label).toEqual({
-      [FIXTURE_LANGUAGE]: 'Choose a language',
-    });
-  });
-
   it('saves a stage it opened unchanged', async () => {
     const harness = renderStageEditor({
-      ...openStage({
-        introduction: {
-          [FIXTURE_LANGUAGE]: 'Choose the language you prefer.',
-          fr: 'Choisissez votre langue.',
-        },
-        interviewScript: 'Help the participant choose.',
-      }),
+      ...openStage({ interviewScript: 'Help the participant choose.' }),
       localization: ENGLISH_AND_FRENCH,
     });
 

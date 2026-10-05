@@ -11,8 +11,9 @@ another language. Field labels and hints, and option labels in `Boolean`,
 `RichSelectGroup`, `Select`, `ToggleButtonGroup` and `VisualAnalogScale`,
 accept it. The element that shows the text gets its `lang` and `dir`, so
 browsers and screen readers pronounce, hyphenate and lay it out correctly,
-while filtering, keys and `aria-label` use the bare text.
-`isPresentationalText`, `presentationalTextValue` and
+while filtering, keys and `aria-label` use the bare text. In
+`RichSelectGroup`, a label or description written in the other direction stays
+beside its indicator. `isPresentationalText`, `presentationalTextValue` and
 `presentationalTextProps` help components handle both forms. The Language
 Chooser stage type has a colour and icon.
 

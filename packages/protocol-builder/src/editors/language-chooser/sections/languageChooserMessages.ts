@@ -10,44 +10,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  * come from.
  */
 export const languageChooserMessages = defineMessages({
-  introductionTitle: {
-    id: 'protocolBuilder.languageChooser.introductionTitle',
-    defaultMessage: 'Introduction',
-    description:
-      'Heading of the optional section where a researcher writes text a participant reads above the list of languages on the screen where they choose the language of their interview.',
-  },
-  introductionDescription: {
-    id: 'protocolBuilder.languageChooser.introductionDescription',
-    defaultMessage:
-      'Write a short message participants read before they choose a language.',
-    description:
-      'Description of the optional introduction section on the language-choice stage.',
-  },
-  introductionLabel: {
-    id: 'protocolBuilder.languageChooser.introductionLabel',
-    defaultMessage: 'Introduction text',
-    description:
-      'Label of the rich-text field holding the message a participant reads above the list of languages.',
-  },
-  clearIntroductionTitle: {
-    id: 'protocolBuilder.languageChooser.clearIntroductionTitle',
-    defaultMessage: 'Remove the introduction?',
-    description:
-      'Title of the confirmation asked before switching the introduction off, which deletes the introduction text in every protocol language.',
-  },
-  clearIntroductionDescription: {
-    id: 'protocolBuilder.languageChooser.clearIntroductionDescription',
-    defaultMessage:
-      'The introduction will be deleted in every language. Do you want to continue?',
-    description:
-      'Body of the confirmation asked before switching the introduction off, which deletes the introduction text in every protocol language.',
-  },
-  clearIntroductionConfirm: {
-    id: 'protocolBuilder.languageChooser.clearIntroductionConfirm',
-    defaultMessage: 'Remove introduction',
-    description:
-      'Action that confirms switching the introduction off and deleting its text.',
-  },
   languagesTitle: {
     id: 'protocolBuilder.languageChooser.languagesTitle',
     defaultMessage: 'Languages',

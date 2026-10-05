@@ -23,7 +23,6 @@ import ProtocolSchemaV8 from '../../8/schema.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
 import ProtocolSchemaV9 from '../schema.ts';
-import { languageChooserStage } from '../stages/language-chooser.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol, codebookDefinitions } from './schema-8-protocol.ts';
 
@@ -130,11 +129,6 @@ const localizedDeclarations = (root: z.ZodType): Map<z.ZodType, string> => {
   return declarations;
 };
 
-// Declared only by schema 9, so no schema 8 document holds a value there.
-const SCHEMA_9_ONLY = new Set<z.ZodType>([
-  languageChooserStage.shape.introduction.unwrap(),
-]);
-
 describe('v8 to v9 localization migration', () => {
   it('declares the undetermined language as the only language', () => {
     expect(migrateStep(schema8Protocol())).toMatchObject({
@@ -145,7 +139,7 @@ describe('v8 to v9 localization migration', () => {
 
   it('wraps a value for every localized string the schema declares', () => {
     const declarations = localizedDeclarations(ProtocolSchemaV9);
-    expect(declarations.size).toBeGreaterThan(SCHEMA_9_ONLY.size);
+    expect(declarations.size).toBeGreaterThan(0);
 
     const wrapped = new Set(
       collectLocalizedStringSites(
@@ -156,10 +150,7 @@ describe('v8 to v9 localization migration', () => {
         .map(({ schema }) => schema),
     );
     const missed = [...declarations]
-      .filter(
-        ([declaration]) =>
-          !wrapped.has(declaration) && !SCHEMA_9_ONLY.has(declaration),
-      )
+      .filter(([declaration]) => !wrapped.has(declaration))
       .map(([, where]) => where);
     expect(missed).toEqual([]);
   });

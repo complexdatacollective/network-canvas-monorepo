@@ -218,18 +218,14 @@ Required keys per stage type used by these templates:
   }
   ```
 - **Anonymisation**: `explanationText:{title, body}` + `validation?:{minLength?,maxLength?}`.
-- **LanguageChooser**: `introduction?` only (no `subject`). Lets the participant pick one of the
-  protocol's `locales`, so add it only when there is more than one. Put it before any stage the
-  participant should read in their chosen language, normally first:
+- **LanguageChooser**: no fields beyond the base stage (no `subject`). Lets the participant pick
+  one of the protocol's `locales`, so add it only when there is more than one. Put it before any
+  stage the participant should read in their chosen language, normally first:
   ```jsonc
   {
     "id": "language-chooser",
     "type": "LanguageChooser",
-    "label": { "en-US": "Language", "es": "Idioma" },
-    "introduction": {
-      "en-US": "Choose the language for this interview.",
-      "es": "Elige el idioma de esta entrevista."
-    }
+    "label": { "en-US": "Language", "es": "Idioma" }
   }
   ```
 

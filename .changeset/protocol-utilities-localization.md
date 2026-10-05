@@ -15,8 +15,7 @@
   written.
 - Codebook node types, edge types and variables get a `label`, taken from
   their name unless you pass one.
-- `addStage('LanguageChooser', { introduction })` adds a language chooser
-  stage, with an optional introduction.
+- `addStage('LanguageChooser')` adds a language chooser stage.
 
 **Breaking:** the text in a built protocol is a `LocalizedString`, not a
 `string`, so code that reads a built stage's `label`, a prompt's `text` or an

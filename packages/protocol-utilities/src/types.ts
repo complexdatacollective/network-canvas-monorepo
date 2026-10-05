@@ -387,8 +387,6 @@ export type StageEntry = {
   nominationPrompts?: NominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
-  // LanguageChooser
-  introduction?: TextInput;
   // NetworkComposer
   layoutVariable?: string;
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
@@ -550,8 +548,6 @@ export type AddStageInput = {
   nominationPrompts?: NominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
-  // LanguageChooser
-  introduction?: TextInput;
   // NarrativePedigree
   sourceStageId?: string;
   diseases?: NarrativeDiseaseEntry[];

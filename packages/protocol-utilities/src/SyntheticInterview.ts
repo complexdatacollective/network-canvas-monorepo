@@ -787,10 +787,6 @@ export class SyntheticInterview {
       }
     }
 
-    if (type === 'LanguageChooser' && opts?.introduction !== undefined) {
-      entry.introduction = opts.introduction;
-    }
-
     // NetworkComposer
     if (type === 'NetworkComposer') {
       if (subject?.entity !== 'node') {
@@ -2720,10 +2716,6 @@ export class SyntheticInterview {
             : {}),
         }));
       }
-    }
-
-    if (stage.type === 'LanguageChooser' && stage.introduction !== undefined) {
-      config.introduction = this.localized(stage.introduction);
     }
 
     return config;

@@ -196,7 +196,6 @@ export const completeProtocol = () => ({
       id: 'chooser',
       type: 'LanguageChooser',
       label: localized('Language'),
-      introduction: localized('Choose a language'),
     },
     {
       id: 'information',

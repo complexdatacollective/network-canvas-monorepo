@@ -731,10 +731,7 @@
     {
       "id": "language-chooser-1",
       "type": "LanguageChooser",
-      "label": { "en-US": "Language Chooser" },
-      "introduction": {
-        "en-US": "Choose the language you would like to use for the rest of this interview."
-      }
+      "label": { "en-US": "Language Chooser" }
     }
   ],
   "assetManifest": {

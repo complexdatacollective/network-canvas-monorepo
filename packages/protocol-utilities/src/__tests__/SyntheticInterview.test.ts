@@ -3003,49 +3003,18 @@ describe('localization', () => {
 });
 
 describe('LanguageChooser stage', () => {
-  it('builds a subjectless stage without an introduction', () => {
+  it('builds a subjectless stage', () => {
     const synth = new SyntheticInterview();
     synth.addStage('LanguageChooser');
 
     const stage = expectValid(synth).stages[0];
     expect(stage?.type).toBe('LanguageChooser');
     expect(stage).not.toHaveProperty('subject');
-    expect(stage).not.toHaveProperty('introduction');
-  });
-
-  it('localizes the introduction', () => {
-    const synth = new SyntheticInterview();
-    synth.setLocalization({ defaultLocale: 'en-US', locales: ['en-US', 'es'] });
-    synth.addStage('LanguageChooser', {
-      label: { 'en-US': 'Language', 'es': 'Idioma' },
-      introduction: {
-        'en-US': 'Choose the language for this interview.',
-        'es': 'Elige el idioma de esta entrevista.',
-      },
-    });
-    synth.addStage('LanguageChooser', {
-      introduction: 'Plain {text} introduction',
-    });
-
-    const [localized, plain] = expectValid(synth).stages;
-    if (
-      localized?.type !== 'LanguageChooser' ||
-      plain?.type !== 'LanguageChooser'
-    ) {
-      throw new Error('Expected two LanguageChooser stages');
-    }
-    expect(localized.introduction).toEqual({
-      'en-US': 'Choose the language for this interview.',
-      'es': 'Elige el idioma de esta entrevista.',
-    });
-    expect(plain.introduction).toEqual({
-      'en-US': "Plain '{'text'}' introduction",
-    });
   });
 
   it('adds nothing to the generated network', () => {
     const synth = new SyntheticInterview();
-    synth.addStage('LanguageChooser', { introduction: 'Pick a language.' });
+    synth.addStage('LanguageChooser');
 
     const network = synth.getNetwork();
     expect(network.nodes).toEqual([]);

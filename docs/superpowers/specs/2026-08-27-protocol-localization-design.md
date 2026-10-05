@@ -373,7 +373,6 @@ a localized `label` beside a stable `name`, or adds a localized field:
 | Name Generator Roster | Card-property and sort-property `label`                                                                             |
 | Narrative             | Preset `label`                                                                                                      |
 | Narrative Pedigree    | Disease `label`                                                                                                     |
-| Language Chooser      | Optional `introduction` (markdown), shown above the list of languages                                               |
 
 A text item's `description`, in an Information stage or a Family Pedigree intro
 screen, is never shown to a participant, so it stays a plain researcher note.
@@ -805,21 +804,21 @@ Interviewer's new-session form. The only participant control is the
 `LanguageChooser` stage, which the protocol author places in the stage list.
 It can appear anywhere, more than once.
 
-- The schema is the base stage (including its localized `label`) plus an
-  optional localized markdown `introduction`.
-- The stage shows its introduction, then a radio group of every declared
-  language, taken from `useProtocolLocale().options`. Each option is labeled with
-  the language's own name and carries its own `lang` and `dir`; the `und` option
-  is labeled "Unspecified language" in the interface language. The language
-  currently shown is selected. The heading is built-in interface text.
+- The schema is the base stage, including its localized `label`, and nothing
+  more.
+- The stage shows a built-in heading, then a `RichSelectGroup` single-selection
+  list of every declared language, taken from `useProtocolLocale().options`. Each
+  option is labeled with the language's own name and carries its own `lang` and
+  `dir`; the `und` option is labeled "Unspecified language" in the interface
+  language. The language currently shown is selected. Arrow keys move focus
+  through the list, and Enter or Space chooses the focused language.
 - Choosing another language calls `setLocale`. The protocol text and the
   built-in interface text switch at once, the network, prompt position, and form
   answers are untouched, and the choice is stored through the locale-change
   handler (§8.1). Leaving the preselected language unchanged states nothing, so
   the browser continues to decide.
-- Architect adds the stage from the New Stage menu. Its editor sets the
-  introduction and lists the languages participants are offered, which is every
-  declared language.
+- Architect adds the stage from the New Stage menu. Its editor lists the
+  languages participants are offered, which is every declared language.
 
 ### 8.3 Interface language
 

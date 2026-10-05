@@ -7,11 +7,7 @@
     {
       "id": "language-chooser",
       "type": "LanguageChooser",
-      "label": { "en-US": "Language", "es": "Idioma" },
-      "introduction": {
-        "en-US": "Choose the language for this interview.",
-        "es": "Elige el idioma de esta entrevista."
-      }
+      "label": { "en-US": "Language", "es": "Idioma" }
     },
     {
       "id": "anonymisation-interface",

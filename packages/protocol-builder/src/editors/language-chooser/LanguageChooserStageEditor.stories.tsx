@@ -16,10 +16,6 @@ const meta = {
       type: 'LanguageChooser',
       fields: {
         label: { 'en-US': 'Choose a language' },
-        introduction: {
-          'en-US': 'Choose the language you would like to use.',
-          'fr': 'Choisissez la langue que vous souhaitez utiliser.',
-        },
       },
     },
     localization: {
@@ -41,7 +37,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The editor for the stage where a participant chooses which of the protocol languages the rest of their interview is shown in. The languages are the protocol’s own and are listed rather than edited; the researcher writes an optional introduction, in each language. It is opened here over a real editing session holding the shared all-interfaces protocol, declaring three languages.',
+          'The editor for the stage where a participant chooses which of the protocol languages the rest of their interview is shown in. The languages are the protocol’s own and are listed rather than edited. It is opened here over a real editing session holding the shared all-interfaces protocol, declaring three languages.',
       },
     },
   },

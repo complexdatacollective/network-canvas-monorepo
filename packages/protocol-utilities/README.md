@@ -23,7 +23,7 @@ Participant-facing text accepts either a plain string or a locale map:
 
 This covers stage labels, prompts, form fields, panels, options, and codebook entries. Every node type, edge type, and variable (ego variables included) gets a `label`, which is the entry's `name` unless you pass one.
 
-`addStage('LanguageChooser', { introduction? })` adds a language chooser stage. It has no subject and adds nothing to the generated network.
+`addStage('LanguageChooser')` adds a language chooser stage. It has no subject and adds nothing to the generated network.
 
 ```ts
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -36,9 +36,7 @@ const person = synth.addNodeType({
   label: { 'en-US': 'Person', 'es': 'Persona' },
 });
 
-synth.addStage('LanguageChooser', {
-  introduction: 'Choose the language for this interview.', // en-US only
-});
+synth.addStage('LanguageChooser');
 
 const friends = synth.addStage('NameGenerator', {
   subject: { entity: 'node', type: person.id },

@@ -124,8 +124,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     site(stage(index, 'label'), 'plain'),
   ),
 
-  site(stage(0, 'introduction'), 'markdown'),
-
   site(stage(1, 'title'), 'plain'),
   site(stage(1, 'items', 0, 'content'), 'markdown'),
   site(stage(1, 'items', 1, 'description'), 'plain', true),
@@ -439,12 +437,6 @@ describe('analyzeProtocolLocalization', () => {
 });
 
 describe('LanguageChooser stage', () => {
-  it('accepts a chooser without an introduction', () => {
-    expect(
-      failurePaths(withValueAt(stage(0, 'introduction'), undefined)),
-    ).toEqual([]);
-  });
-
   it('rejects keys the chooser does not define', () => {
     expect(failurePaths(withValueAt(stage(0, 'locales'), ['en']))).toContain(
       pathKey(stage(0)),

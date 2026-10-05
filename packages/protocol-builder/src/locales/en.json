@@ -2347,30 +2347,6 @@
     "defaultMessage": "Task introduction",
     "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
   },
-  "protocolBuilder.languageChooser.clearIntroductionConfirm": {
-    "defaultMessage": "Remove introduction",
-    "description": "Action that confirms switching the introduction off and deleting its text."
-  },
-  "protocolBuilder.languageChooser.clearIntroductionDescription": {
-    "defaultMessage": "The introduction will be deleted in every language. Do you want to continue?",
-    "description": "Body of the confirmation asked before switching the introduction off, which deletes the introduction text in every protocol language."
-  },
-  "protocolBuilder.languageChooser.clearIntroductionTitle": {
-    "defaultMessage": "Remove the introduction?",
-    "description": "Title of the confirmation asked before switching the introduction off, which deletes the introduction text in every protocol language."
-  },
-  "protocolBuilder.languageChooser.introductionDescription": {
-    "defaultMessage": "Write a short message participants read before they choose a language.",
-    "description": "Description of the optional introduction section on the language-choice stage."
-  },
-  "protocolBuilder.languageChooser.introductionLabel": {
-    "defaultMessage": "Introduction text",
-    "description": "Label of the rich-text field holding the message a participant reads above the list of languages."
-  },
-  "protocolBuilder.languageChooser.introductionTitle": {
-    "defaultMessage": "Introduction",
-    "description": "Heading of the optional section where a researcher writes text a participant reads above the list of languages on the screen where they choose the language of their interview."
-  },
   "protocolBuilder.languageChooser.languagesDescription": {
     "defaultMessage": "Participants choose from every language this protocol is written in. Add or remove languages in the protocol's settings.",
     "description": "Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages set for the whole protocol."

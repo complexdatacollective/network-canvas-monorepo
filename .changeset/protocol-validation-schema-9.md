@@ -79,8 +79,7 @@ Localization:
   `label`, which participants see, beside the `name` that exports and rules
   use.
 - A new `LanguageChooser` stage lets the participant choose among the
-  protocol's languages. It takes an optional localized markdown
-  `introduction`.
+  protocol's languages.
 - Disease labels in a Narrative Pedigree stage must be unique in every
   declared language.
 - New exports: the `LocalizedString`, `LocalizedStringFormat`, `LocaleTag`,

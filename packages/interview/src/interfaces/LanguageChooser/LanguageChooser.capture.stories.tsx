@@ -19,13 +19,7 @@ const build = () => {
     title: 'Before',
     text: 'Padding stage before the language chooser.',
   });
-  si.addStage('LanguageChooser', {
-    introduction: {
-      en: 'This study is available in more than one language. Choose the one you would like to use for the rest of the interview.',
-      es: 'Este estudio está disponible en más de un idioma. Elige el que quieras usar durante el resto de la entrevista.',
-      ar: 'هذه الدراسة متاحة بأكثر من لغة. اختر اللغة التي تفضّل استخدامها في بقية المقابلة.',
-    },
-  });
+  si.addStage('LanguageChooser');
   si.addInformationStage({
     title: 'After',
     text: 'Padding stage after the language chooser.',

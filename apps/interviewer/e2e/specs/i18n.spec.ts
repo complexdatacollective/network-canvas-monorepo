@@ -290,14 +290,9 @@ test.describe('the language chooser stage', () => {
     await expect(
       page.getByRole('heading', { name: 'Choose a language', exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByText('Choose the language for this interview.', {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await expect(page.getByRole('radio')).toHaveCount(2);
-    const spanish = page.getByRole('radio', { name: 'español', exact: true });
-    await expect(spanish).not.toBeChecked();
+    await expect(page.getByRole('option')).toHaveCount(2);
+    const spanish = page.getByRole('option', { name: 'español', exact: true });
+    await expect(spanish).toHaveAttribute('aria-selected', 'false');
     await expect
       .poll(async () => (await storedResearch(page)).sessions)
       .toEqual([
@@ -305,12 +300,9 @@ test.describe('the language chooser stage', () => {
       ]);
 
     await spanish.click();
-    await expect(spanish).toBeChecked();
+    await expect(spanish).toHaveAttribute('aria-selected', 'true');
     await expect(
       page.getByRole('heading', { name: 'Elige un idioma', exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByText('Elige el idioma de esta entrevista.', { exact: true }),
     ).toBeVisible();
     await expect(interview).toHaveAttribute('lang', 'es');
     await expect(
@@ -329,10 +321,7 @@ test.describe('the language chooser stage', () => {
     await expect(
       page.getByRole('heading', { name: 'Elige un idioma', exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByText('Elige el idioma de esta entrevista.', { exact: true }),
-    ).toBeVisible();
-    await expect(spanish).toBeChecked();
+    await expect(spanish).toHaveAttribute('aria-selected', 'true');
     await expect(interview).toHaveAttribute('lang', 'es');
     expect((await storedResearch(page)).sessions).toEqual([
       expect.objectContaining({ localePreference: 'es', locale: 'es' }),

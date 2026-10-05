@@ -166,8 +166,9 @@ const localizedOptions: RichSelectOption[] = [
 /**
  * Protocol copy arrives as `PresentationalText`: label and description each
  * render as Markdown on an element carrying their own `lang` and `dir`, so an
- * Arabic option lays out right-to-left inside a left-to-right page. Plain
- * strings keep the page's language.
+ * Arabic option lays out right-to-left inside a left-to-right page, still
+ * beside its indicator rather than pushed to the far edge. Plain strings keep
+ * the page's language.
  */
 export const LocalizedLabels: Story = {
   render: function Render() {
@@ -188,6 +189,7 @@ export const LocalizedLabels: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await document.fonts.ready;
 
     const close = canvas.getByText('قريب جدا');
     await expect(close.tagName).toBe('STRONG');
@@ -202,6 +204,22 @@ export const LocalizedLabels: Story = {
     await expect(canvas.getByText('Not sure').closest('[lang]')).toBe(
       document.documentElement,
     );
+
+    // Measures the text rather than its box: a box stretched across the column
+    // would hide right-to-left text drawn against the far edge.
+    const indicatorEdge = canvas
+      .getByRole('option', { name: /قريب جدا/ })
+      .querySelector('[aria-hidden]')
+      ?.getBoundingClientRect().right;
+    const gapAfterIndicator = (text: Node) => {
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      return range.getBoundingClientRect().left - (indicatorEdge ?? -Infinity);
+    };
+    await expect(gapAfterIndicator(close)).toBeLessThan(24);
+    await expect(
+      gapAfterIndicator(canvas.getByText('نتحدث كل يوم تقريبا.')),
+    ).toBeLessThan(24);
   },
 };
 

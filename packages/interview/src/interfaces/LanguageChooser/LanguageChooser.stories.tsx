@@ -11,6 +11,31 @@ const LANGUAGE_SETS = {
     defaultLocale: 'en',
     locales: ['en', 'es', 'ar'],
   },
+  'Arabic, English and Persian': {
+    defaultLocale: 'ar',
+    locales: ['ar', 'en', 'fa'],
+  },
+  'Many languages': {
+    defaultLocale: 'en',
+    locales: [
+      'en',
+      'es',
+      'fr',
+      'de',
+      'pt-BR',
+      'ru',
+      'tr',
+      'sw',
+      'hi',
+      'zh-Hans',
+      'zh-Hant',
+      'ja',
+      'ko',
+      'ar',
+      'he',
+      'fa',
+    ],
+  },
   'One language': { defaultLocale: 'en', locales: ['en'] },
   'Unspecified and French': { defaultLocale: 'und', locales: ['und', 'fr'] },
 } as const;
@@ -19,21 +44,13 @@ type LanguageSet = keyof typeof LANGUAGE_SETS;
 
 type StoryArgs = {
   languages: LanguageSet;
-  showIntroduction: boolean;
-};
-
-const INTRODUCTION = {
-  en: 'This study is available in more than one language. Choose the one you would like to use for the rest of the interview.',
-  es: 'Este estudio está disponible en más de un idioma. Elige el que quieras usar durante el resto de la entrevista.',
-  ar: 'هذه الدراسة متاحة بأكثر من لغة. اختر اللغة التي تفضّل استخدامها في بقية المقابلة.',
-  fr: 'Cette étude est proposée dans plusieurs langues. Choisissez celle que vous souhaitez utiliser pour la suite de l’entretien.',
-  und: 'This study is available in more than one language.',
 };
 
 const AFTER_TITLE = {
   en: 'Welcome',
   es: 'Bienvenida',
   ar: 'مرحباً',
+  fa: 'خوش آمدید',
   fr: 'Bienvenue',
   und: 'Welcome',
 };
@@ -42,6 +59,7 @@ const AFTER_TEXT = {
   en: 'The rest of the interview is shown in the language you chose.',
   es: 'El resto de la entrevista se muestra en el idioma que elegiste.',
   ar: 'تُعرض بقية المقابلة باللغة التي اخترتها.',
+  fa: 'بقیهٔ مصاحبه به زبانی که انتخاب کردید نمایش داده می‌شود.',
   fr: 'La suite de l’entretien s’affiche dans la langue que vous avez choisie.',
   und: 'The rest of the interview is shown in the language you chose.',
 };
@@ -56,7 +74,7 @@ const declared = (
     Object.entries(text).filter(([locale]) => locales.includes(locale)),
   );
 
-function buildInterview({ languages, showIntroduction }: StoryArgs) {
+function buildInterview({ languages }: StoryArgs) {
   const localization = LANGUAGE_SETS[languages];
   const interview = new SyntheticInterview();
   interview.setLocalization(localization);
@@ -65,12 +83,7 @@ function buildInterview({ languages, showIntroduction }: StoryArgs) {
     title: 'Before',
     text: 'Padding stage before the language chooser.',
   });
-  interview.addStage(
-    'LanguageChooser',
-    showIntroduction
-      ? { introduction: declared(INTRODUCTION, localization.locales) }
-      : {},
-  );
+  interview.addStage('LanguageChooser');
   interview.addInformationStage({
     title: declared(AFTER_TITLE, localization.locales),
     text: declared(AFTER_TEXT, localization.locales),
@@ -79,27 +92,21 @@ function buildInterview({ languages, showIntroduction }: StoryArgs) {
   return interview;
 }
 
-const LanguageChooserStoryWrapper = ({
-  languages,
-  showIntroduction,
-}: StoryArgs) => {
+const LanguageChooserStoryWrapper = ({ languages }: StoryArgs) => {
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(
-        buildInterview({ languages, showIntroduction }).getInterviewPayload({
+        buildInterview({ languages }).getInterviewPayload({
           currentStep: 1,
         }),
       ),
-    [languages, showIntroduction],
+    [languages],
   );
 
   // A different protocol needs a fresh interview rather than a re-render.
   return (
     <div className="flex h-dvh w-full">
-      <StoryInterviewShell
-        key={`${languages}-${String(showIntroduction)}`}
-        rawPayload={rawPayload}
-      />
+      <StoryInterviewShell key={languages} rawPayload={rawPayload} />
     </div>
   );
 };
@@ -115,14 +122,9 @@ const meta: Meta<StoryArgs> = {
       options: Object.keys(LANGUAGE_SETS),
       description: 'The languages the protocol declares',
     },
-    showIntroduction: {
-      control: 'boolean',
-      description: 'Whether the researcher wrote an introduction',
-    },
   },
   args: {
     languages: 'English, Spanish and Arabic',
-    showIntroduction: true,
   },
 };
 
@@ -133,9 +135,16 @@ export const Default: Story = {
   render: (args) => <LanguageChooserStoryWrapper {...args} />,
 };
 
-export const WithoutIntroduction: Story = {
+/** Opens in Arabic, so the stage is laid out right to left. */
+export const RightToLeft: Story = {
   render: (args) => <LanguageChooserStoryWrapper {...args} />,
-  args: { showIntroduction: false },
+  args: { languages: 'Arabic, English and Persian' },
+};
+
+/** Sixteen languages in several scripts, more than fit on one screen. */
+export const ManyLanguages: Story = {
+  render: (args) => <LanguageChooserStoryWrapper {...args} />,
+  args: { languages: 'Many languages' },
 };
 
 export const OneLanguage: Story = {
