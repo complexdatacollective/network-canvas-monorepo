@@ -150,8 +150,8 @@ const StageEditorPage = () => {
 
   const otherTabName = intl.formatMessage(messages.otherTab);
   // One client per store, because a new one re-opens the protocol channel
-  // behind it. The name follows the researcher's language, which changes about
-  // as often as the store does.
+  // behind it and drops what this edit has imported. A language change only
+  // relabels the other tab; it keeps the client.
   const client = useArchitectClient(reduxStore, otherTabName);
 
   const target = useMemo<StageEditTarget | undefined>(() => {
