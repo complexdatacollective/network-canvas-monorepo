@@ -19,8 +19,8 @@ export type ResolvedAsset = {
 
 /**
  * Protocol payload: the validated protocol plus per-interview metadata
- * (id, importedAt, hash) the package carries in its store. Always schema 8 —
- * older protocols are migrated to the current version at import time, so
+ * (id, importedAt, hash) the package carries in its store. Always the current
+ * schema version — older protocols are migrated to it at import time, so
  * downstream code never sees a versioned union.
  *
  * `hash` is the host-computed canonical content hash (codebook + stages),

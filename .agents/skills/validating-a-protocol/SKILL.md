@@ -62,7 +62,7 @@ node packages/protocol-validation/scripts/cli.js /tmp/embedded.json; echo "exit:
 
 ## Gotchas
 
-- Only `schemaVersion` 7 and 8 are validatable (`VersionedProtocolSchema`). Older protocols fail the `schemaVersion` discriminator and must be migrated first (migration lives in the same package).
+- Only `schemaVersion` 7, 8 and 9 are validatable (`VersionedProtocolSchema`). Older protocols fail the `schemaVersion` discriminator and must be migrated first (migration lives in the same package).
 - An invalid stage `type` is a discriminated-union failure, so that stage's _contents_ were never checked — fix the `type` and re-run; more errors may surface inside the stage.
 - Protocol files are often minified to one line. Locate errors with the issue's `path` array and `jq`, not line numbers.
 - A `.netcanvas` is a zip with `protocol.json` and `assets/` at the root. To build one for testing: `cd <dir> && zip -r out.netcanvas protocol.json assets`.

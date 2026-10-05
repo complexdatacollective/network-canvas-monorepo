@@ -6,10 +6,11 @@ import { v4 as uuid } from 'uuid';
 
 import type { Codebook, CurrentProtocol } from '@codaco/protocol-validation';
 import {
-  CurrentProtocolSchema,
+  CURRENT_SCHEMA_VERSION,
   extractProtocol,
   missingAssetsError,
   hashProtocol,
+  migrateProtocol,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -41,6 +42,16 @@ type InstalledProtocol = {
   codebook: Codebook;
   assetBasePath: string;
 };
+
+// Brought to the current schema the way a host does on import, so a fixture
+// saved by an earlier version of Architect still runs.
+const toCurrentProtocol = (
+  protocolJson: unknown,
+  protocolPath: string,
+): CurrentProtocol =>
+  migrateProtocol(protocolJson, CURRENT_SCHEMA_VERSION, {
+    name: path.basename(protocolPath, path.extname(protocolPath)),
+  });
 
 /**
  * ProtocolFixture extracts and installs real .netcanvas protocol files for e2e
@@ -89,8 +100,9 @@ export class ProtocolFixture {
       /asset:\/\/([^"]+)/g,
       `${this.assetServerUrl}/${protocolId}/$1`,
     );
-    const rewrittenProtocol = CurrentProtocolSchema.parse(
+    const rewrittenProtocol = toCurrentProtocol(
       JSON.parse(rewrittenStr),
+      protocolPath,
     );
 
     // Write each non-apikey asset to disk under the `source` filename from
@@ -154,7 +166,7 @@ export class ProtocolFixture {
   /** Install an asset-free protocol JSON fixture directly. */
   async installJson(protocolPath: string): Promise<InstalledProtocol> {
     const protocolJson = JSON.parse(await fs.readFile(protocolPath, 'utf8'));
-    const protocol = CurrentProtocolSchema.parse(protocolJson);
+    const protocol = toCurrentProtocol(protocolJson, protocolPath);
     const protocolId = uuid();
     const payload: ProtocolPayload = {
       ...protocol,

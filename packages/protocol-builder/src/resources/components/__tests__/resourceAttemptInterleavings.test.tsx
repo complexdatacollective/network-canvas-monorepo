@@ -492,11 +492,15 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       });
 
       const input = await openBrowser(user, 'Select a data file');
+      // A roster this control reads as one itself, so the refusal is the
+      // host's and the bytes are staged before it arrives.
       await user.upload(
         input,
-        new File(['not a roster at all'], 'community.json', {
-          type: 'application/json',
-        }),
+        new File(
+          [JSON.stringify({ nodes: [{ attributes: { name: 'Ada' } }] })],
+          'community.json',
+          { type: 'application/json' },
+        ),
       );
 
       expect(

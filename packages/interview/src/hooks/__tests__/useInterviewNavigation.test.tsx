@@ -79,7 +79,7 @@ function makeStore(stages: TestStage[]) {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {},
           edge: {},
@@ -149,7 +149,7 @@ function renderNavigation(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {},
           edge: {},

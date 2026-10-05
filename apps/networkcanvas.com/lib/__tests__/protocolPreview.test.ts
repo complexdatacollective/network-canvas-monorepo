@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
@@ -77,6 +78,22 @@ describe('installPreviewProtocol', () => {
     expect(first.session.id).not.toBe(second.session.id);
     expect(first.session.finishTime).toBeNull();
     expect(first.session.network.ego).toBeDefined();
+  });
+
+  it('reports a protocol from a newer version as an unsupported version', async () => {
+    const zip = new JSZip();
+    zip.file(
+      'protocol.json',
+      JSON.stringify({
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1,
+        name: 'From the future',
+      }),
+    );
+    const result = await installPreviewProtocol(
+      await zip.generateAsync({ type: 'uint8array' }),
+      'future.netcanvas',
+    );
+    expect(result).toEqual({ ok: false, reason: 'unsupported-version' });
   });
 
   it('reports bytes that are not an archive as unreadable', async () => {

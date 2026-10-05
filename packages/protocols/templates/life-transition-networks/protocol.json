@@ -1,7 +1,7 @@
 {
   "name": "Life Transitions & Turning Points",
   "description": "An example template for a narrative interview about how a personal network was reshaped by a major life change. The participant tells the story of a transition they nominate, while the interviewer builds the network alongside them on a single canvas. The finished network is then explored through a Narrative Interface.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-07-28T21:01:18.876Z",
   "codebook": {
     "ego": {

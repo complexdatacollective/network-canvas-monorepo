@@ -473,9 +473,6 @@ importers:
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       cva:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(typescript@7.0.2)
@@ -2573,9 +2570,6 @@ importers:
       concaveman:
         specifier: ^2.0.0
         version: 2.0.0
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       d3-force:
         specifier: ^3.0.0
         version: 3.0.0
@@ -2861,9 +2855,6 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.104.0(react@19.3.0)
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -3059,6 +3050,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
+      csvtojson:
+        specifier: 'catalog:'
+        version: 2.0.14
       jszip:
         specifier: 'catalog:'
         version: 3.10.2
@@ -10238,22 +10232,6 @@ packages:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
 
-  chromatic@18.1.0:
-    resolution: {integrity: sha512-I9av8lUc5CQRlYzwKpmOG9cwYvZ4AFmTvtHeNrzOMC1353F9xYw45CHpSNIsNKuOiqqmzci9esXQd5akl0fi6w==}
-    engines: {node: '>=22.0.0'}
-    hasBin: true
-    peerDependencies:
-      '@chromatic-com/cypress': ^0.*.* || ^1.0.0
-      '@chromatic-com/playwright': ^0.*.* || ^1.0.0
-      '@chromatic-com/vitest': ^0.*.* || ^1.0.0
-    peerDependenciesMeta:
-      '@chromatic-com/cypress':
-        optional: true
-      '@chromatic-com/playwright':
-        optional: true
-      '@chromatic-com/vitest':
-        optional: true
-
   chromatic@18.10.1:
     resolution: {integrity: sha512-oeCv4HvMrZPB7SzCD9yuzAPgB4c/TfhqLzDn1/K7dIYGvF/mWhOrwDa5sXHIkaXFJ+mYx9rMKy9fPShWPujH5Q==}
     engines: {node: '>=22.0.0'}
@@ -17184,18 +17162,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.21.3:
-    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.22.0:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
     engines: {node: '>=10.0.0'}
@@ -19013,7 +18979,7 @@ snapshots:
   '@chromatic-com/storybook@5.3.1(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
     dependencies:
       '@neoconfetti/react': 1.0.0
-      chromatic: 18.1.0
+      chromatic: 18.10.1
       jsonfile: 6.2.1
       storybook: 10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       strip-ansi: 7.2.0
@@ -24347,10 +24313,6 @@ snapshots:
   chownr@2.0.0: {}
 
   chownr@3.0.0: {}
-
-  chromatic@18.1.0:
-    dependencies:
-      semver: 7.8.5
 
   chromatic@18.10.1:
     dependencies:
@@ -30947,7 +30909,7 @@ snapshots:
       recast: 0.23.11
       semver: 7.8.5
       use-sync-external-store: 1.6.0(react@19.3.0)
-      ws: 8.21.3
+      ws: 8.22.0
     optionalDependencies:
       '@types/react': 19.3.0
       prettier: 2.8.8
@@ -32387,8 +32349,6 @@ snapshots:
   ws@7.5.10: {}
 
   ws@8.21.0: {}
-
-  ws@8.21.3: {}
 
   ws@8.22.0: {}
 

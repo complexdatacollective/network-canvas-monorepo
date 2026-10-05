@@ -56,7 +56,9 @@ const detailsWithVariableUUIDs =
     return withUUIDReplacement?.reduce(
       (acc, field) => ({
         ...acc,
-        [field.label]: attrs[field.variable],
+        [field.label]: Object.hasOwn(attrs, field.variable)
+          ? attrs[field.variable]
+          : undefined,
       }),
       {} as Record<string, VariableValue | undefined>,
     );

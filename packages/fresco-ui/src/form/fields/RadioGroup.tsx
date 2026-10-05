@@ -252,7 +252,7 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
         aria-required={rest['aria-required']}
         aria-readonly={readOnly || undefined}
       >
-        {options.map((option) => (
+        {options.map((option, index) => (
           <RadioItem
             key={String(option.value)}
             value={option.value}
@@ -263,7 +263,10 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
             disabled={Boolean(disabled) || Boolean(option.disabled)}
             readOnly={readOnly}
             size={size}
-            id={`${optionIdPrefix}-${String(option.value)}`}
+            // Positional, not the option's value: an option value is whatever
+            // the researcher typed, and an element id may not contain
+            // whitespace.
+            id={`${optionIdPrefix}-${index}`}
           />
         ))}
       </RadioGroup>

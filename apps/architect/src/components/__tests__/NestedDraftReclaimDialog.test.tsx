@@ -25,7 +25,7 @@ const closeDialogMock = globalThis.__architectDialogMocks.closeDialog;
 
 const protocol = {
   name: 'Test Protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   stages: [{ id: 'stage-1', type: 'Information', label: 'A' }],
   codebook: {},
 } as unknown as CurrentProtocol;

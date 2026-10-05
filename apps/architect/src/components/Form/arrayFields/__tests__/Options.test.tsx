@@ -209,20 +209,21 @@ describe('Options', () => {
   // The row shows the same message, but it is display-only (see RowField), and
   // collapsing the row hides it while keeping the value — so the researcher
   // could ship an option value that Architect had already called invalid.
-  it('refuses to submit an option value that is not an NMTOKEN', async () => {
+  const CONTROL_CHARACTER_MESSAGE =
+    'This can’t contain tabs, line breaks or other control characters';
+
+  it('refuses to submit an option value with a control character', async () => {
     const { onSubmit } = setup([...TWO_VALID_OPTIONS, { label: 'Three' }]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit option 3' }));
     const valueInput = await screen.findByRole('textbox', { name: 'Value' });
-    fireEvent.change(valueInput, { target: { value: 'has space' } });
+    fireEvent.change(valueInput, { target: { value: 'has\ttab' } });
     await waitFor(() => expect(getOptions()[2]).toHaveProperty('value'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findAllByText(
-        'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
-      ),
+      await screen.findAllByText(CONTROL_CHARACTER_MESSAGE),
     ).not.toHaveLength(0);
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -230,28 +231,42 @@ describe('Options', () => {
   it('keeps refusing after the row is collapsed and its message hidden', async () => {
     const { onSubmit } = setup([
       ...TWO_VALID_OPTIONS,
-      { label: 'Three', value: 'has space' },
+      { label: 'Three', value: 'has\ttab' },
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText(
-        'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
-      ),
+      await screen.findByText(CONTROL_CHARACTER_MESSAGE),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('submits option values made of letters, numbers and ._-:', async () => {
+  it('submits option values in any script, with spaces and punctuation', async () => {
     const { onSubmit } = setup([
-      { label: 'One', value: 'a_valid-value.1' },
-      { label: 'Two', value: 2 },
+      { label: 'Close friend', value: 'amigo cercano' },
+      { label: 'Colleague', value: 'Collègue' },
+      { label: 'Friend', value: '友人' },
+      { label: 'Percent', value: '100% (roughly)' },
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not let a row of spaces stand in for a value', async () => {
+    const { onSubmit } = setup([
+      ...TWO_VALID_OPTIONS,
+      { label: 'Three', value: '   ' },
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Every option needs both a label and a value.'),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('removes an option through its confirm dialog', async () => {

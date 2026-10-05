@@ -10,7 +10,7 @@ import SummaryContext from '../../SummaryContext';
 import SkipLogic from '../SkipLogic';
 
 const protocol = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   name: 'Skip destination protocol',
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},

@@ -65,7 +65,7 @@ const protocol = (
 ): CurrentProtocol =>
   ({
     name: 'Study',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest,

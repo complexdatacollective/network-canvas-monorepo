@@ -2,7 +2,7 @@
   "name": "All Interfaces (e2e)",
   "description": "Schema-8 protocol covering all 19 interface types, used by the Architect e2e suite.",
   "lastModified": "2026-07-13T00:00:00.000Z",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "codebook": {
     "node": {
       "person": {

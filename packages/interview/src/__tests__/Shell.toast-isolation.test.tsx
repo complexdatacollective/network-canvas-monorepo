@@ -126,7 +126,7 @@ function makePayload(id: string): InterviewPayload {
       hash: `${id}-hash`,
       importedAt: '2026-01-01T00:00:00.000Z',
       name: `Authored_${id}`,
-      schemaVersion: 8,
+      schemaVersion: 9,
       codebook: {
         ego: { variables: {} },
         node: {

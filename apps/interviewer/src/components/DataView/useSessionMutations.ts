@@ -6,6 +6,7 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import type { ExportEvent } from '@codaco/network-exporters/events';
+import type { ExportWarning } from '@codaco/network-exporters/output';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
@@ -18,6 +19,8 @@ import {
 import type { StoredSessionLite } from '~/lib/db/types';
 import { buildExportOptions, runExport } from '~/lib/export/exportSessions';
 import { saveBlob } from '~/lib/files/download';
+
+import { useShowExportWarnings } from './useShowExportWarnings';
 
 const messages = defineMessages({
   zipArchive: {
@@ -124,6 +127,11 @@ export type ExportFlow =
       exportGraphML: boolean;
       exportCSV: boolean;
       failedCount: number;
+      // What the archive holds differently from what was collected: answers
+      // and protocol text that lost characters GraphML cannot store, and
+      // columns written under a numbered name. The archive is complete, but
+      // the researcher must be told.
+      warnings: ExportWarning[];
     }
   | {
       phase: 'error';
@@ -150,6 +158,7 @@ export function useSessionMutations({
 }) {
   const intl = useAppIntl();
   const toast = useToast();
+  const showExportWarnings = useShowExportWarnings();
   const dialog = useDialog();
   const analytics = useAnalytics();
   const { requireFreshUnlock } = useStepUpAuth();
@@ -270,6 +279,7 @@ export function useSessionMutations({
         exportGraphML: settings.exportGraphML,
         exportCSV: settings.exportCSV,
         failedCount,
+        warnings: result.warnings,
       });
     } catch (cause) {
       // A cancelled build already reset the flow; its rejection is not an
@@ -333,6 +343,7 @@ export function useSessionMutations({
       exportGraphML,
       exportCSV,
       failedCount,
+      warnings,
     } = exportFlow;
     setExportFlow({ ...exportFlow, phase: 'saving' });
     try {
@@ -363,6 +374,7 @@ export function useSessionMutations({
         description: fileName,
         variant: 'success',
       });
+      showExportWarnings(warnings);
     } catch (cause) {
       // Failures up to the save/mark boundary keep the archive and return the
       // dialog to the ready state for a retry.
@@ -395,6 +407,7 @@ export function useSessionMutations({
     intl,
     onReload,
     reloadData,
+    showExportWarnings,
     toast,
   ]);
 

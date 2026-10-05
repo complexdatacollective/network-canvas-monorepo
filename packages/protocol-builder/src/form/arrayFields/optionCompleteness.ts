@@ -1,3 +1,5 @@
+import { normalizeCodebookName } from '@codaco/shared-consts';
+
 /**
  * What counts as a missing half of an option, shared by the row that shows the
  * gap and the array rule that refuses to save it. One definition, so the two
@@ -10,8 +12,11 @@
 export const isOptionLabelEmpty = (label: unknown) =>
   typeof label !== 'string' || label.trim() === '';
 
+// A value of nothing but spaces is empty: it is saved trimmed.
 export const isOptionValueEmpty = (value: unknown) =>
-  value === undefined || value === null || value === '';
+  value === undefined ||
+  value === null ||
+  (typeof value === 'string' && normalizeCodebookName(value) === '');
 
 export const isOptionComplete = (option: unknown) => {
   if (!option || typeof option !== 'object') return false;

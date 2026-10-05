@@ -46,7 +46,7 @@ afterEach(() => {
 it('updates resource types in all three print presenters and preserves authored resource metadata', () => {
   const protocol: CurrentProtocol = {
     name: 'Research_Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: {},
     assetManifest: {
@@ -186,7 +186,7 @@ it('re-sorts existing resource rows for Spanish while preserving sort direction 
 it('formats the loaded network attribute list in the selected language without altering CSV headers', async () => {
   const protocol: CurrentProtocol = {
     name: 'Research_Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: {},
     assetManifest: {

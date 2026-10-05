@@ -1,23 +1,45 @@
 import { isEqual } from 'es-toolkit/compat';
 
-import {
-  createMessageError,
-  defineMessage,
-  defineMessages,
-} from '@codaco/app-i18n/messages';
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessage } from '@codaco/app-i18n/messages';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
-import { normalizeForComparison } from '@codaco/shared-consts';
+import {
+  CodebookNameSchema,
+  type ExportColumnEntity,
+  type ExportColumnVariable,
+  normalizeCodebookName,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
+
+import { exportColumnRefusals } from '../../fields/variableNameRules.ts';
 
 /**
  * Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
  * spelling of the same text are the same answer, so they are the same value
  * here too. See `@codaco/shared-consts`' `canonical-text`.
  */
-export const isSameAnswer = (left: unknown, right: unknown) =>
+const isSameAnswer = (left: unknown, right: unknown) =>
   typeof left === 'string' && typeof right === 'string'
     ? normalizeForComparison(left) === normalizeForComparison(right)
     : isEqual(left, right);
+
+const optionValueKey = (value: unknown) =>
+  typeof value === 'string' || typeof value === 'number'
+    ? normalizeForComparison(normalizeCodebookName(String(value)))
+    : undefined;
+
+/**
+ * Whether two option values are one value, compared the way the codebook write
+ * compares them: as they will be stored (`normalizeCodebookName`), as text, and
+ * as `isSameAnswer` compares text. The values `1` and `"1"` export to the same
+ * column, and `"a "` is stored as `"a"`, so each pair is one value.
+ */
+export const isSameOptionValue = (left: unknown, right: unknown) => {
+  const leftKey = optionValueKey(left);
+  const rightKey = optionValueKey(right);
+  return leftKey === undefined || rightKey === undefined
+    ? isEqual(left, right)
+    : leftKey === rightKey;
+};
 
 /**
  * A cell's own complaints.
@@ -33,34 +55,12 @@ const rowRequiredMessage = defineMessage({
     'Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field.',
 });
 
-/**
- * The subjects `invalidVariableName` reports about.
- *
- * Whole nouns rather than words spliced together, and separate descriptors
- * rather than one: they are the object of a sentence, and a language that
- * inflects the object cannot get there from the English noun.
- */
-export const variableNameSubjects = defineMessages({
-  attributeName: {
-    id: 'protocolBuilder.arrayField.attributeNameSubject',
-    defaultMessage: 'attribute name',
-    description:
-      'What the researcher was entering, named inside the sentence that refuses it: the name of a codebook variable. Interpolated mid-sentence after "Not a valid", so it is lower case.',
-  },
-  optionValue: {
-    id: 'protocolBuilder.arrayField.optionValueSubject',
-    defaultMessage: 'option value',
-    description:
-      'What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after "Not a valid", so it is lower case.',
-  },
-});
-
-const invalidNameMessage = defineMessage({
-  id: 'protocolBuilder.arrayField.invalidName',
+const invalidOptionValueMessage = defineMessage({
+  id: 'protocolBuilder.arrayField.invalidOptionValue',
   defaultMessage:
-    'Not a valid {subject}. Only letters, numbers and the symbols ._-: are supported',
+    'Cannot contain line breaks, tabs or other control characters',
   description:
-    'Shown under a cell whose text cannot be stored as an XML element name or a CSV column header. subject names what was being entered — an attribute name, an option value — already in the reader’s language. The characters listed are literal punctuation and stay as they are.',
+    'Shown under the value cell of an option in an editable list when the text holds a character that cannot be stored in a value, such as a line break or a tab. Terse because it sits inside a row of a table-like list. A value may otherwise be written in any language or script, with spaces and punctuation.',
 });
 
 /**
@@ -86,11 +86,15 @@ export const requiredCell = (value: unknown): string | undefined =>
  * Emptiness is `requiredCell`'s business, and it is the same emptiness: two
  * rows that have both been left blank are not a clash to report. `0` and
  * `false` ARE answers, and two rows holding either genuinely do clash.
+ *
+ * `isSame` is what makes two cells one answer; option values pass
+ * `isSameOptionValue`.
  */
 export const isDuplicatedInColumn = (
   rows: readonly unknown[],
   column: string,
   value: unknown,
+  isSame: (left: unknown, right: unknown) => boolean = isSameAnswer,
 ): boolean => {
   if (isUnanswered(value)) return false;
 
@@ -98,34 +102,71 @@ export const isDuplicatedInColumn = (
     (row) =>
       typeof row === 'object' &&
       row !== null &&
-      isSameAnswer(Reflect.get(row, column), value),
+      isSame(Reflect.get(row, column), value),
   ).length;
 
   return matches >= 2;
 };
 
 /**
- * Variables and option values become XML element names and CSV column
- * headers, so they must respect NMTOKEN rules.
+ * What an option's stored value may not hold, judged as it will be stored.
+ *
+ * An option value reaches an export column name, so it follows the codebook's
+ * name rule — any script, spaces and punctuation, but no control characters —
+ * and is trimmed and put in canonical form on the way in, which is why a
+ * trailing space is not a complaint here. Nothing entered is `requiredCell`'s
+ * business, and anything that is not text has nothing typed to judge.
  */
-export const invalidVariableName = (
-  value: unknown,
-  subject: MessageDescriptor = variableNameSubjects.attributeName,
-): string | undefined => {
-  // Anything that is not text is not a name; stringifying it would either
-  // pass a number that is legal anyway or report `[object Object]` back to
-  // the researcher as if they had typed it.
-  const text =
-    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-  return /^[a-zA-Z0-9._\-:]+$/.test(text)
+export const invalidOptionValue = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const text = normalizeCodebookName(String(value));
+  return text === '' || CodebookNameSchema.safeParse(text).success
     ? undefined
-    : createMessageError(invalidNameMessage, {
-        // Nested rather than resolved here: this rule runs wherever a value
-        // is judged — including at module scope, before any reader has a
-        // language — so the noun is settled at the same moment the sentence
-        // around it is.
-        subject: { messageError: createMessageError(subject) },
-      });
+    : createMessageError(invalidOptionValueMessage);
+};
+
+/**
+ * What an options editor needs to know to tell a researcher that an option
+ * would put two things in one export column: which attribute the options
+ * belong to, as it stands now, and the others it shares a type with.
+ *
+ * An option exports to `{attribute}_{value}`, so whether a value is free
+ * depends on the attribute's name and its siblings, which the list of options
+ * does not hold.
+ */
+export type OptionExportColumns = Readonly<{
+  entity: ExportColumnEntity;
+  name: string;
+  type: string;
+  siblings: readonly ExportColumnVariable[];
+}>;
+
+/**
+ * Why this one option value would make the export write two things to one
+ * column, or `undefined` while it would not.
+ *
+ * Judged as it will be stored, like `invalidOptionValue`, and asked of the
+ * value alone: the attribute's other options cannot clash with it, because
+ * they share its name and differ in value.
+ */
+export const optionExportColumnIssue = (
+  value: unknown,
+  columns: OptionExportColumns | undefined,
+): string | undefined => {
+  if (columns === undefined) return undefined;
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const optionValue =
+    typeof value === 'string' ? normalizeCodebookName(value) : value;
+  if (optionValue === '') return undefined;
+  return exportColumnRefusals({
+    entity: columns.entity,
+    candidate: {
+      name: columns.name,
+      type: columns.type,
+      options: [{ value: optionValue }],
+    },
+    siblings: columns.siblings,
+  }).find(({ origin }) => origin.kind === 'option')?.message;
 };
 
 /**

@@ -85,7 +85,7 @@ function buildProtocol(variable: Variable): ProtocolPayload {
     importedAt: '2024-01-01T00:00:00.000Z',
     assets: [],
     name: 'Test protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook,
     stages: [stage],
   };

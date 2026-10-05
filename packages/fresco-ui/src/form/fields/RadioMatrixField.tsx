@@ -142,10 +142,10 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
           </div>
         ))}
 
-        {rows.map((row) => (
+        {rows.map((row, rowIndex) => (
           <div key={row.id} className="@3xl:contents">
             <div
-              id={`${headingId}-${row.id}`}
+              id={`${headingId}-${rowIndex}`}
               className="font-semibold @max-3xl:mb-2 @3xl:mb-0 @3xl:font-normal"
             >
               {row.label}
@@ -156,7 +156,7 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
               disabled={disabled}
               readOnly={readOnly}
               name={name ? `${name}.${row.id}` : undefined}
-              aria-labelledby={`${headingId}-${row.id}`}
+              aria-labelledby={`${headingId}-${rowIndex}`}
               className="flex flex-wrap items-center gap-x-6 gap-y-2 @3xl:contents"
             >
               {options.map((option) => (

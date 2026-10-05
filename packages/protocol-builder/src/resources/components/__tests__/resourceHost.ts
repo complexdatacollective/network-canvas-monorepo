@@ -99,7 +99,7 @@ export function createResourceHost(seed: ResourceHostSeed = {}): InMemoryHost {
     sections: {
       [sectionId({ kind: 'settings' })]: {
         name: 'Resource fields',
-        schemaVersion: 8,
+        schemaVersion: 9,
       },
       [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-1'] },
       [STAGE_SECTION]: {

@@ -22,6 +22,7 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
+import { normalizeCodebookName } from '@codaco/shared-consts';
 import { VariablePill } from '~/components/VariablePill';
 import type { RootState } from '~/ducks/store';
 import { cx } from '~/utils/cva';
@@ -242,7 +243,13 @@ const VariableSpotlight = ({
   const hasOptions = options.length > 0;
   const hasFilterTerm = filterTerm.length > 0;
   const hasFilterResults = sortedAndFilteredItems.length > 0;
-  const hasExactFilterMatch = options.some((item) => item.label === filterTerm);
+  // What creating from the term would name the attribute: names are saved
+  // normalized, so a term of only spaces names nothing.
+  const newAttributeName = normalizeCodebookName(filterTerm);
+  const hasNewAttributeName = newAttributeName !== '';
+  const hasExactFilterMatch = options.some(
+    (item) => item.label === newAttributeName,
+  );
 
   const existingVariableNames = useMemo(
     () =>
@@ -253,35 +260,36 @@ const VariableSpotlight = ({
   );
 
   const invalidVariableName = useMemo(() => {
-    const unique = createValidations(intl).uniqueByList(existingVariableNames)(
-      filterTerm,
+    const validations = createValidations(intl);
+    const unique = validations.uniqueByList(existingVariableNames)(
+      newAttributeName,
     );
-    const allowed = createValidations(intl).allowedVariableName()(filterTerm);
+    const allowed = validations.codebookName()(newAttributeName);
     return unique || allowed || undefined;
-  }, [filterTerm, existingVariableNames, intl]);
+  }, [newAttributeName, existingVariableNames, intl]);
 
   const collectionItems = useMemo<VariableSpotlightItem[]>(() => {
     const items: VariableSpotlightItem[] = [];
-    const canShowCreation = hasFilterTerm && !hasExactFilterMatch;
+    const canShowCreation = hasNewAttributeName && !hasExactFilterMatch;
 
     if (canShowCreation && !disallowCreation) {
       if (invalidVariableName) {
         items.push({
-          id: `invalid:${filterTerm}`,
+          id: `invalid:${newAttributeName}`,
           kind: 'invalid',
           label: intl.formatMessage(messages.cannotCreateAttributeNamed, {
-            filterTerm: filterTerm,
+            filterTerm: newAttributeName,
           }),
           reason: invalidVariableName,
         });
       } else {
         items.push({
-          id: `create:${filterTerm}`,
+          id: `create:${newAttributeName}`,
           kind: 'create',
           label: intl.formatMessage(messages.createNewAttributeCalled, {
-            filterTerm: filterTerm,
+            filterTerm: newAttributeName,
           }),
-          value: filterTerm,
+          value: newAttributeName,
         });
       }
     }
@@ -299,10 +307,10 @@ const VariableSpotlight = ({
     return items;
   }, [
     disallowCreation,
-    filterTerm,
     hasExactFilterMatch,
-    hasFilterTerm,
+    hasNewAttributeName,
     invalidVariableName,
+    newAttributeName,
     sortedAndFilteredItems,
     intl,
   ]);
@@ -381,13 +389,13 @@ const VariableSpotlight = ({
       if (event.key !== 'Enter') return;
 
       if (
-        hasFilterTerm &&
+        hasNewAttributeName &&
         !disallowCreation &&
         !hasExactFilterMatch &&
         !invalidVariableName
       ) {
         event.preventDefault();
-        handleCreateOption(filterTerm);
+        handleCreateOption(newAttributeName);
         return;
       }
 
@@ -400,11 +408,12 @@ const VariableSpotlight = ({
     [
       collectionItems.length,
       disallowCreation,
-      filterTerm,
       handleCreateOption,
       hasExactFilterMatch,
       hasFilterTerm,
+      hasNewAttributeName,
       invalidVariableName,
+      newAttributeName,
       onSelect,
       sortedAndFilteredItems,
     ],

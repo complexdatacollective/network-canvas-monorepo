@@ -785,7 +785,7 @@ describe('a codebook write a field needs, refused', () => {
    * before anything is asked of the codebook, and says what is wrong with the
    * name while the researcher is still looking at it.
    */
-  it('refuses a name the codebook cannot store before asking for it', async () => {
+  it('refuses a name that would write an export column another attribute writes before asking for it', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -800,11 +800,13 @@ describe('a codebook write a field needs, refused', () => {
       within(pickerWindow).getByRole('searchbox', {
         name: 'Find or create an attribute',
       }),
-      'first name',
+      'contactType_call',
     );
 
+    // `contactType` is a categorical attribute with an option `call`, which
+    // the export writes to a column of exactly this name.
     const refused = within(pickerWindow).getByRole('option', {
-      name: 'Cannot create attribute named “first name”: only letters, numbers and the symbols ._-: can be used in a name',
+      name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
 
@@ -817,16 +819,17 @@ describe('a codebook write a field needs, refused', () => {
       within(pickerWindow).getByRole('searchbox', {
         name: 'Find or create an attribute',
       }),
-    ).toHaveValue('first name');
+    ).toHaveValue('contactType_call');
     expect(
       Object.values(personVariables(harness)).some(
-        (variable) => Reflect.get(asRecord(variable), 'name') === 'first name',
+        (variable) =>
+          Reflect.get(asRecord(variable), 'name') === 'contactType_call',
       ),
     ).toBe(false);
     expect(screen.queryByText('the variable draft is invalid')).toBeNull();
   });
 
-  it('control: a name made of the symbols the rule allows is created', async () => {
+  it('control: a name that clashes with no export column is created', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -2845,8 +2848,8 @@ describe('a row whose codebook section goes', () => {
  * A protocol whose codebook happens to hold the id the picker's create option
  * is spelled with.
  *
- * Attribute record keys are the researcher's, not this package's:
- * `VariableNameSchema` accepts letters, digits and `._:-`, and the uuids this
+ * Attribute record keys are ids, and not always this package's:
+ * `CodebookIdSchema` accepts letters, digits and `._:-`, and the uuids this
  * section mints are only what IT creates — an imported protocol, or one
  * written by hand, may key an attribute anything that regex allows. So the
  * create option's value has to be something no attribute can ever be called,

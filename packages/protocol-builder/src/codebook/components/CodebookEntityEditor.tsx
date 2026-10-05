@@ -33,8 +33,9 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 import {
+  CodebookNameSchema,
+  normalizeCodebookName,
   normalizeForComparison,
-  VariableNameSchema,
 } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -69,9 +70,9 @@ const messages = defineMessages({
   nameInvalid: {
     id: 'protocolBuilder.codebookEntity.nameInvalid',
     defaultMessage:
-      '{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}',
+      '{entity, select, node {A node type name cannot contain line breaks, tabs or other control characters.} edge {An edge type name cannot contain line breaks, tabs or other control characters.} other {An ego definition name cannot contain line breaks, tabs or other control characters.}}',
     description:
-      'Refusal shown under the name field when the name holds characters the export formats cannot carry. entity is node, edge or ego. The listed symbols are literal characters and must not be translated.',
+      'Refusal shown under the name field when the name holds a character that cannot be stored in a name, such as a line break or a tab. entity is node, edge or ego. Names may otherwise be written in any language or script, with spaces and punctuation.',
   },
   nameTaken: {
     id: 'protocolBuilder.codebookEntity.nameTaken',
@@ -122,7 +123,7 @@ const messages = defineMessages({
     defaultMessage:
       '{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be "Person", "Place", or "Organization".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be "Friends" or "Colleagues".} other {This name identifies the ego definition in the codebook and exported data.}}',
     description:
-      'Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names and may be translated, but the field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote.',
+      'Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names: translate them into natural type names in your language. Spaces, accented letters and any script are allowed in a type name.',
   },
   namePlaceholder: {
     id: 'protocolBuilder.codebookEntity.namePlaceholder',
@@ -350,10 +351,10 @@ const validateFields = (
 ): EntityFieldErrors => {
   if (subject.entity === 'ego') return {};
   const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
-  const name = stringValue(draft.name);
-  if (name.trim() === '') {
+  const name = normalizeCodebookName(stringValue(draft.name));
+  if (name === '') {
     errors.name = createMessageError(messages.nameRequired);
-  } else if (!VariableNameSchema.safeParse(name).success) {
+  } else if (!CodebookNameSchema.safeParse(name).success) {
     errors.name = createMessageError(messages.nameInvalid, {
       entity: subject.entity,
     });

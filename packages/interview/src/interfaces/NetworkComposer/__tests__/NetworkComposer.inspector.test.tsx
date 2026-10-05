@@ -214,7 +214,7 @@ function makeStore(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: codebookForStore,
         stages: [stageForStore],
       } as never,

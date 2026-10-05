@@ -1260,6 +1260,38 @@ describe('processProtocolSortRule', () => {
     expect(twice).toEqual(once);
   });
 
+  describe('looks the property up as a variable key, not as a path', () => {
+    const codebookVariables: EntityDefinition['variables'] = {
+      'name': { type: 'text', name: 'name' },
+      'a.b': { type: 'number', name: 'a.b' },
+    };
+
+    it('finds a variable whose key contains a dot', () => {
+      const result = processProtocolSortRule(codebookVariables)({
+        property: 'a.b',
+        direction: 'asc',
+      });
+
+      expect(result).toEqual({
+        property: [entityAttributesProperty, 'a.b'],
+        direction: 'asc',
+        type: 'number',
+      });
+    });
+
+    it.each(['name.type', 'constructor', 'toString', '__proto__'])(
+      'does not find a variable for %s',
+      (property) => {
+        const result = processProtocolSortRule(codebookVariables)({
+          property,
+          direction: 'asc',
+        });
+
+        expect(result).toEqual({ property, direction: 'asc', type: 'string' });
+      },
+    );
+  });
+
   describe('manages property path', () => {
     it('adds entityAttributes property to the property path', () => {
       const rule = {

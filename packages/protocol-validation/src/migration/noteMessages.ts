@@ -352,6 +352,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 8 migration approval guidance: duplicateFormAttributes. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9AttributeNames: {
+    id: 'protocolValidation.migrationNotes.schema9.attributeNames',
+    defaultMessage:
+      'Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -431,6 +438,11 @@ const migrationNoteSets = {
       migrationNoteMessages.schema8OtherAndQuickAddValidation,
       migrationNoteMessages.schema8DuplicateFormAttributes,
     ],
+  },
+  9: {
+    prefix: '',
+    suffix: '',
+    messages: [migrationNoteMessages.schema9AttributeNames],
   },
 };
 

@@ -153,7 +153,7 @@ export const FIXTURES = [
 export function baseProtocol(): CurrentProtocol {
   return {
     name: 'Test Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: {
       node: {
         person: {

@@ -235,6 +235,128 @@ describe('parseExternalNetworkAsset', () => {
       }),
     ).rejects.toThrow();
   });
+
+  describe('with names a researcher may now choose', () => {
+    const unrestrictedCodebook: Codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'var-name': { name: 'Full name', type: 'text' },
+            'var-age': { name: '年龄', type: 'number' },
+            'var-cafe': { name: 'Café', type: 'text' },
+            'var-dotted': { name: 'a.b', type: 'text' },
+            'var-closeness': {
+              name: 'Closeness',
+              type: 'categorical',
+              options: [
+                { label: 'Close friend', value: 'close friend' },
+                { label: 'Colleague', value: '同事' },
+                { label: 'Null', value: 'null' },
+                { label: 'One', value: 1 },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    const parseRoster = (body: string, rosterCodebook: Codebook) => {
+      stubFetch({ 'stub://roster': body });
+
+      return parseExternalNetworkAsset({
+        sourceFileName: 'roster.csv',
+        url: 'stub://roster',
+        codebook: rosterCodebook,
+        subject: { entity: 'node', type: 'person' },
+      });
+    };
+
+    it('remaps columns named with spaces, other scripts, dots and decomposed letters', async () => {
+      const nodes = await parseRoster(
+        [
+          'Full name,年龄,Cafe\u0301,a.b',
+          'Ada Lovelace,36,espresso,dotted',
+          '',
+        ].join('\n'),
+        unrestrictedCodebook,
+      );
+
+      expect(nodes.map((node) => node[entityAttributesProperty])).toEqual([
+        {
+          'var-name': 'Ada Lovelace',
+          'var-age': 36,
+          'var-cafe': 'espresso',
+          'var-dotted': 'dotted',
+        },
+      ]);
+    });
+
+    it('collects categorical option columns into the codebook option values', async () => {
+      const nodes = await parseRoster(
+        [
+          'Closeness_close friend,Closeness_同事,Closeness_null,Closeness_1',
+          'true,true,true,false',
+          'false,false,false,true',
+          '',
+        ].join('\n'),
+        unrestrictedCodebook,
+      );
+
+      expect(nodes.map((node) => node[entityAttributesProperty])).toEqual([
+        { 'var-closeness': ['close friend', '同事', 'null'] },
+        { 'var-closeness': [1] },
+      ]);
+    });
+
+    it('derives the type of an unmatched column from its data whatever its header contains', async () => {
+      const [node] = await parseRoster(
+        'Full name,score[1],x]y,toString\nAda,5,6,7\n',
+        unrestrictedCodebook,
+      );
+
+      expect(node?.[entityAttributesProperty]).toEqual({
+        'var-name': 'Ada',
+        'score[1]': 5,
+        'x]y': 6,
+        'toString': 7,
+      });
+    });
+
+    it('remaps a column to a variable that is named __proto__', async () => {
+      const [node] = await parseRoster('Full name,__proto__\nAda,payload\n', {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              'var-name': { name: 'Full name', type: 'text' },
+              'var-proto': { name: '__proto__', type: 'text' },
+            },
+          },
+        },
+      });
+
+      expect(node?.[entityAttributesProperty]).toEqual({
+        'var-name': 'Ada',
+        'var-proto': 'payload',
+      });
+    });
+
+    it('does not let an unmatched __proto__ column reach the prototype of the attributes', async () => {
+      const [node] = await parseRoster(
+        'Full name,__proto__\nAda,payload\n',
+        unrestrictedCodebook,
+      );
+      const attributes = node?.[entityAttributesProperty];
+
+      expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+      expect(attributes).toEqual({ 'var-name': 'Ada' });
+    });
+  });
 });
 
 describe('collectRosterExternalData', () => {

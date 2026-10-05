@@ -97,7 +97,7 @@ import AttributeValueFields, {
 } from '../AttributeValueFields.tsx';
 import {
   COLLECTABLE_TYPES,
-  useSubjectVariableNames,
+  useSubjectVariableScope,
   useVariableChoices,
 } from '../canvas/codebookChoices.ts';
 import { asText } from '../canvas/rowValues.ts';
@@ -1110,7 +1110,7 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
    * window is being told: the act the researcher asked for has happened as far
    * as this dialog is concerned, and the window closes on the name they typed.
    */
-  const namesInUse = useSubjectVariableNames(subject);
+  const nameScope = useSubjectVariableScope(subject);
   /**
    * Whether there is still a codebook section for the create to land in.
    *
@@ -1144,7 +1144,10 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         // offer an act whose whole content is that it cannot be done.
         {...(subject === undefined || !sectionIsLive
           ? {}
-          : { onCreateOption: invent, namesInUse })}
+          : {
+              onCreateOption: invent,
+              ...(nameScope === undefined ? {} : { nameScope }),
+            })}
       />
       <Field<typeof NativeSelectField>
         name={COMPONENT_FIELD}
@@ -1190,7 +1193,11 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         variableId={chosen === '' ? undefined : chosen}
         revealWhenChosenIn={COMPONENT_FIELD}
         {...(inventing && attributeType !== undefined
-          ? { invented: attributeType, rowComponent: control }
+          ? {
+              invented: attributeType,
+              inventedName,
+              rowComponent: control,
+            }
           : {})}
       />
       {shape !== null && (

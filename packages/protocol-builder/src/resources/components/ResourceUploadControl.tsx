@@ -12,6 +12,7 @@ import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceClient, type ResourceClient } from '../client.tsx';
+import { readRosterFacts } from '../rosterFacts.ts';
 import {
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   type ResourceDescriptor,
@@ -29,6 +30,7 @@ import {
   unsupportedFileMessage,
   type ResourcePickerKind,
 } from './resourceKinds.ts';
+import { rosterCharacterRefusal } from './rosterCharacters.ts';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 
 const messages = defineMessages({
@@ -229,6 +231,36 @@ export default function ResourceUploadControl({
       }
       if (!claim.current()) return;
 
+      const contentType = contentTypeForFile(file.name, file.type);
+
+      // Read here, before anything is staged, because a host only has to hold
+      // a roster's bytes and need not read them: a character no export can
+      // carry would otherwise be found when the data is exported, and a
+      // roster the interview cannot load, such as one with a heading it cannot
+      // match, when a participant reaches the stage — both long after the
+      // researcher could still choose a corrected file.
+      if (contentKind === 'network') {
+        const refusal = await rosterCharacterRefusal(bytes, file.name);
+        if (!claim.current()) return;
+        if (refusal !== undefined) {
+          setRejected(refusal);
+          setReading(false);
+          return;
+        }
+
+        const roster = await readRosterFacts({
+          bytes,
+          contentType,
+          source: file.name,
+        });
+        if (!claim.current()) return;
+        if ('unreadable' in roster) {
+          setRejected(roster.unreadable);
+          setReading(false);
+          return;
+        }
+      }
+
       const source = sourceFilename(file.name);
       // One id for this file, kept across a retry: repeating an uncertain
       // import must not leave the protocol holding the same file twice.
@@ -241,7 +273,7 @@ export default function ResourceUploadControl({
             kind: contentKind,
             name: source,
             source,
-            contentType: contentTypeForFile(file.name, file.type),
+            contentType,
             bytes,
           }),
         (descriptor) => {

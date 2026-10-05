@@ -2,7 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { Effect, Result, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
-import { VariableNameSchema } from '@codaco/shared-consts';
+import { CodebookIdSchema } from '@codaco/shared-consts';
 import {
   type SectionDoc,
   contentHash,
@@ -422,7 +422,7 @@ const entitySectionId = (
   if (ref.entity === 'ego') {
     return Effect.succeed(sectionId({ kind: 'codebookEgo' }));
   }
-  if (!VariableNameSchema.safeParse(ref.typeId).success) {
+  if (!CodebookIdSchema.safeParse(ref.typeId).success) {
     return Effect.fail(
       new DraftStructureError({
         reason: `codebook ${ref.entity} type id ${ref.typeId} is not a valid identifier`,

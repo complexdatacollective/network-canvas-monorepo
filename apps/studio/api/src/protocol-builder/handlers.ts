@@ -646,7 +646,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
       }) {
         const session = yield* openSession(protocolId);
         const store = yield* stagingFor(session, editId);
-        return store.stage(requestId, request);
+        return yield* Effect.promise(() => store.stage(requestId, request));
       }),
 
       ResourcesDiscard: Effect.fn('protocolBuilder.ResourcesDiscard')(

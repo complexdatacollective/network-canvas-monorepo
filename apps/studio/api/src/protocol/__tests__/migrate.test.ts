@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import type { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
@@ -92,7 +95,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(migration).toMatchObject({
       protocolId,
       fromSchemaVersion: 7,
-      toSchemaVersion: 8,
+      toSchemaVersion: CURRENT_SCHEMA_VERSION,
     });
 
     const document = (await run(
@@ -104,7 +107,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
         node: Record<string, { displayVariable?: string; shape?: unknown }>;
       };
     };
-    expect(document.schemaVersion).toBe(8);
+    expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(document.name).toBe('Legacy Protocol');
     expect(document.codebook.node.person!.displayVariable).toBeUndefined();
     expect(document.codebook.node.person!.shape).toBeDefined();
@@ -116,7 +119,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     const after = await run(listVersions(TEST_TEAM_ID, protocolId));
     expect(after[0]).toMatchObject({
       versionNumber: 2,
-      schemaVersion: 8,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       migratedFromVersionId: versionId,
     });
 
@@ -196,8 +199,8 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
         versionId: published.versionId,
       }),
     );
-    expect(migration.fromSchemaVersion).toBe(8);
-    expect(migration.toSchemaVersion).toBe(8);
+    expect(migration.fromSchemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migration.toSchemaVersion).toBe(CURRENT_SCHEMA_VERSION);
 
     const republished = await run(
       publishDraft(TEST_TEAM_ID, { draftId: migration.draftId }),

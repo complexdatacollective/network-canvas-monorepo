@@ -486,7 +486,7 @@ beforeEach(() => {
         protocol: PROTOCOL,
         revision: { sequence: '1', hash: 'revision-1' },
         sections: {
-          settings: { name: PROTOCOL.name, schemaVersion: 8 },
+          settings: { name: PROTOCOL.name, schemaVersion: 9 },
           stageOrder: { stages: [] },
         },
       }),

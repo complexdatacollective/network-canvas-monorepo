@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { SchemaVersionDetectionError, ValidationError } from '../errors.ts';
+import { CURRENT_SCHEMA_VERSION } from '../../schemas/index.ts';
+import { getProtocolFileErrorKind } from '../../utils/protocolFileErrorKind.ts';
+import {
+  MigrationResultInvalidError,
+  SchemaVersionDetectionError,
+  ValidationError,
+  VersionMismatchError,
+} from '../errors.ts';
 import {
   detectSchemaVersion,
   getMigrationInfo,
@@ -43,12 +50,23 @@ describe('Protocol Migration - Extended Tests', () => {
       );
     });
 
-    it('should throw error for very large version number', () => {
-      const doc = { schemaVersion: 999 };
-      expect(() => detectSchemaVersion(doc)).toThrow(
-        SchemaVersionDetectionError,
-      );
-    });
+    it.each([
+      CURRENT_SCHEMA_VERSION + 1,
+      999,
+      String(CURRENT_SCHEMA_VERSION + 1),
+    ])(
+      'reports version %j as made by newer software, not as missing',
+      (schemaVersion) => {
+        let thrown: unknown;
+        try {
+          detectSchemaVersion({ schemaVersion });
+        } catch (error) {
+          thrown = error;
+        }
+        expect(thrown).toBeInstanceOf(VersionMismatchError);
+        expect(getProtocolFileErrorKind(thrown)).toBe('newerVersion');
+      },
+    );
 
     it('should throw error for array', () => {
       const doc = { schemaVersion: [7] };
@@ -77,7 +95,7 @@ describe('Protocol Migration - Extended Tests', () => {
       const info = getMigrationInfo(7);
       expect(info.canMigrate).toBe(true);
       expect(info.path).toContain(7);
-      expect(info.path[info.path.length - 1]).toBe(8); // Assuming current is 8
+      expect(info.path.at(-1)).toBe(CURRENT_SCHEMA_VERSION);
     });
 
     it('should indicate cannot migrate for unknown source version', () => {
@@ -212,10 +230,49 @@ describe('Protocol Migration - Extended Tests', () => {
         const migrated = migrateProtocol(v7Doc, undefined, {
           name: 'Test Protocol',
         });
-        expect(migrated.schemaVersion).toBe(8);
+        expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       } catch (e) {
         expect(e).toBeInstanceOf(ValidationError);
       }
+    });
+  });
+
+  describe('migrateProtocol - validation of the target version', () => {
+    const v7Doc = (variableName: string) => ({
+      schemaVersion: 7,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            variables: { v1: { name: variableName, type: 'text' } },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+      stages: [],
+    });
+
+    it('validates a migration to version 8 against the version 8 schema', () => {
+      const migrated = migrateProtocol(v7Doc('first_name'), 8, {
+        name: 'Test Protocol',
+      });
+      expect(migrated.schemaVersion).toBe(8);
+    });
+
+    it('holds a version 8 result to the names version 8 allows', () => {
+      expect(() =>
+        migrateProtocol(v7Doc('名前'), 8, { name: 'Test Protocol' }),
+      ).toThrow(MigrationResultInvalidError);
+    });
+
+    it('accepts the same names in a version 9 result', () => {
+      const migrated = migrateProtocol(v7Doc('名前'), 9, {
+        name: 'Test Protocol',
+      });
+      expect(migrated.schemaVersion).toBe(9);
+      expect(migrated.codebook.node?.person?.variables?.v1?.name).toBe('名前');
     });
   });
 
@@ -240,8 +297,8 @@ describe('Protocol Migration - Extended Tests', () => {
       });
 
       // Without cache key, results should be different instances
-      expect(result1.schemaVersion).toBe(8);
-      expect(result2.schemaVersion).toBe(8);
+      expect(result1.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+      expect(result2.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
 
     it('should return different instances for different cache keys', async () => {
@@ -266,8 +323,8 @@ describe('Protocol Migration - Extended Tests', () => {
       });
 
       expect(result1).not.toBe(result2);
-      expect(result1.schemaVersion).toBe(8);
-      expect(result2.schemaVersion).toBe(8);
+      expect(result1.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+      expect(result2.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
 
     it('should handle clearing non-existent cache key', () => {
@@ -321,6 +378,27 @@ describe('Protocol Migration - Extended Tests', () => {
       });
 
       expect(result1).toBe(result2);
+    });
+
+    it('migrates again when the cached result is for another version', async () => {
+      const v7Doc = {
+        schemaVersion: 7,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [],
+      };
+
+      const atEight = await protocolMigrator.migrate(v7Doc, {
+        cacheKey: 'per-target',
+        targetVersion: 8,
+        dependencies: { name: 'Test Protocol' },
+      });
+      const atCurrent = await protocolMigrator.migrate(v7Doc, {
+        cacheKey: 'per-target',
+        dependencies: { name: 'Test Protocol' },
+      });
+
+      expect(atEight.schemaVersion).toBe(8);
+      expect(atCurrent.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
 
     it('should handle migration errors and not cache failed results', async () => {

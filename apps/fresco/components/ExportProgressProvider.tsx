@@ -1,5 +1,6 @@
 'use client';
 
+import { TriangleAlert } from 'lucide-react';
 import {
   createContext,
   useCallback,
@@ -9,12 +10,14 @@ import {
 } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { AppMessage } from '@codaco/app-i18n/react';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useToast } from '@codaco/fresco-ui/Toast';
+import { formatExportWarnings } from '@codaco/network-exporters/messages';
 import type { ExportOptions } from '@codaco/network-exporters/options';
 import { ensureError } from '@codaco/shared-consts';
 import { commitInterviewExport } from '~/actions/interviews';
 import ExportToastContent from '~/components/ExportProgress/ExportToastContent';
+import ExportWarningToastContent from '~/components/ExportProgress/ExportWarningToastContent';
 import { useDownload } from '~/hooks/useDownload';
 import { runBatchedExport } from '~/lib/export/runBatchedExport';
 import { captureClientException } from '~/lib/posthog-client';
@@ -104,6 +107,7 @@ export function ExportProgressProvider({
 }) {
   const { add, update, close } = useToast();
   const download = useDownload();
+  const intl = useAppIntl();
 
   // Tracks whether an export is in flight, so the beforeunload warning can
   // reflect it without re-registering the listener per render.
@@ -138,29 +142,43 @@ export function ExportProgressProvider({
 
       void (async () => {
         try {
-          const { blob, exportedIds, failedIds } = await runBatchedExport(
-            interviewIds,
-            exportOptions,
-            controller.signal,
-            (completed, total) => {
-              update(toastId, {
-                description: (
-                  <ExportToastContent
-                    stage="generating"
-                    current={completed}
-                    total={total}
-                    progress={total > 0 ? (completed / total) * 100 : 0}
-                    onCancel={() => controller.abort()}
-                  />
-                ),
-              });
-            },
-          );
+          const { blob, exportedIds, failedIds, warnings } =
+            await runBatchedExport(
+              interviewIds,
+              exportOptions,
+              controller.signal,
+              (completed, total) => {
+                update(toastId, {
+                  description: (
+                    <ExportToastContent
+                      stage="generating"
+                      current={completed}
+                      total={total}
+                      progress={total > 0 ? (completed / total) * 100 : 0}
+                      onCancel={() => controller.abort()}
+                    />
+                  ),
+                });
+              },
+            );
 
           const date = new Date().toISOString().slice(0, 10);
           const objectUrl = URL.createObjectURL(blob);
           download(objectUrl, `fresco-export-${date}.zip`);
           setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+
+          // One toast per kind of warning. Each stays until dismissed: the
+          // researcher needs to read what was affected, and the success toast
+          // is gone in a few seconds. Raised before the status update so that
+          // a failure there cannot hide them.
+          for (const group of formatExportWarnings(intl, warnings)) {
+            add({
+              title: group.title,
+              description: <ExportWarningToastContent group={group} />,
+              icon: <TriangleAlert className="size-5" aria-hidden />,
+              timeout: 0,
+            });
+          }
 
           // Mark exported only after the user has the complete file.
           const commit = await commitInterviewExport(exportedIds);
@@ -220,7 +238,7 @@ export function ExportProgressProvider({
         }
       })();
     },
-    [add, update, close, download],
+    [add, update, close, download, intl],
   );
 
   return (

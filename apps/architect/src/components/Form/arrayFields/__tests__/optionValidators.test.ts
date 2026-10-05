@@ -126,12 +126,14 @@ describe('Options validators', () => {
         { label: 'Two', value: 'one' },
       ]),
     ).toMatch(/unique value/i);
+    // `1` and `"1"` are stored differently but exported as the same text, so
+    // the column `attribute_1` would be written twice.
     expect(
       uniqueOptionValues([
         { label: 'One', value: 1 },
         { label: 'Two', value: '1' },
       ]),
-    ).toBeUndefined();
+    ).toMatch(/unique value/i);
     // Empty values are `completeOptions`' business.
     expect(
       uniqueOptionValues([{ label: 'One' }, { label: 'Two', value: '' }]),
@@ -225,28 +227,20 @@ describe('Options validators', () => {
     });
   });
 
-  // The rows show the same message through `allowedVariableName`, but a row is
-  // not a registered field — and collapsing it hides the message entirely
-  // while keeping the value, which then becomes an XML key and a CSV column
-  // header. Only the array can refuse the save.
-  it('rejects option values that are not NMTOKENs at the array level', () => {
+  // The rows show the same message through `codebookName`, but a row is not a
+  // registered field — and collapsing it hides the message entirely while
+  // keeping the value, which then becomes part of an export column header. Only
+  // the array can refuse the save.
+  it('accepts option values in any script, with spaces and punctuation', () => {
     expect(
       allowedOptionValues([
-        { label: 'One', value: 'a_valid-value.1' },
-        { label: 'Two', value: 'also:valid' },
+        { label: 'Close friend', value: 'amigo cercano' },
+        { label: 'Colleague', value: 'Collègue' },
+        { label: 'Friend', value: '友人' },
+        { label: 'Percent', value: '100%' },
+        { label: 'Slash', value: 'yes/no (maybe)' },
       ]),
     ).toBeUndefined();
-    expect(
-      allowedOptionValues([
-        { label: 'Has space', value: 'not valid' },
-        { label: 'Fine', value: 'fine' },
-      ]),
-    ).toBe(
-      'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
-    );
-    expect(allowedOptionValues([{ label: 'Percent', value: '100%' }])).toMatch(
-      /not a valid option value/i,
-    );
     // `parseOptionValue` stores numeric-looking input as a number, so the rule
     // has to test the stringified value rather than the raw one.
     expect(
@@ -254,12 +248,33 @@ describe('Options validators', () => {
         { label: 'One', value: 1 },
         { label: 'Minus one', value: -1 },
         { label: 'Point five', value: '1.5' },
+        { label: 'Yes', value: true },
       ]),
     ).toBeUndefined();
+  });
+
+  it('rejects option values with control characters at the array level', () => {
+    const message =
+      'This can’t contain tabs, line breaks or other control characters';
+    expect(
+      allowedOptionValues([
+        { label: 'Has a tab', value: 'bad\tvalue' },
+        { label: 'Fine', value: 'fine' },
+      ]),
+    ).toBe(message);
+    expect(
+      allowedOptionValues([
+        { label: 'Fine', value: 'fine' },
+        { label: 'Has a line break', value: 'two\nlines' },
+      ]),
+    ).toBe(message);
     // Empty values are `completeOptions`' business — flagging them here would
     // raise a syntax error against a row that is merely unfinished.
     expect(
       allowedOptionValues([{ label: 'One' }, { label: 'Two', value: '' }]),
+    ).toBeUndefined();
+    expect(
+      allowedOptionValues([{ label: 'One' }, { label: 'Two', value: '   ' }]),
     ).toBeUndefined();
     expect(allowedOptionValues(undefined)).toBeUndefined();
     expect(allowedOptionValues([])).toBeUndefined();
@@ -287,22 +302,188 @@ describe('Options validators', () => {
       ]),
     ).toBe('Every option needs a unique label.');
     expect(
+      rules.allowedOptionValues([{ label: 'One', value: 'bad\tvalue' }]),
+    ).toBe('This can’t contain tabs, line breaks or other control characters');
+    expect(
       rules.allowedOptionValues([{ label: 'One', value: 'not valid' }]),
-    ).toBe(
-      'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
-    );
+    ).toBeUndefined();
   });
 
   // Only the first failing rule is reported per field (see toZodValidation).
   // An unfinished row must explain the missing value before its syntax.
   it('reports completeness before syntax when a row is both', () => {
     const rows = [
-      { label: '', value: 'not valid' },
+      { label: '', value: 'bad\tvalue' },
       { label: 'Two', value: 2 },
     ];
     const firstError = getValidations(optionsValidation())
       .map((validate) => validate(rows))
       .find((error) => error !== undefined);
     expect(firstError).toBe('Every option needs both a label and a value.');
+  });
+
+  it('compares option values as the text they are exported as, in the rows and in the array', () => {
+    const [validateUnique] = getValidations({ uniqueArrayName: true });
+    const message = 'This value is already in use. Enter a different value.';
+    expect(
+      validateUnique?.(
+        1,
+        { options: [{ value: 1 }, { value: '1' }] },
+        undefined,
+        'options[0].value',
+      ),
+    ).toBe(message);
+    expect(
+      validateUnique?.(
+        'Amigo cercano',
+        { options: [{ value: 'amigo cercano' }, { value: 'Amigo cercano' }] },
+        undefined,
+        'options[1].value',
+      ),
+    ).toBe(message);
+    expect(
+      validateUnique?.(
+        '友人',
+        { options: [{ value: '友人' }, { value: '同僚' }] },
+        undefined,
+        'options[0].value',
+      ),
+    ).toBeUndefined();
+  });
+
+  describe('export column conflicts', () => {
+    const intl = createAppIntl({ locale: 'en' });
+    const conflicts = (
+      siblings: { name: string; type: string; options?: { value: string }[] }[],
+      allValues: Record<string, unknown>,
+      options: { label: string; value: string | number }[],
+      entity: 'node' | 'ego' = 'node',
+    ) =>
+      optionsValidation(intl, { entity, siblings }).exportColumnConflicts(
+        options,
+        allValues,
+      );
+
+    it('refuses an option whose column is another attribute’s name', () => {
+      expect(
+        conflicts(
+          [{ name: 'foo_bar', type: 'text' }],
+          { name: 'foo', type: 'categorical' },
+          [
+            { label: 'Bar', value: 'bar' },
+            { label: 'Baz', value: 'baz' },
+          ],
+        ),
+      ).toMatch(/The option “bar” would be exported to the column “foo_bar”/);
+    });
+
+    it('refuses an option whose column is another categorical attribute’s option column', () => {
+      expect(
+        conflicts(
+          [
+            {
+              name: 'foo_bar',
+              type: 'categorical',
+              options: [{ value: 'baz' }, { value: 'qux' }],
+            },
+          ],
+          { name: 'foo', type: 'categorical' },
+          [
+            { label: 'One', value: 'bar_baz' },
+            { label: 'Two', value: 'other' },
+          ],
+        ),
+      ).toMatch(
+        /The option “bar_baz” would be exported to the column “foo_bar_baz”, which the option “baz” of the attribute “foo_bar”/,
+      );
+    });
+
+    it('refuses an option whose column is a layout attribute’s coordinate column', () => {
+      expect(
+        conflicts(
+          [{ name: 'a_b', type: 'layout' }],
+          { name: 'a', type: 'categorical' },
+          [
+            { label: 'One', value: 'b_x' },
+            { label: 'Two', value: 'other' },
+          ],
+        ),
+      ).toMatch(/the layout attribute “a_b” already uses for its position/);
+    });
+
+    it('refuses an option whose column is a built-in column', () => {
+      expect(
+        conflicts(
+          [],
+          { name: 'app', type: 'categorical' },
+          [
+            { label: 'Version', value: 'version' },
+            { label: 'Other', value: 'other' },
+          ],
+          'ego',
+        ),
+      ).toBe(
+        'The option “version” would be exported to a column named “app_version”, which is a built-in column in exported data. Change the option’s value or the attribute’s name.',
+      );
+      expect(
+        conflicts(
+          [],
+          { name: 'app', type: 'categorical' },
+          [
+            { label: 'Version', value: 'version' },
+            { label: 'Other', value: 'other' },
+          ],
+          'node',
+        ),
+      ).toBeUndefined();
+    });
+
+    it('waits for a name before judging the options', () => {
+      expect(
+        conflicts(
+          [{ name: '_a', type: 'text' }],
+          { name: '  ', type: 'categorical' },
+          [
+            { label: 'One', value: 'a' },
+            { label: 'Two', value: 'b' },
+          ],
+        ),
+      ).toBeUndefined();
+    });
+
+    it('reads a number option as the text it is exported as', () => {
+      expect(
+        conflicts(
+          [{ name: 'foo_1', type: 'text' }],
+          { name: 'foo', type: 'categorical' },
+          [
+            { label: 'One', value: 1 },
+            { label: 'Two', value: 2 },
+          ],
+        ),
+      ).toMatch(/The option “1” would be exported/);
+    });
+
+    it('stays quiet about the attribute’s own columns, which the name field reports', () => {
+      expect(
+        conflicts(
+          [{ name: 'foo_x', type: 'text' }],
+          { name: 'foo', type: 'layout' },
+          [
+            { label: 'One', value: 'a' },
+            { label: 'Two', value: 'b' },
+          ],
+        ),
+      ).toBeUndefined();
+    });
+
+    it('passes when no export context was given', () => {
+      expect(
+        optionsValidation(intl).exportColumnConflicts(
+          [{ label: 'Bar', value: 'bar' }],
+          { name: 'foo', type: 'categorical' },
+        ),
+      ).toBeUndefined();
+    });
   });
 });

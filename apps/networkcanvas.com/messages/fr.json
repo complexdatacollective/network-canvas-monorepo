@@ -314,7 +314,7 @@
       "bestFor": "Idéal pour",
       "downloadVersion": "Télécharger la version {version}",
       "platformAccessibleName": "{platform} pour {app}",
-      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 8, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
+      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 9, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
       "schemaVersionLink": "En savoir plus sur les versions de schéma"
     },
     "platforms": {

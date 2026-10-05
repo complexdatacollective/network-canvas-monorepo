@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { interviewerCatalogs } from '~/locales/catalogs';
 
 import { importProtocolFromFile } from '../importProtocol';
@@ -86,6 +87,38 @@ describe('importProtocolFromFile error reporting', () => {
     expect(result.message).not.toBe('This protocol could not be opened.');
   });
 
+  it('tells the researcher to update when the protocol is from a newer version', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify({
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1,
+        name: 'From the future',
+      }),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('unsupported-version');
+    expect(result.message).not.toMatch(IMPLEMENTATION_DETAIL);
+    expect(result.message).toMatch(/newer version/i);
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+
+  it('describes a protocol that does not say which version made it', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify({ name: 'No version' }),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('validation-failed');
+    expect(result.message).not.toMatch(IMPLEMENTATION_DETAIL);
+    expect(result.message).toMatch(/which version/i);
+  });
+
   it('describes a storage failure as a device problem, not a machine error', async () => {
     const protocol = {
       schemaVersion: 8,
@@ -112,6 +145,27 @@ describe('importProtocolFromFile error reporting', () => {
     expect(result.error).toBe('save-failed');
     expect(result.message).not.toMatch(/quota|transaction|IDB/i);
     expect(result.message).toContain('device');
+  });
+
+  it('refuses a current protocol whose codebook uses __proto__ as an id', async () => {
+    const nodeType = {
+      name: 'Person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+    };
+    const bytes = await buildArchive({
+      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","stages":[],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('validation-failed');
+    expect(result.issues).toEqual([
+      { path: 'codebook.node.__proto__', message: 'An id cannot be __proto__' },
+    ]);
+    expect(saveProtocolMock).not.toHaveBeenCalled();
   });
 
   it('renders actionable Spanish import guidance from the actual archive failure metadata', async () => {

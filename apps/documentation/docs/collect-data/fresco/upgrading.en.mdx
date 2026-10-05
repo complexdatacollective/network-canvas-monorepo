@@ -45,6 +45,15 @@ This version information is accessible from several places:
 
 The health check endpoint, `/api/health`, does not report the version. If you monitored your instance's version through it, use the **Settings** page instead.
 
+## Upgrading to 5.0.0
+
+Fresco 5.0.0 runs protocol schema 9, which lets variables, node and edge types, and options be named in any language. Check the following before you upgrade.
+
+- **Update Fresco before you upload a schema 9 protocol.** Architect 9.0 and later saves every protocol as schema 9, and Fresco 4.x can't open one. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9).
+- **Your protocols are upgraded when Fresco starts.** The first time the new version starts, it upgrades the protocols you have already uploaded to schema 9. The upgrade changes only the schema version number, so nothing else in your protocols changes.
+- **Export file names can change.** File names now keep a node or edge type's name as you wrote it, including hyphens, dots, spaces and letters from any language. A type called "Close-Friend" now exports to a file ending `_Close-Friend.csv` rather than `_CloseFriend.csv`. If your analysis scripts find export files by name, check them. See [Data Export](/en/analyze-data/data-export).
+- **Exports can show warnings.** If an export has to rename a column or remove characters that GraphML can't store, Fresco tells you in a notification that stays until you close it. See [Export warnings](/en/analyze-data/data-export#export-warnings).
+
 ## Upgrading to 4.2.0
 
 Most of Fresco 4.2.0 needs no action, but check the following before you upgrade.

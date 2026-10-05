@@ -54,7 +54,7 @@ const personDefinition: SectionDoc = {
 };
 
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Rule editing', schemaVersion: 8 },
+  [settingsSection]: { name: 'Rule editing', schemaVersion: 9 },
   [stageOrderSection]: { stages: ['stage-1'] },
   [stageSection]: {
     id: 'stage-1',

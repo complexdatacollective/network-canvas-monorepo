@@ -140,6 +140,16 @@ export function fieldNotesFile(): File {
   });
 }
 
+/**
+ * A roster whose two headings look the same but are not: the accented letter
+ * is typed as one character in the first and as two in the second.
+ */
+export function collidingHeadingsRosterFile(): File {
+  return new File(['caf\u00e9,cafe\u0301\nAda,36\n'], 'roster.csv', {
+    type: 'text/csv',
+  });
+}
+
 /** The stage a picker story's field belongs to. */
 export type StoryStage = Readonly<{
   stageId: string;
@@ -223,7 +233,7 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
     sections: {
       [sectionId({ kind: 'settings' })]: {
         name: 'Resource picker proof host',
-        schemaVersion: 8,
+        schemaVersion: 9,
       },
       [sectionId({ kind: 'stageOrder' })]: { stages: [stage.stageId] },
       [stageSection]: { id: stage.stageId, type: stage.type, ...stage.fields },

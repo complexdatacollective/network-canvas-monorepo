@@ -22,6 +22,8 @@ This page describes what Network Canvas exports contain, regardless of which app
 - **Interviewer Classic** — see [Interviewer Online and Offline Workflows](/en/collect-data/interviewer-online-and-offline-workflows#exporting-data-to-a-cloud-file-sharing-service)
 - **Fresco** — see [Using Fresco](/en/collect-data/fresco/using-fresco#exporting-data)
 
+Some details on this page apply only to exports from Interviewer and Fresco: how files and GraphML attributes are named, and the warnings shown when characters are removed or columns are renamed. Interviewer Classic uses an earlier version of the export code, and runs only schema 7 protocols, whose names are more limited.
+
 ## File types
 
 Network Canvas supports two file formats for data export. Choose the format that best suits your analysis needs.
@@ -44,7 +46,7 @@ The CSV export creates separate files for each entity type in your protocol:
 #### Ego attribute list
 
 - **One row per ego** (participant)
-- **Filename format:** `caseID_sessionUUID_ego.csv`
+- **Filename format:** `caseID_sessionUUID_ego.csv` (see [How export files are named](#how-export-files-are-named))
 - **Contains:**
   - Ego-level variables you collected
   - Session metadata (start time, finish time, protocol name, etc.)
@@ -61,7 +63,7 @@ ego_id,networkCanvasEgoUUID,networkCanvasCaseID,age,gender,sessionStart,sessionF
 #### Alter attribute list
 
 - **One row per alter** (nominated node)
-- **Filename format:** `caseID_sessionUUID_attributeList_alterType.csv`
+- **Filename format:** `caseID_sessionUUID_attributeList_nodeType.csv`, where `nodeType` is the node type's name as written in your codebook, in any language
 - **Contains:**
   - All alter attributes you collected
   - Network Canvas identifiers (alter UUID, ego UUID)
@@ -85,7 +87,7 @@ ego_id,alter_id,networkCanvasUUID,networkCanvasEgoUUID,name,age,close_friend,con
 #### Edge attribute list
 
 - **One row per edge** (relationship between alters)
-- **Filename format:** `caseID_sessionUUID_edgeList_edgeType.csv`
+- **Filename format:** `caseID_sessionUUID_edgeList_edgeType.csv`, where `edgeType` is the edge type's name as written in your codebook
 - **Contains:**
   - Edge attributes you collected
   - Source and target identifiers (both UUID and export ID)
@@ -104,6 +106,26 @@ ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID
 - Multiple edge types create separate files
 - Empty edge files are created even if no edges were collected
 
+#### Why some values start with an apostrophe
+
+Spreadsheet programs treat a cell that starts with `=`, `+`, `-` or `@` as a formula, and can run it when the file is opened. To protect anyone who opens your data in a spreadsheet, the CSV export adds an apostrophe (`'`) to the start of any text value, such as an answer or a case ID, that begins with `=`, `+`, `-`, `@`, a tab, or a carriage return. For example, the answer `-5 degrees` is written as `'-5 degrees`. Column headers get the same apostrophe, so a variable named `=total` has the header `'=total`. Numbers and `true`/`false` values never get the apostrophe, and neither do GraphML files.
+
+Analysis software reads the apostrophe as part of the text. To remove it from a text column, or from your column headers, remove a leading apostrophe only where it is followed by one of those characters:
+
+```r
+# R
+alters$notes <- sub("^'([=+@\t\r-])", "\\1", alters$notes)
+names(alters) <- sub("^'([=+@\t\r-])", "\\1", names(alters))
+```
+
+```python
+# Python (pandas)
+alters["notes"] = alters["notes"].str.replace(r"^'(?=[=+\-@\t\r])", "", regex=True)
+alters.columns = alters.columns.str.replace(r"^'(?=[=+\-@\t\r])", "", regex=True)
+```
+
+This also removes an apostrophe that a participant typed themselves in front of one of these characters, which is rare.
+
 ### GraphML format
 
 **What it is:** GraphML is an XML-based open standard for representing graph data. It stores the complete network structure in a single file.
@@ -118,7 +140,7 @@ ego_id,edge_id,edge_type,from,to,networkCanvasSourceUUID,networkCanvasTargetUUID
 **What you get:**
 
 - **One file per interview session**
-- **Filename format:** `caseID_sessionUUID.graphml`
+- **Filename format:** `caseID_sessionUUID.graphml` (see [How export files are named](#how-export-files-are-named))
 - **Contains:**
   - Complete network structure (nodes and edges)
   - All node and edge attributes
@@ -178,6 +200,27 @@ Note that the `<key>` element must be located outside of the `<graph>` element. 
 
 Because this uses the existing GraphML schema, other parsers either ignore ego data or correctly display it as one or more attributes of the graph itself. Network Canvas parsers treat all graph-level `<key>` and `<data>` elements as describing ego.
 
+#### GraphML attribute names
+
+GraphML requires each attribute name (`attr.name`) to be a valid XML name token: letters from any language, digits, and the symbols `.`, `-`, `_` and `:`. Variable names in Network Canvas can also contain spaces and other punctuation, so the GraphML export replaces each character that isn't allowed with `_`, and keeps the name as written in the key's `<desc>` element:
+
+```xml
+<key id="…" attr.name="contact_frequency__per_week_" attr.type="string" for="node">
+  <desc>contact frequency (per week)</desc>
+</key>
+```
+
+Names that are already valid, such as `close_friend` or `género`, are written unchanged, without a `<desc>` element. Replacing characters like this doesn't give a warning. Architect refuses two names that would become the same after this replacement, as `close friend` and `close_friend` would. If a protocol created before that check has such names, the name that was already valid keeps it, and the other gets a `_2` suffix and a warning. See [Column names that clash](#column-names-that-clash).
+
+#### Characters removed from GraphML files
+
+XML, the format GraphML is built on, can't store some invisible control characters, such as the null character. Tabs and line breaks are fine. These characters can end up in an answer when a participant pastes text copied from other software. The GraphML export removes them, and shows a warning (see [Export warnings](#export-warnings)):
+
+- When an answer contains one, the warning is titled "Some characters were removed from the GraphML files". It lists each affected interview by its case ID, or by its session ID if it has no case ID, with the variables whose answers lost characters. The list includes "Case ID" if the case ID itself contained such a character.
+- When the protocol's own text contains one, in the protocol's name, a node or edge type's name, or a column name such as a variable's name, the warning is titled "Some characters were removed from protocol text in the GraphML files". Because these characters are invisible, it names each one by its Unicode code point, such as U+0007.
+
+CSV files keep every answer exactly as it was entered, so use the CSV export if you need the original text.
+
 ### Choosing between CSV and GraphML
 
 | Consideration          | CSV                                       | GraphML                                   |
@@ -190,6 +233,51 @@ Because this uses the existing GraphML schema, other parsers either ignore ego d
 | **Best for beginners** | ✓ More familiar format                    | May require learning curve                |
 
 **Our recommendation:** Export data in **both formats** when first working with Network Canvas data. This allows you to experiment and determine which format works best with your analysis workflow.
+
+### How export files are named
+
+Every file name starts with the interview's case ID and session ID. CSV file names also say what the file holds:
+
+| File                                      | Name                                            |
+| ----------------------------------------- | ----------------------------------------------- |
+| GraphML                                   | `caseID_sessionUUID.graphml`                    |
+| Ego attribute list (CSV)                  | `caseID_sessionUUID_ego.csv`                    |
+| Alter attribute list, per node type (CSV) | `caseID_sessionUUID_attributeList_nodeType.csv` |
+| Edge attribute list, per edge type (CSV)  | `caseID_sessionUUID_edgeList_edgeType.csv`      |
+
+Node and edge type names are used as written in your codebook, in any language, so a node type named `友人` gives a file ending `_attributeList_友人.csv`. A few changes keep the names safe on every computer:
+
+- Characters that file systems don't allow in file names, `\ / : * ? " < > |` and invisible control characters, are removed, as are dots and spaces at the end of a type name.
+- A type name that Windows reserves, such as `CON`, `PRN`, `AUX`, `NUL`, `COM1` or `LPT1`, gets an underscore in front of it.
+- A file name can be at most 255 bytes long. If it would be longer, the type name is shortened first. Letters outside the Latin alphabet take two to four bytes each, so names in those scripts reach the limit sooner.
+- If two files would get the same name, the node or edge type's identifier from the codebook is added after the type name: `caseID_sessionUUID_attributeList_Friend_typeID.csv`. This happens when two type names differ only in capitalization (`Friend` and `friend`, which some computers treat as the same file name), and when a type name had to be shortened or had nothing left after unsafe characters were removed. The identifier belongs to the type, so the same type gets the same file name every time you export. A very long identifier is replaced by a shorter code made from it, which also stays the same each time.
+
+### Column names that clash
+
+Architect refuses names that would give two variables the same column in exported data, including names that only become the same once an export writes them (see [Names that would clash in exported data](/en/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)). Protocols created before Architect made this check can still contain such names: for example, a variable named `support_emotional` alongside a categorical variable `support` with the option `emotional`, or variables named `close friend` and `close_friend`, which become the same in GraphML files once spaces and punctuation are replaced (see [GraphML attribute names](#graphml-attribute-names)). A roster column that isn't a variable in your codebook can also have the same name as a variable's column.
+
+The export never merges two columns into one. When two columns in the same file would have the same name:
+
+- built-in columns, such as `nodeID` or `networkCanvasUUID`, always keep their names
+- the variable that comes first in your codebook keeps the name
+- each later column is renamed with the first free suffix of `_2`, `_3`, and so on, such as `support_emotional_2`
+
+Names that differ only in capitalization, such as `Age` and `age`, are not renamed. When the export renames a column, it shows a warning titled "Some columns were given new names", which lists each renamed column, the file format, and the name it was written as (see [Export warnings](#export-warnings)).
+
+### Export warnings
+
+An export can finish with warnings about changes it made to your data. The export still succeeds. There are three kinds of warning, each with its own title:
+
+| Warning                                                                | What happened                                                                                                                                    |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| "Some characters were removed from the GraphML files"                  | Some answers contained characters that GraphML can't store. See [Characters removed from GraphML files](#characters-removed-from-graphml-files). |
+| "Some characters were removed from protocol text in the GraphML files" | The protocol's own text, such as its name or a node type's name, contained such characters.                                                      |
+| "Some columns were given new names"                                    | Two columns in the same file would have had the same name. See [Column names that clash](#column-names-that-clash).                              |
+
+Each warning lists exactly what was affected. Where you see the warnings depends on the app:
+
+- **Fresco** shows each kind of warning in its own notification, which stays on screen until you close it.
+- **Interviewer** shows the warnings in the export dialog, when the file is ready to save. After you save the file, it shows them again in notifications that stay on screen until you close them.
 
 ## Export options
 
@@ -351,6 +439,31 @@ Network Canvas handles missing data as follows:
 
 ## Using exported data
 
+### Opening CSV files
+
+Network Canvas writes CSV files as UTF-8 without a byte order mark (BOM), the form most analysis software expects. The files can hold names and answers in any language.
+
+**Microsoft Excel:** When you double-click a CSV file, Excel only reads it as UTF-8 if it starts with a byte order mark. Otherwise accented letters and other scripts look garbled, for example `gÃ©nero` instead of `género`. The data in the file is fine. Import the file instead of double-clicking it ([Microsoft's guidance](https://support.microsoft.com/en-us/excel/opening-csv-utf-8-files-correctly-in-excel)):
+
+- **Excel for Windows:** On the **Data** tab, in the **Get & Transform Data** group, choose **From Text/CSV**. Select the file and choose **Import**. In the preview, set **File Origin** to **65001: Unicode (UTF-8)**, then choose **Load**.
+- **Excel for Microsoft 365 for Mac:** On the **Data** tab, choose **From Text (Legacy)**, then select the file and open it. On the first page of the Text Import Wizard, set **File origin** to UTF-8, then follow the remaining steps.
+
+**LibreOffice Calc:** When you open a CSV file, LibreOffice shows a Text Import dialog. Choose **Unicode (UTF-8)** as the **Character set**.
+
+**R:** Base R's `read.csv` reads the files correctly when R runs in a UTF-8 locale, which is the default on macOS and Linux, and on Windows from R 4.2. Otherwise, add `encoding = "UTF-8"`. Two other details matter:
+
+- By default, `read.csv` changes column names that aren't valid R names: `close friend` becomes `close.friend`, and outside a UTF-8 locale `género` can become `g..nero`. Add `check.names = FALSE` to keep the names as written, and quote them with backticks, as in `` alters$`close friend` ``.
+- Base R reads `true` and `false` as text. Convert a column with `as.logical()`, as in `alters$close_friend <- as.logical(alters$close_friend)`.
+
+```r
+alters <- read.csv("case_001_session_123_attributeList_Person.csv",
+                   check.names = FALSE, encoding = "UTF-8")
+```
+
+`readr::read_csv()` and `data.table::fread()` also read the files as UTF-8, keep column names as written, and read `true` and `false` as logical values.
+
+**Python:** pandas reads the files directly. `pd.read_csv()` uses UTF-8 by default, keeps column names as written, and reads `true` and `false` as booleans.
+
 ### In R (statistical analysis)
 
 Network Canvas CSV exports are designed to work seamlessly with R, particularly the [egor package](https://cran.r-project.org/package=egor):
@@ -359,9 +472,10 @@ Network Canvas CSV exports are designed to work seamlessly with R, particularly 
 library(egor)
 
 # Read the exported CSV files
-egos <- read.csv("path/to/ego.csv")
-alters <- read.csv("path/to/alters_Person.csv")
-edges <- read.csv("path/to/edges_friendship.csv")
+# (check.names = FALSE keeps column names exactly as they are in your codebook)
+egos <- read.csv("path/to/ego.csv", check.names = FALSE)
+alters <- read.csv("path/to/alters_Person.csv", check.names = FALSE)
+edges <- read.csv("path/to/edges_friendship.csv", check.names = FALSE)
 
 # Combine them into an egor object, linking the files
 # through the Network Canvas identifiers
@@ -461,9 +575,9 @@ G.edges(data=True)   # edges with their attributes
 
 **Excel, Google Sheets, LibreOffice Calc:**
 
-1. Open CSV files directly
+1. Import each CSV file as UTF-8 (see [Opening CSV files](#opening-csv-files))
 2. Each file opens as a separate spreadsheet
-3. Use ego_id to link across files
+3. Use `networkCanvasEgoUUID` to link across files
 4. Pivot tables and formulas work with the data
 
 ## Best practices
@@ -516,10 +630,25 @@ G.edges(data=True)   # edges with their attributes
 - **Solution (Interviewer):** Check default Documents folder or recent downloads
 - **Solution (Fresco):** Check browser's download folder
 
-**Problem: CSV files won't open in Excel**
+**Problem: Accented letters or other scripts look garbled in Excel**
 
-- **Cause:** File encoding or comma-separator issues
-- **Solution:** Use "Import Data" feature in Excel instead of double-clicking; specify UTF-8 encoding
+- **Cause:** Excel didn't read the file as UTF-8, which happens when you double-click a CSV file
+- **Solution:** Import the file with UTF-8 as the file origin instead of double-clicking it. See [Opening CSV files](#opening-csv-files)
+
+**Problem: Some text values start with an apostrophe**
+
+- **Cause:** The CSV export adds `'` before text that starts with `=`, `+`, `-`, `@`, a tab, or a carriage return, so spreadsheets don't treat it as a formula
+- **Solution:** See [Why some values start with an apostrophe](#why-some-values-start-with-an-apostrophe) to remove it in R or Python
+
+**Problem: A warning says characters were removed from the GraphML files**
+
+- **Cause:** Some answers, or the protocol's own text, contained invisible control characters that GraphML can't store
+- **Solution:** The CSV files keep those answers unchanged. See [Characters removed from GraphML files](#characters-removed-from-graphml-files)
+
+**Problem: A warning says some columns were given new names**
+
+- **Cause:** Two columns in the same file would have had the same name, so the export renamed one of them with a suffix such as `_2`. This can happen with variable names in an older protocol, including names that only become the same in GraphML files once spaces and punctuation are replaced, or with a roster column that isn't a variable
+- **Solution:** See [Column names that clash](#column-names-that-clash)
 
 **Problem: Missing variables in export**
 

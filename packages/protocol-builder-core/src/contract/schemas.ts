@@ -212,11 +212,65 @@ export const ResourceFailureReasonSchema = Schema.Literals([
   'unsupported-kind',
 ]);
 
+const PositionSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
+
+/**
+ * Where a roster holds a character no export can carry, placed the way the
+ * researcher finds it in their own file: rows and lines count from 1 and a CSV
+ * header is row 1, a column name is placed by its position from 1 at the left,
+ * and nodes count from 1 in the order the file lists them. `character` is the
+ * code point written as `U+0007`.
+ */
+const RosterCharacterProblemSchema = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literal('columnName'),
+    column: PositionSchema,
+    character: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal('cell'),
+    row: PositionSchema,
+    column: Schema.String,
+    character: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal('attributeName'),
+    node: PositionSchema,
+    character: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal('attributeValue'),
+    node: PositionSchema,
+    attribute: Schema.String,
+    character: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal('line'),
+    line: PositionSchema,
+    character: Schema.String,
+  }),
+]);
+
+/**
+ * What a host found wrong with the content, as a code and a place rather than
+ * a sentence, so the editor can say it in the researcher's own language. The
+ * failure's `message` is still there, for a client that does not know the
+ * code.
+ */
+const ResourceFailureDetailSchema = Schema.Struct({
+  code: Schema.Literal('roster-characters'),
+  /** The first place in the file, in file order. */
+  problem: RosterCharacterProblemSchema,
+  /** How many places in the file have the problem, the first included. */
+  total: PositionSchema,
+});
+
 export const ResourceGatewayFailureSchema = Schema.Struct({
   reason: ResourceFailureReasonSchema,
   message: Schema.String,
   retryable: Schema.Boolean,
   resourceId: Schema.optionalKey(Schema.String),
+  detail: Schema.optionalKey(ResourceFailureDetailSchema),
 });
 
 export function resourceResult<TData extends Schema.Top>(data: TData) {

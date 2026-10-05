@@ -17,6 +17,7 @@ import {
   type ProtocolBuilderAdapter,
 } from '../state/context.ts';
 import type { ResourcePromotion } from '../state/hooks.ts';
+import { withRosterCharacterMessage } from './components/rosterCharacters.ts';
 import { resourceFailureMessages } from './resourceMessages.ts';
 import {
   resourceFailure,
@@ -316,7 +317,12 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
             bytes: request.bytes,
           },
         });
-        if (result.status !== 'ok') return result;
+        if (result.status !== 'ok') {
+          return {
+            ...result,
+            failure: withRosterCharacterMessage(result.failure),
+          };
+        }
         recordStaged(result.data.descriptor);
         return resourceOk(result.data.descriptor);
       }),

@@ -418,11 +418,14 @@ export const processProtocolSortRule =
       return { ...sortRule, type: sortRule.type };
     }
 
-    const variableDefinition: Variable | null = get(
-      codebookVariables,
-      sortRule.property,
-      null,
-    );
+    // An own-property lookup, not a lodash path: the property is a variable id
+    // or name, and `a.b` or `__proto__` must not be read as a path.
+    const variableDefinition: Variable | null =
+      codebookVariables !== undefined &&
+      typeof sortRule.property === 'string' &&
+      Object.hasOwn(codebookVariables, sortRule.property)
+        ? (codebookVariables[sortRule.property] ?? null)
+        : null;
 
     // Don't modify the rule if there is no variable definition matching the
     // property. Assume string

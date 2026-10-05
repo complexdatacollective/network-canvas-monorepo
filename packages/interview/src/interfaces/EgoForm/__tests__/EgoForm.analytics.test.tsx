@@ -117,7 +117,7 @@ const renderEgoForm = (
       protocol: {
         id: 'protocol',
         hash: 'hash',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: bookOfCodes,
         stages: [
           stage,

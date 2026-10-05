@@ -139,7 +139,7 @@ const buildStateWithValidationRef = (
       ? { ego: { variables } }
       : { [entity]: { 'entity-type-id': { variables } } };
 
-  const protocol = { schemaVersion: 8, name: 'test', codebook, stages: [] };
+  const protocol = { schemaVersion: 9, name: 'test', codebook, stages: [] };
 
   return {
     state: getMockState({
@@ -203,7 +203,7 @@ describe('indexes selectors', () => {
     it('counts a variable used only as a prompt sort key as used', () => {
       const sortVariableId = 'sort-only-variable-id';
       const protocol = {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'test',
         codebook: {
           node: {
@@ -236,7 +236,7 @@ describe('indexes selectors', () => {
       expect(Object.values(getVariableIndex(state))).toContain(sortVariableId);
     });
 
-    it('includes stage prompt variable references from a real v8 protocol', () => {
+    it('includes stage prompt variable references from the shipped development protocol', () => {
       const thisDir = dirname(fileURLToPath(import.meta.url));
       const protocolPath = join(
         thisDir,
@@ -335,12 +335,12 @@ describe('indexes selectors', () => {
 
   describe('getVariableUsageHits()', () => {
     // A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
-    // (`VariableNameSchema`), so these ids are legal protocol content.
+    // (`CodebookIdSchema`), so these ids are legal protocol content.
     const dottedIdState = (): RootState =>
       getMockState({
         activeProtocol: {
           present: {
-            schemaVersion: 8,
+            schemaVersion: 9,
             name: 'test',
             codebook: {
               node: {
@@ -422,7 +422,7 @@ describe('indexes selectors', () => {
   describe('getEntityTypeUsageHitsById()', () => {
     it('groups the structured type-reference hits by type id', () => {
       const protocol = {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'test',
         codebook: { edge: { 'friendship-type-id': { name: 'Friendship' } } },
         stages: [
@@ -538,7 +538,7 @@ describe('indexes selectors', () => {
       const state = getMockState({
         activeProtocol: {
           present: {
-            schemaVersion: 8,
+            schemaVersion: 9,
             name: 'test',
             codebook: { node: {} },
             stages: [stage],
@@ -558,7 +558,7 @@ describe('indexes selectors', () => {
       const state = getMockState({
         activeProtocol: {
           present: {
-            schemaVersion: 8,
+            schemaVersion: 9,
             name: 'test',
             codebook: { node: {} },
             stages: [
@@ -582,7 +582,7 @@ describe('indexes selectors', () => {
     it('counts a FamilyPedigree intro-screen asset item as used', () => {
       const assetId = 'intro-asset-id';
       const protocol = {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'test',
         codebook: { node: {} },
         stages: [
@@ -636,7 +636,7 @@ describe('indexes selectors', () => {
         const state = getMockState({
           activeProtocol: {
             present: {
-              schemaVersion: 8,
+              schemaVersion: 9,
               name: 'test',
               codebook: { node: {} },
               stages: [stage],
@@ -666,7 +666,7 @@ describe('indexes selectors', () => {
 
     it('detects edge types used by a NetworkComposer stage (edges[].subject)', () => {
       const protocol = {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'test',
         codebook: { edge: { 'friendship-type-id': { name: 'Friendship' } } },
         stages: [

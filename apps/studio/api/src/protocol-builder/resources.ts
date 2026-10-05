@@ -20,6 +20,16 @@ import {
   type ResourcePreviewSchema,
   type StageResourceInputSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  findCollidingAttributeNames,
+  findRosterCharacterProblems,
+  isUsableExternalAttributeName,
+  readRosterCsv,
+} from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  VariableValueSchema,
+} from '@codaco/shared-consts';
 import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -70,6 +80,147 @@ function failure(
       ...(resourceId === undefined ? {} : { resourceId }),
     },
   };
+}
+
+/**
+ * A roster holding a character no export can carry, refused with where the
+ * first one is; `undefined` when it holds none.
+ *
+ * Answered with a code and a place rather than a sentence, so the editor words
+ * it in the researcher's own language; the message is only for a client that
+ * does not know the code. The format is decided by the file's extension, as
+ * the editor decides it.
+ */
+async function rosterCharacterFailure(
+  bytes: Uint8Array,
+  source: string,
+): Promise<ResourceOutcome<never> | undefined> {
+  const { problems, total } = await findRosterCharacterProblems(
+    new TextDecoder().decode(bytes),
+    /\.csv$/i.test(source) ? 'csv' : 'json',
+  );
+  const [problem] = problems;
+  if (problem === undefined) return undefined;
+  return {
+    status: 'failed',
+    failure: {
+      reason: 'invalid-content',
+      message: 'the roster holds a character an export cannot carry',
+      retryable: false,
+      detail: { code: 'roster-characters', problem, total },
+    },
+  };
+}
+
+/**
+ * A roster the interview could not load, refused with what is wrong with it;
+ * `undefined` when it would load.
+ *
+ * The protocol builder's `readRosterFacts` applies these rules in the editor
+ * before a roster is staged; they are applied here through the same shared
+ * readers and name rules, so a caller other than the editor cannot stage a
+ * roster the interview rejects when a participant reaches it. The format is
+ * decided as `readRosterFacts` decides it: by the file's extension, and by its
+ * media type only when the name says nothing.
+ */
+async function rosterContentFailure(
+  bytes: Uint8Array,
+  source: string,
+  contentType: string,
+): Promise<ResourceOutcome<never> | undefined> {
+  const text = new TextDecoder().decode(bytes);
+  const problem = isCsvRoster(source, contentType)
+    ? await csvRosterProblem(text)
+    : jsonRosterProblem(text);
+  return problem === undefined
+    ? undefined
+    : failure('invalid-content', problem);
+}
+
+function isCsvRoster(source: string, contentType: string): boolean {
+  const name = source.toLowerCase();
+  if (name.endsWith('.csv')) return true;
+  if (name.endsWith('.json')) return false;
+  return contentType.split(';')[0]?.trim().toLowerCase() === 'text/csv';
+}
+
+const EMPTY_ROSTER = 'the roster holds no nodes';
+
+/** Read with the interview's own reader, so its columns are the interview's. */
+async function csvRosterProblem(text: string): Promise<string | undefined> {
+  const csv = await readRosterCsv(text).catch(() => undefined);
+  if (csv === undefined) return 'the roster cannot be read as CSV';
+  const { columns, rows } = csv;
+  const mismatched = rows.find(({ cells }) => cells !== columns.length);
+  if (mismatched !== undefined) {
+    return `row ${mismatched.row} of the roster has a different number of cells from its header`;
+  }
+  if (rows.length === 0) return EMPTY_ROSTER;
+  return attributeNameProblem(rows.map(({ values }) => values));
+}
+
+/**
+ * Read as far as the interview's `loadExternalData` reads it, which throws on
+ * a node that is not an object, on attributes that are not one, and on a value
+ * no variable can hold.
+ */
+function jsonRosterProblem(text: string): string | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return 'the roster cannot be read as JSON';
+  }
+  if (!isRecord(parsed)) return 'the roster is not a JSON object';
+  const nodes: readonly unknown[] | undefined = Array.isArray(parsed.nodes)
+    ? parsed.nodes
+    : undefined;
+  if (nodes === undefined) return 'the roster has no list of nodes';
+  const edges: readonly unknown[] = Array.isArray(parsed.edges)
+    ? parsed.edges
+    : [];
+
+  const nodeAttributes: Record<string, unknown>[] = [];
+  for (const [index, node] of nodes.entries()) {
+    const position = index + 1;
+    if (!isRecord(node)) {
+      return `node ${position} of the roster is not an object`;
+    }
+    const attributes: unknown = node[entityAttributesProperty];
+    if (attributes === undefined) continue;
+    if (!isRecord(attributes)) {
+      return `the attributes of node ${position} of the roster are not an object`;
+    }
+    for (const [name, value] of Object.entries(attributes)) {
+      if (value === null || value === undefined) continue;
+      if (VariableValueSchema.safeParse(value).success) continue;
+      return `the ${JSON.stringify(name)} attribute of node ${position} of the roster is not a value a variable can hold`;
+    }
+    nodeAttributes.push(attributes);
+  }
+
+  if (nodes.length === 0 && edges.length === 0) return EMPTY_ROSTER;
+  return attributeNameProblem(nodeAttributes);
+}
+
+/**
+ * A heading the interview cannot pair with any variable, or two it would pair
+ * with the same one and keep only one column's values of.
+ */
+function attributeNameProblem(
+  records: readonly Record<string, unknown>[],
+): string | undefined {
+  const names = [...new Set(records.flatMap((record) => Object.keys(record)))];
+  const unusable = names.find((name) => !isUsableExternalAttributeName(name));
+  if (unusable !== undefined) {
+    return `the roster's attribute name ${JSON.stringify(unusable)} cannot be a variable name`;
+  }
+  const [collision] = findCollidingAttributeNames(names);
+  const [first, second] = collision ?? [];
+  if (first !== undefined && second !== undefined) {
+    return `the roster's attribute names ${JSON.stringify(first)} and ${JSON.stringify(second)} are the same name written two ways`;
+  }
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -201,6 +352,11 @@ export class StagedResources {
     return [...this.#staged.values()].map((entry) => entry.descriptor);
   }
 
+  #stagedFor(key: string): StagedEntry | undefined {
+    const id = this.#byRequest.get(key);
+    return id === undefined ? undefined : this.#staged.get(id);
+  }
+
   /**
    * Idempotent in the request id, so an uncertain retry stages once.
    *
@@ -209,14 +365,12 @@ export class StagedResources {
    * the pickers an editor has open: a secret answered with an earlier upload's
    * descriptor is a resource the submit cannot promote.
    */
-  stage(
+  async stage(
     requestId: string,
     request: StageRequest,
-  ): ResourceOutcome<{ descriptor: Descriptor }> {
+  ): Promise<ResourceOutcome<{ descriptor: Descriptor }>> {
     const key = `${request.kind}\u0000${requestId}`;
-    const existingId = this.#byRequest.get(key);
-    const existing =
-      existingId === undefined ? undefined : this.#staged.get(existingId);
+    const existing = this.#stagedFor(key);
     if (existing !== undefined) {
       return { status: 'ok', data: { descriptor: existing.descriptor } };
     }
@@ -239,6 +393,26 @@ export class StagedResources {
         'too-large',
         `this deployment stores at most ${MAX_UPLOAD_BYTES} bytes per resource`,
       );
+    }
+    if (request.kind === 'content' && request.contentKind === 'network') {
+      // Read here as well as in the editor, because a caller need not be the
+      // editor: a roster holding a character no export can carry would
+      // otherwise be found when the data is exported, and one the interview
+      // cannot load when a participant reaches it — both long after the
+      // researcher could still choose a corrected file.
+      const refused =
+        (await rosterCharacterFailure(request.bytes, request.source)) ??
+        (await rosterContentFailure(
+          request.bytes,
+          request.source,
+          request.contentType,
+        ));
+      if (refused !== undefined) return refused;
+      // A retry of this request can have staged it while the file was read.
+      const raced = this.#stagedFor(key);
+      if (raced !== undefined) {
+        return { status: 'ok', data: { descriptor: raced.descriptor } };
+      }
     }
     const id = this.#mintId();
     const entry: StagedEntry =

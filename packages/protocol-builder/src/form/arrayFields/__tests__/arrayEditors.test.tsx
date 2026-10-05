@@ -20,7 +20,7 @@ import MultiSelect, {
   makeMultiSelectValidation,
   type PropertyField,
 } from '../MultiSelect.tsx';
-import Options, { optionsValidation } from '../Options.tsx';
+import Options, { optionsValidationFor } from '../Options.tsx';
 
 const OPTIONS_CAPABILITY = {
   fields: ['options'],
@@ -99,7 +99,7 @@ const optionList = (disabled: boolean) => (
     component={Options}
     addButtonLabel="Create new option"
     disabled={disabled}
-    {...optionsValidation}
+    {...optionsValidationFor()}
   />
 );
 
@@ -222,7 +222,7 @@ describe('Options', () => {
       ...SAVEABLE_STAGE,
       options: [
         { label: 'Alpha', value: 'yes' },
-        { label: 'Bravo', value: 'yes!' },
+        { label: 'Bravo', value: 'yes\tplease' },
       ],
     });
 
@@ -234,16 +234,42 @@ describe('Options', () => {
       optionCell(0, 'value').queryByText('Values must be unique'),
     ).toBeNull();
 
-    // Now it exports as the same answer as Bravo, and `!` cannot appear in an
-    // export column name.
-    await user.type(valueCell, '!');
+    // Now it exports as the same answer as Bravo, and a tab cannot appear in
+    // an export column name.
+    fireEvent.change(valueCell, { target: { value: 'yes\tplease' } });
 
     // Both, not just the first: a row is edited in place, so a cell that
     // reported its problems one at a time would send the researcher back to
     // the same box for each of them.
     await optionCell(0, 'value').findByText('Values must be unique');
-    optionCell(0, 'value').getByText(/Not a valid option value/);
+    optionCell(0, 'value').getByText(
+      'Cannot contain line breaks, tabs or other control characters',
+    );
   });
+
+  it.each(['yes please', '友人', 'amigo cercano', 'Collègue', 'a.b [1]'])(
+    'accepts the option value %j',
+    async (value) => {
+      const { user } = renderOptions({
+        ...SAVEABLE_STAGE,
+        options: [
+          { label: 'Alpha', value: 'yes' },
+          { label: 'Bravo', value: 'no' },
+        ],
+      });
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Edit option 1' }),
+      );
+      const valueCell = await screen.findByRole('textbox', { name: 'Value' });
+      fireEvent.change(valueCell, { target: { value } });
+
+      await waitFor(() => expect(valueCell).toHaveValue(value));
+      expect(
+        optionCell(0, 'value').queryByText(/Cannot contain/u),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('reveals a blank option’s problems when it refuses to collapse', async () => {
     const { user } = renderOptions({ ...SAVEABLE_STAGE, options: [] });

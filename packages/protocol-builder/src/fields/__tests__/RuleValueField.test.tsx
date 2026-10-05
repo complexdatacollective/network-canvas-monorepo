@@ -59,7 +59,7 @@ describe('emptyRuleValue', () => {
 const baseSections: Record<string, SectionDoc> = {
   [sectionId({ kind: 'settings' })]: {
     name: 'Operand entry',
-    schemaVersion: 8,
+    schemaVersion: 9,
   },
   [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-1'] },
   [STAGE_SECTION]: {

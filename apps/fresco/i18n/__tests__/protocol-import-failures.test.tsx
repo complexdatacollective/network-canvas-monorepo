@@ -82,7 +82,7 @@ describe('truthful protocol import failure messages', () => {
     async (operation) => {
       const file = await archiveFile(
         JSON.stringify({
-          schemaVersion: 8,
+          schemaVersion: 9,
           name: 'Fixture',
           lastModified: '2026-09-05T00:00:00.000Z',
           stages: [],

@@ -32,7 +32,7 @@ const STAGE_LABEL = 'Welcome';
 function twoScreenProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse({
     name: 'Preview finish E2E',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
     stages: [

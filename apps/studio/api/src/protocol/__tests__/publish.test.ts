@@ -76,7 +76,7 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     expect(versions[0]).toMatchObject({
       versionNumber: 1,
       label: 'first',
-      schemaVersion: 8,
+      schemaVersion: 9,
       migratedFromVersionId: null,
     });
 

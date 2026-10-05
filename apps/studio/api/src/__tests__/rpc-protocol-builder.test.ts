@@ -2411,6 +2411,90 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(listed.data.resources).toEqual([]);
   });
 
+  it('refuses a roster holding a character exports cannot carry, saying where it is', async () => {
+    const edit = 'edit-roster-characters';
+    const refused = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'roster-characters',
+        request: {
+          kind: 'content',
+          contentKind: 'network',
+          name: 'People',
+          source: 'people.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode(
+            `name\nGr${String.fromCharCode(7)}ace\n`,
+          ),
+        },
+      }),
+    );
+
+    // A code and a place, which the editor words in the researcher's language.
+    expect(refused).toMatchObject({
+      status: 'failed',
+      failure: {
+        reason: 'invalid-content',
+        detail: {
+          code: 'roster-characters',
+          problem: {
+            kind: 'cell',
+            row: 2,
+            column: 'name',
+            character: 'U+0007',
+          },
+          total: 1,
+        },
+      },
+    });
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
+    );
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toEqual([]);
+  });
+
+  it('refuses a roster whose headings the interview could not tell apart', async () => {
+    const edit = 'edit-roster-headings';
+    const refused = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'roster-headings',
+        request: {
+          kind: 'content',
+          contentKind: 'network',
+          name: 'People',
+          source: 'people.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode('caf\u00e9,cafe\u0301\nAda,36\n'),
+        },
+      }),
+    );
+
+    // Refused at staging rather than when a participant reaches the stage,
+    // where the interview would fill one variable from both columns.
+    expect(refused).toMatchObject({
+      status: 'failed',
+      failure: {
+        reason: 'invalid-content',
+        retryable: false,
+        message:
+          'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
+      },
+    });
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
+    );
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toEqual([]);
+  });
+
   it('answers an unreachable object store with a failure the editor can retry', async () => {
     const edit = 'edit-store-down';
     const stage = await createStage(ADA, 'Names a file the store cannot take');

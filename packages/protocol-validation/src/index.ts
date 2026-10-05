@@ -37,7 +37,9 @@ import {
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
 import {
+  findCollidingAttributeNames,
   getVariableNamesFromNetwork,
+  isUsableExternalAttributeName,
   type Network,
   validateNames,
 } from './utils/validateExternalData.ts';
@@ -68,9 +70,10 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
 // Interface-owned value sets that are part of the current schema's contract.
-// They live in the schema version directory and are copied — never shared —
-// when a new version directory is created, so a host always reads the set the
-// version it targets defines.
+// They live in the schema version directory, so a host always reads the set
+// the version it targets defines. Schema 9 changed only variable names and
+// builds on the `schemas/8` tree, so these are its sets too; a version that
+// changes one copies the directory rather than sharing it.
 export {
   BIOLOGICAL_SEX_OPTIONS,
   BIOLOGICAL_SEX_VALUES,
@@ -113,6 +116,13 @@ export {
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.
+export { readRosterCsv } from './utils/readRosterCsv.ts';
+export {
+  findRosterCharacterProblems,
+  type RosterCharacterProblem,
+  type RosterCharacterReport,
+  type RosterFormat,
+} from './utils/rosterCharacters.ts';
 export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
@@ -136,12 +146,14 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  findCollidingAttributeNames,
   formatProtocolValidationIssues,
   getAssetMimeType,
   getProtocolFileErrorKind,
   getVariableNamesFromNetwork,
   hashProtocol,
   isProtocolFileFault,
+  isUsableExternalAttributeName,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,
