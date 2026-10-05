@@ -227,6 +227,7 @@ function codebookFor(variables: Variables): Codebook {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables,
@@ -273,7 +274,7 @@ async function runtimeHasWitness(variables: Variables): Promise<boolean> {
 }
 
 function option(value: string | number) {
-  return { label: `Option ${String(value)}`, value };
+  return { label: { en: `Option ${String(value)}` }, value };
 }
 
 function required(validation: Record<string, unknown>) {
@@ -293,6 +294,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Cycle A',
+        label: { en: 'Cycle A' },
         type: 'number',
         validation: required({
           minValue: 0,
@@ -302,6 +304,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Cycle B',
+        label: { en: 'Cycle B' },
         type: 'number',
         validation: required({
           minValue: 0,
@@ -317,6 +320,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Pinned A',
+        label: { en: 'Pinned A' },
         type: 'ordinal',
         component: 'RadioGroup',
         options: [option(value)],
@@ -324,6 +328,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Pinned B',
+        label: { en: 'Pinned B' },
         type: 'ordinal',
         component: 'RadioGroup',
         options: [option(value)],
@@ -336,6 +341,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Odd A',
+        label: { en: 'Odd A' },
         type: 'boolean',
         component: 'Toggle',
         validation: required({
@@ -344,6 +350,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Odd B',
+        label: { en: 'Odd B' },
         type: 'boolean',
         component: 'Toggle',
         validation: required({
@@ -352,6 +359,7 @@ function generatedFixture(seed: number): Variables {
       },
       c: {
         name: 'Odd C',
+        label: { en: 'Odd C' },
         type: 'boolean',
         component: 'Toggle',
         validation: required({
@@ -365,6 +373,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'External pin',
+        label: { en: 'External pin' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(0) },
@@ -374,6 +383,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Comparator pin',
+        label: { en: 'Comparator pin' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(0) },
@@ -383,6 +393,7 @@ function generatedFixture(seed: number): Variables {
       },
       c: {
         name: 'Collapsed range',
+        label: { en: 'Collapsed range' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(1) },
@@ -398,6 +409,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Ceiling range',
+        label: { en: 'Ceiling range' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '9999' },
@@ -407,6 +419,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Ceiling pin',
+        label: { en: 'Ceiling pin' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '9999', max: '9999' },
@@ -421,6 +434,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Cascade A',
+        label: { en: 'Cascade A' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(0) },
@@ -430,6 +444,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Cascade B',
+        label: { en: 'Cascade B' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(1) },
@@ -439,6 +454,7 @@ function generatedFixture(seed: number): Variables {
       },
       c: {
         name: 'Cascade C',
+        label: { en: 'Cascade C' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(1), max: ymd(2) },
@@ -448,6 +464,7 @@ function generatedFixture(seed: number): Variables {
       },
       d: {
         name: 'Cascade D',
+        label: { en: 'Cascade D' },
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(2), max: ymd(2) },
@@ -460,6 +477,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Too many choices',
+        label: { en: 'Too many choices' },
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [option(`x-${variant}`), option(`y-${variant}`)],
@@ -473,6 +491,7 @@ function generatedFixture(seed: number): Variables {
       ? {
           a: {
             name: 'Required empty text',
+            label: { en: 'Required empty text' },
             type: 'text',
             component: 'Text',
             validation: required({ maxLength: 0 }),
@@ -481,6 +500,7 @@ function generatedFixture(seed: number): Variables {
       : {
           a: {
             name: 'Required empty selection',
+            label: { en: 'Required empty selection' },
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [option(`x-${variant}`), option(`y-${variant}`)],
@@ -492,6 +512,7 @@ function generatedFixture(seed: number): Variables {
   return {
     a: {
       name: 'Inverted',
+      label: { en: 'Inverted' },
       type: 'number',
       validation: required({ minValue: variant + 2, maxValue: variant + 1 }),
     },
