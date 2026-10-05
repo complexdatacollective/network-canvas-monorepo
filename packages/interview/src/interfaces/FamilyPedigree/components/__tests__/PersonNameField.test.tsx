@@ -97,12 +97,13 @@ vi.mock('../../../../selectors/forms', async (importOriginal) => {
 });
 
 import PersonNameField from '../PersonNameField';
+import { PERSON_ATTRIBUTES_KEY } from '../wizards/transforms/personAttributes';
 
 const store = configureStore({ reducer: () => ({}) });
 
 function renderForm(
   children: React.ReactNode,
-  onSubmit = vi.fn(() => ({ success: true as const })),
+  onSubmit = vi.fn((_values: unknown) => ({ success: true as const })),
 ) {
   render(
     <Provider store={store}>
@@ -312,7 +313,7 @@ describe('PersonNameField', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
   });
 
-  it('applies comparison rules within the current person namespace', async () => {
+  it('compares against the live protocol answers under the person attributes', async () => {
     const validation = fixtures.codebook.node.person.variables.name
       .validation as Record<string, unknown>;
     validation.unique = false;
@@ -320,12 +321,15 @@ describe('PersonNameField', () => {
     const user = userEvent.setup();
     const onSubmit = renderForm(
       <FieldNamespace prefix="parent">
-        <Field name="alias" label="Alias" component={InputField} />
         <PersonNameField label="Name" />
+        <FieldNamespace prefix={PERSON_ATTRIBUTES_KEY}>
+          <Field name="alias" label="Alias" component={InputField} />
+        </FieldNamespace>
       </FieldNamespace>,
     );
 
-    await user.type(screen.getByRole('textbox', { name: 'Alias' }), 'Alice');
+    const alias = screen.getByRole('textbox', { name: 'Alias' });
+    await user.type(alias, 'Alice');
     await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Bob');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -333,5 +337,14 @@ describe('PersonNameField', () => {
       /same as/i,
     );
     expect(onSubmit).not.toHaveBeenCalled();
+
+    await user.clear(alias);
+    await user.type(alias, 'Bob');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      parent: { name: 'Bob', attributes: { alias: 'Bob' } },
+    });
   });
 });
