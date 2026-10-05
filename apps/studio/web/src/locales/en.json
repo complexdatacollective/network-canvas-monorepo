@@ -217,7 +217,11 @@
   },
   "studio.errorScreen.loadFailed": {
     "defaultMessage": "This page could not be loaded. Reload to try again.",
-    "description": "Error-screen explanation for any failure other than an unreachable server."
+    "description": "Error-screen explanation for any failure other than an unreachable server or a maintenance window."
+  },
+  "studio.errorScreen.maintenance": {
+    "defaultMessage": "Studio is down for maintenance. Reload this page in a few minutes.",
+    "description": "Error-screen explanation when the server refused the page because it is down for maintenance."
   },
   "studio.errorScreen.reload": {
     "defaultMessage": "Reload",
@@ -422,6 +426,10 @@
   "studio.lockup.teamKicker": {
     "defaultMessage": "Team",
     "description": "The word above the team's name in the header's team ▸ study switcher."
+  },
+  "studio.maintenance.notice": {
+    "defaultMessage": "Studio is down for maintenance. This page will carry on by itself once Studio is back.",
+    "description": "Shown above every screen while the server refuses requests because it is down for maintenance."
   },
   "studio.marketing.capabilitiesHeading": {
     "defaultMessage": "What you can do with it",

@@ -7,6 +7,7 @@ import {
   Maintenance,
   NotFound,
   RateLimited,
+  Unauthorized,
 } from '@codaco/studio-contract/schema/errors';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
@@ -161,6 +162,22 @@ describe('a refusal on the HTTP plane', () => {
     expect(retryAfterSeconds(error)).toBe(1.5);
   });
 
+  it('reports a 401 as unauthorized', async () => {
+    answer(() =>
+      problemResponse(401, {
+        type: 'about:blank',
+        title: 'Unauthorized',
+        status: 401,
+      }),
+    );
+
+    const error = await failureOfStatusCall();
+
+    expect(carriedRefusal(error)).toBeInstanceOf(Unauthorized);
+    expect(refusalOf(error)).toEqual({ kind: 'unauthorized' });
+    expect(retryAfterSeconds(error)).toBeUndefined();
+  });
+
   it('reports a 403 as forbidden', async () => {
     answer(() =>
       problemResponse(403, {
@@ -257,6 +274,7 @@ describe('a refusal on the rpc plane', () => {
     expect(retryAfterSeconds(new Maintenance({}))).toBeUndefined();
     expect(refusalOf(new Forbidden({}))).toEqual({ kind: 'forbidden' });
     expect(refusalOf(new NotFound({}))).toEqual({ kind: 'notFound' });
+    expect(refusalOf(new Unauthorized({}))).toEqual({ kind: 'unauthorized' });
   });
 
   it('is not a refusal when nothing refused', () => {

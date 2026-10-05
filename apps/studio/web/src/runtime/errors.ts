@@ -7,6 +7,7 @@ import {
   Maintenance,
   NotFound,
   RateLimited,
+  Unauthorized,
 } from '@codaco/studio-contract/schema/errors';
 
 export const isForbidden = (error: unknown): error is Forbidden =>
@@ -24,14 +25,21 @@ export type Refusal =
       readonly retryAfterSeconds: number | undefined;
     }
   | { readonly kind: 'maintenance' }
+  | { readonly kind: 'unauthorized' }
   | { readonly kind: 'forbidden' }
   | { readonly kind: 'notFound' }
   | { readonly kind: 'transport' }
   | undefined;
 
-type RefusalInstance = Forbidden | Maintenance | NotFound | RateLimited;
+type RefusalInstance =
+  | Forbidden
+  | Maintenance
+  | NotFound
+  | RateLimited
+  | Unauthorized;
 
 const isRefusalInstance = (value: unknown): value is RefusalInstance =>
+  value instanceof Unauthorized ||
   value instanceof Forbidden ||
   value instanceof Maintenance ||
   value instanceof NotFound ||
@@ -69,6 +77,7 @@ export const refusalOf = (error: unknown): Refusal => {
     };
   }
   if (refusal instanceof Maintenance) return { kind: 'maintenance' };
+  if (refusal instanceof Unauthorized) return { kind: 'unauthorized' };
   if (refusal instanceof Forbidden) return { kind: 'forbidden' };
   if (refusal instanceof NotFound) return { kind: 'notFound' };
   return error instanceof RpcClientError.RpcClientError
@@ -81,4 +90,15 @@ export const retryAfterSeconds = (error: unknown): number | undefined => {
   if (refusal instanceof RateLimited) return refusal.retryAfterSeconds;
   if (refusal instanceof Maintenance) return refusal.retryAfterSeconds;
   return undefined;
+};
+
+const DELTA_SECONDS = /^\d+$/;
+
+export const parseRetryAfter = (
+  raw: string | null | undefined,
+): number | undefined => {
+  const value = raw?.trim();
+  return value !== undefined && DELTA_SECONDS.test(value)
+    ? Number(value)
+    : undefined;
 };

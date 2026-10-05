@@ -11,6 +11,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { ServerUnreachableError } from '../lib/session.ts';
+import { refusalOf } from '../runtime/errors.ts';
 import { useInsideAreaMain } from '../shell/AreaMain.tsx';
 
 const CENTRED = 'flex h-full items-center justify-center p-4';
@@ -56,11 +57,18 @@ const messages = defineMessages({
     description:
       'Error-screen explanation when the Studio server did not answer at all.',
   },
+  maintenance: {
+    id: 'studio.errorScreen.maintenance',
+    defaultMessage:
+      'Studio is down for maintenance. Reload this page in a few minutes.',
+    description:
+      'Error-screen explanation when the server refused the page because it is down for maintenance.',
+  },
   loadFailed: {
     id: 'studio.errorScreen.loadFailed',
     defaultMessage: 'This page could not be loaded. Reload to try again.',
     description:
-      'Error-screen explanation for any failure other than an unreachable server.',
+      'Error-screen explanation for any failure other than an unreachable server or a maintenance window.',
   },
   reload: {
     id: 'studio.errorScreen.reload',
@@ -74,7 +82,12 @@ const messages = defineMessages({
 // the tab.
 export default function ErrorScreen({ error }: ErrorComponentProps) {
   const intl = useAppIntl();
-  const unreachable = error instanceof ServerUnreachableError;
+  const explanation =
+    error instanceof ServerUnreachableError
+      ? messages.serverUnreachable
+      : refusalOf(error)?.kind === 'maintenance'
+        ? messages.maintenance
+        : messages.loadFailed;
   return (
     <ErrorLandmark>
       <Surface maxWidth="xl" spacing="lg">
@@ -87,11 +100,7 @@ export default function ErrorScreen({ error }: ErrorComponentProps) {
         <Heading level="h1" {...routeFocusTargetProps}>
           {intl.formatMessage(messages.heading)}
         </Heading>
-        <Paragraph role="alert">
-          {intl.formatMessage(
-            unreachable ? messages.serverUnreachable : messages.loadFailed,
-          )}
-        </Paragraph>
+        <Paragraph role="alert">{intl.formatMessage(explanation)}</Paragraph>
         <Button onClick={() => window.location.reload()}>
           {intl.formatMessage(messages.reload)}
         </Button>

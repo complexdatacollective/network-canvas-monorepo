@@ -7,7 +7,8 @@ import { Predicate } from 'effect';
 import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
-import { StudioRpcs, StudioStreams } from '@codaco/studio-contract/rpc/studio';
+import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
+import { StudioStreams } from '@codaco/studio-contract/sync/protocol-builder';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
 import {

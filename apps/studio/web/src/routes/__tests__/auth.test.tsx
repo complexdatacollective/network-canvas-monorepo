@@ -12,6 +12,10 @@ import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TeamId } from '@codaco/studio-contract/schema/ids';
+import {
+  AUTH_NOT_CONFIGURED_PROBLEM_TYPE,
+  MAINTENANCE_PROBLEM_TYPE,
+} from '@codaco/studio-contract/schema/problem';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
 import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
@@ -87,6 +91,45 @@ const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
 
 const signedIn = { data: SESSION, error: null } as unknown as GetSessionResult;
 const signedOut = { data: null, error: null } as unknown as GetSessionResult;
+const notConfigured = {
+  data: null,
+  error: {
+    type: AUTH_NOT_CONFIGURED_PROBLEM_TYPE,
+    title: 'Authentication Not Configured',
+    status: 503,
+    statusText: 'Service Unavailable',
+  },
+} as unknown as GetSessionResult;
+
+type GetSessionOptions = Parameters<typeof authClient.getSession>[0];
+type OnError = NonNullable<
+  NonNullable<NonNullable<GetSessionOptions>['fetchOptions']>['onError']
+>;
+
+function inMaintenance(retryAfterSeconds: number, body = true) {
+  return async (options?: GetSessionOptions): Promise<GetSessionResult> => {
+    const refused = {
+      response: new Response(null, {
+        status: 503,
+        headers: { 'retry-after': String(retryAfterSeconds) },
+      }),
+    } as unknown as Parameters<OnError>[0];
+    await options?.fetchOptions?.onError?.(refused);
+    return {
+      data: null,
+      error: body
+        ? {
+            type: MAINTENANCE_PROBLEM_TYPE,
+            title: 'Down for maintenance',
+            status: 503,
+            statusText: 'Service Unavailable',
+          }
+        : { status: 503, statusText: 'Service Unavailable' },
+    } as unknown as GetSessionResult;
+  };
+}
+
+const MAINTENANCE_NOTICE = /Studio is down for maintenance\. This page will/;
 /**
  * `authClient.useSession()` is no longer part of the app shell — `AppLayout`
  * reads the guard's own query instead (§6.2). It is still mocked because
@@ -245,10 +288,7 @@ describe('route guard', () => {
   });
 
   it('sends a visitor to sign-in, not the error screen, when auth is switched off', async () => {
-    mocked.getSession.mockResolvedValue({
-      data: null,
-      error: { status: 503 },
-    } as unknown as GetSessionResult);
+    mocked.getSession.mockResolvedValue(notConfigured);
     currentStatus = {
       ...STATUS,
       auth: {
@@ -336,6 +376,109 @@ describe('route guard', () => {
     // are standing on with the error screen, and no reason to guess
     // `/no-team` — which would be a lie about their memberships.
     expect(router.state.location.pathname).toBe('/sign-in');
+  });
+});
+
+describe('a session check during a maintenance window', () => {
+  it('keeps a revalidated researcher in the app and their editor session open', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockImplementation(inMaintenance(30));
+      await act(() => reportUnauthorizedResponse());
+
+      expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(LANDING);
+      expect(await findAppShell()).toBeInTheDocument();
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
+  it('keeps them there when the tab comes back during the window, behind the proxy’s page too', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockImplementation(inMaintenance(30, false));
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(LANDING);
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
+  it('asks again once the interval the server named has passed', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const { router } = renderWithClientAt(LANDING);
+    await findAppShell();
+
+    mocked.getSession.mockImplementation(inMaintenance(1));
+    await act(() => reportUnauthorizedResponse());
+    expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+
+    mocked.getSession.mockResolvedValue(signedOut);
+    await waitFor(
+      () => expect(router.state.location.pathname).toBe('/sign-in'),
+      { timeout: 3_000 },
+    );
+  });
+
+  it('explains the window on a cold entry rather than sending them to sign in', async () => {
+    mocked.getSession.mockImplementation(inMaintenance(30));
+    const router = renderAt(LANDING);
+
+    expect(
+      await screen.findByText(
+        'Studio is down for maintenance. Reload this page in a few minutes.',
+      ),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(LANDING);
+  });
+
+  it('says so on the sign-in page', async () => {
+    mocked.getSession.mockImplementation(inMaintenance(30));
+    const router = renderAt('/sign-in');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/sign-in');
+  });
+
+  it('still signs a researcher out when the server has no sign-in at all', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockResolvedValue(notConfigured);
+      await act(() => reportUnauthorizedResponse());
+
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe('/sign-in'),
+      );
+      expect(close).toHaveBeenCalled();
+      expect(screen.queryByText(MAINTENANCE_NOTICE)).toBeNull();
+    } finally {
+      unregister();
+    }
   });
 });
 

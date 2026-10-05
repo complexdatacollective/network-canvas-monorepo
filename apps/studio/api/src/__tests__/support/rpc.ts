@@ -17,10 +17,7 @@ import { expect } from 'vitest';
 import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
 import type { Studio } from '../../app.ts';
-import { AuthenticatedLive } from '../../rpc/authenticated.ts';
-import { ClientSessionMiddlewareLive } from '../../rpc/client-session.ts';
-import { StudioRpcHandlers } from '../../rpc/handlers.ts';
-import { TeamAdministrationLive } from '../../rpc/team-administration.ts';
+import { StudioRpcHandlers, StudioRpcMiddleware } from '../../rpc/handlers.ts';
 import { studioServices } from './services.ts';
 
 type StudioRpc = RpcGroup.Rpcs<typeof StudioRpcs>;
@@ -41,9 +38,7 @@ export async function createRpcClient(
   const runtime = ManagedRuntime.make(
     Layer.mergeAll(
       StudioRpcHandlers(studio.rpc),
-      AuthenticatedLive,
-      TeamAdministrationLive(studio.rpc),
-      ClientSessionMiddlewareLive,
+      StudioRpcMiddleware(studio.rpc),
     ).pipe(Layer.provide(studioServices(studio))),
   );
   // The client forks a server loop and a client loop that have to outlive any
