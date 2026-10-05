@@ -132,6 +132,42 @@ describe.skipIf(!db)('SchemaStatus.layer', () => {
       }
     }),
   );
+
+  it.live('reads a fresh verdict on every read of one layer', () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const context = yield* Layer.build(gate(applied.db, false));
+        const status = Context.get(context, SchemaStatus);
+        expect(yield* status.read).toEqual({ kind: 'current' });
+
+        const { rows } = yield* Effect.promise(() =>
+          applied.pool.query<{ fingerprint: string }>(
+            'select "fingerprint" from "schemaFingerprint"',
+          ),
+        );
+        const stamp = rows[0]?.fingerprint ?? '';
+        yield* Effect.acquireRelease(
+          Effect.promise(() =>
+            applied.pool.query(
+              `update "schemaFingerprint" set "fingerprint" = 'another build'`,
+            ),
+          ),
+          () =>
+            Effect.promise(() =>
+              applied.pool.query(
+                'update "schemaFingerprint" set "fingerprint" = $1',
+                [stamp],
+              ),
+            ),
+        );
+
+        expect(yield* status.read).toMatchObject({
+          kind: 'stale',
+          found: 'another build',
+        });
+      }),
+    ),
+  );
 });
 
 describe('SchemaStatus.layerCurrent', () => {
