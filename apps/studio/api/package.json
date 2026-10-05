@@ -51,7 +51,6 @@
     "effect": "catalog:",
     "ioredis": "6.0.0",
     "nodemailer": "10.0.13",
-    "pg": "^8.23.1",
     "pg-connection-string": "^2.14.1"
   },
   "devDependencies": {
@@ -62,6 +61,7 @@
     "@types/pg": "^8.23.1",
     "concurrently": "^10.0.5",
     "drizzle-kit": "catalog:",
+    "pg": "^8.23.1",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
