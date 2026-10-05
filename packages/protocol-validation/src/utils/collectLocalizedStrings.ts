@@ -16,6 +16,18 @@ export type LocalizedStringHit = Readonly<{
   format: LocalizedStringFormat;
 }>;
 
+export type LocalizedStringSite = Readonly<{
+  path: (string | number)[];
+  value: unknown;
+  format: LocalizedStringFormat;
+  /** The tagged declaration, shared by every site it describes. */
+  schema: z.ZodType;
+  /** The owning object lets the field be left out. */
+  optional: boolean;
+  /** The owning object keeps keys it does not declare, of any type. */
+  looseContainer: boolean;
+}>;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -124,27 +136,49 @@ const candidateOptions = (
   return options;
 };
 
+// Whether a field may be left out is asked of its declaration once.
+const fieldIsOptional = new WeakMap<z.ZodType, boolean>();
+const isOptionalField = (field: z.ZodType): boolean => {
+  const cached = fieldIsOptional.get(field);
+  if (cached !== undefined) return cached;
+  const result = field.safeParse(undefined).success;
+  fieldIsOptional.set(field, result);
+  return result;
+};
+
+type SiteContext = Pick<LocalizedStringSite, 'optional' | 'looseContainer'>;
+
+const UNKEYED: SiteContext = { optional: false, looseContainer: false };
+
 const walk = (
   schema: z.ZodType,
   value: unknown,
   path: (string | number)[],
-): LocalizedStringHit[] => {
+  context: SiteContext,
+): LocalizedStringSite[] => {
+  if (value === undefined) return [];
   const node = unwrap(schema);
 
   const descriptor = getLocalizedStringDescriptor(node);
   if (descriptor) {
-    return isLocalizedStringValue(value)
-      ? [{ path, value, format: descriptor.format }]
-      : [];
+    return [
+      { path, value, format: descriptor.format, schema: node, ...context },
+    ];
   }
 
   if (node instanceof z.ZodObject) {
     if (!isRecord(value)) return [];
     const shape = node.shape;
+    const catchall: unknown = node.def.catchall;
+    const looseContainer =
+      isZodType(catchall) && !(catchall instanceof z.ZodNever);
     return Object.keys(shape).flatMap((key) => {
       const child: unknown = shape[key];
       if (!isZodType(child) || !hasLocalizedString(child)) return [];
-      return walk(child, value[key], [...path, key]);
+      return walk(child, value[key], [...path, key], {
+        optional: isOptionalField(child),
+        looseContainer,
+      });
     });
   }
 
@@ -153,7 +187,7 @@ const walk = (
     const element: unknown = node.element;
     if (!isZodType(element)) return [];
     return value.flatMap((item, index) =>
-      walk(element, item, [...path, index]),
+      walk(element, item, [...path, index], UNKEYED),
     );
   }
 
@@ -162,26 +196,42 @@ const walk = (
     const valueType: unknown = node.valueType;
     if (!isZodType(valueType)) return [];
     return Object.keys(value).flatMap((key) =>
-      walk(valueType, value[key], [...path, key]),
+      walk(valueType, value[key], [...path, key], UNKEYED),
     );
   }
 
   if (node instanceof z.ZodUnion) {
-    if (!isRecord(value)) return [];
+    const options = isRecord(value)
+      ? candidateOptions(node, value)
+      : node.options.filter(isZodType);
     // Branches that agree on the value's literals can still differ in shape,
     // so each is walked and a site two of them share is reported once.
-    const hits = new Map<string, LocalizedStringHit>();
-    for (const option of candidateOptions(node, value)) {
+    const sites = new Map<string, LocalizedStringSite>();
+    for (const option of options) {
       if (!hasLocalizedString(option)) continue;
-      for (const hit of walk(option, value, path)) {
-        hits.set(JSON.stringify(hit.path), hit);
+      for (const site of walk(option, value, path, context)) {
+        sites.set(JSON.stringify(site.path), site);
       }
     }
-    return [...hits.values()];
+    return [...sites.values()];
   }
 
   return [];
 };
+
+/**
+ * Every value that sits where `schema` declares a localized string, whatever
+ * its current form, found from the `localizedString` tags in the schema rather
+ * than from a list of paths. A site whose value is absent is not reported.
+ *
+ * Unlike `collectLocalizedStringsFromSchema`, a site holding something other
+ * than a record of strings is reported too, so a document written before its
+ * copy was localized can be read against the localized schema.
+ */
+export const collectLocalizedStringSites = (
+  schema: z.ZodType,
+  value: unknown,
+): LocalizedStringSite[] => walk(schema, value, [], UNKEYED);
 
 /**
  * Every participant-facing string in a value shaped like `schema`, found from
@@ -195,7 +245,12 @@ const walk = (
 export const collectLocalizedStringsFromSchema = (
   schema: z.ZodType,
   value: unknown,
-): LocalizedStringHit[] => walk(schema, value, []);
+): LocalizedStringHit[] =>
+  collectLocalizedStringSites(schema, value).flatMap((site) =>
+    isLocalizedStringValue(site.value)
+      ? [{ path: site.path, value: site.value, format: site.format }]
+      : [],
+  );
 
 export const collectLocalizedStrings = (
   protocol: unknown,

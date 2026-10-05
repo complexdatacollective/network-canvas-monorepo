@@ -5,6 +5,9 @@ import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
 import { V8OutputSchema } from './v8-output-schema.ts';
 
+// The schema 9 output wraps participant copy in the undetermined locale.
+const und = (text: string) => ({ und: text });
+
 /**
  * Comprehensive tests for V7 to V8 migration
  * Tests all transformations described in the migration notes:
@@ -195,8 +198,8 @@ describe('Migration V7 to V8', () => {
       expect(hasPets).toHaveProperty('options');
       if (hasPets && 'options' in hasPets) {
         expect(hasPets.options).toEqual([
-          { label: 'Yes', value: true },
-          { label: 'No', value: false },
+          { label: und('Yes'), value: true },
+          { label: und('No'), value: false },
         ]);
       }
     });
@@ -2297,14 +2300,14 @@ describe('Migration V7 to V8', () => {
       const rank = parsed.codebook.node?.person?.variables?.rank;
       if (pick && 'options' in pick) {
         expect(pick.options).toEqual([
-          { label: 'Yes', value: 'true' },
-          { label: 'No', value: 'false' },
+          { label: und('Yes'), value: 'true' },
+          { label: und('No'), value: 'false' },
         ]);
       }
       if (rank && 'options' in rank) {
         expect(rank.options).toEqual([
-          { label: 'Yes', value: 'true' },
-          { label: 'No', value: 'false' },
+          { label: und('Yes'), value: 'true' },
+          { label: und('No'), value: 'false' },
         ]);
       }
     });
@@ -2344,8 +2347,8 @@ describe('Migration V7 to V8', () => {
       const hasPets = parsed.codebook.node?.person?.variables?.hasPets;
       if (hasPets && 'options' in hasPets) {
         expect(hasPets.options).toEqual([
-          { label: 'Yes', value: true },
-          { label: 'No', value: false },
+          { label: und('Yes'), value: true },
+          { label: und('No'), value: false },
         ]);
       }
     });
@@ -2547,7 +2550,7 @@ describe('Migration V7 to V8', () => {
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'Something else',
+          und('Something else'),
         );
       }
     });
@@ -2562,9 +2565,12 @@ describe('Migration V7 to V8', () => {
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'Please specify',
+          und('Please specify'),
         );
-        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'Other');
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          und('Other'),
+        );
       }
     });
 
@@ -2581,7 +2587,7 @@ describe('Migration V7 to V8', () => {
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherOptionLabel',
-          'Which other category?',
+          und('Which other category?'),
         );
       }
     });
@@ -2598,7 +2604,10 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'My label');
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          und('My label'),
+        );
       }
     });
 
@@ -2616,7 +2625,7 @@ describe('Migration V7 to V8', () => {
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'My prompt',
+          und('My prompt'),
         );
       }
     });
@@ -2690,10 +2699,13 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'Other');
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          und('Other'),
+        );
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'Please specify',
+          und('Please specify'),
         );
       }
     });
@@ -2865,7 +2877,7 @@ describe('Migration V7 to V8', () => {
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'negativeLabel',
-          'No relationship',
+          und('No relationship'),
         );
       }
     });
@@ -2879,7 +2891,7 @@ describe('Migration V7 to V8', () => {
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'negativeLabel',
-          'No relationship',
+          und('No relationship'),
         );
       }
     });
@@ -2891,7 +2903,10 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty('negativeLabel', 'Distant');
+        expect(stage.prompts[0]).toHaveProperty(
+          'negativeLabel',
+          und('Distant'),
+        );
       }
     });
   });
@@ -2917,7 +2932,7 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       );
       const parsed = V8OutputSchema.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', 'Welcome Screen');
+      expect(parsed.stages[0]).toHaveProperty('title', und('Welcome Screen'));
     });
 
     it("backfills 'Information' when there is no usable label", () => {
@@ -2925,8 +2940,8 @@ describe('Migration V7 to V8', () => {
         name: 'Test Protocol',
       });
       const parsed = V8OutputSchema.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', 'Information');
-      expect(parsed.stages[0]).toHaveProperty('label', 'Stage 1');
+      expect(parsed.stages[0]).toHaveProperty('title', und('Information'));
+      expect(parsed.stages[0]).toHaveProperty('label', und('Stage 1'));
     });
 
     it('leaves an authored title untouched', () => {
@@ -2935,7 +2950,7 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       );
       const parsed = V8OutputSchema.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', 'Hello!');
+      expect(parsed.stages[0]).toHaveProperty('title', und('Hello!'));
     });
   });
 
@@ -2977,7 +2992,7 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'form' in stage) {
-        expect(stage.form).toHaveProperty('title', 'Add Person');
+        expect(stage.form).toHaveProperty('title', und('Add Person'));
       }
     });
 
@@ -2989,7 +3004,7 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'form' in stage) {
-        expect(stage.form).toHaveProperty('title', 'Add Person');
+        expect(stage.form).toHaveProperty('title', und('Add Person'));
       }
     });
 
@@ -3001,7 +3016,7 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'form' in stage) {
-        expect(stage.form).toHaveProperty('title', 'Add a friend');
+        expect(stage.form).toHaveProperty('title', und('Add a friend'));
       }
     });
   });
@@ -5690,6 +5705,7 @@ describe('Migration V7 to V8', () => {
         };
         expected[`v${index}`] = {
           name: `v${index}`,
+          label: und(`v${index}`),
           type: 'number',
           validation: { required: true },
         };
@@ -5761,6 +5777,7 @@ describe('Migration V7 to V8', () => {
       for (let index = 0; index < 50; index++) {
         expect(parsedVariables?.[`v${index}`]).toEqual({
           name: `v${index}`,
+          label: und(`v${index}`),
           type: 'number',
           validation: { required: true },
         });
@@ -6172,8 +6189,8 @@ describe('Migration V7 to V8', () => {
         throw new Error('expected rating options');
       }
       expect(rating.options).toEqual([
-        { label: 'Half', value: '0.5' },
-        { label: 'One', value: 1 },
+        { label: und('Half'), value: '0.5' },
+        { label: und('One'), value: 1 },
       ]);
     });
 
@@ -6194,8 +6211,8 @@ describe('Migration V7 to V8', () => {
         throw new Error('expected rating options');
       }
       expect(rating.options).toEqual([
-        { label: '7', value: 'seven' },
-        { label: 'Eight', value: 'eight' },
+        { label: und('7'), value: 'seven' },
+        { label: und('Eight'), value: 'eight' },
       ]);
     });
 
@@ -6215,7 +6232,7 @@ describe('Migration V7 to V8', () => {
       if (!employed || !('options' in employed)) {
         throw new Error('expected employed options');
       }
-      expect(employed.options).toEqual([{ label: 'No', value: false }]);
+      expect(employed.options).toEqual([{ label: und('No'), value: false }]);
     });
 
     it('removes boolean options entirely when no well-formed entry remains', () => {
@@ -6385,14 +6402,14 @@ describe('Migration V7 to V8', () => {
         migrateAndParse(alterFormTestProtocol())?.filter(
           (field) => field.variable === NAME,
         ),
-      ).toEqual([{ variable: NAME, prompt: 'sdfsdf\n' }]);
+      ).toEqual([{ variable: NAME, prompt: und('sdfsdf\n') }]);
     });
 
     it('leaves every other field untouched and in order', () => {
       expect(migrateAndParse(alterFormTestProtocol())).toEqual([
-        { variable: NAME, prompt: 'sdfsdf\n' },
-        { variable: SCALE, prompt: 'sadasd\n' },
-        { variable: CATEGORICAL, prompt: 'asd\n' },
+        { variable: NAME, prompt: und('sdfsdf\n') },
+        { variable: SCALE, prompt: und('sadasd\n') },
+        { variable: CATEGORICAL, prompt: und('asd\n') },
       ]);
     });
 
@@ -6405,8 +6422,8 @@ describe('Migration V7 to V8', () => {
         { variable: NAME, prompt: 'third\n' },
       ];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: 'first\n' },
-        { variable: SCALE, prompt: 'sadasd\n' },
+        { variable: NAME, prompt: und('first\n') },
+        { variable: SCALE, prompt: und('sadasd\n') },
       ]);
     });
 
@@ -6433,8 +6450,8 @@ describe('Migration V7 to V8', () => {
         id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
       } as unknown as (typeof protocol.stages)[1];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: 'Their name?' },
-        { variable: SCALE, prompt: 'How close?' },
+        { variable: NAME, prompt: und('Their name?') },
+        { variable: SCALE, prompt: und('How close?') },
       ]);
     });
 

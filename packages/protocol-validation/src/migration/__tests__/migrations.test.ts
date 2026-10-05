@@ -395,8 +395,8 @@ describe('Protocol Migrations', () => {
       expect(
         closeness && 'options' in closeness ? closeness.options : undefined,
       ).toEqual([
-        { label: 'Close friend', value: 'close_friend' },
-        { label: 'Colleague', value: 'colleague' },
+        { label: { und: 'Close friend' }, value: 'close_friend' },
+        { label: { und: 'Colleague' }, value: 'colleague' },
       ]);
     });
 

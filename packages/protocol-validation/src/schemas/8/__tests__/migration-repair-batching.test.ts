@@ -271,6 +271,7 @@ describe('migration contradiction-repair batching', () => {
     for (let index = 0; index < 20; index++) {
       expect(parsedVariables?.[`v${index}`]).toEqual({
         name: `v${index}`,
+        label: { und: `v${index}` },
         type: 'number',
         validation: { required: true },
       });
