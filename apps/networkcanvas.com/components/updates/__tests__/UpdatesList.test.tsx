@@ -42,4 +42,24 @@ describe('UpdatesList', () => {
     search('archive');
     expect(screen.queryAllByRole('article', { hidden: true })).toHaveLength(0);
   });
+
+  it('does not match a reference-style link destination', () => {
+    renderWithIntl(
+      <UpdatesList
+        updates={[
+          {
+            ...update,
+            summary:
+              'Ask on the [community][forum].\n\n[forum]: https://example.test/hiddenword',
+          },
+        ]}
+      />,
+    );
+
+    search('community');
+    expect(screen.getAllByRole('article', { hidden: true })).toHaveLength(1);
+
+    search('hiddenword');
+    expect(screen.queryAllByRole('article', { hidden: true })).toHaveLength(0);
+  });
 });

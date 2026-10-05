@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { Link } from '~/lib/i18n/navigation';
+import { websitePathFromUrl } from '~/lib/siteUrls';
 
 type SiteLinkProps = Omit<
   ComponentProps<typeof NativeLink>,
@@ -13,8 +14,9 @@ type SiteLinkProps = Omit<
  * other websites in a new tab.
  */
 export function SiteLink({ href, ...props }: SiteLinkProps) {
-  if (/^\/(?![\\/])/.test(href)) {
-    return <NativeLink {...props} href={href} render={<Link href={href} />} />;
+  const path = /^\/(?![\\/])/.test(href) ? href : websitePathFromUrl(href);
+  if (path) {
+    return <NativeLink {...props} href={path} render={<Link href={path} />} />;
   }
   if (/^(?:https?:)?[\\/]{2}/i.test(href)) {
     return (

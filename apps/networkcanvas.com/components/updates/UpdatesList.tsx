@@ -2,6 +2,7 @@
 
 import { Accordion as BaseAccordion } from '@base-ui/react/accordion';
 import { ArrowRight, ChevronDown, Search, X } from 'lucide-react';
+import { fromMarkdown } from 'mdast-util-from-markdown';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -45,10 +46,23 @@ function MarkdownLink({
 
 const markdownComponents = { a: MarkdownLink };
 
-// Link destinations are not part of what a reader sees, so they do not match.
+type MarkdownNode = { type: string; value?: string; children?: MarkdownNode[] };
+
+// Only what a reader sees is searchable: link destinations and definitions
+// are not, so the index is built from the parsed Markdown's visible text.
+function visibleText(node: MarkdownNode): string[] {
+  if (node.type === 'text' || node.type === 'inlineCode') {
+    return [node.value ?? ''];
+  }
+  return (node.children ?? []).flatMap(visibleText);
+}
+
 function searchableText(update: Update, locale: string) {
-  const text = `${update.title} ${update.summary ?? ''} ${update.details ?? ''}`;
-  return foldText(text.replace(/\]\((?:[^()]|\([^()]*\))*\)/g, ']'), locale);
+  const markdown = [update.summary, update.details]
+    .filter(Boolean)
+    .join('\n\n');
+  const text = [update.title, ...visibleText(fromMarkdown(markdown))].join(' ');
+  return foldText(text, locale);
 }
 
 type AppFilter = 'all' | UpdateAppId;
