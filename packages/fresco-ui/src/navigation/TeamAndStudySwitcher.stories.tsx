@@ -312,10 +312,13 @@ export const SegmentsFollowTheThemeRadius: Story = {
     // the body by the theme switcher, and if it had not applied, the value
     // below would be the default theme's and the comparison would prove
     // nothing.
+    // A custom property computes to its authored text, which the published
+    // build minifies to `.875rem`, so the number and the unit are checked apart.
     const base = getComputedStyle(document.body)
       .getPropertyValue('--radius-base')
       .trim();
-    await expect(base).toBe('0.875rem');
+    await expect(Number.parseFloat(base)).toBe(0.875);
+    await expect(base.endsWith('rem')).toBe(true);
     await expect(frameRadius).toBe('14px');
 
     // 14px less the frame's 2px border. What matters is that it followed the

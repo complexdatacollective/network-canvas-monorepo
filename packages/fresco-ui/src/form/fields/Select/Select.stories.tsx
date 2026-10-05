@@ -670,8 +670,10 @@ export const RightToLeft: Story = {
     await expect(rtlStyles.paddingLeft).toBe(ltrStyles.paddingRight);
     await expect(rtlStyles.paddingRight).toBe('0px');
 
-    // And so does the chevron, which is what has to be said twice.
-    await expect(ltrStyles.backgroundPositionX).toBe('100%');
-    await expect(rtlStyles.backgroundPositionX).toBe('0%');
+    // And so does the chevron, which is what has to be said twice. Compared as
+    // numbers: the published build minifies `left` to `0`, which the browser
+    // serialises as `0px` where the source's `left` reads back as `0%`.
+    await expect(Number.parseFloat(ltrStyles.backgroundPositionX)).toBe(100);
+    await expect(Number.parseFloat(rtlStyles.backgroundPositionX)).toBe(0);
   },
 };
