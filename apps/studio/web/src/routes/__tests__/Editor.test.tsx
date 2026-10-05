@@ -1263,7 +1263,7 @@ describe('the socket the editor opens', () => {
     });
   });
 
-  it.each([1000, 1005, 1006] as const)(
+  it.each([1000, 1001, 1005, 1006] as const)(
     'keeps editing across a %i close, and hears what changed during it',
     async (code) => {
       renderEditor();

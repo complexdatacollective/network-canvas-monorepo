@@ -11,13 +11,19 @@ import type { RpcDeps, RpcServices } from '../rpc/deps.ts';
 import { StudioRpcHandlers } from '../rpc/handlers.ts';
 import { SetCookiesMiddleware } from '../rpc/set-cookies.ts';
 import { TeamAdministrationLive } from '../rpc/team-administration.ts';
+import { boundedBody } from './body.ts';
 import { requireSameOrigin } from './middleware/origin.ts';
 
 export const RpcRoutes = (
   deps: RpcDeps,
   env: StudioEnv,
 ): Layer.Layer<never, never, RpcServices | HttpRouter.HttpRouter> => {
-  const served = RpcServer.layerHttp({
+  // Outermost first: the CSRF gate, then the body bound.
+  const guards =
+    env.auth === undefined
+      ? boundedBody.layer
+      : boundedBody.combine(requireSameOrigin(env.auth.baseUrl)).layer;
+  return RpcServer.layerHttp({
     group: StudioRpcs,
     path: RPC_PATH,
     protocol: 'http',
@@ -28,8 +34,6 @@ export const RpcRoutes = (
     Layer.provide(ClientSessionMiddlewareLive),
     Layer.provide(RpcSerialization.layerNdjson),
     Layer.provide(SetCookiesMiddleware.layer),
+    Layer.provide(guards),
   );
-  return env.auth === undefined
-    ? served
-    : served.pipe(Layer.provide(requireSameOrigin(env.auth.baseUrl).layer));
 };

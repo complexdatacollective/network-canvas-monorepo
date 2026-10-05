@@ -32,6 +32,7 @@ import {
 } from './errors.ts';
 import { Jobs, type JobId } from './jobs.ts';
 import {
+  isDeclaredQueueName,
   payloadCodec,
   type ResolvedQueue,
   resolvedQueue,
@@ -715,7 +716,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         const due = yield* sql<{
           name: string;
           cron: string;
-          queue: JobQueueName;
+          queue: string;
           payload: unknown;
         }>`
           SELECT name, cron, queue, payload
@@ -732,18 +733,34 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
             );
             continue;
           }
+          // Left due rather than advanced, like an unparseable cron: once boot repairs
+          // the row, the occurrence it missed still runs.
+          if (!isDeclaredQueueName(row.queue)) {
+            yield* Effect.logError(
+              `schedule ${row.name} names a queue this build does not declare: ${row.queue}`,
+            );
+            continue;
+          }
+          const decoded = yield* Effect.exit(
+            payloadCodec(row.queue).decode(row.payload),
+          );
+          if (Exit.isFailure(decoded)) {
+            yield* Effect.logError(
+              `schedule ${row.name} carries a payload that does not decode: ${describe(causeError(decoded.cause))}`,
+            );
+            continue;
+          }
           const nextRunAt = Cron.next(parsed.success, DateTime.toDate(now));
           yield* sql`
             UPDATE ${table(sql)}.job_schedules
                SET next_run_at = ${nextRunAt}
              WHERE name = ${row.name}`;
-          const payload = yield* Effect.orDie(
-            payloadCodec(row.queue).decode(row.payload),
-          );
           // Under the schedule's own name as a singleton key, which bounds a schedule's
           // backlog at one unfinished occurrence.
           const enqueued = yield* Effect.exit(
-            jobs.enqueue(row.queue, payload, { singletonKey: row.name }),
+            jobs.enqueue(row.queue, decoded.value, {
+              singletonKey: row.name,
+            }),
           );
           if (Exit.isFailure(enqueued)) {
             yield* Effect.logInfo(

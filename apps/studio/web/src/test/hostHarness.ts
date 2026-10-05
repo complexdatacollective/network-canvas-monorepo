@@ -117,10 +117,10 @@ export class FakeWebSocket implements Socket.WebSocketLike {
   }
 
   /**
-   * 1000 is a deploy's close, 1005 a close frame with no status code, 1006 no
-   * close frame at all, which a browser reports as an error first.
+   * 1000 is a normal close, 1001 a deploy's, 1005 a close frame with no status
+   * code, 1006 no close frame at all, which a browser reports as an error first.
    */
-  drop(code: 1000 | 1005 | 1006): void {
+  drop(code: 1000 | 1001 | 1005 | 1006): void {
     if (this.readyState === FakeWebSocket.CLOSED) return;
     if (code === 1006) this.#dispatch('error', { type: 'error' });
     this.#end(code);

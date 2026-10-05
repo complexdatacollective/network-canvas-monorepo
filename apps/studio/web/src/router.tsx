@@ -777,11 +777,14 @@ const legalRoute = createRoute({
 const signInRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/sign-in',
+  // TanStack Router merges this result over the raw search rather than
+  // replacing it, so a key left out survives unvalidated: a rejected value
+  // has to be overwritten with `undefined`, not omitted.
   validateSearch: (search): { error?: string; invitationId?: string } => {
-    const { invitationId } = search;
+    const { error, invitationId } = search;
     return {
-      ...(typeof search.error === 'string' ? { error: search.error } : {}),
-      ...(isTeamInvitationId(invitationId) ? { invitationId } : {}),
+      error: typeof error === 'string' ? error : undefined,
+      invitationId: isTeamInvitationId(invitationId) ? invitationId : undefined,
     };
   },
   beforeLoad: async ({ context, search }) => {

@@ -36,7 +36,7 @@ export type ResolvedQueue = {
   readonly warningQueueSize: number | null;
 };
 
-const isDeclaredQueueName = (name: string): name is JobQueueName =>
+export const isDeclaredQueueName = (name: string): name is JobQueueName =>
   JOB_QUEUES.some((declaration) => declaration.name === name);
 
 function declaredQueueName(name: string): JobQueueName {

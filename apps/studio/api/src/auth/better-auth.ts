@@ -146,6 +146,15 @@ export function createBetterAuthInstance({
         ? { trustedProxies: env.trustedProxies }
         : { ipAddressHeaders: [] },
     },
+    // No `session.cookieCache`, by decision (#1927 leftovers, 5 Oct 2026).
+    // The cache answers from a signed cookie for its maxAge without reading
+    // the session row, so a session revoked in that window keeps working, and
+    // a websocket frame carries no Set-Cookie, so an open `/ws` socket could
+    // never refresh it. `HostSessionLive` and `AuthenticatedLive` read the
+    // session on every call so that revocation takes effect at once; the
+    // cost is one indexed read per call, already bounded by the `rpc_user`
+    // limit. If that read ever matters, the lever is a short server-side
+    // cache keyed by session token, not the cookie.
     socialProviders: {
       ...(env.socialProviders.google && {
         google: {

@@ -29,6 +29,8 @@ import {
 const TEAM = 'team-rotation';
 const USER = 'user-rotation';
 const PROTOCOL = '3f1c9b4e-0a2d-4c5e-9b8a-6d7e5f4c3b2a';
+const OTHER_TEAM = 'team-rotation-other';
+const OTHER_PROTOCOL = '8b2d4f6a-1c3e-4a5b-8d7f-9e0a1b2c3d4e';
 const MISSING = 'gone';
 
 const BEFORE = testKeyring(['test-2', 'test-1']);
@@ -198,12 +200,14 @@ const assetKeyRows = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
   return yield* harness.onOwner(
     harness.owner.sql<{
+      team_id: string;
+      protocol_id: string;
       asset_id: string;
       ciphertext: Uint8Array;
       key_id: string;
       updated_at: Date;
-    }>`select asset_id, ciphertext, key_id, updated_at
-       from protocol_asset_keys order by asset_id`,
+    }>`select team_id, protocol_id, asset_id, ciphertext, key_id, updated_at
+       from protocol_asset_keys order by asset_id, team_id, protocol_id`,
   );
 });
 
@@ -281,6 +285,81 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             expect(rotatedAssetKey?.updated_at.getTime()).toBe(
               assetStoredAt.getTime(),
             );
+          }).pipe(Effect.orDie),
+      );
+
+      it.effect(
+        're-seals each asset key whose asset id another protocol or team shares under its own identity',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const harness = yield* TestDatabase;
+            const { sql } = harness.owner;
+            const assetId = `asset-${randomUUID()}`;
+            const sealedAt = (teamId: string, protocolId: string) => {
+              const identity = { teamId, protocolId, assetId };
+              const value = `pk.${randomUUID().replaceAll('-', '')}`;
+              return {
+                identity,
+                value,
+                sealed: beforeCipher.sealAssetKey(identity, value),
+              };
+            };
+            const sameTeam = sealedAt(TEAM, PROTOCOL);
+            const otherProtocol = sealedAt(TEAM, OTHER_PROTOCOL);
+            const otherTeam = sealedAt(OTHER_TEAM, PROTOCOL);
+            const seeded = [sameTeam, otherProtocol, otherTeam];
+            const insertRow = (row: typeof sameTeam) =>
+              sql`insert into protocol_asset_keys (team_id, protocol_id, asset_id,
+                                                   ciphertext, key_id)
+                  values (${row.identity.teamId}, ${row.identity.protocolId},
+                          ${row.identity.assetId}, ${row.sealed.ciphertext},
+                          ${row.sealed.keyId})`;
+
+            yield* harness.onOwner(
+              Effect.gen(function* () {
+                yield* sql`insert into teams (id, name, slug)
+                           values (${OTHER_TEAM}, ${OTHER_TEAM}, ${OTHER_TEAM})
+                           on conflict (id) do nothing`;
+                yield* sql`insert into protocols (id, team_id, name)
+                           values (${OTHER_PROTOCOL}, ${TEAM}, 'Second rotation protocol')
+                           on conflict (id) do nothing`;
+                yield* insertRow(sameTeam);
+                yield* insertRow(otherProtocol);
+              }),
+            );
+            // protocols.id is the primary key, so the foreign key ties a
+            // protocol id to one team and the team_id predicate is otherwise
+            // unobservable. The owner lifts the foreign-key triggers for this
+            // one transaction to stage the same protocol id under a second
+            // team.
+            yield* harness.onOwner(
+              Effect.andThen(
+                sql`set local session_replication_role = replica`,
+                insertRow(otherTeam),
+              ),
+            );
+
+            const counts = yield* underKeyring(AFTER, rotateSecrets());
+            expect(counts.protocol_asset_keys).toBe(seeded.length);
+
+            const rotated = yield* assetKeyRows();
+            expect(rotated).toHaveLength(seeded.length);
+            for (const { identity, value } of seeded) {
+              const row = rotated.find(
+                (candidate) =>
+                  candidate.team_id === identity.teamId &&
+                  candidate.protocol_id === identity.protocolId &&
+                  candidate.asset_id === identity.assetId,
+              );
+              expect(row?.key_id).toBe('test-1');
+              expect(
+                afterCipher.openAssetKey(identity, {
+                  ciphertext: row!.ciphertext,
+                  keyId: row!.key_id,
+                }),
+              ).toBe(value);
+            }
           }).pipe(Effect.orDie),
       );
 

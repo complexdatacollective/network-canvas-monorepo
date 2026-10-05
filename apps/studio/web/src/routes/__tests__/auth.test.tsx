@@ -574,6 +574,45 @@ describe('sign-in page', () => {
     },
   );
 
+  it.each(['has space', 'a'.repeat(256)])(
+    'returns to sign-in, not invitation %#, when the invitation id is malformed',
+    async (invitationId) => {
+      mocked.signIn.magicLink.mockResolvedValue({
+        data: { status: true },
+        error: null,
+      } as unknown as MagicLinkResult);
+      renderAt(`/sign-in?invitationId=${encodeURIComponent(invitationId)}`);
+      const email = await screen.findByLabelText(/Email address/);
+      fireEvent.change(email, {
+        target: { value: 'researcher@example.com' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Send sign-in link' }),
+      );
+      await waitFor(() =>
+        expect(mocked.signIn.magicLink).toHaveBeenCalledWith(
+          expect.objectContaining({ callbackURL: '/sign-in' }),
+        ),
+      );
+      expect(mocked.signIn.magicLink).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          callbackURL: expect.stringMatching(/^\/invitations\//),
+        }),
+      );
+    },
+  );
+
+  it.each(['has space', 'a'.repeat(256)])(
+    'lands a signed-in visitor where they belong, not on invitation %#, when the invitation id is malformed',
+    async (invitationId) => {
+      mocked.getSession.mockResolvedValue(signedIn);
+      const router = renderAt(
+        `/sign-in?invitationId=${encodeURIComponent(invitationId)}`,
+      );
+      await waitFor(() => expect(router.state.location.pathname).toBe(LANDING));
+    },
+  );
+
   it('sends a magic link and confirms where it went', async () => {
     mocked.signIn.magicLink.mockResolvedValue({
       data: { status: true },

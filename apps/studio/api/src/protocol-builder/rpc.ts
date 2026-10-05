@@ -1,15 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  ByteSize,
-  Context,
-  Deferred,
-  Duration,
-  Effect,
-  Layer,
-  Option,
-  Predicate,
-} from 'effect';
+import { Deferred, Duration, Effect, Layer, Option, Predicate } from 'effect';
 import * as HttpRouter from 'effect/http/HttpRouter';
 import * as HttpServerRequest from 'effect/http/HttpServerRequest';
 import * as HttpServerResponse from 'effect/http/HttpServerResponse';
@@ -18,14 +9,12 @@ import * as RpcServer from 'effect/rpc/RpcServer';
 import * as Socket from 'effect/socket/Socket';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
-import {
-  MAX_SOCKET_FRAME_BYTES,
-  MAX_UNARY_BODY_BYTES,
-} from '@codaco/studio-contract/limits';
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { WS_PATH } from '@codaco/studio-contract/rpc/studio';
 
 import type { StudioEnv } from '../env.ts';
+import { boundedBody } from '../http/body.ts';
 import { ClientSessionQuery } from '../http/middleware/client-session-query.ts';
 import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
 import {
@@ -55,6 +44,14 @@ const SERVER_OPTIONS = {
 const MAINTENANCE_WATCH_INTERVAL = Duration.seconds(1);
 
 const MAINTENANCE_CLOSE = new Socket.CloseEvent(1013, 'down for maintenance');
+
+const SHUTDOWN_CLOSE = new Socket.CloseEvent(1001, 'server shutting down');
+
+const closeWith = (socket: Socket.Socket, event: Socket.CloseEvent) =>
+  Effect.flatMap(socket.writer, (writer) => writer.write(event)).pipe(
+    Effect.scoped,
+    Effect.ignore,
+  );
 
 /**
  * The operator's window alone: a `migrate` with nothing to apply takes the lock
@@ -108,11 +105,6 @@ const WsRoute = HttpRouter.use((router) =>
       SERVER_OPTIONS,
     );
 
-    const closeForMaintenance = (socket: Socket.Socket) =>
-      Effect.flatMap(socket.writer, (writer) =>
-        writer.write(MAINTENANCE_CLOSE),
-      ).pipe(Effect.scoped, Effect.ignore);
-
     /**
      * The gate sees only the upgrade, so every batch of frames asks its reading
      * first.
@@ -127,7 +119,7 @@ const WsRoute = HttpRouter.use((router) =>
               Option.isNone(closure)
                 ? Effect.succeed(frames)
                 : Effect.andThen(
-                    closeForMaintenance(socket),
+                    closeWith(socket, MAINTENANCE_CLOSE),
                     Effect.fail(
                       new Socket.SocketError({
                         reason: new Socket.SocketCloseError({
@@ -158,8 +150,16 @@ const WsRoute = HttpRouter.use((router) =>
 
         const watchMaintenance = Effect.gen(function* () {
           yield* windowOpened(triggers);
-          yield* closeForMaintenance(yield* Deferred.await(upgraded));
+          yield* closeWith(yield* Deferred.await(upgraded), MAINTENANCE_CLOSE);
           return yield* Effect.never;
+        });
+
+        // The close is written while the rpc server still reads the socket:
+        // once it is interrupted the writer has no socket to write to.
+        const closeOnDrain = Effect.gen(function* () {
+          yield* drain.closing;
+          yield* closeWith(yield* Deferred.await(upgraded), SHUTDOWN_CLOSE);
+          return HttpServerResponse.empty();
         });
 
         // `raceFirst` rather than `race`, so a request that cannot be upgraded
@@ -178,9 +178,7 @@ const WsRoute = HttpRouter.use((router) =>
               : Effect.die(defect),
           ),
           Effect.raceFirst(watchMaintenance),
-          Effect.raceFirst(
-            Effect.as(drain.closing, HttpServerResponse.empty()),
-          ),
+          Effect.raceFirst(closeOnDrain),
         );
       }),
     );
@@ -196,27 +194,6 @@ const ProtocolBuilderWs = (env: StudioEnv) =>
     ),
     Layer.provide(wsGuards(env)),
   );
-
-export const UnaryBodyLimit = Context.Reference<number>(
-  '@studio/protocol-builder/UnaryBodyLimit',
-  { defaultValue: () => MAX_UNARY_BODY_BYTES },
-);
-
-/**
- * The rpc server reads the whole body before its own middleware runs, so the
- * bound is set on the route.
- */
-export const boundedBody = HttpRouter.middleware(
-  Effect.map(
-    UnaryBodyLimit,
-    (maxBytes) => (httpEffect) =>
-      Effect.provideService(
-        httpEffect,
-        HttpServerRequest.MaxBodySize,
-        ByteSize.bytes(maxBytes),
-      ),
-  ),
-);
 
 /**
  * Made per mount: built once at module scope, a second server in the same

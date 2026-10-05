@@ -6,6 +6,7 @@ import { JOB_SCHEDULES } from '@codaco/studio-sync/jobs';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { MaintenanceDatabase } from '../../db/client.ts';
+import { collectLeveledLogs } from '../../platform/__tests__/support/logs.ts';
 import { JobWorker } from '../worker.ts';
 import {
   asOwner,
@@ -46,6 +47,24 @@ const holdingCronLock = <A, E, R>(
       () => body,
     ),
   );
+
+const writeDueRow = Effect.fnUntraced(function* (
+  name: string,
+  payload: object,
+  queue = 'invitation-delivery',
+) {
+  const { schema } = yield* QueueHarness;
+  yield* asOwner(
+    Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
+      sql.unsafe(
+        `INSERT INTO ${schema}.job_schedules
+           (name, cron, queue, payload, next_run_at)
+         VALUES ($1, $2, $3, $4::jsonb, to_timestamp(0))`,
+        [name, EVERY_MINUTE, queue, JSON.stringify(payload)],
+      ),
+    ),
+  );
+});
 
 describe.skipIf(!db)('recurring work', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
@@ -206,39 +225,143 @@ describe.skipIf(!db)('recurring work', () => {
       }).pipe(Effect.provide(jobsLayer)),
     );
 
-    it.effect('enqueues nothing from a schedule row that grew a field', () =>
-      Effect.gen(function* () {
-        const { schema } = yield* QueueHarness;
-        const writeDueRow = (payload: object) =>
-          asOwner(
-            Effect.flatMap(MaintenanceDatabase, ({ sql }) =>
-              sql.unsafe(
-                `INSERT INTO ${schema}.job_schedules
-                   (name, cron, queue, payload, next_run_at)
-                 VALUES ('hand-written', $1, 'invitation-delivery', $2::jsonb,
-                         to_timestamp(0))`,
-                [EVERY_MINUTE, JSON.stringify(payload)],
-              ),
-            ),
-          );
-
-        yield* Effect.gen(function* () {
+    it.effect(
+      'skips and logs a schedule row that grew a field, leaving it due',
+      () => {
+        const logs = collectLeveledLogs();
+        return Effect.gen(function* () {
           const worker = yield* JobWorker;
 
           yield* clear;
-          yield* writeDueRow({ deliveryId: DELIVERY_ID });
-          yield* Effect.exit(worker.tickSchedules);
+          yield* writeDueRow('hand-written', { deliveryId: DELIVERY_ID });
+          assert.isTrue(yield* worker.tickSchedules);
           assert.strictEqual(
             (yield* readJobs('invitation-delivery')).length,
             1,
           );
 
           yield* clear;
-          yield* writeDueRow(withExcessField);
-          yield* Effect.exit(worker.tickSchedules);
+          yield* writeDueRow('hand-written', withExcessField);
+          assert.isTrue(yield* worker.tickSchedules);
           assert.deepStrictEqual(yield* readJobs('invitation-delivery'), []);
-        }).pipe(Effect.provide(layerWorker()));
-      }).pipe(Effect.provide(jobsLayer)),
+          const [skipped] = yield* schedules();
+          assert.strictEqual(skipped?.next_run_at.getTime(), 0);
+          assert.deepStrictEqual(
+            logs.lines
+              .filter(({ level }) => level === 'Error')
+              .map(({ message }) => message.split(':')[0]),
+            ['schedule hand-written carries a payload that does not decode'],
+          );
+        }).pipe(
+          Effect.provide(layerWorker()),
+          Effect.provide(jobsLayer),
+          Effect.provide(logs.layer),
+        );
+      },
+    );
+
+    it.effect(
+      'still enqueues the other due schedules when one row does not decode',
+      () =>
+        Effect.gen(function* () {
+          yield* clear;
+
+          yield* Effect.gen(function* () {
+            const worker = yield* JobWorker;
+            yield* worker.schedule(
+              'denied-attempts-summary',
+              EVERY_MINUTE,
+              'denied-attempts-summary',
+              {},
+            );
+            const [valid] = yield* schedules();
+            assert.isDefined(valid);
+            yield* writeDueRow('hand-written', withExcessField);
+            yield* TestClock.setTime(valid.next_run_at.getTime());
+
+            const ticked = yield* Effect.exit(worker.tickSchedules);
+            assert.strictEqual(
+              (yield* readJobs('denied-attempts-summary')).length,
+              1,
+            );
+            assert.deepStrictEqual(yield* readJobs('invitation-delivery'), []);
+            assert.deepStrictEqual(
+              (yield* schedules()).map(({ name, next_run_at }) => [
+                name,
+                next_run_at.getTime(),
+              ]),
+              [
+                [
+                  'denied-attempts-summary',
+                  Cron.next(
+                    Cron.parseUnsafe(EVERY_MINUTE, 'UTC'),
+                    valid.next_run_at,
+                  ).getTime(),
+                ],
+                ['hand-written', 0],
+              ],
+            );
+            assert.isTrue(Exit.isSuccess(ticked) && ticked.value);
+          }).pipe(Effect.provide(layerWorker()));
+        }).pipe(Effect.provide(jobsLayer)),
+    );
+
+    it.effect(
+      'skips and logs a due schedule row naming an undeclared queue',
+      () => {
+        const logs = collectLeveledLogs();
+        return Effect.gen(function* () {
+          yield* clear;
+
+          const worker = yield* JobWorker;
+          yield* worker.schedule(
+            'denied-attempts-summary',
+            EVERY_MINUTE,
+            'denied-attempts-summary',
+            {},
+          );
+          const [valid] = yield* schedules();
+          assert.isDefined(valid);
+          yield* writeDueRow('hand-written', {}, 'retired-queue');
+          yield* TestClock.setTime(valid.next_run_at.getTime());
+
+          const ticked = yield* Effect.exit(worker.tickSchedules);
+          assert.strictEqual(
+            (yield* readJobs('denied-attempts-summary')).length,
+            1,
+          );
+          assert.deepStrictEqual(yield* readJobs('retired-queue'), []);
+          assert.deepStrictEqual(
+            (yield* schedules()).map(({ name, next_run_at }) => [
+              name,
+              next_run_at.getTime(),
+            ]),
+            [
+              [
+                'denied-attempts-summary',
+                Cron.next(
+                  Cron.parseUnsafe(EVERY_MINUTE, 'UTC'),
+                  valid.next_run_at,
+                ).getTime(),
+              ],
+              ['hand-written', 0],
+            ],
+          );
+          assert.deepStrictEqual(
+            logs.lines
+              .filter(({ level }) => level === 'Error')
+              .map(({ message }) => message),
+            [
+              'schedule hand-written names a queue this build does not declare: retired-queue',
+            ],
+          );
+          assert.isTrue(Exit.isSuccess(ticked) && ticked.value);
+        }).pipe(
+          Effect.provide(layerWorker()),
+          Effect.provide(jobsLayer),
+          Effect.provide(logs.layer),
+        );
+      },
     );
 
     it.effect('does not double up a singleton schedule’s job', () =>

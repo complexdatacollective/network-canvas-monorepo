@@ -9,11 +9,11 @@ import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import type { Studio } from '../../app.ts';
 import { Environment, type StudioEnv } from '../../env.ts';
+import { UnaryBodyLimit } from '../../http/body.ts';
 import type { HealthChecks } from '../../http/health.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { Routes } from '../../http/router.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
-import { UnaryBodyLimit } from '../../protocol-builder/rpc.ts';
 import { studioServices } from './services.ts';
 
 /**

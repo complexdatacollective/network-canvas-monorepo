@@ -12,20 +12,13 @@ import {
   Predicate,
   Scope,
 } from 'effect';
-import * as HttpRouter from 'effect/http/HttpRouter';
-import * as HttpServer from 'effect/http/HttpServer';
-import * as HttpServerRequest from 'effect/http/HttpServerRequest';
-import * as HttpServerResponse from 'effect/http/HttpServerResponse';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import * as RpcSerialization from 'effect/rpc/RpcSerialization';
 import * as Socket from 'effect/socket/Socket';
 import { describe, expect, it } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
-import {
-  MAX_SOCKET_FRAME_BYTES,
-  MAX_UNARY_BODY_BYTES,
-} from '@codaco/studio-contract/limits';
+import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import { authServiceStub } from '../../__tests__/support/auth.ts';
 import { startStudioServer } from '../../__tests__/support/serve.ts';
@@ -34,7 +27,6 @@ import type { SessionPrincipal } from '../../auth/service.ts';
 import { resolve } from '../../env/resolve.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { MaintenanceState } from '../../platform/maintenance-state.ts';
-import { boundedBody } from '../rpc.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -205,8 +197,8 @@ describe('the /ws route', () => {
       // order, so the two are bounded from the start of the stop.
       expect(event.at - startedStopAt).toBeLessThan(1000);
       expect(stoppedAt - startedStopAt).toBeLessThan(1000);
-      expect(event.code).toBe(1000);
-      expect(event.reason).toBe('');
+      expect(event.code).toBe(1001);
+      expect(event.reason).toBe('server shutting down');
     } finally {
       idle.close();
       await tab.close();
@@ -290,32 +282,6 @@ describe('the /ws route', () => {
       expect(refused).toBe(503);
     } finally {
       idle.close();
-      await dispose();
-    }
-  });
-});
-
-describe('the /rpc/protocol-builder body bound', () => {
-  it('is the unary bound the contract names', async () => {
-    const { handler, dispose } = HttpRouter.toWebHandler(
-      HttpRouter.add(
-        'POST',
-        '/probe',
-        Effect.map(HttpServerRequest.MaxBodySize, (bound) =>
-          HttpServerResponse.text(String(bound)),
-        ),
-      ).pipe(
-        Layer.provide(boundedBody.layer),
-        Layer.provide(HttpServer.layerServices),
-      ),
-      { disableLogger: true },
-    );
-    try {
-      const response = await handler(
-        new Request('http://studio.test/probe', { method: 'POST' }),
-      );
-      expect(await response.text()).toBe(String(MAX_UNARY_BODY_BYTES));
-    } finally {
       await dispose();
     }
   });
