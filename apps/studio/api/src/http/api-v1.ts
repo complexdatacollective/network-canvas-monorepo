@@ -7,8 +7,8 @@ import {
   HttpRouter,
   HttpServerRequest,
   HttpServerResponse,
-} from 'effect/unstable/http';
-import { HttpApiBuilder, HttpApiScalar } from 'effect/unstable/httpapi';
+} from 'effect/http';
+import { HttpApiBuilder, HttpApiScalar } from 'effect/http-api';
 
 import { API_V1_PATH, StudioApi } from '@codaco/studio-contract/api/v1';
 

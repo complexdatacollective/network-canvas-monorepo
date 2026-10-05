@@ -8,7 +8,7 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -139,12 +139,9 @@ const readRow = Effect.fn('db.deploymentState.read')(function* () {
  * the grants that process has.
  *
  * It asks for no `Transaction` because a reader has none to offer: the gate
- * reads before a request's transaction exists. It still opens one of its own:
- * on rc.115 the role and the search path are pinned only by the first
- * statements of a transaction (fallback A, `tenant.ts`), and a bare read would
- * run as the connecting login against whatever schema that login resolves.
- * When rc.116's startup parameters land this can become the bare read the
- * design describes, and its signature does not change.
+ * reads before a request's transaction exists. It still opens one of its own,
+ * because `readRow` bounds itself with a transaction-local
+ * `statement_timeout`.
  */
 export const readDeploymentState = (): Effect.Effect<
   DeploymentState,
@@ -154,9 +151,8 @@ export const readDeploymentState = (): Effect.Effect<
 
 /**
  * The same read as the maintenance role, for the worker: its only client is
- * `MaintenanceDatabase`, and on rc.115 a statement outside a scope would run as
- * the connecting login rather than as either role (fallback A), so it opens
- * the maintenance scope rather than borrowing the application's.
+ * `MaintenanceDatabase`, so it opens the maintenance scope rather than
+ * borrowing the application's.
  */
 export const readDeploymentStateAsMaintenance = (): Effect.Effect<
   DeploymentState,

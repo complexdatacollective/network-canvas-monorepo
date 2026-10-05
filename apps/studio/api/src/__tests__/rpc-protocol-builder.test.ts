@@ -20,6 +20,7 @@ import {
   Exit,
   Layer,
   Option,
+  Scope,
   Stream,
 } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -511,7 +512,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         listMemberships: memberships,
         getMembership: membership,
       }),
-      pool: database.appPool,
       services,
     });
     // Everything a host keeps in memory — its staging areas, its lease keeper
@@ -537,7 +537,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             listMemberships: memberships,
             getMembership: membership,
           }),
-          pool: database.appPool,
           services,
         },
       ),
@@ -649,7 +648,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             getMembership: membership,
           }),
           limiter: store.limiter({ rpc_user: { max: 1, windowMs: 60_000 } }),
-          pool: database.appPool,
           services,
         }),
         { objectStore, layer: logs.layer },
@@ -3357,14 +3355,31 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const stranded = makeShiftableClock();
     let databaseDown = false;
     const real = Context.get(services, Database);
+    const downScope = await Effect.runPromise(Scope.make());
+    // A client whose connections resolve no table: the search path is a
+    // startup parameter, so the fault is a second client, not a setting.
+    const down = Context.get(
+      await Effect.runPromise(
+        Layer.buildWithScope(
+          Database.layer({
+            url: testDb!.url,
+            maxConnections: 1,
+            searchPath: 'pb_unreachable',
+          }),
+          downScope,
+        ),
+      ),
+      Database,
+    );
     // The database the handlers were built over, whose next transaction
     // resolves no table once `databaseDown` is set.
     const faulty: Database['Service'] = {
       identity: real.identity,
-      sql: real.sql,
-      db: real.db,
-      get searchPath() {
-        return databaseDown ? 'pb_unreachable' : real.searchPath;
+      get sql() {
+        return databaseDown ? down.sql : real.sql;
+      },
+      get db() {
+        return databaseDown ? down.db : real.db;
       },
     };
     let renewals = 0;
@@ -3391,7 +3406,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           listMemberships: memberships,
           getMembership: membership,
         }),
-        pool: database.appPool,
         services: Context.add(services, Database, faulty),
       }),
       { clock: stranded.clock, objectStore, leases: counting },
@@ -3466,6 +3480,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     } finally {
       databaseDown = false;
       await other.dispose();
+      await Effect.runPromise(Scope.close(downScope, Exit.void));
     }
   });
 });

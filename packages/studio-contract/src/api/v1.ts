@@ -1,4 +1,4 @@
-import { HttpApi, HttpApiSecurity, OpenApi } from 'effect/unstable/httpapi';
+import { HttpApi, HttpApiSecurity, OpenApi } from 'effect/http-api';
 
 import { StatusApiGroup } from './groups/status.ts';
 

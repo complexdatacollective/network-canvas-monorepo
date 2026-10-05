@@ -42,7 +42,6 @@ describe.skipIf(!testDb)('account.updateLocale', () => {
     database = await openTestDatabase();
     ({ studio, cookie } = await signInWithMagicLink(
       env,
-      database.appPool,
       'locale',
       database.services,
     ));

@@ -1,10 +1,10 @@
 import { Context, Effect, Layer, ManagedRuntime, Queue } from 'effect';
-import * as NetAddress from 'effect/unstable/net/NetAddress';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
-import * as Socket from 'effect/unstable/socket/Socket';
-import * as SocketServer from 'effect/unstable/socket/SocketServer';
+import * as NetAddress from 'effect/net/NetAddress';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as RpcServer from 'effect/rpc/RpcServer';
+import * as Socket from 'effect/socket/Socket';
+import * as SocketServer from 'effect/socket/SocketServer';
 import { onTestFinished, vi } from 'vitest';
 
 import {
@@ -150,12 +150,12 @@ export class FakeWebSocket implements Socket.WebSocketLike {
   }
 
   /**
-   * The server going away: 1005 is a close frame with no status code, which
-   * is what a deploy's socket close reaches the browser as; 1006 is no close
+   * The server going away: 1000 is what a deploy's socket close reaches the
+   * browser as, 1005 a close frame with no status code; 1006 is no close
    * frame at all — a killed container or a dropped network — which a browser
    * reports as an error first.
    */
-  drop(code: 1005 | 1006): void {
+  drop(code: 1000 | 1005 | 1006): void {
     if (this.readyState === FakeWebSocket.CLOSED) return;
     if (code === 1006) this.#dispatch('error', { type: 'error' });
     this.#end(code);

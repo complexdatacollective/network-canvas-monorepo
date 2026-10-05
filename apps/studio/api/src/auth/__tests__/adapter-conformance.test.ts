@@ -655,7 +655,7 @@ describe.skipIf(!testDb)(
       if (!bridge) throw new Error('the bridge was not built');
       // `rateLimit` is declared but unused while the limiter counts in Valkey;
       // it is the one auth model with numeric columns, and `lastRequest` is
-      // `int8`, which rc.115 decodes as a `bigint`.
+      // `int8`, which the driver decodes as a `bigint`.
       const options: BetterAuthOptions = {
         ...STUDIO_OPTIONS,
         rateLimit: { ...STUDIO_OPTIONS.rateLimit, storage: 'database' },

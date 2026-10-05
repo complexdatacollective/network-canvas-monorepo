@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { Exit, Schema } from 'effect';
-import * as RpcSchema from 'effect/unstable/rpc/RpcSchema';
+import * as RpcSchema from 'effect/rpc/RpcSchema';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { assetSourceSchema } from '@codaco/protocol-validation';

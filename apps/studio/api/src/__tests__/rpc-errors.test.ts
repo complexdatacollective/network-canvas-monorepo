@@ -135,7 +135,7 @@ describe('refusals that need no database', () => {
     if (Exit.isFailure(exit)) {
       expect(Cause.hasDies(exit.cause)).toBe(true);
       // The wiring defect itself, not some other death on the way to it.
-      expect(Cause.pretty(exit.cause)).toContain('without a database pool');
+      expect(Cause.pretty(exit.cause)).toContain('without a database');
     }
   });
 
@@ -180,7 +180,7 @@ describe('refusals that need no database', () => {
       expect(Exit.isFailure(spent)).toBe(true);
       if (Exit.isFailure(spent)) {
         expect(Cause.hasDies(spent.cause)).toBe(true);
-        expect(Cause.pretty(spent.cause)).toContain('without a database pool');
+        expect(Cause.pretty(spent.cause)).toContain('without a database');
       }
 
       const refused = await expectRpcFailure(
@@ -273,7 +273,6 @@ describe.skipIf(!testDb)('the error map', () => {
     const settled = await createRpcClient(
       createStudio(env, {
         auth: authServiceStub(auth),
-        pool: database.appPool,
         services: database.services,
       }),
     );

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { and, desc, eq, gte, inArray, isNull, lt, max } from 'drizzle-orm';
 import { Effect, Schema } from 'effect';
-import { type Statement, type SqlError } from 'effect/unstable/sql';
+import { type Statement, type SqlError } from 'effect/sql';
 
 import { AuditActorKind } from '@codaco/studio-contract/schema/audit';
 import type { AuditActorFilter } from '@codaco/studio-contract/schema/audit';

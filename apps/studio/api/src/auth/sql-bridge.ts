@@ -1,6 +1,6 @@
 import { PgClient } from '@effect/sql-pg';
 import { Context, Effect, Semaphore } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { Database } from '../db/client.ts';
 import { UntenantedScope } from '../db/tenant.ts';
@@ -15,23 +15,19 @@ import { UntenantedScope } from '../db/tenant.ts';
 // this one's transaction would silently take a pooled connection of its own
 // and escape the transaction (`db/client.ts` says why at more length).
 //
-// **Pinned, always.** On rc.115 a statement outside a transaction runs as the
-// connecting login rather than the application role, and without the suites'
-// `search_path` (fallback A, #1927 §20 Q6). So nothing the adapter runs is
-// bare: an operation outside better-auth's `transaction()` opens its own
-// `UntenantedScope` — one pinned transaction around one statement — and
-// `transaction()` opens one around the whole callback. The auth tables carry no
-// tenant policy, so an untenanted scope reaches them exactly as far as the
-// application role's grants allow, which is the point.
+// An operation outside better-auth's `transaction()` runs as one statement on
+// the client, as the application role its connections carry. `transaction()`
+// opens an `UntenantedScope` around the whole callback. The auth tables carry
+// no tenant policy, so either reaches them exactly as far as the application
+// role's grants allow.
 
 /** What an adapter statement is: one Effect on the captured client. */
 type BridgedEffect<A> = Effect.Effect<A, SqlError.SqlError, PgClient.PgClient>;
 
 export type SqlBridge = {
   /**
-   * One adapter operation, on whatever connection the bridge is pinned to: a
-   * transaction of its own at the root, the open transaction's connection
-   * inside `transaction`.
+   * One adapter operation: a pooled connection at the root, the open
+   * transaction's connection inside `transaction`.
    */
   readonly run: <A>(effect: BridgedEffect<A>) => Promise<A>;
   /**
@@ -77,7 +73,7 @@ const transactionBridge = (
 };
 
 const rootBridge = (context: Context.Context<BridgeContext>): SqlBridge => ({
-  run: (effect) => Effect.runPromiseWith(context)(UntenantedScope.open(effect)),
+  run: (effect) => Effect.runPromiseWith(context)(effect),
   transaction: (body) =>
     Effect.runPromiseWith(context)(
       UntenantedScope.open(

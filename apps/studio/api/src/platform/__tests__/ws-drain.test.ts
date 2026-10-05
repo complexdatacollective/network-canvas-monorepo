@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@effect/vitest';
 import { Context, Effect, Exit, Fiber, Latch, Layer, Scope } from 'effect';
+import { HttpServer } from 'effect/http';
+import { NetAddress } from 'effect/net';
 import { TestClock } from 'effect/testing';
-import { HttpServer } from 'effect/unstable/http';
-import { NetAddress } from 'effect/unstable/net';
 
 import { WebSocketDrain } from '../ws-drain.ts';
 import { collectLogs } from './support/logs.ts';

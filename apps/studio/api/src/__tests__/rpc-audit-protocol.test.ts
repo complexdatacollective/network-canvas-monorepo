@@ -93,7 +93,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     });
     const studio = createStudio(readEnv(), {
       auth,
-      pool: database.appPool,
       services: database.services,
     });
     client = await createRpcClient(studio);
@@ -427,7 +426,6 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     });
     const revokedClient = await createRpcClient(
       createStudio(readEnv(), {
-        pool: database.appPool,
         services: database.services,
         auth: authServiceStub({
           getSession: () => Effect.succeedSome(actor),

@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Effect, Exit, Option, Predicate, Result } from 'effect';
-import type pg from 'pg';
+import { Cause, Effect, Exit, Layer, Option, Predicate, Result } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {
@@ -24,6 +23,7 @@ import {
   type RpcTestClient,
 } from './support/rpc.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
+import { absentDataServices } from './support/services.ts';
 import {
   openRateLimitStore,
   reachableRedis,
@@ -96,11 +96,11 @@ function appOptions(
   };
   const deps = {
     limiter: store.limiter(limits),
-    // A pool that is never connected to. `openTeam` needs one to exist before
-    // it will look a membership up at all, and every procedure behind it fails
-    // when it tries to use it — which is what tells an admitted call from a
+    // A data layer whose every client refuses. `openTeam` needs one to exist
+    // before it will look a membership up at all, and every procedure behind
+    // it fails when it uses one — which is what tells an admitted call from a
     // refused one here.
-    pool: {} as unknown as pg.Pool,
+    services: Effect.runSync(Effect.scoped(Layer.build(absentDataServices))),
     auth: authServiceStub(
       principalUserId
         ? {

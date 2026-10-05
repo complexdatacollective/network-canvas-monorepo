@@ -1,7 +1,7 @@
 import { assert, describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import { HttpRouter, HttpServer } from 'effect/unstable/http';
-import { HttpApiBuilder, HttpApiTest } from 'effect/unstable/httpapi';
+import { HttpRouter, HttpServer } from 'effect/http';
+import { HttpApiBuilder, HttpApiTest } from 'effect/http-api';
 
 import { StudioApi } from '@codaco/studio-contract/api/v1';
 

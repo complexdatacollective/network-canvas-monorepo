@@ -151,7 +151,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       });
       const studio = createStudio(readEnv(), {
         auth,
-        pool: database.appPool,
         services: database.services,
       });
       clients.set(who, await createRpcClient(studio));
@@ -169,7 +168,6 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
                 .map((who) => ({ teamId: TEAM_ID, role: who.role })),
             ),
         }),
-        pool: database.appPool,
         services: database.services,
       }),
     );

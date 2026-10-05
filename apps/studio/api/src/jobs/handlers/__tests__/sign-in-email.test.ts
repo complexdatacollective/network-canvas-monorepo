@@ -119,7 +119,7 @@ describe.skipIf(!db)('the sign-in email handler', () => {
 
             // Not claimable until virtual time reaches the delay.
             assert.strictEqual((yield* drain)._tag, 'idle');
-            yield* TestClock.setTime(afterFirst!.run_at);
+            yield* TestClock.setTime(afterFirst!.run_at.getTime());
 
             const second = yield* drain;
             assert.strictEqual(second._tag, 'retrying');
@@ -128,13 +128,13 @@ describe.skipIf(!db)('the sign-in email handler', () => {
             // The cap the queue declares, which the second rung is well inside:
             // doubling from five seconds reaches sixty only after several more.
             const secondDelay =
-              (afterSecond!.run_at -
+              (afterSecond!.run_at.getTime() -
                 DateTime.toEpochMillis(yield* DateTime.now)) /
               1000;
             assert.isAtLeast(secondDelay, SIGN_IN.retryDelay * 2);
             assert.isAtMost(secondDelay, SIGN_IN.retryDelayMax ?? Infinity);
 
-            yield* TestClock.setTime(afterSecond!.run_at);
+            yield* TestClock.setTime(afterSecond!.run_at.getTime());
             const third = yield* drain;
             assert.strictEqual(third._tag, 'failed');
             const failed = third as Extract<JobStep, { _tag: 'failed' }>;

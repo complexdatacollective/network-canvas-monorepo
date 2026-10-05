@@ -957,8 +957,7 @@ describe.skipIf(!testDb)('experiment schema', () => {
             [id],
           );
           expect(rows[0]?.details).toEqual({});
-          // The driver decodes a raw timestamptz as epoch milliseconds.
-          expect(rows[0]?.occurred_at).toEqual(expect.any(Number));
+          expect(rows[0]?.occurred_at).toEqual(expect.any(Date));
         }),
       );
 

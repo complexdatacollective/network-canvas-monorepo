@@ -1,10 +1,10 @@
 import { Context, Effect, Layer, ManagedRuntime, Queue } from 'effect';
-import * as NetAddress from 'effect/unstable/net/NetAddress';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as RpcServer from 'effect/unstable/rpc/RpcServer';
-import * as Socket from 'effect/unstable/socket/Socket';
-import * as SocketServer from 'effect/unstable/socket/SocketServer';
+import * as NetAddress from 'effect/net/NetAddress';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as RpcServer from 'effect/rpc/RpcServer';
+import * as Socket from 'effect/socket/Socket';
+import * as SocketServer from 'effect/socket/SocketServer';
 
 import { makeRpcAdapter } from '@codaco/effect-query/adapter';
 import {

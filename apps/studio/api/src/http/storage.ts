@@ -1,9 +1,5 @@
 import { Effect, Layer, Option, Stream } from 'effect';
-import {
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
 

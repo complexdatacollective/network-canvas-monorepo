@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import { Effect, Option } from 'effect';
-import type pg from 'pg';
 
 import { RequestId } from '../http/middleware/request-id.ts';
 import type { RpcDeps } from './deps.ts';
@@ -52,7 +51,7 @@ export const withRequestId = <A, E, R>(
  * authorization refusal — the reading today's `INTERNAL_SERVER_ERROR` already
  * had — so it is a defect and never a declared error.
  */
-export const requirePool = (deps: RpcDeps): Effect.Effect<pg.Pool> =>
-  deps.pool === undefined
-    ? Effect.die(new Error('the rpc plane was wired without a database pool'))
-    : Effect.succeed(deps.pool);
+export const requireDatabase = (deps: RpcDeps): Effect.Effect<void> =>
+  deps.services === undefined
+    ? Effect.die(new Error('the rpc plane was wired without a database'))
+    : Effect.void;

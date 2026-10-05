@@ -1,9 +1,5 @@
 import { Effect } from 'effect';
-import {
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 // Cross-site request forgery protection for the cookie plane (#1248):
 // better-auth's own protections cover only /api/auth/*, so unsafe methods on

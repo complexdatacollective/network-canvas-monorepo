@@ -1,5 +1,5 @@
 import { Predicate } from 'effect';
-import { RpcClientError } from 'effect/unstable/rpc';
+import { RpcClientError } from 'effect/rpc';
 
 import {
   Conflict,

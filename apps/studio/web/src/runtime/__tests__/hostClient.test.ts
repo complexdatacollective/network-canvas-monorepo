@@ -113,7 +113,7 @@ describe('a connection that stops answering', () => {
     for (const exit of [call, stream]) {
       expect(failureOf(exit)).toMatchObject({
         _tag: 'RpcClientError',
-        reason: { _tag: 'SocketOpenError', kind: 'Timeout' },
+        reason: { _tag: 'SocketReadError' },
       });
     }
     // Neither was answered by being run again somewhere else.

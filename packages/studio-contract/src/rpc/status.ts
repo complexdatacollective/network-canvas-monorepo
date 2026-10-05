@@ -1,4 +1,4 @@
-import { Rpc, RpcGroup } from 'effect/unstable/rpc';
+import { Rpc, RpcGroup } from 'effect/rpc';
 
 import { InstanceStatus } from '../schema/status.ts';
 

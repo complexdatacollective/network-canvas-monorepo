@@ -77,7 +77,6 @@ describe.skipIf(!testDb)('audited team RPC', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth,
-        pool: database.appPool,
         // What the web process hands the router: creating an invitation queues
         // its delivery in the same transaction (#1895).
         services: database.services,
@@ -209,7 +208,6 @@ describe.skipIf(!testDb)('audited team RPC', () => {
     const inviteeClient = await createRpcClient(
       createStudio(readEnv(), {
         auth: inviteeAuth,
-        pool: database.appPool,
         services: database.services,
       }),
     );

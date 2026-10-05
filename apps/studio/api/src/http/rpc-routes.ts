@@ -1,6 +1,6 @@
 import { Layer } from 'effect';
-import { type HttpRouter } from 'effect/unstable/http';
-import { RpcSerialization, RpcServer } from 'effect/unstable/rpc';
+import { type HttpRouter } from 'effect/http';
+import { RpcSerialization, RpcServer } from 'effect/rpc';
 
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 

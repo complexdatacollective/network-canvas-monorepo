@@ -1,5 +1,5 @@
 import { Cause, Effect, Exit, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { AuditReadDenied } from '@codaco/studio-contract/schema/audit';

@@ -213,11 +213,7 @@ const newAssetKey = Effect.fnUntraced(function* (
   return { assetId, value };
 });
 
-// The oracles, read as the connecting login. `updated_at`/`updatedAt` come
-// back from RAW statements, which decode `timestamptz` as epoch milliseconds
-// rather than as a `Date` on rc.115 — so every case that asserts a timestamp
-// was NOT touched also pins that it is a primitive, because the comparison
-// only means "unchanged" while it is one.
+// The oracles, read as the connecting login.
 const subscriptionRows = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
   return yield* harness.onOwner(
@@ -225,7 +221,7 @@ const subscriptionRows = Effect.fnUntraced(function* () {
       id: string;
       secret_ciphertext: Uint8Array;
       secret_key_id: string;
-      updated_at: number;
+      updated_at: Date;
     }>`select id, secret_ciphertext, secret_key_id, updated_at
        from webhook_subscriptions order by id`,
   );
@@ -240,7 +236,7 @@ const accountRows = Effect.fnUntraced(function* () {
       accessToken: string | null;
       refreshToken: string | null;
       idToken: string | null;
-      updatedAt: number;
+      updatedAt: Date;
     }>`select id, "accountId", "accessToken", "refreshToken", "idToken", "updatedAt"
        from account order by id`,
   );
@@ -253,7 +249,7 @@ const assetKeyRows = Effect.fnUntraced(function* () {
       asset_id: string;
       ciphertext: Uint8Array;
       key_id: string;
-      updated_at: number;
+      updated_at: Date;
     }>`select asset_id, ciphertext, key_id, updated_at
        from protocol_asset_keys order by asset_id`,
   );
@@ -328,10 +324,14 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             // Rotation changes how a row is stored, not when anyone last
             // changed it: a bumped timestamp would make every audit and every
             // "recently changed" view lie the day a deployment re-keys.
-            expect(typeof rotatedAccount?.updatedAt).toBe('number');
-            expect(rotatedAccount?.updatedAt).toBe(storedAt);
-            expect(typeof rotatedAssetKey?.updated_at).toBe('number');
-            expect(rotatedAssetKey?.updated_at).toBe(assetStoredAt);
+            expect(rotatedAccount?.updatedAt).toBeInstanceOf(Date);
+            expect(rotatedAccount?.updatedAt.getTime()).toBe(
+              storedAt.getTime(),
+            );
+            expect(rotatedAssetKey?.updated_at).toBeInstanceOf(Date);
+            expect(rotatedAssetKey?.updated_at.getTime()).toBe(
+              assetStoredAt.getTime(),
+            );
           }).pipe(Effect.orDie),
       );
 

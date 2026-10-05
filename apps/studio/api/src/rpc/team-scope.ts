@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { Effect, Option } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import {
@@ -28,7 +28,7 @@ import {
   seesEveryTeamStudy,
 } from '../study/tenancy.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
-import { requirePool } from './bridge.ts';
+import { requireDatabase } from './bridge.ts';
 import type { RpcDeps } from './deps.ts';
 
 const { team_members: teamMembers } = AUTH_TABLES;
@@ -83,7 +83,7 @@ export const openTeam = Effect.fnUntraced(function* (
   // Asserted here rather than where the handle is built, so a plane wired
   // without a database refuses in the same place it always did — before any
   // membership is looked up.
-  yield* requirePool(deps);
+  yield* requireDatabase(deps);
   const auth = yield* AuthService;
   const membership = yield* auth.getMembership(principal.userId, teamId);
   // One refusal, built the same way for both misses: `Forbidden` carries no

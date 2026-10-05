@@ -8,7 +8,7 @@ import { NotFound } from '@codaco/studio-contract/schema/errors';
 import { updateUserLocale } from '../../account/commands.ts';
 import { AuthService } from '../../auth/service.ts';
 import { UntenantedScope } from '../../db/tenant.ts';
-import { requirePool } from '../bridge.ts';
+import { requireDatabase } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 
 // The account tier: personal, not team-scoped, so no tenant is opened and only
@@ -48,7 +48,7 @@ export const AccountHandlers = (deps: RpcDeps) =>
         const principal = yield* Principal;
         // A plane wired without a database refuses here, in the same place it
         // always did, rather than reaching a client that has nothing behind it.
-        yield* requirePool(deps);
+        yield* requireDatabase(deps);
         // Deliberately not an audited command (localization design §5.2,
         // decision 7): the audit log is study/team-scoped by design, and a
         // personal presentation preference has no tenant — so this opens an

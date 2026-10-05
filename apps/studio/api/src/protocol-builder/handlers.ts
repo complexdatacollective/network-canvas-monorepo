@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Clock, Effect, Option, Predicate, Result, Stream } from 'effect';
 import type * as Layer from 'effect/Layer';
-import type * as Rpc from 'effect/unstable/rpc/Rpc';
+import type * as Rpc from 'effect/rpc/Rpc';
 
 import {
   ProtocolBuilderGroup,

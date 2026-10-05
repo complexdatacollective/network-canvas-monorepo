@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 import type { Effect, Scope } from 'effect';
-import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc';
+import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/rpc';
 import { describe, expect, it } from 'vitest';
 
 import { StudioRpcs } from '../rpc/studio.ts';

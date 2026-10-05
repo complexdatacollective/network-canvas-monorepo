@@ -16,7 +16,7 @@ import { randomUUID } from 'node:crypto';
 import type { PgClient } from '@effect/sql-pg';
 import { layer } from '@effect/vitest';
 import { Effect, Layer, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 import { describe, expect } from 'vitest';
 
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
@@ -324,14 +324,12 @@ const erasing = (
   );
 
 /**
- * A raw read of a `timestamptz`: `@effect/sql-pg` rc.115 decodes one to epoch
- * milliseconds, where drizzle's own column mapper hands back a `Date`. Decoding
- * says so rather than trusting the driver to keep doing it, and the instant is
- * then weighed against a clock read the case took itself — which is a stronger
- * oracle than the `instanceof Date` this replaces, since a column that
- * defaulted to some other instant would still have been a `Date`.
+ * A raw read of a `timestamptz`, decoded rather than trusted and weighed against
+ * a clock read the case took itself — a stronger oracle than `instanceof Date`,
+ * since a column that defaulted to some other instant would still be a `Date`.
  */
-const instantOf = Schema.decodeUnknownSync(Schema.Number);
+const decodeInstant = Schema.decodeUnknownSync(Schema.Date);
+const instantOf = (value: unknown): number => decodeInstant(value).getTime();
 
 type RejectionCase = readonly [
   label: string,

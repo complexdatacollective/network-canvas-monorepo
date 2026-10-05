@@ -11,7 +11,7 @@
 // assembly for a participant session or a researcher preview opens one.
 import { and, eq, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 

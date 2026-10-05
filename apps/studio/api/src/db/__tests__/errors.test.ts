@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { assert, layer } from '@effect/vitest';
 import { sql as drizzleSql } from 'drizzle-orm';
 import { Deferred, Effect, Fiber, Predicate, Result } from 'effect';
-import { SqlError } from 'effect/unstable/sql';
+import { SqlError } from 'effect/sql';
 import { describe } from 'vitest';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';

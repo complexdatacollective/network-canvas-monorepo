@@ -95,7 +95,7 @@ describe.skipIf(!db)('recurring work', () => {
             DateTime.toDate(now),
           );
           const [row] = yield* schedules();
-          assert.strictEqual(row?.next_run_at, boundary.getTime());
+          assert.strictEqual(row?.next_run_at.getTime(), boundary.getTime());
 
           // A second before the boundary: nothing is due.
           yield* TestClock.setTime(boundary.getTime() - 1000);
@@ -111,7 +111,7 @@ describe.skipIf(!db)('recurring work', () => {
 
           const [advanced] = yield* schedules();
           assert.strictEqual(
-            advanced?.next_run_at,
+            advanced?.next_run_at.getTime(),
             Cron.next(Cron.parseUnsafe(HOURLY, 'UTC'), boundary).getTime(),
           );
         }).pipe(Effect.provide(layerWorker()));
@@ -131,7 +131,7 @@ describe.skipIf(!db)('recurring work', () => {
             {},
           );
           const [row] = yield* schedules();
-          yield* TestClock.setTime(row!.next_run_at);
+          yield* TestClock.setTime(row!.next_run_at.getTime());
 
           // Two workers on one schema, exactly as two replicas are. The second
           // is built under its own layer so it is a different service value
@@ -169,7 +169,7 @@ describe.skipIf(!db)('recurring work', () => {
           {},
         );
         const [row] = yield* schedules();
-        yield* TestClock.setTime(row!.next_run_at);
+        yield* TestClock.setTime(row!.next_run_at.getTime());
 
         // Another schema's tick in flight — production's `studio_jobs` beside
         // a suite's scratch schema on a shared cluster, or two suites side by
@@ -298,7 +298,7 @@ describe.skipIf(!db)('recurring work', () => {
             {},
           );
           const [row] = yield* schedules();
-          yield* TestClock.setTime(row!.next_run_at);
+          yield* TestClock.setTime(row!.next_run_at.getTime());
           assert.isTrue(yield* worker.tickSchedules);
 
           // The minute after, with the first run still queued. The queue is
@@ -334,7 +334,7 @@ describe.skipIf(!db)('recurring work', () => {
 
             // The occurrence has come due and nothing has ticked it yet, which
             // is the window a rolling restart lands in.
-            yield* TestClock.setTime(registered!.next_run_at);
+            yield* TestClock.setTime(registered!.next_run_at.getTime());
 
             // A second replica registers the same declaration. Both write the
             // same row — `ON CONFLICT (name)` — so a deployment of any size
@@ -355,7 +355,10 @@ describe.skipIf(!db)('recurring work', () => {
             // boot would push this occurrence a whole hour forward, so a replica
             // restarting in this window would skip the sweep entirely. That a
             // due time fires is the first case above; this is that it survives.
-            assert.strictEqual(rows[0]?.next_run_at, registered!.next_run_at);
+            assert.strictEqual(
+              rows[0]?.next_run_at.getTime(),
+              registered!.next_run_at.getTime(),
+            );
             assert.deepStrictEqual(yield* readJobs('protocol-store-gc'), []);
 
             // A changed expression is the one case where the stored time means
@@ -371,7 +374,7 @@ describe.skipIf(!db)('recurring work', () => {
             const [changed] = yield* schedules();
             assert.strictEqual(changed?.cron, CHANGED);
             assert.strictEqual(
-              changed?.next_run_at,
+              changed?.next_run_at.getTime(),
               Cron.next(
                 Cron.parseUnsafe(CHANGED, 'UTC'),
                 DateTime.toDate(now),

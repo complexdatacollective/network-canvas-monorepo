@@ -120,7 +120,6 @@ describe.skipIf(!testDb)('the studies RPC', () => {
         await createRpcClient(
           createStudio(readEnv(), {
             auth,
-            pool: database.appPool,
             services: database.services,
           }),
         ),

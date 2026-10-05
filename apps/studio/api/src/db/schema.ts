@@ -1,7 +1,7 @@
 import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { Effect } from 'effect';
-import type { SqlClient } from 'effect/unstable/sql';
+import type { SqlClient } from 'effect/sql';
 import type pg from 'pg';
 
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
@@ -299,7 +299,7 @@ export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
   if (stamped) {
     const recorded = yield* client.unsafe<{
       fingerprint: string;
-      appliedAt: Date | number;
+      appliedAt: Date;
     }>('select "fingerprint", "appliedAt" from "schemaFingerprint"');
     const row = recorded[0];
     if (row) {
@@ -308,12 +308,7 @@ export const checkSchemaEffect = Effect.fn('db.checkSchema')(function* (
           kind: 'stale',
           reason: 'mismatch',
           found: row.fingerprint,
-          // Converted at the seam: this is a raw read, and on
-          // `@effect/sql-pg` 4.0.0-rc.115 a `timestamptz` arrives as epoch
-          // milliseconds rather than a `Date` (#1927 §20 Q6, fallback A).
-          // rc.116's #8241 removes the need for this line, not the line's
-          // correctness.
-          appliedAt: new Date(row.appliedAt),
+          appliedAt: row.appliedAt,
         } satisfies StaleSchema;
       }
       return { kind: 'current' } satisfies SchemaState;

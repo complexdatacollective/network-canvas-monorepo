@@ -310,8 +310,8 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: '`pg_locks` and `pg_database`, catalogue views drizzle does not model, matched on the advisory key’s two halves',
   },
   [`${SERVER}/db/tenant.ts`]: {
-    count: 3,
-    why: '`set local role` and `set local search_path` (fallback A: rc.115 has no startup parameters), and the team GUC via `set_config`',
+    count: 1,
+    why: 'the team GUC via `set_config`, the first statement of every tenant scope',
   },
   [`${SERVER}/jobs/jobs.ts`]: {
     count: 1,
@@ -348,7 +348,7 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   // Raw since the queue replaced pg-boss (#1957), which ported `gc.ts` "text for
   // text"; the stage-3 allowlist names the queue's own files but not these.
   [`${SERVER}/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore`]: {
-    count: 10,
+    count: 9,
     why: '#1957’s port of the store sweep: `select current_user` (no FROM) and the sweep over the shared `REFERENCED` predicate',
   },
   [`${SERVER}/jobs/handlers/invitation-delivery.ts › job.invitation-delivery`]:
@@ -374,7 +374,7 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: "`current_setting('transaction_isolation')` (no FROM), and the built `sectionExists` query executed as the same SQL it embeds in an `EXISTS`",
   },
   [`${SERVER}/__tests__/support/database.ts`]: {
-    count: 19,
+    count: 17,
     why: 'the scratch-schema harness: create, apply, grant and drop, and the one-statement fixtures and oracles every suite shares — as the owner, a tenant, the maintenance role, and under the erasure marker',
   },
   [`${SERVER}/jobs/__tests__/support.ts`]: {
@@ -382,25 +382,17 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the queue suites’ scratch job schema and fixtures, and `holding`’s BEGIN, statements, lock probe and COMMIT/ROLLBACK on a reserved connection',
   },
   [`${SYNC}/__tests__/helpers.ts`]: {
-    count: 6,
-    why: 'the conformance suite’s scratch schema (node-postgres) and the role and tenant pin its Effect runtime sets',
+    count: 5,
+    why: 'the conformance suite’s scratch schema (node-postgres) and the tenant pin its Effect runtime sets',
   },
-  // node-postgres. Nothing here is Effect code; it is listed so the residue is
-  // pinned rather than invisible. better-auth left it in stage 4 (it runs on
-  // `auth/adapter.ts` now); what stays is readiness, the schema gate and the
-  // scripts, which remain on node-postgres while the Effect client cannot pin a
-  // role outside a transaction (rc.115).
+  // node-postgres, which only the scripts still use, for drizzle-kit.
   [`${SERVER}/db/schema.ts`]: {
     count: 3,
-    why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ and the schema gate’s twins of the Effect pair',
+    why: 'the node-postgres `checkSchema` (the `to_regclass` probe and the stamp read) and `stampFingerprint`, the scripts’ twins of the Effect pair',
   },
   [`${SERVER}/jobs/install.ts`]: {
     count: 1,
     why: 'the node-postgres `installJobSchema`, over the same split statement list as the Effect path',
-  },
-  [`${SERVER}/http/health.ts`]: {
-    count: 1,
-    why: 'the readiness probe’s `select 1` on the process’s node-postgres pool',
   },
   [`${SERVER}/__tests__/support/postgres.ts`]: {
     count: 4,

@@ -120,21 +120,18 @@ describe.skipIf(!testDb)('studies.counts', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth: memberOf('admin'),
-        pool: database.appPool,
         services: database.services,
       }),
     );
     ungrantedClient = await createRpcClient(
       createStudio(readEnv(), {
         auth: memberOf('member'),
-        pool: database.appPool,
         services: database.services,
       }),
     );
     anonymousClient = await createRpcClient(
       createStudio(readEnv(), {
         auth: authServiceStub(),
-        pool: database.appPool,
         services: database.services,
       }),
     );

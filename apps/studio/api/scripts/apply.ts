@@ -191,7 +191,7 @@ export function seedDatabase(
   options: SeedOptions,
 ): Promise<SeedResult> {
   return Effect.runPromise(
-    seed(options).pipe(Effect.provide(OwnerDatabase.layer({ url: db.url }))),
+    seed(options).pipe(Effect.provide(OwnerDatabase.layer(db))),
   );
 }
 

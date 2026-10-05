@@ -1,11 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Context, Effect } from 'effect';
-import {
-  HttpEffect,
-  HttpRouter,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpEffect, HttpRouter, HttpServerResponse } from 'effect/http';
 
 /**
  * The id this request is known by in logs, in audit rows, and in the RPC

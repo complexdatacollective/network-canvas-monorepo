@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { SetupRpcs } from '@codaco/studio-contract/rpc/setup';
 import {
@@ -51,7 +51,7 @@ export const SetupHandlers = (deps: RpcDeps) =>
     'setup.complete': (payload) =>
       // An instance with no database has no installation row and no token
       // outstanding, so setup is closed here exactly as `status` reports it.
-      deps.pool === undefined
+      deps.services === undefined
         ? new NotFound({})
         : refusals(completeSetup(payload)),
   });

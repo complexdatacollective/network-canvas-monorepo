@@ -340,18 +340,14 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             access('audit-timestamp'),
             Effect.gen(function* () {
               const { sql } = yield* Transaction;
-              // `@effect/sql-pg` decodes `timestamptz` to epoch milliseconds,
-              // where drizzle's own column mapper hands back a `Date` — so the
-              // instant read through a raw statement is a number, and decoding
-              // it says so rather than trusting the driver to keep doing it.
               const started = yield* rowsOf(
-                Schema.Struct({ value: Schema.Number }),
+                Schema.Struct({ value: Schema.Date }),
                 sql`SELECT transaction_timestamp() AS value`,
               );
               yield* sql`SELECT pg_sleep(0.02)`;
               const event = yield* append(invitationEvent('audit-timestamp'));
 
-              const transactionStarted = started[0]?.value;
+              const transactionStarted = started[0]?.value.getTime();
               expect(event.occurredAt).toBeInstanceOf(Date);
               expect(event.occurredAt.getTime()).toBeGreaterThan(
                 transactionStarted ?? Number.POSITIVE_INFINITY,

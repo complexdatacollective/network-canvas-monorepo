@@ -28,7 +28,7 @@
 // `edges` after every call — and fails when the call is removed.
 import { and, eq, inArray } from 'drizzle-orm';
 import { Effect } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
@@ -80,9 +80,7 @@ const DEGREE_HISTOGRAM_SQL = `INSERT INTO session_degree_hist (team_id, session_
  *
  * `computed_at` is written by `statement_timestamp()` in the database rather
  * than from a JavaScript `Date`, so the column records when the projection was
- * computed by the transaction that changed the graph. Nothing is read back
- * here, so the raw path's epoch-millisecond decoding of `timestamptz` never
- * arises.
+ * computed by the transaction that changed the graph.
  *
  * `$1` is the team and `$2` the session ids. Returns no rows.
  */

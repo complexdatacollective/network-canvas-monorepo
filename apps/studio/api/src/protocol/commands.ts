@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { Effect, Schema } from 'effect';
-import type { SqlError } from 'effect/unstable/sql';
+import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type {

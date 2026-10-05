@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import { FetchHttpClient } from 'effect/unstable/http';
+import { FetchHttpClient } from 'effect/http';
 
 import { Environment, readEnv } from '../../env.ts';
 import { TracingLive } from '../tracing.ts';

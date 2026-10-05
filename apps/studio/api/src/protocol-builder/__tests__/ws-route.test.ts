@@ -22,13 +22,13 @@ import {
   Predicate,
   Scope,
 } from 'effect';
-import * as HttpRouter from 'effect/unstable/http/HttpRouter';
-import * as HttpServer from 'effect/unstable/http/HttpServer';
-import * as HttpServerRequest from 'effect/unstable/http/HttpServerRequest';
-import * as HttpServerResponse from 'effect/unstable/http/HttpServerResponse';
-import * as RpcClient from 'effect/unstable/rpc/RpcClient';
-import * as RpcSerialization from 'effect/unstable/rpc/RpcSerialization';
-import * as Socket from 'effect/unstable/socket/Socket';
+import * as HttpRouter from 'effect/http/HttpRouter';
+import * as HttpServer from 'effect/http/HttpServer';
+import * as HttpServerRequest from 'effect/http/HttpServerRequest';
+import * as HttpServerResponse from 'effect/http/HttpServerResponse';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as Socket from 'effect/socket/Socket';
 import { describe, expect, it } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -239,11 +239,10 @@ describe('the /ws route', () => {
       // socket still open, which both bounds catch.
       expect(event.at - startedStopAt).toBeLessThan(1000);
       expect(stoppedAt - startedStopAt).toBeLessThan(1000);
-      // Codeless, per the shutdown decision on #1929: the upgrade's release
-      // is `ws.close()` with no status. A client reads that as 1005 — a close
-      // frame that arrived and named no code, rather than the 1006 a dropped
-      // connection gives.
-      expect(event.code).toBe(1005);
+      // The drain ends the route successfully, and the platform closes a
+      // socket whose handler succeeded with 1000 — a close frame, rather than
+      // the 1006 a dropped connection gives.
+      expect(event.code).toBe(1000);
       expect(event.reason).toBe('');
     } finally {
       idle.close();

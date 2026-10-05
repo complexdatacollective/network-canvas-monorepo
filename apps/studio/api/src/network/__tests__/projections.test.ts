@@ -8,10 +8,8 @@
 // writing — or that wrote the wrong distribution — cannot pass as "no error".
 //
 // The oracle reads go through the drizzle builder on the connecting login's
-// own transaction rather than through raw statements, for one reason beyond
-// symmetry with the store suites: `@effect/sql-pg` rc.115 hands a `timestamptz`
-// back from a raw statement as epoch milliseconds, and `computed_at` is the
-// column the third case compares across two refreshes.
+// own transaction rather than through raw statements, for symmetry with the
+// store suites.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';

@@ -1,13 +1,13 @@
 import { assert, describe, expect, it } from '@effect/vitest';
 import { Effect, Layer } from 'effect';
-import { HttpRouter, HttpServer } from 'effect/unstable/http';
+import { HttpRouter, HttpServer } from 'effect/http';
 import {
   HttpApi,
   HttpApiBuilder,
   HttpApiMiddleware,
   HttpApiTest,
   OpenApi,
-} from 'effect/unstable/httpapi';
+} from 'effect/http-api';
 
 import { StatusApiGroup } from '../api/groups/status.ts';
 import {

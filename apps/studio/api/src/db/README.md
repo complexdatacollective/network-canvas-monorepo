@@ -17,21 +17,21 @@ that make a row safe to trust.
 
 ## What is in this folder
 
-| File                          | What it is                                                                                                                                                                                                                                                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `schema.ts`                   | Assembles `SCHEMA` (every Drizzle table) and `SIDECARS` (every raw-SQL block, **in order**), and holds the boot-time verdict: `checkSchema`, `stampFingerprint`, `schemaProblemMessage`, and their Effect twins `checkSchemaEffect`, `stampFingerprintEffect`.                                                     |
-| `access.ts`                   | The one sidecar that lives here rather than beside a domain — the broad table grant, because it belongs to no single domain.                                                                                                                                                                                       |
-| `auth-schema.ts`              | better-auth's tables: its core five (`user`, `session`, `account`, `verification`, `rateLimit`) plus the organization plugin's `teams`, `team_members` and `team_invitations`, renamed to domain vocabulary. `rls.test.ts` treats this whole set as the tables that sit outside the tenant policy.                 |
-| `deployment-state.ts`         | The one-row `deployment_state` table, its grants, and its store: `readDeploymentState` (the application role, no `Transaction` asked of the caller) and `setMaintenance` (on the caller's `Transaction`; only the maintenance role may). No team, so no policy; the singleton check and the grants keep it honest. |
-| `fingerprint.generated.ts`    | Generated. Do not edit; run `sync-fingerprint`.                                                                                                                                                                                                                                                                    |
-| `client.ts`                   | The three Effect clients — `Database`, `MaintenanceDatabase`, `OwnerDatabase` — each a `PgClient` with the drizzle builder over it. See [The clients](#the-clients-and-how-a-transaction-is-opened).                                                                                                               |
-| `tenant.ts`                   | The only ways a transaction is opened: `TenantScope`, `UntenantedScope`, `MaintenanceScope`, `OwnerScope`, and `savepoint` for a nested one. Re-exports `Transaction` and `TeamAccess` from `@codaco/studio-sync/tenant`.                                                                                          |
-| `errors.ts`                   | One reading of a database failure: `sqlState`, `isLockUnavailable`, `uniqueViolationConstraint`, `isMissingRole`, and `sqlErrorsOnly`, which every builder span applies.                                                                                                                                           |
-| `statements.ts`               | `splitStatements`: a Postgres script cut into single commands, dollar-quote-, string- and comment-aware.                                                                                                                                                                                                           |
-| `migrate.ts`                  | What `studio-api migrate` runs in the image.                                                                                                                                                                                                                                                                       |
-| `readiness.ts`                | The Effect readiness probes, each bounded to a second: `databaseAlive` (`select 1`), `schemaVerdict` (`checkSchemaEffect`) and `migrationLockHeld` (is the migration's advisory lock held now). Not yet mounted: `/readyz` still probes on node-postgres (`src/http/health.ts`).                                   |
-| `pool.ts`, `database-pool.ts` | The node-postgres pools that remain, and their scoped service: `/readyz`'s probes (which stay here while rc.115 cannot pin a role outside a transaction), the scripts, and the surfaces not yet on Effect. better-auth left them in stage 4 for `src/auth/adapter.ts`.                                             |
-| `__tests__/`                  | The clients, scopes and errors; `rls.test.ts` (the team boundary across the whole schema); `migrate.test.ts`; `statements.test.ts`; `seed.test.ts`; `readiness.test.ts`; `deployment-state.test.ts`; and `raw-sql-policy.test.ts`.                                                                                 |
+| File                       | What it is                                                                                                                                                                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `schema.ts`                | Assembles `SCHEMA` (every Drizzle table) and `SIDECARS` (every raw-SQL block, **in order**), and holds the boot-time verdict: `checkSchema`, `stampFingerprint`, `schemaProblemMessage`, and their Effect twins `checkSchemaEffect`, `stampFingerprintEffect`.                                                     |
+| `access.ts`                | The one sidecar that lives here rather than beside a domain — the broad table grant, because it belongs to no single domain.                                                                                                                                                                                       |
+| `auth-schema.ts`           | better-auth's tables: its core five (`user`, `session`, `account`, `verification`, `rateLimit`) plus the organization plugin's `teams`, `team_members` and `team_invitations`, renamed to domain vocabulary. `rls.test.ts` treats this whole set as the tables that sit outside the tenant policy.                 |
+| `deployment-state.ts`      | The one-row `deployment_state` table, its grants, and its store: `readDeploymentState` (the application role, no `Transaction` asked of the caller) and `setMaintenance` (on the caller's `Transaction`; only the maintenance role may). No team, so no policy; the singleton check and the grants keep it honest. |
+| `fingerprint.generated.ts` | Generated. Do not edit; run `sync-fingerprint`.                                                                                                                                                                                                                                                                    |
+| `client.ts`                | The three Effect clients — `Database`, `MaintenanceDatabase`, `OwnerDatabase` — each a `PgClient` with the drizzle builder over it. See [The clients](#the-clients-and-how-a-transaction-is-opened).                                                                                                               |
+| `tenant.ts`                | The only ways a transaction is opened: `TenantScope`, `UntenantedScope`, `MaintenanceScope`, `OwnerScope`, and `savepoint` for a nested one. Re-exports `Transaction` and `TeamAccess` from `@codaco/studio-sync/tenant`.                                                                                          |
+| `errors.ts`                | One reading of a database failure: `sqlState`, `isLockUnavailable`, `uniqueViolationConstraint`, `isMissingRole`, and `sqlErrorsOnly`, which every builder span applies.                                                                                                                                           |
+| `statements.ts`            | `splitStatements`: a Postgres script cut into single commands, dollar-quote-, string- and comment-aware.                                                                                                                                                                                                           |
+| `migrate.ts`               | What `studio-api migrate` runs in the image.                                                                                                                                                                                                                                                                       |
+| `readiness.ts`             | The Effect readiness probes, each bounded to a second: `databaseAlive` (`select 1`), `schemaVerdict` (`checkSchemaEffect`) and `migrationLockHeld` (is the migration's advisory lock held now). `/readyz` runs them on `ReadinessDatabase`.                                                                        |
+| `pool.ts`                  | The node-postgres pools the scripts use for drizzle-kit and seeding. The server's processes run on the Effect clients.                                                                                                                                                                                             |
+| `__tests__/`               | The clients, scopes and errors; `rls.test.ts` (the team boundary across the whole schema); `migrate.test.ts`; `statements.test.ts`; `seed.test.ts`; `readiness.test.ts`; `deployment-state.test.ts`; and `raw-sql-policy.test.ts`.                                                                                 |
 
 The development seed is not here: it is `scripts/seed/`, beside the other
 scripts that write a database wholesale.
@@ -240,25 +240,24 @@ bare client:
   row). Every tenant policy fails closed without the GUC.
 - `MaintenanceScope.open(body)` / `.openTenant(access, body)` — the worker's.
 - `OwnerScope.open(body)` — the connecting login's.
-- `savepoint(body)` — a nested transaction on the one already open. `SqlClient`
-  emits no `RELEASE` on success, so a bulk loop must not open one per row.
+- `savepoint(body)` — a nested transaction on the one already open. Each costs
+  a `SAVEPOINT` and a `RELEASE`, so a bulk loop must not open one per row.
 
 Each provides `Transaction` (`{ tx, sql, teamId }`) to its body, and the data
 layer requires that service rather than a client — so a store function cannot
 run outside a transaction, and runs on its caller's.
 
-**The role is pinned per transaction, for now.** `@effect/sql-pg`
-4.0.0-rc.115 has no `startupParameters`, so each scope's first statements are
-`set local role` and — where a client was built with one, as the suites' are —
-`set local search_path` (`pinSession` in `tenant.ts`). That is weaker than a
-startup parameter in one place: a statement run on a client outside any scope
-runs as the connecting login. When rc.116 lands the two statements become
-startup parameters and nothing else changes.
+**The role is a startup parameter.** Each client sends its identity's role —
+and, where it was built with one, as the suites' are, its `search_path` — in
+every connection's startup packet (`client.ts`). So every statement on a
+client runs as its role, inside a scope or not, `RESET ROLE` returns to it
+rather than to the login, and a login that may not assume it is refused at
+connect.
 
-**Raw rows decode differently from built ones on rc.115.** The builder parses
-dates itself, so its rows carry `Date`s. A raw statement's rows do not: a
-`timestamptz` arrives as epoch milliseconds, a `date` as a string, and `int8`
-or an uncast `count(*)` as a `bigint`. Every raw read converts at the seam.
+**Raw rows decode differently from built ones in two places.** A
+`timestamptz` arrives as a `Date` either way, but a raw statement's `date`
+arrives as a string, and its `int8` or uncast `count(*)` as a `bigint`. Every
+raw read converts at the seam.
 
 **The builder is the default.** A statement goes to the driver as text for a
 stated reason — a `WITH RECURSIVE`, a statement with no FROM clause, an
@@ -267,9 +266,9 @@ schema, which drizzle does not model — and each one is named in
 `__tests__/raw-sql-policy.test.ts` with its reason. Two groups on that list are
 there for history rather than necessity: the queue handlers #1957 ported from
 their pg-boss originals text for text, and the node-postgres residue (the
-scripts' schema helpers, the readiness probes) that stay on node-postgres until the Effect client can
-pin a role outside a transaction (`@effect/sql-pg` rc.117's startup
-parameters).
+scripts' schema helpers, the readiness probes) that stay on node-postgres: the
+readiness probes until they are moved onto the Effect clients, the scripts for
+drizzle-kit.
 Two rules for the builder: **every write whose outcome is inspected ends in
 `.returning()`** (without it the driver's result object comes back typed as a
 row array, and `result[0]` is `undefined`), and **every builder span applies
@@ -321,7 +320,7 @@ rule:
 `@codaco/studio-sync`'s, collects every statement handed to a driver as text
 (`sql.unsafe`, the client's `` sql`…` `` template, `sql.raw`, `.execute` and a
 connection's `executeRaw` family — and node-postgres's `.query`, so the `pg`
-residue is pinned until the rc.117 upgrade retires it), and charges each to the `Effect.fn` span that encloses it, or to its file. The
+residue is pinned), and charges each to the `Effect.fn` span that encloses it, or to its file. The
 result must equal the allowlist exactly: a new raw statement fails until it is
 listed with its reason, and a listed one that is gone fails until it is
 removed.

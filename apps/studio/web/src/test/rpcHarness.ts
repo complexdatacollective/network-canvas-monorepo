@@ -1,6 +1,6 @@
 import { Effect, Layer } from 'effect';
-import type { RpcGroup } from 'effect/unstable/rpc';
-import { RpcTest } from 'effect/unstable/rpc';
+import type { RpcGroup } from 'effect/rpc';
+import { RpcTest } from 'effect/rpc';
 import { onTestFinished } from 'vitest';
 
 import {

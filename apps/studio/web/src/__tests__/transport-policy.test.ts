@@ -215,15 +215,15 @@ describe('the rpc client', () => {
   });
 
   it('keeps the rpc and socket machinery in the runtime layer', () => {
-    // `effect/unstable/rpc` and `effect/unstable/socket` are the transport's own
+    // `effect/rpc` and `effect/socket` are the transport's own
     // vocabulary. The two runtime modules and the two test harnesses are the
     // whole of what may name them; a screen that did would be building a
     // second way to call the server.
     expect(
       filesImporting(
         (specifier) =>
-          specifier.startsWith('effect/unstable/rpc') ||
-          specifier.startsWith('effect/unstable/socket'),
+          specifier.startsWith('effect/rpc') ||
+          specifier.startsWith('effect/socket'),
       ),
     ).toEqual([
       'runtime/errors.ts',

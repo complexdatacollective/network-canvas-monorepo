@@ -20,10 +20,9 @@ import {
 // all (#1895) — the job table is one table for every team, so a role that can
 // read it can read every team's queued work.
 //
-// The role is pinned with `set local role` rather than a startup parameter,
-// because `@effect/sql-pg` rc.115 has none (see src/db/tenant.ts). That is exactly
-// what these cases exercise: the grants bite because the transaction is
-// running as `studio_app`.
+// The role is the application client's startup parameter (src/db/client.ts),
+// and that is exactly what these cases exercise: the grants bite because the
+// transaction is running as `studio_app`.
 
 // The SQLSTATE is read with the queue's own `exitSqlState` (errors.ts) rather
 // than a reader of this suite's own: a refusal these cases name has to be the

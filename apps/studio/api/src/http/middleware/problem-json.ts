@@ -1,11 +1,7 @@
 import { STATUS_CODES } from 'node:http';
 
 import { Effect, type Layer } from 'effect';
-import {
-  HttpEffect,
-  HttpRouter,
-  HttpServerResponse,
-} from 'effect/unstable/http';
+import { HttpEffect, HttpRouter, HttpServerResponse } from 'effect/http';
 
 // RFC 9457 problem details for every refusal this server synthesises, so the
 // machine surfaces answer one shape whatever produced the status (#1248).
