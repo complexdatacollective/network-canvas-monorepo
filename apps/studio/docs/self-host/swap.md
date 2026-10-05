@@ -108,9 +108,11 @@ AZURE_STORAGE_ACCOUNT_URL=https://<account>.blob.core.windows.net
 AZURE_STORAGE_CONTAINER=studio-assets
 ```
 
-And **empty the four `S3_*` values** that `.env` came with:
+And **empty every `S3_*` value**: the four `.env` came with, and
+`S3_ENDPOINT` if you set it for a managed bucket:
 
 ```
+S3_ENDPOINT=
 S3_REGION=
 S3_BUCKET=
 S3_ACCESS_KEY_ID=

@@ -92,7 +92,7 @@ coincidence.
 Blob Storage does not speak S3, so this variant sets `STUDIO_OBJECT_STORE` to
 `azure-blob`, names the container, and authenticates with a connection string
 — the guide's fallback for a host with no managed identity, which a CI runner
-is. It also empties the four `S3_*` values, as the guide tells an Azure
+is. It also empties every `S3_*` value, as the guide tells an Azure
 deployer to: the server refuses any of them beside `azure-blob`, and an empty
 access key is what turns off the compose file's `S3_ENDPOINT` default of the
 stack's Garage. The stub is Azurite serving one generated account, set through

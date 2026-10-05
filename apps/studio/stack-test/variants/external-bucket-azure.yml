@@ -9,7 +9,7 @@
 # `AZURITE_ACCOUNTS` disables the well-known account outright.
 #
 # The environment file `up.sh` writes is the whole swap: `STUDIO_OBJECT_STORE`,
-# the container, a connection string, and the four `S3_*` values emptied
+# the container, a connection string, and every `S3_*` value emptied
 # exactly as the guide tells an Azure deployer to — which is also what stops
 # the compose file's `S3_ENDPOINT` defaulting to Garage. A connection string
 # rather than an account URL because there is no managed identity off Azure;

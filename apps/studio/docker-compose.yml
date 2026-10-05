@@ -46,8 +46,9 @@
 #                  configs, and the `garage-data` volume.
 #                  Or, for Azure Blob Storage, which does not speak S3: set
 #                  `STUDIO_OBJECT_STORE=azure-blob`, the `AZURE_STORAGE_*`
-#                  variables, and empty the four `S3_*` values (which also
-#                  stops `S3_ENDPOINT` defaulting to Garage — see below). The
+#                  variables, and empty every `S3_*` value, `S3_ENDPOINT`
+#                  included if a managed bucket set it (an empty access key
+#                  also stops `S3_ENDPOINT` defaulting to Garage — see below). The
 #                  Garage tidying is then the same.
 #   Rate limiting  set `REDIS_URL`; any Redis 7-compatible server works. Then
 #                  delete the `valkey` service and the `depends_on` entries

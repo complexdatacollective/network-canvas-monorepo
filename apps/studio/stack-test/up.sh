@@ -115,13 +115,14 @@ case "$VARIANT" in
   external-bucket-azure)
     # What docs/self-host/swap.md tells an Azure deployer to write, with the
     # connection-string fallback in place of the account URL: there is no
-    # managed identity off Azure. The four `S3_*` values are emptied rather
+    # managed identity off Azure. Every `S3_*` value is emptied rather
     # than left at the reference's, because the guide says to and because the
     # server refuses any of them beside `azure-blob` — and an empty access key
     # is what turns the compose file's `S3_ENDPOINT` default off.
     STUDIO_OBJECT_STORE="azure-blob"
     AZURE_STORAGE_CONTAINER="studio-assets"
     AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=$EXTERNAL_AZURITE_ACCOUNT;AccountKey=$EXTERNAL_AZURITE_KEY;BlobEndpoint=http://external-azurite:10000/$EXTERNAL_AZURITE_ACCOUNT;"
+    S3_ENDPOINT=""
     S3_REGION=""
     S3_BUCKET=""
     S3_ACCESS_KEY_ID=""
