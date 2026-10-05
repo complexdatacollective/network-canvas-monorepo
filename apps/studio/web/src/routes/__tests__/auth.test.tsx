@@ -437,6 +437,24 @@ describe('a session check during a maintenance window', () => {
     );
   });
 
+  it('waits at most an hour to ask again, however long the server names', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    renderWithClientAt(LANDING);
+    await findAppShell();
+    const timers = vi.spyOn(globalThis, 'setTimeout');
+    try {
+      mocked.getSession.mockImplementation(inMaintenance(5 * 7 * 24 * 60 * 60));
+      await act(() => reportUnauthorizedResponse());
+      expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+
+      const delays = timers.mock.calls.map(([, delay]) => delay ?? 0);
+      expect(delays).toContain(60 * 60 * 1000);
+      expect(Math.max(...delays)).toBeLessThanOrEqual(2 ** 31 - 1);
+    } finally {
+      timers.mockRestore();
+    }
+  });
+
   it('explains the window on a cold entry rather than sending them to sign in', async () => {
     mocked.getSession.mockImplementation(inMaintenance(30));
     const router = renderAt(LANDING);

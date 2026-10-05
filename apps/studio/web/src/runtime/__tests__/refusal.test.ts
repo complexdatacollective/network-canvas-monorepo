@@ -363,3 +363,78 @@ describe('the retry policy, on both planes', () => {
     },
   );
 });
+
+const SET_TIMEOUT_MAX_MS = 2 ** 31 - 1;
+const CEILING_MS = 60 * 60 * 1000;
+const WEEKS = String(5 * 7 * 24 * 60 * 60);
+const OVERFLOWING_DIGITS = '9'.repeat(400);
+
+describe('an oversized Retry-After', () => {
+  const oversized: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
+    ...[429, 503].flatMap((status) =>
+      [WEEKS, OVERFLOWING_DIGITS].map(
+        (header) =>
+          [
+            `a ${String(status)} header of ${String(header.length)} digits`,
+            () => {
+              answer(() =>
+                problemResponse(
+                  status,
+                  { title: 'Refused' },
+                  { 'retry-after': header },
+                ),
+              );
+              return failureOfStatusCall();
+            },
+          ] as const,
+      ),
+    ),
+    [
+      'a 503 problem document naming weeks',
+      () => {
+        answer(() =>
+          problemResponse(503, {
+            title: 'Refused',
+            retryAfterSeconds: Number(WEEKS),
+          }),
+        );
+        return failureOfStatusCall();
+      },
+    ],
+    [
+      'a typed maintenance refusal naming weeks',
+      () => Promise.resolve(new Maintenance({ retryAfterSeconds: 3e6 })),
+    ],
+    [
+      'a typed rate limit naming weeks',
+      () => Promise.resolve(new RateLimited({ retryAfterSeconds: 3e6 })),
+    ],
+    [
+      'a typed maintenance refusal naming forever',
+      () =>
+        Promise.resolve(
+          new Maintenance({ retryAfterSeconds: Number.POSITIVE_INFINITY }),
+        ),
+    ],
+  ];
+
+  it.each(oversized)(
+    'waits at most the ceiling for %s',
+    async (_name, refusal) => {
+      const error = await refusal();
+
+      expect(retryAfterSeconds(error)).toBe(CEILING_MS / 1000);
+      expect(refusalRetryDelay(0, error)).toBe(CEILING_MS);
+      expect(refusalRetryDelay(0, error)).toBeLessThanOrEqual(
+        SET_TIMEOUT_MAX_MS,
+      );
+    },
+  );
+
+  it('is ignored when it is not a number at all', () => {
+    const error = new Maintenance({ retryAfterSeconds: Number.NaN });
+
+    expect(retryAfterSeconds(error)).toBeUndefined();
+    expect(refusalRetryDelay(0, error)).toBe(30_000);
+  });
+});

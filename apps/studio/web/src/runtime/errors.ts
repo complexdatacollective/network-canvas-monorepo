@@ -68,12 +68,20 @@ const refusalInstance = (error: unknown): RefusalInstance | undefined => {
   return undefined;
 };
 
+/** Every Retry-After becomes a timer, and `setTimeout` fires at once past 2^31-1 ms. */
+const RETRY_AFTER_CEILING_SECONDS = 60 * 60;
+
+const boundedSeconds = (value: number | undefined): number | undefined =>
+  value === undefined || Number.isNaN(value) || value < 0
+    ? undefined
+    : Math.min(value, RETRY_AFTER_CEILING_SECONDS);
+
 export const refusalOf = (error: unknown): Refusal => {
   const refusal = refusalInstance(error);
   if (refusal instanceof RateLimited) {
     return {
       kind: 'rateLimited',
-      retryAfterSeconds: refusal.retryAfterSeconds,
+      retryAfterSeconds: boundedSeconds(refusal.retryAfterSeconds),
     };
   }
   if (refusal instanceof Maintenance) return { kind: 'maintenance' };
@@ -87,8 +95,12 @@ export const refusalOf = (error: unknown): Refusal => {
 
 export const retryAfterSeconds = (error: unknown): number | undefined => {
   const refusal = refusalInstance(error);
-  if (refusal instanceof RateLimited) return refusal.retryAfterSeconds;
-  if (refusal instanceof Maintenance) return refusal.retryAfterSeconds;
+  if (refusal instanceof RateLimited) {
+    return boundedSeconds(refusal.retryAfterSeconds);
+  }
+  if (refusal instanceof Maintenance) {
+    return boundedSeconds(refusal.retryAfterSeconds);
+  }
   return undefined;
 };
 
@@ -99,6 +111,6 @@ export const parseRetryAfter = (
 ): number | undefined => {
   const value = raw?.trim();
   return value !== undefined && DELTA_SECONDS.test(value)
-    ? Number(value)
+    ? boundedSeconds(Number(value))
     : undefined;
 };
