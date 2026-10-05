@@ -1,6 +1,6 @@
 {
   "name": "All Interfaces (e2e)",
-  "description": "Schema-8 protocol covering all 19 interface types, used by the Architect e2e suite.",
+  "description": "Schema-9 protocol covering all 20 interface types, used by the Architect e2e suite.",
   "lastModified": "2026-07-13T00:00:00.000Z",
   "schemaVersion": 9,
   "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
@@ -727,6 +727,14 @@
           "variable": "location"
         }
       ]
+    },
+    {
+      "id": "language-chooser-1",
+      "type": "LanguageChooser",
+      "label": { "en-US": "Language Chooser" },
+      "introduction": {
+        "en-US": "Choose the language you would like to use for the rest of this interview."
+      }
     }
   ],
   "assetManifest": {

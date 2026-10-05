@@ -1,12 +1,27 @@
-import type { LocalizedString } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  type LocalizedString,
+  messageText,
+} from '@codaco/protocol-validation';
 
-// The page objects locate rows and controls by the text a researcher sees, so
-// a spec holding a schema `LocalizedString` reads the default-language
-// translation the fixtures author.
-export function englishText(value: LocalizedString): string {
-  const text = value.en;
-  if (text === undefined) {
-    throw new Error('expected an English translation in the fixture');
+/**
+ * The text Architect shows for a schema `LocalizedString`: the translation in
+ * the protocol's default language, as plain text rather than the stored ICU
+ * message. The page objects locate rows and controls by that text, and the
+ * fixtures do not share one default language (`emptyProtocol()` is `en`, the
+ * all-interfaces and sample protocols are `en-US`), so the protocol says which
+ * translation to read.
+ */
+export function defaultLanguageText(
+  protocol: Pick<CurrentProtocol, 'localization'>,
+  value: LocalizedString,
+): string {
+  const { defaultLocale } = protocol.localization;
+  const message = value[defaultLocale];
+  if (message === undefined) {
+    throw new Error(
+      `expected a ${defaultLocale} translation in ${JSON.stringify(value)}`,
+    );
   }
-  return text;
+  return messageText(message);
 }

@@ -29,10 +29,11 @@ for (const { kind, label } of [
     if (!stage || !variable || variable.type !== 'categorical') {
       throw new Error('Expected the Information stage and contactType fixture');
     }
+    const { defaultLocale } = protocol.localization;
     variable.options = [
-      { value: 'in_person', label: { en: 'Bravo' } },
-      { value: 'call', label: { en: 'Zulu' } },
-      { value: 'text', label: { en: label } },
+      { value: 'in_person', label: { [defaultLocale]: 'Bravo' } },
+      { value: 'call', label: { [defaultLocale]: 'Zulu' } },
+      { value: 'text', label: { [defaultLocale]: label } },
     ];
     stage.skipLogic = {
       action: 'SKIP',

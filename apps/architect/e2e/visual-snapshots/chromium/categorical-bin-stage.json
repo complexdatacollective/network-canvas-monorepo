@@ -1,10 +1,14 @@
 {
   "id": "id-1",
-  "label": "Group These",
+  "label": {
+    "en": "Group These"
+  },
   "prompts": [
     {
       "id": "id-2",
-      "text": "Group these",
+      "text": {
+        "en": "Group these"
+      },
       "variable": "id-3"
     }
   ],

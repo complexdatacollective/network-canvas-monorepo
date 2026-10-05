@@ -3,7 +3,7 @@ import { validateProtocol } from '@codaco/protocol-validation';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
-import { englishText } from '../helpers/localized-text.js';
+import { defaultLanguageText } from '../helpers/localized-text.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -201,7 +201,7 @@ test('discards an invalid stage draft before returning to the start screen', asy
   await seed(protocol, { name: 'Discard Invalid Draft', assets });
   await gotoProtocol(architectPage);
   await new Timeline(architectPage).openStage(
-    englishText(informationStage.label),
+    defaultLanguageText(protocol, informationStage.label),
   );
 
   // Clearing Information's required page heading makes the in-progress stage

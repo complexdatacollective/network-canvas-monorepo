@@ -13,13 +13,14 @@ import { StageEditor } from '../../pageobjects/stage-editor.js';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-type CodebookOption = { label: string; value: string };
+// An option's label is a schema `LocalizedString`, keyed by language.
+type CodebookOption = { label: Record<string, unknown>; value: string };
 type CodebookVariable = { type: string; options?: CodebookOption[] };
 
 function toCodebookOption(value: unknown): CodebookOption {
   if (
     isRecord(value) &&
-    typeof value.label === 'string' &&
+    isRecord(value.label) &&
     typeof value.value === 'string'
   ) {
     return { label: value.label, value: value.value };
@@ -142,9 +143,10 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   const protocol = await readProtocolJson(architectPage);
   const codebookVariable = findNodeCodebookVariable(protocol, prompt.variable);
   expect(codebookVariable.type).toBe('ordinal');
+  // Authored in `emptyProtocol()`'s only language, `en`.
   expect(codebookVariable.options?.map((option) => option.label)).toEqual([
-    'Low',
-    'High',
+    { en: 'Low' },
+    { en: 'High' },
   ]);
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
