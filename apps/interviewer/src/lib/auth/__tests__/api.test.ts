@@ -34,6 +34,8 @@ const SESSION_ROW: StoredSession = {
   exportedAt: null,
   currentStep: 0,
   network: { nodes: [], edges: [], ego: { _uid: 'ego-1', attributes: {} } },
+  localePreference: null,
+  locale: null,
 };
 
 beforeEach(() => {

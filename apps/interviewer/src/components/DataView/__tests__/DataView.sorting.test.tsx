@@ -65,6 +65,7 @@ const protocols: ProtocolWithCounts[] = ['Ñandú', 'Nube'].map((name) => ({
     name,
     description: '',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   },
@@ -79,6 +80,8 @@ const sessions: StoredSessionRow[] = protocols.map((protocol) => ({
   finishedAt: null,
   exportedAt: null,
   currentStep: 0,
+  localePreference: null,
+  locale: null,
 }));
 const reload = async () => {};
 

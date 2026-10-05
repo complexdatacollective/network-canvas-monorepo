@@ -42,6 +42,7 @@ const protocols: ProtocolWithCounts[] = ['Ñandú', 'Nube'].map((name) => ({
     name,
     description: '',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   },

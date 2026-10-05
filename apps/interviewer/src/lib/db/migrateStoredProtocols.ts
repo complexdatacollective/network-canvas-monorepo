@@ -31,11 +31,6 @@ import type { StoredProtocol } from './types';
 // tables. A row whose migration or validation fails never opens a transaction
 // at all, so it and its sessions are left untouched and the sweep continues.
 //
-// This is a no-op for every library in the field today: the only schema version
-// Interviewer has ever stored is the current one. It ships built and tested so
-// that the release which introduces a new schema version cannot orphan the
-// sessions of a protocol it migrates.
-//
 // Two properties of a migration are what make repointing sessions sufficient,
 // and protocol-validation's migration module states both as binding invariants:
 // a migration never adds, removes, or reorders stages (so a session's

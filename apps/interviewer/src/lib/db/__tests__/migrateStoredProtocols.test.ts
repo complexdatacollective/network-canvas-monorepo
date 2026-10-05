@@ -111,6 +111,8 @@ function storedSession(id: string, protocolHash: string): StoredSession {
     exportedAt: null,
     currentStep: 2,
     network,
+    localePreference: null,
+    locale: null,
   };
 }
 

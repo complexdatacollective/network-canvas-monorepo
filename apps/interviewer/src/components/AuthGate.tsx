@@ -42,8 +42,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // there is no vault and rows are plaintext). This gate is the point where
   // that becomes true and, being the thing that admits every route, is also the
   // last point before a session could resume against a stale protocol. Hold the
-  // same spinner the redirects use until the sweep settles; it finds nothing to
-  // do on every library in the field today.
+  // same spinner the redirects use until the sweep settles.
   const databaseReadable = kind === 'unlocked' || kind === 'unconfigured';
   const migrationPhase = useStoredProtocolMigration(databaseReadable);
   const awaitingMigration = databaseReadable && migrationPhase !== 'settled';

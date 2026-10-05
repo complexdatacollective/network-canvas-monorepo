@@ -56,6 +56,8 @@ function makeSession(id: string): StoredSession {
     network,
     stageMetadata: { '0': { automaticLayout: true } },
     isSynthetic: false,
+    localePreference: null,
+    locale: null,
   };
 }
 
@@ -70,6 +72,7 @@ const protocol: StoredProtocol = {
   protocol: {
     name: 'Study',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
   } as CurrentProtocol,

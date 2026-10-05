@@ -51,8 +51,8 @@ function informationStage(id: string): InformationStage {
   return {
     id,
     type: 'Information',
-    label: id,
-    title: id,
+    label: { en: id },
+    title: { en: id },
     items: [],
   };
 }

@@ -43,7 +43,7 @@ async function fetchExportInputs(
     finishTime: record.finishedAt ? new Date(record.finishedAt) : null,
     network: record.network,
     protocolHash: record.protocolHash,
-    locale: null,
+    locale: record.locale,
   }));
   const hashes = [...new Set(records.map((record) => record.protocolHash))];
   const stored = await getProtocolsByHashes(hashes);

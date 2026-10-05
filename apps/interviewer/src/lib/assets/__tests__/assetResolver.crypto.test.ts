@@ -21,6 +21,7 @@ function makeProtocol(
   return {
     name: 'P',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest,

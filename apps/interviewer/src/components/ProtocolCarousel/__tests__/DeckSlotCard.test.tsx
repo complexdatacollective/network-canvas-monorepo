@@ -17,6 +17,7 @@ function makeProtocol(name: string): ProtocolWithCounts {
     name,
     description: 'A description.',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };

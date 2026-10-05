@@ -102,6 +102,7 @@ const protocolDefinition: CurrentProtocol = {
   name: 'Test protocol',
   description: 'A test protocol.',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {},
   stages: [],
 };

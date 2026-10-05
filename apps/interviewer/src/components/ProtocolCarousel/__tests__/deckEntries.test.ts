@@ -11,6 +11,7 @@ function makeProtocol(name: string, hash = `hash-${name}`): ProtocolWithCounts {
     name,
     description: '',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };

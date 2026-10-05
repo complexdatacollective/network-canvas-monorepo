@@ -6,6 +6,7 @@ import {
   AppI18nProvider,
   AppMessage,
   useAppIntl,
+  useAppLocale,
 } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -17,6 +18,7 @@ import {
   createDebouncedSyncHandler,
   type FinishHandler,
   type InterviewPayload,
+  type ProtocolLocaleChangeHandler,
   type SessionPayload,
   Shell,
   type StepChangeHandler,
@@ -24,9 +26,13 @@ import {
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import {
+  getLocaleMetadata,
+  type LocalizationDeclaration,
+} from '@codaco/protocol-validation';
 import { InterviewComplete } from '~/components/InterviewComplete';
-import { useInterviewerLocale } from '~/i18n/InterviewerI18nProvider';
 import { interviewerLocales } from '~/i18n/locales';
+import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
 import { APP_VERSION } from '~/lib/appVersion';
@@ -40,6 +46,7 @@ import {
   getSession,
   getSettings,
   markSessionFinished,
+  setSessionLocale,
   updateSession,
   updateSettings,
 } from '~/lib/db/api';
@@ -142,11 +149,19 @@ type LoadState =
     };
 
 const discardSessionChanges: SyncHandler = () => Promise.resolve();
+const discardLocaleChange: ProtocolLocaleChangeHandler = () =>
+  Promise.resolve();
 const discardFinish: FinishHandler = () => Promise.resolve();
+// The per-session write chain in `setSessionLocale` keeps one interview's
+// locale writes in order.
+const saveLocaleChange: ProtocolLocaleChangeHandler = (id, change) =>
+  setSessionLocale(id, change);
 
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const intl = useAppIntl();
-  const { preference, setPreference } = useInterviewerLocale();
+  // Read once per mount: the interview matches these again each time it
+  // loads, until the participant chooses a language.
+  const [requestedLocales] = useState(browserLanguages);
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -273,7 +288,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       }
       const assets = await buildResolvedAssets(session.protocolHash);
       const payload: InterviewPayload = {
-        session: hydrateSession(session),
+        session: hydrateSession(session, protocol.protocol.localization),
         protocol: {
           ...protocol.protocol,
           id: protocol.id,
@@ -493,13 +508,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         </Alert>
       )}
       <Shell
-        requestedLocale={intl.locale}
-        localePreference={preference}
-        onLocaleChange={setPreference}
+        requestedLocales={requestedLocales}
         payload={state.payload}
         currentStep={currentStep}
         onStepChange={handleStepChange}
         onSync={readOnly ? discardSessionChanges : handleSync}
+        onProtocolLocaleChange={
+          readOnly ? discardLocaleChange : saveLocaleChange
+        }
         onFinish={readOnly ? discardFinish : handleFinish}
         onRequestAsset={state.resolver}
         analytics={analytics}
@@ -523,14 +539,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   );
 }
 
-// This queued host-specific message renders beneath Shell's package-owned
-// provider. Subscribe to the host preference explicitly so an already-open
-// confirmation follows changes without importing host catalogs into Shell.
+// This host-specific message renders inside the Shell's finish dialog, so it
+// takes the interview's interface language from the Shell's provider; the
+// interview never uses Interviewer's own language.
 function InterviewFinishDescription() {
-  const { locale } = useInterviewerLocale();
-  const direction =
-    interviewerLocales.find((entry) => entry.locale === locale)?.direction ??
-    'ltr';
+  const { locale, direction } = useAppLocale();
   return (
     <AppI18nProvider
       locale={locale}
@@ -545,7 +558,10 @@ function InterviewFinishDescription() {
   );
 }
 
-function hydrateSession(stored: StoredSession): SessionPayload {
+function hydrateSession(
+  stored: StoredSession,
+  localization: LocalizationDeclaration,
+): SessionPayload {
   return {
     id: stored.id,
     startTime: stored.startedAt,
@@ -555,5 +571,10 @@ function hydrateSession(stored: StoredSession): SessionPayload {
     network: stored.network,
     promptIndex: 0,
     stageMetadata: stored.stageMetadata,
+    localePreference: stored.localePreference,
+    locale: stored.locale,
+    localeOptions: localization.locales.map((locale) =>
+      getLocaleMetadata(locale),
+    ),
   };
 }
