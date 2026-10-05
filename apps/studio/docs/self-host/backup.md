@@ -66,8 +66,9 @@ this machine that a lost host would not take with it.
 
 The volume is `studio_garage-data` because the compose file names the project
 `studio`; `docker volume ls` confirms it. If you have
-[swapped in a managed bucket](./swap.md), that step is your provider's mirroring
-or versioning instead, and there is no volume to copy.
+[swapped in a managed bucket or Azure Blob Storage](./swap.md), that step is
+your provider's mirroring or versioning instead, and there is no volume to
+copy.
 
 **Take it while the instance is closed** where you can — step 1 of
 [the upgrade sequence](./upgrade.md) exists partly for this. A scheduled backup

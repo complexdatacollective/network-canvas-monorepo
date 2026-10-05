@@ -139,7 +139,37 @@ Each of these replaces one service in the stack. The swap itself is in
 
 ### An object store
 
-Studio uses four S3 operations and no others:
+Studio talks to its object store through one small interface, with one
+implementation per kind of store. There are two:
+
+- **Any S3-compatible store** — `STUDIO_OBJECT_STORE=s3`, which is also what
+  leaving it unset means. Garage, Cloudflare R2, MinIO and AWS S3 all work.
+  Google Cloud Storage works through its S3-interoperable XML API, with an
+  HMAC key as the access key pair and `https://storage.googleapis.com` as
+  `S3_ENDPOINT`; it is not one of the stores this is run against.
+- **Azure Blob Storage** — `STUDIO_OBJECT_STORE=azure-blob`. See
+  [the Azure swap](./swap.md#azure-blob-storage).
+
+Whichever you choose, this is what Studio needs of it — and all it needs:
+
+- **Content-addressed writes.** Every asset is stored once, under
+  `assets/<sha256 of its bytes>`. Uploading the same bytes again finds the
+  object already there and leaves it alone, media type included; nothing is
+  ever rewritten in place.
+- **Streaming reads**, with the stored content type and length, for
+  `/storage/:hash`. A missing object must come back as "not found", which
+  Studio answers as a 404, rather than as an error.
+- **A probe of the bucket or container**, which `/readyz` reports as
+  `objectStore`. When it is unreachable, missing, or refuses the credentials,
+  readiness names the object store as the failing check.
+- **The bucket or container already exists.** Studio never creates one.
+
+No listing, no deletion, no lifecycle rules, no bucket policy API, no
+presigning, and no public access: assets are served through Studio.
+
+#### S3-compatible stores
+
+Four S3 operations and no others:
 
 | Operation    | Used for                                                  |
 | ------------ | --------------------------------------------------------- |
@@ -148,8 +178,7 @@ Studio uses four S3 operations and no others:
 | `PutObject`  | Storing an asset's bytes                                  |
 | `GetObject`  | Serving them back on `/storage/:hash`                     |
 
-No multipart upload, no listing, no lifecycle rules, no bucket policy API, no
-presigning. Two further requirements:
+No multipart upload. Two further requirements:
 
 - **Path-style addressing** (`<endpoint>/<bucket>/<key>`). `S3_ENDPOINT` is the
   service address, not a per-bucket hostname.
@@ -161,8 +190,23 @@ The five `S3_*` variables are all-or-nothing: a partial configuration fails at
 boot. With none of them set, asset routes refuse with 503 and readiness leaves
 the object store out rather than reporting it failed.
 
-Garage and Cloudflare R2 are the two stores this is run against — Garage in the
-stack and in development, R2 by the managed platform.
+#### Azure Blob Storage
+
+- **One container**, named by `AZURE_STORAGE_CONTAINER`.
+- **A managed identity holding Storage Blob Data Contributor on that
+  container**, with `AZURE_STORAGE_ACCOUNT_URL` naming the account — no
+  account keys. `AZURE_CLIENT_ID` picks a user-assigned identity. A host outside
+  Azure uses `AZURE_STORAGE_CONNECTION_STRING` instead of the account URL.
+- **No `S3_*` variable set alongside it.** A mixed configuration is refused at
+  boot, as is one missing the container or naming both an account URL and a
+  connection string.
+
+#### What these are run against
+
+Garage, in the stack and in development; Cloudflare R2, by the managed
+platform; and Azurite, Microsoft's Blob Storage emulator, in development and
+CI. Every implementation passes the same contract tests, so the two kinds of
+store cannot drift apart.
 
 ### A rate-limit store
 

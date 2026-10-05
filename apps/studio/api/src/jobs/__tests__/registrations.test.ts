@@ -59,7 +59,7 @@ function workerEnv(
     port: 3000,
     host: '127.0.0.1',
     workerHealthPort: 3001,
-    s3: undefined,
+    objectStore: undefined,
     db: dbEnv,
     auth:
       'auth' in overrides
