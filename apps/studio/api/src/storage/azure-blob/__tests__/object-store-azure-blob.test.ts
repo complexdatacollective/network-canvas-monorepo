@@ -35,13 +35,14 @@ const storeFor = (name: string) =>
   });
 
 async function subject(): Promise<ContractSubject | undefined> {
-  const created = await Promise.race([
-    container.createIfNotExists().then(
+  // Aborted at the deadline, so an Azurite that accepts and never answers
+  // leaves no request holding the run open.
+  const created = await container
+    .createIfNotExists({ abortSignal: AbortSignal.timeout(3000) })
+    .then(
       () => true,
       () => false,
-    ),
-    new Promise<false>((resolve) => setTimeout(() => resolve(false), 3000)),
-  ]);
+    );
   const store = storeFor(container.containerName);
   if (!created || !(await reachable(store))) {
     return unavailable(`no Azurite answers on port ${DEV.azuritePort}`);
