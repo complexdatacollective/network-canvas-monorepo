@@ -65,6 +65,64 @@ export function collectSourceFiles(dir: string): string[] {
     .toSorted();
 }
 
+const argumentNames = (
+  elements: readonly MessageFormatElement[],
+  into: Set<string> = new Set(),
+): Set<string> => {
+  for (const element of elements) {
+    switch (element.type) {
+      case TYPE.argument:
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+        into.add(element.value);
+        break;
+      case TYPE.select:
+      case TYPE.plural:
+        into.add(element.value);
+        for (const option of Object.values(element.options)) {
+          argumentNames(option.value, into);
+        }
+        break;
+      case TYPE.tag:
+        argumentNames(element.children, into);
+        break;
+      default:
+        break;
+    }
+  }
+  return into;
+};
+
+const argumentsOnlyInOneArm = (
+  elements: readonly MessageFormatElement[],
+): string[] => {
+  const found: string[] = [];
+  for (const element of elements) {
+    if (element.type === TYPE.plural) {
+      const { one, ...rest } = element.options;
+      if (one !== undefined) {
+        const elsewhere = new Set([element.value]);
+        for (const option of Object.values(rest)) {
+          argumentNames(option.value, elsewhere);
+        }
+        for (const name of argumentNames(one.value)) {
+          if (!elsewhere.has(name)) found.push(name);
+        }
+      }
+    }
+    if (element.type === TYPE.select || element.type === TYPE.plural) {
+      for (const option of Object.values(element.options)) {
+        found.push(...argumentsOnlyInOneArm(option.value));
+      }
+    }
+    if (element.type === TYPE.tag) {
+      found.push(...argumentsOnlyInOneArm(element.children));
+    }
+  }
+  return found;
+};
+
 /**
  * Programmatic FormatJS extraction with the package's conventions enforced:
  * explicit dot-namespaced ids, a mandatory prose description on every message,
@@ -162,6 +220,12 @@ export async function extractMessages(
     if (typeof description !== 'string') {
       throw new Error(
         `extractMessages: "${id}" has a non-string description; write it as prose for translators`,
+      );
+    }
+    const oneArmOnly = argumentsOnlyInOneArm(parse(defaultMessage));
+    if (oneArmOnly.length > 0) {
+      throw new Error(
+        `extractMessages: "${id}" uses {${oneArmOnly.join('}, {')}} only in a plural "one" arm; write it as "=1" so languages without a "one" category still show it`,
       );
     }
     catalog[id] = { defaultMessage, description };

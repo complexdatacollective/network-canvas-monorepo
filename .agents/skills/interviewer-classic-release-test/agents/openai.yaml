@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Interviewer Classic Release Test'
+  short_description: 'Build Interviewer Classic and drive it on desktop, iOS and Android to check release readiness'
+  default_prompt: 'Use $interviewer-classic-release-test to build Interviewer Classic from this checkout and report whether the release is ready.'

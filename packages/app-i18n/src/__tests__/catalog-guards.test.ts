@@ -591,6 +591,41 @@ export const messages = defineMessages({ blank: { ${descriptor} } });
     }
   });
 
+  it('rejects an argument that only a plural one arm can show', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-onearm-'));
+    writeFileSync(
+      join(dir, 'migrated.ts'),
+      `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({
+  migrated: {
+    id: 'demo.migrated',
+    defaultMessage: '{count, plural, one {{name} was migrated.} other {# were migrated.}}',
+    description: 'Names the protocol when only one was migrated.',
+  },
+});
+`,
+    );
+    await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+      /"demo\.migrated" uses \{name\} only in a plural "one" arm/,
+    );
+
+    writeFileSync(
+      join(dir, 'migrated.ts'),
+      `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({
+  migrated: {
+    id: 'demo.migrated',
+    defaultMessage: '{count, plural, =1 {{name} was migrated.} one {# was migrated.} other {# were migrated.}}',
+    description: 'Names the protocol when only one was migrated.',
+  },
+});
+`,
+    );
+    await expect(
+      extractMessages(collectSourceFiles(dir)),
+    ).resolves.toHaveProperty('demo.migrated');
+  });
+
   it('rejects FormatJS’s structured description form', async () => {
     // The extractor writes the object straight through, and en.json would then
     // fail its own freshness check on every run: two parses of the same object

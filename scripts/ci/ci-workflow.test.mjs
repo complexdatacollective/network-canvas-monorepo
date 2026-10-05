@@ -849,6 +849,69 @@ test('every CI turbo invocation is capped at one task, job-wide', () => {
   );
 });
 
+test('turbo runs at the one version the root package.json pins', () => {
+  // A step that fetches its own turbo drifts from the installed one: the
+  // Studio image pruned with 2.10.4, change detection listed packages with
+  // 2.9.6 and the Netlify deploy-preview ignore commands queried with 2.10.4,
+  // so a turbo.json key that only the installed 2.11.5 knew failed the Studio
+  // stack build, silently emptied change detection, and built every preview
+  // the ignore commands should have skipped.
+  const pinned = rootPackage.devDependencies.turbo;
+  assert.match(
+    pinned,
+    /^\d+\.\d+\.\d+$/,
+    'root package.json pins turbo exactly, so a fetch of that version matches the lockfile',
+  );
+
+  const actionDir = new URL('../../.github/actions/', import.meta.url);
+  const dockerfile = new URL('../../apps/studio/Dockerfile', import.meta.url);
+  const appsDir = new URL('../../apps/', import.meta.url);
+  const netlifyConfigs = readdirSync(appsDir)
+    .map((app) => new URL(`${app}/netlify.toml`, appsDir))
+    .filter((url) => existsSync(url));
+  const sources = [
+    ...readdirSync(WORKFLOW_DIR).map((file) => new URL(file, WORKFLOW_DIR)),
+    ...readdirSync(actionDir, { recursive: true })
+      .filter((file) => file.endsWith('.yml'))
+      .map((file) => new URL(file, actionDir)),
+    dockerfile,
+    ...netlifyConfigs,
+  ];
+  for (const url of sources) {
+    assert.doesNotMatch(
+      readFileSync(url, 'utf8'),
+      /(?<![\w-])turbo@\d/,
+      `${url.pathname} hard-codes a turbo version instead of reading the root pin`,
+    );
+  }
+
+  // The callers without an install must read the pin, not drop turbo.
+  const readsPin = /require\('\.\/package\.json'\)\.devDependencies\.turbo/;
+  assert.match(readFileSync(dockerfile, 'utf8'), readsPin);
+  assert.match(readFileSync(dockerfile, 'utf8'), /dlx "turbo@\$\(node -p/);
+  assert.match(job('detect'), readsPin);
+  assert.match(job('detect'), /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
+
+  // Each ignore command has already changed to the repository root, so
+  // ./package.json is the root manifest.
+  let ignoreCommands = 0;
+  for (const url of netlifyConfigs) {
+    const source = readFileSync(url, 'utf8');
+    if (!source.includes('query affected')) continue;
+    assert.match(
+      source,
+      /npx --yes \\"turbo@\$\(node -p \\"require\('\.\/package\.json'\)\.devDependencies\.turbo\\"\)\\" query affected/,
+      `${url.pathname} queries turbo without reading the root pin`,
+    );
+    ignoreCommands += 1;
+  }
+  // A move of the Netlify configs must not silently empty this loop.
+  assert.ok(
+    ignoreCommands >= 5,
+    `expected the five Netlify ignore commands, saw ${ignoreCommands}`,
+  );
+});
+
 test('release job prunes ignored-lane changesets before changesets/action', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');

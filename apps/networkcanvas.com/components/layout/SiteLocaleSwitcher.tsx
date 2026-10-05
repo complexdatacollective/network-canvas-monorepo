@@ -26,6 +26,7 @@ export function SiteLocaleSwitcher() {
       options={siteAppLocales}
       value={preference}
       automaticLocale={automaticLocale}
+      searchable
       onChange={(next) => {
         if (next !== null && !isLocale(next)) return;
         switchLocale(next, pathname);

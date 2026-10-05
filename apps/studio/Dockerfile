@@ -45,11 +45,13 @@
 FROM node:24-slim AS base
 RUN npm install --global pnpm@11.20.0
 
-# Prune the monorepo to the subset the two Studio deployables need.
+# Prune the monorepo to the subset the two Studio deployables need. turbo runs
+# at the exact version the root package.json pins, so the prune reads
+# turbo.json with the same turbo every other caller uses.
 FROM base AS pruner
 WORKDIR /repo
 COPY . .
-RUN pnpm dlx turbo@2.10.4 prune @codaco/studio-api @codaco/studio-web --docker
+RUN pnpm dlx "turbo@$(node -p "require('./package.json').devDependencies.turbo")" prune @codaco/studio-api @codaco/studio-web --docker
 
 # Install with the pruned lockfile, then build both halves and assemble a
 # production-only deployment of the server (package.json + prod node_modules).

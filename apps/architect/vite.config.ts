@@ -379,6 +379,12 @@ export default defineConfig(({ mode }) => {
           main: resolve(rootDir, 'index.html'),
           preview: resolve(rootDir, 'preview/index.html'),
         },
+        output: {
+          manualChunks(id: string) {
+            const locale = /\/src\/locales\/([A-Za-z-]+)\.json$/.exec(id)?.[1];
+            return locale ? `locale-${locale}` : undefined;
+          },
+        },
       },
     },
   };

@@ -1,0 +1,801 @@
+{
+  "ThemeTranslations": {
+    "label": "Kleurenthema",
+    "triggerLabel": "Kleurenthema: {theme}",
+    "light": "Licht",
+    "dark": "Donker",
+    "system": "Systeem"
+  },
+  "Metadata": {
+    "siteTitle": "Network Canvas",
+    "siteDescription": "Network Canvas biedt gratis opensourcesoftware voor het in kaart brengen van netwerken, ontworpen rond de behoeften van zowel onderzoekers als hun deelnemers.",
+    "getStartedTitle": "Aan de slag",
+    "getStartedDescription": "Kies de juiste Network Canvas-app om een protocol te ontwerpen of netwerkgegevens te verzamelen."
+  },
+  "Hero": {
+    "headline": "Complexe netwerkgegevens eenvoudiger verzamelen.",
+    "description": "Network Canvas biedt <strong>gratis opensourcesoftware</strong> voor het in kaart brengen van netwerken, ontworpen rond de behoeften van zowel onderzoekers als hun deelnemers.",
+    "getStarted": "Aan de slag",
+    "keepScrolling": "of scrol verder voor meer informatie"
+  },
+  "News": {
+    "label": "Laatste nieuws:",
+    "fullStory": "[Volledig bericht]"
+  },
+  "Tools": {
+    "heading": "Een reeks tools die je onderzoek makkelijker maken",
+    "introduction": "We bieden een complete workflow van begin tot eind voor netwerkonderzoek, met apps voor het ontwerpen en het afnemen van interviews. Met deze tools kunnen onderzoekers eenvoudig interviews ontwerpen en netwerkgegevens vastleggen en exporteren.",
+    "architect": {
+      "description": "Een browsergebaseerde tool om Network Canvas-interviews visueel te ontwerpen. Met Architect kunnen inhoudelijke experts zich richten op het ontwerp en de uitvoering van hun onderzoek, zonder ingewikkelde nieuwe technologie te hoeven leren.",
+      "action": "Architect openen",
+      "screenshotAlt": "Protocoleditor van Architect met een interviewontwerp"
+    },
+    "interviewer": {
+      "description": "Een browsergebaseerde app om Network Canvas-interviews in het veld af te nemen. Interviewer biedt minimalistische interfaces, gericht op de deelnemer, voor alle taken rond gegevensverzameling bij interviews over persoonlijke netwerken.",
+      "action": "Interviewer openen",
+      "screenshotAlt": "Startscherm van Interviewer met de beschikbare Network Canvas-protocollen"
+    },
+    "fresco": {
+      "description": "Network Canvas-interviews op het web! Met Fresco kunnen onderzoekers Network Canvas-interviews afnemen in een webbrowser.",
+      "action": "Fresco-sandbox uitproberen",
+      "deployAction": "Fresco installeren",
+      "screenshotAlt": "Fresco-dashboard met het totale aantal protocollen, deelnemers en interviews"
+    }
+  },
+  "Video": {
+    "heading": "Meer informatie",
+    "description": "Ons doel is een reeks tools te bouwen voor de onderzoeksgemeenschap: van hoge kwaliteit, gratis, veilig voor onderzoek en gemaakt om lang mee te gaan. Bekijk onze projectvideo om meer te weten te komen over waarom we Network Canvas hebben gemaakt, en bezoek ons <channel>YouTube-kanaal</channel> voor meer video’s.",
+    "channel": "YouTube-kanaal",
+    "title": "Wat is Network Canvas?",
+    "watchLabel": "Video bekijken: Wat is Network Canvas?"
+  },
+  "Principles": {
+    "heading": "Ontwerpprincipes",
+    "introduction": "Aan alle Network Canvas-software liggen vijf ontwerpprincipes ten grondslag. Deze principes zijn gebaseerd op onze observaties en ervaringen met de problemen waar onderzoekers tegenaan lopen die onderzoek naar persoonlijke netwerken willen opzetten en uitvoeren.",
+    "ontologicalFlexibility": {
+      "title": "Ontologische flexibiliteit",
+      "paragraph1": "De software is ontworpen met een fundamentele ontologische flexibiliteit. Eenvoudig gezegd betekent dit dat we niets veronderstellen over de aard van je interview.",
+      "paragraph2": "Onderzoekers bepalen zelf de knooppunten en relaties van hun interviews, de attributen daarvan, de volgorde van de taken voor gegevensverzameling en de manier waarop deze taken aan de deelnemer worden uitgelegd."
+    },
+    "interviewerAssisted": {
+      "title": "Face-to-face en begeleid door een interviewer",
+      "paragraph1": "We zijn ervan overtuigd dat de aanwezigheid van een getrainde interviewer die de gegevensverzameling kan begeleiden, leidt tot gegevens van hogere kwaliteit.",
+      "paragraph2": "De Network Canvas-tools zijn daarom ontworpen vanuit de veronderstelling dat interviews plaatsvinden in aanwezigheid van een interviewer, op een apparaat dat de interviewer beheert, en dat de interviewer specifiek is getraind in het begeleiden van het interviewproces."
+    },
+    "emphasisOnDesign": {
+      "title": "Nadruk op ontwerp",
+      "paragraph1": "Onze software is vanaf de basis ontworpen om voor deelnemers zo visueel aantrekkelijk en zo weinig belastend mogelijk te zijn.",
+      "paragraph2": "We nemen ontwerp uiterst serieus en hebben geput uit HCI-literatuur en uit publicaties uit de netwerkanalysegemeenschap om een interviewervaring te creëren die voor deelnemers eenvoudig te begrijpen is, met duidelijke, consistente en tactiele interacties die de gegevensverzameling sturen."
+    },
+    "endToEndWorkflow": {
+      "title": "Workflow van begin tot eind",
+      "paragraph1": "Om het verzamelen van complexe structurele gegevens te vereenvoudigen, is niet alleen een interviewtool nodig, maar ook een tool om deze interviews te ontwerpen. Samen bieden deze tools een workflow van begin tot eind die de kosten (zowel materieel als technisch) van het verzamelen van netwerkgegevens verlaagt.",
+      "paragraph2": "Belangrijk is dat je voor onze tools geen uitgebreide technische kennis nodig hebt. Ze stellen onderzoekers juist in staat zich te richten op het inzetten van hun inhoudelijke expertise om een effectieve interviewervaring te ontwerpen."
+    },
+    "openSourceCommunity": {
+      "title": "Opensourceontwikkeling, gedragen door de community",
+      "paragraph1": "Essentieel om dit werk te kunnen voortzetten, zijn input van en samenwerking met de community, zowel binnen als buiten de academische wereld. Daarom zijn de Network Canvas-tools gratis te gebruiken en volledig open source (uitgebracht onder de GPL versie 3).",
+      "paragraph2": "We hebben een programma voor communitygedreven ontwikkeling opgezet en moedigen geïnteresseerde derden graag aan om functies te ontwikkelen of op een andere manier bij te dragen."
+    }
+  },
+  "Grants": {
+    "heading": "Subsidies waarin Network Canvas wordt gebruikt",
+    "introduction": "We zijn er trots op dat Network Canvas actief wordt gebruikt in een aantal federaal gefinancierde subsidieprojecten in de Verenigde Staten, binnen uiteenlopende onderzoekscontexten, instellingen en financiers.",
+    "previous": "Vorige subsidie",
+    "next": "Volgende subsidie",
+    "show": "Subsidie {number} tonen"
+  },
+  "Publications": {
+    "heading": "Recente publicaties met Network Canvas",
+    "carouselLabel": "Carrousel met recente publicaties",
+    "introduction": "Hieronder vind je de 16 meest recente publicaties waarin Network Canvas is gebruikt. Bekijk de <all>volledige lijst met publicaties</all>.",
+    "submission": "Wil je jouw publicatie hier laten zien? Laat het ons weten in de <thread>discussie</thread> op onze communitysite.",
+    "thread": "discussie"
+  },
+  "PublicationsPage": {
+    "metadata": {
+      "title": "Publicaties",
+      "description": "Onderzoek en wetenschappelijk werk waarin de Network Canvas-tools worden gebruikt om gegevens over sociale netwerken te verzamelen en te bestuderen."
+    },
+    "heading": "Publicaties met Network Canvas",
+    "citing": "Lees ons <article>documentatieartikel</article> voor richtlijnen over het citeren van Network Canvas.",
+    "submission": "Wil je jouw publicatie hier laten zien? Laat het ons weten in de <thread>discussie</thread> op onze communitysite."
+  },
+  "Team": {
+    "heading": "Kernteam",
+    "introduction": "Ons projectteam bestaat uit mensen uit uiteenlopende disciplines en specialisaties."
+  },
+  "ScientificAdvisors": {
+    "heading": "Wetenschappelijke adviseurs"
+  },
+  "Institutions": {
+    "heading": "Instellingen",
+    "paragraph1": "De software wordt ontwikkeld door een team van onderzoekers en ontwikkelaars van Northwestern University en de Universiteit van Oxford, samen met een aantal externe ontwikkelaars die we inhuren. We zijn dankbaar voor de <prior>eerdere</prior> en <ongoing>lopende</ongoing> financiering van de National Institutes of Health die dit werk mogelijk maakt.",
+    "paragraph2": "Het intellectuele eigendom en het auteursrecht op de software worden beheerd door een geregistreerde non-profitorganisatie, het Complex Data Collective, die bestaat uit de kernmedewerkers van het project.",
+    "prior": "eerdere",
+    "ongoing": "lopende"
+  },
+  "WhatNext": {
+    "heading": "Wat nu?",
+    "documentation": {
+      "title": "Wil je meer weten?",
+      "body": "We hebben uitgebreide documentatie gemaakt over alle aspecten van het opzetten, uitrollen en beheren van een onderzoek met Network Canvas.",
+      "action": "Documentatiesite bezoeken"
+    },
+    "community": {
+      "title": "Hulp nodig?",
+      "body": "We hebben onlangs ook een communitywebsite gelanceerd, waar je vragen kunt stellen, bugs kunt melden, je werk kunt delen en hulp kunt krijgen van andere onderzoekers.",
+      "action": "Communitywebsite bezoeken"
+    },
+    "keepInTouch": {
+      "title": "Blijf op de hoogte",
+      "body": "Wil je op de hoogte blijven van het project en direct horen over evenementen en nieuwe releases? Meld je dan aan voor onze mailinglijst en volg ons op Twitter. We gaan zorgvuldig met je inbox om en gebruiken deze lijst alleen voor belangrijke aankondigingen."
+    },
+    "collaboration": {
+      "title": "Wil je samenwerken?",
+      "body": "Heb je interesse in een formele academische samenwerking of een samenwerking op consultancybasis? Lees dan ons documentatieartikel over dit onderwerp. Helaas kunnen we geen onbetaalde consultancy aanbieden, omdat ons kleine team beperkte capaciteit heeft.",
+      "action": "Samenwerkingsmogelijkheden bekijken"
+    }
+  },
+  "MailingList": {
+    "placeholder": "email@networkcanvas.com",
+    "emailLabel": "E-mailadres",
+    "submit": "Aanmelden",
+    "success": "Bedankt! Je hoort van ons."
+  },
+  "Footer": {
+    "terms": "Gebruiksvoorwaarden",
+    "privacy": "Privacybeleid",
+    "copyright": "Copyright Complex Data Collective 2016-{year}",
+    "youtube": "YouTube",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "ProtocolGallery": {
+    "metadata": {
+      "title": "Protocolgalerij",
+      "description": "Ontdek onderzoeksprotocollen die met Network Canvas zijn gemaakt, inclusief samenvattingen van onderzoeken, codeboeken en protocolbestanden die je direct kunt gebruiken."
+    },
+    "intro": {
+      "heading": "Protocolgalerij",
+      "introduction": "Ontdek protocollen die zijn gedeeld door onderzoekers die Network Canvas gebruiken. Bekijk hoe elk onderzoek is opgezet, download het codeboek en het protocol, of bekijk een voorbeeld van het interview in je browser.",
+      "featured": "Uitgelicht protocol"
+    },
+    "collection": {
+      "heading": "Ontdek de collectie",
+      "searchLabel": "Protocollen zoeken",
+      "searchPlaceholder": "Protocollen zoeken",
+      "clearSearch": "Zoekopdracht wissen",
+      "clearFilters": "Alles wissen",
+      "resultsOfTotal": "{count} van {total, plural, =1 {# protocol} other {# protocollen}}",
+      "filterLabel": "Protocollen filteren",
+      "facets": {
+        "fields": "Vakgebied",
+        "edgeGeneration": "Relatiegeneratie"
+      },
+      "sortLabel": "Sorteren op",
+      "sortOptions": {
+        "newest": "Meest recent",
+        "oldest": "Oudste eerst",
+        "titleAsc": "Titel A–Z",
+        "titleDesc": "Titel Z–A"
+      },
+      "emptyHeading": "Geen protocollen gevonden",
+      "emptyDescription": "Pas je zoekopdracht of filter aan.",
+      "openProtocol": "{title} bekijken",
+      "viewDetails": "Bekijken"
+    },
+    "card": {
+      "edges": "Relaties",
+      "fields": "Vakgebieden",
+      "added": "Toegevoegd op {date}"
+    },
+    "stages": {
+      "heading": "Fasevolgorde",
+      "waveTabs": "Meetgolven",
+      "count": "{count, plural, =1 {# fase} other {# fasen}}",
+      "waves": "{count, plural, =1 {# meetgolf} other {# meetgolven}}",
+      "edgeStageCounts": {
+        "Sociogram": "{count, plural, =1 {# sociogram} other {# sociogrammen}}",
+        "DyadCensus": "{count, plural, =1 {# dyadencensus} other {# dyadencensussen}}",
+        "TieStrengthCensus": "{count, plural, =1 {# relatiesterktecensus} other {# relatiesterktecensussen}}",
+        "OneToManyDyadCensus": "{count, plural, =1 {# een-op-veel-dyadencensus} other {# een-op-veel-dyadencensussen}}",
+        "NetworkComposer": "{count, plural, =1 {# netwerkbouwer} other {# netwerkbouwers}}"
+      }
+    },
+    "stageTypes": {
+      "AlterEdgeForm": "Formulier per relatie",
+      "AlterForm": "Formulier per alter",
+      "Anonymisation": "Interface voor anonimisering",
+      "CategoricalBin": "Categorische indeling",
+      "DyadCensus": "Dyadencensus",
+      "EgoForm": "Egoformulier",
+      "FamilyPedigree": "Familiestamboom",
+      "Geospatial": "Interface voor geografische gegevens",
+      "Information": "Informatie",
+      "NameGenerator": "Naamgenerator (met formulieren)",
+      "NameGeneratorQuickAdd": "Naamgenerator (snel toevoegen)",
+      "NameGeneratorRoster": "Naamgenerator voor gegevens uit een namenlijst",
+      "Narrative": "Narratief",
+      "NarrativePedigree": "Narratieve stamboom",
+      "NetworkComposer": "Netwerkbouwer",
+      "OneToManyDyadCensus": "Een-op-veel-dyadencensus",
+      "OrdinalBin": "Ordinale indeling",
+      "Sociogram": "Sociogram",
+      "TieStrengthCensus": "Relatiesterktecensus"
+    },
+    "detail": {
+      "back": "Terug naar de galerij",
+      "citation": "Deze publicatie citeren",
+      "demonstrates": "Wat dit protocol laat zien",
+      "details": "Details van het onderzoek",
+      "studyPi": "Hoofdonderzoeker",
+      "grantNumber": "Subsidienummer",
+      "contact": "Contactpersoon voor het protocol",
+      "methods": "Relatiegeneratie",
+      "fields": "Vakgebied(en)",
+      "population": "Populatie",
+      "usesRosters": "Gebruikt namenlijsten",
+      "yes": "Ja",
+      "no": "Nee",
+      "clinicalTrials": "Trialregistratie",
+      "publication": "DOI / publicatie",
+      "dateAdded": "Toegevoegd op",
+      "viewPublication": "Publicatie bekijken",
+      "wave": "Meetgolf {wave}",
+      "preview": "Voorbeeld van het protocol bekijken",
+      "downloadProtocol": "Protocol downloaden",
+      "viewCodebook": "Overzicht van het codeboek"
+    },
+    "preview": {
+      "metadata": {
+        "title": "Voorbeeld: {name}"
+      },
+      "loading": "Het voorbeeld wordt voorbereid…",
+      "finishConfirmation": "Dit is een voorbeeld: er wordt niets opgeslagen. Door te voltooien beëindig je deze doorloop van het protocol; daarna kun je opnieuw beginnen.",
+      "finishedHeading": "Voorbeeld voltooid",
+      "finishedDescription": "Het interview is voltooid, net zoals dat bij een deelnemer zou gaan. Er is niets opgeslagen.",
+      "restart": "Voorbeeld opnieuw starten",
+      "backToProtocol": "Terug naar het protocol",
+      "errorHeading": "Van dit protocol kan geen voorbeeld worden getoond",
+      "errors": {
+        "unavailable": "Het protocolbestand kan niet worden gedownload. Controleer je verbinding en probeer het opnieuw.",
+        "unreadable": "Het protocolbestand kan niet worden geopend. Mogelijk is het beschadigd.",
+        "unsupported-version": "Dit protocol gebruikt een schemaversie die de interviewengine niet kan uitvoeren.",
+        "invalid": "Het protocol heeft de validatie niet doorstaan, waardoor de interviewengine het niet kan uitvoeren."
+      },
+      "retry": "Opnieuw proberen"
+    },
+    "submit": {
+      "heading": "Dien je protocol in",
+      "description": "Stuur ons je .netcanvas-bestand, codeboek en literatuurverwijzing, dan beoordelen we het voor de galerij.",
+      "action": "Je protocol e-mailen"
+    }
+  },
+  "GetStarted": {
+    "metadata": {
+      "title": "Aan de slag",
+      "description": "Kies de juiste Network Canvas-app om een protocol te ontwerpen of netwerkgegevens te verzamelen."
+    },
+    "intro": {
+      "heading": "Kies waar je begint",
+      "introduction": "Klik om te beginnen op de kaart die het best beschrijft in welke fase je onderzoek zich bevindt.",
+      "stages": {
+        "design": {
+          "label": "Ontwerpfase",
+          "title": "Een interviewprotocol ontwerpen of maken",
+          "accessibleName": "Een interviewprotocol ontwerpen of maken"
+        },
+        "collect": {
+          "label": "Fase van gegevensverzameling",
+          "title": "Gegevens verzamelen met Network Canvas",
+          "accessibleName": "Gegevens verzamelen met Network Canvas"
+        },
+        "learn": {
+          "label": "Network Canvas verkennen",
+          "title": "Meer weten over het project",
+          "accessibleName": "Meer weten over het project – opent de documentatie in een nieuw tabblad"
+        }
+      }
+    },
+    "sections": {
+      "design": {
+        "label": "Ontwerpfase",
+        "heading": "Een protocol ontwerpen of maken",
+        "description": "Ontwerp een nieuw browsergebaseerd onderzoek in Architect, of zet een bestaand onderzoek voort in Architect Classic."
+      },
+      "collect": {
+        "label": "Fase van gegevensverzameling",
+        "heading": "Gegevens verzamelen",
+        "description": "Kies Interviewer, Fresco of Interviewer Classic, afhankelijk van hoe en waar je gegevens wilt verzamelen."
+      }
+    },
+    "shared": {
+      "bestFor": "Ideaal voor",
+      "downloadVersion": "Versie {version} downloaden",
+      "platformAccessibleName": "{platform} voor {app}",
+      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 8, met alle nieuwste functies. Het omzetten van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
+      "schemaVersionLink": "Meer over schemaversies"
+    },
+    "platforms": {
+      "appleSilicon": "Apple Silicon",
+      "appleIntel": "Apple Intel",
+      "windows": "Windows",
+      "linux": "Linux",
+      "android": "Android"
+    },
+    "apps": {
+      "architect": {
+        "status": "Aanbevolen voor nieuwe onderzoeken",
+        "description": "Ontwerp protocollen in je browser zonder iets te installeren, met alle nieuwste functies van Network Canvas.",
+        "bestFor": {
+          "newStudy": "Een nieuw onderzoek starten",
+          "latestFeatures": "Protocollen ontwerpen met alle nieuwste functies",
+          "interviewerOrFresco": "Gegevens verzamelen met de nieuwe Interviewer of met Fresco",
+          "upgradeClassic": "Een protocol uit Architect Classic bijwerken om de nieuwste functies te gebruiken"
+        },
+        "actions": {
+          "open": "Architect openen"
+        }
+      },
+      "interviewer": {
+        "status": "Face-to-face · Aanbevolen",
+        "description": "Verzamel gegevens met begeleiding van een interviewer, op een apparaat dat je zelf beheert, met protocollen die alle nieuwste functies van Network Canvas gebruiken.",
+        "bestFor": {
+          "inPerson": "Interviews die face-to-face worden afgenomen",
+          "guided": "Een getrainde interviewer die de deelnemer begeleidt",
+          "researcherDevice": "Gegevensverzameling op een apparaat dat de onderzoeker beheert",
+          "latestFeatures": "Onderzoeken met protocollen die alle nieuwste functies gebruiken"
+        },
+        "actions": {
+          "open": "Interviewer openen"
+        }
+      },
+      "fresco": {
+        "status": "Grote teams · Beheer op afstand · Aanbevolen",
+        "description": "Voor deelnemers die interviews op afstand in hun eigen browser invullen, met centraal beheer van onderzoek en gegevens. De sandbox is een openbare demonstratieomgeving en is niet bedoeld om een echt onderzoek uit te voeren.",
+        "bestFor": {
+          "remoteBrowser": "Deelnemers die interviews op afstand in hun eigen browser invullen",
+          "centralManagement": "Centraal beheer van onderzoeken en deelnemers",
+          "sharedDashboard": "Gegevens beheren en exporteren vanuit een gedeeld dashboard",
+          "selfHosted": "Teams die zelf een Fresco-installatie kunnen opzetten en hosten"
+        },
+        "actions": {
+          "sandbox": "Handleiding voor toegang tot de Fresco-sandbox",
+          "deployment": "Installatiehandleiding"
+        }
+      },
+      "architectClassic": {
+        "status": "Classic · Onderhoudsmodus",
+        "description": "Gebruik deze app alleen als je onderzoek compatibel moet blijven met Interviewer Classic en schema 7.",
+        "bestFor": {
+          "classicCompatibility": "Een bestaand onderzoek dat compatibel moet blijven met Interviewer Classic",
+          "editWithoutMigration": "Een protocol in schema 7 dat zonder migratie verder bewerkt moet worden"
+        }
+      },
+      "interviewerClassic": {
+        "status": "Classic · Bestaande onderzoeken",
+        "description": "Voor bestaande onderzoeken in schema 7 en offline workflows op desktop of tablet. Wordt onderhouden voor compatibiliteit en bugfixes.",
+        "bestFor": {
+          "schema7Study": "Een bestaand onderzoek dat afhankelijk is van schema 7",
+          "desktopTablet": "Een bestaande workflow op desktop of tablet behouden",
+          "offlineCollection": "Onderzoeken die de oudere offline workflow voor gegevensverzameling nodig hebben"
+        }
+      }
+    }
+  },
+  "SummerUpdate": {
+    "metadata": {
+      "title": "Maak kennis met de nieuwe generatie apps van Network Canvas",
+      "description": "Maak kennis met de vernieuwde apps Architect en Interviewer, met Fresco 4.0.0 en met het nieuwe protocolformaat schema 8."
+    },
+    "hero": {
+      "heading": "<lead>Maak kennis met de nieuwe generatie</lead> <product><apps>apps van</apps> <brand>Network Canvas</brand></product>",
+      "description": "Een grote stap vooruit in het ontwerpen, afnemen en beheren van Network Canvas-interviews. Op deze pagina lees je wat er <strong>verandert</strong>, wat er <strong>nieuw</strong> is en wat het <strong>betekent</strong> voor je werk.",
+      "scrollCue": "Scrol verder voor meer informatie"
+    },
+    "definitions": {
+      "pwa": "<dfn>Progressive web apps</dfn> zijn speciaal gebouwde websites die je op je apparaat kunt installeren en die aanvoelen als een native app. Ze hebben een eigen pictogram waarop je klikt om ze te openen, hebben hun eigen opslag en werken offline.",
+      "protocolSchema": "Protocolschema’s zijn de technische specificaties die bepalen hoe protocolbestanden zijn opgebouwd en hoe de apps ze interpreteren. Ze zorgen ervoor dat protocollen compatibel zijn tussen verschillende versies van de apps en bieden een kader voor het implementeren van nieuwe functies en interfaces.",
+      "architectClassic": "De oorspronkelijke downloadbare desktopapp voor het ontwerpen van Network Canvas-protocollen. Deze app blijft beschikbaar voor lopende onderzoeken en wordt volledig ondersteund, maar staat in onderhoudsmodus en krijgt geen nieuwe functies meer. Download de app <link>hier</link>.",
+      "interviewerClassic": "De oorspronkelijke downloadbare app voor desktop en tablet om interviewgegevens te verzamelen. Deze app blijft beschikbaar voor lopende onderzoeken en wordt volledig ondersteund, maar staat in onderhoudsmodus en krijgt geen nieuwe functies meer. Download de app <link>hier</link>."
+    },
+    "common": {
+      "documentation": "Documentatie"
+    },
+    "overview": {
+      "label": "Wat is er nieuw",
+      "heading": "Architect en Interviewer, opnieuw bedacht voor de browser",
+      "introduction": "We hebben <strong>Architect</strong> en <strong>Interviewer</strong> opnieuw ontworpen als websites die je ook als <pwa>progressive web apps</pwa> op je apparaat kunt installeren. Samen met <strong>Fresco 4.0.0</strong> vormen ze een samenhangend, modern platform op een gedeelde technische basis – en alle drie ondersteunen ze een nieuw formaat voor protocolbestanden: <strong>schema 8</strong>.",
+      "benefits": {
+        "lowFriction": {
+          "title": "Laagdrempelig in gebruik",
+          "description": "Ga op elk apparaat en op elk moment naar <architect>architect.networkcanvas.com</architect> of <interviewer>interviewer.networkcanvas.com</interviewer> – en gebruik de tools zonder iets te installeren."
+        },
+        "installation": {
+          "title": "Lokaal als app installeren",
+          "description": "Je kunt elk van beide tools rechtstreeks vanuit de browser als app installeren. De app werkt als een gewone app op je apparaat, terwijl jij lokaal de controle over je gegevens houdt."
+        },
+        "updates": {
+          "title": "Eenvoudiger updates",
+          "description": "De nieuwe apps worden automatisch bijgewerkt met de nieuwste functies en oplossingen, zodat jij je kunt richten op je onderzoek in plaats van op het beheren van softwareversies."
+        },
+        "tablet": {
+          "title": "Weer beschikbaar op tablets",
+          "description": "De nieuwe Interviewer-app werkt weer op tablets (iPad en Android), nadat de app een aantal jaren niet beschikbaar was door beperkingen van de app stores."
+        }
+      },
+      "classic": {
+        "title": "En de oorspronkelijke apps voor desktop en tablet?",
+        "description": "De oorspronkelijke apps voor desktop en tablet heten nu <architectClassic>Architect Classic</architectClassic> en <interviewerClassic>Interviewer Classic</interviewerClassic>. Ze blijven beschikbaar voor lopende onderzoeken en worden <strong>volledig ondersteund</strong>, maar staan in onderhoudsmodus en krijgen geen nieuwe functies meer."
+      }
+    },
+    "apps": {
+      "architect": {
+        "label": "Protocolontwerp",
+        "heading": "Maak kennis met de nieuwe Architect – ontwerp protocollen in de browser",
+        "description": "Je hoeft niets te installeren – open gewoon <link>architect.networkcanvas.com</link> en ga aan de slag. Architect draait altijd automatisch de nieuwste versie. Installeer Architect vervolgens vanaf de website als <pwa>PWA</pwa> op je computer, voor een ervaring die aanvoelt als een native app en voor lokale controle over je gegevens.",
+        "iconAlt": "Pictogram van de Architect-app",
+        "screenshotAlt": "Protocoleditor van Architect met de tijdlijn van het voorbeeldprotocol",
+        "bullets": {
+          "schema8": "Maakt protocollen in <strong>schema 8</strong> met alle nieuwe functies (zie hieronder)",
+          "upgrades": "Opent oudere protocollen in schema 7 en <strong>zet ze automatisch om</strong>",
+          "templates": "Bevat <strong>protocolsjablonen</strong> waarmee je snel aan de slag kunt en veelgemaakte fouten voorkomt"
+        },
+        "open": "Architect openen",
+        "classicNote": "<architectClassic>Architect Classic</architectClassic> blijft beschikbaar voor onderzoekers die oudere versies van Interviewer (bijv. 6.6.0) moeten blijven gebruiken. De app staat in onderhoudsmodus – alleen bugfixes – en maakt nog steeds protocollen in schema 7."
+      },
+      "interviewer": {
+        "label": "Face-to-face-interviews",
+        "heading": "Interviewer – neem overal interviews af",
+        "description": "Ook Interviewer is opnieuw ontworpen voor de browser: upload een protocol op <link>interviewer.networkcanvas.com</link> en ga aan de slag zonder iets te installeren. Installeer de app als <pwa>PWA</pwa> om ook offline te kunnen werken – Interviewer blijft het ideale hulpmiddel voor face-to-face netwerkonderzoek met begeleiding van een interviewer.",
+        "iconAlt": "Pictogram van de Interviewer-app",
+        "screenshotAlt": "Dashboard van Interviewer met protocolkaarten en een knop om een interview te hervatten",
+        "bullets": {
+          "security": "Nieuwe, geavanceerde beveiliging: versleutelde gegevensopslag en appautorisatie voor gevoelige handelingen, zoals het exporteren van gegevens",
+          "schema8": "Ondersteunt <strong>schema 8</strong> native en migreert alle bestaande protocollen in schema 7 automatisch wanneer je ze importeert",
+          "compatibility": "Compatibel met alle desktops en tablets, waaronder iPads en Android-tablets"
+        },
+        "open": "Interviewer openen",
+        "classicNote": "<interviewerClassic>Interviewer Classic</interviewerClassic> blijft beschikbaar voor lopende onderzoeken. Net als <architectClassic>Architect Classic</architectClassic> staat de app alleen nog in onderhoudsmodus, zonder nieuwe functies."
+      },
+      "fresco": {
+        "label": "Zelfstandig ingevulde interviews op afstand",
+        "heading": "Fresco 4.0.0 – een flinke upgrade",
+        "description": "De nieuwste versie van Fresco is een grote release met een aantal belangrijke nieuwe functies. Fresco is ontworpen voor interviews die deelnemers op afstand zelfstandig invullen (maar is ook volledig geschikt voor face-to-face-interviews) en is de aangewezen keuze voor onderzoeken met veel deelnemers, met een groot onderzoeksteam of waarvoor centraal gegevensbeheer nodig is.",
+        "iconAlt": "Pictogram van de Fresco-app",
+        "deploymentGuide": "Installatiehandleiding",
+        "upgradeNote": "Gebruik je Fresco 3.x? Upgrade dan liever niet midden in een onderzoek. Fresco 4.0.0 kan niet worden teruggezet naar 3.x.",
+        "cards": {
+          "multiUser": {
+            "title": "Toegang voor meerdere gebruikers",
+            "description": "Elk teamlid krijgt een eigen account, met tweefactorauthenticatie, ondersteuning voor toegangssleutels en een volledig activiteitenlog van alle handelingen in het systeem."
+          },
+          "api": {
+            "title": "Beveiligde gegevens-API",
+            "description": "Fresco biedt nu een beveiligde API met alleen-lezentoegang, waarmee je programmatisch bij je onderzoeksgegevens kunt voor realtime rapportages, dashboards en analyses."
+          },
+          "selfHosted": {
+            "title": "Volledig zelf te hosten",
+            "description": "Fresco kan nu volledig op je eigen servers worden geïnstalleerd of in je eigen private cloud worden gehost, zodat je volledige controle over je gegevens hebt."
+          }
+        }
+      }
+    },
+    "features": {
+      "label": "Schema 8",
+      "heading": "Nieuwe interfaces en functies",
+      "introduction": "Deze nieuwe generatie apps introduceert een nieuwe <definition>versie van het protocolschema</definition>, schema 8, met een aantal nieuwe interviewinterfaces en functies. Heeft je onderzoek een daarvan nodig, dan moet je de nieuwe tools gebruiken. Kies een kaart om de details te bekijken.",
+      "documentationLink": "Meer in de documentatie",
+      "previewAlt": "Voorbeeld van {name}",
+      "groups": {
+        "interfaces": "Nieuwe interviewinterfaces",
+        "schema": "Functies van schema 8",
+        "architect": "Architect",
+        "interviewer": "Interviewer",
+        "fresco": "Fresco 4.0.0"
+      },
+      "geospatial": {
+        "shortName": "Geografisch",
+        "name": "Interface voor geografische gegevens",
+        "summary": "Leg locatiegegevens per alter vast door deelnemers een gebied op een interactieve kaart te laten selecteren.",
+        "details": {
+          "0": "Definieer met een GeoJSON-bestand welke censusgebieden, postcodegebieden, buurten of eigen onderzoeksgebieden selecteerbaar zijn.",
+          "1": "Kies welke GeoJSON-eigenschap bij elke persoon wordt opgeslagen, zodat het antwoord tijdens de analyse direct aan ruimtelijke gegevens kan worden gekoppeld.",
+          "2": "Voeg eventueel zoeken op adres en informatie over het openbaar vervoer toe. Mapbox-diensten hebben tijdens het interview een internetverbinding nodig."
+        }
+      },
+      "anonymisation": {
+        "shortName": "Anonimisering",
+        "name": "Interface voor anonimisering",
+        "summary": "Geef deelnemers zelf controle over gevoelige identificerende gegevens door geselecteerde knooppunt- of relatieattributen op hun apparaat te versleutelen.",
+        "details": {
+          "0": "Elke deelnemer kiest zelf de wachtzin waarmee de geselecteerde gegevens worden beschermd, en die wachtzin wordt nooit door de app opgeslagen.",
+          "1": "Onderzoekers kunnen de beschermde waarden niet ontsleutelen; in exports worden versleutelde attributen in plaats daarvan vervangen door een duidelijke markering.",
+          "2": "Dit is een experimentele functie voor onderzoeken waarin sterkere privacygaranties kunnen bijdragen aan vertrouwen en openheid."
+        }
+      },
+      "oneToMany": {
+        "shortName": "Een-op-veel-dyadencensus",
+        "name": "Interface voor de een-op-veel-dyadencensus",
+        "summary": "Maak op hetzelfde scherm relaties aan tussen één focale persoon en meerdere andere personen, in plaats van elk paar afzonderlijk te beoordelen.",
+        "details": {
+          "0": "Gebruik deze interface wanneer een netwerk centrale figuren bevat die waarschijnlijk relaties hebben met veel anderen.",
+          "1": "Verzamel een of meer relatietypen terwijl de focale persoon gedurende de hele taak zichtbaar blijft.",
+          "2": "Bepaal of elke focale persoon terugkeert in de lijst voor nog een ronde, of uit de lijst verdwijnt zodra die persoon aan bod is geweest."
+        }
+      },
+      "familyPedigree": {
+        "shortName": "Familiestamboom",
+        "name": "Interface voor de familiestamboom",
+        "summary": "Begeleid deelnemers bij het opbouwen van een complexe familiestructuur in een speciaal daarvoor ontworpen visuele workflow.",
+        "details": {
+          "0": "Maak familieleden en relaties in één keer aan, terwijl een automatische lay-out de stamboom leesbaar houdt naarmate die groeit.",
+          "1": "Breng biologische, sociale, adoptie-, donor-, draagouder- en partnerrelaties in beeld en verzamel attributen voor elk familielid.",
+          "2": "Voeg een optionele stap toe waarin deelnemers aangeven welke familieleden door specifieke aandoeningen zijn aangedaan, zodat je dit later kunt visualiseren."
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "Narratieve stamboom",
+        "name": "Interface voor de narratieve stamboom",
+        "summary": "Zet een familiestamboom uit een eerdere fase om in een alleen-lezenvisualisatie met de standaard klinische stamboomnotatie.",
+        "details": {
+          "0": "Toon aangedane familieleden en zekere dragers van een of meer aandoeningen, voor de ondersteunde overervingspatronen.",
+          "1": "Toon eventueel mogelijke statussen met verhoogd risico, als het onderzoek is opgezet voor een interpretatie met passende begeleiding.",
+          "2": "Focus op de afstammingslijn die bijdraagt aan de overerving bij één persoon en exporteer een afdrukbare momentopname. De visualisatie is een hulpmiddel, geen diagnose."
+        }
+      },
+      "networkComposer": {
+        "shortName": "Netwerkbouwer",
+        "name": "Interface voor de netwerkbouwer",
+        "summary": "Bouw en bewerk het volledige persoonlijke netwerk van een deelnemer op één canvas met een vrije indeling.",
+        "details": {
+          "0": "Voeg personen toe, vul attributen van personen en relaties in, teken verschillende relatietypen en herschik het netwerk naarmate het gesprek vordert.",
+          "1": "Gebruik lassoselectie, groepen, automatische lay-out, sneltoetsen en ongedaan maken of opnieuw uitvoeren om efficiënt dichte netwerken op te bouwen.",
+          "2": "Gebruik het als een netwerkkladblok onder leiding van een onderzoeker of interviewer, niet als een stapsgewijze taak die deelnemers zelfstandig uitvoeren."
+        }
+      },
+      "validation": {
+        "shortName": "Validatie",
+        "name": "Uitgebreidere veldvalidatie",
+        "summary": "Leg verbanden tussen antwoorden direct in het protocol vast, zodat formulieren inconsistente antwoorden al opmerken terwijl het interview nog loopt.",
+        "details": {
+          "0": "Vergelijk met de nieuwe regels “Groter dan een ander attribuut” en “Kleiner dan een ander attribuut” een numeriek antwoord met een ander attribuut.",
+          "1": "Combineer deze relatieve controles met de bestaande regels voor verplichte antwoorden, bereik, uniciteit en vergelijking tussen velden om vast te leggen welke antwoorden je onderzoek accepteert.",
+          "2": "Bekijk het formulier als voorbeeld in Architect en test randgevallen voordat je het in gebruik neemt; dezelfde protocolregels worden in Interviewer en Fresco uitgevoerd."
+        }
+      },
+      "enhancedSkipLogic": {
+        "shortName": "Uitgebreide overslaanlogica",
+        "name": "Uitgebreide overslaanlogica",
+        "summary": "Stel nauwkeurigere interviewroutes op met uitgebreidere vergelijkingsregels en een expliciete bestemming voor elke overgeslagen fase.",
+        "details": {
+          "0": "Gebruik “bevat” en “bevat niet” bij tekstantwoorden, en controleer in categorische en ordinale regels op meerdere geselecteerde waarden.",
+          "1": "Ga verder bij de volgende beschikbare fase, spring vooruit naar een gekozen latere fase of ga direct naar het eindscherm van het interview.",
+          "2": "Elke bestemming ligt verderop in het interview, zodat complexe routes voorspelbaar blijven en er tijdens de gegevensverzameling geen lussen ontstaan."
+        }
+      },
+      "nodeShapes": {
+        "shortName": "Knooppuntvormen",
+        "name": "Instelbare knooppuntvormen",
+        "summary": "Gebruik vorm als extra visueel kanaal, zodat verschillende soorten personen makkelijker te onderscheiden zijn in interfaces met dichte netwerken.",
+        "details": {
+          "0": "Kies cirkels, vierkanten of ruiten als standaardvorm voor elk persoonstype.",
+          "1": "Koppel vormen dynamisch aan categorische, ordinale, booleaanse, numerieke of scalaire variabelen wanneer het visuele onderscheid gegevens weergeeft.",
+          "2": "Combineer vorm met kleur en grootte, zodat belangrijke categorieën leesbaar blijven zonder afhankelijk te zijn van één visueel signaal."
+        }
+      },
+      "formHints": {
+        "shortName": "Formulierhints",
+        "name": "Formulierhints en validatiehints",
+        "summary": "Plaats een beknopte toelichting bij een afzonderlijke vraag, zodat deelnemers context krijgen precies waar ze die nodig hebben.",
+        "details": {
+          "0": "Voeg een hint met Markdown-opmaak toe aan een formulierveld zonder de hoofdprompt van de fase langer te maken.",
+          "1": "Gebruik hints om de verwachte notatie of onbekende termen te verduidelijken, of om uit te leggen hoe een antwoord wordt geïnterpreteerd.",
+          "2": "Toon eventueel automatische hints op basis van de validatieregels van het veld, zoals toegestane bereiken of verplichte antwoorden."
+        }
+      },
+      "protocolTemplates": {
+        "shortName": "Protocolsjablonen",
+        "name": "Protocolsjablonen",
+        "summary": "Begin met een protocol dat op onderzoek is gebaseerd in plaats van met een lege tijdlijn, en pas het daarna aan je eigen onderzoek aan.",
+        "details": {
+          "0": "Verken sjablonen voor transnationale netwerken en voor netwerken rond geestelijke gezondheid, sociale isolatie, gedragsbeïnvloeding, zorg en ondersteuning, en risico’s bij seks of injecterend drugsgebruik.",
+          "1": "Gebruik het algemene voorbeeldprotocol om te leren hoe de belangrijkste functies en technieken van Network Canvas samenhangen.",
+          "2": "Bewerk elke fase, prompt, variabele en visuele keuze; je aangepaste protocollen blijven lokaal opgeslagen in je browser."
+        }
+      },
+      "responsiveSvg": {
+        "shortName": "Responsieve SVG-achtergronden",
+        "name": "Responsieve SVG-achtergronden voor sociogrammen",
+        "summary": "Maak sociogramachtergronden waarvan de gebieden, assen en labels zich aanpassen aan zowel een staand als een liggend interviewcanvas.",
+        "details": {
+          "0": "Upload een SVG waarvan de elementen worden geplaatst ten opzichte van het beschikbare canvas, in plaats van op een vast pixelraster.",
+          "1": "Houd labels leesbaar en laat gebieden doorlopen tot de randen van het canvas wanneer deelnemers een tablet draaien of een scherm met een andere vorm gebruiken.",
+          "2": "Gebruik het meegeleverde sjabloon voor sociale context als startpunt voor kwadranten, onafhankelijke assen, categorieën of overlappende contexten."
+        }
+      },
+      "syntheticData": {
+        "shortName": "Synthetische gegevens",
+        "name": "Synthetische interviewgegevens",
+        "summary": "Genereer realistische testinterviews vóór de werving, zodat je de volledige gegevensworkflow kunt controleren zonder deelnemersgegevens in gevaar te brengen.",
+        "details": {
+          "0": "Maak tot 1.000 synthetische interviews tegelijk aan en bekijk hoe de antwoorden in onderzoekstabellen en exports verschijnen.",
+          "1": "Simuleer eventueel uitval van deelnemers, waarbij de overslaanlogica en netwerkfilters van het protocol worden gevolgd.",
+          "2": "Synthetische records worden apart gemarkeerd en kunnen in één keer worden verwijderd zonder dat echte interviews worden aangeraakt."
+        }
+      },
+      "encryptionAtRest": {
+        "shortName": "Opslagversleuteling",
+        "name": "Versleuteling van opgeslagen gegevens op het apparaat",
+        "summary": "Bescherm protocollen, interviews en instellingen die op het apparaat zijn opgeslagen, zodra je een appvergrendeling voor Interviewer instelt.",
+        "details": {
+          "0": "Kies tijdens het instellen een pincode, wachtzin of ondersteunde biometrische methode; dezelfde authenticatie ontgrendelt de sleutel waarmee de lokale gegevens worden ontsleuteld.",
+          "1": "De ontsleutelingssleutel staat alleen in het geheugen zolang Interviewer ontgrendeld is. Bij herladen, vergrendelen, sluiten of het verstrijken van de time-out bij inactiviteit wordt de sleutel verwijderd.",
+          "2": "Gebruik deze bescherming op app-niveau naast volledige apparaatversleuteling en regelmatige exports, als onderdeel van een gelaagd plan voor gegevensbeveiliging."
+        }
+      },
+      "authorisationChecks": {
+        "shortName": "Autorisatiecontroles",
+        "name": "Instelbare autorisatiecontroles",
+        "summary": "Vereis opnieuw ontgrendelen op gevoelige punten in de workflow, in plaats van alleen te vertrouwen op de algemene vergrendeling van de app bij inactiviteit.",
+        "details": {
+          "0": "Stel afzonderlijk in of opnieuw authenticeren nodig is voordat een interview wordt geopend, voordat het wordt verlaten om naar het dashboard te gaan of voordat verzamelde gegevens worden geëxporteerd.",
+          "1": "Gebruik de al ingestelde pincode, wachtzin of biometrische methode, zonder een tweede set inloggegevens.",
+          "2": "Houd protocolnamen, aantallen sessies en opgeslagen gegevens verborgen zolang Interviewer vergrendeld is."
+        }
+      },
+      "multiUser": {
+        "shortName": "Meerdere gebruikers",
+        "name": "Beheer door meerdere gebruikers",
+        "summary": "Geef elke onderzoeker een eigen beheerdersaccount, in plaats van één set inloggegevens voor het dashboard te delen.",
+        "details": {
+          "0": "Voeg via de instellingen meerdere beheerdersaccounts toe of verwijder ze; alle huidige accounts hebben dezelfde beheerrechten.",
+          "1": "Kies authenticatie met een wachtwoord, eventueel beveiligd met TOTP-tweefactorauthenticatie, of gebruik toegangssleutels om zonder wachtwoord in te loggen.",
+          "2": "Koppel activiteit in het dashboard aan gebruikersnamen in het gedeelde activiteitenlog, inclusief gebeurtenissen rond authenticatie, protocollen, exports en accountbeheer."
+        }
+      },
+      "advancedExportFiltering": {
+        "shortName": "Geavanceerd filteren voor exports",
+        "name": "Geavanceerd filteren voor exports",
+        "summary": "Vind en exporteer precies de interviews die je nodig hebt, ook als een groot onderzoek vele pagina’s met resultaten beslaat.",
+        "details": {
+          "0": "Filter aan de serverzijde op protocol, datum, voortgang, netwerkgrootte, exportstatus of deelnemer-ID, over de volledige dataset.",
+          "1": "Selecteer alle interviews die aan de actieve filters voldoen, niet alleen de rijen die op dat moment op het scherm staan.",
+          "2": "Exporteer alle interviews, alleen de voltooide of alleen de nog niet geëxporteerde binnen de gefilterde resultaten, zonder andere records aan te raken."
+        }
+      },
+      "secureDataApi": {
+        "shortName": "Beveiligde gegevens-API",
+        "name": "Beveiligde API voor interviewgegevens",
+        "summary": "Koppel analysetools rechtstreeks aan een Fresco-installatie via een JSON-API met versiebeheer en alleen-lezentoegang.",
+        "details": {
+          "0": "Laat de API uitgeschakeld tot je die nodig hebt, en maak dan bearer-tokens aan vanuit het dashboard waarop je bent ingelogd.",
+          "1": "Vraag interviewnetwerken en protocolmetadata op, als lijst of afzonderlijk, zonder dat er een endpoint beschikbaar is waarmee onderzoeksgegevens kunnen worden gewijzigd.",
+          "2": "Trek tokens in, bekijk wanneer elk token voor het laatst is gebruikt en bouw herhaalbare workflows voor R, Python, dashboards of rapportages."
+        }
+      }
+    },
+    "compatibility": {
+      "label": "Compatibiliteit",
+      "heading": "Wat je moet weten voordat je upgradet",
+      "introduction": "<definition>Versies van het protocolschema</definition> bepalen welke apps een bepaald protocolbestand kunnen openen – en de belangrijkste wijziging in deze release is <strong>schema 8</strong>. Hieronder vind je een tabel die precies laat zien hoe elke app met beide formaten omgaat. Selecteer een rij om te zien wat dat in de praktijk betekent.",
+      "defaultNote": "Selecteer hierboven een rij om te zien wat die betekent voor je protocolbestanden.",
+      "groups": {
+        "classic": "Huidige generatie (“Classic”)",
+        "new": "Nieuwe generatie"
+      },
+      "columns": {
+        "app": "App",
+        "platform": "Platform",
+        "schema7": "Schema 7",
+        "schema8": "Schema 8"
+      },
+      "statuses": {
+        "migrates": "Migreert naar 8",
+        "native": "Native",
+        "unsupported": "Niet ondersteund"
+      },
+      "rowAccessibleName": "{app}, {platform}: schema 7 {schema7}; schema 8 {schema8}",
+      "rowAccessibleNameWithVersion": "{app} {version}, {platform}: schema 7 {schema7}; schema 8 {schema8}",
+      "rows": {
+        "interviewerClassic": {
+          "platform": "Desktop en tablet",
+          "note": "<interviewerClassic>Interviewer Classic</interviewerClassic> draait schema 7 native, maar kan geen protocollen in schema 8 openen. Blijf de app gebruiken voor lopende onderzoeken in schema 7 – de app krijgt nog steeds bugfixes."
+        },
+        "architectClassic": {
+          "platform": "Desktop",
+          "note": "<architectClassic>Architect Classic</architectClassic> blijft in onderhoudsmodus protocollen in schema 7 maken. Gebruik de app alleen als je oudere versies van Interviewer (bijv. 6.6.0) moet blijven gebruiken."
+        },
+        "frescoClassic": {
+          "platform": "Browser",
+          "note": "Fresco 3.1.2 draait schema 7 native, maar opent geen protocollen in schema 8. Upgrade naar Fresco 4.0.0 om het nieuwe formaat te gebruiken."
+        },
+        "interviewer": {
+          "platform": "Browser en PWA",
+          "note": "De nieuwe Interviewer opent schema 8 native. Als je een protocol in schema 7 opent, wordt het automatisch – en onomkeerbaar – naar schema 8 gemigreerd."
+        },
+        "architect": {
+          "platform": "Browser en PWA",
+          "note": "De nieuwe Architect maakt protocollen in schema 8, en opent oudere protocollen in schema 7 die in <architectClassic>Architect Classic</architectClassic> zijn gemaakt en zet ze automatisch om."
+        },
+        "fresco": {
+          "platform": "Browser",
+          "note": "Fresco 4.0.0 draait schema 8 native; geüploade protocollen in schema 7 worden automatisch – en onomkeerbaar – naar schema 8 gemigreerd."
+        }
+      },
+      "illustration": {
+        "schema": "SCHEMA",
+        "original": "ORIGINEEL"
+      },
+      "caution": {
+        "label": "Let op",
+        "heading": "Protocolmigratie is onomkeerbaar.",
+        "description": "Als je een protocol in schema 7 opent in een app van de nieuwe generatie, wordt het automatisch omgezet naar schema 8. Daarna kun je het niet meer terugzetten en ook niet meer openen in de oudere apps. Dit is vooral belangrijk als je een protocol in Architect wijzigt, want het wordt omgezet naar schema 8 zodra je het opslaat.",
+        "fileNote": "Bewaar een kopie van je originele <file>.netcanvas</file>-bestand als je het nog wilt gebruiken in <interviewerClassic>Interviewer Classic</interviewerClassic>, <architectClassic>Architect Classic</architectClassic> of Fresco 3.x."
+      },
+      "upgrade": {
+        "label": "Moet je upgraden?",
+        "heading": "Wanneer moet je upgraden?",
+        "newStudy": {
+          "label": "Begin je een nieuw onderzoek?",
+          "heading": "Gebruik de nieuwe generatie",
+          "description": "Voor nieuwe onderzoeken raden we de nieuwe tools aan: gebruik <strong>Architect</strong> om je protocol te ontwerpen, en neem interviews af met <strong>Fresco 4.0.0</strong> of <strong>Interviewer</strong>, afhankelijk van wat je nodig hebt."
+        },
+        "ongoing": {
+          "label": "Loopt je onderzoek al?",
+          "heading": "Er is geen haast!",
+          "description": "<interviewerClassic>Interviewer Classic</interviewerClassic> en <architectClassic>Architect Classic</architectClassic> worden nog steeds ondersteund en blijven bugfixes krijgen. Upgrade op een moment dat goed uitkomt voor je project – houd er dan wel rekening mee dat de migratie onomkeerbaar is."
+        }
+      }
+    },
+    "resources": {
+      "label": "Projectmateriaal",
+      "heading": "Vernieuwde documentatie en een nieuwe projectwebsite",
+      "introduction": "De apps zijn niet het enige onderdeel van Network Canvas dat is veranderd. We hebben ook de projectwebsite opnieuw ontworpen en de documentatie anders ingedeeld, zodat je het platform makkelijker begrijpt, de juiste tools kiest en je volgende stap vindt.",
+      "documentation": {
+        "label": "Projectdocumentatie",
+        "heading": "Begeleiding die aansluit op je onderzoeksworkflow",
+        "description": "De documentatie is nu ingedeeld naar de fase waarin je onderzoek zich bevindt: aan de slag gaan, protocollen ontwerpen, gegevens verzamelen en resultaten analyseren. Nieuwe navigatie langs de workflow en vernieuwde handleidingen maken je volgende stap makkelijker te vinden.",
+        "link": "Documentatie verkennen",
+        "screenshotAlt": "De vernieuwde startpagina van de Network Canvas-documentatie"
+      },
+      "website": {
+        "label": "Projectwebsite",
+        "heading": "Een frisse nieuwe look voor networkcanvas.com",
+        "description": "De vernieuwde website heeft een expressievere visuele identiteit en duidelijkere routes door het Network Canvas-ecosysteem, van ontdekken wat het platform kan tot het kiezen van de beste tools voor je onderzoek.",
+        "link": "De nieuwe website verkennen",
+        "screenshotAlt": "De vernieuwde startpagina van de Network Canvas-website"
+      }
+    },
+    "destinations": {
+      "label": "Aan de slag",
+      "heading": "Ga op ontdekking in de nieuwe generatie",
+      "closing": "Heb je vragen of loop je tegen problemen aan? Dan is het <community>communityforum</community> de beste plek om ons te bereiken en in contact te komen met andere onderzoekers die de tools gebruiken. We hopen dat deze nieuwe tools echt verschil maken voor je onderzoek – ons team is de community bijzonder dankbaar voor de feedback en voor de voortdurende steun die dit werk mogelijk maakt.",
+      "architect": {
+        "title": "Architect openen",
+        "category": "Protocollen ontwerpen",
+        "description": "Bouw en valideer protocollen in schema 8 en bekijk ze als voorbeeld, rechtstreeks in je browser, met een lokale bibliotheek die op je apparaat blijft.",
+        "detail": "architect.networkcanvas.com"
+      },
+      "interviewer": {
+        "title": "Interviewer openen",
+        "category": "Face-to-face verzamelen",
+        "description": "Neem veilige interviews af die ook offline werken, op desktop en tablet, en exporteer voltooide sessies vanuit dezelfde lokale app.",
+        "detail": "interviewer.networkcanvas.com"
+      },
+      "fresco": {
+        "title": "Fresco 4.0.0 installeren",
+        "category": "Op afstand verzamelen",
+        "description": "Zet het platform voor meerdere gebruikers op, voor onderzoeken op afstand die deelnemers zelfstandig invullen, voor centraal gegevensbeheer en voor onderzoeksteams.",
+        "detail": "installatiehandleiding"
+      },
+      "documentation": {
+        "title": "Documentatie verkennen",
+        "category": "Leer de workflow kennen",
+        "description": "Volg taakgerichte handleidingen voor het kiezen van tools, het ontwerpen van protocollen, het verzamelen van gegevens en het begrijpen van elke interface.",
+        "detail": "nieuwste interfaces en functies"
+      }
+    }
+  }
+}

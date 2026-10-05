@@ -1,0 +1,6 @@
+{
+  "networkExporters.stage.fetching": "Recupero dei dati delle interviste…",
+  "networkExporters.stage.formatting": "Formattazione delle sessioni…",
+  "networkExporters.stage.generating": "Generazione dei file…",
+  "networkExporters.stage.outputting": "Scrittura dei file di output…"
+}

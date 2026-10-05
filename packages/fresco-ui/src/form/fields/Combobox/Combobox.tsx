@@ -53,7 +53,7 @@ const messages = defineMessages({
   someSelected: {
     id: 'frescoUi.combobox.someSelected',
     defaultMessage:
-      '{count, plural, one {# {singular} selected} other {# {plural} selected}}',
+      '{count, plural, =1 {# {singular} selected} other {# {plural} selected}}',
     description:
       'Trigger label summarising the selection; {singular} and {plural} are host-supplied noun forms (e.g. "item"/"items").',
   },

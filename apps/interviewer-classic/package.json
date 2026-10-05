@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer-classic",
-  "version": "6.6.1",
+  "version": "6.6.2",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "homepage": ".",
@@ -121,6 +121,9 @@
     "uuid": "14.0.1",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "overrides": {
+    "react-resize-aware": "3.1.1"
   },
   "engines": {
     "node": ">=24.0.0"

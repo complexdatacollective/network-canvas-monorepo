@@ -15,6 +15,8 @@ import {
 } from '@codaco/app-i18n/catalog-guards';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 
+import fr from '../../locales/fr.json';
+import ptBR from '../../locales/pt-BR.json';
 import { architectProductionLocales } from '../locales';
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -24,11 +26,33 @@ const en = JSON.parse(
 const es = JSON.parse(
   readFileSync(join(srcDir, 'locales/es.json'), 'utf8'),
 ) as Record<string, string>;
+const zhHans = JSON.parse(
+  readFileSync(join(srcDir, 'locales/zh-Hans.json'), 'utf8'),
+) as Record<string, string>;
+const zhHant = JSON.parse(
+  readFileSync(join(srcDir, 'locales/zh-Hant.json'), 'utf8'),
+) as Record<string, string>;
+const de: Record<string, string> = JSON.parse(
+  readFileSync(join(srcDir, 'locales/de.json'), 'utf8'),
+);
+const nl = JSON.parse(
+  readFileSync(join(srcDir, 'locales/nl.json'), 'utf8'),
+) as Record<string, string>;
+const italian = JSON.parse(
+  readFileSync(join(srcDir, 'locales/it.json'), 'utf8'),
+) as Record<string, string>;
 const enGb = JSON.parse(
   readFileSync(join(srcDir, 'locales/en-GB.json'), 'utf8'),
 ) as Record<string, string>;
 const localesDir = join(srcDir, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
+const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
+const deSources = readTranslationSources(localesDir, 'de');
+const nlSources = readTranslationSources(localesDir, 'nl');
+const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
+const italianSources = readTranslationSources(localesDir, 'it');
+const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('Architect catalog contract', () => {
@@ -49,6 +73,13 @@ describe('Architect catalog contract', () => {
   }, 120_000);
   it('ships complete Spanish and reviewed sparse British English with identical ICU arguments and rich tags', () => {
     expect(checkFullLocale(en, es, esSources)).toEqual([]);
+    expect(checkFullLocale(en, zhHans, zhHansSources)).toEqual([]);
+    expect(checkFullLocale(en, zhHant, zhHantSources)).toEqual([]);
+    expect(checkFullLocale(en, de, deSources)).toEqual([]);
+    expect(checkFullLocale(en, nl, nlSources)).toEqual([]);
+    expect(checkFullLocale(en, ptBR, ptBRSources)).toEqual([]);
+    expect(checkFullLocale(en, italian, italianSources)).toEqual([]);
+    expect(checkFullLocale(en, fr, frSources)).toEqual([]);
     expect(checkOverrideLocale(en, enGb, enGbSources)).toEqual([]);
   });
   it('keeps the selectable production set inside the shared ecosystem', () => {
@@ -56,6 +87,13 @@ describe('Architect catalog contract', () => {
       'en',
       'en-GB',
       'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+      'it',
+      'fr',
     ]);
     const supported = new Set(ecosystemLocales.map((x) => x.locale));
     expect(

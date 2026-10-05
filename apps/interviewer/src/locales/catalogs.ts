@@ -6,8 +6,15 @@ import { networkExporterCatalogs } from '@codaco/network-exporters/locales';
 import { protocolUtilitiesCatalogs } from '@codaco/protocol-utilities/locales';
 import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 
+import de from './de.json';
 import enGb from './en-GB.json';
 import es from './es.json';
+import fr from './fr.json';
+import it from './it.json';
+import nl from './nl.json';
+import ptBR from './pt-BR.json';
+import zhHans from './zh-Hans.json';
+import zhHant from './zh-Hant.json';
 
 // Static imports ship every language in the precached app, including on a
 // device that has never chosen Spanish before going offline. English renders
@@ -30,5 +37,61 @@ export const interviewerCatalogs: Readonly<
     protocolValidationCatalogs.es ?? {},
     protocolUtilitiesCatalogs.es ?? {},
     es,
+  ),
+  'zh-Hans': mergeCatalogs(
+    commonCatalogs['zh-Hans'] ?? {},
+    frescoUiCatalogs['zh-Hans'] ?? {},
+    networkExporterCatalogs['zh-Hans'] ?? {},
+    protocolValidationCatalogs['zh-Hans'] ?? {},
+    protocolUtilitiesCatalogs['zh-Hans'] ?? {},
+    zhHans,
+  ),
+  'zh-Hant': mergeCatalogs(
+    commonCatalogs['zh-Hant'] ?? {},
+    frescoUiCatalogs['zh-Hant'] ?? {},
+    networkExporterCatalogs['zh-Hant'] ?? {},
+    protocolValidationCatalogs['zh-Hant'] ?? {},
+    protocolUtilitiesCatalogs['zh-Hant'] ?? {},
+    zhHant,
+  ),
+  'de': mergeCatalogs(
+    commonCatalogs.de ?? {},
+    frescoUiCatalogs.de ?? {},
+    networkExporterCatalogs.de ?? {},
+    protocolValidationCatalogs.de ?? {},
+    protocolUtilitiesCatalogs.de ?? {},
+    de,
+  ),
+  'nl': mergeCatalogs(
+    commonCatalogs.nl ?? {},
+    frescoUiCatalogs.nl ?? {},
+    networkExporterCatalogs.nl ?? {},
+    protocolValidationCatalogs.nl ?? {},
+    protocolUtilitiesCatalogs.nl ?? {},
+    nl,
+  ),
+  'pt-BR': mergeCatalogs(
+    commonCatalogs['pt-BR'] ?? {},
+    frescoUiCatalogs['pt-BR'] ?? {},
+    networkExporterCatalogs['pt-BR'] ?? {},
+    protocolValidationCatalogs['pt-BR'] ?? {},
+    protocolUtilitiesCatalogs['pt-BR'] ?? {},
+    ptBR,
+  ),
+  'it': mergeCatalogs(
+    commonCatalogs.it ?? {},
+    frescoUiCatalogs.it ?? {},
+    networkExporterCatalogs.it ?? {},
+    protocolValidationCatalogs.it ?? {},
+    protocolUtilitiesCatalogs.it ?? {},
+    it,
+  ),
+  'fr': mergeCatalogs(
+    commonCatalogs.fr ?? {},
+    frescoUiCatalogs.fr ?? {},
+    networkExporterCatalogs.fr ?? {},
+    protocolValidationCatalogs.fr ?? {},
+    protocolUtilitiesCatalogs.fr ?? {},
+    fr,
   ),
 };
