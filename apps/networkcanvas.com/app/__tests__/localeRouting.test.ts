@@ -231,6 +231,22 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
+  // Netlify fetches remote import-map targets when it bundles the edge
+  // function, outside the lockfile's integrity checks. npm packages must
+  // resolve from node_modules instead.
+  it('maps edge imports only to files in the repository', () => {
+    const importMap = JSON.parse(
+      readFileSync(edgeImportMapPath, 'utf8'),
+    ) as EdgeImportMap;
+
+    for (const target of Object.values(importMap.imports)) {
+      expect(target).toMatch(/^\.\.?\//);
+      expect(existsSync(resolve(dirname(edgeImportMapPath), target))).toBe(
+        true,
+      );
+    }
+  });
+
   it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, Brazilian Portuguese, Italian, and French static params', () => {
     expect(locales).toEqual([
       'en-US',

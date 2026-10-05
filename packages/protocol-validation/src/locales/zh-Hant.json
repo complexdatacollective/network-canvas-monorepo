@@ -28,6 +28,7 @@
   "protocolValidation.migrationNotes.schema6.sociogramAutomaticLayout": "在社會關係圖介面上，支援使用自動節點定位功能。",
   "protocolValidation.migrationNotes.schema7.alterCountLimits": "新增在名字產生器階段指定他者提名人數下限與上限的功能。",
   "protocolValidation.migrationNotes.schema7.categoricalSkipLogic": "新增處理順序與類別屬性的其他略過邏輯選項。",
+  "protocolValidation.migrationNotes.schema8.additionalAttributesBoolean": "姓名產生器提示的 `additionalAttributes` 必須參照布林值屬性。訪談會在節點加入該提示時設定每個屬性，並在節點移出時清除它；因此若參照非布林值屬性，在其他地方收集到的值會先被真/假覆寫，隨後被清除。參照非布林值屬性的項目將被移除。",
   "protocolValidation.migrationNotes.schema8.anonymisationInterface": "新的實驗性介面：「匿名化介面」。讓參與者能將敏感或可識別的資訊加密，使研究人員無法讀取。預設不啟用。詳情請聯絡團隊。",
   "protocolValidation.migrationNotes.schema8.automaticLayoutBoolean": "社會關係圖與敘事介面的 `automaticLayout` 行為現在是單純的布林值（先前為 `'{ enabled }'`）；現有值會被扁平化。敘事介面首次具備此行為；此行為只有在明確啟用時才會生效，因此現有的敘事階段會保留手動設定的靜態位置。",
   "protocolValidation.migrationNotes.schema8.categoricalArrays": "類別屬性的值現在以所選選項值的陣列形式儲存。現有的單一值類別篩選條件與略過邏輯規則運算元（`is exactly`、`is not`、`includes`、`excludes`）會包裝成單一元素的陣列，以保持一致。",

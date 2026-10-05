@@ -338,6 +338,9 @@ importers:
       '@changesets/cli':
         specifier: ^3.0.3
         version: 3.0.3
+      '@formatjs/intl-localematcher':
+        specifier: 'catalog:'
+        version: 0.9.0
       '@posthog/cli':
         specifier: 'catalog:'
         version: 0.18.9
