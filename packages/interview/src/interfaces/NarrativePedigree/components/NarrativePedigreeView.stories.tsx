@@ -16,6 +16,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NarrativePedigreeView from './NarrativePedigreeView';
 
 const NODE_TYPE = 'person';
@@ -134,7 +135,7 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
-  label: 'Family Pedigree',
+  label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   nodeConfig: {
     type: NODE_TYPE,
@@ -150,7 +151,7 @@ const sourceStage = {
     isGestationalCarrierVariable: IS_GEST_VAR,
     gameteRoleVariable: GAMETE_VAR,
   },
-  censusPrompt: 'Build your pedigree.',
+  censusPrompt: { en: 'Build your pedigree.' },
 };
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
@@ -158,20 +159,20 @@ type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 const narrativeStage: NarrativeStage = {
   id: 'np-1',
   type: 'NarrativePedigree',
-  label: 'Disease Pedigree',
+  label: { en: 'Disease Pedigree' },
   sourceStageId: SOURCE_STAGE_ID,
   showAtRiskStatuses: false,
   diseases: [
     {
       id: 'breast-cancer',
-      label: 'Breast Cancer',
+      label: { en: 'Breast Cancer' },
       color: 'node-color-seq-1',
       variable: asEntityAttributeReference(BREAST_CANCER_VAR),
       inheritancePattern: 'autosomalDominant',
     },
     {
       id: 'haemophilia',
-      label: 'Haemophilia',
+      label: { en: 'Haemophilia' },
       color: 'node-color-seq-6',
       variable: asEntityAttributeReference(HAEMOPHILIA_VAR),
       inheritancePattern: 'xLinkedRecessive',
@@ -183,6 +184,7 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: {
         default: 'diamond',
@@ -199,7 +201,11 @@ const codebook = {
     },
   },
   edge: {
-    [EDGE_TYPE]: { name: 'Family', color: 'edge-color-seq-1' },
+    [EDGE_TYPE]: {
+      name: 'Family',
+      label: { en: 'Family' },
+      color: 'edge-color-seq-1',
+    },
   },
   ego: { variables: {} },
 };
@@ -209,6 +215,7 @@ function makeStore() {
     reducer: { protocol, session },
     preloadedState: {
       protocol: {
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [sourceStage, narrativeStage],
         assets: [],
@@ -229,13 +236,15 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <Provider store={makeStore()}>
-        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          <div className="h-screen w-screen">
-            <Story />
-          </div>
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={makeStore()}>
+          <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+            <div className="h-screen w-screen">
+              <Story />
+            </div>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     ),
   ],
 } satisfies Meta<typeof NarrativePedigreeView>;

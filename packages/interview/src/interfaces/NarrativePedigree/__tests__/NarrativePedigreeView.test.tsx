@@ -20,6 +20,7 @@ import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { useFamilyPedigreeStore } from '../../FamilyPedigree/FamilyPedigreeContext';
 import { FamilyPedigreeProvider } from '../../FamilyPedigree/FamilyPedigreeProvider';
 
@@ -165,7 +166,7 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
-  label: 'Family Pedigree',
+  label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   nodeConfig: {
     type: NODE_TYPE,
@@ -181,7 +182,7 @@ const sourceStage = {
     isGestationalCarrierVariable: IS_GEST_VAR,
     gameteRoleVariable: GAMETE_VAR,
   },
-  censusPrompt: 'Build your pedigree.',
+  censusPrompt: { en: 'Build your pedigree.' },
 };
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
@@ -190,20 +191,20 @@ function makeNarrativeStage(): NarrativeStage {
   return {
     id: 'np-1',
     type: 'NarrativePedigree',
-    label: 'Disease Pedigree',
+    label: { en: 'Disease Pedigree' },
     sourceStageId: SOURCE_STAGE_ID,
     showAtRiskStatuses: false,
     diseases: [
       {
         id: 'da',
-        label: 'Disease A',
+        label: { en: 'Disease A' },
         color: 'node-color-seq-1',
         variable: asEntityAttributeReference(DISEASE_A_VAR),
         inheritancePattern: 'autosomalDominant',
       },
       {
         id: 'db',
-        label: 'Disease B',
+        label: { en: 'Disease B' },
         color: 'node-color-seq-5',
         variable: asEntityAttributeReference(DISEASE_B_VAR),
         inheritancePattern: 'autosomalRecessive',
@@ -216,13 +217,18 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'square' },
       variables: {},
     },
   },
   edge: {
-    [EDGE_TYPE]: { name: 'Family', color: 'edge-color-seq-1' },
+    [EDGE_TYPE]: {
+      name: 'Family',
+      label: { en: 'Family' },
+      color: 'edge-color-seq-1',
+    },
   },
   ego: { variables: {} },
 };
@@ -240,6 +246,7 @@ function makeStore(
     reducer: { protocol, session },
     preloadedState: {
       protocol: {
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [
           { ...sourceStage, framing: framingOptions?.framing },
@@ -292,7 +299,7 @@ function renderView(
     return (
       <Provider store={store}>
         <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          {children}
+          <TestProtocolLocalization>{children}</TestProtocolLocalization>
         </CurrentStepProvider>
       </Provider>
     );
@@ -405,10 +412,10 @@ describe('NarrativePedigreeView — node mode selection', () => {
 
   it('reformats selected condition, status, focus and snapshot in place while preserving authored copy and network data', async () => {
     const stage = makeNarrativeStage();
-    stage.label = 'Árbol **del estudio**';
+    stage.label = { en: 'Árbol **del estudio**' };
     const firstDisease = stage.diseases[0];
     if (!firstDisease) throw new Error('The condition fixture is missing');
-    firstDisease.label = 'Condition <b>A</b>';
+    firstDisease.label = { en: 'Condition <b>A</b>' };
     const rendered = renderView(stage);
     const before = JSON.stringify(rendered.store.getState().session.network);
     await selectCondition('Condition <b>A</b>');
@@ -752,13 +759,13 @@ function makeCousinNarrativeStage(showAtRiskStatuses = true): NarrativeStage {
   return {
     id: 'np-cousin',
     type: 'NarrativePedigree',
-    label: 'Cousin Union Disease Pedigree',
+    label: { en: 'Cousin Union Disease Pedigree' },
     sourceStageId: SOURCE_STAGE_ID_COUSIN,
     showAtRiskStatuses,
     diseases: [
       {
         id: AR_DISEASE_ID,
-        label: 'AR Disease',
+        label: { en: 'AR Disease' },
         color: 'node-color-seq-1',
         variable: asEntityAttributeReference(AR_DISEASE_VAR),
         inheritancePattern: 'autosomalRecessive',
@@ -773,6 +780,7 @@ function renderCousinView(showAtRiskStatuses = true) {
     reducer: { protocol, session },
     preloadedState: {
       protocol: {
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [cousinSourceStage, stage],
         assets: [],
@@ -794,7 +802,7 @@ function renderCousinView(showAtRiskStatuses = true) {
     return (
       <Provider store={store}>
         <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          {children}
+          <TestProtocolLocalization>{children}</TestProtocolLocalization>
         </CurrentStepProvider>
       </Provider>
     );
@@ -995,13 +1003,13 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
     const stage: NarrativeStage = {
       id: 'np-social',
       type: 'NarrativePedigree',
-      label: 'Social Parent Pedigree',
+      label: { en: 'Social Parent Pedigree' },
       sourceStageId: SRC_SOCIAL,
       showAtRiskStatuses: false,
       diseases: [
         {
           id: 'da',
-          label: 'Disease A',
+          label: { en: 'Disease A' },
           color: 'node-color-seq-1',
           variable: asEntityAttributeReference(DISEASE_A_VAR),
           inheritancePattern: 'autosomalDominant',
@@ -1012,6 +1020,7 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
       reducer: { protocol, session },
       preloadedState: {
         protocol: {
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook,
           stages: [socialSource, stage],
           assets: [],
@@ -1032,7 +1041,7 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
       return (
         <Provider store={store}>
           <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-            {children}
+            <TestProtocolLocalization>{children}</TestProtocolLocalization>
           </CurrentStepProvider>
         </Provider>
       );
@@ -1046,5 +1055,35 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
     // No focal node is selected → no edge anywhere may be dimmed.
     const view = document.querySelector('[data-narrative-pedigree-view]');
     expect(view?.querySelectorAll('[data-edge-dimmed]').length).toBe(0);
+  });
+});
+
+describe('NarrativePedigreeView — localized condition labels', () => {
+  it('shows a condition label in the participant language with its lang and dir', async () => {
+    const arabicLabel = 'داء هنتنغتون';
+    const stage = makeNarrativeStage();
+    const firstDisease = stage.diseases[0];
+    if (!firstDisease) throw new Error('The condition fixture is missing');
+    firstDisease.label = { en: 'Huntington disease', ar: arabicLabel };
+
+    render(
+      <Provider store={makeStore(stage)}>
+        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+          <TestProtocolLocalization
+            localization={{ defaultLocale: 'en', locales: ['en', 'ar'] }}
+            locale="ar"
+          >
+            <NarrativePedigreeView stage={stage} />
+          </TestProtocolLocalization>
+        </CurrentStepProvider>
+      </Provider>,
+    );
+
+    const conditionButton = await screen.findByRole('button', {
+      name: arabicLabel,
+    });
+    expect(
+      conditionButton.querySelector('span[lang="ar"][dir="rtl"]'),
+    ).toHaveTextContent(arabicLabel);
   });
 });

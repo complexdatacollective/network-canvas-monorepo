@@ -16,6 +16,10 @@ import { Button } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
+import {
+  type PresentationalText,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import type {
   Codebook,
@@ -31,6 +35,10 @@ import {
 
 import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import {
+  useLocalizedString,
+  useResolvePresentationalText,
+} from '../../../localization/ProtocolLocalizationProvider';
 import {
   getActiveSession,
   getNetworkEdges,
@@ -63,7 +71,10 @@ import ZoomableViewport from './ZoomableViewport';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
-type ResolvedDisease = Omit<Disease, 'color'> & { color: string };
+type ResolvedDisease = Omit<Disease, 'color' | 'label'> & {
+  color: string;
+  label: PresentationalText;
+};
 
 const NODE_COLOR_VARIABLES = {
   'node-color-seq-1': 'var(--node-1)',
@@ -166,6 +177,8 @@ export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
   const intl = useAppIntl();
+  const toPresentationalText = useResolvePresentationalText();
+  const stageLabel = useLocalizedString(stage.label).text;
   // Architect stores the selected node palette entry as a typed protocol
   // reference. SVG and inline CSS need the corresponding theme variable, so
   // resolve every disease once at the view boundary before it reaches the key,
@@ -174,9 +187,10 @@ export default function NarrativePedigreeView({
     () =>
       stage.diseases.map((disease) => ({
         ...disease,
+        label: toPresentationalText(disease.label),
         color: resolveDiseaseColor(disease.color),
       })),
-    [stage.diseases],
+    [stage.diseases, toPresentationalText],
   );
 
   const sourceConfigSelector = useMemo(
@@ -391,7 +405,7 @@ export default function NarrativePedigreeView({
         displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
       const statusText = getStatusLabel(status, intl);
       return intl.formatMessage(messages.diseaseStatus, {
-        condition: disease.label,
+        condition: presentationalTextValue(disease.label),
         status: statusText,
       });
     });
@@ -550,7 +564,8 @@ export default function NarrativePedigreeView({
 
   const selectedDiseaseLabel = useMemo(() => {
     if (selectedDiseaseId === null) return null;
-    return diseases.find((d) => d.id === selectedDiseaseId)?.label ?? null;
+    const disease = diseases.find((d) => d.id === selectedDiseaseId);
+    return disease ? presentationalTextValue(disease.label) : null;
   }, [selectedDiseaseId, diseases]);
 
   const focalLabel = useMemo(() => {
@@ -565,7 +580,7 @@ export default function NarrativePedigreeView({
   // person when one is set — e.g. "Inheritance Pathways: Huntington's Disease —
   // inheritance for Leo".
   const snapshotTitle = useMemo(() => {
-    const base = stage.label || intl.formatMessage(messages.familyPedigree);
+    const base = stageLabel || intl.formatMessage(messages.familyPedigree);
     if (!selectedDiseaseLabel) return base;
     return focalLabel
       ? intl.formatMessage(messages.snapshotInheritance, {
@@ -577,7 +592,7 @@ export default function NarrativePedigreeView({
           title: base,
           condition: selectedDiseaseLabel,
         });
-  }, [stage.label, selectedDiseaseLabel, focalLabel, intl]);
+  }, [stageLabel, selectedDiseaseLabel, focalLabel, intl]);
 
   const snapshotFilename = useMemo(() => {
     const slug = snapshotTitle

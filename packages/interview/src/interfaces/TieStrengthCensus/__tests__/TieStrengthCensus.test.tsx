@@ -1,10 +1,22 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MotionConfig } from 'motion/react';
 import { act, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  asEntityAttributeReference,
+  type LocaleTag,
+  type LocalizationDeclaration,
+  type LocalizedString,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -22,40 +34,42 @@ import type {
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import TieStrengthCensus from '../TieStrengthCensus';
 
 const NODE_TYPE = 'person';
 const EDGE_TYPE = 'friendship';
 const EDGE_VAR = 'strength';
 
-const stage = {
+const stage: StageProps<'TieStrengthCensus'>['stage'] = {
   id: 'tsc1',
   type: 'TieStrengthCensus',
-  label: 'Tie Strength',
+  label: { en: 'Tie Strength' },
   subject: { entity: 'node', type: NODE_TYPE },
-  introductionPanel: { title: 'Welcome', text: 'Intro copy' },
+  introductionPanel: { title: { en: 'Welcome' }, text: { en: 'Intro copy' } },
   prompts: [
     {
       id: 'p1',
-      text: 'How strong is the tie?',
+      text: { en: 'How strong is the tie?' },
       createEdge: EDGE_TYPE,
-      edgeVariable: EDGE_VAR,
-      negativeLabel: 'No tie',
+      edgeVariable: asEntityAttributeReference(EDGE_VAR),
+      negativeLabel: { en: 'No tie' },
     },
   ],
 };
 
-type OptionDef = { label: string; value: string | number | boolean };
+type OptionDef = { label: LocalizedString; value: string | number | boolean };
 
 const makeCodebook = (
   options: OptionDef[] = [
-    { label: 'Weak', value: 1 },
-    { label: 'Strong', value: 2 },
+    { label: { en: 'Weak' }, value: 1 },
+    { label: { en: 'Strong' }, value: 2 },
   ],
 ) => ({
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {},
@@ -64,10 +78,12 @@ const makeCodebook = (
   edge: {
     [EDGE_TYPE]: {
       name: 'Friendship',
+      label: { en: 'Friendship' },
       color: 'edge-color-seq-1',
       variables: {
         [EDGE_VAR]: {
           name: EDGE_VAR,
+          label: { en: 'Strength' },
           type: 'ordinal',
           component: 'RadioGroup',
           options,
@@ -93,10 +109,21 @@ const makeNodes = () => [
   },
 ];
 
+const ENGLISH_ONLY: LocalizationDeclaration = {
+  defaultLocale: 'en',
+  locales: ['en'],
+};
+
+type LocaleSetup = {
+  localization?: LocalizationDeclaration;
+  locale?: LocaleTag | null;
+};
+
 function renderInterface(
   edges: NcEdge[] = [],
   codebookOverride: ReturnType<typeof makeCodebook> = codebook,
   skipAnimations = false,
+  { localization = ENGLISH_ONLY, locale = null }: LocaleSetup = {},
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -114,6 +141,7 @@ function renderInterface(
         id: 'p',
         hash: 'h',
         schemaVersion: 9,
+        localization,
         codebook: codebookOverride,
         stages: [stage],
       } as never,
@@ -133,21 +161,23 @@ function renderInterface(
 
   const moveForward = vi.fn();
   const props: StageProps<'TieStrengthCensus'> = {
-    stage: stage as StageProps<'TieStrengthCensus'>['stage'],
+    stage,
     getNavigationHelpers: () => ({ moveForward, moveBackward: vi.fn() }),
   };
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              {children}
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </MotionConfig>
-      </Provider>
+      <TestProtocolLocalization localization={localization} locale={locale}>
+        <Provider store={store}>
+          <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                {children}
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </MotionConfig>
+        </Provider>
+      </TestProtocolLocalization>
     );
   }
 
@@ -249,8 +279,8 @@ describe('TieStrengthCensus interface', () => {
 
   describe("when an ordinal option's value is the literal '__none__'", () => {
     const noneCodebook = makeCodebook([
-      { label: 'Real none', value: '__none__' },
-      { label: 'Strong', value: 'strong' },
+      { label: { en: 'Real none' }, value: '__none__' },
+      { label: { en: 'Strong' }, value: 'strong' },
     ]);
 
     it('renders distinct cards for the real option and the decline option', async () => {
@@ -299,5 +329,38 @@ describe('TieStrengthCensus interface', () => {
         false,
       ]);
     });
+  });
+});
+
+describe('TieStrengthCensus option labels', () => {
+  const bilingual: LocalizationDeclaration = {
+    defaultLocale: 'en',
+    locales: ['en', 'ar'],
+  };
+  const arabicCodebook = makeCodebook([
+    { label: { en: 'Weak', ar: 'ضعيفة' }, value: 1 },
+    // No Arabic translation: the participant sees the default.
+    { label: { en: 'Strong' }, value: 2 },
+  ]);
+
+  const languageOf = (optionName: string) => {
+    const tagged = within(screen.getByRole('option', { name: optionName }))
+      .getByText(optionName)
+      .closest('[lang]');
+    return {
+      lang: tagged?.getAttribute('lang'),
+      dir: tagged?.getAttribute('dir'),
+    };
+  };
+
+  it('renders each option in the interview locale, tagging fallback text with its own language', async () => {
+    const { advancePastIntro } = renderInterface([], arabicCodebook, false, {
+      localization: bilingual,
+      locale: 'ar',
+    });
+    await advancePastIntro();
+
+    expect(languageOf('ضعيفة')).toEqual({ lang: 'ar', dir: 'rtl' });
+    expect(languageOf('Strong')).toEqual({ lang: 'en', dir: 'ltr' });
   });
 });

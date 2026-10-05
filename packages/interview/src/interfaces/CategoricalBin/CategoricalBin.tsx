@@ -12,7 +12,12 @@ import type { FieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
-import type { Stage } from '@codaco/protocol-validation';
+import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
+import type {
+  LocalizedString,
+  ResolvedLocalizedString,
+  Stage,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -27,7 +32,10 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { resolveInterviewIntl } from '../../i18n/resolveIntl';
+import {
+  useResolveLocalizedString,
+  useResolvePresentationalText,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -90,7 +98,8 @@ type CategoricalBinPrompts = Extract<
 const getNodeLabel = (
   node: NcNode,
   getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>,
-  intl?: IntlShape,
+  resolve: (value: LocalizedString) => ResolvedLocalizedString,
+  intl: IntlShape,
 ): string => {
   const codebook = getCodebook(node.type);
   const attributes = node[entityAttributesProperty];
@@ -106,10 +115,9 @@ const getNodeLabel = (
     }
   }
 
-  return (
-    codebook?.name ??
-    resolveInterviewIntl(intl).formatMessage(interfaceMessages.node)
-  );
+  return codebook
+    ? resolve(codebook.label).text
+    : intl.formatMessage(interfaceMessages.node);
 };
 
 // Queued dialog children subscribe themselves, so the placeholder and fallback
@@ -133,7 +141,10 @@ function OtherResponseNode({
   getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>;
 }) {
   const intl = useAppIntl();
-  return <UINode {...props} label={getNodeLabel(node, getCodebook, intl)} />;
+  const resolve = useResolveLocalizedString();
+  return (
+    <UINode {...props} label={getNodeLabel(node, getCodebook, resolve, intl)} />
+  );
 }
 
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
@@ -218,6 +229,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   // other Field (codebook + network + this stage's subject); the dialog below
   // scopes it to the specific dropped node via currentEntityId.
   const baseValidationContext = useStageSelector(getValidationContext);
+  const toPresentationalText = useResolvePresentationalText();
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -246,6 +258,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt } = prompt;
+      const otherPromptLabel = toPresentationalText(otherVariablePrompt);
 
       // Derive the other variable's validation props directly from its
       // codebook definition — the other-input renders its own Field/component
@@ -285,7 +298,10 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               // node's own label is deliberately not a source: it is the name
               // the participant typed, not something the researcher authored.
               variableLabels: buildVariableLabels([
-                { variable: otherVariable, label: otherVariablePrompt },
+                {
+                  variable: otherVariable,
+                  label: presentationalTextValue(otherPromptLabel),
+                },
               ]),
             }
           : undefined;
@@ -311,7 +327,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               />
             </div>
             <OtherResponseField
-              label={otherVariablePrompt}
+              label={otherPromptLabel}
               component={InputField}
               name={otherVariable}
               nameMode="opaque"
