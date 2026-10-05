@@ -654,4 +654,11 @@ export const messages = defineMessages({
     description:
       'Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant.',
   },
+  sexRuledOutHint: {
+    id: 'interview.familyPedigree.sexRuledOutHint',
+    defaultMessage:
+      '{isYou, select, true {Some answers are unavailable because they do not fit how you are connected to your children. To choose one, change or remove that connection first.} other {Some answers are unavailable because they do not fit how this person is connected to their children. To choose one, change or remove that connection first.}}',
+    description:
+      'Hint under the sex assigned at birth question when some answers contradict the person’s recorded children: for example, a child cannot have two biological parents who were both assigned male at birth.',
+  },
 });

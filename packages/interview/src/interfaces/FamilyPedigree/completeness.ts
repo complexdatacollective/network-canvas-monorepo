@@ -4,7 +4,7 @@ import {
   type PedigreeRelativesNotRecorded,
 } from '@codaco/protocol-validation';
 
-import type { Family, Person } from './model';
+import { type Family, isGeneticKind, type Person } from './model';
 
 /**
  * Something the participant still needs to record about one person before
@@ -31,20 +31,17 @@ export type CompletenessProgress = {
   asked: ReadonlySet<string>;
 };
 
-// Gamete donors are biological parents; gestational carriers, adoptive and
-// step-parents are not.
-const isBiologicalLink = (kind: string) =>
-  kind === 'biological' || kind === 'donor';
-
+/** Gamete donors count as biological parents; gestational carriers, adoptive
+ * and step-parents do not. */
 function biologicalParentsOf(family: Family, personId: string) {
   return family.links
-    .filter((link) => link.target === personId && isBiologicalLink(link.kind))
+    .filter((link) => link.target === personId && isGeneticKind(link.kind))
     .map((link) => link.source);
 }
 
 function biologicalChildrenOf(family: Family, personId: string) {
   return family.links
-    .filter((link) => link.source === personId && isBiologicalLink(link.kind))
+    .filter((link) => link.source === personId && isGeneticKind(link.kind))
     .map((link) => link.target);
 }
 

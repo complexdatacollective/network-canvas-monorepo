@@ -379,6 +379,10 @@
     "defaultMessage": "Sex assigned at birth",
     "description": "Label of the question about the sex a family member was assigned at birth."
   },
+  "interview.familyPedigree.sexRuledOutHint": {
+    "defaultMessage": "{isYou, select, true {Some answers are unavailable because they do not fit how you are connected to your children. To choose one, change or remove that connection first.} other {Some answers are unavailable because they do not fit how this person is connected to their children. To choose one, change or remove that connection first.}}",
+    "description": "Hint under the sex assigned at birth question when some answers contradict the person’s recorded children: for example, a child cannot have two biological parents who were both assigned male at birth."
+  },
   "interview.familyPedigree.sharedParentsLabel": {
     "defaultMessage": "Which parents do they share?",
     "description": "Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names."

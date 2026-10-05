@@ -473,6 +473,66 @@ export type ParentChoice = {
 export const couldCarryPregnancy = (sexAssignedAtBirth: string | undefined) =>
   sexAssignedAtBirth !== 'male';
 
+/** Biological parents and gamete donors each gave the person an egg or a
+ * sperm; every other kind of parent did not. */
+export const isGeneticKind = (kind: string) =>
+  kind === 'biological' || kind === 'donor';
+
+/**
+ * Whether one person could have genetic parents with these sexes assigned at
+ * birth: two at most, one providing the egg and the other the sperm, so at
+ * most one recorded as female at birth and one as male. Anyone else —
+ * intersex, not known, or not yet answered — could have provided either.
+ * Gender identity has no bearing on it.
+ */
+export function geneticParentsPossible(
+  sexes: readonly (string | undefined)[],
+): boolean {
+  const count = (sex: string) => sexes.filter((value) => value === sex).length;
+  return sexes.length <= 2 && count('female') <= 1 && count('male') <= 1;
+}
+
+/**
+ * The sexes at birth that would contradict how a person is recorded as a
+ * parent: as the genetic parent of someone whose other genetic parent
+ * provided the same kind of gamete, or as having carried a pregnancy.
+ */
+export function sexesRuledOut(
+  family: Family,
+  personId: string,
+): Set<PedigreeSexAssignedAtBirth> {
+  const asParent = family.links.filter(
+    (link) => link.kind !== 'partner' && link.source === personId,
+  );
+  return new Set(
+    PEDIGREE_SEX_ASSIGNED_AT_BIRTH.filter((sex) =>
+      asParent.some(
+        (link) =>
+          (isGeneticKind(link.kind) &&
+            !geneticParentsPossible([
+              ...geneticParentSexes(family, link.target, personId),
+              sex,
+            ])) ||
+          (link.isGestationalCarrier && !couldCarryPregnancy(sex)),
+      ),
+    ),
+  );
+}
+
+/** The sexes at birth of the person's genetic parents, as recorded, leaving
+ * out `exceptParentId`. */
+export function geneticParentSexes(
+  family: Family,
+  personId: string,
+  exceptParentId?: string,
+): (string | undefined)[] {
+  return parentLinksOf(family, personId)
+    .filter(
+      (link) => isGeneticKind(link.kind) && link.source !== exceptParentId,
+    )
+    .map((link) => family.byId.get(link.source)?.sexAssignedAtBirth);
+}
+
 /** Whether `ancestorId` is the person's parent, a parent's parent, and so on. */
 function isAncestor(family: Family, ancestorId: string, personId: string) {
   const seen = new Set<string>();
@@ -511,7 +571,8 @@ export function canConnectPartners(
 /**
  * The kinds of parent one person can be made of another. None when they are
  * already linked, or when the would-be parent descends from the child. A
- * person has at most two genetic parents (biological or donor), and one
+ * person has at most two genetic parents (biological or donor) — one who
+ * provided the egg and one the sperm, as `geneticParentsPossible` — and one
  * person who carried the pregnancy (a biological parent or a surrogate) —
  * never someone recorded as male at birth.
  */
@@ -528,18 +589,17 @@ export function availableParentChoices(
     return [];
   }
   const parentLinks = parentLinksOf(family, childId);
-  const geneticParents = parentLinks.filter(
-    (link) => link.kind === 'biological' || link.kind === 'donor',
-  ).length;
+  const parentSex = family.byId.get(parentId)?.sexAssignedAtBirth;
+  const canBeGenetic = geneticParentsPossible([
+    ...geneticParentSexes(family, childId),
+    parentSex,
+  ]);
   const hasCarrier = parentLinks.some((link) => link.isGestationalCarrier);
-  const canCarry =
-    !hasCarrier &&
-    couldCarryPregnancy(family.byId.get(parentId)?.sexAssignedAtBirth);
+  const canCarry = !hasCarrier && couldCarryPregnancy(parentSex);
   const choices: ParentChoice[] = [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {
     if (kind === 'partner') continue;
-    const genetic = kind === 'biological' || kind === 'donor';
-    if (genetic && geneticParents >= 2) continue;
+    if (isGeneticKind(kind) && !canBeGenetic) continue;
     if (kind === 'surrogate' && !canCarry) continue;
     choices.push({ parentKind: kind, carriedPregnancy: kind === 'surrogate' });
     if (kind === 'biological' && canCarry) {

@@ -6,8 +6,10 @@ import {
   areConnected,
   availableParentChoices,
   canConnectPartners,
+  geneticParentsPossible,
   planConnection,
   readFamily,
+  sexesRuledOut,
 } from '../model';
 import { config, link, person } from './fixtures';
 
@@ -123,6 +125,61 @@ describe('connecting two people', () => {
         'biological+carried',
       );
     }
+  });
+
+  test('genetic parents: one egg and one sperm', () => {
+    expect(geneticParentsPossible(['female', 'male'])).toBe(true);
+    expect(geneticParentsPossible(['male', 'male'])).toBe(false);
+    expect(geneticParentsPossible(['female', 'female'])).toBe(false);
+    expect(geneticParentsPossible(['male', 'intersex'])).toBe(true);
+    expect(geneticParentsPossible(['male', undefined])).toBe(true);
+    expect(geneticParentsPossible([undefined, undefined, undefined])).toBe(
+      false,
+    );
+  });
+
+  test('parents: not a second genetic parent of the same sex at birth', () => {
+    // A trans woman, assigned male at birth, is the biological parent; a
+    // man assigned male at birth cannot be the other, so the egg parent is
+    // still to be added.
+    const f = family(
+      [
+        ...people,
+        person('mother', { sex: ['male'], gender: ['woman'] }),
+        person('father', { sex: ['male'], gender: ['man'] }),
+        person('donor', { sex: ['female'] }),
+      ],
+      [link('mother', 'ego', 'biological')],
+    );
+    expect(kinds(availableParentChoices(f, 'father', 'ego'))).toEqual([
+      'adoptive',
+      'social',
+    ]);
+    expect(kinds(availableParentChoices(f, 'donor', 'ego'))).toContain('donor');
+  });
+
+  test('sexes at birth that contradict a person’s recorded children', () => {
+    const f = family(
+      [
+        ...people,
+        person('mother', { sex: ['male'] }),
+        person('father', { sex: ['male'] }),
+        person('carrier'),
+      ],
+      [
+        link('mother', 'ego', 'biological'),
+        link('father', 'other', 'biological'),
+        link('carrier', 'other', 'surrogate', { carrier: true }),
+      ],
+    );
+    // Ego's only genetic parent could have been either; nothing is ruled out.
+    expect([...sexesRuledOut(f, 'mother')]).toEqual([]);
+    expect([...sexesRuledOut(f, 'carrier')]).toEqual(['male']);
+    const twoParents = family(
+      [...people, person('mother', { sex: ['female'] }), person('father')],
+      [link('mother', 'ego', 'biological'), link('father', 'ego', 'donor')],
+    );
+    expect([...sexesRuledOut(twoParents, 'father')]).toEqual(['female']);
   });
 
   test('the recorded link', () => {

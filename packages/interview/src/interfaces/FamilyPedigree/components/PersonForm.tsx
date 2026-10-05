@@ -11,6 +11,7 @@ import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -37,6 +38,10 @@ import {
   type Relation,
   couldCarryPregnancy,
   fullSiblingsOf,
+  geneticParentSexes,
+  geneticParentsPossible,
+  isGeneticKind,
+  sexesRuledOut,
   partnersOf,
   primaryParentsOf,
   siblingsOf,
@@ -234,9 +239,13 @@ export default function PersonForm({
     value,
     label: intl.formatMessage(GENDER_IDENTITY_LABELS[value]),
   }));
+  // A person recorded as a parent cannot be given a sex at birth that
+  // contradicts it; the hint says how to choose one anyway.
+  const ruledOut = person ? sexesRuledOut(family, person.id) : new Set();
   const sexOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
     value,
     label: intl.formatMessage(SEX_ASSIGNED_AT_BIRTH_LABELS[value]),
+    disabled: ruledOut.has(value),
   }));
 
   const missingLabels =
@@ -295,6 +304,13 @@ export default function PersonForm({
             label={intl.formatMessage(messages.sexAssignedAtBirthLabel)}
             options={sexOptions}
             required
+            hint={
+              ruledOut.size > 0
+                ? intl.formatMessage(messages.sexRuledOutHint, {
+                    isYou: isEgo ? 'true' : 'false',
+                  })
+                : undefined
+            }
             initialValue={person?.sexAssignedAtBirth}
           />
         </section>
@@ -485,8 +501,19 @@ function ExistingRelationshipFields({
   );
   const canCarry = (link: FamilyLink) =>
     couldCarryPregnancy(family.byId.get(link.source)?.sexAssignedAtBirth);
+  const kindOf = (link: FamilyLink) =>
+    asString(linkValues[linkField(link, 'kind')]) ?? link.kind;
+  // Whether the parent could be a genetic parent alongside the others who
+  // are, as the answers stand.
+  const canBeGenetic = (link: FamilyLink) =>
+    geneticParentsPossible(
+      parents
+        .filter((other) => other.id !== link.id && isGeneticKind(kindOf(other)))
+        .map((other) => family.byId.get(other.source)?.sexAssignedAtBirth)
+        .concat(family.byId.get(link.source)?.sexAssignedAtBirth),
+    );
   const carries = (link: FamilyLink) => {
-    const kind = asString(linkValues[linkField(link, 'kind')]) ?? link.kind;
+    const kind = kindOf(link);
     if (kind === 'surrogate') return true;
     if (kind !== 'biological' || !canCarry(link)) return false;
     const carrier = linkValues[linkField(link, 'carrier')];
@@ -523,6 +550,7 @@ function ExistingRelationshipFields({
         <ParentLinkFields
           key={link.id}
           link={link}
+          canBeGenetic={canBeGenetic(link)}
           canCarry={canCarry(link)}
           carries={carries(link)}
           anotherCarries={parents.some(
@@ -539,6 +567,7 @@ function ExistingRelationshipFields({
 
 function ParentLinkFields({
   link,
+  canBeGenetic,
   canCarry,
   carries,
   anotherCarries,
@@ -547,6 +576,8 @@ function ParentLinkFields({
   parentName,
 }: {
   link: FamilyLink;
+  /** This parent could be a genetic parent alongside the person's others. */
+  canBeGenetic: boolean;
   /** This parent could have carried a pregnancy: they are not recorded as
    * male at birth. */
   canCarry: boolean;
@@ -577,7 +608,9 @@ function ParentLinkFields({
         options={PARENT_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(PARENT_KIND_LABELS[value]),
-          disabled: value === 'surrogate' && (anotherCarries || !canCarry),
+          disabled:
+            (isGeneticKind(value) && !canBeGenetic) ||
+            (value === 'surrogate' && (anotherCarries || !canCarry)),
         }))}
         initialValue={link.kind}
       />
@@ -784,13 +817,18 @@ function ParentFields({
   config: PedigreeConfig;
 }) {
   const intl = useAppIntl();
-  const values = useFormValue([ROLE.parentKind, ROLE.partnerId]);
+  const values = useFormValue([
+    ROLE.parentKind,
+    ROLE.partnerId,
+    ROLE.alsoParentOf,
+  ]);
   const sexAssignedAtBirth = asString(
     useFormValue([config.sexAssignedAtBirthVariable], 'opaque')[
       config.sexAssignedAtBirthVariable
     ],
   );
-  const parentKind = asString(values[ROLE.parentKind]) ?? 'biological';
+  const chosenKind = asString(values[ROLE.parentKind]);
+  const parentKind = chosenKind ?? 'biological';
   const raises =
     parentKind === 'biological' ||
     parentKind === 'adoptive' ||
@@ -807,9 +845,47 @@ function ParentFields({
   );
   // Nor can a parent recorded as male at birth.
   const canCarry = !anchorHasCarrier && couldCarryPregnancy(sexAssignedAtBirth);
+  // A genetic parent provided the egg or the sperm, which another genetic
+  // parent may already have.
+  const canBeGeneticParentOf = (personId: string) =>
+    geneticParentsPossible([
+      ...geneticParentSexes(family, personId),
+      sexAssignedAtBirth,
+    ]);
+  const kindPossible = (kind: string) =>
+    isGeneticKind(kind)
+      ? canBeGeneticParentOf(anchor.id)
+      : kind !== 'surrogate' || canCarry;
   const siblings = siblingsOf(family, anchor.id);
   const fullSiblings = new Set(fullSiblingsOf(family, anchor.id));
   const partnerChoice = asString(values[ROLE.partnerId]);
+  // The new parent is the same kind of parent to the siblings chosen.
+  const siblingPossible = (siblingId: string) =>
+    isGeneticKind(parentKind)
+      ? canBeGeneticParentOf(siblingId)
+      : parentKind !== 'surrogate' ||
+        !family.links.some(
+          (link) =>
+            link.kind !== 'partner' &&
+            link.target === siblingId &&
+            link.isGestationalCarrier,
+        );
+  const chosenSiblings = asStringArray(values[ROLE.alsoParentOf]);
+
+  // Answers made impossible by a later one — the new parent's sex at birth,
+  // or their kind — are taken back, so the question is asked again.
+  const setFieldValue = useFormStore((store) => store.setFieldValue);
+  const kindImpossible = chosenKind !== undefined && !kindPossible(chosenKind);
+  useEffect(() => {
+    if (kindImpossible) setFieldValue(ROLE.parentKind, undefined);
+  }, [kindImpossible, setFieldValue]);
+  const keptSiblings = chosenSiblings.filter(siblingPossible);
+  const siblingsDropped = keptSiblings.length < chosenSiblings.length;
+  const keptRef = useRef(keptSiblings);
+  keptRef.current = keptSiblings;
+  useEffect(() => {
+    if (siblingsDropped) setFieldValue(ROLE.alsoParentOf, keptRef.current);
+  }, [siblingsDropped, setFieldValue]);
 
   return (
     <>
@@ -820,8 +896,9 @@ function ParentFields({
         options={PARENT_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(PARENT_KIND_LABELS[value]),
-          disabled: value === 'surrogate' && !canCarry,
+          disabled: !kindPossible(value),
         }))}
+        required
         initialValue="biological"
       />
       {parentKind === 'biological' && canCarry && (
@@ -859,6 +936,7 @@ function ParentFields({
           options={siblings.map((id) => ({
             value: id,
             label: displayName(id),
+            disabled: !siblingPossible(id),
           }))}
           initialValue={siblings.filter((id) => fullSiblings.has(id))}
         />
@@ -879,9 +957,26 @@ function ChildFields({
   const intl = useAppIntl();
   const values = useFormValue([ROLE.childKind, ROLE.otherParent]);
   const partners = partnersOf(family, anchor.id);
-  const childKind = asString(values[ROLE.childKind]) ?? 'biological';
+  const chosenKind = asString(values[ROLE.childKind]);
+  const childKind = chosenKind ?? 'biological';
   const otherParent = asString(values[ROLE.otherParent]);
   const hasOtherParent = otherParent !== undefined && otherParent !== NONE;
+  // A biological child of both parents had an egg from one and a sperm from
+  // the other.
+  const canBeBiological =
+    !hasOtherParent ||
+    otherParent === UNKNOWN ||
+    geneticParentsPossible([
+      anchor.sexAssignedAtBirth,
+      family.byId.get(otherParent)?.sexAssignedAtBirth,
+    ]);
+  // Choosing another parent can make a biological child impossible; the
+  // question is then asked again.
+  const setFieldValue = useFormStore((store) => store.setFieldValue);
+  const kindImpossible = chosenKind === 'biological' && !canBeBiological;
+  useEffect(() => {
+    if (kindImpossible) setFieldValue(ROLE.childKind, undefined);
+  }, [kindImpossible, setFieldValue]);
   // Neither parent is offered as having carried the pregnancy if recorded as
   // male at birth; an unknown other parent might have.
   const anchorCanCarry = couldCarryPregnancy(anchor.sexAssignedAtBirth);
@@ -913,7 +1008,9 @@ function ChildFields({
         options={CHILD_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(CHILD_KIND_LABELS[value]),
+          disabled: value === 'biological' && !canBeBiological,
         }))}
+        required
         initialValue="biological"
       />
       {childKind === 'biological' &&
