@@ -1563,6 +1563,10 @@
     "defaultMessage": "Display Media",
     "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
   },
+  "architect.interface.capability.utilities": {
+    "defaultMessage": "Utilities",
+    "description": "Capability filter and badge on an interface card, for stages that set up the interview (such as choosing its language or setting a passphrase) rather than collect or display network data."
+  },
   "architect.interface.description.AlterEdgeForm": {
     "defaultMessage": "An edge interpreter interface that captures attribute data via a form.",
     "description": "Description of the interview interface in the New Stage chooser."
@@ -1709,11 +1713,11 @@
   },
   "architect.localization.languageActions.chooseAtLeastOne": {
     "defaultMessage": "Choose at least one language, or enter a language code.",
-    "description": "Error when the add-languages dialog is submitted empty."
+    "description": "Error when a dialog that asks for languages is submitted with none chosen and no language code entered."
   },
   "architect.localization.languageActions.chooseLanguages": {
     "defaultMessage": "Choose languages",
-    "description": "Placeholder of the list of languages to add."
+    "description": "Placeholder of a list of languages to choose several from."
   },
   "architect.localization.languageActions.chooseOne": {
     "defaultMessage": "Choose a language, or enter a language code.",
@@ -1951,25 +1955,25 @@
     "defaultMessage": "Create Protocol",
     "description": "Visible text in components / NewProtocolDialog."
   },
+  "architect.newProtocolDialog.defaultLanguage": {
+    "defaultMessage": "Default language",
+    "description": "Label for the choice of which of the languages chosen for a new protocol is its default language."
+  },
+  "architect.newProtocolDialog.defaultLanguageHint": {
+    "defaultMessage": "Text without a translation in a participant's language is shown in the default language.",
+    "description": "Hint for the default language of a new protocol."
+  },
   "architect.newProtocolDialog.enterANameForYourProtocol": {
     "defaultMessage": "Enter a name for your protocol...",
     "description": "The placeholder text in components / NewProtocolDialog."
   },
-  "architect.newProtocolDialog.languageOption": {
-    "defaultMessage": "{name} ({tag})",
-    "description": "One choice in the protocol language list. name is the language name in the interface language; tag is its language code, such as \"de\" or \"pt-BR\"."
+  "architect.newProtocolDialog.protocolLanguages": {
+    "defaultMessage": "Protocol languages",
+    "description": "Label for the choice of the languages a new protocol is written in."
   },
-  "architect.newProtocolDialog.protocolLanguage": {
-    "defaultMessage": "Protocol language",
-    "description": "Label for the choice of the language a new protocol is written in."
-  },
-  "architect.newProtocolDialog.protocolLanguageHint": {
-    "defaultMessage": "The language you will write this protocol in. You can add other languages, or change this one, on the Languages page.",
-    "description": "Hint for the new protocol language. \"Languages page\" is the protocol tab where languages are managed."
-  },
-  "architect.newProtocolDialog.protocolLanguageRequired": {
-    "defaultMessage": "Choose the language this protocol is written in",
-    "description": "Error shown when no language is chosen for a new protocol."
+  "architect.newProtocolDialog.protocolLanguagesHint": {
+    "defaultMessage": "The languages participants can take this protocol in. You can change them later on the Languages page.",
+    "description": "Hint for the new protocol languages. \"Languages page\" is the protocol tab where languages are managed."
   },
   "architect.newProtocolDialog.protocolName": {
     "defaultMessage": "Protocol Name",
@@ -3475,6 +3479,10 @@
     "defaultMessage": "Change redone. Moved to Codebook to show the result.",
     "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
   },
+  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToLanguages": {
+    "defaultMessage": "Change redone. Moved to Languages to show the result.",
+    "description": "Screen-reader announcement after a redo moved the researcher to the Languages page. \"Languages\" is the name of that page in the project navigation."
+  },
   "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToResourcesTo": {
     "defaultMessage": "Change redone. Moved to Resources to show the result.",
     "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
@@ -3490,6 +3498,10 @@
   "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToCodebookTo": {
     "defaultMessage": "Change undone. Moved to Codebook to show the result.",
     "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToLanguages": {
+    "defaultMessage": "Change undone. Moved to Languages to show the result.",
+    "description": "Screen-reader announcement after an undo moved the researcher to the Languages page. \"Languages\" is the name of that page in the project navigation."
   },
   "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToResourcesTo": {
     "defaultMessage": "Change undone. Moved to Resources to show the result.",

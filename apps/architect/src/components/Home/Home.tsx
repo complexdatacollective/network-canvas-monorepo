@@ -18,7 +18,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type {
   CurrentProtocol,
   ExtractedAsset,
-  LocaleTag,
 } from '@codaco/protocol-validation';
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
@@ -167,7 +166,10 @@ const Home = () => {
     [],
   );
   const handleCreate = useCallback(
-    (values: { name: string; locale: LocaleTag }) => {
+    (values: {
+      name: string;
+      localization: CurrentProtocol['localization'];
+    }) => {
       setShowNewDialog(false);
       void runAction(async () => {
         await dispatch(createNetcanvas(values));
@@ -320,7 +322,7 @@ const Home = () => {
       <NewProtocolDialog
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
-        chooseLanguage
+        chooseLanguages
         onSubmit={handleCreate}
       />
       <NewProtocolDialog

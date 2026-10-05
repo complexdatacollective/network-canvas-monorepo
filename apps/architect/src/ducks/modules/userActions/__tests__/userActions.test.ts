@@ -141,13 +141,18 @@ describe('userActions', () => {
   });
 
   describe('createNetcanvas', () => {
-    it('declares the chosen language as the only and default protocol language', async () => {
-      await runThunk(createNetcanvas({ name: 'Étude', locale: 'fr' }));
+    it('declares the chosen languages and default language', async () => {
+      await runThunk(
+        createNetcanvas({
+          name: 'Étude',
+          localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+        }),
+      );
 
       expect(putStoredProtocol).toHaveBeenCalledWith(
         expect.objectContaining({
           protocol: expect.objectContaining({
-            localization: { defaultLocale: 'fr', locales: ['fr'] },
+            localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
           }),
         }),
       );

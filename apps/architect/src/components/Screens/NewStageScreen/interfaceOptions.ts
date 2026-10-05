@@ -165,6 +165,7 @@ export const TAGS = {
   ROSTER_DATA: 'Use Roster Data',
   SHOW_MEDIA: 'Display Media',
   PROVIDE_INFORMATION: 'Display Data',
+  UTILITIES: 'Utilities',
 } as const;
 const tagMessages = defineMessages({
   [TAGS.CREATE_NODES]: {
@@ -215,6 +216,12 @@ const tagMessages = defineMessages({
     description:
       'Capability filter and badge on an interface card; the value remains a stable internal key.',
   },
+  [TAGS.UTILITIES]: {
+    id: 'architect.interface.capability.utilities',
+    defaultMessage: 'Utilities',
+    description:
+      'Capability filter and badge on an interface card, for stages that set up the interview (such as choosing its language or setting a passphrase) rather than collect or display network data.',
+  },
 });
 
 export const interfaceTagLabel = (tag: string, intl: IntlShape): string => {
@@ -236,6 +243,7 @@ export const TAG_COLORS = {
   [TAGS.ROSTER_DATA]: 'paradise-pink',
   [TAGS.SHOW_MEDIA]: 'neon-carrot',
   [TAGS.PROVIDE_INFORMATION]: 'barbie-pink',
+  [TAGS.UTILITIES]: 'kiwi',
 } as const;
 
 // Define the interface types as a const array first
@@ -435,7 +443,7 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.UTILITIES,
-    tags: [],
+    tags: [TAGS.UTILITIES],
     keywords:
       'language languages translation translate multilingual locale choose chooser participant',
     type: 'LanguageChooser',
@@ -443,9 +451,9 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.UTILITIES,
-    tags: [TAGS.NODE_ATTRIBUTES],
+    tags: [TAGS.UTILITIES],
     keywords:
-      'instruction text participant guide intro image video audio media resource',
+      'anonymisation anonymization anonymise anonymize passphrase password encrypt encryption encrypted privacy protect security participant',
     type: 'Anonymisation',
     description: descriptionMessages.Anonymisation,
   },

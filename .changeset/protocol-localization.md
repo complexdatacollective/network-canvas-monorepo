@@ -18,8 +18,8 @@ How an interview picks its language:
 - A new Language Chooser stage lets participants choose one of the protocol's
   languages. Each language is shown by its own name, the current one is
   selected, and choosing another switches the whole interview at once. The
-  choice is saved with the interview. The stage can have an introduction and
-  can appear anywhere, more than once.
+  choice is saved with the interview. The stage can appear anywhere, more than
+  once.
 - Buttons, menus and other text that Network Canvas provides follow the
   participant's chosen language when it is one of Network Canvas's own
   languages, and otherwise their browser's languages. The language setting in
@@ -35,7 +35,8 @@ In Architect:
   languages and choose the default one, and shows which text is still missing
   a translation. A language can't be removed while it is the default, or while
   some text would be left with no translation at all.
-- A new protocol asks which language you are writing it in. A protocol
+- A new protocol asks which languages participants can take it in, and,
+  when you choose more than one, which of them is the default. A protocol
   upgraded from an earlier version is marked as written in "Unspecified
   language", and the project navigation suggests you set its real language.
 - Once a protocol has more than one language, each text field in the stage
@@ -44,9 +45,9 @@ In Architect:
   language. Node type, edge type and attribute labels can be translated too.
 - The printable protocol summary can be printed in any of the protocol's
   languages.
-- The Language Chooser is in the New Stage menu. Its editor sets an optional
-  introduction and lists the languages participants will be offered: every
-  language the protocol is written in.
+- The Language Chooser is in the New Stage menu, under a new Utilities
+  capability. Its editor lists the languages participants will be offered:
+  every language the protocol is written in.
 - A preview opens in the language a participant with your browser would see,
   rather than in Architect's own language. A "Preview language" menu above it
   switches the interview to any of the protocol's languages while the preview

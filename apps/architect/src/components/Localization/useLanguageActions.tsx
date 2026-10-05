@@ -1,27 +1,12 @@
 import { type RefObject, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { z } from 'zod/mini';
 
-import {
-  type IntlShape,
-  type MessageDescriptor,
-  defineMessages,
-} from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import ComboboxField from '@codaco/fresco-ui/form/fields/Combobox/Combobox';
-import type { ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import type {
-  CustomFieldValidation,
-  FieldValue,
-} from '@codaco/fresco-ui/form/store/types';
-import {
-  canonicalizeLocale,
-  type LocaleTag,
-} from '@codaco/protocol-validation';
+import type { LocaleTag } from '@codaco/protocol-validation';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   addProtocolLocales,
@@ -32,7 +17,14 @@ import { getLocaleRemovalImpact } from '~/ducks/modules/protocol/localeOperation
 import { getProtocol } from '~/selectors/protocol';
 import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
-import { getLanguageChoices, type LanguageChoice } from './languageChoices';
+import { getLanguageChoices } from './languageChoices';
+import {
+  choiceRequiredValidation,
+  LanguageCodeField,
+  LanguagePicker,
+  languageOptionText,
+  resolveChoice,
+} from './LanguagePicker';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -56,71 +48,6 @@ const messages = defineMessages({
     id: 'architect.localization.languageActions.languagesLabel',
     defaultMessage: 'Languages',
     description: 'Label of the searchable list of languages to add.',
-  },
-  languageSingular: {
-    id: 'architect.localization.languageActions.languageSingular',
-    defaultMessage: 'language',
-    description:
-      'Singular noun in the summary of chosen languages, as in "1 language selected".',
-  },
-  languagePlural: {
-    id: 'architect.localization.languageActions.languagePlural',
-    defaultMessage: 'languages',
-    description:
-      'Plural noun in the summary of chosen languages, as in "3 languages selected".',
-  },
-  chooseLanguages: {
-    id: 'architect.localization.languageActions.chooseLanguages',
-    defaultMessage: 'Choose languages',
-    description: 'Placeholder of the list of languages to add.',
-  },
-  searchLanguages: {
-    id: 'architect.localization.languageActions.searchLanguages',
-    defaultMessage: 'Search languages',
-    description: 'Placeholder of the search box in the list of languages.',
-  },
-  noLanguagesFound: {
-    id: 'architect.localization.languageActions.noLanguagesFound',
-    defaultMessage: 'No language matches your search.',
-    description: 'Shown when a language search finds nothing.',
-  },
-  chooseAtLeastOne: {
-    id: 'architect.localization.languageActions.chooseAtLeastOne',
-    defaultMessage: 'Choose at least one language, or enter a language code.',
-    description: 'Error when the add-languages dialog is submitted empty.',
-  },
-  codeLabel: {
-    id: 'architect.localization.languageActions.codeLabel',
-    defaultMessage: 'Other language code',
-    description:
-      'Label of the field for a language code that is not in the list.',
-  },
-  codeHint: {
-    id: 'architect.localization.languageActions.codeHint',
-    defaultMessage:
-      'For a language or regional variant that is not in the list, enter its language code, such as "gsw" or "es-AR".',
-    description:
-      'Hint for the language code field. The quoted codes are examples of language codes and are not translated.',
-  },
-  invalidCode: {
-    id: 'architect.localization.languageActions.invalidCode',
-    defaultMessage:
-      '"{code}" is not a language code. Use a code such as "es" or "pt-BR".',
-    description:
-      'Error for a malformed language code. code is what the researcher typed; the quoted examples are not translated.',
-  },
-  unspecifiedCode: {
-    id: 'architect.localization.languageActions.unspecifiedCode',
-    defaultMessage:
-      '"und" stands for an unidentified language. Enter the code of the language itself.',
-    description:
-      'Error when the researcher enters the code reserved for unidentified languages. "und" is a code and is not translated.',
-  },
-  alreadyDeclared: {
-    id: 'architect.localization.languageActions.alreadyDeclared',
-    defaultMessage: "{language} is already one of this protocol's languages.",
-    description:
-      'Error when a language the protocol already has is entered again. language is the language name.',
   },
   changeTitle: {
     id: 'architect.localization.languageActions.changeTitle',
@@ -169,12 +96,6 @@ const messages = defineMessages({
     defaultMessage: 'Change language',
     description: 'Submit button of the change-language dialog.',
   },
-  languageOption: {
-    id: 'architect.localization.languageActions.languageOption',
-    defaultMessage: '{name} ({tag})',
-    description:
-      'One entry in a list of languages. name is the language name in the interface language; tag is its language code, such as "de" or "pt-BR".',
-  },
   removeTitle: {
     id: 'architect.localization.languageActions.removeTitle',
     defaultMessage: 'Remove {language}?',
@@ -194,133 +115,6 @@ const messages = defineMessages({
     description: 'Confirm button that removes a language from a protocol.',
   },
 });
-
-type CodeProblem = {
-  message: MessageDescriptor;
-  values: Record<string, string>;
-};
-
-const findCodeProblem = (
-  code: string,
-  declared: readonly LocaleTag[],
-  languageName: (locale: LocaleTag) => string,
-): CodeProblem | null => {
-  const locale = canonicalizeLocale(code.trim());
-  if (locale === undefined) {
-    return { message: messages.invalidCode, values: { code: code.trim() } };
-  }
-  if (locale === UNSPECIFIED_LOCALE) {
-    return { message: messages.unspecifiedCode, values: {} };
-  }
-  if (declared.includes(locale)) {
-    return {
-      message: messages.alreadyDeclared,
-      values: { language: languageName(locale) },
-    };
-  }
-  return null;
-};
-
-const isBlank = (value: FieldValue | undefined) =>
-  typeof value !== 'string' || value.trim() === '';
-
-const issue = (
-  value: unknown,
-  message: string,
-): { code: 'custom'; input: unknown; message: string; path: [] } => ({
-  code: 'custom',
-  input: value,
-  message,
-  path: [],
-});
-
-const codeValidation = (
-  intl: IntlShape,
-  declared: readonly LocaleTag[],
-  languageName: (locale: LocaleTag) => string,
-): CustomFieldValidation => ({
-  schema: () =>
-    z.unknown().check(
-      z.superRefine((value, ctx) => {
-        if (typeof value !== 'string' || value.trim() === '') return;
-        const problem = findCodeProblem(value, declared, languageName);
-        if (problem) {
-          ctx.addIssue(
-            issue(value, intl.formatMessage(problem.message, problem.values)),
-          );
-        }
-      }),
-    ),
-});
-
-// The list and the code field are alternatives, so an empty submission is
-// reported on the list, which comes first.
-const choiceRequiredValidation = (
-  intl: IntlShape,
-  message: MessageDescriptor,
-): CustomFieldValidation => ({
-  schema: (formValues) =>
-    z.unknown().check(
-      z.superRefine((value, ctx) => {
-        const chosen = Array.isArray(value)
-          ? value.length > 0
-          : typeof value === 'string' && value !== '';
-        if (!chosen && isBlank(formValues.code)) {
-          ctx.addIssue(issue(value, intl.formatMessage(message)));
-        }
-      }),
-    ),
-});
-
-const languageOptionText = (
-  intl: IntlShape,
-  { name, locale }: LanguageChoice,
-) => intl.formatMessage(messages.languageOption, { name, tag: locale });
-
-const renderLanguageOption = (
-  choices: ReadonlyMap<string | number, LanguageChoice>,
-  intl: IntlShape,
-) =>
-  function LanguageOption(option: ComboboxOption) {
-    const choice = choices.get(option.value);
-    if (!choice) return null;
-    return (
-      <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3">
-        <span className="flex flex-wrap items-baseline gap-x-2">
-          <span>{languageOptionText(intl, choice)}</span>
-          {choice.autonym !== choice.name && (
-            <span
-              lang={choice.locale}
-              dir={choice.direction}
-              className="text-current/70"
-            >
-              {choice.autonym}
-            </span>
-          )}
-        </span>
-      </span>
-    );
-  };
-
-const resolveChoice = (
-  values: Record<string, FieldValue>,
-  listField: string,
-): LocaleTag[] => {
-  const listed = values[listField];
-  const fromList = (Array.isArray(listed) ? listed : [listed]).filter(
-    (value): value is string => typeof value === 'string' && value !== '',
-  );
-  const code = values.code;
-  const fromCode =
-    typeof code === 'string' && code.trim() !== '' ? [code.trim()] : [];
-  return [
-    ...new Set(
-      [...fromList, ...fromCode].flatMap(
-        (tag) => canonicalizeLocale(tag) ?? [],
-      ),
-    ),
-  ];
-};
 
 /**
  * The dialogs behind each change to a protocol's languages. Each change is
@@ -347,10 +141,6 @@ export const useLanguageActions = (
 
   const addLanguages = useCallback(async () => {
     if (!declared) return;
-    const choices = availableChoices(declared);
-    const choicesByLocale = new Map<string | number, LanguageChoice>(
-      choices.map((choice) => [choice.locale, choice]),
-    );
     const values = await openDialog({
       type: 'form',
       title: intl.formatMessage(messages.addTitle),
@@ -358,50 +148,18 @@ export const useLanguageActions = (
       submitLabel: intl.formatMessage(messages.addSubmit),
       finalFocus,
       children: (
-        <>
-          <Field<typeof ComboboxField>
-            name="languages"
-            label={intl.formatMessage(messages.languagesLabel)}
-            component={ComboboxField}
-            initialValue={[]}
-            options={choices.map((choice) => ({
-              value: choice.locale,
-              // Search matches the name in either language and the code.
-              label: [choice.name, choice.autonym, choice.locale].join(' '),
-            }))}
-            renderOption={renderLanguageOption(choicesByLocale, intl)}
-            placeholder={intl.formatMessage(messages.chooseLanguages)}
-            searchPlaceholder={intl.formatMessage(messages.searchLanguages)}
-            emptyMessage={intl.formatMessage(messages.noLanguagesFound)}
-            singular={intl.formatMessage(messages.languageSingular)}
-            plural={intl.formatMessage(messages.languagePlural)}
-            showSelectAll={false}
-            custom={choiceRequiredValidation(intl, messages.chooseAtLeastOne)}
-          />
-          <Field
-            name="code"
-            label={intl.formatMessage(messages.codeLabel)}
-            hint={intl.formatMessage(messages.codeHint)}
-            component={InputField}
-            initialValue=""
-            custom={codeValidation(intl, declared, languageName)}
-            dir="ltr"
-          />
-        </>
+        <LanguagePicker
+          label={intl.formatMessage(messages.languagesLabel)}
+          choices={availableChoices(declared)}
+          declared={declared}
+          initialValue={[]}
+        />
       ),
     });
     if (!values) return;
     const locales = resolveChoice(values, 'languages');
     if (locales.length > 0) dispatch(addProtocolLocales({ locales }));
-  }, [
-    availableChoices,
-    declared,
-    dispatch,
-    finalFocus,
-    intl,
-    languageName,
-    openDialog,
-  ]);
+  }, [availableChoices, declared, dispatch, finalFocus, intl, openDialog]);
 
   const changeLanguage = useCallback(
     async (from: LocaleTag) => {
@@ -434,15 +192,7 @@ export const useLanguageActions = (
               }))}
               custom={choiceRequiredValidation(intl, messages.chooseOne)}
             />
-            <Field
-              name="code"
-              label={intl.formatMessage(messages.codeLabel)}
-              hint={intl.formatMessage(messages.codeHint)}
-              component={InputField}
-              initialValue=""
-              custom={codeValidation(intl, declared, languageName)}
-              dir="ltr"
-            />
+            <LanguageCodeField declared={declared} />
           </>
         ),
       });

@@ -57,6 +57,7 @@ test('separates history controls and returns project subpages to the timeline', 
   for (const route of [
     '/protocol/assets',
     '/protocol/codebook',
+    '/protocol/localization',
     '/protocol/summary',
   ]) {
     await architectPage.goto(route);

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
@@ -131,47 +132,144 @@ describe('NewProtocolDialog', () => {
   });
 });
 
-describe('NewProtocolDialog protocol language', () => {
-  const renderWithLanguage = () => {
+describe('NewProtocolDialog protocol languages', () => {
+  const renderWithLanguages = () => {
     const onSubmit = vi.fn();
     render(
       <NewProtocolDialog
         open
         onOpenChange={vi.fn()}
-        chooseLanguage
+        chooseLanguages
         onSubmit={onSubmit}
       />,
     );
     return onSubmit;
   };
 
-  const languageSelect = () =>
-    screen.getByRole('combobox', { name: /Protocol language/i });
+  const languageList = () =>
+    screen.getByRole('combobox', { name: 'Protocol languages' });
+  const codeInput = () =>
+    screen.getByRole('textbox', { name: 'Other language code' });
+  const defaultSelect = () =>
+    screen.queryByRole('combobox', { name: 'Default language' });
 
-  it('starts on the language that best matches Architect’s own', () => {
-    renderWithLanguage();
+  it('starts on the language that best matches Architect’s own, and names it', () => {
+    renderWithLanguages();
 
-    expect(languageSelect()).toHaveValue('en');
+    expect(languageList()).toHaveTextContent('English');
   });
 
-  it('never offers the unidentified language', () => {
-    renderWithLanguage();
+  it('asks for no default language while one language is chosen', () => {
+    renderWithLanguages();
 
-    expect(
-      languageSelect().querySelector('option[value="und"]'),
-    ).not.toBeInTheDocument();
+    expect(defaultSelect()).not.toBeInTheDocument();
   });
 
-  it('creates the protocol in the chosen language', async () => {
-    const onSubmit = renderWithLanguage();
+  it('creates a one-language protocol with that language as its default', async () => {
+    const onSubmit = renderWithLanguages();
 
     fireEvent.change(nameInput(), { target: { value: 'Étude' } });
-    fireEvent.change(languageSelect(), { target: { value: 'fr-CA' } });
     submit();
 
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith({ name: 'Étude', locale: 'fr-CA' }),
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'en', locales: ['en'] },
+      }),
     );
+  });
+
+  it('asks for the default among several languages, starting on Architect’s own', async () => {
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    fireEvent.change(codeInput(), { target: { value: 'fr-CA' } });
+
+    const select = await screen.findByRole('combobox', {
+      name: 'Default language',
+    });
+    expect(select).toHaveValue('en');
+    expect(
+      [...select.querySelectorAll('option')].map((option) => option.value),
+    ).toEqual(['en', 'fr-CA']);
+
+    fireEvent.change(select, { target: { value: 'fr-CA' } });
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'fr-CA', locales: ['en', 'fr-CA'] },
+      }),
+    );
+  });
+
+  it('never keeps a default that is no longer one of the chosen languages', async () => {
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    fireEvent.change(codeInput(), { target: { value: 'fr-CA' } });
+    fireEvent.change(
+      await screen.findByRole('combobox', { name: 'Default language' }),
+      { target: { value: 'fr-CA' } },
+    );
+    fireEvent.change(codeInput(), { target: { value: 'de' } });
+
+    await waitFor(() => expect(defaultSelect()).toHaveValue('en'));
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'en', locales: ['en', 'de'] },
+      }),
+    );
+  });
+
+  it('defaults to the first chosen language when Architect’s own is not chosen', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    await user.click(languageList());
+    await user.click(
+      await screen.findByRole('option', { name: 'English (en)' }),
+    );
+    await user.click(
+      await screen.findByRole('option', { name: /^French \(fr\)/ }),
+    );
+    await user.keyboard('{Escape}');
+    fireEvent.change(codeInput(), { target: { value: 'de' } });
+
+    await waitFor(() => expect(defaultSelect()).toHaveValue('fr'));
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'Étude',
+        localization: { defaultLocale: 'fr', locales: ['fr', 'de'] },
+      }),
+    );
+  });
+
+  it('requires at least one language', async () => {
+    const user = userEvent.setup();
+    const onSubmit = renderWithLanguages();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    await user.click(languageList());
+    await user.click(
+      await screen.findByRole('option', { name: 'English (en)' }),
+    );
+    await user.keyboard('{Escape}');
+    submit();
+
+    expect(
+      await screen.findByText(
+        'Choose at least one language, or enter a language code.',
+      ),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 

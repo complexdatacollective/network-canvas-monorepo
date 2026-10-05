@@ -12,6 +12,7 @@ const REVEALING_PAGES = new Set([
   '/protocol',
   '/protocol/assets',
   '/protocol/codebook',
+  '/protocol/localization',
 ]);
 
 // Committed stage edits collapse to the stage list rather than re-opening the

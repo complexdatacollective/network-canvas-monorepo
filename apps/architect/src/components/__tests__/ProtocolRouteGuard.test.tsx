@@ -185,6 +185,7 @@ describe('ProtocolRouteGuard', () => {
   it.each([
     '/protocol/codebook',
     '/protocol/assets',
+    '/protocol/localization',
     '/protocol/summary',
     '/protocol/stage/new',
     '/protocol/experiments',

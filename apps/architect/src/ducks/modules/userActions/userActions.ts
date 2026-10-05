@@ -7,7 +7,6 @@ import {
   type ExtractedAsset,
   extractProtocolFromZip,
   getMigrationInfo,
-  type LocaleTag,
   type MigrationNote,
   migrateProtocol,
   NetcanvasInflationLimitError,
@@ -563,22 +562,21 @@ const handleProtocolMigration = ({
 type CreateNetcanvasParams = {
   name: string;
   description?: string;
-  /** The protocol's language, which becomes its default and only locale. */
-  locale: LocaleTag;
+  localization: CurrentProtocol['localization'];
 };
 
 // Create a new protocol
 export const createNetcanvas = createAppAsyncThunk(
   'webUserActions/createNetcanvas',
   async (
-    { name, description, locale }: CreateNetcanvasParams,
+    { name, description, localization }: CreateNetcanvasParams,
     { dispatch },
   ) => {
     const newProtocol: CurrentProtocol = {
       name,
       description,
       schemaVersion: APP_SCHEMA_VERSION,
-      localization: { defaultLocale: locale, locales: [locale] },
+      localization,
       stages: [],
       codebook: {
         node: {},

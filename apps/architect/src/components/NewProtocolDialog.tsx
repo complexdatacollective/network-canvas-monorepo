@@ -1,10 +1,69 @@
-import { useRef, useCallback, useId, useMemo } from 'react';
+import {
+  type ComponentProps,
+  useRef,
+  useCallback,
+  useId,
+  useMemo,
+} from 'react';
+import { z } from 'zod/mini';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import {
   type IntlShape,
   createMessageError,
   defineMessages,
 } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import Button from '@codaco/fresco-ui/Button';
+import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type {
+  CustomFieldValidation,
+  FieldValue,
+  FormSubmissionResult,
+} from '@codaco/fresco-ui/form/store/types';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import type { LocaleTag } from '@codaco/protocol-validation';
+import {
+  describeLanguage,
+  getLanguageChoices,
+  matchLanguageChoice,
+} from '~/components/Localization/languageChoices';
+import {
+  LanguagePicker,
+  languageOptionText,
+  resolveChoice,
+} from '~/components/Localization/LanguagePicker';
+import {
+  PROTOCOL_NAME_MAX_LENGTH,
+  PROTOCOL_NAME_TOO_LONG_MESSAGE,
+} from '~/config';
+import countGraphemes from '~/utils/countGraphemes';
+
+/**
+ * The same cap the editor's own name control enforces, counted the same way.
+ *
+ * NOT fresco-ui's built-in `maxLength`, which measures `value.length` — UTF-16
+ * code units. That would refuse a 20-emoji name (160 code units) that the
+ * editor accepts and commits, so a researcher could not create the protocol
+ * they can rename into. One unit, one number, one message across both surfaces.
+ *
+ * Soft (blocks submission with a visible error) rather than hard (dropping
+ * keystrokes) because this surface HAS a submit gate: a 300-character paste
+ * stays in the field, is explained, and can be edited down. The editor's
+ * blur-commit control has no such gate, which is why it caps hard instead.
+ *
+ * Module-level, and a schema FACTORY rather than a schema value, for the reason
+ * `toZodValidation.ts` documents: `useField` memoises its validation on
+ * `JSON.stringify` of the validation props. A function is dropped by
+ * `JSON.stringify`, so the memo key stays a tiny constant; handing it a live
+ * Zod object instead would serialise that object's internals on every render.
+ */
 const makeNameLengthValidation = (
   getIntl: () => IntlShape,
 ): CustomFieldValidation => ({
@@ -26,36 +85,6 @@ const makeNameLengthValidation = (
   hint: '',
 });
 
-import { z } from 'zod/mini';
-
-import { commonMessages } from '@codaco/app-i18n/common';
-import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type {
-  CustomFieldValidation,
-  FieldValue,
-  FormSubmissionResult,
-} from '@codaco/fresco-ui/form/store/types';
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import {
-  canonicalizeLocale,
-  type LocaleTag,
-} from '@codaco/protocol-validation';
-import {
-  getLanguageChoices,
-  matchLanguageChoice,
-} from '~/components/Localization/languageChoices';
-import {
-  PROTOCOL_NAME_MAX_LENGTH,
-  PROTOCOL_NAME_TOO_LONG_MESSAGE,
-} from '~/config';
-import countGraphemes from '~/utils/countGraphemes';
 const remainingMessages = defineMessages({
   protocolNameIsRequired: {
     id: 'architect.remaining.newProtocolDialog.protocolNameIsRequired',
@@ -102,51 +131,85 @@ const finalMessages = defineMessages({
   },
 });
 const languageMessages = defineMessages({
-  protocolLanguage: {
-    id: 'architect.newProtocolDialog.protocolLanguage',
-    defaultMessage: 'Protocol language',
+  protocolLanguages: {
+    id: 'architect.newProtocolDialog.protocolLanguages',
+    defaultMessage: 'Protocol languages',
     description:
-      'Label for the choice of the language a new protocol is written in.',
+      'Label for the choice of the languages a new protocol is written in.',
   },
-  protocolLanguageHint: {
-    id: 'architect.newProtocolDialog.protocolLanguageHint',
+  protocolLanguagesHint: {
+    id: 'architect.newProtocolDialog.protocolLanguagesHint',
     defaultMessage:
-      'The language you will write this protocol in. You can add other languages, or change this one, on the Languages page.',
+      'The languages participants can take this protocol in. You can change them later on the Languages page.',
     description:
-      'Hint for the new protocol language. "Languages page" is the protocol tab where languages are managed.',
+      'Hint for the new protocol languages. "Languages page" is the protocol tab where languages are managed.',
   },
-  protocolLanguageRequired: {
-    id: 'architect.newProtocolDialog.protocolLanguageRequired',
-    defaultMessage: 'Choose the language this protocol is written in',
-    description: 'Error shown when no language is chosen for a new protocol.',
-  },
-  languageOption: {
-    id: 'architect.newProtocolDialog.languageOption',
-    defaultMessage: '{name} ({tag})',
+  defaultLanguage: {
+    id: 'architect.newProtocolDialog.defaultLanguage',
+    defaultMessage: 'Default language',
     description:
-      'One choice in the protocol language list. name is the language name in the interface language; tag is its language code, such as "de" or "pt-BR".',
+      'Label for the choice of which of the languages chosen for a new protocol is its default language.',
+  },
+  defaultLanguageHint: {
+    id: 'architect.newProtocolDialog.defaultLanguageHint',
+    defaultMessage:
+      "Text without a translation in a participant's language is shown in the default language.",
+    description: 'Hint for the default language of a new protocol.',
   },
 });
 
-/**
- * The same cap the editor's own name control enforces, counted the same way.
- *
- * NOT fresco-ui's built-in `maxLength`, which measures `value.length` — UTF-16
- * code units. That would refuse a 20-emoji name (160 code units) that the
- * editor accepts and commits, so a researcher could not create the protocol
- * they can rename into. One unit, one number, one message across both surfaces.
- *
- * Soft (blocks submission with a visible error) rather than hard (dropping
- * keystrokes) because this surface HAS a submit gate: a 300-character paste
- * stays in the field, is explained, and can be edited down. The editor's
- * blur-commit control has no such gate, which is why it caps hard instead.
- *
- * Module-level, and a schema FACTORY rather than a schema value, for the reason
- * `toZodValidation.ts` documents: `useField` memoises its validation on
- * `JSON.stringify` of the validation props. A function is dropped by
- * `JSON.stringify`, so the memo key stays a tiny constant; handing it a live
- * Zod object instead would serialise that object's internals on every render.
- */
+const NO_LANGUAGES: readonly LocaleTag[] = [];
+
+// The default is derived from the chosen languages rather than trusted as
+// stored: a field that unmounts keeps its value, so after the chosen languages
+// change the stored default may no longer be one of them.
+const pickDefaultLocale = (
+  chosen: readonly LocaleTag[],
+  stored: FieldValue,
+  preferred: LocaleTag,
+): LocaleTag | undefined =>
+  [stored, preferred].find(
+    (locale): locale is LocaleTag =>
+      typeof locale === 'string' && chosen.includes(locale),
+  ) ?? chosen[0];
+
+type DefaultLanguageSelectProps = ComponentProps<typeof NativeSelectField> & {
+  chosen: readonly LocaleTag[];
+  preferred: LocaleTag;
+};
+
+const DefaultLanguageSelect = ({
+  chosen,
+  preferred,
+  value,
+  ...props
+}: DefaultLanguageSelectProps) => (
+  <NativeSelectField
+    {...props}
+    value={pickDefaultLocale(chosen, value, preferred)}
+  />
+);
+
+const DefaultLanguageField = ({ preferred }: { preferred: LocaleTag }) => {
+  const intl = useAppIntl();
+  const values = useFormValue(['languages', 'code'] as const);
+  const chosen = resolveChoice(values, 'languages');
+  if (chosen.length < 2) return null;
+  return (
+    <Field<typeof DefaultLanguageSelect>
+      name="defaultLocale"
+      label={intl.formatMessage(languageMessages.defaultLanguage)}
+      hint={intl.formatMessage(languageMessages.defaultLanguageHint)}
+      component={DefaultLanguageSelect}
+      options={chosen.map((locale) => ({
+        value: locale,
+        label: languageOptionText(intl, describeLanguage(locale, intl.locale)),
+      }))}
+      chosen={chosen}
+      preferred={preferred}
+    />
+  );
+};
 
 type NewProtocolDialogProps = {
   open: boolean;
@@ -155,12 +218,15 @@ type NewProtocolDialogProps = {
   initialName?: string;
 } & (
   | {
-      /** A blank protocol has no language yet, so the dialog asks for one. */
-      chooseLanguage: true;
-      onSubmit: (values: { name: string; locale: LocaleTag }) => void;
+      /** A blank protocol has no languages yet, so the dialog asks for them. */
+      chooseLanguages: true;
+      onSubmit: (values: {
+        name: string;
+        localization: { defaultLocale: LocaleTag; locales: LocaleTag[] };
+      }) => void;
     }
   | {
-      chooseLanguage?: false;
+      chooseLanguages?: false;
       onSubmit: (values: { name: string }) => void;
     }
 );
@@ -173,16 +239,11 @@ const NewProtocolDialog = ({
   ...submission
 }: NewProtocolDialogProps) => {
   const intl = useAppIntl();
-  const languageOptions = useMemo(
-    () =>
-      getLanguageChoices(intl.locale).map(({ locale, name }) => ({
-        value: locale,
-        label: intl.formatMessage(languageMessages.languageOption, {
-          name,
-          tag: locale,
-        }),
-      })),
-    [intl],
+  // The language Architect is shown in, which the researcher most likely
+  // writes in too.
+  const preferredLocale = useMemo(
+    () => matchLanguageChoice(intl.locale),
+    [intl.locale],
   );
   const formId = useId();
   const intlRef = useRef(intl);
@@ -209,30 +270,24 @@ const NewProtocolDialog = ({
         };
       }
 
-      if (!submission.chooseLanguage) {
+      if (!submission.chooseLanguages) {
         submission.onSubmit({ name });
         return { success: true };
       }
 
-      const locale =
-        typeof values.locale === 'string'
-          ? canonicalizeLocale(values.locale)
-          : undefined;
-      if (!locale) {
-        return {
-          success: false,
-          fieldErrors: {
-            locale: [
-              createMessageError(languageMessages.protocolLanguageRequired),
-            ],
-          },
-        };
-      }
+      // The languages field's own validation refuses an empty choice.
+      const locales = resolveChoice(values, 'languages');
+      const defaultLocale = pickDefaultLocale(
+        locales,
+        values.defaultLocale,
+        preferredLocale,
+      );
+      if (defaultLocale === undefined) return { success: false };
 
-      submission.onSubmit({ name, locale });
+      submission.onSubmit({ name, localization: { defaultLocale, locales } });
       return { success: true };
     },
-    [submission],
+    [preferredLocale, submission],
   );
 
   return (
@@ -273,18 +328,20 @@ const NewProtocolDialog = ({
             dir="auto"
             autoFocus
           />
-          {submission.chooseLanguage && (
-            <Field<typeof NativeSelectField>
-              name="locale"
-              label={intl.formatMessage(languageMessages.protocolLanguage)}
-              hint={intl.formatMessage(languageMessages.protocolLanguageHint)}
-              component={NativeSelectField}
-              options={languageOptions}
-              initialValue={matchLanguageChoice(intl.locale)}
-              required={intl.formatMessage(
-                languageMessages.protocolLanguageRequired,
-              )}
-            />
+          {submission.chooseLanguages && (
+            <>
+              <LanguagePicker
+                label={intl.formatMessage(languageMessages.protocolLanguages)}
+                hint={intl.formatMessage(
+                  languageMessages.protocolLanguagesHint,
+                )}
+                choices={getLanguageChoices(intl.locale)}
+                declared={NO_LANGUAGES}
+                initialValue={[preferredLocale]}
+                nameChosen
+              />
+              <DefaultLanguageField preferred={preferredLocale} />
+            </>
           )}
         </FormWithoutProvider>
       </Dialog>
