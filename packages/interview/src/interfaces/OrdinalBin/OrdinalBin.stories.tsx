@@ -295,6 +295,10 @@ const expectLabelsFullyVisible = async (
   binSelector: string,
   expectedCount: number,
 ) => {
+  // Chromatic starts play functions before webfonts finish loading, and a
+  // label measured against the fallback font wraps differently.
+  await document.fonts.ready;
+
   await waitFor(
     async () => {
       const bins = [...canvasElement.querySelectorAll(binSelector)];
@@ -313,12 +317,26 @@ const expectLabelsFullyVisible = async (
         const { lineHeight, fontSize } = getComputedStyle(label);
         const halfLeading =
           (Number.parseFloat(lineHeight) - Number.parseFloat(fontSize)) / 2;
+        const heightSlack = Math.max(2, halfLeading);
         await expect(
           label.scrollHeight - label.clientHeight,
-        ).toBeLessThanOrEqual(Math.max(2, halfLeading));
+        ).toBeLessThanOrEqual(heightSlack);
         await expect(label.scrollWidth - label.clientWidth).toBeLessThanOrEqual(
           1,
         );
+
+        // The fitter's hyphenating rung only helps where the browser has a
+        // hyphenation dictionary, which Chrome on Linux (Chromatic included)
+        // downloads after install and may never have. The label has to fit
+        // without one, so re-measure with hyphenation off.
+        label.style.hyphens = 'manual';
+        try {
+          await expect(
+            label.scrollHeight - label.clientHeight,
+          ).toBeLessThanOrEqual(heightSlack);
+        } finally {
+          label.style.hyphens = '';
+        }
       }
     },
     { timeout: 10_000 },
