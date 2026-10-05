@@ -27,12 +27,14 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon,
         variables: {
           name: {
             name: 'Name',
+            label: { en: 'Name' },
             type: 'text',
           },
         },
@@ -43,7 +45,7 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
     {
       id: 'stage-1',
       type: 'NameGenerator',
-      label: 'Name Generator',
+      label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
         type: 'person',
@@ -52,7 +54,7 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
       prompts: [
         {
           id: 'prompt-1',
-          text: 'Name the people in your network',
+          text: { en: 'Name the people in your network' },
         },
       ],
     },

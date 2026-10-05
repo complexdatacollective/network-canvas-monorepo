@@ -5,28 +5,34 @@ import type { EntityDefinition } from '@codaco/protocol-validation';
 import getParentKeyByNameValue from '../getParentKeyByNameValue';
 
 const variables: NonNullable<EntityDefinition['variables']> = {
-  'id-name': { name: 'Full name', type: 'text' },
-  'id-dotted': { name: 'a.b', type: 'text' },
-  'id-position': { name: 'Position', type: 'layout' },
-  'id-cjk': { name: '年龄', type: 'number' },
-  'id-cafe': { name: 'Café', type: 'text' },
+  'id-name': { name: 'Full name', label: { en: 'Full name' }, type: 'text' },
+  'id-dotted': { name: 'a.b', label: { en: 'a.b' }, type: 'text' },
+  'id-position': {
+    name: 'Position',
+    label: { en: 'Position' },
+    type: 'layout',
+  },
+  'id-cjk': { name: '年龄', label: { en: '年龄' }, type: 'number' },
+  'id-cafe': { name: 'Café', label: { en: 'Café' }, type: 'text' },
   'id-contacts': {
     name: 'Contacts_kind',
+    label: { en: 'Contacts kind' },
     type: 'categorical',
     options: [
-      { label: 'Close friend', value: 'close friend' },
-      { label: 'Colleague', value: '同事' },
-      { label: 'Snake', value: 'under_score' },
-      { label: 'One', value: 1 },
-      { label: 'Cafe', value: 'Café' },
+      { label: { en: 'Close friend' }, value: 'close friend' },
+      { label: { en: 'Colleague' }, value: '同事' },
+      { label: { en: 'Snake' }, value: 'under_score' },
+      { label: { en: 'One' }, value: 1 },
+      { label: { en: 'Cafe' }, value: 'Café' },
     ],
   },
   'id-rating': {
     name: 'Rating',
+    label: { en: 'Rating' },
     type: 'ordinal',
     options: [
-      { label: 'Low', value: 1 },
-      { label: 'High', value: 2 },
+      { label: { en: 'Low' }, value: 1 },
+      { label: { en: 'High' }, value: 2 },
     ],
   },
 };
@@ -69,7 +75,7 @@ describe('getParentKeyByNameValue', () => {
 
   it('matches an NFC header against a name stored in NFD', () => {
     const decomposedVariables: NonNullable<EntityDefinition['variables']> = {
-      'id-cafe': { name: 'Café', type: 'text' },
+      'id-cafe': { name: 'Café', label: { en: 'Café' }, type: 'text' },
     };
 
     expect(getParentKeyByNameValue(decomposedVariables, 'Café')).toBe(
@@ -87,8 +93,16 @@ describe('getParentKeyByNameValue', () => {
 
     it('matches a variable that is named after one', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
-        'id-proto': { name: '__proto__', type: 'text' },
-        'id-constructor': { name: 'constructor', type: 'text' },
+        'id-proto': {
+          name: '__proto__',
+          label: { en: '__proto__' },
+          type: 'text',
+        },
+        'id-constructor': {
+          name: 'constructor',
+          label: { en: 'Constructor' },
+          type: 'text',
+        },
       };
 
       expect(getParentKeyByNameValue(named, '__proto__')).toBe('id-proto');
@@ -100,7 +114,14 @@ describe('getParentKeyByNameValue', () => {
     it('matches a variable id that is named after one', () => {
       const named: NonNullable<EntityDefinition['variables']> =
         Object.fromEntries([
-          ['__proto__', { name: 'Anything', type: 'text' as const }],
+          [
+            '__proto__',
+            {
+              name: 'Anything',
+              label: { en: 'Anything' },
+              type: 'text' as const,
+            },
+          ],
         ]);
 
       expect(getParentKeyByNameValue(named, '__proto__')).toBe('__proto__');
@@ -119,7 +140,11 @@ describe('getParentKeyByNameValue', () => {
 
     it('resolves a decomposed name', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
-        'id-place': { name: 'Café position', type: 'layout' },
+        'id-place': {
+          name: 'Café position',
+          label: { en: 'Café position' },
+          type: 'layout',
+        },
       };
 
       expect(getParentKeyByNameValue(named, 'Café position_x')).toBe(
@@ -154,8 +179,9 @@ describe('getParentKeyByNameValue', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
         'id-cafe': {
           name: 'Café',
+          label: { en: 'Café' },
           type: 'categorical',
-          options: [{ label: 'Open', value: 'open' }],
+          options: [{ label: { en: 'Open' }, value: 'open' }],
         },
       };
 

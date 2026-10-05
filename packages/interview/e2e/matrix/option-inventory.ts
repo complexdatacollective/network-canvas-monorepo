@@ -460,7 +460,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     // Synthetic, engine-appended stage — not schema-8, not protocol-authorable.
     'stage.type',
     'stage.id',
-    'stage.label', // dead: DefaultFinishStage.label is set but never rendered
     'confirm-dialog.copy',
     'confirm-dialog.destructive-focus',
     'onFinish.confirm-calls-handler',

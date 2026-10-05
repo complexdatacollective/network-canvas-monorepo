@@ -103,7 +103,10 @@ function makePayload({
       importedAt: '2026-01-01T00:00:00.000Z',
       name: 'Chooser protocol',
       schemaVersion: 9,
-      localization,
+      localization: {
+        defaultLocale: localization.defaultLocale,
+        locales: [...localization.locales],
+      },
       codebook: { ego: { variables: {} }, node: {}, edge: {} },
       assets: [],
       stages: [

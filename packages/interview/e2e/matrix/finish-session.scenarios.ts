@@ -21,7 +21,6 @@ export const finishSessionScenarios: InterfaceScenarios = {
       covers: [
         'stage.type',
         'stage.id',
-        'stage.label',
         'terminal-navigation',
         'progress-100',
         'analytics.interview_finished',
@@ -57,9 +56,8 @@ export const finishSessionScenarios: InterfaceScenarios = {
         // No dialog until Finish is clicked.
         await expect(page.getByRole('dialog')).toHaveCount(0);
 
-        // Dead config: DefaultFinishStage.label ('Finish Interview') and its
-        // synthetic id are never read by this component — the heading text
-        // above is a hardcoded literal in FinishSession.tsx, not stage.label.
+        // The engine-appended finish stage carries no label; the heading text
+        // above comes from the interview's own catalog in FinishSession.tsx.
         // progress-100 has no host-side capture in the e2e host (no
         // StepChangeMeta recorded); the URL step param is the only signal.
         await expect(page).toHaveURL(/step=1/);

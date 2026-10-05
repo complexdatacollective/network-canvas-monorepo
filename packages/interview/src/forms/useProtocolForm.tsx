@@ -16,6 +16,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { useStageSelector } from '../hooks/useStageSelector';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   type Subject,
@@ -23,7 +24,7 @@ import {
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
-import { useVariableLabels } from './buildVariableLabels';
+import { authoredFieldLabel, useVariableLabels } from './buildVariableLabels';
 import { coerceFormValues } from './coerceFormValues';
 import ProtocolField from './ProtocolField';
 
@@ -197,7 +198,17 @@ export default function useProtocolForm({
     );
   }, [fieldsMetadata, namespace]);
 
+  const resolve = useResolveLocalizedString();
+
   const renderedFields = fieldsMetadata.map((field, index) => {
+    // A caption that is blank in the interview language counts as unauthored,
+    // by the same rule `variableLabels` applies, so the field falls back to
+    // the codebook variable's own label.
+    const label =
+      field.authoredLabel !== undefined &&
+      authoredFieldLabel(resolve(field.authoredLabel).text) !== undefined
+        ? field.authoredLabel
+        : field.label;
     const initialValue =
       initialValues &&
       Object.hasOwn(initialValues, field.variable) &&
@@ -208,7 +219,7 @@ export default function useProtocolForm({
     return (
       <ProtocolField
         key={index}
-        field={field}
+        field={{ ...field, label }}
         initialValue={initialValue}
         autoFocus={autoFocus && index === 0}
         validationContext={validationContext ?? undefined}

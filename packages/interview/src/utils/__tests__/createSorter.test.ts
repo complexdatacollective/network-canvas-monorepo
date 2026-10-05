@@ -1237,7 +1237,7 @@ describe('processProtocolSortRule', () => {
 
   it('is idempotent: re-processing an already-processed rule does not clobber its type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      age: { type: 'number', name: 'age' },
+      age: { type: 'number', name: 'age', label: { en: 'Age' } },
     };
     const process = processProtocolSortRule(codebookVariables);
 
@@ -1262,8 +1262,8 @@ describe('processProtocolSortRule', () => {
 
   describe('looks the property up as a variable key, not as a path', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      'name': { type: 'text', name: 'name' },
-      'a.b': { type: 'number', name: 'a.b' },
+      'name': { type: 'text', name: 'name', label: { en: 'Name' } },
+      'a.b': { type: 'number', name: 'a.b', label: { en: 'a.b' } },
     };
 
     it('finds a variable whose key contains a dot', () => {
@@ -1300,7 +1300,7 @@ describe('processProtocolSortRule', () => {
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        name: { type: 'text', name: 'name' },
+        name: { type: 'text', name: 'name', label: { en: 'Name' } },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
       expect(result.property).toEqual([entityAttributesProperty, 'name']);
@@ -1313,7 +1313,7 @@ describe('processProtocolSortRule', () => {
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        type: { type: 'text', name: 'type' },
+        type: { type: 'text', name: 'type', label: { en: 'Type' } },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
       expect(result.property).toEqual('type');
@@ -1322,40 +1322,42 @@ describe('processProtocolSortRule', () => {
 
   describe('adds a type property to the rule based on the codebook variable type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      name: { type: 'text', name: 'name' },
-      age: { type: 'number', name: 'age' },
-      date: { type: 'datetime', name: 'date' },
-      isAlive: { type: 'boolean', name: 'isAlive' },
+      name: { type: 'text', name: 'name', label: { en: 'Name' } },
+      age: { type: 'number', name: 'age', label: { en: 'Age' } },
+      date: { type: 'datetime', name: 'date', label: { en: 'Date' } },
+      isAlive: { type: 'boolean', name: 'isAlive', label: { en: 'Is alive' } },
       category: {
         type: 'categorical',
         name: 'category',
+        label: { en: 'Category' },
         options: [
           {
-            label: 'One',
+            label: { en: 'One' },
             value: 'one',
           },
           {
-            label: 'Two',
+            label: { en: 'Two' },
             value: 'two',
           },
         ],
       },
       order: {
         name: 'order',
+        label: { en: 'Order' },
         type: 'ordinal',
         options: [
           {
-            label: 'One',
+            label: { en: 'One' },
             value: 'one',
           },
           {
-            label: 'Two',
+            label: { en: 'Two' },
             value: 'two',
           },
         ],
       },
-      scale: { type: 'scalar', name: 'scale' },
-      layout: { type: 'layout', name: 'layout' },
+      scale: { type: 'scalar', name: 'scale', label: { en: 'Scale' } },
+      layout: { type: 'layout', name: 'layout', label: { en: 'Layout' } },
     };
 
     it('ignores fifo (*) rules', () => {
@@ -1644,29 +1646,31 @@ describe('processProtocolSortRule', () => {
       name_variable: {
         type: 'text',
         name: 'name_variable',
+        label: { en: 'Name variable' },
       },
       venueVisitFreqVariable: {
         name: 'visitfreq',
+        label: { en: 'Visitfreq' },
         type: 'ordinal',
         options: [
           {
-            label: 'Every day',
+            label: { en: 'Every day' },
             value: 4,
           },
           {
-            label: 'Every other day',
+            label: { en: 'Every other day' },
             value: 3,
           },
           {
-            label: 'Every week',
+            label: { en: 'Every week' },
             value: 2,
           },
           {
-            label: 'Sometimes',
+            label: { en: 'Sometimes' },
             value: 1,
           },
           {
-            label: 'Never',
+            label: { en: 'Never' },
             value: -1,
           },
         ],

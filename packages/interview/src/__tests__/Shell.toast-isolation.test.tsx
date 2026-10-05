@@ -139,10 +139,13 @@ function makePayload(id: string): InterviewPayload {
         node: {
           person: {
             name: 'Person',
+            label: { und: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             icon: 'add-a-person',
-            variables: { name: { name: 'Name', type: 'text' } },
+            variables: {
+              name: { name: 'Name', label: { und: 'Name' }, type: 'text' },
+            },
           },
         },
         edge: {},
@@ -152,10 +155,12 @@ function makePayload(id: string): InterviewPayload {
         {
           id: `${id}-names`,
           type: 'NameGeneratorQuickAdd',
-          label: `Original_${id}`,
+          label: { und: `Original_${id}` },
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),
-          prompts: [{ id: `${id}-prompt`, text: `Original prompt ${id}` }],
+          prompts: [
+            { id: `${id}-prompt`, text: { und: `Original prompt ${id}` } },
+          ],
           behaviours: { minNodes: 1 },
         },
       ],

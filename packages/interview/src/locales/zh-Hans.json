@@ -1,4 +1,6 @@
 {
+  "interview.contentItem.audioLabel": "音频",
+  "interview.contentItem.videoLabel": "视频",
   "interview.familyPedigree.aboutYou": "关于您",
   "interview.familyPedigree.add": "添加",
   "interview.familyPedigree.addChild": "添加子女",

@@ -6,11 +6,16 @@ import { useCallback, useState } from 'react';
 import Surface, {
   surfaceSpacingVariants,
 } from '@codaco/fresco-ui/layout/Surface';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
-type PanelProps = React.HTMLAttributes<HTMLDivElement> & {
-  title: string;
+type PanelProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> & {
+  title: PresentationalText;
   minimize?: boolean;
   panelNumber: number;
   noCollapse?: boolean;
@@ -87,8 +92,8 @@ const Panel = ({
         className={headingClassNames({ spacing: 'sm' })}
         onClick={toggleCollapsed}
       >
-        <Heading level="h3" margin="none">
-          {title}
+        <Heading level="h3" margin="none" {...presentationalTextProps(title)}>
+          {presentationalTextValue(title)}
         </Heading>
       </button>
       <div className={panelContentClasses}>{children}</div>

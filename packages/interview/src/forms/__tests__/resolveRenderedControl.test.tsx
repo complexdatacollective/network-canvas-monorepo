@@ -4,15 +4,17 @@ import { describe, expect, it } from 'vitest';
 import Form from '@codaco/fresco-ui/form/Form';
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import { selectFieldMetadataFromVariables } from '../../selectors/forms';
 import ProtocolField from '../ProtocolField';
 import { resolveRenderedControl } from '../resolveRenderedControl';
 
 const REQUIRED_BOOLEAN = {
   name: 'Consented',
+  label: { en: 'Consented' },
   type: 'boolean' as const,
   component: 'Toggle' as const,
-  options: [{ label: 'Yes', value: true }],
+  options: [{ label: { en: 'Yes' }, value: true }],
   validation: { required: true },
 };
 
@@ -66,7 +68,7 @@ describe('every path through the correction agrees', () => {
       [
         {
           variable: asEntityAttributeReference('consented'),
-          prompt: 'Do you consent?',
+          prompt: { en: 'Do you consent?' },
         },
       ],
     );
@@ -86,18 +88,20 @@ describe('every path through the correction agrees', () => {
 
   it('renders the swapped control from a standalone ProtocolField', () => {
     render(
-      <Form onSubmit={() => ({ success: true })}>
-        <ProtocolField
-          field={{
-            variable: 'consented',
-            label: 'Do you consent?',
-            type: 'boolean',
-            component: 'Toggle',
-            options: REQUIRED_BOOLEAN.options,
-            validation: { required: true },
-          }}
-        />
-      </Form>,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <ProtocolField
+            field={{
+              variable: 'consented',
+              label: { en: 'Do you consent?' },
+              type: 'boolean',
+              component: 'Toggle',
+              options: REQUIRED_BOOLEAN.options,
+              validation: { required: true },
+            }}
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     // Boolean's own unselected Yes/No pair, not a switch and not the single

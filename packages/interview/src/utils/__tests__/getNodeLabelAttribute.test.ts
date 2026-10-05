@@ -9,11 +9,12 @@ describe('getNodeLabelAttribute', () => {
     // Setup
     const mockCodebook: NodeDefinition = {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-6',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'name', type: 'text' },
-        'var-456': { name: 'age', type: 'number' },
+        'var-123': { name: 'name', label: { en: 'Name' }, type: 'text' },
+        'var-456': { name: 'age', label: { en: 'Age' }, type: 'number' },
       },
     };
 
@@ -36,10 +37,11 @@ describe('getNodeLabelAttribute', () => {
     // Setup
     const mockCodebook: NodeDefinition = {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-5',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'NAME', type: 'text' }, // Upper case
+        'var-123': { name: 'NAME', label: { en: 'NAME' }, type: 'text' }, // Upper case
       },
     };
 
@@ -61,10 +63,11 @@ describe('getNodeLabelAttribute', () => {
     // Setup
     const mockCodebook: NodeDefinition = {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-4',
       shape: { default: 'circle' },
       variables: {
-        'var-456': { name: 'age', type: 'number' },
+        'var-456': { name: 'age', label: { en: 'Age' }, type: 'number' },
       },
     };
 
@@ -87,10 +90,11 @@ describe('getNodeLabelAttribute', () => {
     // Setup
     const mockCodebook: NodeDefinition = {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-3',
       shape: { default: 'circle' },
       variables: {
-        'var-456': { name: 'age', type: 'number' },
+        'var-456': { name: 'age', label: { en: 'Age' }, type: 'number' },
       },
     };
 
@@ -113,12 +117,21 @@ describe('getNodeLabelAttribute', () => {
     // Setup
     const mockCodebook: NodeDefinition = {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'firstName', type: 'text' },
-        'var-456': { name: 'lastName', type: 'text' },
-        'var-789': { name: 'age', type: 'number' },
+        'var-123': {
+          name: 'firstName',
+          label: { en: 'First name' },
+          type: 'text',
+        },
+        'var-456': {
+          name: 'lastName',
+          label: { en: 'Last name' },
+          type: 'text',
+        },
+        'var-789': { name: 'age', label: { en: 'Age' }, type: 'number' },
       },
     };
 
@@ -144,11 +157,20 @@ describe('getNodeLabelAttribute', () => {
     // should win over `description` even though `description` iterates first.
     const mockCodebook: NodeDefinition = {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
-        'var-aaa': { name: 'description', type: 'text' },
-        'var-bbb': { name: 'full_name', type: 'text' },
+        'var-aaa': {
+          name: 'description',
+          label: { en: 'Description' },
+          type: 'text',
+        },
+        'var-bbb': {
+          name: 'full_name',
+          label: { en: 'Full name' },
+          type: 'text',
+        },
       },
     };
 
@@ -182,10 +204,11 @@ describe('getNodeLabelAttribute', () => {
     // Setup
     const mockCodebook: NodeDefinition = {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'name', type: 'text' },
+        'var-123': { name: 'name', label: { en: 'Name' }, type: 'text' },
       },
     };
 

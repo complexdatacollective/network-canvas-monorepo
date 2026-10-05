@@ -69,8 +69,8 @@ vi.mock('../interfaces', async () => {
             variable: 'respuesta.original',
             type: 'text',
             component: 'Text',
-            label: 'Nombre elegido por el estudio',
-            hint: 'Texto original: café, Ana & <literal>.',
+            label: { en: 'Nombre elegido por el estudio' },
+            hint: { en: 'Texto original: café, Ana & <literal>.' },
             validation: { required: true },
           }}
         />

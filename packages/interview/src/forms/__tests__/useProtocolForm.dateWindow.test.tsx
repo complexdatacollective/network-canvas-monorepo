@@ -17,6 +17,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
@@ -32,7 +33,7 @@ const NODE_TYPE = 'person';
 const VAR = 'born_on';
 
 const fields: FormField[] = [
-  { variable: asEntityAttributeReference(VAR), prompt: 'Born on' },
+  { variable: asEntityAttributeReference(VAR), prompt: { en: 'Born on' } },
 ];
 
 function makeWrapper(
@@ -55,13 +56,16 @@ function makeWrapper(
         id: 'p',
         hash: 'h',
         schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
+              label: { en: NODE_TYPE },
               variables: {
                 [VAR]: {
                   name: VAR,
+                  label: { en: 'Born on' },
                   type: 'datetime',
                   component,
                   ...(parameters !== undefined ? { parameters } : {}),
@@ -78,11 +82,13 @@ function makeWrapper(
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     );
   };
 }

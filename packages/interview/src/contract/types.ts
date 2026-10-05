@@ -27,9 +27,9 @@ export type ResolvedAsset = {
  * schema version — older protocols are migrated to it at import time, so
  * downstream code never sees a versioned union.
  *
- * `hash` is the host-computed canonical content hash (codebook + stages),
- * produced by `hashProtocol` from `@codaco/protocol-validation` at protocol
- * import time. Forwarded through analytics events as the `protocol_hash`
+ * `hash` is the host-computed canonical content hash (localization, codebook
+ * and stages), produced by `hashProtocol` from `@codaco/protocol-validation`
+ * at protocol import time. Forwarded through analytics events as the `protocol_hash`
  * super property.
  */
 export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {

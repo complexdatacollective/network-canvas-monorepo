@@ -1,4 +1,6 @@
 {
+  "interview.contentItem.audioLabel": "Audio",
+  "interview.contentItem.videoLabel": "Video",
   "interview.familyPedigree.aboutYou": "Over jou",
   "interview.familyPedigree.add": "Toevoegen",
   "interview.familyPedigree.addChild": "Kind toevoegen",

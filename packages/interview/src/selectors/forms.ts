@@ -7,11 +7,11 @@ import type {
   ComponentType,
   ComposerFormField,
   FormField,
+  LocalizedString,
   Variable,
 } from '@codaco/protocol-validation';
 
 import { buildFieldValidationProps } from '../forms/buildFieldValidationProps';
-import { authoredFieldLabel } from '../forms/buildVariableLabels';
 import { resolveRenderedControl } from '../forms/resolveRenderedControl';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
@@ -62,16 +62,14 @@ type FieldMetadata = Variable extends infer V
         component: ComponentType;
         parameters?: Record<string, unknown>;
         variable: string;
-        /** What the participant reads as this field's caption. */
-        label: string;
         /**
-         * The researcher-authored part of that caption, absent when nothing
-         * was authored and `label` fell back to the codebook variable's name.
-         * This — never `label` — is what may be repeated back to a participant
-         * away from the field itself, e.g. by a comparison validator.
+         * The caption authored for this field on the stage, absent when none
+         * was. This — never `label` — is what may be repeated back to a
+         * participant away from the field itself, e.g. by a comparison
+         * validator.
          */
-        authoredLabel?: string;
-        hint?: string;
+        authoredLabel?: LocalizedString;
+        hint?: LocalizedString;
         showValidationHints?: boolean;
       }
     : never
@@ -119,9 +117,8 @@ const createFieldMetadata = (
 
     // Shared form fields caption with a required `prompt`; NetworkComposer
     // fields carry an optional `label` instead, falling back to the codebook
-    // variable's name so an unlabelled attribute still reads naturally.
-    const fieldLabel = 'label' in field ? field.label : undefined;
-    const fieldPrompt = 'prompt' in field ? field.prompt : undefined;
+    // variable's label so an unlabelled attribute still reads naturally.
+    const authoredLabel = 'prompt' in field ? field.prompt : field.label;
 
     // The control (component) and its parameters may live on the stage field
     // (NetworkComposer) or, for every other stage, on the codebook variable.
@@ -160,24 +157,12 @@ const createFieldMetadata = (
         ? codebookEntry
         : { ...codebookEntry, options: undefined };
 
-    // The one rule for what this field is called. `authoredLabel` is the
-    // researcher's participant-facing caption, and it is what the
-    // variable-comparison validators may name this variable by; `label` adds
-    // the fallbacks a rendered control needs, which include the codebook
-    // variable's `name` — a researcher identifier that must not travel any
-    // further than the caption it is standing in for.
-    const authoredLabel = authoredFieldLabel({
-      label: fieldLabel,
-      prompt: fieldPrompt,
-    });
-
     return {
       ...renderedEntry,
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,
-      label: authoredLabel ?? codebookEntry.name ?? variable,
-      authoredLabel,
+      ...(authoredLabel !== undefined ? { authoredLabel } : {}),
       hint,
       showValidationHints,
     };

@@ -2,13 +2,22 @@
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableValue } from '@codaco/shared-consts';
 
 import { interfaceMessages } from '../messages';
 
-type DataCardDetails = Record<string, VariableValue | undefined>;
+export type DataCardDetail = {
+  id: string;
+  label: PresentationalText;
+  value: VariableValue | undefined;
+};
 
 type DataCardProps = Omit<
   React.ComponentPropsWithRef<'article'>,
@@ -16,8 +25,8 @@ type DataCardProps = Omit<
 > & {
   /** The card title — derived from the node's name heuristic or fallback */
   label: string;
-  /** Label → value pairs to render below the title */
-  details?: DataCardDetails;
+  /** Label and value pairs to render below the title, in order */
+  details?: readonly DataCardDetail[];
 };
 
 const formatValue = (
@@ -71,7 +80,7 @@ const DataCard = ({
   ...articleProps
 }: DataCardProps) => {
   const intl = useAppIntl();
-  const hasDetails = details && Object.keys(details).length > 0;
+  const hasDetails = details && details.length > 0;
 
   return (
     <article
@@ -93,16 +102,17 @@ const DataCard = ({
 
       {hasDetails && (
         <dl className="bg-platinum-dark grid grow grid-cols-[fit-content(33%)_minmax(0,1fr)] items-baseline gap-x-6 gap-y-4 px-6 py-2">
-          {Object.entries(details).map(([detailLabel, value]) => (
-            <div key={detailLabel} className="contents">
+          {details.map(({ id, label: detailLabel, value }) => (
+            <div key={id} className="contents">
               <Heading
                 level="label"
                 variant="all-caps"
                 margin="none"
                 render={<dt />}
+                {...presentationalTextProps(detailLabel)}
                 className="text-right text-xs leading-tight font-extrabold wrap-break-word"
               >
-                {detailLabel}
+                {presentationalTextValue(detailLabel)}
               </Heading>
               <dd className="text-sm leading-tight font-medium wrap-break-word">
                 {formatValue(value, intl)}

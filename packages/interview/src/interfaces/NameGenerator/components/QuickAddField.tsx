@@ -44,6 +44,7 @@ import {
 } from '../../../components/actionButtonVariants';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { useResolveLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import {
   getCanAddMultipleNodes,
   getNodeIconName,
@@ -241,6 +242,7 @@ export default function QuickAddField({
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
   const canAddMultiple = useStageSelector(getCanAddMultipleNodes);
+  const resolve = useResolveLocalizedString();
 
   // When open, the toggle previews the node being created, so it takes the
   // shape the new node will have (resolved against the prompt's additional
@@ -256,7 +258,7 @@ export default function QuickAddField({
   // is only the fallback when the codebook type is unavailable.
   const inputLabel = nodeTypeDefinition
     ? intl.formatMessage(interfaceMessages.entityName, {
-        entityLabel: nodeTypeDefinition.name,
+        entityLabel: resolve(nodeTypeDefinition.label).text,
       })
     : placeholder;
 

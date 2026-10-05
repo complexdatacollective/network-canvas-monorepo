@@ -25,6 +25,7 @@ import session, {
 } from '../../../../store/modules/session';
 import ui from '../../../../store/modules/ui';
 import type { StageProps } from '../../../../types';
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import NodeForm from '../NodeForm';
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
@@ -48,9 +49,12 @@ const FIELD_LABEL = 'Your answer';
 const UNIQUE_ERROR = 'This value is used elsewhere. It must be unique.';
 
 const form: TForm = {
-  title: 'Add a person',
+  title: { en: 'Add a person' },
   fields: [
-    { variable: asEntityAttributeReference(VARIABLE), prompt: FIELD_LABEL },
+    {
+      variable: asEntityAttributeReference(VARIABLE),
+      prompt: { en: FIELD_LABEL },
+    },
   ],
 };
 
@@ -59,10 +63,10 @@ type NameGeneratorStage = StageProps<'NameGenerator'>['stage'];
 const stage: NameGeneratorStage = {
   id: 'name-generator-stage',
   type: 'NameGenerator',
-  label: 'Add people',
+  label: { en: 'Add people' },
   subject: { entity: 'node', type: NODE_TYPE },
   form,
-  prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
 };
 
 function buildProtocol(variable: Variable): ProtocolPayload {
@@ -70,6 +74,7 @@ function buildProtocol(variable: Variable): ProtocolPayload {
     node: {
       [NODE_TYPE]: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon: 'add-a-person',
@@ -86,6 +91,7 @@ function buildProtocol(variable: Variable): ProtocolPayload {
     assets: [],
     name: 'Test protocol',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook,
     stages: [stage],
   };
@@ -142,15 +148,17 @@ function renderNodeForm(variable: Variable) {
 
   render(
     <Provider store={store}>
-      <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-        <NodeForm
-          selectedNode={null}
-          form={form}
-          disabled={false}
-          onClose={vi.fn()}
-          addNode={addNode}
-        />
-      </CurrentStepProvider>
+      <TestProtocolLocalization>
+        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+          <NodeForm
+            selectedNode={null}
+            form={form}
+            disabled={false}
+            onClose={vi.fn()}
+            addNode={addNode}
+          />
+        </CurrentStepProvider>
+      </TestProtocolLocalization>
     </Provider>,
   );
 
@@ -224,6 +232,7 @@ const cases: Record<string, UniqueCase> = {
   text: {
     variable: {
       name: 'Name',
+      label: { en: 'Name' },
       type: 'text',
       component: 'Text',
       validation: { unique: true },
@@ -236,6 +245,7 @@ const cases: Record<string, UniqueCase> = {
     // input hands the form '12' while the first alter stores 12.
     variable: {
       name: 'Alter ID',
+      label: { en: 'Alter ID' },
       type: 'number',
       component: 'Number',
       validation: { unique: true },
@@ -246,6 +256,7 @@ const cases: Record<string, UniqueCase> = {
   datetime: {
     variable: {
       name: 'Birthday',
+      label: { en: 'Birthday' },
       type: 'datetime',
       component: 'DatePicker',
       validation: { unique: true },
@@ -256,6 +267,7 @@ const cases: Record<string, UniqueCase> = {
   boolean: {
     variable: {
       name: 'Employed',
+      label: { en: 'Employed' },
       type: 'boolean',
       component: 'Boolean',
       validation: { unique: true },
@@ -266,11 +278,12 @@ const cases: Record<string, UniqueCase> = {
   ordinal: {
     variable: {
       name: 'Closeness',
+      label: { en: 'Closeness' },
       type: 'ordinal',
       component: 'RadioGroup',
       options: [
-        { label: 'Low', value: 1 },
-        { label: 'High', value: 2 },
+        { label: { en: 'Low' }, value: 1 },
+        { label: { en: 'High' }, value: 2 },
       ],
       validation: { unique: true },
     },
@@ -280,12 +293,13 @@ const cases: Record<string, UniqueCase> = {
   categorical: {
     variable: {
       name: 'Contexts',
+      label: { en: 'Contexts' },
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: 'Family', value: 'family' },
-        { label: 'Work', value: 'work' },
-        { label: 'School', value: 'school' },
+        { label: { en: 'Family' }, value: 'family' },
+        { label: { en: 'Work' }, value: 'work' },
+        { label: { en: 'School' }, value: 'school' },
       ],
       validation: { unique: true },
     },

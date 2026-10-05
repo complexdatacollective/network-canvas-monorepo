@@ -19,12 +19,14 @@ const codebook: Codebook = {
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {},
     },
     place: {
       name: 'Place',
+      label: { en: 'Place' },
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: {},
@@ -309,14 +311,23 @@ describe('makeVariableUUIDReplacer column names', () => {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          'id-name': { name: 'Full name', type: 'text' },
-          'id-age': { name: '年龄', type: 'number' },
-          'id-cafe': { name: 'Café', type: 'text' },
-          'id-dotted': { name: 'a.b', type: 'text' },
-          'id-proto': { name: '__proto__', type: 'text' },
+          'id-name': {
+            name: 'Full name',
+            label: { en: 'Full name' },
+            type: 'text',
+          },
+          'id-age': { name: '年龄', label: { en: '年龄' }, type: 'number' },
+          'id-cafe': { name: 'Café', label: { en: 'Café' }, type: 'text' },
+          'id-dotted': { name: 'a.b', label: { en: 'a.b' }, type: 'text' },
+          'id-proto': {
+            name: '__proto__',
+            label: { en: '__proto__' },
+            type: 'text',
+          },
         },
       },
     },
@@ -397,9 +408,12 @@ describe('a roster heading, from import to the variable it fills', () => {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
-        variables: { 'id-cafe': { name: cafe, type: 'text' } },
+        variables: {
+          'id-cafe': { name: cafe, label: { en: cafe }, type: 'text' },
+        },
       },
     },
   };
