@@ -119,7 +119,7 @@ const expectPeople = (count: number) =>
     );
   };
 
-/** The first visit: only the participant, selected, with the add menu open. */
+/** The first visit: only the participant, with the add menu around them. */
 export const FirstVisit: Story = {
   render: () => <PedigreeStory withFormFields />,
   play: async ({ canvasElement }) => {

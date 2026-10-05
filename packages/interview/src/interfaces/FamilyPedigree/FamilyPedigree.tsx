@@ -118,18 +118,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     );
   }, [family.egoId, dispatch, config, currentStep]);
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  // On a first visit — the participant alone on the canvas — they start
-  // selected, so the add menu is there from the outset.
-  const initialSelectionChecked = useRef(false);
+  // The add menu and the details panel are separate. The menu shows around
+  // the person the mouse is over, or else the person keyboard focus is on (or
+  // in their menu); the selected person has their details open in the panel.
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // The person the family's single tab stop returns to.
+  const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
+  // On a first visit — the participant alone on the canvas — the add menu is
+  // showing around them from the outset.
+  const initialFocusChecked = useRef(false);
   useEffect(() => {
-    if (!family.egoId || initialSelectionChecked.current) return;
-    initialSelectionChecked.current = true;
-    if (family.people.length === 1) setSelectedId(family.egoId);
+    if (!family.egoId || initialFocusChecked.current) return;
+    initialFocusChecked.current = true;
+    if (family.people.length === 1) setFocusedId(family.egoId);
   }, [family.egoId, family.people.length]);
-  const selected = selectedId ? family.byId.get(selectedId) : undefined;
 
   const [panel, setPanel] = useState<PanelState>(null);
+  const selectedId =
+    panel?.open && panel.mode.kind === 'edit' ? panel.mode.person.id : null;
+  // No menu while the panel is open: it would offer to add to someone else
+  // mid-way through describing this person.
+  const menuPersonId = panel?.open ? null : (hoveredId ?? focusedId);
+  const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
   const [announcement, setAnnouncement] = useState('');
 
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -187,11 +198,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   });
 
   const openAdd = (relation: Relation) => {
-    if (!selected) return;
+    if (!menuPerson) return;
     setPanel({
       open: true,
       key: uuid(),
-      mode: { kind: 'add', relation, anchor: selected },
+      mode: { kind: 'add', relation, anchor: menuPerson },
     });
   };
 
@@ -212,16 +223,55 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const closePanel = () =>
     setPanel((current) => (current ? { ...current, open: false } : null));
 
-  // Selecting a person opens their details; when the panel closes they stay
-  // selected, with the add menu around them.
+  // Keyboard focus shows the menu; focus from a click (or returned there by
+  // the panel after a click) does not, so for a mouse user the menu follows
+  // the pointer alone.
+  const handleFocusPerson = (personId: string, event: React.FocusEvent) => {
+    setLastFocusedId(personId);
+    if (
+      event.target instanceof Element &&
+      event.target.matches(':focus-visible')
+    )
+      setFocusedId(personId);
+  };
+
+  // The mouse shows a person's menu while it is over them. Leaving waits a
+  // moment, so the pointer can cross the gap between the person and a button.
+  const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(hoverLeaveTimer.current), []);
+  const handlePersonPointerEnter = (
+    personId: string,
+    event: React.PointerEvent,
+  ) => {
+    if (event.pointerType !== 'mouse') return;
+    clearTimeout(hoverLeaveTimer.current);
+    setHoveredId(personId);
+  };
+  const handlePersonPointerLeave = (event: React.PointerEvent) => {
+    if (event.pointerType !== 'mouse') return;
+    clearTimeout(hoverLeaveTimer.current);
+    hoverLeaveTimer.current = setTimeout(() => setHoveredId(null), 300);
+  };
+
+  // A touch screen has no hover, so a tap leaves the person's menu showing
+  // once their details panel closes.
+  const lastPointerType = useRef<string | null>(null);
+
+  // Selecting a person (click, tap, Enter or Space) opens their details. The
+  // panel returns focus to them when it closes.
   const handleActivate = (personId: string) => {
-    setSelectedId(personId);
+    setLastFocusedId(personId);
+    if (lastPointerType.current === 'touch') setFocusedId(personId);
+    lastPointerType.current = null;
     openEdit(personId);
   };
 
   // Roving focus: the family is a single tab stop, and the arrow keys move
-  // between people by where they sit in the tree. Selection follows focus.
-  const tabStopId = selectedId ?? family.egoId ?? family.people[0]?.id;
+  // between people by where they sit in the tree.
+  const tabStopId =
+    (lastFocusedId && family.byId.has(lastFocusedId) ? lastFocusedId : null) ??
+    family.egoId ??
+    family.people[0]?.id;
 
   const handleNodeKeyDown = (
     personId: string,
@@ -244,8 +294,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (next) nodeRefs.current.get(next)?.focus();
   };
 
-  // Clicking anywhere on the stage but a person clears the selection. The
-  // side panel is portalled out of the stage's DOM, so its clicks (which still
+  // Clicking anywhere on the stage but a person hides the add menu. The side
+  // panel is portalled out of the stage's DOM, so its clicks (which still
   // bubble here through React) are ignored.
   const handleStagePointerDown = (event: React.PointerEvent) => {
     const { target, currentTarget } = event;
@@ -254,7 +304,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       currentTarget.contains(target) &&
       !target.closest('[data-testid="pedigree-person"]')
     ) {
-      setSelectedId(null);
+      setFocusedId(null);
+      setHoveredId(null);
+    }
+  };
+
+  // Focus leaving the family for the rest of the page (Tab past the canvas)
+  // hides the add menu. Focus moving into the side panel keeps it for when
+  // the panel closes; focus moving to nothing (a click on a non-focusable
+  // area) is left to the pointer handler above.
+  const handleCanvasBlur = (event: React.FocusEvent) => {
+    const next = event.relatedTarget;
+    if (
+      next instanceof Element &&
+      !event.currentTarget.contains(next) &&
+      !next.closest('[data-testid="pedigree-person-panel"]')
+    ) {
+      setFocusedId(null);
     }
   };
 
@@ -364,7 +430,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           dispatch(deleteEdge(linkId));
         }
         dispatch(deleteNode(personId));
-        if (selectedId === personId) setSelectedId(family.egoId ?? null);
+        if (focusedId === personId) setFocusedId(null);
         setAnnouncement(
           intl.formatMessage(messages.removedAnnouncement, { name }),
         );
@@ -372,12 +438,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     });
   };
 
-  // Escape on the canvas clears the selection, returning focus to the person.
+  // Escape in the add menu returns focus to its person; Escape on the person
+  // hides the menu.
   const handleCanvasKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key !== 'Escape' || !selectedId) return;
+    if (event.key !== 'Escape' || !focusedId) return;
     event.preventDefault();
-    nodeRefs.current.get(selectedId)?.focus();
-    setSelectedId(null);
+    const node = nodeRefs.current.get(focusedId);
+    if (node && document.activeElement !== node) node.focus();
+    else setFocusedId(null);
   };
 
   const panelTitle = (() => {
@@ -424,6 +492,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         aria-label={intl.formatMessage(messages.canvasLabel)}
         className="relative min-h-0 w-full flex-1 overflow-auto"
         onKeyDown={handleCanvasKeyDown}
+        onBlur={handleCanvasBlur}
         data-testid="pedigree-canvas"
       >
         <div className="flex min-h-full min-w-max items-center justify-center p-40">
@@ -440,22 +509,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             renderNode={(personId) => {
               const person = family.byId.get(personId);
               if (!person) return null;
-              const isSelected = personId === selectedId;
+              const hasMenu = personId === menuPersonId;
               return (
                 <PersonNode
                   person={person}
                   color={nodeColor}
-                  selected={isSelected}
+                  selected={personId === selectedId}
+                  menuOpen={hasMenu}
                   hasMissingDetails={
                     missingDetailsFor(person, requiredFormVariables).length > 0
                   }
                   onActivate={() => handleActivate(personId)}
                   tabIndex={personId === tabStopId ? 0 : -1}
-                  onFocus={() => setSelectedId(personId)}
+                  onFocus={(event) => handleFocusPerson(personId, event)}
                   onKeyDown={(event) => handleNodeKeyDown(personId, event)}
+                  onPointerEnter={(event) =>
+                    handlePersonPointerEnter(personId, event)
+                  }
+                  onPointerLeave={handlePersonPointerLeave}
+                  onPointerDown={(event) => {
+                    lastPointerType.current = event.pointerType;
+                  }}
                   nodeRef={setNodeRef(personId)}
                 >
-                  {isSelected && (
+                  {hasMenu && (
                     <AddRelativeMenu
                       isYou={person.isEgo}
                       name={displayName(personId)}

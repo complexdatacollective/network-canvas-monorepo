@@ -1,7 +1,13 @@
 'use client';
 
 import { TriangleAlert } from 'lucide-react';
-import type { KeyboardEvent, ReactNode, Ref } from 'react';
+import type {
+  FocusEvent,
+  KeyboardEvent,
+  PointerEventHandler,
+  ReactNode,
+  Ref,
+} from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
@@ -18,13 +24,20 @@ import { type Person, symbolFor } from '../model';
 type PersonNodeProps = {
   person: Person;
   color: NodeColorSequence;
+  /** Their details are open in the side panel. */
   selected: boolean;
+  /** Their add menu is showing (focus or the mouse is on them). */
+  menuOpen: boolean;
   hasMissingDetails: boolean;
   onActivate: () => void;
   /** 0 for the family's single tab stop, -1 for everyone else. */
   tabIndex: number;
-  onFocus: () => void;
+  /** Focus has moved onto the person or into their add menu. */
+  onFocus: (event: FocusEvent) => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  onPointerEnter: PointerEventHandler;
+  onPointerLeave: PointerEventHandler;
+  onPointerDown: PointerEventHandler;
   nodeRef?: Ref<HTMLButtonElement>;
   /** Rendered after the symbol, inside its positioning box (the add menu). */
   children?: ReactNode;
@@ -38,11 +51,15 @@ export default function PersonNode({
   person,
   color,
   selected,
+  menuOpen,
   hasMissingDetails,
   onActivate,
   tabIndex,
   onFocus,
   onKeyDown,
+  onPointerEnter,
+  onPointerLeave,
+  onPointerDown,
   nodeRef,
   children,
 }: PersonNodeProps) {
@@ -55,11 +72,15 @@ export default function PersonNode({
     <div
       className={cx(
         'relative flex size-full items-center justify-center',
-        // Lift the selected person (and their add menu) above neighbours.
-        selected && 'z-10',
+        // Lift the person whose add menu is showing above their neighbours.
+        menuOpen && 'z-10',
       )}
       data-testid="pedigree-person"
       data-person-id={person.id}
+      onFocus={onFocus}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onPointerDown={onPointerDown}
     >
       <Node
         ref={nodeRef}
@@ -75,7 +96,6 @@ export default function PersonNode({
         selected={selected}
         onClick={onActivate}
         tabIndex={tabIndex}
-        onFocus={onFocus}
         onKeyDown={onKeyDown}
       />
       {hasMissingDetails && (
