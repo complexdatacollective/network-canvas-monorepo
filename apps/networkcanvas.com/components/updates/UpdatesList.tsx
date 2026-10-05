@@ -2,7 +2,7 @@
 
 import { Accordion as BaseAccordion } from '@base-ui/react/accordion';
 import { ArrowRight, ChevronDown, Search, X } from 'lucide-react';
-import { useFormatter, useTranslations } from 'next-intl';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -46,9 +46,9 @@ function MarkdownLink({
 const markdownComponents = { a: MarkdownLink };
 
 // Link destinations are not part of what a reader sees, so they do not match.
-function searchableText(update: Update) {
+function searchableText(update: Update, locale: string) {
   const text = `${update.title} ${update.summary ?? ''} ${update.details ?? ''}`;
-  return foldText(text.replace(/\]\([^)]*\)/g, ']'));
+  return foldText(text.replace(/\]\((?:[^()]|\([^()]*\))*\)/g, ']'), locale);
 }
 
 type AppFilter = 'all' | UpdateAppId;
@@ -70,8 +70,9 @@ function visibleUpdatesFor(
   updates: readonly (Update & { searchText: string })[],
   query: string,
   app: AppFilter,
+  locale: string,
 ) {
-  const terms = foldText(query).split(/\s+/).filter(Boolean);
+  const terms = foldText(query, locale).split(/\s+/).filter(Boolean);
   return updates.filter(
     (update) =>
       (app === 'all' || update.apps.includes(app)) &&
@@ -92,6 +93,7 @@ function updateIdFromHash(updates: readonly Update[]) {
 export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   const t = useTranslations('UpdatesPage');
   const format = useFormatter();
+  const locale = useLocale();
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [app, setApp] = useState<AppFilter>('all');
@@ -99,11 +101,11 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
     () =>
       updates.map((update) => ({
         ...update,
-        searchText: searchableText(update),
+        searchText: searchableText(update, locale),
       })),
-    [updates],
+    [updates, locale],
   );
-  const visibleUpdates = visibleUpdatesFor(searchable, query, app);
+  const visibleUpdates = visibleUpdatesFor(searchable, query, app, locale);
   const narrowed = query.trim() !== '' || app !== 'all';
 
   const showUpdates = (nextQuery: string, nextApp: AppFilter) => {
@@ -111,7 +113,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
     setApp(nextApp);
     setOpenIds(
       nextQuery.trim()
-        ? visibleUpdatesFor(searchable, nextQuery, nextApp).map(
+        ? visibleUpdatesFor(searchable, nextQuery, nextApp, locale).map(
             (update) => update.id,
           )
         : [],

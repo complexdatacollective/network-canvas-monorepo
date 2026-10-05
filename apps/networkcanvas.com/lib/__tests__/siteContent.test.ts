@@ -374,6 +374,21 @@ older,2026-01-05,${fields}
     );
   });
 
+  it('rejects a link that leaves the site', async () => {
+    for (const link of ['//attacker.example', '/\\attacker.example']) {
+      await writeFile(
+        join(directory, 'updates.csv'),
+        `id,date,prominence,apps,title,summary,details,link
+older,2026-01-05,launch,fresco,Older update,Older summary,,${link}
+`,
+      );
+
+      await expect(loadUpdates(directory)).rejects.toThrow(
+        'updates.csv: row 2: link:',
+      );
+    }
+  });
+
   it('rejects an app it does not know', async () => {
     await writeFile(
       join(directory, 'updates.csv'),
