@@ -28,17 +28,32 @@ const options: ExportOptions = {
 const codebook: Codebook = {
   ego: {
     variables: {
-      'ego-camel': { name: 'interviewLocale', type: 'text' },
-      'ego-snake': { name: 'INTERVIEW_LOCALE', type: 'text' },
-      'ego-printed': { name: 'networkCanvasInterviewLocale', type: 'text' },
+      'ego-camel': {
+        name: 'interviewLocale',
+        label: { en: 'Interview locale' },
+        type: 'text',
+      },
+      'ego-snake': {
+        name: 'INTERVIEW_LOCALE',
+        label: { en: 'INTERVIEW LOCALE' },
+        type: 'text',
+      },
+      'ego-printed': {
+        name: 'networkCanvasInterviewLocale',
+        label: { en: 'Network canvas interview locale' },
+        type: 'text',
+      },
     },
   },
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
-      variables: { 'p-nick': { name: 'Nickname', type: 'text' } },
+      variables: {
+        'p-nick': { name: 'Nickname', label: { en: 'Nickname' }, type: 'text' },
+      },
     },
   },
 };
@@ -212,10 +227,11 @@ describe('the language an interview was held in', () => {
   const analysisShape = (files: Map<string, string>) => ({
     csvHeaders: [...files]
       .filter(([name]) => name.endsWith('.csv'))
-      .map(([name, content]) => [name, content.split('\r\n')[0]])
-      .toSorted(([a], [b]) => a.localeCompare(b)),
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .map(([name, content]) => [name, content.split('\r\n')[0]]),
     graphmlKeys: [...files]
       .filter(([name]) => name.endsWith('.graphml'))
+      .toSorted(([a], [b]) => a.localeCompare(b))
       .map(([name, content]) => [
         name,
         Array.from(
@@ -223,8 +239,7 @@ describe('the language an interview was held in', () => {
             .parseFromString(content, MIME_TYPE.XML_APPLICATION)
             .getElementsByTagName('key'),
         ).map((key) => [key.getAttribute('id'), key.getAttribute('attr.name')]),
-      ])
-      .toSorted(([a], [b]) => a.localeCompare(b)),
+      ]),
   });
 
   it('does not change the headers or keys the analysis schema is built from', async () => {

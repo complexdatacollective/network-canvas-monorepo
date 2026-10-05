@@ -55,16 +55,24 @@ const codebook: Codebook = {
       id,
       {
         name,
+        label: { en: name },
         color: 'node-color-seq-1' as const,
         shape: { default: 'circle' as const },
         variables: {
-          [`${id}-label`]: { name: 'Label', type: 'text' as const },
+          [`${id}-label`]: {
+            name: 'Label',
+            label: { en: 'Label' },
+            type: 'text' as const,
+          },
         },
       },
     ]),
   ),
   edge: Object.fromEntries(
-    Object.entries(edgeTypes).map(([id, name]) => [id, { name }]),
+    Object.entries(edgeTypes).map(([id, name]) => [
+      id,
+      { name, label: { en: name } },
+    ]),
   ),
 };
 
