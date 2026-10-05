@@ -59,6 +59,7 @@
     "@effect/vitest": "catalog:",
     "@softwaretechnik/dbml-renderer": "1.0.31",
     "@types/pg": "^8.23.1",
+    "@typescript/typescript6": "catalog:",
     "concurrently": "^10.0.5",
     "drizzle-kit": "catalog:",
     "pg": "^8.23.1",
