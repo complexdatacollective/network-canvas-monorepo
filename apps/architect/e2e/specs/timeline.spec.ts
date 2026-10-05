@@ -339,42 +339,6 @@ test('inserts a new Information stage at the clicked index', async ({
   expect(after[insertIndex + 1]?.id).toBe(displaced.id);
 });
 
-test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', async ({
-  architectPage,
-  seed,
-}) => {
-  const { protocol, assets } = loadAllInterfacesFixture();
-  await seed(protocol, { name: 'All Interfaces', assets });
-  await gotoProtocol(architectPage);
-
-  const before = stagesOf(await readProtocolJson(architectPage));
-  const familyPedigree = before.find(
-    (stage) => stage.type === 'FamilyPedigree',
-  );
-  if (!familyPedigree) {
-    throw new Error('fixture is missing a FamilyPedigree stage');
-  }
-
-  const timeline = new Timeline(architectPage);
-  await timeline.deleteStage('Family Pedigree');
-  // Guard shows an acknowledge dialog, not the destructive confirm. All of
-  // fresco-ui's `useDialog` dialogs (and NewStageScreen's inline `Dialog`)
-  // share one `Dialog` component built on a plain (non-alert) Base UI
-  // `Dialog.Root`, so the accessible role is `dialog`, not `alertdialog`.
-  const guardDialog = architectPage.getByRole('dialog', {
-    name: 'Cannot delete stage',
-  });
-
-  await acknowledgeRefusal(guardDialog);
-  // Then commit an edit of our own and wait for THAT to reach IndexedDB, so an
-  // erroneously-accepted delete has provably landed by the read below rather
-  // than merely having been given time to (see `settleAfterRefusal`).
-  await settleAfterRefusal(architectPage, editDescription(architectPage));
-  const after = stagesOf(await readProtocolJson(architectPage));
-  expect(after.some((stage) => stage.id === familyPedigree.id)).toBe(true);
-  expect(after.length).toBe(before.length);
-});
-
 test('deletes a leaf stage after confirming the destructive dialog', async ({
   architectPage,
   seed,

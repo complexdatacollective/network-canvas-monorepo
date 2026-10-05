@@ -272,7 +272,7 @@ describe('the not-yet-converted exclusions', () => {
    * reach that directory: `sourceFiles` also drops fixtures and test-support
    * paths, so a family whose sections were all `__tests__`-adjacent would read
    * as converted while nothing looked at it. Asked of the families present
-   * rather than of all five, because they arrive one branch at a time — the
+   * rather than of all four, because they arrive one branch at a time — the
    * ones that have landed are covered, and the ones that have not cannot be
    * claimed either way.
    */
@@ -280,7 +280,6 @@ describe('the not-yet-converted exclusions', () => {
     const families = [
       'sections/network',
       'editors/family-pedigree/sections',
-      'editors/narrative-pedigree/sections',
       'sections/geospatial',
       'sections/anonymisation',
     ];

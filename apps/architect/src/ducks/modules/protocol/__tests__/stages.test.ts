@@ -7,7 +7,6 @@ import type { AppDispatch } from '~/ducks/store';
 import { commitStage } from '../commitStage';
 import reducer, {
   actionCreators,
-  getFamilyPedigreeNodeTypeChangeBlock,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
   test,
@@ -134,43 +133,6 @@ describe('protocol.stages', () => {
         expect(violation?.destinationStageId).toBe('destination');
       });
     });
-
-    describe('getFamilyPedigreeNodeTypeChangeBlock', () => {
-      const familyPedigreeWithDependent = [
-        { id: 'fp', type: 'FamilyPedigree', label: 'Family Pedigree' },
-        {
-          id: 'np',
-          type: 'NarrativePedigree',
-          label: 'Narrative Pedigree',
-          sourceStageId: 'fp',
-        },
-      ] as Stage[];
-
-      it('returns dependent NarrativePedigree stages when present', () => {
-        expect(
-          getFamilyPedigreeNodeTypeChangeBlock(
-            familyPedigreeWithDependent,
-            'fp',
-          ).map((stage) => stage.id),
-        ).toEqual(['np']);
-      });
-
-      it('returns nothing when no NarrativePedigree sources the stage', () => {
-        const withoutDependent = [
-          { id: 'fp', type: 'FamilyPedigree', label: 'Family Pedigree' },
-          {
-            id: 'np',
-            type: 'NarrativePedigree',
-            label: 'Narrative Pedigree',
-            sourceStageId: 'other',
-          },
-        ] as Stage[];
-
-        expect(
-          getFamilyPedigreeNodeTypeChangeBlock(withoutDependent, 'fp'),
-        ).toEqual([]);
-      });
-    });
   });
 
   describe('async action creators', () => {
@@ -232,32 +194,6 @@ describe('protocol.stages', () => {
         const { store, dispatched } = createThunkStore(present);
 
         await store.dispatch(actionCreators.deleteStage('destination'));
-
-        expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
-          false,
-        );
-      });
-
-      it('blocks deleting a FamilyPedigree referenced by a NarrativePedigree', async () => {
-        const present = {
-          stages: [
-            {
-              id: 'fp',
-              type: 'FamilyPedigree',
-              label: 'Pedigree',
-            },
-            {
-              id: 'np',
-              type: 'NarrativePedigree',
-              label: 'Narrative',
-              sourceStageId: 'fp',
-            },
-          ],
-          codebook: { node: {} },
-        };
-        const { store, dispatched } = createThunkStore(present);
-
-        await store.dispatch(actionCreators.deleteStage('fp'));
 
         expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
           false,

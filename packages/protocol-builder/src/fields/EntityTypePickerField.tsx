@@ -930,8 +930,8 @@ export default function EntityTypePickerField({
    * the second reading has to be the CURRENT one: a confirmation is awaited,
    * so the handler that resumes is a closure from the render that put the
    * question. Read from that closure, a dependency a collaborator created
-   * while the researcher was reading the question — a narrative pedigree
-   * pointed at this stage, say — would be invisible, and the confirmed change
+   * while the researcher was reading the question — a stage
+   * pointed at this type, say — would be invisible, and the confirmed change
    * would go through against a refusal the latest render is already showing.
    * The same seam the pedigree's own slot gate reads its live inputs through.
    *

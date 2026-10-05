@@ -17,7 +17,6 @@ const STAGE_TYPE_COVERAGE = {
   NameGeneratorQuickAdd: true,
   NameGeneratorRoster: true,
   Narrative: true,
-  NarrativePedigree: true,
   NetworkComposer: true,
   OneToManyDyadCensus: true,
   OrdinalBin: true,

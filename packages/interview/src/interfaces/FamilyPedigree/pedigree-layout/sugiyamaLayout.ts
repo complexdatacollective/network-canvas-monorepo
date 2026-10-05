@@ -1,7 +1,10 @@
-import type { RelationshipType } from '@codaco/protocol-validation';
-
 import { kindepth } from './kindepth';
-import type { ParentConnection, PedigreeInput, PedigreeLayout } from './types';
+import type {
+  ParentConnection,
+  PedigreeInput,
+  PedigreeLayout,
+  PedigreeEdgeType,
+} from './types';
 import { ancestor } from './utils';
 
 type PartnerGroup = {
@@ -32,10 +35,10 @@ type PedigreeGraph = {
   familyUnits: FamilyUnit[];
   siblingGroups: SiblingGroup[];
   auxiliaryParents: Map<number, number[]>;
-  parentEdgeTypes: Map<string, RelationshipType>;
+  parentEdgeTypes: Map<string, PedigreeEdgeType>;
 };
 
-function isPrimaryEdge(edgeType: RelationshipType): boolean {
+function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
   return (
     edgeType === 'biological' ||
     edgeType === 'social' ||
@@ -43,7 +46,7 @@ function isPrimaryEdge(edgeType: RelationshipType): boolean {
   );
 }
 
-function isAuxiliaryEdge(edgeType: RelationshipType): boolean {
+function isAuxiliaryEdge(edgeType: PedigreeEdgeType): boolean {
   return edgeType === 'donor' || edgeType === 'surrogate';
 }
 
@@ -264,7 +267,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   }
 
   // 7. Store edge types
-  const parentEdgeTypes = new Map<string, RelationshipType>();
+  const parentEdgeTypes = new Map<string, PedigreeEdgeType>();
   for (let i = 0; i < n; i++) {
     for (const p of ped.parents[i]!) {
       parentEdgeTypes.set(`${p.parentIndex}-${i}`, p.edgeType);

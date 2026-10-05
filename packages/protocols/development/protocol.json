@@ -1168,7 +1168,7 @@
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
         "style": "mapbox://styles/mapbox/standard",
-        "center": [-74.0, 40.7],
+        "center": [-74, 40.7],
         "initialZoom": 10,
         "dataSourceAssetId": "geo_data",
         "color": "ord-color-seq-6",
@@ -1186,44 +1186,23 @@
       "id": "family-pedigree-dev",
       "type": "FamilyPedigree",
       "label": "Family Pedigree",
-      "nodeConfig": {
-        "type": "family_member",
-        "nodeLabelVariable": "fm_name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "fm_relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex"
+      "subject": {
+        "entity": "node",
+        "type": "family_member"
       },
-      "edgeConfig": {
+      "prompt": "Who is in your family?",
+      "personAttributes": {
+        "nameVariable": "fm_name",
+        "genderIdentityVariable": "genderIdentity",
+        "sexAssignedAtBirthVariable": "sexAssignedAtBirth",
+        "egoVariable": "is_ego"
+      },
+      "relationship": {
         "type": "family_edge",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
-      },
-      "framing": {
-        "mode": "fixed",
-        "value": "gamete"
-      },
-      "boundaries": {
-        "requireGrandparents": "off",
-        "requireChildrenContributors": "off"
-      },
-      "censusPrompt": "Who is in your family?"
-    },
-    {
-      "id": "narrative-pedigree-dev",
-      "type": "NarrativePedigree",
-      "label": "Narrative Pedigree",
-      "sourceStageId": "family-pedigree-dev",
-      "diseases": [
-        {
-          "id": "disease-conditionx",
-          "label": "Condition X",
-          "color": "node-color-seq-1",
-          "variable": "hasConditionX",
-          "inheritancePattern": "autosomalDominant"
-        }
-      ]
+        "kindVariable": "relationshipKind",
+        "gestationalCarrierVariable": "isGestationalCarrier",
+        "currentPartnerVariable": "isCurrentPartner"
+      }
     }
   ],
   "codebook": {
@@ -1232,7 +1211,9 @@
         "name": "person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "name_variable": {
             "encrypted": true,
@@ -1522,7 +1503,9 @@
       "dummy_node_type": {
         "name": "dummytype",
         "color": "node-color-seq-6",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "2377af3f-3c79-41da-9b0b-6570fb519b93": {
             "name": "label",
@@ -1724,7 +1707,9 @@
         "name": "venue",
         "color": "node-color-seq-4",
         "icon": "add-a-place",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "venue_name_variable": {
             "name": "name",
@@ -1813,7 +1798,9 @@
         "name": "family member",
         "color": "node-color-seq-2",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "fm_name": {
             "name": "fm_name",
@@ -1828,13 +1815,38 @@
             "type": "boolean",
             "component": "Toggle"
           },
-          "fm_relationship_to_ego": {
-            "name": "fm_relationship_to_ego",
-            "type": "text",
-            "component": "Text"
+          "genderIdentity": {
+            "name": "genderIdentity",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "woman",
+                "label": "Woman"
+              },
+              {
+                "value": "man",
+                "label": "Man"
+              },
+              {
+                "value": "nonBinary",
+                "label": "Non-binary"
+              },
+              {
+                "value": "differentIdentity",
+                "label": "A different identity"
+              },
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
+            ]
           },
-          "biologicalSex": {
-            "name": "biologicalSex",
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
               {
@@ -1847,7 +1859,7 @@
               },
               {
                 "value": "intersex",
-                "label": "Intersex or a variation in sex characteristics"
+                "label": "Intersex"
               },
               {
                 "value": "unknown",
@@ -1858,10 +1870,6 @@
                 "label": "Prefer not to say"
               }
             ]
-          },
-          "hasConditionX": {
-            "name": "hasConditionX",
-            "type": "boolean"
           }
         }
       }
@@ -2217,17 +2225,25 @@
         "name": "family_edge",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": "Partner"
+              },
+              {
                 "value": "biological",
-                "label": "Biological"
+                "label": "Biological parent"
+              },
+              {
+                "value": "adoptive",
+                "label": "Adoptive parent"
               },
               {
                 "value": "social",
-                "label": "Social"
+                "label": "Step or social parent"
               },
               {
                 "value": "donor",
@@ -2236,38 +2252,16 @@
               {
                 "value": "surrogate",
                 "label": "Surrogate"
-              },
-              {
-                "value": "adoptive",
-                "label": "Adoptive"
-              },
-              {
-                "value": "partner",
-                "label": "Partner"
               }
             ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "type": "boolean"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": "Egg"
-              },
-              {
-                "value": "sperm",
-                "label": "Sperm"
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean"
           }
         }
       }

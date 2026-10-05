@@ -68,28 +68,10 @@ describe('getInterfaceTemplate', () => {
     }
   });
 
-  it('seeds the pedigree interfaces with their framing, boundaries and intro copy', () => {
+  it('seeds the family pedigree with its opening prompt', () => {
     const familyPedigree = getInterfaceTemplate('FamilyPedigree');
-    expect(familyPedigree.framing).toEqual({ mode: 'fixed', value: 'gamete' });
-    expect(familyPedigree.boundaries).toEqual({
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
-    });
-    // The intro screen is a content list, so assert its shape rather than
-    // restating the researcher-facing copy here.
-    expect(familyPedigree.introScreen).toMatchObject({
-      items: [{ id: 'intro-text', type: 'text' }],
-    });
-    const introItems = (
-      familyPedigree.introScreen as { items: { content: string }[] }
-    ).items;
-    expect(introItems[0]?.content.trim()).not.toBe('');
-
-    expect(getInterfaceTemplate('NarrativePedigree')).toEqual({
-      sourceStageId: '',
-      diseases: [],
-      showAtRiskStatuses: false,
-    });
+    expect(typeof familyPedigree.prompt).toBe('string');
+    expect((familyPedigree.prompt as string).trim()).not.toBe('');
   });
 });
 
@@ -117,17 +99,13 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   CategoricalBin: ['prompts', 'subject'],
   DyadCensus: ['introductionPanel', 'prompts', 'subject'],
   EgoForm: ['form', 'introductionPanel'],
-  FamilyPedigree: ['censusPrompt', 'edgeConfig', 'nodeConfig'],
+  FamilyPedigree: ['personAttributes', 'relationship', 'subject'],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
   NameGenerator: ['form', 'prompts', 'subject'],
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],
   NameGeneratorRoster: ['dataSource', 'prompts', 'subject'],
   Narrative: ['presets', 'subject'],
-  // Its template DOES set `diseases: []`, and the schema wants at least one —
-  // so this key is present and still refused, which is a different thing from
-  // the absences above and worth being able to tell apart.
-  NarrativePedigree: ['diseases'],
   NetworkComposer: ['layoutVariable', 'quickAdd', 'subject'],
   OneToManyDyadCensus: ['prompts', 'subject'],
   OrdinalBin: ['prompts', 'subject'],

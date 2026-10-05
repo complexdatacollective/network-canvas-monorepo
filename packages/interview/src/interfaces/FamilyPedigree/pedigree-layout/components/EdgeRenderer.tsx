@@ -11,8 +11,8 @@ import type {
   ParentGroupConnector,
 } from '../types';
 
-export const EDGE_WIDTH = 5;
-export const DASHED_PATTERN = '8 8';
+const EDGE_WIDTH = 5;
+const DASHED_PATTERN = '8 8';
 
 function renderLine(
   seg: LineSegment,
@@ -207,7 +207,7 @@ function renderAuxiliary(conn: AuxiliaryConnector, idx: number, color: string) {
  * When highlightedEdgeKeys is provided, uses edge-key membership so that a
  * contributing descent line is BRIGHT even when the co-parent is excluded from
  * the contributor set (the non-transmitting co-parent case). Falls back to
- * node-membership when highlightedEdgeKeys is absent (non-NarrativePedigree
+ * node-membership when highlightedEdgeKeys is absent (a caller that
  * path where neither prop is set).
  */
 function isDescentSegmentDimmed(
@@ -223,7 +223,7 @@ function isDescentSegmentDimmed(
     if (childId === undefined) return false;
     if (parentIds === undefined || parentIds.length === 0) return false;
     return !parentIds.some((pid) =>
-      highlightedEdgeKeys.has(`${pid}->${childId}`),
+      highlightedEdgeKeys.has(edgeKey(pid, childId)),
     );
   }
   return isDimmedByIds(
@@ -254,7 +254,7 @@ function isSharedBarDimmed(
     for (const childId of uplineChildIds) {
       if (childId === undefined) continue;
       for (const pid of parentIds) {
-        if (highlightedEdgeKeys.has(`${pid}->${childId}`)) return false;
+        if (highlightedEdgeKeys.has(edgeKey(pid, childId))) return false;
       }
     }
     return true;
@@ -657,6 +657,11 @@ function segmentsToPolylinePoints(segments: LineSegment[]): string[] {
   }
 
   return chains.map((chain) => chain.map((p) => `${p.x},${p.y}`).join(' '));
+}
+
+/** Identifies a parent→child link in `highlightedEdgeKeys`. */
+export function edgeKey(parentId: string, childId: string): string {
+  return `${parentId}->${childId}`;
 }
 
 type PedigreeEdgeSvgProps = {

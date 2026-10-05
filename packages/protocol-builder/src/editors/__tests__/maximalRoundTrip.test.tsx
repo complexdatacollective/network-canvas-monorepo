@@ -9,7 +9,11 @@ import {
   loadFixtureStage,
   type FixtureStageId,
 } from '../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../testing/renderStageEditor.tsx';
+import { addFamilyMemberVariable } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
@@ -76,6 +80,8 @@ type MaximalStage = Readonly<{
    * covers the sections that come after it.
    */
   settle?: () => Promise<unknown>;
+  /** Puts in place what the stage needs that the fixture protocol lacks. */
+  prepare?: (harness: StageEditorHarness) => void;
 }>;
 
 const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
@@ -85,8 +91,8 @@ const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
  * the keys the fixture leaves out filled in here.
  *
  * The cases written out in full below came first and are kept that way: they
- * seed corners the fixture does not have at all. But writing nineteen of them
- * by hand would be nineteen more configurations to keep true, and the fixture
+ * seed corners the fixture does not have at all. But writing eighteen of them
+ * by hand would be eighteen more configurations to keep true, and the fixture
  * already holds one plausible configuration per interface that Architect's own
  * end-to-end suites drive. So the rest start from it and add only what it is
  * missing — which is a much shorter thing to read, and a much shorter thing to
@@ -250,7 +256,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
  * The other fourteen, from the fixture's own stages plus what they are
  * missing.
  *
- * The gaps are not evenly spread. `filter` is absent from ten of the nineteen
+ * The gaps are not evenly spread. `filter` is absent from ten of the eighteen
  * fixture stages and `interviewScript`/`skipLogic` from all of them, so those
  * three are most of what is added here — and they are exactly the keys a
  * shared section owns, which is to say the keys an editor is most likely to
@@ -383,24 +389,19 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'FamilyPedigree',
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
-      introScreen: {
-        items: [
-          {
-            id: 'pedigree-intro-1',
-            type: 'text',
-            content: 'We are going to draw your family.',
-          },
-        ],
+      form: {
+        fields: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
       },
     }),
-  },
-  {
-    interfaceName: 'NarrativePedigree',
-    type: 'NarrativePedigree',
-    fields: fixtureMaximal('narrative-pedigree-1', {
-      ...EVERY_STAGE,
-      showAtRiskStatuses: true,
-    }),
+    // Every attribute the fixture's person type carries is bound to one of the
+    // pedigree's own slots, so the attribute its extra field collects arrives
+    // the way a collaborator's would.
+    prepare: (harness) =>
+      addFamilyMemberVariable(harness, 'fm_occupation', {
+        name: 'fm_occupation',
+        type: 'text',
+        component: 'Text',
+      }),
   },
   {
     interfaceName: 'Anonymisation',
@@ -466,10 +467,11 @@ describe('a maximal stage of each interface', () => {
 
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, fields, settle }) => {
+    async ({ type, fields, settle, prepare }) => {
       // No registry passed: every interface is claimed by the package's own,
       // so the dispatcher finding the editor is part of what the case shows.
       const harness = renderStageEditor({ stage: { type, fields } });
+      prepare?.(harness);
       await (settle ?? stageName)();
       // Every section registers its fields on mount, and the outline is built
       // from what is registered — so a mount that has not filled the outline

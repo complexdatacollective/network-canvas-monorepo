@@ -1,9 +1,4 @@
-import {
-  collectEntityAttributeReferences,
-  GAMETE_ROLES,
-  RELATIONSHIP_TYPES,
-  type Stage,
-} from '@codaco/protocol-validation';
+import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -13,11 +8,6 @@ import {
 
 import type { GenerationConfig } from '../config.ts';
 import type { StageOfType } from '../context.ts';
-import {
-  attainableFamilyPedigreeNodeCeiling,
-  canAttainFamilyPedigreeEgoChildBranch,
-} from '../familyPedigree/generateFamilyPedigree.ts';
-import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types.ts';
 import {
   fabricatedPromptNodeCeiling,
   getNodeCountBounds,
@@ -30,9 +20,6 @@ import {
   declaresNodeCollection,
   lastExistingWriterByType,
   nodeVariablesWrittenOnCreation,
-  pedigreeEgoNodeVariables,
-  pedigreeNodeVariables,
-  stageWritesExistingNodeVariable,
   withRuleTiedVariables,
   type NodeVariablesFor,
 } from './stageWrites.ts';
@@ -42,15 +29,6 @@ import { valueKey } from './uniqueRegistry.ts';
 type WorstCaseCounts = {
   node: NodeCounts;
   edge: EdgeCounts;
-  /** Node population standing immediately before each stage runs. */
-  nodeBeforeStage: Map<number, Map<string, number>>;
-};
-
-/** One FamilyPedigree stage's edges, and where in the run it builds them. */
-type PedigreeEdges = {
-  count: number;
-  /** The stage's position in the list, which is the order it runs in. */
-  stageIndex: number;
 };
 
 /**
@@ -61,7 +39,7 @@ type PopulationPairing = { maxPairs: number; lastIndex: number };
 
 /**
  * Edges a stage creates among only the nodes it builds itself — a
- * NetworkComposer's and a FamilyPedigree's — held until the whole stage list is
+ * NetworkComposer's — held until the whole stage list is
  * known, because whether they are already inside a population pair set depends
  * on what runs after them.
  */
@@ -70,146 +48,10 @@ type OwnNodeEdges = {
   nodeType: string;
   count: number;
   stageIndex: number;
-  /**
-   * Whether the stage fills the edge type's whole attribute set as it creates
-   * them, or only the part of it the stage itself writes.
-   */
-  born: 'whole' | 'partial';
 };
 
-/**
- * How many edges of each type can hold a value, split by what fills them.
- *
- * A FamilyPedigree edge is born holding only the interface semantics named by
- * its edge config. Whether it can ever hold an arbitrary codebook value is
- * therefore a question about that variable rather than about its type: a form
- * filling `note` on the same edge type leaves `code` undefined on every one of
- * them. The two sources are counted apart and combined per variable by
- * {@link edgeCountFor}.
- */
-export type EdgeCounts = {
-  /** Edges whose creating stage fills every variable of the type. */
-  base: Map<string, number>;
-  /**
-   * Edges each FamilyPedigree stage creates, which start holding only what that
-   * stage writes, kept apart per stage because whether any other writer can
-   * reach them depends on where the pedigree runs relative to that writer.
-   */
-  pedigree: Map<string, PedigreeEdges[]>;
-  /**
-   * The last stage index naming an attribute of an edge type, per variable id.
-   * Read as "a stage naming it runs no later than this", which is what decides
-   * which pedigrees' edges the naming can reach.
-   */
-  named: Map<string, Map<string, number>>;
-};
-
-/**
- * The most edges of `type` that can end up holding a value for the equality
- * group `variableIds` — one variable, or every member of a group held to a
- * single value.
- *
- * Pedigree-built edges join the count where a stage naming any member of the
- * group runs at or after the pedigree that built them, since nothing else
- * writes onto an edge it did not create and writing one member gives the whole
- * group a value. The ordering is what a stage can reach rather than what it
- * declares: `generateNetwork` walks its stage list once, in order, and skip
- * logic only ever jumps forward (`resolveSkipLogicDestinationIndex` resolves a
- * destination only when it is strictly after the owning stage), so a stage
- * writing edges at index `i` sees exactly the edges the stages before `i` left
- * on the draft. A pedigree later than every naming site therefore hands its
- * edges to nobody, and they retain only their configured pedigree semantics.
- *
- * "At or after" rather than "after" is what lets a pedigree reach its own
- * edges. The naming sites that share a pedigree's index are that pedigree's
- * `edgeConfig`; its relationship, activity, carrier, and gamete semantics are
- * written onto the applicable edges at that same point in the run.
- *
- * Edges from every other stage count for every variable, because those stages
- * generate the type's whole attribute set as they create them — a structural
- * fact about the draw rather than a rule about which stages exist.
- */
-export function edgeCountFor(
-  counts: EdgeCounts,
-  type: string,
-  variableIds: readonly string[],
-): number {
-  const base = counts.base.get(type) ?? 0;
-  const named = counts.named.get(type);
-
-  let namedAt = -1;
-  for (const id of variableIds) {
-    const at = named?.get(id);
-    if (at !== undefined) namedAt = Math.max(namedAt, at);
-  }
-  if (namedAt < 0) return base;
-
-  let fromPedigree = 0;
-  for (const { count, stageIndex } of counts.pedigree.get(type) ?? []) {
-    if (stageIndex <= namedAt) fromPedigree += count;
-  }
-
-  return base + fromPedigree;
-}
-
-/**
- * The variables of an edge type whose edges are all born part-filled that no
- * stage can write — the same question {@link edgeCountFor} answers as a number,
- * read as a set so a scope can drop their rules.
- *
- * Validation rules are a form-field mechanism: they apply where a stage renders
- * a `Field` for the variable, and generation spends a value on it in the same
- * places. FamilyPedigree renders no field and writes only the relationship,
- * activity, carrier, and gamete variables in its edge config. Where it is an
- * edge type's only source, any other variable that no later stage names remains
- * `undefined` on every edge of the type. Analysing rules on that absent value
- * would refuse a protocol over something nothing draws or submits.
- *
- * Which stages count as writers is not decided here: this reads
- * {@link EdgeCounts.named} through {@link edgeCountFor} itself, so "reached by
- * a writer" means the same thing to the count and to the analysis. A variable
- * an AlterEdgeForm renders at or after the pedigree is reached, as is a
- * TieStrengthCensus' `edgeVariable` over the edges it reuses; a filter rule
- * naming the variable is not, because its reference resolves no subject — it
- * reads a value, it does not write one.
- *
- * Asked per equality group rather than per variable, for the reason
- * `edgeCountFor` is: the members share one value, so writing any of them gives
- * the whole group one, and a variable held equal to one a form renders is
- * written whether or not the form ever names it. Reading them one at a time
- * would exempt exactly the member carrying the group's `unique` rule and let a
- * real contradiction through. Every group is therefore all-or-nothing, which is
- * also why exempting one cannot disturb another: a group with any written
- * member keeps every member's rules, so no surviving group loses a reference
- * the exempted ones declared.
- *
- * Held to edge types every one of whose edges a pedigree creates. An edge any
- * other stage creates is born with its type's whole attribute set, so nothing
- * of it is unwritten; and a type nothing creates has no edge to exempt anything
- * on, which `analyseFeasibility` settles before this is asked — a type only an
- * alter form names drops its whole scope there, for the same reason this
- * exempts a group here.
- *
- * What this exempts the draw never asks for, so nothing has to be exempted
- * there to match: every writer of a pedigree edge names what it writes, which
- * is what put the variable in `named` in the first place.
- */
-export function unwrittenEdgeVariables(
-  counts: EdgeCounts,
-  type: string,
-  groups: Iterable<readonly string[]>,
-): ReadonlySet<string> {
-  const unwritten = new Set<string>();
-  if ((counts.base.get(type) ?? 0) > 0) return unwritten;
-  if (!counts.pedigree.has(type)) return unwritten;
-
-  for (const members of groups) {
-    if (edgeCountFor(counts, type, members) > 0) continue;
-    for (const id of members) unwritten.add(id);
-  }
-
-  return unwritten;
-}
+/** How many edges of each type the run can create, at the most. */
+type EdgeCounts = Map<string, number>;
 
 /**
  * How many nodes of one type the run can build, split by what bounds them.
@@ -642,433 +484,6 @@ export function unwrittenNodeVariables(
   return unwritten;
 }
 
-/**
- * The most nodes a FamilyPedigree stage can build, as `getNodeCountBounds`
- * treats a name generator's: an inverted configured range is honoured by
- * raising the ceiling to the floor, because `randomInt` collapses such a range
- * to its `min` rather than refusing it. Reading `max` alone would under-count,
- * and an under-count lets a `unique` variable pass feasibility and then run out
- * of values partway through the run.
- */
-type PedigreeCeilingContext = {
-  options: ResolvedFamilyPedigreeGenerationOptions;
-  stage: StageOfType<'FamilyPedigree'>;
-  stages: readonly Stage[];
-};
-
-const CONTRIBUTOR_ANCESTRY_NODE_CEILING = 6;
-const CONTRIBUTOR_ANCESTRY_EDGE_CEILING = 9;
-const EXTERNAL_CONTRIBUTOR_NODE_MULTIPLIER = 8;
-const EXTERNAL_CONTRIBUTOR_EDGE_MULTIPLIER = 12;
-
-function compatibleContributorPedigree(
-  first: StageOfType<'FamilyPedigree'>,
-  second: StageOfType<'FamilyPedigree'>,
-): boolean {
-  return (
-    reusableEgoPedigree(first, second) &&
-    first.edgeConfig?.type !== undefined &&
-    first.edgeConfig.type === second.edgeConfig?.type &&
-    first.edgeConfig.relationshipTypeVariable !== undefined &&
-    first.edgeConfig.relationshipTypeVariable ===
-      second.edgeConfig?.relationshipTypeVariable
-  );
-}
-
-/** Whether the later pedigree can inherit the focal node from the earlier one. */
-function reusableEgoPedigree(
-  first: StageOfType<'FamilyPedigree'>,
-  second: StageOfType<'FamilyPedigree'>,
-): boolean {
-  return (
-    first.nodeConfig?.type !== undefined &&
-    first.nodeConfig.type === second.nodeConfig?.type &&
-    first.nodeConfig.egoVariable !== undefined &&
-    first.nodeConfig.egoVariable === second.nodeConfig?.egoVariable
-  );
-}
-
-function pairsPedigreePopulation(
-  stage: Stage,
-  nodeType: string,
-  edgeType: string,
-): boolean {
-  if (isPairEdgeStage(stage)) {
-    return (
-      getSubjectType(stage.subject, 'node') === nodeType &&
-      stage.prompts.some((prompt) => prompt.createEdge === edgeType)
-    );
-  }
-  return (
-    stage.type === 'Sociogram' &&
-    getSubjectType(stage.subject, 'node') === nodeType &&
-    stage.prompts.some((prompt) => prompt.edges?.create === edgeType)
-  );
-}
-
-function canReshapeContributorGraph(
-  candidate: Stage,
-  pedigree: StageOfType<'FamilyPedigree'>,
-): boolean {
-  const nodeType = pedigree.nodeConfig?.type;
-  const edgeType = pedigree.edgeConfig?.type;
-  const relationshipVariable = pedigree.edgeConfig?.relationshipTypeVariable;
-  if (nodeType === undefined || edgeType === undefined) return false;
-
-  if (pairsPedigreePopulation(candidate, nodeType, edgeType)) return true;
-
-  if (
-    candidate.type === 'NetworkComposer' &&
-    getSubjectType(candidate.subject, 'node') === nodeType &&
-    candidate.edges?.some((edge) => edge.subject?.type === edgeType) === true
-  ) {
-    return true;
-  }
-
-  if (
-    candidate.type === 'AlterEdgeForm' &&
-    relationshipVariable !== undefined &&
-    getSubjectType(candidate.subject, 'edge') === edgeType &&
-    candidate.form?.fields.some(
-      (field) => field.variable === relationshipVariable,
-    )
-  ) {
-    return true;
-  }
-
-  return (
-    candidate.type === 'FamilyPedigree' &&
-    candidate.nodeConfig?.type === nodeType &&
-    candidate.edgeConfig?.type === edgeType &&
-    !compatibleContributorPedigree(candidate, pedigree)
-  );
-}
-
-/** Maximum ancestry a required boundary may add above inherited co-parents. */
-export function inheritedContributorAncestryCeiling(
-  stageIndex: number,
-  stages: readonly Stage[],
-  preexistingNodeCeiling = 0,
-  options?: ResolvedFamilyPedigreeGenerationOptions,
-): { nodes: number; edges: number } {
-  const stage = stages[stageIndex];
-  if (
-    stage?.type !== 'FamilyPedigree' ||
-    stage.boundaries?.requireChildrenContributors !== 'required'
-  ) {
-    return { nodes: 0, edges: 0 };
-  }
-
-  let incompleteContributorBranches = 0;
-  let completedContributorIndex = -1;
-  let firstReusableEgoIndex = -1;
-  for (const [candidateIndex, candidate] of stages
-    .slice(0, stageIndex)
-    .entries()) {
-    if (candidate.type !== 'FamilyPedigree') continue;
-    if (firstReusableEgoIndex < 0 && reusableEgoPedigree(candidate, stage)) {
-      firstReusableEgoIndex = candidateIndex;
-    }
-    if (!compatibleContributorPedigree(candidate, stage)) continue;
-
-    if (candidate.boundaries?.requireChildrenContributors === 'required') {
-      // This stage completed every older inherited branch and its own new one.
-      incompleteContributorBranches = 0;
-      completedContributorIndex = candidateIndex;
-    } else {
-      // Each generated pedigree can introduce at most one co-parent branch.
-      if (
-        options === undefined ||
-        canAttainFamilyPedigreeEgoChildBranch(
-          options,
-          pedigreeGuaranteesMaleSibling({ options, stage: candidate, stages }),
-        )
-      ) {
-        incompleteContributorBranches += 1;
-      }
-    }
-  }
-
-  const contributorGraphStartIndex = Math.max(
-    completedContributorIndex,
-    firstReusableEgoIndex,
-  );
-  const hasExternalContributorEdges =
-    preexistingNodeCeiling > 0 &&
-    contributorGraphStartIndex >= 0 &&
-    stages
-      .slice(contributorGraphStartIndex + 1, stageIndex)
-      .some((candidate) => canReshapeContributorGraph(candidate, stage));
-
-  if (hasExternalContributorEdges) {
-    // Other graph-writing stages can connect the inherited ego to any existing
-    // same-typed person, rewrite family edges as genetic relationships, and
-    // give every resulting co-parent existing genetic parents of their own.
-    // The materializer deduplicates each ancestry target, so at most 8N nodes
-    // and 12N edges complete all targets for N existing people. Keep the
-    // ordinary one-branch-per-pedigree bound when no such stage intervenes; it
-    // is much tighter for the common repeated-pedigree case.
-    return {
-      nodes: Math.max(
-        incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_NODE_CEILING,
-        preexistingNodeCeiling * EXTERNAL_CONTRIBUTOR_NODE_MULTIPLIER,
-      ),
-      edges: Math.max(
-        incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_EDGE_CEILING,
-        preexistingNodeCeiling * EXTERNAL_CONTRIBUTOR_EDGE_MULTIPLIER,
-      ),
-    };
-  }
-
-  return {
-    nodes: incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_NODE_CEILING,
-    edges: incompleteContributorBranches * CONTRIBUTOR_ANCESTRY_EDGE_CEILING,
-  };
-}
-
-/** Whether the materializer is guaranteed to find an earlier focal node. */
-function canReusePedigreeEgo(
-  stageIndex: number,
-  stages: readonly Stage[],
-  stage: StageOfType<'FamilyPedigree'>,
-): boolean {
-  const nodeType = stage.nodeConfig?.type;
-  const egoVariable = stage.nodeConfig?.egoVariable;
-  if (nodeType === undefined || egoVariable === undefined) return false;
-
-  let lastReusablePedigreeIndex = -1;
-  for (let candidateIndex = 0; candidateIndex < stageIndex; candidateIndex++) {
-    const candidate = stages[candidateIndex];
-    if (
-      candidate?.type === 'FamilyPedigree' &&
-      reusableEgoPedigree(candidate, stage)
-    ) {
-      lastReusablePedigreeIndex = candidateIndex;
-    }
-  }
-  if (lastReusablePedigreeIndex < 0) return false;
-
-  // Every compatible pedigree leaves one focal flag set. Only writers after
-  // the most recent one can remove that guarantee before this stage runs.
-  return !stages
-    .slice(lastReusablePedigreeIndex + 1, stageIndex)
-    .some((candidate) =>
-      stageWritesExistingNodeVariable(candidate, stages, nodeType, egoVariable),
-    );
-}
-
-function inheritedEgoSexCanBeIndependent({
-  stage,
-  stages,
-}: PedigreeCeilingContext): boolean {
-  const nodeType = stage.nodeConfig?.type;
-  const egoVariable = stage.nodeConfig?.egoVariable;
-  const biologicalSexVariable = stage.nodeConfig?.biologicalSexVariable;
-  if (
-    nodeType === undefined ||
-    egoVariable === undefined ||
-    biologicalSexVariable === undefined
-  ) {
-    return false;
-  }
-
-  const stageIndex = stages.indexOf(stage);
-  let firstCompatiblePedigreeIndex = -1;
-  for (let candidateIndex = 0; candidateIndex < stageIndex; candidateIndex++) {
-    const candidate = stages[candidateIndex];
-    if (
-      candidate?.type !== 'FamilyPedigree' ||
-      candidate.nodeConfig?.type !== nodeType ||
-      candidate.nodeConfig?.egoVariable !== egoVariable
-    ) {
-      continue;
-    }
-
-    if (firstCompatiblePedigreeIndex < 0) {
-      firstCompatiblePedigreeIndex = candidateIndex;
-    }
-    if (candidate.nodeConfig?.biologicalSexVariable !== biologicalSexVariable) {
-      return true;
-    }
-  }
-
-  if (firstCompatiblePedigreeIndex < 0) return false;
-
-  // The inherited ego does not exist until the first compatible pedigree has
-  // created it. From then on, any whole-population writer can replace the sex
-  // value that a later pedigree reads, independently of the reference
-  // population's birth-sex draw. A writer before that pedigree cannot reach
-  // the future ego and therefore does not widen this floor.
-  return stages
-    .slice(firstCompatiblePedigreeIndex + 1, stageIndex)
-    .some((candidate) =>
-      stageWritesExistingNodeVariable(
-        candidate,
-        stages,
-        nodeType,
-        biologicalSexVariable,
-      ),
-    );
-}
-
-function pedigreeRequiresMaleSibling(context: PedigreeCeilingContext): boolean {
-  const { options, stage, stages } = context;
-  return (
-    options.diseaseMode === 'visualization' &&
-    (options.population.femaleAtBirthProbability > 0 ||
-      inheritedEgoSexCanBeIndependent(context)) &&
-    stages.some(
-      (candidate) =>
-        candidate.type === 'NarrativePedigree' &&
-        candidate.sourceStageId === stage.id &&
-        candidate.diseases.some(
-          (disease) => disease.inheritancePattern === 'xLinkedRecessive',
-        ),
-    )
-  );
-}
-
-/** Whether every plan must add the X-linked visualization sibling. */
-function pedigreeGuaranteesMaleSibling(
-  context: PedigreeCeilingContext,
-): boolean {
-  const { options } = context;
-  return (
-    pedigreeRequiresMaleSibling(context) &&
-    options.population.femaleAtBirthProbability >= 1 &&
-    !inheritedEgoSexCanBeIndependent(context)
-  );
-}
-
-export function pedigreeNodeCeiling(
-  config: GenerationConfig,
-  context?: PedigreeCeilingContext,
-): number {
-  const { min, max } = config.familyPedigreeNodeCount;
-  // Without resolved options retain the conservative all-scenarios bound used
-  // by direct callers. Generation supplies the context, allowing the count to
-  // follow the population-supported family sizes and reachable scenarios that
-  // actually drive the planner.
-  if (!context) return Math.max(max, min, 10);
-  return attainableFamilyPedigreeNodeCeiling(
-    context.options,
-    pedigreeRequiresMaleSibling(context),
-    context.stage.boundaries?.requireChildrenContributors === 'required',
-  );
-}
-
-/** Conservative upper bound for parentage, partner, and scenario edges. */
-export function pedigreeEdgeCeiling(
-  config: GenerationConfig,
-  context?: PedigreeCeilingContext,
-): number {
-  const nodes = pedigreeNodeCeiling(config, context);
-  return Math.min((nodes * (nodes - 1)) / 2, nodes * 3);
-}
-
-/** Every fixed value the isolated materializer may put on a pedigree edge. */
-export function pedigreePossibleEdgeValues(
-  edgeConfig: Partial<StageOfType<'FamilyPedigree'>['edgeConfig']>,
-): [string, VariableValue][] {
-  const values: [string, VariableValue][] = [];
-  const relationshipTypeVariable = edgeConfig.relationshipTypeVariable;
-  if (relationshipTypeVariable) {
-    values.push(
-      ...RELATIONSHIP_TYPES.map(
-        (value) =>
-          [relationshipTypeVariable, [value]] as [string, VariableValue],
-      ),
-    );
-  }
-  if (edgeConfig.isActiveVariable) {
-    values.push([edgeConfig.isActiveVariable, true]);
-  }
-  if (edgeConfig.isGestationalCarrierVariable) {
-    values.push([edgeConfig.isGestationalCarrierVariable, true]);
-  }
-  const gameteRoleVariable = edgeConfig.gameteRoleVariable;
-  if (gameteRoleVariable) {
-    values.push(
-      ...GAMETE_ROLES.map(
-        (value) => [gameteRoleVariable, [value]] as [string, VariableValue],
-      ),
-    );
-  }
-  return values;
-}
-
-/**
- * The last stage index naming an attribute of each edge type, per variable id.
- *
- * FamilyPedigree builds edges holding only its configured pedigree semantics,
- * so an edge carries any other value only where a further stage writes one
- * onto an edge it did not create.
- * `handleAlterEdgeForm` is that stage today: it walks every existing
- * edge of its subject type, pedigree-built ones included, and fills the
- * variables its form renders — and only those, since it passes its field list
- * to `generateEntityAttributes` as `only`. A variable no form lists is
- * therefore `undefined` on every pedigree edge of the type, which is why this
- * is recorded per variable rather than per type.
- *
- * Which handlers write edges they did not create is a property of the
- * generator rather than of the schema, so this gate is deliberately wider than
- * that one stage: any attribute reference resolving to an edge variable keeps
- * that variable's pedigree edges counted, whether or not the stage naming it
- * would write them. Reading the schema's own `entityAttributeReference` tags —
- * as `collectBinOnlyVariables` reads them — means a reference site added later
- * counts on its own, without this code being updated, and errs towards
- * refusing up front rather than running out of values partway through a draw.
- *
- * Wide, but not indiscriminate: a reference is a naming site only where it
- * resolves an edge SUBJECT, which is the schema's own account of whose value
- * the reference is. A filter rule's `attribute` resolves none — the collector
- * answers `undefined` for `subject: 'filterRule'` — so an AlterEdgeForm
- * filtering on `verified` while rendering only `note` leaves `verified`
- * unnamed, exactly as `collectReferencedScopes` leaves an ego filter rule out:
- * a filter rule reads a value, it does not write one. That distinction is
- * load-bearing in both directions now. A reader counted as a writer would put
- * every pedigree edge in a `unique` variable's tally and refuse a protocol
- * whose edges hold no such value, and would keep the variable's declared rules
- * analysed where {@link unwrittenEdgeVariables} should have exempted them.
- *
- * Where the reference sits is kept alongside it, because a stage can only write
- * edges that already exist when it runs — see {@link edgeCountFor}. The index
- * is read off the hit's own value path, whose root is the `stages` array this
- * passes in, exactly as `isBinPromptAssignment` reads it. A hit this cannot
- * place that way is read as reaching every pedigree rather than none, which is
- * the direction that leaves a refusal standing instead of letting a draw run
- * out of values: only stage references are collected here, so nothing produces
- * such a hit today, and a reference site added somewhere else later should keep
- * the old wide behaviour until it is deliberately placed.
- *
- * A FamilyPedigree's own edge config is recorded at the pedigree's index: the
- * stage writes those semantics on the applicable edges it creates there.
- */
-function namedEdgeAttributes(
-  stages: Stage[],
-): Map<string, Map<string, number>> {
-  const named = new Map<string, Map<string, number>>();
-
-  for (const hit of collectEntityAttributeReferences({ stages })) {
-    if (hit.subject?.entity !== 'edge') continue;
-
-    const [root, stageIndex] = hit.path;
-    const namedAt =
-      root === 'stages' && typeof stageIndex === 'number'
-        ? stageIndex
-        : Number.POSITIVE_INFINITY;
-
-    const variables = named.get(hit.subject.type) ?? new Map<string, number>();
-    variables.set(
-      hit.variableId,
-      Math.max(variables.get(hit.variableId) ?? -1, namedAt),
-    );
-    named.set(hit.subject.type, variables);
-  }
-
-  return named;
-}
-
 /** Unordered pairs over `count` entities, as `createEdgesForPairs` walks them. */
 function pairCount(count: number): number {
   return (count * (count - 1)) / 2;
@@ -1113,41 +528,34 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  * Worst-case entity counts per node/edge type across a protocol's stages, used
  * to decide `unique` feasibility. Every stage's contribution is an upper
  * bound, not its actual random draw: name-generator variants and
- * NetworkComposer use `getNodeCountBounds`'s ceiling, FamilyPedigree uses the
- * configured maximum pedigree size plus any ancestry a later required boundary
- * must add above inherited co-parents. For edges, DyadCensus, TieStrengthCensus,
- * OneToManyDyadCensus and Sociogram bound an edge type by the pair count over
- * each subject node type any of them pairs it for — a run creates at most one
- * edge of a type per unordered node pair, however many prompts and stages ask
- * about it, because `createEdgesForPairs` reuses the pair's existing edge the
- * way the interview does. A NetworkComposer bounds each of its edge types by
- * the pairs of its own node ceiling instead, since it pairs only the people it
- * built itself, and FamilyPedigree by one less than its node ceiling, the
- * parent-child edges it actually creates; both are folded into a later pairing
+ * NetworkComposer use `getNodeCountBounds`'s ceiling. For edges, DyadCensus,
+ * TieStrengthCensus, OneToManyDyadCensus and Sociogram bound an edge type by
+ * the pair count over each subject node type any of them pairs it for — a run
+ * creates at most one edge of a type per unordered node pair, however many
+ * prompts and stages ask about it, because `createEdgesForPairs` reuses the
+ * pair's existing edge the way the interview does. A NetworkComposer bounds
+ * each of its edge types by the pairs of its own node ceiling instead, since it
+ * pairs only the people it built itself; those are folded into a later pairing
  * of the same node type where one exists, and counted on their own where it
  * does not. Node counts sum across stages producing the same type, since a
- * `unique` constraint spans the whole run, except that compatible pedigrees
- * after the first reuse its ego and therefore add one fewer node.
+ * `unique` constraint spans the whole run.
  *
  * The stage list is read in the order `generateNetwork` runs it, because every
  * one of these bounds is about what a stage can reach rather than about what
  * the protocol eventually holds. A census pairs the people standing when it
- * runs, so a name generator after it adds nobody to its pair set; a form fills
- * the edges standing when it runs, so a pedigree after it hands its edges to
- * nobody. That reading is sound because the run only ever moves forward —
+ * runs, so a name generator after it adds nobody to its pair set. That reading
+ * is sound because the run only ever moves forward —
  * `resolveSkipLogicDestinationIndex` resolves a skip destination only when it
  * is strictly after the owning stage, so no stage is revisited and no node is
  * ever removed — and because a skipped stage or an early drop-out leaves fewer
  * entities than counted here, never more.
  *
- * Entities are therefore counted as the value space they spend, not as every
- * entity the run creates, because spending values is the only thing the count
- * is asked about: feasibility measures a `unique` variable's value space
- * against it, and an edge born without a value for that variable spends none of
- * that space, as do two roster rows carrying one value between them. Both are
- * settled per variable
- * rather than per type — see {@link edgeCountFor} and {@link nodeCountFor},
- * which read the tallies this returns.
+ * Nodes are counted as the value space they spend, not as every node the run
+ * creates, because spending values is the only thing the count is asked about:
+ * feasibility measures a `unique` variable's value space against it, and two
+ * roster rows carrying one value between them spend it once. That is settled
+ * per variable rather than per type — see {@link nodeCountFor}, which reads the
+ * tallies this returns.
  *
  * `externalData` is `generateNetwork`'s own roster argument, read here for the
  * same three-way meaning `createNodesForStage` gives it: a roster stage with no
@@ -1169,14 +577,11 @@ export function worstCaseEntityCounts(
   config: GenerationConfig,
   externalData?: Record<string, NcNode[]>,
   nodeConstraints?: NodeConstraintsFor,
-  familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
   nodeVariables?: NodeVariablesFor,
   respectSkipLogicAndFiltering = false,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
-  const pedigree = new Map<string, PedigreeEdges[]>();
   const node: NodeCounts = new Map();
-  const nodeBeforeStage = new Map<number, Map<string, number>>();
 
   // `completionCheckFor` resolves a whole type's generation order and solves
   // its tractable components, so a type's judge is built once rather than once
@@ -1250,13 +655,6 @@ export function worstCaseEntityCounts(
 
   for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
     const stage = stages[stageIndex]!;
-    nodeBeforeStage.set(
-      stageIndex,
-      new Map(
-        [...node.entries()].map(([type, tally]) => [type, nodeTotal(tally)]),
-      ),
-    );
-
     // One pass, in stage order, because a pair set is bounded by the population
     // standing when its stage runs rather than by the one the protocol ends
     // with. `generateNetwork` walks this same list once and only forwards —
@@ -1290,7 +688,7 @@ export function worstCaseEntityCounts(
                   count: maxNodes,
                   variables: withRuleTiedVariables(
                     variables,
-                    nodeVariablesWrittenOnCreation(stage, stages),
+                    nodeVariablesWrittenOnCreation(stage),
                   ),
                 },
               ]
@@ -1302,7 +700,7 @@ export function worstCaseEntityCounts(
                     variables: declaresNodeCollection(stage, prompt)
                       ? withRuleTiedVariables(
                           variables,
-                          nodeVariablesWrittenOnCreation(stage, stages, prompt),
+                          nodeVariablesWrittenOnCreation(stage, prompt),
                         )
                       : ('all' as const),
                   }))
@@ -1344,13 +742,7 @@ export function worstCaseEntityCounts(
           if (edgeType !== undefined) edgeTypes.add(edgeType);
         }
         for (const edgeType of edgeTypes) {
-          ownNodeEdges.push({
-            edgeType,
-            nodeType,
-            count: pairs,
-            stageIndex,
-            born: 'whole',
-          });
+          ownNodeEdges.push({ edgeType, nodeType, count: pairs, stageIndex });
         }
       }
       continue;
@@ -1382,75 +774,6 @@ export function worstCaseEntityCounts(
       }
       continue;
     }
-
-    if (stage.type === 'FamilyPedigree') {
-      // The materializer returns before building anything when no node type is
-      // configured (possible in deliberately partial unit-test fixtures).
-      const nodeType = stage.nodeConfig?.type;
-      if (nodeType === undefined) continue;
-
-      const pedigreeContext = familyPedigree
-        ? { options: familyPedigree, stage, stages }
-        : undefined;
-      const reusesEgo = canReusePedigreeEgo(stageIndex, stages, stage);
-      const tally = tallyFor(node, nodeType);
-      const inheritedContributorCeiling = inheritedContributorAncestryCeiling(
-        stageIndex,
-        stages,
-        nodeTotal(tally),
-        familyPedigree,
-      );
-      const created =
-        Math.max(
-          pedigreeNodeCeiling(config, pedigreeContext) - (reusesEgo ? 1 : 0),
-          0,
-        ) + inheritedContributorCeiling.nodes;
-      const variables = nodeVariables?.(nodeType);
-      const egoCount = !reusesEgo && created > 0 ? 1 : 0;
-      const relativeCount = created - egoCount;
-      tally.fabricated.push({
-        count: created,
-        stageIndex,
-        writes: [
-          ...(egoCount > 0
-            ? [
-                {
-                  count: egoCount,
-                  variables: pedigreeEgoNodeVariables(stage, stages, variables),
-                },
-              ]
-            : []),
-          ...(relativeCount > 0
-            ? [
-                {
-                  count: relativeCount,
-                  variables: withRuleTiedVariables(
-                    variables,
-                    pedigreeNodeVariables(stage, stages),
-                  ),
-                },
-              ]
-            : []),
-        ],
-      });
-
-      const edgeType = stage.edgeConfig?.type;
-      // Tallied apart from the rest because these edges start holding only what
-      // the pedigree writes, and only the variables some stage names ever stop
-      // being undefined — see {@link edgeCountFor}, which decides that per
-      // variable.
-      if (edgeType !== undefined) {
-        ownNodeEdges.push({
-          edgeType,
-          nodeType,
-          count:
-            pedigreeEdgeCeiling(config, pedigreeContext) +
-            inheritedContributorCeiling.edges,
-          stageIndex,
-          born: 'partial',
-        });
-      }
-    }
   }
 
   for (const [edgeType, byNodeType] of paired) {
@@ -1459,47 +782,29 @@ export function worstCaseEntityCounts(
     }
   }
 
-  for (const { edgeType, nodeType, count, stageIndex, born } of ownNodeEdges) {
-    // A composer's or a pedigree's people are part of their type's population,
-    // so where a census or Sociogram pairs that whole population for this edge
-    // type LATER in the run, this stage's edges are inside that pair set and
-    // the census reuses whichever of them it meets — `createEdgesForPairs`
-    // looks the pair up before drawing. Counting them again would double a
-    // pair.
-    //
-    // A pedigree's edges are a subset of its own people's unordered pairs: its
-    // semantic builder de-duplicates partner links and never assigns two
-    // relationship roles to the same pair. If that changes, this fold must be
-    // removed so the count cannot understate parallel edges.
+  for (const { edgeType, nodeType, count, stageIndex } of ownNodeEdges) {
+    // A composer's people are part of their type's population, so where a
+    // census or Sociogram pairs that whole population for this edge type LATER
+    // in the run, this stage's edges are inside that pair set and the census
+    // reuses whichever of them it meets — `createEdgesForPairs` looks the pair
+    // up before drawing. Counting them again would double a pair.
     //
     // Strictly later, because a pairing stage that ran BEFORE this one never
     // saw these people: they did not exist yet, so its pair set excludes them
     // and cannot hold these edges. Where nothing pairs the type afterwards,
-    // each such stage contributes its own edges and they sum — two composers
-    // build disjoint sets of people, and two pedigrees likewise — and that sum
-    // can never exceed the type's whole pair count, since every ceiling is
-    // inside `nodeTotal` and pairs grow faster than nodes.
+    // each composer contributes its own edges and they sum — two composers
+    // build disjoint sets of people — and that sum can never exceed the type's
+    // whole pair count, since every ceiling is inside `nodeTotal` and pairs
+    // grow faster than nodes.
     if ((paired.get(edgeType)?.get(nodeType)?.lastIndex ?? -1) > stageIndex) {
       continue;
     }
 
-    // A composer generates the whole attribute set of every edge it creates, so
-    // its edges join the count for every variable; a pedigree's hold only what
-    // the pedigree itself writes, and are kept apart for {@link edgeCountFor}
-    // to settle per variable.
-    if (born === 'whole') {
-      add(base, edgeType, count);
-      continue;
-    }
-
-    const forType = pedigree.get(edgeType) ?? [];
-    forType.push({ count, stageIndex });
-    pedigree.set(edgeType, forType);
+    add(base, edgeType, count);
   }
 
   for (const [nodeType, writers] of lastExistingWriterByType(
     stages,
-    nodeVariables,
     respectSkipLogicAndFiltering,
   )) {
     tallyFor(node, nodeType).written = writers;
@@ -1507,7 +812,6 @@ export function worstCaseEntityCounts(
 
   return {
     node,
-    edge: { base, pedigree, named: namedEdgeAttributes(stages) },
-    nodeBeforeStage,
+    edge: base,
   };
 }

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
@@ -102,11 +102,15 @@ const familyPedigreeProtocol = () => ({
         variables: {
           label: { name: 'Label', type: 'text', component: 'Text' },
           isEgo: { name: 'IsEgo', type: 'boolean' },
-          relationship: { name: 'Relationship', type: 'text' },
-          biologicalSex: {
-            name: 'BiologicalSex',
+          genderIdentity: {
+            name: 'GenderIdentity',
             type: 'categorical',
-            options: BIOLOGICAL_SEX_OPTIONS,
+            options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+          },
+          sexAssignedAtBirth: {
+            name: 'SexAssignedAtBirth',
+            type: 'categorical',
+            options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
           },
           ...booleanPair,
         },
@@ -117,21 +121,16 @@ const familyPedigreeProtocol = () => ({
         name: 'Family',
         color: 'edge-color-seq-1',
         variables: {
-          relationshipType: {
-            name: 'RelationshipType',
+          relationshipKind: {
+            name: 'RelationshipKind',
             type: 'categorical',
-            options: RELATIONSHIP_TYPE_OPTIONS,
+            options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
           },
-          isActive: { name: 'IsActive', type: 'boolean' },
           isGestationalCarrier: {
             name: 'IsGestationalCarrier',
             type: 'boolean',
           },
-          gameteRole: {
-            name: 'GameteRole',
-            type: 'categorical',
-            options: GAMETE_ROLE_OPTIONS,
-          },
+          isCurrentPartner: { name: 'IsCurrentPartner', type: 'boolean' },
         },
       },
     },
@@ -141,27 +140,21 @@ const familyPedigreeProtocol = () => ({
       id: 'family',
       type: 'FamilyPedigree',
       label: 'Family',
-      nodeConfig: {
-        type: 'person',
-        nodeLabelVariable: 'label',
+      subject: { entity: 'node', type: 'person' },
+      prompt: 'Build your family',
+      personAttributes: {
+        nameVariable: 'label',
+        genderIdentityVariable: 'genderIdentity',
+        sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         egoVariable: 'isEgo',
-        relationshipVariable: 'relationship',
-        biologicalSexVariable: 'biologicalSex',
-        form: formFields,
       },
-      edgeConfig: {
+      relationship: {
         type: 'family',
-        relationshipTypeVariable: 'relationshipType',
-        isActiveVariable: 'isActive',
-        isGestationalCarrierVariable: 'isGestationalCarrier',
-        gameteRoleVariable: 'gameteRole',
+        kindVariable: 'relationshipKind',
+        gestationalCarrierVariable: 'isGestationalCarrier',
+        currentPartnerVariable: 'isCurrentPartner',
       },
-      framing: { mode: 'fixed', value: 'gamete' },
-      boundaries: {
-        requireGrandparents: 'off',
-        requireChildrenContributors: 'off',
-      },
-      censusPrompt: 'Build your family',
+      form: { fields: formFields },
     },
   ],
 });
@@ -236,9 +229,9 @@ describe('shared form stage-effective validation contradictions', () => {
       expectedPath: ['stages', 0, 'form', 'fields', 0, 'variable'],
     },
     {
-      label: 'FamilyPedigree node form',
+      label: 'FamilyPedigree person form',
       protocol: familyPedigreeProtocol,
-      expectedPath: ['stages', 0, 'nodeConfig', 'form', 0, 'variable'],
+      expectedPath: ['stages', 0, 'form', 'fields', 0, 'variable'],
     },
   ];
 

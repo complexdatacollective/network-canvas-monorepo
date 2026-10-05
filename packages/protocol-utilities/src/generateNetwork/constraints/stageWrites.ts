@@ -53,94 +53,12 @@ function promptFixedVariables(stage: Stage, prompt?: CreationPrompt): string[] {
   );
 }
 
-/** Variables rendered as ordinary fields or labels by FamilyPedigree. */
-export function pedigreeDrawnNodeVariables(stage: Stage): Set<string> {
-  if (stage.type !== 'FamilyPedigree') return new Set();
-  const nodeLabelVariable = stage.nodeConfig?.nodeLabelVariable;
-  return setOf([
-    nodeLabelVariable,
-    ...(stage.nodeConfig?.form ?? [])
-      .map((field) => field.variable)
-      // PersonNameField owns the wizard's internal `name` path. A second form
-      // field with that id is suppressed by the live interface, as is a form
-      // field duplicating the configured label variable.
-      .filter(
-        (variable) => variable !== nodeLabelVariable && variable !== 'name',
-      ),
-  ]);
-}
-
-/** Disease and nomination variables the pedigree materializer fixes. */
-function pedigreeDiseaseVariables(
-  stage: Stage,
-  stages: readonly Stage[],
-): Set<string> {
-  if (stage.type !== 'FamilyPedigree') return new Set();
-
-  const variables = new Set(
-    (stage.nominationPrompts ?? []).map((prompt) => prompt.variable),
-  );
-  for (const candidate of stages) {
-    if (
-      candidate.type !== 'NarrativePedigree' ||
-      candidate.sourceStageId !== stage.id
-    ) {
-      continue;
-    }
-    for (const disease of candidate.diseases) variables.add(disease.variable);
-  }
-  return variables;
-}
-
-/** Every node variable FamilyPedigree can write while creating its people. */
-export function pedigreeNodeVariables(
-  stage: Stage,
-  stages: readonly Stage[] = [stage],
-): Set<string> {
-  if (stage.type !== 'FamilyPedigree') return new Set();
-  return setOf([
-    ...pedigreeDrawnNodeVariables(stage),
-    stage.nodeConfig?.egoVariable,
-    stage.nodeConfig?.relationshipVariable,
-    stage.nodeConfig?.biologicalSexVariable,
-    ...pedigreeDiseaseVariables(stage, stages),
-  ]);
-}
-
-/** Variables written on FamilyPedigree's one iconic ego node. */
-export function pedigreeEgoNodeVariables(
-  stage: Stage,
-  stages: readonly Stage[] = [stage],
-  variables?: Record<string, VariableLike>,
-): Set<string> {
-  if (stage.type !== 'FamilyPedigree') return new Set();
-
-  const directlyWritten = setOf([
-    stage.nodeConfig?.egoVariable,
-    stage.nodeConfig?.biologicalSexVariable,
-    ...pedigreeDiseaseVariables(stage, stages),
-  ]);
-  const connected = withRuleTiedVariables(variables, directlyWritten);
-
-  // Name and additional node-form controls are rendered only for relatives.
-  // Do not let a cross-variable rule turn an unrendered ego control into a
-  // synthetic write. A variable that is also written semantically (for
-  // example, an imported conflicting biological-sex form field) remains fixed.
-  for (const variable of pedigreeDrawnNodeVariables(stage)) {
-    if (!directlyWritten.has(variable)) connected.delete(variable);
-  }
-
-  return connected;
-}
-
 /**
  * `seeds` plus every variable tied to one of them by a cross-variable rule,
  * transitively and in both directions.
  *
- * FamilyPedigree fixes structural values directly. If a rule connects another
- * variable to one of those values, the materializer must settle that connected
- * variable too. The materializer and feasibility counter share this closure so
- * they cannot disagree about which values are written.
+ * Used to settle every variable a rule ties to one a stage writes, so the
+ * generator and the feasibility counter agree about which values are written.
  */
 export function withRuleTiedVariables(
   variables: Record<string, VariableLike> | undefined,
@@ -189,7 +107,6 @@ export function withRuleTiedVariables(
 /** The node variables a creating stage fills on the nodes it creates. */
 export function nodeVariablesWrittenOnCreation(
   stage: Stage,
-  stages: readonly Stage[] = [stage],
   prompt?: CreationPrompt,
 ): Set<string> {
   switch (stage.type) {
@@ -202,8 +119,6 @@ export function nodeVariablesWrittenOnCreation(
       return setOf([stage.quickAdd, ...promptFixedVariables(stage, prompt)]);
     case 'NameGeneratorRoster':
       return new Set();
-    case 'FamilyPedigree':
-      return pedigreeNodeVariables(stage, stages);
     case 'NetworkComposer':
       return setOf([
         stage.quickAdd,
@@ -217,10 +132,10 @@ export function nodeVariablesWrittenOnCreation(
     case 'CategoricalBin':
     case 'DyadCensus':
     case 'EgoForm':
+    case 'FamilyPedigree':
     case 'Geospatial':
     case 'Information':
     case 'Narrative':
-    case 'NarrativePedigree':
     case 'OneToManyDyadCensus':
     case 'OrdinalBin':
     case 'Sociogram':
@@ -243,15 +158,11 @@ export function declaresNodeCollection(
   prompt?: CreationPrompt,
 ): boolean {
   if (stage.type === 'NameGeneratorRoster') return false;
-  return nodeVariablesWrittenOnCreation(stage, [stage], prompt).size > 0;
+  return nodeVariablesWrittenOnCreation(stage, prompt).size > 0;
 }
 
 /** Variables a stage writes onto nodes that existed before it ran. */
-function nodeVariablesWrittenOnExisting(
-  stage: Stage,
-  stages: readonly Stage[],
-  variablesFor?: NodeVariablesFor,
-): Set<string> {
+function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
   switch (stage.type) {
     case 'Sociogram':
       return setOf(
@@ -268,26 +179,16 @@ function nodeVariablesWrittenOnExisting(
       return setOf(stage.prompts.map((prompt) => prompt.variable));
     case 'AlterForm':
       return setOf((stage.form?.fields ?? []).map((field) => field.variable));
-    case 'FamilyPedigree': {
-      const type = stage.nodeConfig?.type;
-      const directlyWritten = setOf([
-        stage.nodeConfig?.egoVariable,
-        ...pedigreeDiseaseVariables(stage, stages),
-      ]);
-      return type === undefined
-        ? directlyWritten
-        : withRuleTiedVariables(variablesFor?.(type), directlyWritten);
-    }
     case 'AlterEdgeForm':
     case 'Anonymisation':
     case 'DyadCensus':
     case 'EgoForm':
+    case 'FamilyPedigree':
     case 'Information':
     case 'NameGenerator':
     case 'NameGeneratorQuickAdd':
     case 'NameGeneratorRoster':
     case 'Narrative':
-    case 'NarrativePedigree':
     case 'NetworkComposer':
     case 'OneToManyDyadCensus':
     case 'TieStrengthCensus':
@@ -299,28 +200,12 @@ function nodeTypeOf(stage: Stage): string | undefined {
   if ('subject' in stage && stage.subject?.entity === 'node') {
     return stage.subject.type;
   }
-  if (stage.type === 'FamilyPedigree') return stage.nodeConfig?.type;
   return undefined;
-}
-
-/** Whether this stage can rewrite one variable on an existing node. */
-export function stageWritesExistingNodeVariable(
-  stage: Stage,
-  stages: readonly Stage[],
-  nodeType: string,
-  variableId: string,
-  variablesFor?: NodeVariablesFor,
-): boolean {
-  return (
-    nodeTypeOf(stage) === nodeType &&
-    nodeVariablesWrittenOnExisting(stage, stages, variablesFor).has(variableId)
-  );
 }
 
 /** Last stage index writing each variable onto existing nodes, per node type. */
 export function lastExistingWriterByType(
   stages: readonly Stage[],
-  variablesFor?: NodeVariablesFor,
   respectSkipLogicAndFiltering = false,
 ): Map<string, Map<string, number>> {
   const byType = new Map<string, Map<string, number>>();
@@ -341,7 +226,7 @@ export function lastExistingWriterByType(
     }
     const type = nodeTypeOf(stage);
     if (type === undefined) continue;
-    const written = nodeVariablesWrittenOnExisting(stage, stages, variablesFor);
+    const written = nodeVariablesWrittenOnExisting(stage);
     if (written.size === 0) continue;
 
     const forType = byType.get(type) ?? new Map<string, number>();

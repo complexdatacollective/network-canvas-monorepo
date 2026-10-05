@@ -4662,7 +4662,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
   // stage-effective check has a form to anchor at. NOTE the residual
   // accept-direction gap this documents: a pair rendered ONLY by shared
   // (`FormFieldSchema`) form fields — EgoForm, AlterForm, NameGenerator
-  // forms, FamilyPedigree's nodeConfig.form — uses the codebook component
+  // forms, FamilyPedigree's form — uses the codebook component
   // verbatim, but those surfaces have no stage-effective contradiction pass,
   // so a genuine Boolean-rendered contradiction there goes unreported. The
   // cardinal rule prefers that miss over the false rejection.

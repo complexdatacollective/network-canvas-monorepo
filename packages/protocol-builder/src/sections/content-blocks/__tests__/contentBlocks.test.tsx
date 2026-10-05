@@ -4,11 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import type { PageContentVariant } from '../../page-content/PageContentSection.tsx';
 import { contentBlocks } from '../contentBlocks.tsx';
-import { pageBlocksCarrySize } from '../contentBlockTypes.ts';
 
 /**
  * The block editor's text control is a rich-text editor, and ProseMirror
@@ -47,8 +44,7 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
  * slots and dialog sentence is that function's business, and a fixture that
  * re-pairs them stops testing what ships the moment the pairing gains a part.
  */
-const pageOfBlocks = (variant?: PageContentVariant) =>
-  contentBlocks(variant === undefined ? {} : { variant })();
+const pageOfBlocks = () => contentBlocks()();
 
 const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
   const items = document.items;
@@ -497,132 +493,5 @@ describe('a block naming a resource no page can present', () => {
         size: 'MEDIUM',
       },
     ]);
-  });
-});
-
-/**
- * The other page these blocks are mounted on, and the reason the size control
- * is decided from the stage rather than from a prop: a pedigree's introduction
- * items are a STRICT object without `size`, so offering the control there
- * would author a stage the protocol refuses.
- */
-describe('the same blocks on a task’s introduction screen', () => {
-  const introScreenPage = (size?: string) => ({
-    stage: {
-      id: 'family-pedigree-intro',
-      type: 'FamilyPedigree' as const,
-      fields: {
-        ...loadFixtureStage('family-pedigree-1').fields,
-        introScreen: {
-          items: [
-            {
-              id: 'intro-image',
-              type: 'asset',
-              content: 'intro_image',
-              ...(size === undefined ? {} : { size }),
-            },
-          ],
-        },
-      },
-    },
-    assets: {
-      intro_image: { name: 'Intro image', type: 'image', source: 'intro.png' },
-    },
-    sections: pageOfBlocks('introScreen'),
-  });
-
-  const introItemsOf = (document: SectionDoc): Record<string, unknown>[] => {
-    const introScreen = document.introScreen;
-    return typeof introScreen === 'object' && introScreen !== null
-      ? itemsOf(introScreen as SectionDoc)
-      : [];
-  };
-
-  it('says which pages carry a display size at all', () => {
-    expect(pageBlocksCarrySize('Information')).toBe(true);
-    expect(pageBlocksCarrySize('FamilyPedigree')).toBe(false);
-  });
-
-  /**
-   * The other half of the same rule, and the half the control cannot cover.
-   *
-   * A `size` can already be on the block — written by an older tool, by hand,
-   * or by the same block before it was moved onto an introduction screen — and
-   * the collapse restores one for every kind that could carry one. The
-   * pedigree's intro items are a strict object with no `size` at all, so the
-   * key rides through the editor invisibly and holds the stage at the save
-   * with a refusal about a key that is nowhere on the researcher's screen.
-   * What decides is the same fact the control is decided from, so the two
-   * cannot disagree.
-   */
-  it('throws away a display size the block arrived with', async () => {
-    const harness = renderStageEditor(introScreenPage('MEDIUM'));
-
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit introduction block' }),
-    );
-    expect(await screen.findByRole('radio', { name: 'Image' })).toBeChecked();
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    // The save has to SUCCEED: the size the researcher never chose and cannot
-    // see is exactly what the strict intro-item schema refuses, so a refusal
-    // here is the defect rather than the assertion below failing.
-    const request = await harness.submit();
-    expect(request).not.toBeNull();
-    expect(introItemsOf(request?.stageDocument ?? {})).toEqual([
-      { id: 'intro-image', type: 'asset', content: 'intro_image' },
-    ]);
-  });
-
-  /**
-   * The half of the same question that goes the other way. `size` is a key
-   * only SOME pages have room for, so the control is decided from the stage.
-   * `description` is on both page schemas and read by the same runtime
-   * component whichever page rendered it, so it is offered here unconditionally
-   * — and a rule copied from `size` would have hidden it on the very screen a
-   * task's introduction media is most likely to need explaining.
-   */
-  it('describes an introduction block the same way a page’s block is described', async () => {
-    const harness = renderStageEditor(introScreenPage());
-
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit introduction block' }),
-    );
-    await screen.findByRole('radio', { name: 'Image' });
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Description' }),
-      'The family tree this task builds.',
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    expect(request).not.toBeNull();
-    expect(introItemsOf(request?.stageDocument ?? {})).toEqual([
-      {
-        id: 'intro-image',
-        type: 'asset',
-        content: 'intro_image',
-        description: 'The family tree this task builds.',
-      },
-    ]);
-  });
-
-  it('offers no display size for a block the schema has no room for', async () => {
-    const harness = renderStageEditor(introScreenPage());
-
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit introduction block' }),
-    );
-
-    expect(await screen.findByRole('radio', { name: 'Image' })).toBeChecked();
-    expect(
-      screen.queryByRole('radio', { name: 'Medium' }),
-    ).not.toBeInTheDocument();
   });
 });

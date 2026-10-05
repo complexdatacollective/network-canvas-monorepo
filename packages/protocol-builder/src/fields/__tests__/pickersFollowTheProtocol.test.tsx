@@ -50,7 +50,7 @@ function AttributePicker() {
   );
   return (
     <Field<typeof VariablePickerField>
-      name="nodeConfig.nodeLabelVariable"
+      name="personAttributes.nameVariable"
       component={VariablePickerField}
       label="Attribute this question records"
       options={options}
@@ -216,8 +216,11 @@ describe('the attribute picker', () => {
     const saved = await harness.submit();
 
     expect(
-      (saved?.stageDocument.nodeConfig as Record<string, unknown> | undefined)
-        ?.nodeLabelVariable,
+      (
+        saved?.stageDocument.personAttributes as
+          | Record<string, unknown>
+          | undefined
+      )?.nameVariable,
     ).toBe('age');
   });
 

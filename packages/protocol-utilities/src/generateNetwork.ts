@@ -28,11 +28,6 @@ import type {
   GenerationContext,
   NetworkDraft,
 } from './generateNetwork/context.ts';
-import { materializeFamilyPedigree } from './generateNetwork/familyPedigree/materializeFamilyPedigree.ts';
-import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation.ts';
-import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations.ts';
-import { familyPedigreeSeed } from './generateNetwork/familyPedigree/seed.ts';
-import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types.ts';
 import { buildCurrentNetwork } from './generateNetwork/filtering.ts';
 import { markStageInProgress } from './generateNetwork/inProgress.ts';
 import {
@@ -88,8 +83,6 @@ export type GenerateNetworkParams = {
   inProgressStageIndex?: number;
   /** Overrides for generation tuning constants. See {@link GenerationConfig}. */
   config?: Partial<GenerationConfig>;
-  /** Family-specific demographic, scenario, and disease-generation settings. */
-  familyPedigree?: FamilyPedigreeGenerationOptions;
 };
 
 export type GenerateNetworkResult = {
@@ -111,24 +104,9 @@ export function generateNetwork(
     respectSkipLogicAndFiltering = false,
     inProgressStageIndex,
     config,
-    familyPedigree,
   } = params;
 
-  const baseConfig = resolveGenerationConfig(config);
-  const resolvedFamilyPedigree = resolveFamilyPedigreeGenerationOptions(
-    familyPedigree,
-    Math.max(
-      baseConfig.familyPedigreeNodeCount.min,
-      baseConfig.familyPedigreeNodeCount.max,
-    ),
-  );
-  const resolvedConfig = {
-    ...baseConfig,
-    familyPedigreeNodeCount: {
-      min: 7,
-      max: resolvedFamilyPedigree.maxNodes,
-    },
-  };
+  const resolvedConfig = resolveGenerationConfig(config);
 
   const feasibilityStages = reachableStagesForFeasibility(
     codebook,
@@ -169,7 +147,6 @@ export function generateNetwork(
     resolvedConfig,
     externalData,
     respectSkipLogicAndFiltering,
-    resolvedFamilyPedigree,
   );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);
@@ -228,9 +205,6 @@ export function generateNetwork(
     ctx,
     countPromptFixedValues(stages, resolvedConfig, externalData),
   );
-  // A pedigree's ego flag and its edges' relationship values are fixed by its
-  // stage rather than by a prompt, and are held back here for the same reason.
-  reserveFamilyPedigreeFixedValues(ctx, stages);
   // Roster rows are values the run is handed rather than ones it issues, so the
   // draws that come before their stage are steered off them here too. Each
   // stage's hold is given back once the stage has run.
@@ -285,8 +259,7 @@ export function generateNetwork(
     }
 
     // Content stages run no handler at all: they add no node or edge and write
-    // onto none. NarrativePedigree is one of them because it reads the shared
-    // network its source FamilyPedigree stage already wrote.
+    // onto none.
     //
     // Narrowed away here rather than cased below, so that `CONTENT_STAGE_TYPES`
     // and this dispatch cannot come to disagree about what a stage does — which
@@ -325,18 +298,6 @@ export function generateNetwork(
           break;
         case 'AlterEdgeForm':
           handleAlterEdgeForm(ctx, draft, stage);
-          break;
-        case 'FamilyPedigree':
-          materializeFamilyPedigree(
-            ctx,
-            draft,
-            stage,
-            i,
-            stages,
-            feasibilityStages,
-            familyPedigreeSeed(runSeed, stage.id),
-            resolvedFamilyPedigree,
-          );
           break;
         case 'Geospatial':
           handleGeospatial(ctx, draft, stage);

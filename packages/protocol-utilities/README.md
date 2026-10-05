@@ -4,7 +4,7 @@ Synthetic network generation and interview-payload builder for Network Canvas pr
 
 ## Exports
 
-- `generateNetwork(params)` — pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given protocol. Takes a single `GenerateNetworkParams` object: `codebook` and `stages` are required; `externalData`, `seed`, `simulateDropOut`, `respectSkipLogicAndFiltering`, `inProgressStageIndex`, `config`, and `familyPedigree` are optional. Returns a `GenerateNetworkResult`.
+- `generateNetwork(params)` — pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given protocol. Takes a single `GenerateNetworkParams` object: `codebook` and `stages` are required; `externalData`, `seed`, `simulateDropOut`, `respectSkipLogicAndFiltering`, `inProgressStageIndex`, and `config` are optional. Returns a `GenerateNetworkResult`.
 - `GenerateNetworkParams`, `GenerateNetworkResult` — the parameter and result types.
 - `GenerationConfig` — tuning constants (node counts, edge probabilities, drop-out factor, and the date relative date bounds resolve against). `params.config` takes a `Partial` of it.
 - `SyntheticDataConstraintError`, `ConstraintConflict` — the refusal `generateNetwork` throws, and the shape it carries. See below.
@@ -12,11 +12,9 @@ Synthetic network generation and interview-payload builder for Network Canvas pr
 
 Both share a `ValueGenerator` (`@faker-js/faker` wrapper) for deterministic value synthesis: pass a `seed` for reproducible output.
 
-## Family pedigree generation
+## Family pedigree stages
 
-FamilyPedigree stages use an isolated demographic generator rather than the generic node-and-edge stage handlers. The bundled `US_FAMILY_PEDIGREE_POPULATION` profile derives completed family sizes from the 2017–2019 National Survey of Family Growth, then uses size-biased draws for a focal person's siblings and parents' sibling groups. It includes source URLs so callers can audit the assumptions or replace the profile for another study population.
-
-Pass `familyPedigree` to customize the population, cap optional branches, disable planted disease lineages, or force an adoption, donor-conception, or surrogacy scenario for testing. Population mode samples these scenarios at the profile's configured rates. Family topology and attributes use a stage-specific deterministic random stream, so changing a pedigree does not move the random stream used by other interview stages.
+`generateNetwork` adds no people or relationships for a FamilyPedigree stage: the participant draws their own family in the interface. `SyntheticInterview.addStage('FamilyPedigree')` builds a valid stage, creating the person and family types and the variables the interface owns; the returned handle exposes their ids so a story can seed people and relationships.
 
 ## Refused protocols
 

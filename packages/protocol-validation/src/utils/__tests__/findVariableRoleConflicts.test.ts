@@ -29,36 +29,27 @@ const categoricalBinStage = (variable: string) => ({
   prompts: [{ id: 'p1', text: 'Sort', variable }],
 });
 
-// FamilyPedigree declares no top-level `subject` (unlike AlterForm/
-// CategoricalBin above); its nomination-prompt variable resolves via
-// `stageSubject`, which recoverSubject must derive from nodeConfig.type.
-const familyPedigreeStage = (nominationVariable: string) => ({
+// FamilyPedigree's form fields resolve against the stage's `subject`, like any
+// other form.
+const familyPedigreeStage = (formVariable: string) => ({
   id: 'fp1',
   type: 'FamilyPedigree',
   label: 'Family Pedigree',
-  nodeConfig: {
-    type: 'person',
-    nodeLabelVariable: 'pedigreeLabel',
+  subject: { entity: 'node', type: 'person' },
+  prompt: 'Who is related to you?',
+  personAttributes: {
+    nameVariable: 'pedigreeName',
+    genderIdentityVariable: 'pedigreeGender',
+    sexAssignedAtBirthVariable: 'pedigreeSab',
     egoVariable: 'pedigreeEgo',
-    relationshipVariable: 'pedigreeRelationship',
-    biologicalSexVariable: 'pedigreeBioSex',
   },
-  edgeConfig: {
+  relationship: {
     type: 'knows',
-    relationshipTypeVariable: 'pedigreeRelType',
-    isActiveVariable: 'pedigreeActive',
-    isGestationalCarrierVariable: 'pedigreeGestCarrier',
-    gameteRoleVariable: 'pedigreeGameteRole',
+    kindVariable: 'pedigreeKind',
+    gestationalCarrierVariable: 'pedigreeGestCarrier',
+    currentPartnerVariable: 'pedigreeCurrent',
   },
-  framing: { mode: 'participantChoice' },
-  boundaries: {
-    requireGrandparents: 'off',
-    requireChildrenContributors: 'off',
-  },
-  censusPrompt: 'Who is related to you?',
-  nominationPrompts: [
-    { id: 'np1', text: 'Family history', variable: nominationVariable },
-  ],
+  form: { fields: [{ variable: formVariable, prompt: 'Family history' }] },
 });
 
 const withStages = (stages: unknown[]) => {
@@ -81,12 +72,12 @@ describe('findVariableRoleConflicts', () => {
     expect(typeof conflict?.unvalidated[0]?.stageIndex).toBe('number');
   });
 
-  it('recovers the subject for a FamilyPedigree stage with no top-level subject', () => {
-    // nominationPrompts[].variable resolves via stageSubject, which is
-    // undefined for FamilyPedigree; recoverSubject must fall back to reading
-    // nodeConfig.type from the stage document itself.
+  it('resolves the subject of a FamilyPedigree form field', () => {
     const conflicts = findVariableRoleConflicts(
-      withStages([alterFormStage('category'), familyPedigreeStage('category')]),
+      withStages([
+        categoricalBinStage('category'),
+        familyPedigreeStage('category'),
+      ]),
     );
     expect(conflicts).toHaveLength(1);
     const conflict = conflicts[0];

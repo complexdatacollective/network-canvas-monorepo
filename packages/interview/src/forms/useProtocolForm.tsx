@@ -53,6 +53,10 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
  *                    avoid collisions when multiple instances share a form store.
  * @param formValueAliases - Maps codebook variable IDs to interface-owned form
  *                    keys while preserving the original ID for metadata lookup.
+ * @param deferRequired - Let a required field be left empty on submit. For
+ *                    interfaces that save incomplete entities and flag the
+ *                    missing answers themselves (FamilyPedigree's warnings).
+ *                    Every other validation rule still applies.
  */
 export default function useProtocolForm({
   fields,
@@ -62,6 +66,7 @@ export default function useProtocolForm({
   namespace,
   currentEntityId,
   formValueAliases,
+  deferRequired = false,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -70,6 +75,7 @@ export default function useProtocolForm({
   namespace?: string;
   currentEntityId?: string;
   formValueAliases?: Readonly<Record<string, string>>;
+  deferRequired?: boolean;
 }) {
   const baseValidationContext = useStageSelector(
     getValidationContext,
@@ -111,7 +117,7 @@ export default function useProtocolForm({
    * The participant-facing text for each variable this form asks about, for
    * the variable-comparison validators to name their target with. Shared with
    * the screens that render a field without going through this hook (a
-   * categorical "other" input, a quick-add popover, the pedigree's name field),
+   * categorical "other" input, a quick-add popover, the pedigree's side panel),
    * so one comparison rule reads the same way wherever it is asked — see
    * `buildVariableLabels` for what may and may not go in it.
    *
@@ -131,7 +137,7 @@ export default function useProtocolForm({
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
-    // Stages without a top-level subject (e.g. FamilyPedigree) leave
+    // Stages without a top-level subject (e.g. Information) leave
     // stageSubject null, which the context-dependent validators
     // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
     // caller supplies a concrete subject for the rendered fields, use it as the
@@ -205,10 +211,23 @@ export default function useProtocolForm({
         ? initialValues[field.variable]
         : undefined;
 
+    const validation = 'validation' in field ? field.validation : undefined;
+    const renderedField =
+      deferRequired && validation && 'required' in validation
+        ? {
+            ...field,
+            validation: Object.fromEntries(
+              Object.entries(validation).filter(
+                ([rule]) => rule !== 'required',
+              ),
+            ),
+          }
+        : field;
+
     return (
       <ProtocolField
         key={index}
-        field={field}
+        field={renderedField}
         initialValue={initialValue}
         autoFocus={autoFocus && index === 0}
         validationContext={validationContext ?? undefined}

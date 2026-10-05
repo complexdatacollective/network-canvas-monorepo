@@ -150,7 +150,7 @@ export const contract = {
    * stage back.
    *
    * A stage other stages depend on is refused naming them, not swept: a skip
-   * destination or the pedigree a narrative describes is a decision made about
+   * destination is a decision made about
    * that other stage, and the refactors strip references only where a codebook
    * dialog is the researcher deciding the thing is gone. The order pointer is
    * not such a dependency — it is how the protocol holds the stage, and this

@@ -597,7 +597,7 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
      * the stage back — refuses the change.
      *
      * A stage other stages depend on is refused naming them, not swept: a skip
-     * destination or the pedigree a narrative describes is a decision made
+     * destination is a decision made
      * about that other stage, and rewriting it as a side effect of removing
      * this one is not a deletion anybody asked for.
      */

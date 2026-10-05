@@ -16,7 +16,7 @@ import type { StageType } from '@codaco/protocol-validation';
  * rather than only the ones listed.
  *
  * A TEMPLATE IS NOT A HEAD START ON A SAVEABLE STAGE, and no interface's is.
- * Every one of the nineteen needs something the schema requires and only a
+ * Every one of the eighteen needs something the schema requires and only a
  * researcher can supply — the node or edge type it works with, its prompts,
  * the fields of its form, the words of its introduction panel — so the
  * sections of the editor are what fill a stage in, not this. The three form
@@ -63,26 +63,8 @@ const INTERFACE_TEMPLATES: Partial<
     background: DEFAULT_CIRCLES_BACKGROUND,
   },
   FamilyPedigree: {
-    framing: { mode: 'fixed', value: 'gamete' },
-    boundaries: {
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
-    },
-    introScreen: {
-      items: [
-        {
-          id: 'intro-text',
-          type: 'text',
-          content:
-            "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later.",
-        },
-      ],
-    },
-  },
-  NarrativePedigree: {
-    sourceStageId: '',
-    diseases: [],
-    showAtRiskStatuses: false,
+    prompt:
+      'Add the members of your family. Select a person to add their relatives.',
   },
 };
 

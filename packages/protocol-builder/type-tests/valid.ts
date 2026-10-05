@@ -34,7 +34,6 @@ export const AWAITING = [
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'Narrative',
-  'NarrativePedigree',
   'NetworkComposer',
   'OneToManyDyadCensus',
   'OrdinalBin',

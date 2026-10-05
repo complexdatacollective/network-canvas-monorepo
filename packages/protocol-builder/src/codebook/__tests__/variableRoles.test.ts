@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/protocol-validation';
+import { PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -31,7 +31,7 @@ const BIN_STAGE_ID = 'bin-stage';
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const FAMILY_SUBJECT = { entity: 'node', type: 'family-member' } as const;
 const FAMILY_STAGE_ID = 'family-stage';
-const EGO_SLOT = 'familyPedigree.nodeConfig.egoVariable';
+const EGO_SLOT = 'familyPedigree.person.egoVariable';
 
 const sections = (): Record<string, SectionDoc> => ({
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
@@ -76,25 +76,19 @@ const familySections = (): Record<string, SectionDoc> => ({
     id: FAMILY_STAGE_ID,
     type: 'FamilyPedigree',
     label: 'Family Pedigree',
-    nodeConfig: {
-      type: FAMILY_SUBJECT.type,
-      nodeLabelVariable: 'name',
+    subject: FAMILY_SUBJECT,
+    prompt: 'Build your family',
+    personAttributes: {
+      nameVariable: 'name',
+      genderIdentityVariable: 'genderIdentity',
+      sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
       egoVariable: 'isEgo',
-      relationshipVariable: 'relationshipToEgo',
-      biologicalSexVariable: 'biologicalSex',
     },
-    edgeConfig: {
+    relationship: {
       type: 'family-edge',
-      relationshipTypeVariable: 'relationshipType',
-      isActiveVariable: 'isActive',
-      isGestationalCarrierVariable: 'isGestationalCarrier',
-      gameteRoleVariable: 'gameteRole',
-    },
-    censusPrompt: 'Build your family',
-    framing: { mode: 'fixed', value: 'gamete' },
-    boundaries: {
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
+      kindVariable: 'relationshipKind',
+      gestationalCarrierVariable: 'isGestationalCarrier',
+      currentPartnerVariable: 'isCurrentPartner',
     },
   },
   [sectionId({ kind: 'stageOrder' })]: { stages: [FAMILY_STAGE_ID] },
@@ -220,16 +214,18 @@ describe('variable role helpers', () => {
     const optionMap = buildInterfaceOwnedOptionMap(
       protocolContextFromSections(familySections()),
     );
-    const reversedCanonical = BIOLOGICAL_SEX_OPTIONS.toReversed();
-    const staleOptions = BIOLOGICAL_SEX_OPTIONS.map((option, index) =>
-      index === 0 ? { ...option, label: 'Changed label' } : option,
+    const reversedCanonical =
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.toReversed();
+    const staleOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(
+      (option, index) =>
+        index === 0 ? { ...option, label: 'Changed label' } : option,
     );
 
     expect(
       interfaceOwnedOptionsIssue(
         optionMap,
         FAMILY_SUBJECT,
-        'biologicalSex',
+        'sexAssignedAtBirth',
         reversedCanonical,
       ),
     ).toBeUndefined();
@@ -240,7 +236,7 @@ describe('variable role helpers', () => {
         interfaceOwnedOptionsIssue(
           optionMap,
           FAMILY_SUBJECT,
-          'biologicalSex',
+          'sexAssignedAtBirth',
           staleOptions,
         ) ?? '',
       ),
@@ -251,7 +247,7 @@ describe('variable role helpers', () => {
       interfaceOwnedOptionsIssue(
         optionMap,
         { entity: 'node', type: 'someone-else' },
-        'biologicalSex',
+        'sexAssignedAtBirth',
         staleOptions,
       ),
     ).toBeUndefined();
@@ -280,8 +276,8 @@ describe('variable role helpers', () => {
       protocolContextFromSections(familySections()),
     );
     const variables = {
-      biologicalSex: {
-        name: 'biologicalSex',
+      sexAssignedAtBirth: {
+        name: 'sexAssignedAtBirth',
         type: 'categorical' as const,
         options: [{ label: 'Drifted', value: 'drifted' }],
       },
@@ -305,10 +301,10 @@ describe('variable role helpers', () => {
     expect(
       lockedVariableOptions(
         variables,
-        'biologicalSex',
-        optionMap[variableRoleKey(FAMILY_SUBJECT, 'biologicalSex')],
+        'sexAssignedAtBirth',
+        optionMap[variableRoleKey(FAMILY_SUBJECT, 'sexAssignedAtBirth')],
       ),
-    ).toEqual(BIOLOGICAL_SEX_OPTIONS);
+    ).toEqual(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS);
     expect(lockedVariableOptions(variables, 'stamped')).toEqual([
       { label: 'Low', value: 1 },
     ]);

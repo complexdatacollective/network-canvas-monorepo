@@ -44,7 +44,6 @@ import { informationStageEditor } from './editors/information/InformationStageEd
 import { nameGeneratorQuickAddStageEditor } from './editors/name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
 import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
-import { narrativePedigreeStageEditor } from './editors/narrative-pedigree/NarrativePedigreeStageEditor.ts';
 import { narrativeStageEditor } from './editors/narrative/NarrativeStageEditor.ts';
 import { networkComposerStageEditor } from './editors/network-composer/NetworkComposerStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
@@ -137,7 +136,6 @@ const REGISTRY_PARTS = [
   nameGeneratorQuickAddStageEditor,
   nameGeneratorRosterStageEditor,
   nameGeneratorStageEditor,
-  narrativePedigreeStageEditor,
   narrativeStageEditor,
   networkComposerStageEditor,
   oneToManyDyadCensusStageEditor,

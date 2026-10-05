@@ -73,8 +73,8 @@ const protocol = {
     {
       id: 'ped',
       type: 'FamilyPedigree',
-      nodeConfig: { type: 'family-member' },
-      edgeConfig: { type: 'partnership' },
+      subject: { entity: 'node', type: 'family-member' },
+      relationship: { type: 'partnership' },
     },
   ],
 };
@@ -117,7 +117,7 @@ describe('collectEntityTypeReferences', () => {
     expect(hit?.entity).toBe('edge');
   });
 
-  it('collects the FamilyPedigree node and edge config types', () => {
+  it('collects the FamilyPedigree person and relationship types', () => {
     expect(pairs).toContain('node:family-member');
     expect(pairs).toContain('edge:partnership');
   });

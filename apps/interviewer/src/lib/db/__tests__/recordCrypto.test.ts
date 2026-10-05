@@ -92,24 +92,6 @@ const networkWithPassThroughAttributes = {
   ],
 };
 
-const legacyStageMetadata = {
-  familyPedigree: {
-    isNetworkCommitted: true,
-    edges: [
-      {
-        id: 'edge-1',
-        from: 'n1',
-        to: 'n2',
-        attributes: {
-          unanswered: null,
-          ownUndefined: undefined,
-          answered: false,
-        },
-      },
-    ],
-  },
-};
-
 function makeSessionRow(networkValue: unknown): StoredSessionRow {
   return {
     ...session,
@@ -240,22 +222,6 @@ describe('recordCrypto — encrypted mode', () => {
     });
   });
 
-  it('normalizes nullish encrypted Family Pedigree metadata attributes', async () => {
-    const dek = await makeDek();
-    setSessionDek(dek);
-    const row = await makeEncryptedSessionRow(
-      legacyNetwork,
-      dek,
-      legacyStageMetadata,
-    );
-
-    const back = await decryptSession(row);
-
-    expect(back.stageMetadata?.familyPedigree).toMatchObject({
-      edges: [{ attributes: { answered: false } }],
-    });
-  });
-
   it('rejects invalid defined values in encrypted networks', async () => {
     const dek = await makeDek();
     setSessionDek(dek);
@@ -274,19 +240,7 @@ describe('recordCrypto — encrypted mode', () => {
   });
 
   it('rejects invalid plaintext and encrypted stage metadata', async () => {
-    const invalidStageMetadata = {
-      familyPedigree: {
-        isNetworkCommitted: true,
-        edges: [
-          {
-            id: 'edge-1',
-            from: 'n1',
-            to: 'n2',
-            attributes: { invalid: { nested: 'value' } },
-          },
-        ],
-      },
-    };
+    const invalidStageMetadata = { stage: { automaticLayout: 'yes' } };
     const plaintextRow = {
       ...makeSessionRow(network),
       stageMetadata: invalidStageMetadata,
@@ -414,19 +368,6 @@ describe('recordCrypto — none mode (passthrough)', () => {
     expect(back.network.nodes[0]?.attributes).toEqual({
       'name': 'Ada',
       'profile page': 'https://example.com/people/ada',
-    });
-  });
-
-  it('normalizes nullish plaintext Family Pedigree metadata attributes', async () => {
-    const row = {
-      ...makeSessionRow(legacyNetwork),
-      stageMetadata: legacyStageMetadata,
-    };
-
-    const back = await decryptSession(row);
-
-    expect(back.stageMetadata?.familyPedigree).toMatchObject({
-      edges: [{ attributes: { answered: false } }],
     });
   });
 

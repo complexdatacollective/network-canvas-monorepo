@@ -157,7 +157,7 @@ function collectFormScope(stageList: Stage[]): FormScope {
       continue;
     }
 
-    if (!('form' in stage)) continue;
+    if (!('form' in stage) || !stage.form) continue;
     const variables = stage.form.fields.map((field) => field.variable);
 
     if (stage.type === 'EgoForm') {

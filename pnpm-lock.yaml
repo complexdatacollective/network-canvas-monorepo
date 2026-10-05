@@ -2567,9 +2567,6 @@ importers:
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
-      '@faker-js/faker':
-        specifier: 'catalog:'
-        version: 10.6.0
       '@mapbox/search-js-react':
         specifier: ^1.6.0
         version: 1.6.0(mapbox-gl@3.32.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -2588,9 +2585,6 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.52.0
-      html-to-image:
-        specifier: ^1.11.13
-        version: 1.11.13
       immer:
         specifier: ^11.1.18
         version: 11.1.18
@@ -12356,9 +12350,6 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
-
-  html-to-image@1.11.13:
-    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
@@ -26872,8 +26863,6 @@ snapshots:
       - '@noble/hashes'
 
   html-escaper@2.0.2: {}
-
-  html-to-image@1.11.13: {}
 
   html-url-attributes@3.0.1: {}
 

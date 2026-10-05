@@ -268,49 +268,6 @@ describe('useStageName', () => {
     await waitFor(() => expect(input).toHaveValue('Friendship Sociogram'));
   });
 
-  it('qualifies a name from prompts and codebook attribute names', async () => {
-    const { input } = renderEditor({
-      type: 'FamilyPedigree',
-      fields: {
-        label: '',
-        subject: { entity: 'node', type: 'person' },
-        nominationPrompts: [{ variable: 'diabetes' }],
-      },
-    });
-
-    await waitFor(() =>
-      expect(input).toHaveValue(
-        'Person Family Pedigree with Diabetes Nomination',
-      ),
-    );
-  });
-
-  it('names a nomination attribute that only an edge type declares', async () => {
-    const { input } = renderEditor({
-      type: 'FamilyPedigree',
-      sections: protocolSections({
-        [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
-          name: 'Friendship',
-          variables: { closeness: { name: 'Closeness', type: 'scalar' } },
-        },
-      }),
-      fields: {
-        label: '',
-        subject: { entity: 'node', type: 'person' },
-        // A nomination prompt names an attribute by key alone, so the lookup
-        // cannot be scoped to the node codebook: an attribute only an edge
-        // type declares would come back nameless and drop out of the proposal.
-        nominationPrompts: [{ variable: 'closeness' }],
-      },
-    });
-
-    await waitFor(() =>
-      expect(input).toHaveValue(
-        'Person Family Pedigree with Closeness Nomination',
-      ),
-    );
-  });
-
   it('qualifies an Information stage from the asset manifest', async () => {
     const { input } = renderEditor({
       type: 'Information',
@@ -524,12 +481,6 @@ describe('useStageName parity with Architect', () => {
       fields: { label: '' },
       panels: [{ dataSource: 'existing' }, { dataSource: 'roster-asset' }],
       expected: 'Quick Add Name Generator with Panels',
-    },
-    {
-      name: 'a single nomination',
-      type: 'FamilyPedigree',
-      fields: { label: '', nominationPrompts: [{ variable: 'diabetes' }] },
-      expected: 'Family Pedigree with Diabetes Nomination',
     },
     {
       name: 'a stage type with no qualifier',

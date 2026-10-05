@@ -217,7 +217,6 @@
       "NameGeneratorQuickAdd": "Generador de nombres (adición rápida)",
       "NameGeneratorRoster": "Generador de nombres a partir de listas",
       "Narrative": "Narrativa",
-      "NarrativePedigree": "Genograma narrativo",
       "NetworkComposer": "Compositor de redes",
       "OneToManyDyadCensus": "Censo de díadas de uno a muchos",
       "OrdinalBin": "Clasificación ordinal",
@@ -533,16 +532,6 @@
           "0": "Cree familiares y relaciones conjuntamente; el diseño automático mantiene legible el pedigrí a medida que crece.",
           "1": "Represente relaciones biológicas, sociales, adoptivas, de donación, gestación subrogada y pareja, y recopile atributos de cada familiar.",
           "2": "Añada un paso opcional de selección de enfermedades para registrar qué familiares presentan determinadas afecciones y visualizarlas más adelante."
-        }
-      },
-      "narrativePedigree": {
-        "shortName": "Pedigrí narrativo",
-        "name": "Interfaz de pedigrí narrativo",
-        "summary": "Convierta un pedigrí familiar anterior en una visualización de solo lectura que utiliza la notación clínica estándar.",
-        "details": {
-          "0": "Muestre familiares afectados y portadores confirmados de una o varias afecciones según los patrones de herencia compatibles.",
-          "1": "Muestre opcionalmente posibles estados de riesgo cuando el estudio se haya diseñado para una interpretación con la orientación adecuada.",
-          "2": "Céntrese en el linaje que contribuye a una persona y exporte una imagen imprimible. La visualización es una ayuda, no un diagnóstico."
         }
       },
       "networkComposer": {

@@ -32,7 +32,7 @@ const ALIAS_VAR = 'alias';
 const DOTTED_VAR = 'favorite.color';
 const DANGEROUS_VARS = ['__proto__', 'constructor', 'prototype'];
 
-// A FamilyPedigree stage has no top-level subject, so getStageSubject — and
+// An Information stage has no top-level subject, so getStageSubject — and
 // therefore the base validation context's stageSubject — is null.
 function makeWrapper() {
   const store = configureStore({
@@ -97,7 +97,7 @@ function makeWrapper() {
             },
           },
         },
-        stages: [{ id: 'stage1', type: 'FamilyPedigree' }],
+        stages: [{ id: 'stage1', type: 'Information' }],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),

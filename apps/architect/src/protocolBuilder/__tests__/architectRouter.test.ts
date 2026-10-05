@@ -1132,38 +1132,12 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageIds(store)).toContain('information-1');
   });
 
-  it('refuses to delete a stage another stage is built on, naming where', async () => {
-    const { store, client } = openProtocol();
-
-    const { definedError, isSuccess } = await safe(
-      client.delete({
-        protocolId: PROTOCOL_ID,
-        sectionId: sectionId({ kind: 'stage', stageId: 'family-pedigree-1' }),
-      }),
-    );
-
-    // Naming the section is not enough: the dialog telling the researcher what
-    // is in the way points at the field, so the path is part of the refusal.
-    expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('REFERENCES_REMAIN');
-    expect(definedError?.data).toEqual({
-      remaining: [
-        {
-          sectionId: sectionId({
-            kind: 'stage',
-            stageId: 'narrative-pedigree-1',
-          }),
-          path: ['sourceStageId'],
-        },
-      ],
-    });
-    expect(stageIds(store)).toContain('family-pedigree-1');
-  });
-
   /**
    * The dependants come from the schema's stage-reference tags rather than
-   * from the two the timeline happens to guard, so a reference reached from a
-   * path this host never enumerated refuses the deletion just the same.
+   * from a path list this host maintains, so a reference reached from a path
+   * this host never enumerated refuses the deletion just the same. Naming the
+   * section is not enough: the dialog telling the researcher what is in the way
+   * points at the field, so the path is part of the refusal.
    */
   it('refuses to delete a stage a skip destination points at', async () => {
     const { store, client } = openProtocol();

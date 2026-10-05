@@ -16,7 +16,6 @@ import { informationStage } from './information.ts';
 import { nameGeneratorQuickAddStage } from './name-generator-quick-add.ts';
 import { nameGeneratorRosterStage } from './name-generator-roster.ts';
 import { nameGeneratorStage } from './name-generator.ts';
-import { narrativePedigreeStage } from './narrative-pedigree.ts';
 import { narrativeStage } from './narrative.ts';
 import { networkComposerStage } from './network-composer.ts';
 import { oneToManyDyadCensusStage } from './one-to-many-dyad-census.ts';
@@ -37,7 +36,6 @@ export * from './information.ts';
 export * from './name-generator.ts';
 export * from './name-generator-quick-add.ts';
 export * from './name-generator-roster.ts';
-export * from './narrative-pedigree.ts';
 export * from './narrative.ts';
 export * from './network-composer.ts';
 export * from './one-to-many-dyad-census.ts';
@@ -65,7 +63,6 @@ const stageSchemas = [
   oneToManyDyadCensusStage,
   familyPedigreeStage,
   geospatialStage,
-  narrativePedigreeStage,
 ] as const;
 
 // Combine all stage types

@@ -48,9 +48,9 @@ export type ExclusiveSlotDescriptor = {
  * while its options stay locked.
  */
 export type InterfaceOwnedOptionSetKey =
-  | 'biologicalSex'
-  | 'relationshipType'
-  | 'gameteRole';
+  | 'pedigreeGenderIdentity'
+  | 'pedigreeSexAssignedAtBirth'
+  | 'pedigreeRelationship';
 
 /**
  * Whether the value at this site is GUARANTEED to name a codebook attribute.

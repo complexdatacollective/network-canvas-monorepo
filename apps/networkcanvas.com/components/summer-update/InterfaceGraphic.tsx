@@ -156,36 +156,6 @@ export function InterfaceGraphic({ motif }: { motif: InterfaceMotif }) {
           <circle cx="54" cy="44" r="6" className="fill-kiwi stroke-none" />
         </svg>
       );
-    case 'narrative-pedigree':
-      return (
-        <svg {...graphicProps}>
-          <g strokeOpacity=".3">
-            <path d="M25 13h20M35 13v14M19 27h32M19 27v11M35 27v11M51 27v11" />
-          </g>
-          <path d="M25 13h10v14H19v11" className="stroke-neon-coral" />
-          <rect
-            x="17"
-            y="7"
-            width="12"
-            height="12"
-            className="fill-neon-coral stroke-none"
-          />
-          <circle cx="49" cy="13" r="6" strokeOpacity=".45" />
-          <circle
-            cx="19"
-            cy="44"
-            r="6"
-            className="fill-neon-coral stroke-none"
-          />
-          <rect x="29" y="38" width="12" height="12" strokeOpacity=".45" />
-          <circle cx="51" cy="44" r="6" strokeOpacity=".45" />
-          <path
-            d="m55 8 3 3 6-7"
-            className="stroke-sea-green"
-            strokeWidth="2.5"
-          />
-        </svg>
-      );
     case 'network-composer':
       return (
         <svg {...graphicProps}>

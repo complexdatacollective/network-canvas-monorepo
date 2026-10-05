@@ -343,20 +343,19 @@ for (const page of [
 /**
  * Every stage type the all-interfaces fixture carries.
  *
- * Eleven of them earned their place by overflowing. Five — Information, Ego
+ * Ten of them earned their place by overflowing. Five — Information, Ego
  * Form, Name Generator, Ordinal Bin and Narrative — overflowed at phone width
  * from `ArrayField`'s 24rem `min-width` floor, each measuring 432px of content
  * inside a 390px box before it was removed.
  *
- * The remaining six were listed here as known gaps while that floor was fixed,
+ * The remaining five were listed here as known gaps while that floor was fixed,
  * and are asserted now that the fixed widths behind them are gone. Measured
  * before, at 390: Name Generator Roster 484, Geospatial 484, Family Pedigree
- * 550, Alter Form 400, Alter Edge Form 400, Narrative Pedigree 410. Four causes
+ * 550, Alter Form 400, Alter Edge Form 400. Four causes
  * between them, so each is worth its own assertion rather than one
  * representative: the asset thumbnail's flat `w-[25rem]` (roster, geospatial);
  * `ArrayField`'s remaining `min-w-fit`, inherited from `controlVariants` and
- * left behind when `min-w-sm` went (roster, both Alter Forms, Narrative
- * Pedigree); Family Pedigree's two-column variable rows, which now stack below
+ * left behind when `min-w-sm` went (roster, both Alter Forms); Family Pedigree's two-column variable rows, which now stack below
  * a 34rem container query; and the variable pill's uncapped 20rem `max-width`,
  * which no `min-w-0` can restrain because a variable name renders `nowrap` and
  * so has no min-content smaller than itself.
@@ -371,7 +370,7 @@ for (const page of [
  * "measured clean" from "not measured".
  *
  * This is now the fixture's whole set, in its stage order, and the test below
- * asserts that it still is — a twentieth interface added to all-interfaces
+ * asserts that it still is — a nineteenth interface added to all-interfaces
  * fails here until it is named, rather than quietly going uncovered.
  */
 const EDITOR_TYPES_UNDER_TEST = [
@@ -391,7 +390,6 @@ const EDITOR_TYPES_UNDER_TEST = [
   'AlterEdgeForm',
   'Narrative',
   'FamilyPedigree',
-  'NarrativePedigree',
   'NetworkComposer',
   'Geospatial',
 ] as const;

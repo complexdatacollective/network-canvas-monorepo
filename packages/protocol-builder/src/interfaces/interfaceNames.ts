@@ -82,12 +82,6 @@ export const interfaceNameMessages = defineMessages({
     description:
       'Researcher-facing interface name. Interface for recording a narrative. Not a protocol-authored stage label.',
   },
-  NarrativePedigree: {
-    id: 'protocolBuilder.interface.narrativePedigree',
-    defaultMessage: 'Narrative Pedigree',
-    description:
-      'Researcher-facing interface name. Interface combining a narrative with a family genealogy. Not a protocol-authored stage label.',
-  },
   NetworkComposer: {
     id: 'protocolBuilder.interface.networkComposer',
     defaultMessage: 'Network Composer',

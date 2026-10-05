@@ -14,6 +14,7 @@ import SummaryContext from '../SummaryContext';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import DataSource from './DataSource';
+import FamilyPedigree from './FamilyPedigree';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
 import Form from './Form';
@@ -22,7 +23,6 @@ import IntroductionPanel from './IntroductionPanel';
 import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
-import NominationPrompts from './NominationPrompts';
 import PageHeading from './PageHeading';
 import Panels from './Panels';
 import Presets from './Presets';
@@ -187,15 +187,26 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         };
       }
     | undefined;
-  // FamilyPedigree: the attribute nomination steps asked after the family is
-  // built. (`diseaseNominationStep` was the legacy FamilyTreeCensus key; no
-  // current schema stage carries it, so it is not read here.)
-  const nominationPrompts = configuration.nominationPrompts as
-    | Array<{
-        id: string;
-        text: string;
-        variable: string;
-      }>
+  // FamilyPedigree
+  const pedigreePrompt =
+    type === 'FamilyPedigree' && typeof configuration.prompt === 'string'
+      ? configuration.prompt
+      : null;
+  const personAttributes = configuration.personAttributes as
+    | {
+        nameVariable?: string;
+        genderIdentityVariable?: string;
+        sexAssignedAtBirthVariable?: string;
+        egoVariable?: string;
+      }
+    | undefined;
+  const relationship = configuration.relationship as
+    | {
+        type?: string;
+        kindVariable?: string;
+        gestationalCarrierVariable?: string;
+        currentPartnerVariable?: string;
+      }
     | undefined;
   // Anonymisation
   const explanationText = configuration.explanationText as
@@ -335,9 +346,13 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         nodeSexVariable={nodeSexVariable}
         nodeIsEgoVariable={nodeIsEgoVariable}
       />
+      <FamilyPedigree
+        prompt={pedigreePrompt}
+        personAttributes={personAttributes ?? null}
+        relationship={relationship ?? null}
+      />
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-      <NominationPrompts nominationPrompts={nominationPrompts ?? null} />
       <Anonymisation
         explanationText={explanationText ?? null}
         validation={validation ?? null}

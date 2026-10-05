@@ -146,7 +146,6 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/shallow',
             '@codaco/fresco-ui > zustand/vanilla',
             '@codaco/interview > concaveman',
-            '@codaco/interview > html-to-image',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
             '@tanstack/react-table',

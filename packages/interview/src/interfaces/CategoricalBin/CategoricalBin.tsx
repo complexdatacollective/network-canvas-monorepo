@@ -267,7 +267,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       // node's own previous value and `differentFrom`/`sameAs` can read a
       // sibling attribute already recorded on this same node.
       // stageSubject is only ever null for stage types that carry no subject
-      // at all (Information/Anonymisation/FamilyPedigree/NarrativePedigree);
+      // at all (Information/Anonymisation);
       // CategoricalBin always has a node subject, so the undefined fallback
       // here is defensive only, matching the "Missing codebook entry" guard
       // above.

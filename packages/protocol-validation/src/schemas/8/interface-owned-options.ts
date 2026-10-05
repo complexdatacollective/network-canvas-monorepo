@@ -1,8 +1,8 @@
 import type { InterfaceOwnedOptionSetKey } from './entity-attribute-reference.ts';
 import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from './family-pedigree-values.ts';
 
 export type InterfaceOwnedOption = { value: string; label: string };
@@ -28,17 +28,17 @@ export const INTERFACE_OWNED_OPTION_SETS: Record<
   InterfaceOwnedOptionSetKey,
   InterfaceOwnedOptionSet
 > = {
-  biologicalSex: {
-    label: 'biological sex',
-    options: BIOLOGICAL_SEX_OPTIONS,
+  pedigreeGenderIdentity: {
+    label: 'gender identity',
+    options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
   },
-  relationshipType: {
-    label: 'relationship type',
-    options: RELATIONSHIP_TYPE_OPTIONS,
+  pedigreeSexAssignedAtBirth: {
+    label: 'sex assigned at birth',
+    options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   },
-  gameteRole: {
-    label: 'gamete role',
-    options: GAMETE_ROLE_OPTIONS,
+  pedigreeRelationship: {
+    label: 'family relationship kind',
+    options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   },
 };
 

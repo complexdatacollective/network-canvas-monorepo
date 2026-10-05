@@ -40,11 +40,6 @@ const protocol = {
         destination: { type: 'finish' },
       },
     },
-    {
-      id: 'np',
-      type: 'NarrativePedigree',
-      sourceStageId: 'fp',
-    },
   ],
 };
 
@@ -62,7 +57,6 @@ describe('collectStageReferences', () => {
         site: 'skipLogic.destination.stageId',
         path: 'stages.1.skipLogic.destination.stageId',
       },
-      { stageId: 'fp', site: 'sourceStageId', path: 'stages.3.sourceStageId' },
     ]);
   });
 
@@ -99,7 +93,6 @@ describe('declaredStageReferenceSites', () => {
   it('is every site the current schema declares', () => {
     expect(declaredStageReferenceSites().toSorted()).toEqual([
       'skipLogic.destination.stageId',
-      'sourceStageId',
     ]);
   });
 

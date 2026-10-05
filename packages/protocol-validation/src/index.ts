@@ -72,22 +72,17 @@ export * from './schemas/index.ts';
 // when a new version directory is created, so a host always reads the set the
 // version it targets defines.
 export {
-  BIOLOGICAL_SEX_OPTIONS,
-  BIOLOGICAL_SEX_VALUES,
-  type BiologicalSex,
-  FRAMING_IDS,
-  type FramingId,
-  GAMETE_ROLE_OPTIONS,
-  GAMETE_ROLES,
-  type GameteRole,
-  RELATIONSHIP_TYPE_OPTIONS,
-  RELATIONSHIP_TYPES,
-  type RelationshipType,
+  PEDIGREE_GENDER_IDENTITIES,
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  type PedigreeGenderIdentity,
+  type PedigreeParentKind,
+  type PedigreeRelationshipKind,
+  type PedigreeSexAssignedAtBirth,
 } from './schemas/8/family-pedigree-values.ts';
-export {
-  INHERITANCE_PATTERNS,
-  type InheritancePattern,
-} from './schemas/8/narrative-pedigree-values.ts';
 export {
   findValidationContradictions,
   type ValidationContradiction,

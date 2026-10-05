@@ -1,8 +1,32 @@
-import type { RelationshipType } from '@codaco/protocol-validation';
+/**
+ * The kind of a family link as the layout reads it: a partnership, or the kind
+ * of parent the link's source is to its target.
+ */
+export type PedigreeEdgeType =
+  | 'biological'
+  | 'social'
+  | 'adoptive'
+  | 'donor'
+  | 'surrogate'
+  | 'partner';
+
+/**
+ * One family link handed to the layout. Parent links run from the parent
+ * (`source`) to the child (`target`); partner links may run either way.
+ */
+export type PedigreeLink = {
+  source: string;
+  target: string;
+  kind: PedigreeEdgeType;
+  /** Partner links only: false draws the partnership as separated. */
+  isActive?: boolean;
+  /** Parent links only: this parent carried the pregnancy. */
+  isGestationalCarrier?: boolean;
+};
 
 export type ParentConnection = {
   parentIndex: number;
-  edgeType: RelationshipType;
+  edgeType: PedigreeEdgeType;
   isGestationalCarrier?: boolean;
 };
 
@@ -87,7 +111,7 @@ export type ParentGroupConnector = {
 
 export type ParentChildConnector = {
   type: 'parent-child';
-  edgeType: RelationshipType;
+  edgeType: PedigreeEdgeType;
   uplines: LineSegment[];
   siblingBar: LineSegment;
   parentLink: LineSegment[];
@@ -98,7 +122,7 @@ export type ParentChildConnector = {
 export type AuxiliaryConnector = {
   type: 'auxiliary';
   // Relationship types plus a layout-only kind for parents with no partner.
-  edgeType: RelationshipType | 'unpartnered-parent';
+  edgeType: PedigreeEdgeType | 'unpartnered-parent';
   segment: LineSegment;
   endpointIds?: [string | undefined, string | undefined];
 };

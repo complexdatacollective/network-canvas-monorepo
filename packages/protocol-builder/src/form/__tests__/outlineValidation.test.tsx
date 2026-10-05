@@ -54,9 +54,9 @@ describe('a required value the stage no longer holds', () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       sections: (
-        <BuilderSection title="Family member data">
+        <BuilderSection title="Person attributes">
           <Field
-            name="nodeConfig.egoVariable"
+            name="personAttributes.egoVariable"
             label="Ego variable"
             component={InputField}
             required={REQUIRED}
@@ -65,7 +65,7 @@ describe('a required value the stage no longer holds', () => {
       ),
     });
     await waitFor(() =>
-      expect(stateOf(harness, 'Family member data')).toBe('Finished'),
+      expect(stateOf(harness, 'Person attributes')).toBe('Finished'),
     );
 
     await harness.user.clear(
@@ -78,7 +78,7 @@ describe('a required value the stage no longer holds', () => {
     expect(screen.getAllByText('This field is required.')).toHaveLength(1);
     // And the section says the researcher has something to do in it, without
     // the validator's own account of a missing string underneath.
-    expect(stateOf(harness, 'Family member data')).toBe('Has a problem');
+    expect(stateOf(harness, 'Person attributes')).toBe('Has a problem');
   });
 });
 

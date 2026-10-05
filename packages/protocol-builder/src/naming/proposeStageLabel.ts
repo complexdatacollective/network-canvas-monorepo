@@ -4,8 +4,6 @@ import type {
   Panel,
   StageSubject,
   StageType,
-  Variable,
-  Variables,
 } from '@codaco/protocol-validation';
 
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -38,7 +36,6 @@ export type StageLabelDraft = Readonly<{
   type: StageType;
   subject?: StageSubject | undefined;
   items?: readonly Item[] | undefined;
-  nominationPrompts?: readonly Readonly<{ variable: string }>[] | undefined;
   panels?: readonly StageLabelPanel[] | undefined;
 }>;
 
@@ -59,20 +56,14 @@ export function proposeStageLabel(
   const subjectName = resolveStageSubjectName(stage.subject, (entity, type) =>
     entityName(context.codebook, entity, type),
   );
-  const variablesById = allVariablesById(context.codebook);
   const qualifier = resolveStageQualifier(
     {
       type: stage.type,
       ...(stage.panels === undefined ? {} : { panels: [...stage.panels] }),
       ...(stage.items === undefined ? {} : { items: [...stage.items] }),
-      ...(stage.nominationPrompts === undefined
-        ? {}
-        : { nominationPrompts: [...stage.nominationPrompts] }),
     },
     {
       resolveAssetType: (assetId) => context.assets[assetId]?.type ?? null,
-      resolveVariableName: (variableId) =>
-        variablesById[variableId]?.name ?? null,
     },
   );
   return generateStageLabel({
@@ -90,29 +81,6 @@ function entityName(
 ): string | null {
   const types = entity === 'node' ? codebook.node : codebook.edge;
   return types?.[type]?.name ?? null;
-}
-
-/**
- * Every attribute in the codebook by its record key: a nomination prompt names
- * one by key alone, so the lookup cannot be scoped to one entity.
- */
-function allVariablesById(
-  codebook: Readonly<Codebook>,
-): Readonly<Record<string, Variable>> {
-  const flattened: Record<string, Variable> = {};
-  const add = (variables: Readonly<Variables> | undefined) => {
-    for (const [id, variable] of Object.entries(variables ?? {})) {
-      flattened[id] = variable;
-    }
-  };
-  for (const definition of Object.values(codebook.node ?? {})) {
-    add(definition.variables);
-  }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    add(definition.variables);
-  }
-  add(codebook.ego?.variables);
-  return flattened;
 }
 
 /** The names already taken, so a proposal is unique in the interview. */

@@ -5,21 +5,14 @@ import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages, createMessageError } from '@codaco/app-i18n/messages';
-import {
-  AppMessage,
-  AppErrorMessage,
-  useAppIntl,
-} from '@codaco/app-i18n/react';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { useAppDispatch } from '~/ducks/hooks';
-import {
-  actionCreators as stageActions,
-  getFamilyPedigreeDependentStages,
-} from '~/ducks/modules/protocol/stages';
+import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
-import { getProtocol, getStageList } from '~/selectors/protocol';
+import { getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import NewStageScreen from '../Screens/NewStageScreen';
@@ -44,12 +37,6 @@ const messages = defineMessages({
     id: 'architect.timeline.timeline.cannotDeleteStage',
     defaultMessage: 'Cannot delete stage',
     description: 'The title text in components / Timeline / Timeline.',
-  },
-  thisFamilyPedigreeStageIsUsed: {
-    id: 'architect.timeline.timeline.thisFamilyPedigreeStageIsUsed',
-    defaultMessage:
-      '{stageCount, plural, one {This Family Pedigree stage is used by the Narrative Pedigree stage {names}. Remove that stage or change its source before deleting this stage.} other {This Family Pedigree stage is used by the Narrative Pedigree stages {names}. Remove those stages or change their source before deleting this stage.}}',
-    description: 'The description text in components / Timeline / Timeline.',
   },
   deleteStage: {
     id: 'architect.timeline.timeline.deleteStage',
@@ -123,13 +110,7 @@ const Timeline = () => {
   // `getStageList` maps each stage down to `{id, type, label, hasFilter,
   // hasSkipLogic, skipLogic: {destination}}` for cheap render diffing — the
   // skip destination is on it because the reorder and delete guards below read
-  // it — while dropping stage-type-specific fields like NarrativePedigree's
-  // `sourceStageId`. The FamilyPedigree delete guard needs that one to find
-  // dependents, so it reads the full protocol separately (mirroring
-  // `deleteStageAsync`'s own dependents check in
-  // ducks/modules/protocol/stages.ts, which already does this correctly)
-  // rather than off the pruned list.
-  const protocol = useSelector(getProtocol);
+  // it.
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
   const shouldReduceMotion = useReducedMotion();
@@ -217,7 +198,6 @@ const Timeline = () => {
       const stageIndex = stages.findIndex(
         (candidate) => candidate.id === stageId,
       );
-      const stage = stages[stageIndex];
       const skipDestinationWarning = getSkipDestinationDeleteWarning(
         stages,
         stageId,
@@ -235,43 +215,6 @@ const Timeline = () => {
           },
         });
         return;
-      }
-
-      if (stage?.type === 'FamilyPedigree') {
-        const dependents = getFamilyPedigreeDependentStages(
-          protocol?.stages ?? [],
-          stageId,
-        );
-        if (dependents.length > 0) {
-          const names = {
-            list: dependents.map(
-              (dependent) =>
-                dependent.label || {
-                  messageError: createMessageError(finalMessages.untitledStage),
-                },
-            ),
-          };
-          void openDialog({
-            type: 'acknowledge',
-            intent: 'warning',
-            title: createElement(AppMessage, {
-              message: messages.cannotDeleteStage,
-            }),
-            description: createElement(AppErrorMessage, {
-              error: createMessageError(
-                messages.thisFamilyPedigreeStageIsUsed,
-                { names, stageCount: dependents.length },
-              ),
-            }),
-            actions: {
-              primary: {
-                label: createElement(AppMessage, { message: messages.oK }),
-                value: true,
-              },
-            },
-          });
-          return;
-        }
       }
 
       // The row that will occupy this position once the stage is gone — the
@@ -314,7 +257,7 @@ const Timeline = () => {
           addStageRef.current,
       });
     },
-    [announce, confirm, deleteStage, openDialog, stages, protocol],
+    [announce, confirm, deleteStage, openDialog, stages],
   );
 
   const handleEditStage = useCallback(

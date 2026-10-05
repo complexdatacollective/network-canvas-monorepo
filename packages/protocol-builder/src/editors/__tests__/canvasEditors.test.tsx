@@ -7,7 +7,6 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { anonymisationStageEditor } from '../anonymisation/AnonymisationStageEditor.ts';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
 import { geospatialStageEditor } from '../geospatial/GeospatialStageEditor.ts';
-import { narrativePedigreeStageEditor } from '../narrative-pedigree/NarrativePedigreeStageEditor.ts';
 import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
 import { networkComposerStageEditor } from '../network-composer/NetworkComposerStageEditor.ts';
 import { sociogramStageEditor } from '../sociogram/SociogramStageEditor.ts';
@@ -113,22 +112,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: ['label', 'mapOptions', 'prompts', 'subject'],
-  },
-  {
-    interfaceName: 'NarrativePedigree',
-    stageId: 'narrative-pedigree-1',
-    editor: narrativePedigreeStageEditor,
-    // No subject picker: this stage draws a family somebody else collected, so
-    // the node type its diseases are attributes of is the source pedigree's,
-    // resolved through the stage it names rather than chosen here.
-    sections: [
-      'Pedigree source',
-      'Disease mappings',
-      'At-risk statuses',
-      'Skip logic',
-      'Interviewer guidance',
-    ],
-    ownedKeys: ['diseases', 'label', 'showAtRiskStatuses', 'sourceStageId'],
   },
   {
     interfaceName: 'Anonymisation',

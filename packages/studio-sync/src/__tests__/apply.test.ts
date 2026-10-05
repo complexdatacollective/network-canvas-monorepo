@@ -12,30 +12,24 @@ import {
   targetRoot,
 } from '../apply.ts';
 
-/** A Family Pedigree, which keeps its family-member form off its node config. */
+const NAME_FIELD = { variable: 'fm_name', prompt: 'What is their name?' };
+
+/** A Family Pedigree, which keeps its person form under `form.fields`. */
 const PEDIGREE: SectionDoc = {
   type: 'FamilyPedigree',
   label: 'Your family',
-  nodeConfig: {
-    type: 'family_member',
-    nodeLabelVariable: 'fm_name',
-    form: [{ variable: 'fm_name', prompt: 'What is their name?' }],
-  },
+  personAttributes: { nameVariable: 'fm_name', egoVariable: 'is_ego' },
+  form: { fields: [NAME_FIELD] },
 };
 
-const FORM = ['nodeConfig', 'form'];
+const FORM = ['form', 'fields'];
 
-const NAME_FIELD = { variable: 'fm_name', prompt: 'What is their name?' };
-
-/** The pedigree with its family-member form replaced, and nothing else moved. */
-const pedigreeHolding = (form: readonly unknown[]): SectionDoc => ({
+/** The pedigree with its person form replaced, and nothing else moved. */
+const pedigreeHolding = (fields: readonly unknown[]): SectionDoc => ({
   type: 'FamilyPedigree',
   label: 'Your family',
-  nodeConfig: {
-    type: 'family_member',
-    nodeLabelVariable: 'fm_name',
-    form,
-  },
+  personAttributes: { nameVariable: 'fm_name', egoVariable: 'is_ego' },
+  form: { fields },
 });
 
 describe('a command addressed at a nested path', () => {
@@ -43,8 +37,7 @@ describe('a command addressed at a nested path', () => {
     const age = { variable: 'fm_age', prompt: 'How old are they?' };
 
     // Compared as a whole document on purpose: the failure this addresses is
-    // a write that lands on `nodeConfig` and takes the type and label variable
-    // with it, which an assertion about `form` alone would not see.
+    // a write that lands on `form` and takes the person attributes with it, which an assertion about `form` alone would not see.
     expect(
       applyCommand(PEDIGREE, {
         op: 'insertItem',
@@ -77,17 +70,14 @@ describe('a command addressed at a nested path', () => {
     expect(
       applyCommand(PEDIGREE, {
         op: 'set',
-        key: ['nodeConfig', 'nodeLabelVariable'],
+        key: ['personAttributes', 'nameVariable'],
         value: 'fm_nickname',
       }),
     ).toEqual({
       type: 'FamilyPedigree',
       label: 'Your family',
-      nodeConfig: {
-        type: 'family_member',
-        nodeLabelVariable: 'fm_nickname',
-        form: [NAME_FIELD],
-      },
+      personAttributes: { nameVariable: 'fm_nickname', egoVariable: 'is_ego' },
+      form: { fields: [NAME_FIELD] },
     });
   });
 
@@ -98,7 +88,8 @@ describe('a command addressed at a nested path', () => {
     expect(applyCommand(PEDIGREE, { op: 'unset', key: FORM })).toEqual({
       type: 'FamilyPedigree',
       label: 'Your family',
-      nodeConfig: { type: 'family_member', nodeLabelVariable: 'fm_name' },
+      personAttributes: { nameVariable: 'fm_name', egoVariable: 'is_ego' },
+      form: {},
     });
   });
 
@@ -110,7 +101,7 @@ describe('a command addressed at a nested path', () => {
       ),
     ).toEqual({
       type: 'FamilyPedigree',
-      nodeConfig: { form: [NAME_FIELD] },
+      form: { fields: [NAME_FIELD] },
     });
   });
 
@@ -210,7 +201,7 @@ describe('a path the engine refuses to follow', () => {
   it('refuses a segment that names a prototype', () => {
     for (const segment of ['__proto__', 'constructor', 'prototype']) {
       expect(() =>
-        applyCommand({}, { op: 'set', key: ['nodeConfig', segment], value: 1 }),
+        applyCommand({}, { op: 'set', key: ['form', segment], value: 1 }),
       ).toThrow(ApplyError);
     }
   });
@@ -220,17 +211,17 @@ describe('a path the engine refuses to follow', () => {
       ApplyError,
     );
     expect(() =>
-      applyCommand({}, { op: 'set', key: ['nodeConfig', ''], value: 1 }),
+      applyCommand({}, { op: 'set', key: ['form', ''], value: 1 }),
     ).toThrow(ApplyError);
   });
 
   it('still refuses a value that is not a list, and says which', () => {
     expect(() =>
       applyCommand(
-        { nodeConfig: { form: 'not a list' } },
+        { form: { fields: 'not a list' } },
         { op: 'removeItem', key: FORM, index: 0 },
       ),
-    ).toThrow(/nodeConfig\.form is not a list/);
+    ).toThrow(/form\.fields is not a list/);
   });
 });
 
@@ -240,10 +231,7 @@ describe('the address a command carries', () => {
     // predates nested addressing goes on receiving exactly what it received
     // before, for every command the editors were already able to emit.
     expect(commandTarget(['prompts'])).toBe('prompts');
-    expect(commandTarget(['nodeConfig', 'form'])).toEqual([
-      'nodeConfig',
-      'form',
-    ]);
+    expect(commandTarget(['form', 'fields'])).toEqual(['form', 'fields']);
   });
 
   it('means the same thing in either form', () => {
@@ -265,6 +253,6 @@ describe('the address a command carries', () => {
     // What the session asks, to decide whether a batch touches a staged
     // resource or the stage identity the session owns.
     expect(targetRoot('prompts')).toBe('prompts');
-    expect(targetRoot(FORM)).toBe('nodeConfig');
+    expect(targetRoot(FORM)).toBe('form');
   });
 });

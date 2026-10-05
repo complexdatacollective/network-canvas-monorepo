@@ -1,95 +1,51 @@
 /**
- * Version-local schema contract definitions for the FamilyPedigree interface.
+ * Value sets the FamilyPedigree interface owns.
  *
- * These value sets ARE the schema 8 contract: a protocol is admissible only if
- * its interface-owned variables carry exactly these members and labels, and its
- * framing is one of these ids. They live inside the version directory — not in
- * a shared constants package — so that editing shared code can never silently
- * redefine the contract of a schema version that has already shipped.
- *
- * When a future schema version directory is created, COPY this file into it and
- * edit the copy. Never import it from another version's directory, and never
- * move it back out into cross-version shared code.
+ * The interface both writes and reads these values — it draws a person's
+ * symbol from their gender identity, annotates it with their sex assigned at
+ * birth, and lays the family out from each relationship's kind — so the
+ * codebook variables bound to those slots must carry exactly these members and
+ * labels. Architect locks them onto the variable.
  */
 
 /**
- * Canonical relationship-type values for the FamilyPedigree interface.
- *
- * These are the option values stored on the `relationshipType` edge variable
- * (the discriminant for the pedigree Edge union). Architect locks them onto the
- * categorical edge variable and the interview interface reads and branches on
- * them, so schema 8 pins them here.
+ * Gender identity, which decides the person's pedigree symbol: a square for a
+ * man, a circle for a woman, and a diamond for everyone else (non-binary, a
+ * different identity, or not known).
  */
-export const RELATIONSHIP_TYPES = [
-  'biological',
-  'social',
-  'donor',
-  'surrogate',
-  'adoptive',
-  'partner',
+export const PEDIGREE_GENDER_IDENTITIES = [
+  'woman',
+  'man',
+  'nonBinary',
+  'differentIdentity',
+  'unknown',
+  'preferNotToSay',
 ] as const;
 
-export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number];
+export type PedigreeGenderIdentity =
+  (typeof PEDIGREE_GENDER_IDENTITIES)[number];
 
-const RELATIONSHIP_TYPE_LABELS: Record<RelationshipType, string> = {
-  biological: 'Biological',
-  social: 'Social',
-  donor: 'Donor',
-  surrogate: 'Surrogate',
-  adoptive: 'Adoptive',
-  partner: 'Partner',
+const GENDER_IDENTITY_LABELS: Record<PedigreeGenderIdentity, string> = {
+  woman: 'Woman',
+  man: 'Man',
+  nonBinary: 'Non-binary',
+  differentIdentity: 'A different identity',
+  unknown: 'Don’t know',
+  preferNotToSay: 'Prefer not to say',
 };
 
-/**
- * The relationship-type options as `{ value, label }` pairs, in canonical
- * order. Architect locks the categorical edge variable to exactly this set.
- */
-export const RELATIONSHIP_TYPE_OPTIONS: {
-  value: RelationshipType;
+export const PEDIGREE_GENDER_IDENTITY_OPTIONS: {
+  value: PedigreeGenderIdentity;
   label: string;
-}[] = RELATIONSHIP_TYPES.map((value) => ({
+}[] = PEDIGREE_GENDER_IDENTITIES.map((value) => ({
   value,
-  label: RELATIONSHIP_TYPE_LABELS[value],
+  label: GENDER_IDENTITY_LABELS[value],
 }));
 
 /**
- * Canonical gamete-role values for the FamilyPedigree interface — which
- * reproductive cell (gamete) a parent contributed to a child.
- *
- * Stored on the `gameteRole` categorical edge variable of genetic parent
- * edges.
+ * Sex assigned at birth, shown beneath the symbol as AFAB, AMAB or UAAB.
  */
-export const GAMETE_ROLES = ['egg', 'sperm'] as const;
-
-export type GameteRole = (typeof GAMETE_ROLES)[number];
-
-const GAMETE_ROLE_LABELS: Record<GameteRole, string> = {
-  egg: 'Egg',
-  sperm: 'Sperm',
-};
-
-/**
- * The gamete-role options as `{ value, label }` pairs, in canonical order.
- * Architect locks the categorical edge variable to exactly this set.
- */
-export const GAMETE_ROLE_OPTIONS: {
-  value: GameteRole;
-  label: string;
-}[] = GAMETE_ROLES.map((value) => ({
-  value,
-  label: GAMETE_ROLE_LABELS[value],
-}));
-
-/**
- * Canonical biological-sex values for pedigree participants — the sex recorded
- * at birth, needed for sex-linked genetic transmission (X-linked, Y-linked,
- * mitochondrial). This is distinct from gender identity.
- *
- * Stored on the `biologicalSex` node variable. Only `female`/`male` drive
- * transmission; `intersex`, `unknown`, and `preferNotToSay` are stored
- * distinctly but all propagate as uncertainty in the genetics engine.
- */
-export const BIOLOGICAL_SEX_VALUES = [
+export const PEDIGREE_SEX_ASSIGNED_AT_BIRTH = [
   'female',
   'male',
   'intersex',
@@ -97,37 +53,59 @@ export const BIOLOGICAL_SEX_VALUES = [
   'preferNotToSay',
 ] as const;
 
-export type BiologicalSex = (typeof BIOLOGICAL_SEX_VALUES)[number];
+export type PedigreeSexAssignedAtBirth =
+  (typeof PEDIGREE_SEX_ASSIGNED_AT_BIRTH)[number];
 
-const BIOLOGICAL_SEX_LABELS: Record<BiologicalSex, string> = {
-  female: 'Female',
-  male: 'Male',
-  intersex: 'Intersex or a variation in sex characteristics',
-  unknown: 'Don’t know',
-  preferNotToSay: 'Prefer not to say',
-};
+const SEX_ASSIGNED_AT_BIRTH_LABELS: Record<PedigreeSexAssignedAtBirth, string> =
+  {
+    female: 'Female',
+    male: 'Male',
+    intersex: 'Intersex',
+    unknown: 'Don’t know',
+    preferNotToSay: 'Prefer not to say',
+  };
 
-/**
- * The biological-sex options as `{ value, label }` pairs, in canonical order,
- * with participant-facing labels. The single source of truth for the choices
- * shown to a participant and described to a protocol author.
- */
-export const BIOLOGICAL_SEX_OPTIONS: {
-  value: BiologicalSex;
+export const PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS: {
+  value: PedigreeSexAssignedAtBirth;
   label: string;
-}[] = BIOLOGICAL_SEX_VALUES.map((value) => ({
+}[] = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
   value,
-  label: BIOLOGICAL_SEX_LABELS[value],
+  label: SEX_ASSIGNED_AT_BIRTH_LABELS[value],
 }));
 
 /**
- * Framing identifiers for the FamilyPedigree interface.
- *
- * Two framings are supported: 'gamete' (biology-first language) and 'gendered'
- * (mother/father kinship terms). The stage's `framing` config stores one of
- * these ids; the participant-facing terminology each id selects is interview
- * copy and lives in the interview runtime.
+ * The kind of a relationship edge. A `partner` edge joins two partners in
+ * either direction; every other kind is a parent edge, directed from the
+ * parent to the child. Siblings are never stored: two people are siblings when
+ * they share a parent.
  */
-export const FRAMING_IDS = ['gamete', 'gendered'] as const;
+export const PEDIGREE_RELATIONSHIP_KINDS = [
+  'partner',
+  'biological',
+  'adoptive',
+  'social',
+  'donor',
+  'surrogate',
+] as const;
 
-export type FramingId = (typeof FRAMING_IDS)[number];
+export type PedigreeRelationshipKind =
+  (typeof PEDIGREE_RELATIONSHIP_KINDS)[number];
+
+export type PedigreeParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
+
+const RELATIONSHIP_KIND_LABELS: Record<PedigreeRelationshipKind, string> = {
+  partner: 'Partner',
+  biological: 'Biological parent',
+  adoptive: 'Adoptive parent',
+  social: 'Step or social parent',
+  donor: 'Donor',
+  surrogate: 'Surrogate',
+};
+
+export const PEDIGREE_RELATIONSHIP_KIND_OPTIONS: {
+  value: PedigreeRelationshipKind;
+  label: string;
+}[] = PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
+  value,
+  label: RELATIONSHIP_KIND_LABELS[value],
+}));

@@ -27,7 +27,6 @@ const INTERFACE_DOCUMENTATION_SLUGS: Record<StageType, string> = {
   NameGeneratorQuickAdd: 'name-generator-using-quick-add',
   NameGeneratorRoster: 'name-generator-roster',
   Narrative: 'narrative',
-  NarrativePedigree: 'narrative-pedigree',
   NetworkComposer: 'network-composer',
   OneToManyDyadCensus: 'one-to-many-dyad-census',
   OrdinalBin: 'ordinal-bin',

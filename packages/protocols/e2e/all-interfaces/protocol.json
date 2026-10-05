@@ -112,13 +112,38 @@
             "type": "boolean",
             "component": "Toggle"
           },
-          "fm_relationship_to_ego": {
-            "name": "fm_relationship_to_ego",
-            "type": "text",
-            "component": "Text"
+          "genderIdentity": {
+            "name": "genderIdentity",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "woman",
+                "label": "Woman"
+              },
+              {
+                "value": "man",
+                "label": "Man"
+              },
+              {
+                "value": "nonBinary",
+                "label": "Non-binary"
+              },
+              {
+                "value": "differentIdentity",
+                "label": "A different identity"
+              },
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
+            ]
           },
-          "biologicalSex": {
-            "name": "biologicalSex",
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
               {
@@ -131,7 +156,7 @@
               },
               {
                 "value": "intersex",
-                "label": "Intersex or a variation in sex characteristics"
+                "label": "Intersex"
               },
               {
                 "value": "unknown",
@@ -142,10 +167,6 @@
                 "label": "Prefer not to say"
               }
             ]
-          },
-          "hasConditionX": {
-            "name": "hasConditionX",
-            "type": "boolean"
           }
         }
       }
@@ -164,17 +185,25 @@
         "name": "family_edge",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": "Partner"
+              },
+              {
                 "value": "biological",
-                "label": "Biological"
+                "label": "Biological parent"
+              },
+              {
+                "value": "adoptive",
+                "label": "Adoptive parent"
               },
               {
                 "value": "social",
-                "label": "Social"
+                "label": "Step or social parent"
               },
               {
                 "value": "donor",
@@ -183,38 +212,16 @@
               {
                 "value": "surrogate",
                 "label": "Surrogate"
-              },
-              {
-                "value": "adoptive",
-                "label": "Adoptive"
-              },
-              {
-                "value": "partner",
-                "label": "Partner"
               }
             ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "type": "boolean"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": "Egg"
-              },
-              {
-                "value": "sperm",
-                "label": "Sperm"
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean"
           }
         }
       },
@@ -598,51 +605,23 @@
       "id": "family-pedigree-1",
       "type": "FamilyPedigree",
       "label": "Family Pedigree",
-      "nodeConfig": {
-        "type": "family_member",
-        "nodeLabelVariable": "fm_name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "fm_relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex"
+      "subject": {
+        "entity": "node",
+        "type": "family_member"
       },
-      "edgeConfig": {
+      "prompt": "Who is in your family?",
+      "personAttributes": {
+        "nameVariable": "fm_name",
+        "genderIdentityVariable": "genderIdentity",
+        "sexAssignedAtBirthVariable": "sexAssignedAtBirth",
+        "egoVariable": "is_ego"
+      },
+      "relationship": {
         "type": "family_edge",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
-      },
-      "framing": {
-        "mode": "fixed",
-        "value": "gamete"
-      },
-      "boundaries": {
-        "requireGrandparents": "off",
-        "requireChildrenContributors": "off"
-      },
-      "censusPrompt": "Who is in your family?",
-      "nominationPrompts": [
-        {
-          "id": "nomination-1",
-          "text": "Who in your family has been diagnosed with condition X?",
-          "variable": "hasConditionX"
-        }
-      ]
-    },
-    {
-      "id": "narrative-pedigree-1",
-      "type": "NarrativePedigree",
-      "label": "Narrative Pedigree",
-      "sourceStageId": "family-pedigree-1",
-      "diseases": [
-        {
-          "id": "disease-1",
-          "label": "Condition X",
-          "color": "node-color-seq-1",
-          "variable": "hasConditionX",
-          "inheritancePattern": "autosomalDominant"
-        }
-      ]
+        "kindVariable": "relationshipKind",
+        "gestationalCarrierVariable": "isGestationalCarrier",
+        "currentPartnerVariable": "isCurrentPartner"
+      }
     },
     {
       "id": "network-composer-1",
@@ -669,7 +648,7 @@
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
         "style": "mapbox://styles/mapbox/standard",
-        "center": [-74.0, 40.7],
+        "center": [-74, 40.7],
         "initialZoom": 10,
         "dataSourceAssetId": "geo_data",
         "color": "ord-color-seq-6",

@@ -18,7 +18,7 @@ shimMarkdownEditorMeasurement();
  * only that editor composes.
  *
  * The section names are the discriminator because they are what a researcher
- * would see: opening a family pedigree in the narrative pedigree editor is not
+ * would see: opening a sociogram in the narrative editor is not
  * a type error, it is a page with the wrong things on it. The check below
  * refuses a discriminator that does not in fact discriminate, so a lazy one
  * here fails rather than passing vacuously.
@@ -27,7 +27,7 @@ const CLAIMED = [
   {
     stageType: 'FamilyPedigree',
     editor: familyPedigreeStageEditor.FamilyPedigree,
-    sections: ['Pedigree framing'],
+    sections: ['Person attributes'],
   },
 ] as const satisfies readonly {
   stageType: StageType;

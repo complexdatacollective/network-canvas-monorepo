@@ -44,7 +44,6 @@ const INTERFACE_INTRODUCED_IN: Record<string, number> = {
   'anonymisation': 8,
   'one-to-many-dyad-census': 8,
   'family-pedigree': 8,
-  'narrative-pedigree': 8,
   'network-composer': 8,
   // Schema 6 — NameGeneratorRoster (schemas/6/migration.ts)
   'name-generator-roster': 6,

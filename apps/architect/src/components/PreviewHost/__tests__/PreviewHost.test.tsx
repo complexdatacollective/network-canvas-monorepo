@@ -587,47 +587,6 @@ describe('PreviewHost', () => {
     }
   });
 
-  it('seeds finalized stageMetadata for a synthetic FamilyPedigree', async () => {
-    render(<PreviewHost />);
-    const protocol = {
-      name: 'T',
-      description: '',
-      schemaVersion: 8,
-      stages: [
-        {
-          id: 'fp',
-          type: 'FamilyPedigree',
-          label: 'Family',
-          nodeConfig: { type: 'node-1' },
-          edgeConfig: { type: 'edge-1' },
-        },
-      ],
-      codebook: {
-        node: { 'node-1': { variables: {} } },
-        edge: { 'edge-1': { variables: {} } },
-        ego: {},
-      },
-      assetManifest: {},
-    };
-    postPayload(
-      openerStub,
-      makePayload({ protocol, startStage: 0, useSyntheticData: true }),
-    );
-
-    await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-    };
-    const metadata = call.payload.session.stageMetadata?.['0'] as
-      | { isNetworkCommitted?: boolean; nodes?: unknown[]; edges?: unknown[] }
-      | undefined;
-    expect(metadata).toEqual(
-      expect.objectContaining({ isNetworkCommitted: true }),
-    );
-    expect(metadata?.nodes?.length).toBeGreaterThanOrEqual(7);
-    expect(metadata?.edges?.length).toBeGreaterThan(0);
-  });
-
   it('shows an error fallback when payload processing throws', async () => {
     render(<PreviewHost />);
     postPayload(

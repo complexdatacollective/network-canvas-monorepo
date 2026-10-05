@@ -1,5 +1,3 @@
-import type { RelationshipType } from '@codaco/protocol-validation';
-
 import type {
   AuxiliaryConnector,
   DuplicateArc,
@@ -12,12 +10,13 @@ import type {
   Point,
   ScalingParams,
   TwinIndicator,
+  PedigreeEdgeType,
 } from './types';
 import { ancestor } from './utils';
 
-const AUXILIARY_EDGE_TYPES = new Set<RelationshipType>(['donor', 'surrogate']);
+const AUXILIARY_EDGE_TYPES = new Set<PedigreeEdgeType>(['donor', 'surrogate']);
 
-function isPrimaryEdge(edgeType: RelationshipType): boolean {
+function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
   return !AUXILIARY_EDGE_TYPES.has(edgeType);
 }
 
@@ -288,7 +287,7 @@ export function computeConnectors(
         (p) =>
           p.parentIndex === coupleLeftId || p.parentIndex === coupleRightId,
       );
-      const primaryEdgeType: RelationshipType =
+      const primaryEdgeType: PedigreeEdgeType =
         coupleEdges.find((p) => p.edgeType === 'biological')?.edgeType ??
         coupleEdges.find((p) => isPrimaryEdge(p.edgeType))?.edgeType ??
         'biological';

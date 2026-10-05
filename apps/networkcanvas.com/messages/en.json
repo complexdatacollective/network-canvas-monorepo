@@ -217,7 +217,6 @@
       "NameGeneratorQuickAdd": "Name Generator (quick add)",
       "NameGeneratorRoster": "Name Generator for Roster Data",
       "Narrative": "Narrative",
-      "NarrativePedigree": "Narrative Pedigree",
       "NetworkComposer": "Network Composer",
       "OneToManyDyadCensus": "One to Many Dyad Census",
       "OrdinalBin": "Ordinal Bin",
@@ -533,16 +532,6 @@
           "0": "Create family members and relationships together, with automatic layout keeping the pedigree readable as it grows.",
           "1": "Represent biological, social, adoptive, donor, surrogate, and partner relationships, and collect attributes for every family member.",
           "2": "Add an optional disease-nomination step to record which relatives are affected by specific conditions for later visualization."
-        }
-      },
-      "narrativePedigree": {
-        "shortName": "Narrative pedigree",
-        "name": "Narrative pedigree interface",
-        "summary": "Turn an earlier Family Pedigree into a read-only visualization that uses standard clinical pedigree notation.",
-        "details": {
-          "0": "Show affected relatives and definite carriers for one or more conditions across supported inheritance patterns.",
-          "1": "Optionally display possible at-risk statuses when the study is designed for appropriately guided interpretation.",
-          "2": "Focus on one person's contributing lineage and export a printable snapshot. The visualization is an aid, not a diagnosis."
         }
       },
       "networkComposer": {

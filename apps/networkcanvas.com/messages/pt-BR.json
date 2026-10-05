@@ -217,7 +217,6 @@
       "NameGeneratorQuickAdd": "Gerador de nomes (adição rápida)",
       "NameGeneratorRoster": "Gerador de nomes a partir de lista",
       "Narrative": "Narrativa",
-      "NarrativePedigree": "Heredograma narrativo",
       "NetworkComposer": "Compositor de redes",
       "OneToManyDyadCensus": "Censo de díades de um para muitos",
       "OrdinalBin": "Classificação ordinal",
@@ -533,16 +532,6 @@
           "0": "Crie familiares e relações ao mesmo tempo, com uma disposição automática que mantém o heredograma legível à medida que ele cresce.",
           "1": "Represente relações biológicas, sociais, adotivas, de doação, de gestação de substituição e de casal, e colete atributos de cada familiar.",
           "2": "Adicione um passo opcional de nomeação de doenças para registrar quais familiares são afetados por condições específicas, para visualização posterior."
-        }
-      },
-      "narrativePedigree": {
-        "shortName": "Heredograma narrativo",
-        "name": "Interface de heredograma narrativo",
-        "summary": "Transforme um heredograma familiar anterior em uma visualização somente leitura que usa a notação clínica padrão de heredogramas.",
-        "details": {
-          "0": "Mostre os familiares afetados e as pessoas portadoras confirmadas de uma ou mais condições, nos padrões de herança compatíveis.",
-          "1": "Opcionalmente, exiba possíveis situações de risco quando o estudo for desenhado para uma interpretação com a orientação adequada.",
-          "2": "Destaque a linhagem que deu origem a uma pessoa e exporte um instantâneo para impressão. A visualização é um apoio, não um diagnóstico."
         }
       },
       "networkComposer": {

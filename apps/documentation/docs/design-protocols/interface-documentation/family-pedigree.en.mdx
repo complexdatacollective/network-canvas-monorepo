@@ -48,11 +48,11 @@ The Family Pedigree requires specific variables to store family tree data. These
 
 Biological sex is recorded for **every** person — the participant and each relative — in a single node variable.
 
-| Variable                    | Type                                                                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| --------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Biological Sex              | Categorical (female, male, intersex, don't know, prefer not to say) | The sex each person was recorded as **at birth**. This is deliberately distinct from gender identity, and is asked with sensitive, opt-out wording. It is required for sex-linked inheritance (X-linked, Y-linked, mitochondrial) in a linked [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage. Only "female" and "male" drive sex-linked transmission; "intersex", "don't know", and "prefer not to say" are stored and treated as uncertainty rather than guessed. |
-| Relationship to Participant | Text                                                                | Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the interface from the tree structure.                                                                                                                                                                                                                                                                                                                                                        |
-| Ego Identifier              | Boolean                                                             | Identifies which node represents the participant (ego). Can be used in later-stage filtering to exclude the participant from attribute collection.                                                                                                                                                                                                                                                                                                                                                              |
+| Variable                    | Type                                                                | Description                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Biological Sex              | Categorical (female, male, intersex, don't know, prefer not to say) | The sex each person was recorded as **at birth**. This is deliberately distinct from gender identity, and is asked with sensitive, opt-out wording.      |
+| Relationship to Participant | Text                                                                | Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the interface from the tree structure. |
+| Ego Identifier              | Boolean                                                             | Identifies which node represents the participant (ego). Can be used in later-stage filtering to exclude the participant from attribute collection.       |
 
 ### Edge Variables
 
@@ -82,12 +82,6 @@ If enabled, this step allows participants to identify family members who have ex
 - Asks about a specific condition using customizable prompt text
 - Stores responses in a boolean variable on each node
 - Allows participants to identify which family members are affected by highlighting nodes where the variable value is true
-
-<TipBox>
-
-The boolean variable each prompt records is exactly what a [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads to draw who is affected and to infer inheritance. Pair the two stages when you want to visualize how a condition runs through the family.
-
-</TipBox>
 
 ## Best Practices
 

@@ -4,9 +4,9 @@ import { z } from 'zod';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
 import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
@@ -18,43 +18,21 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
   label: 'Family Pedigree',
   type: 'FamilyPedigree',
-  nodeConfig: {
-    type: 'family_member',
-    nodeLabelVariable: 'fmName',
+  subject: { entity: 'node', type: 'family_member' },
+  prompt: 'Build your family',
+  personAttributes: {
+    nameVariable: 'fmName',
+    genderIdentityVariable: 'genderIdentity',
+    sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'isEgo',
-    relationshipVariable: 'relationshipToEgo',
-    biologicalSexVariable: 'biologicalSex',
   },
-  edgeConfig: {
+  relationship: {
     type: 'family_edge',
-    relationshipTypeVariable: 'relationshipType',
-    isActiveVariable: 'isActive',
-    isGestationalCarrierVariable: 'isGestationalCarrier',
-    gameteRoleVariable: 'gameteRole',
-  },
-  censusPrompt: 'Build your family',
-  framing: { mode: 'fixed', value: 'gamete' },
-  boundaries: {
-    requireGrandparents: 'off',
-    requireChildrenContributors: 'off',
+    kindVariable: 'relationshipKind',
+    gestationalCarrierVariable: 'isGestationalCarrier',
+    currentPartnerVariable: 'isCurrentPartner',
   },
   ...overrides,
-});
-
-const narrativePedigree = (variable: string): Stage => ({
-  id: 'np1',
-  label: 'Narrative Pedigree',
-  type: 'NarrativePedigree',
-  sourceStageId: 'fp1',
-  diseases: [
-    {
-      id: 'd1',
-      label: 'Condition X',
-      color: 'node-color-seq-1',
-      variable,
-      inheritancePattern: 'autosomalDominant',
-    },
-  ],
 });
 
 const protocolWith = (stages: Stage[]) => ({
@@ -69,13 +47,21 @@ const protocolWith = (stages: Stage[]) => ({
         variables: {
           fmName: { name: 'fm_name', type: 'text', component: 'Text' },
           isEgo: { name: 'is_ego', type: 'boolean' },
-          relationshipToEgo: { name: 'fm_relationship_to_ego', type: 'text' },
-          biologicalSex: {
-            name: 'biologicalSex',
+          genderIdentity: {
+            name: 'genderIdentity',
             type: 'categorical',
-            options: BIOLOGICAL_SEX_OPTIONS,
+            options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
           },
-          hasConditionX: { name: 'hasConditionX', type: 'boolean' },
+          sexAssignedAtBirth: {
+            name: 'sexAssignedAtBirth',
+            type: 'categorical',
+            options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+          },
+          hasConditionX: {
+            name: 'hasConditionX',
+            type: 'boolean',
+            component: 'Toggle',
+          },
         },
       },
     },
@@ -84,21 +70,16 @@ const protocolWith = (stages: Stage[]) => ({
         name: 'Family edge',
         color: 'edge-color-seq-1',
         variables: {
-          relationshipType: {
-            name: 'relationshipType',
+          relationshipKind: {
+            name: 'relationshipKind',
             type: 'categorical',
-            options: RELATIONSHIP_TYPE_OPTIONS,
+            options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
           },
-          isActive: { name: 'isActive', type: 'boolean' },
           isGestationalCarrier: {
             name: 'isGestationalCarrier',
             type: 'boolean',
           },
-          gameteRole: {
-            name: 'gameteRole',
-            type: 'categorical',
-            options: GAMETE_ROLE_OPTIONS,
-          },
+          isCurrentPartner: { name: 'isCurrentPartner', type: 'boolean' },
         },
       },
     },
@@ -115,35 +96,27 @@ const issueMessagesAt = (protocol: unknown, path: (string | number)[]) => {
 };
 
 describe('stage subjects resolve during collection', () => {
-  it('existence-checks a FamilyPedigree nomination prompt variable', () => {
+  it('existence-checks a FamilyPedigree form field variable', () => {
     const protocol = protocolWith([
       familyPedigree({
-        nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'notInCodebook' },
-        ],
+        form: {
+          fields: [{ variable: 'notInCodebook', prompt: 'Tell us more' }],
+        },
       }),
     ]);
     expect(
-      issueMessagesAt(protocol, [
-        'stages',
-        0,
-        'nominationPrompts',
-        0,
-        'variable',
-      ]),
+      issueMessagesAt(protocol, ['stages', 0, 'form', 'fields', 0, 'variable']),
     ).toContain('The attribute "notInCodebook" does not exist in the codebook');
   });
 
-  it('existence-checks a FamilyPedigree node form field variable', () => {
+  it('existence-checks a FamilyPedigree person attribute', () => {
     const protocol = protocolWith([
       familyPedigree({
-        nodeConfig: {
-          type: 'family_member',
-          nodeLabelVariable: 'fmName',
+        personAttributes: {
+          nameVariable: 'notInCodebook',
+          genderIdentityVariable: 'genderIdentity',
+          sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
           egoVariable: 'isEgo',
-          relationshipVariable: 'relationshipToEgo',
-          biologicalSexVariable: 'biologicalSex',
-          form: [{ variable: 'notInCodebook', prompt: 'Tell us more' }],
         },
       }),
     ]);
@@ -151,40 +124,17 @@ describe('stage subjects resolve during collection', () => {
       issueMessagesAt(protocol, [
         'stages',
         0,
-        'nodeConfig',
-        'form',
-        0,
-        'variable',
+        'personAttributes',
+        'nameVariable',
       ]),
     ).toContain('The attribute "notInCodebook" does not exist in the codebook');
   });
 
-  it('existence-checks a NarrativePedigree disease variable through sourceStageId', () => {
-    const protocol = protocolWith([
-      familyPedigree(),
-      narrativePedigree('notInCodebook'),
-    ]);
-    expect(
-      issueMessagesAt(protocol, ['stages', 1, 'diseases', 0, 'variable']),
-    ).toContain('The attribute "notInCodebook" does not exist in the codebook');
-  });
-
-  it('accepts a pedigree pair whose references all exist', () => {
+  it('accepts a pedigree whose references all exist', () => {
     const protocol = protocolWith([
       familyPedigree({
-        nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'hasConditionX' },
-        ],
-        nodeConfig: {
-          type: 'family_member',
-          nodeLabelVariable: 'fmName',
-          egoVariable: 'isEgo',
-          relationshipVariable: 'relationshipToEgo',
-          biologicalSexVariable: 'biologicalSex',
-          form: [{ variable: 'fmName', prompt: 'Their name' }],
-        },
+        form: { fields: [{ variable: 'hasConditionX', prompt: 'Affected?' }] },
       }),
-      narrativePedigree('hasConditionX'),
     ]);
     const result = ProtocolSchemaV8.safeParse(protocol);
     expect(
@@ -195,41 +145,25 @@ describe('stage subjects resolve during collection', () => {
   it('resolves the subject on the hit itself, so no consumer re-derives one', () => {
     const protocol = protocolWith([
       familyPedigree({
-        nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'hasConditionX' },
-        ],
+        form: { fields: [{ variable: 'hasConditionX', prompt: 'Affected?' }] },
       }),
-      narrativePedigree('hasConditionX'),
     ]);
     const subjectAt = (path: (string | number)[]) =>
       collectEntityAttributeReferences(protocol).find(
         (hit) => hit.path.join('.') === path.join('.'),
       )?.subject;
 
-    expect(
-      subjectAt(['stages', 0, 'nominationPrompts', 0, 'variable']),
-    ).toEqual({ entity: 'node', type: 'family_member' });
-    expect(subjectAt(['stages', 1, 'diseases', 0, 'variable'])).toEqual({
+    expect(subjectAt(['stages', 0, 'form', 'fields', 0, 'variable'])).toEqual({
       entity: 'node',
       type: 'family_member',
     });
-  });
-
-  it('leaves a NarrativePedigree disease unresolved when sourceStageId dangles', () => {
-    const protocol = protocolWith([
-      familyPedigree(),
-      { ...narrativePedigree('hasConditionX'), sourceStageId: 'nope' },
-    ]);
-    const hit = collectEntityAttributeReferences(protocol).find(
-      (candidate) =>
-        candidate.path.join('.') ===
-        ['stages', 1, 'diseases', 0, 'variable'].join('.'),
+    expect(subjectAt(['stages', 0, 'personAttributes', 'egoVariable'])).toEqual(
+      { entity: 'node', type: 'family_member' },
     );
-    expect(hit?.subject).toBeUndefined();
-    // The dangling id itself is what gets reported, not a phantom attribute.
-    expect(issueMessagesAt(protocol, ['stages', 1, 'sourceStageId'])).toEqual([
-      'NarrativePedigree sourceStageId "nope" does not reference an existing stage.',
-    ]);
+    expect(subjectAt(['stages', 0, 'relationship', 'kindVariable'])).toEqual({
+      entity: 'edge',
+      type: 'family_edge',
+    });
   });
 });
 

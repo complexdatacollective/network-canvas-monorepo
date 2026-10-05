@@ -20,10 +20,10 @@ const STAGE_SUBJECT_RESOLUTION = 'stageSubjectResolution' as const;
  *
  * - `ego` — the stage always operates on the interview's ego (EgoForm).
  * - `stagePath` — a node/edge type named somewhere inside the stage itself
- *   (FamilyPedigree names its alter type at `nodeConfig.type`).
+ *   (a stage naming its node type in a nested config object).
  * - `stageRef` — a node/edge type named inside ANOTHER stage, whose id this
- *   stage holds at `stageRef` (NarrativePedigree points at the FamilyPedigree
- *   whose people its diseases describe). An unresolvable reference yields no
+ *   stage holds at `stageRef` (a stage that describes the people another stage
+ *   collected). An unresolvable reference yields no
  *   subject; the protocol-level check reports the dangling id itself.
  */
 export type StageSubjectResolution =

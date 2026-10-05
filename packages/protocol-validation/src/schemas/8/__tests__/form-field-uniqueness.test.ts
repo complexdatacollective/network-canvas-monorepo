@@ -2,39 +2,35 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
+import {
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+} from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 
 const field = (variable: string, prompt: string) => ({ variable, prompt });
 
-// Mirrors `narrative-pedigree.test.ts`'s pedigree fixture: FamilyPedigree
-// declares no top-level subject, so `nodeConfig.form` is the one form surface
-// that never passes through FormSchema/TitlelessFormSchema.
 const pedigreeStage = (form?: { variable: string; prompt: string }[]) => ({
   id: 'fp1',
   label: 'Family Pedigree',
   type: 'FamilyPedigree' as const,
-  nodeConfig: {
-    type: 'person',
-    nodeLabelVariable: 'name',
+  subject: { entity: 'node' as const, type: 'person' },
+  prompt: 'Build your family',
+  personAttributes: {
+    nameVariable: 'name',
+    genderIdentityVariable: 'gender',
+    sexAssignedAtBirthVariable: 'sab',
     egoVariable: 'isEgo',
-    relationshipVariable: 'relationship',
-    biologicalSexVariable: 'bioSex',
-    ...(form ? { form } : {}),
   },
-  edgeConfig: {
+  relationship: {
     type: 'knows',
-    relationshipTypeVariable: 'relType',
-    isActiveVariable: 'isActive',
-    isGestationalCarrierVariable: 'isGc',
-    gameteRoleVariable: 'gameteRole',
+    kindVariable: 'kind',
+    gestationalCarrierVariable: 'carrier',
+    currentPartnerVariable: 'current',
   },
-  censusPrompt: 'Build your family',
-  framing: { mode: 'fixed' as const, value: 'gamete' as const },
-  boundaries: {
-    requireGrandparents: 'off' as const,
-    requireChildrenContributors: 'off' as const,
-  },
+  ...(form ? { form: { fields: form } } : {}),
 });
 
 const pedigreeProtocol = (form?: { variable: string; prompt: string }[]) => {
@@ -50,8 +46,16 @@ const pedigreeProtocol = (form?: { variable: string; prompt: string }[]) => {
           variables: {
             ...protocol.codebook.node.person.variables,
             isEgo: { name: 'IsEgo', type: 'boolean' },
-            relationship: { name: 'Relationship', type: 'text' },
-            bioSex: { name: 'BioSex', type: 'text' },
+            gender: {
+              name: 'Gender',
+              type: 'categorical',
+              options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+            },
+            sab: {
+              name: 'Sab',
+              type: 'categorical',
+              options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+            },
           },
         },
       },
@@ -61,10 +65,13 @@ const pedigreeProtocol = (form?: { variable: string; prompt: string }[]) => {
           ...protocol.codebook.edge.knows,
           variables: {
             ...protocol.codebook.edge.knows.variables,
-            relType: { name: 'RelType', type: 'text' },
-            isActive: { name: 'IsActive', type: 'boolean' },
-            isGc: { name: 'IsGc', type: 'boolean' },
-            gameteRole: { name: 'GameteRole', type: 'text' },
+            kind: {
+              name: 'Kind',
+              type: 'categorical',
+              options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+            },
+            carrier: { name: 'Carrier', type: 'boolean' },
+            current: { name: 'Current', type: 'boolean' },
           },
         },
       },
@@ -114,20 +121,20 @@ describe('form field variable uniqueness', () => {
     ]);
   });
 
-  it('rejects a FamilyPedigree nodeConfig.form that names one variable twice', () => {
+  it('rejects a FamilyPedigree form that names one variable twice', () => {
     const result = familyPedigreeStage.safeParse(
       pedigreeStage([field('age', 'Age?'), field('age', 'Age again?')]),
     );
     expect(result.success).toBe(false);
     expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
-      'nodeConfig',
       'form',
+      'fields',
       1,
       'variable',
     ]);
   });
 
-  it('accepts a FamilyPedigree nodeConfig.form with distinct variables', () => {
+  it('accepts a FamilyPedigree form with distinct variables', () => {
     expect(
       familyPedigreeStage.safeParse(
         pedigreeStage([field('age', 'Age?'), field('category', 'Category?')]),

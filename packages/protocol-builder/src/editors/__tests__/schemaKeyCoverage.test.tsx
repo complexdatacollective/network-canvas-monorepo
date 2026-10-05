@@ -9,7 +9,7 @@ import {
   familyPedigreeEditor,
   shimMarkdownEditorMeasurement,
 } from '../family-pedigree/__tests__/editorFixtures.ts';
-import { addFamilyMemberVariable } from '../family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
+import { addFamilyMemberVariable } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
 shimMarkdownEditorMeasurement();
@@ -42,60 +42,32 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: 'Family Pedigree',
   interviewScript: INTERVIEW_SCRIPT,
   skipLogic: SKIP_LOGIC,
-  nodeConfig: {
-    type: 'family_member',
-    nodeLabelVariable: 'fm_name',
+  subject: { entity: 'node', type: 'family_member' },
+  prompt: 'Add the members of your family.',
+  personAttributes: {
+    nameVariable: 'fm_name',
+    genderIdentityVariable: 'genderIdentity',
+    sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'is_ego',
-    relationshipVariable: 'fm_relationship_to_ego',
-    biologicalSexVariable: 'biologicalSex',
-    // What the participant is asked as they add each family member. NOT the
-    // display label: the interview collects each relative's name through the
-    // pedigree's own name control and drops a form field bound to it, so a
-    // stage that collected it here would be one no participant ever answers.
-    // See `MEMBER_FORM_ATTRIBUTE`.
-    form: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
   },
-  edgeConfig: {
+  relationship: {
     type: 'family_edge',
-    relationshipTypeVariable: 'relationshipType',
-    isActiveVariable: 'isActive',
-    isGestationalCarrierVariable: 'isGestationalCarrier',
-    gameteRoleVariable: 'gameteRole',
+    kindVariable: 'relationshipKind',
+    gestationalCarrierVariable: 'isGestationalCarrier',
+    currentPartnerVariable: 'isCurrentPartner',
   },
-  framing: { mode: 'fixed', value: 'gamete' },
-  boundaries: {
-    requireGrandparents: 'off',
-    requireChildrenContributors: 'off',
+  // NOT one of the person attributes: the interface already collects those
+  // itself, so the extra fields may not. See `MEMBER_FORM_ATTRIBUTE`.
+  form: {
+    fields: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
   },
-  introScreen: {
-    items: [
-      {
-        id: 'intro-1',
-        type: 'text',
-        content: 'We are going to draw your family.',
-      },
-    ],
-  },
-  censusPrompt: 'Who is in your family?',
-  nominationPrompts: [
-    {
-      id: 'nomination-1',
-      text: 'Who has been unwell?',
-      variable: 'hasConditionX',
-    },
-  ],
 };
 
 /**
- * The attribute the maximal pedigree's member form collects, and the fact that
- * it has to be put on the type first.
- *
- * Every attribute the fixture's `family_member` type carries is already
- * claimed: three are the pedigree's structural slots, one is the display label
- * the interview collects through its own control, and the last is the
- * nomination prompt's. A maximal stage has to fill `nodeConfig.form` with
- * something a form may legally collect, so this one arrives the way a
- * collaborator's would — through the host, under a revision it issued.
+ * The attribute the maximal pedigree's extra person field collects, and the
+ * fact that it has to be put on the type first: every attribute the fixture's
+ * `family_member` type carries is bound to one of the pedigree's own person
+ * attribute slots, so this one arrives the way a collaborator's would.
  */
 const MEMBER_FORM_ATTRIBUTE = 'fm_occupation';
 
@@ -146,8 +118,8 @@ describe.each(MAXIMAL)(
      * Two claims about one save. Every key is owned by something the editor
      * mounts — `unowned` is empty, so a key no section renders fails rather
      * than surviving untouched — and the save gives back exactly what it was
-     * given, which is where a nested optional key is caught: `form` inside
-     * `nodeConfig`, `value` inside `framing`. Those are inside a value a
+     * given, which is where a nested key is caught: a slot inside
+     * `personAttributes` or `relationship`. Those are inside a value a
      * section already owns, so only the comparison notices when one stops
      * being rendered.
      */

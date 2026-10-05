@@ -55,7 +55,6 @@ const FIXTURE_STAGE_TYPES = {
   'alter-edge-form-1': 'AlterEdgeForm',
   'narrative-1': 'Narrative',
   'family-pedigree-1': 'FamilyPedigree',
-  'narrative-pedigree-1': 'NarrativePedigree',
   'network-composer-1': 'NetworkComposer',
   'geospatial-1': 'Geospatial',
 } as const satisfies Readonly<Record<string, StageType>>;

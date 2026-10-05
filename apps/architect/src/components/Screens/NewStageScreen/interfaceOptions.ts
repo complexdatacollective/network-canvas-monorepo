@@ -31,14 +31,7 @@ const descriptionMessages = defineMessages({
   FamilyPedigree: {
     id: 'architect.interface.description.FamilyPedigree',
     defaultMessage:
-      'An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.',
-    description:
-      'Description of the interview interface in the New Stage chooser.',
-  },
-  NarrativePedigree: {
-    id: 'architect.interface.description.NarrativePedigree',
-    defaultMessage:
-      'A read-only visualisation interface that overlays disease status and inheritance patterns onto a family pedigree collected by a Family Pedigree stage.',
+      'An interface where participants draw their family: they select a person and add that person’s parents, siblings, partners or children, describing each new person as they go.',
     description:
       'Description of the interview interface in the New Stage chooser.',
   },
@@ -237,7 +230,6 @@ const INTERFACE_TYPE_NAMES = [
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'FamilyPedigree',
-  'NarrativePedigree',
   'DyadCensus',
   'OneToManyDyadCensus',
   'TieStrengthCensus',
@@ -304,8 +296,8 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.GENERATORS,
-    // Captures node attributes (sex, form fields, nomination flags) and edge
-    // attributes (relationship type, active status, carrier/gamete roles).
+    // Captures node attributes (name, gender, sex, form fields) and edge
+    // attributes (relationship kind, gestational carrier, current partner).
     tags: [
       TAGS.CREATE_NODES,
       TAGS.CREATE_EDGES,
@@ -316,15 +308,6 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
       'family pedigree tree census namegenerator name generator nodes node edges edge',
     type: 'FamilyPedigree',
     description: descriptionMessages.FamilyPedigree,
-  },
-  {
-    category: CATEGORIES.SOCIOGRAMS,
-    // Read-only visualisation: displays data, captures nothing.
-    tags: [TAGS.PROVIDE_INFORMATION],
-    keywords:
-      'narrative pedigree disease visualize visualise genetics inheritance focal hereditary',
-    type: 'NarrativePedigree',
-    description: descriptionMessages.NarrativePedigree,
   },
   {
     category: CATEGORIES.GENERATORS,

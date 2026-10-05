@@ -14,8 +14,7 @@ const STAGE_REFERENCE = 'stageReference' as const;
 const SITES = new Set<string>();
 
 /**
- * A string field holding another STAGE's id: a skip-logic destination, the
- * FamilyPedigree a NarrativePedigree describes the people of.
+ * A string field holding another STAGE's id: a skip-logic destination.
  *
  * Tagging the schema node — rather than hand-maintaining a list of paths in
  * each consumer — is what lets `collectStageReferences` discover every stage a
@@ -30,7 +29,7 @@ const SITES = new Set<string>();
  *
  * The tag answers "which stages does this stage name?" and nothing more.
  * Whether the named stage exists, and whether it is of the right TYPE for the
- * site (a NarrativePedigree's source must be a FamilyPedigree) or in the right
+ * site (a reference that must name a particular stage type) or in the right
  * position (a skip destination must come after the stage jumping to it), is
  * still decided by the protocol-level refinements in `schema.ts`.
  */

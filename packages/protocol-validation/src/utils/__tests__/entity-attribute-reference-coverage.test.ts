@@ -39,35 +39,33 @@ const countTagged = (
 };
 
 // Update this number deliberately when adding/removing a tagged field.
-// Merged total: main's NetworkComposer reference fields, plus this branch's
-// pedigree fields — biologicalSexVariable (NodeConfigSchema), gameteRoleVariable
-// (EdgeConfigSchema), and NarrativePedigree diseases[].variable — plus the two
-// node shape-mapping `variable` fields (discrete and breakpoints arms), plus
+// Merged total: main's NetworkComposer reference fields, plus the pedigree's
+// person attributes (name, gender identity, sex assigned at birth, ego) and
+// relationship attributes (kind, gestational carrier, current partner), plus
+// the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
 // #1392's four existence-unchecked sites: the shared sort rule `property`
 // (SortRuleSchema, reached by every prompt-level sort order and the roster's
 // stage-level one) and the roster's three data-source column fields
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 40;
+const EXPECTED_TAGGED_FIELD_COUNT = 37;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns. Both drive protocol-level rules and Architect's pickers/option
 // editors, so adding a structural slot without listing it here — or listing
 // one that no longer exists — fails.
 const EXPECTED_EXCLUSIVE_SLOTS = [
-  'familyPedigree.edgeConfig.gameteRoleVariable',
-  'familyPedigree.edgeConfig.isActiveVariable',
-  'familyPedigree.edgeConfig.isGestationalCarrierVariable',
-  'familyPedigree.edgeConfig.relationshipTypeVariable',
-  'familyPedigree.nodeConfig.egoVariable',
-  'familyPedigree.nodeConfig.relationshipVariable',
+  'familyPedigree.person.egoVariable',
+  'familyPedigree.relationship.currentPartnerVariable',
+  'familyPedigree.relationship.gestationalCarrierVariable',
+  'familyPedigree.relationship.kindVariable',
 ];
 
 const EXPECTED_OWNED_OPTION_SETS = [
-  'biologicalSex',
-  'gameteRole',
-  'relationshipType',
+  'pedigreeGenderIdentity',
+  'pedigreeRelationship',
+  'pedigreeSexAssignedAtBirth',
 ];
 
 // The descriptors themselves, by the same traversal as countTagged.

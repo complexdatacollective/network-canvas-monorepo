@@ -68,7 +68,7 @@ const messages = defineMessages({
  * and `behaviours.allowRepositioning`, in that order — the section's own
  * description names all three, and this is the order Architect listed them in.
  *
- * The narrative interface is the only one of the nineteen that honours the
+ * The narrative interface is the only one of the eighteen that honours the
  * last two, so this section lives with it. `Sociogram.tsx` reads no drawing
  * flag and repositions unconditionally, and offers automatic layout through
  * the shared layout-mode section instead.

@@ -74,7 +74,7 @@ type WalkContext = {
   // options.type entity ('ego' rules reference no codebook type).
   filterRuleEntity?: 'node' | 'edge';
   // The protocol's stages, for a stage whose subject is declared on ANOTHER
-  // stage (NarrativePedigree). Empty when the walk was entered on a schema
+  // stage. Empty when the walk was entered on a schema
   // fragment rather than a whole protocol.
   stages: readonly unknown[];
 };
@@ -441,7 +441,7 @@ const isStageHit = (
 
 /**
  * The walk's root context. `stages` is seeded from the value being walked so a
- * stage whose subject lives on another stage (NarrativePedigree) can resolve
+ * stage whose subject lives on another stage can resolve
  * it; walking a schema fragment simply leaves it empty.
  */
 const rootContext = (value: unknown): WalkContext => ({
@@ -466,7 +466,7 @@ export const collectEntityAttributeReferences = (
  * schema's `entityTypeReference` tags — the entity-type counterpart of
  * `collectEntityAttributeReferences`. Covers stage subjects (including the
  * NetworkComposer's per-edge-type entries), edge creation/display prompt
- * settings, the FamilyPedigree node/edge configs, and filter rules.
+ * settings, the FamilyPedigree subject and relationship type, and filter rules.
  *
  * Stated once, over any fragment of the schema and any value shaped like it,
  * so a caller holding one STAGE rather than a whole protocol — a stage editor,
@@ -496,7 +496,7 @@ export const collectEntityTypeReferences = (
  * schema's `assetReference` tags — the asset counterpart of
  * `collectEntityAttributeReferences`. Covers name generator and panel data
  * sources, sociogram/narrative background images, the Geospatial map's token
- * and data-source assets, and Information / FamilyPedigree intro-screen asset
+ * and data-source assets, and Information intro-screen asset
  * items.
  *
  * Consumers that need to know whether an asset is in use must derive it from
@@ -514,8 +514,7 @@ export const collectAssetReferences = (
 /**
  * Every other STAGE a protocol's stages name, discovered from the schema's
  * `stageReference` tags — the stage counterpart of the collectors above.
- * Covers skip-logic destinations and the FamilyPedigree a NarrativePedigree
- * describes the people of.
+ * Covers skip-logic destinations.
  *
  * A consumer deciding whether a stage may be REMOVED must derive its
  * dependants from here rather than from the two paths it happens to know: a

@@ -65,18 +65,22 @@
           "default": "diamond",
           "dynamic": {
             "type": "discrete",
-            "variable": "biologicalSex",
+            "variable": "genderIdentity",
             "map": [
               {
-                "value": "male",
+                "value": "man",
                 "shape": "square"
               },
               {
-                "value": "female",
+                "value": "woman",
                 "shape": "circle"
               },
               {
-                "value": "intersex",
+                "value": "nonBinary",
+                "shape": "diamond"
+              },
+              {
+                "value": "differentIdentity",
                 "shape": "diamond"
               },
               {
@@ -104,37 +108,6 @@
             "name": "is_ego",
             "type": "boolean",
             "component": "Toggle"
-          },
-          "relationship_to_ego": {
-            "name": "relationship_to_ego",
-            "type": "text",
-            "component": "Text"
-          },
-          "biologicalSex": {
-            "name": "biologicalSex",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "female",
-                "label": "Female"
-              },
-              {
-                "value": "male",
-                "label": "Male"
-              },
-              {
-                "value": "intersex",
-                "label": "Intersex or a variation in sex characteristics"
-              },
-              {
-                "value": "unknown",
-                "label": "Don’t know"
-              },
-              {
-                "value": "preferNotToSay",
-                "label": "Prefer not to say"
-              }
-            ]
           },
           "layout": {
             "name": "layout",
@@ -301,6 +274,62 @@
             "name": "role_blocker",
             "type": "boolean",
             "component": "Toggle"
+          },
+          "genderIdentity": {
+            "name": "genderIdentity",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "woman",
+                "label": "Woman"
+              },
+              {
+                "value": "man",
+                "label": "Man"
+              },
+              {
+                "value": "nonBinary",
+                "label": "Non-binary"
+              },
+              {
+                "value": "differentIdentity",
+                "label": "A different identity"
+              },
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
+            ]
+          },
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "female",
+                "label": "Female"
+              },
+              {
+                "value": "male",
+                "label": "Male"
+              },
+              {
+                "value": "intersex",
+                "label": "Intersex"
+              },
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
+            ]
           }
         }
       }
@@ -310,17 +339,25 @@
         "name": "Family relationship",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": "Partner"
+              },
+              {
                 "value": "biological",
-                "label": "Biological"
+                "label": "Biological parent"
+              },
+              {
+                "value": "adoptive",
+                "label": "Adoptive parent"
               },
               {
                 "value": "social",
-                "label": "Social"
+                "label": "Step or social parent"
               },
               {
                 "value": "donor",
@@ -329,38 +366,16 @@
               {
                 "value": "surrogate",
                 "label": "Surrogate"
-              },
-              {
-                "value": "adoptive",
-                "label": "Adoptive"
-              },
-              {
-                "value": "partner",
-                "label": "Partner"
               }
             ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "type": "boolean"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": "Egg"
-              },
-              {
-                "value": "sperm",
-                "label": "Sperm"
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean"
           }
         }
       },
@@ -380,7 +395,7 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; use `relationship_to_ego` for family relationships and `tie_type` for non-family contacts in analysis.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; family relationships are the family edges the pedigree records, and `tie_type` describes non-family contacts in analysis. People added in the pedigree are told apart from other contacts by having a gender identity recorded.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
         }
       ]
     },
@@ -445,14 +460,26 @@
       "id": "family-pedigree",
       "type": "FamilyPedigree",
       "label": "Family pedigree",
-      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status and birth year are collected while each person is added. The two questions after the pedigree is finalised are asked by tapping people on the finished tree. Take them slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
-      "nodeConfig": {
-        "type": "person",
-        "nodeLabelVariable": "name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex",
-        "form": [
+      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status, birth year, whether the person has had the condition, and whether they have had genetic testing for it are all asked while each person is added. Take the condition and testing questions slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompt": "Let's map out your family. Who is in it?",
+      "personAttributes": {
+        "nameVariable": "name",
+        "genderIdentityVariable": "genderIdentity",
+        "sexAssignedAtBirthVariable": "sexAssignedAtBirth",
+        "egoVariable": "is_ego"
+      },
+      "relationship": {
+        "type": "family_relationship",
+        "kindVariable": "relationshipKind",
+        "gestationalCarrierVariable": "isGestationalCarrier",
+        "currentPartnerVariable": "isCurrentPartner"
+      },
+      "form": {
+        "fields": [
           {
             "variable": "living_status",
             "prompt": "Is this person living or deceased?"
@@ -461,45 +488,17 @@
             "variable": "birth_year",
             "prompt": "What year was this person born?",
             "hint": "Leave this blank if you do not know."
-          }
-        ]
-      },
-      "edgeConfig": {
-        "type": "family_relationship",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
-      },
-      "framing": {
-        "mode": "participantChoice"
-      },
-      "boundaries": {
-        "requireGrandparents": "recommended",
-        "requireChildrenContributors": "recommended"
-      },
-      "introScreen": {
-        "items": [
+          },
           {
-            "id": "pedigree-intro",
-            "type": "text",
-            "content": "A family tree records everyone in your family — including partners, step-parents, adoptive and social parents, donors, surrogates, and anyone else who helped you come into the world.\n\nIt also keeps track of which relationships are **biological**, because that is what lets us follow how a condition may pass down a family. You will be asked about both, so please include everyone who belongs in your family story."
+            "variable": "has_condition",
+            "prompt": "Has this person had **this condition**?"
+          },
+          {
+            "variable": "had_testing",
+            "prompt": "Has this person had **genetic testing** for it?"
           }
         ]
-      },
-      "censusPrompt": "Let's map out your family. Who is in it?",
-      "nominationPrompts": [
-        {
-          "id": "nom-condition",
-          "text": "Who in your family has had **this condition**?",
-          "variable": "has_condition"
-        },
-        {
-          "id": "nom-testing",
-          "text": "Who has had **genetic testing** for it?",
-          "variable": "had_testing"
-        }
-      ]
+      }
     },
     {
       "id": "information-beyond-family",
@@ -547,7 +546,7 @@
                 "type": "node",
                 "options": {
                   "type": "person",
-                  "attribute": "relationship_to_ego",
+                  "attribute": "genderIdentity",
                   "operator": "NOT_EXISTS"
                 }
               }
@@ -610,7 +609,7 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "relationship_to_ego",
+              "attribute": "genderIdentity",
               "operator": "NOT_EXISTS"
             }
           }
@@ -869,7 +868,7 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "relationship_to_ego",
+              "attribute": "genderIdentity",
               "operator": "EXISTS"
             }
           }
@@ -941,23 +940,6 @@
           }
         ]
       }
-    },
-    {
-      "id": "narrative-pedigree",
-      "type": "NarrativePedigree",
-      "label": "How the condition runs in the family",
-      "interviewScript": "This view reports the family structure and the people the participant identified as having the condition. It does not establish a diagnosis.\n\nThe inheritance pattern deliberately defaults to unknown and possible at-risk statuses are switched off. Before fielding, select a clinically supported pattern if one applies. Only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure; the inference assumes full penetrance and may surface information a participant has not previously been told.",
-      "sourceStageId": "family-pedigree",
-      "showAtRiskStatuses": false,
-      "diseases": [
-        {
-          "id": "condition",
-          "label": "This condition",
-          "color": "node-color-seq-1",
-          "variable": "has_condition",
-          "inheritancePattern": "unknown"
-        }
-      ]
     },
     {
       "id": "information-close",

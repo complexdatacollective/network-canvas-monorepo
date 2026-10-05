@@ -302,8 +302,8 @@ export class InMemoryProtocolStore {
    * A stage other stages depend on is refused, not swept. The refactors strip
    * the references they remove because a codebook dialog is the researcher
    * deciding a variable is gone; nothing here is a decision about ANOTHER
-   * stage, and a sweep would silently rewrite a collaborator's skip logic — or
-   * cut a NarrativePedigree from the pedigree it describes — as a side effect
+   * stage, and a sweep would silently rewrite a collaborator's skip logic as a side
+   * effect
    * of removing something else. So the dependants are named and the deletion
    * is the researcher's to make once they have dealt with them.
    */

@@ -18,13 +18,13 @@ import InterviewerGuidanceSection from '../../interviewer-guidance/InterviewerGu
 import SkipLogicSection from '../SkipLogicSection.tsx';
 
 /**
- * The stage most of these open: the third of the fixture's nineteen, and the
+ * The stage most of these open: the third of the fixture's eighteen, and the
  * simplest one there is — a name, a heading and the blocks under it.
  */
 const STAGE = loadFixtureStage('information-1');
 
 /**
- * The stage the destination tests open instead: the fifteenth of nineteen, so
+ * The stage the destination tests open instead: the fifteenth of eighteen, so
  * every destination it may offer fits in one assertion and the fourteen stages
  * before it are all there to be left out of it.
  */
@@ -899,13 +899,12 @@ describe('choosing where the interview continues', () => {
     });
 
     // The fourteen stages before this one are not among them, and each of the
-    // four that are is numbered where the researcher will find it.
+    // three that are is numbered where the researcher will find it.
     expect(destinationOptions()).toEqual([
       'Next available stage',
       'Stage 16 — Family Pedigree',
-      'Stage 17 — Narrative Pedigree',
-      'Stage 18 — Network Composer',
-      'Stage 19 — Geospatial',
+      'Stage 17 — Network Composer',
+      'Stage 18 — Geospatial',
       'End the interview',
     ]);
   });
@@ -920,8 +919,8 @@ describe('choosing where the interview continues', () => {
     renderStageEditor({
       create: {
         type: STAGE.type,
-        // Between the seventeenth and the eighteenth stage, counting from zero.
-        position: 17,
+        // Between the sixteenth and the seventeenth stage, counting from zero.
+        position: 16,
         fields: { ...STAGE.fields, ...configuredFields() },
       },
       sections: skipLogicOnly,
@@ -931,8 +930,8 @@ describe('choosing where the interview continues', () => {
       'Next available stage',
       // The stage this one displaces comes after it, and it and the stage
       // beyond it are both numbered one higher than they are today.
-      'Stage 19 — Network Composer',
-      'Stage 20 — Geospatial',
+      'Stage 18 — Network Composer',
+      'Stage 19 — Geospatial',
       'End the interview',
     ]);
   });

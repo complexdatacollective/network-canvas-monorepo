@@ -8,9 +8,9 @@ import {
   OrdinalColorSequence,
 } from '../color-reference.ts';
 import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
@@ -2613,123 +2613,23 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     });
   });
 
-  describe('FamilyPedigree introScreen asset validation', () => {
-    // A shape-valid FamilyPedigree stage. Its config variables need not exist in
-    // the codebook for this suite: superRefine accumulates all issues, so the
-    // introScreen asset check runs regardless, and we assert its issue via
-    // find().
-    const familyPedigreeStage = {
-      id: 'fp1',
-      type: 'FamilyPedigree' as const,
-      label: 'Family Pedigree',
-      nodeConfig: {
-        type: 'person',
-        nodeLabelVariable: 'label',
-        egoVariable: 'isEgo',
-        relationshipVariable: 'rel',
-        biologicalSexVariable: 'bioSex',
-      },
-      edgeConfig: {
-        type: 'family',
-        relationshipTypeVariable: 'relType',
-        isActiveVariable: 'isActive',
-        isGestationalCarrierVariable: 'isGc',
-        gameteRoleVariable: 'gameteRole',
-      },
-      framing: { mode: 'fixed' as const, value: 'gamete' as const },
-      boundaries: {
-        requireGrandparents: 'off' as const,
-        requireChildrenContributors: 'off' as const,
-      },
-      censusPrompt: 'Build your family',
-    };
-
-    const protocolWithIntroItem = (
-      item: Record<string, unknown>,
-      assetManifest?: Record<string, unknown>,
-    ) => ({
-      ...baseValidProtocol,
-      ...(assetManifest ? { assetManifest } : {}),
-      stages: [{ ...familyPedigreeStage, introScreen: { items: [item] } }],
-    });
-
-    it('rejects an intro asset item absent from the manifest', () => {
-      const result = ProtocolSchemaV8.safeParse(
-        protocolWithIntroItem({
-          id: 'i1',
-          type: 'asset',
-          content: 'missing-asset',
-        }),
-      );
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find((i) =>
-          i.message.includes(
-            'introScreen item "missing-asset" does not reference an asset in the manifest',
-          ),
-        );
-        expect(issue).toBeDefined();
-        expect(issue?.path).toEqual([
-          'stages',
-          0,
-          'introScreen',
-          'items',
-          0,
-          'content',
-        ]);
-      }
-    });
-
-    it('rejects an intro asset item of a non-displayable type', () => {
-      const result = ProtocolSchemaV8.safeParse(
-        protocolWithIntroItem(
-          { id: 'i1', type: 'asset', content: 'net-1' },
-          {
-            'net-1': {
-              id: 'net-1',
-              type: 'network',
-              name: 'Roster',
-              source: 'roster.csv',
-            },
-          },
-        ),
-      );
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find(
-          (i) =>
-            i.message.includes('introScreen item "net-1"') &&
-            i.message.includes('must reference an asset of type'),
-        );
-        expect(issue).toBeDefined();
-      }
-    });
-
-    it('does not raise an introScreen asset issue for a text item', () => {
-      const result = ProtocolSchemaV8.safeParse(
-        protocolWithIntroItem({ id: 'i1', type: 'text', content: 'Welcome' }),
-      );
-      const introAssetIssue =
-        !result.success &&
-        result.error.issues.find((i) => i.message.includes('introScreen item'));
-      expect(introAssetIssue).toBeFalsy();
-    });
-  });
-
   describe('FamilyPedigree locked value-set validation', () => {
-    // Builds a protocol whose codebook carries the FamilyPedigree node/edge
-    // types with the biological-sex, relationship-type and gamete-role variables
-    // present as categorical variables with the supplied option sets.
+    type Options = { value: string; label: string }[];
+
+    // Builds a protocol whose codebook carries the FamilyPedigree person and
+    // relationship types, with the gender-identity, sex-assigned-at-birth and
+    // relationship-kind variables present as categorical variables carrying the
+    // supplied option sets.
     const protocolWithLockedVariables = ({
-      biologicalSexOptions = BIOLOGICAL_SEX_OPTIONS,
-      biologicalSexType = 'categorical',
-      relationshipTypeOptions = RELATIONSHIP_TYPE_OPTIONS,
-      gameteRoleOptions = GAMETE_ROLE_OPTIONS,
+      genderIdentityOptions = PEDIGREE_GENDER_IDENTITY_OPTIONS,
+      genderIdentityType = 'categorical',
+      sexAssignedAtBirthOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+      relationshipKindOptions = PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
     }: {
-      biologicalSexOptions?: { value: string; label: string }[];
-      biologicalSexType?: 'categorical' | 'ordinal';
-      relationshipTypeOptions?: { value: string; label: string }[];
-      gameteRoleOptions?: { value: string; label: string }[];
+      genderIdentityOptions?: Options;
+      genderIdentityType?: 'categorical' | 'ordinal';
+      sexAssignedAtBirthOptions?: Options;
+      relationshipKindOptions?: Options;
     }) => ({
       name: 'Test Protocol',
       schemaVersion: 8 as const,
@@ -2741,13 +2641,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             shape: { default: 'circle' },
             variables: {
               isEgo: { name: 'IsEgo', type: 'boolean' },
-              label: { name: 'Label', type: 'text' },
-              rel: { name: 'Rel', type: 'text' },
-              bioSex: {
-                name: 'BioSex',
-                type: biologicalSexType,
+              name: { name: 'Name', type: 'text' },
+              gender: {
+                name: 'Gender',
+                type: genderIdentityType,
                 readOnly: true,
-                options: biologicalSexOptions,
+                options: genderIdentityOptions,
+              },
+              sab: {
+                name: 'Sab',
+                type: 'categorical',
+                readOnly: true,
+                options: sexAssignedAtBirthOptions,
               },
             },
           },
@@ -2757,18 +2662,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             name: 'Family',
             color: 'edge-color-seq-1',
             variables: {
-              isActive: { name: 'IsActive', type: 'boolean' },
-              isGc: { name: 'IsGc', type: 'boolean' },
-              relType: {
-                name: 'RelType',
+              kind: {
+                name: 'Kind',
                 type: 'categorical',
-                options: relationshipTypeOptions,
+                readOnly: true,
+                options: relationshipKindOptions,
               },
-              gameteRole: {
-                name: 'GameteRole',
-                type: 'categorical',
-                options: gameteRoleOptions,
-              },
+              carrier: { name: 'Carrier', type: 'boolean' },
+              current: { name: 'Current', type: 'boolean' },
             },
           },
         },
@@ -2778,26 +2679,20 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           id: 'fp1',
           type: 'FamilyPedigree' as const,
           label: 'Family Pedigree',
-          nodeConfig: {
-            type: 'person',
-            nodeLabelVariable: 'label',
+          subject: { entity: 'node' as const, type: 'person' },
+          prompt: 'Build your family',
+          personAttributes: {
+            nameVariable: 'name',
+            genderIdentityVariable: 'gender',
+            sexAssignedAtBirthVariable: 'sab',
             egoVariable: 'isEgo',
-            relationshipVariable: 'rel',
-            biologicalSexVariable: 'bioSex',
           },
-          edgeConfig: {
+          relationship: {
             type: 'family',
-            relationshipTypeVariable: 'relType',
-            isActiveVariable: 'isActive',
-            isGestationalCarrierVariable: 'isGc',
-            gameteRoleVariable: 'gameteRole',
+            kindVariable: 'kind',
+            gestationalCarrierVariable: 'carrier',
+            currentPartnerVariable: 'current',
           },
-          framing: { mode: 'fixed' as const, value: 'gamete' as const },
-          boundaries: {
-            requireGrandparents: 'off' as const,
-            requireChildrenContributors: 'off' as const,
-          },
-          censusPrompt: 'Build your family',
         },
       ],
     });
@@ -2815,12 +2710,12 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(lockedIssue).toBeFalsy();
     });
 
-    it('rejects a biological-sex variable whose options were edited', () => {
+    it('rejects a gender-identity variable whose options were edited', () => {
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
-          biologicalSexOptions: [
-            { value: 'female', label: 'Female' },
-            { value: 'male', label: 'Male' },
+          genderIdentityOptions: [
+            { value: 'woman', label: 'Woman' },
+            { value: 'man', label: 'Man' },
           ],
         }),
       );
@@ -2828,24 +2723,69 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
           i.message.includes(
-            'FamilyPedigree biological sex attribute "bioSex" must use its fixed set of options',
+            'FamilyPedigree gender identity attribute "gender" must use its fixed set of options',
           ),
         );
         expect(issue).toBeDefined();
         expect(issue?.path).toEqual([
           'stages',
           0,
-          'nodeConfig',
-          'biologicalSexVariable',
+          'personAttributes',
+          'genderIdentityVariable',
         ]);
       }
     });
 
-    it('rejects a relationship-type variable whose options were edited', () => {
+    it('rejects a gender-identity variable whose labels were edited', () => {
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
-          relationshipTypeOptions: [
-            { value: 'biological', label: 'Biological' },
+          genderIdentityOptions: PEDIGREE_GENDER_IDENTITY_OPTIONS.map(
+            (option) => ({ ...option, label: `${option.label}!` }),
+          ),
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(
+          result.error.issues.some((i) =>
+            i.message.includes('must use its fixed set of options'),
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('rejects a sex-assigned-at-birth variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          sexAssignedAtBirthOptions: [
+            { value: 'female', label: 'Female' },
+            { value: 'male', label: 'Male' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) =>
+            i.message.includes(
+              'FamilyPedigree sex assigned at birth attribute "sab"',
+            ) && i.message.includes('must use its fixed set of options'),
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'personAttributes',
+          'sexAssignedAtBirthVariable',
+        ]);
+      }
+    });
+
+    it('rejects a relationship-kind variable whose options were edited', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          relationshipKindOptions: [
+            { value: 'biological', label: 'Biological parent' },
             { value: 'made-up', label: 'Made Up' },
           ],
         }),
@@ -2855,43 +2795,15 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree relationship type attribute "relType"',
+              'FamilyPedigree family relationship kind attribute "kind"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();
         expect(issue?.path).toEqual([
           'stages',
           0,
-          'edgeConfig',
-          'relationshipTypeVariable',
-        ]);
-      }
-    });
-
-    it('rejects a gamete-role variable whose options were edited', () => {
-      const result = ProtocolSchemaV8.safeParse(
-        protocolWithLockedVariables({
-          gameteRoleOptions: [
-            { value: 'egg', label: 'Egg' },
-            { value: 'sperm', label: 'Sperm' },
-            { value: 'extra', label: 'Extra' },
-          ],
-        }),
-      );
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find(
-          (i) =>
-            i.message.includes(
-              'FamilyPedigree gamete role attribute "gameteRole"',
-            ) && i.message.includes('must use its fixed set of options'),
-        );
-        expect(issue).toBeDefined();
-        expect(issue?.path).toEqual([
-          'stages',
-          0,
-          'edgeConfig',
-          'gameteRoleVariable',
+          'relationship',
+          'kindVariable',
         ]);
       }
     });
@@ -2902,8 +2814,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       // options schema. The locked-set backstop must fire for ordinal too.
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
-          biologicalSexType: 'ordinal',
-          biologicalSexOptions: [
+          genderIdentityType: 'ordinal',
+          genderIdentityOptions: [
             { value: 'yes', label: 'Yes' },
             { value: 'no', label: 'No' },
           ],
@@ -2914,16 +2826,10 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree biological sex attribute "bioSex"',
+              'FamilyPedigree gender identity attribute "gender"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();
-        expect(issue?.path).toEqual([
-          'stages',
-          0,
-          'nodeConfig',
-          'biologicalSexVariable',
-        ]);
       }
     });
   });

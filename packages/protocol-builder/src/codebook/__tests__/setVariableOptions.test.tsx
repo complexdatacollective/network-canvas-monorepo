@@ -12,10 +12,9 @@ import { sectionIdForCodebookSubject } from '../editing.ts';
 import { useSetVariableOptions } from '../useCodebookVariableEdits.ts';
 
 /**
- * The type the family pedigree describes, whose `biologicalSex` values that
- * interface owns: the genetics engine and the interview both branch on the
- * exact strings, so the list is not the researcher's however the attribute is
- * reached.
+ * The type the family pedigree describes, whose `sexAssignedAtBirth` values
+ * that interface owns: the interview branches on the exact strings, so the
+ * list is not the researcher's however the attribute is reached.
  */
 const FAMILY_MEMBER: CodebookSubject = {
   entity: 'node',
@@ -28,7 +27,7 @@ const WITH_AN_EXTRA_VALUE = [
   { value: 'male', label: 'Male' },
   {
     value: 'intersex',
-    label: 'Intersex or a variation in sex characteristics',
+    label: 'Intersex',
   },
   { value: 'unknown', label: 'Don’t know' },
   { value: 'preferNotToSay', label: 'Prefer not to say' },
@@ -120,7 +119,7 @@ describe('writing the answers an attribute offers', () => {
    */
   it('refuses a list an interface owns, and writes nothing', async () => {
     const { harness, outcome, before } = await write(
-      'biologicalSex',
+      'sexAssignedAtBirth',
       WITH_AN_EXTRA_VALUE,
     );
 
@@ -134,13 +133,10 @@ describe('writing the answers an attribute offers', () => {
 
   /** An unchanged list is not a revision anybody has to merge. */
   it('writes nothing when the list already matches', async () => {
-    const { harness, outcome, before } = await write('biologicalSex', [
+    const { harness, outcome, before } = await write('sexAssignedAtBirth', [
       { value: 'female', label: 'Female' },
       { value: 'male', label: 'Male' },
-      {
-        value: 'intersex',
-        label: 'Intersex or a variation in sex characteristics',
-      },
+      { value: 'intersex', label: 'Intersex' },
       { value: 'unknown', label: 'Don’t know' },
       { value: 'preferNotToSay', label: 'Prefer not to say' },
     ]);

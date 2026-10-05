@@ -5,23 +5,20 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import type {
-  InterfaceOwnedOption,
-  Variables,
-  VariableType,
+import {
+  INTERFACE_OWNED_OPTION_SETS,
+  type InterfaceOwnedOptionSetKey,
+  type Variables,
+  type VariableType,
 } from '@codaco/protocol-validation';
 
 import CodebookVariableValidationSection from '../codebook/validation/CodebookVariableValidationSection.tsx';
-import type { WriterClass } from '../codebook/variableRoles.ts';
-import { usePedigreeVariableIndexes } from '../editors/family-pedigree/sections/entityTypeReset.ts';
-import { pedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
 import {
-  ruleOutValuesOutsideOwnedSet,
-  slotCrossClassIssue,
-  slotPickerOptions,
-  type SlotVariableOption,
-  unusableVariableIssue,
-} from '../editors/family-pedigree/sections/slotWiring.ts';
+  buildExclusiveVariableSlotMap,
+  buildVariableRoleMap,
+  type ExclusiveVariableSlotMap,
+  type WriterClass,
+} from '../codebook/variableRoles.ts';
 import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
@@ -29,117 +26,99 @@ import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { slotVariableMessages } from './slotVariableMessages.ts';
+import {
+  ruleOutValuesOutsideOwnedSet,
+  slotCrossClassIssue,
+  slotPickerOptions,
+  subjectVariableOptions,
+  unusableVariableIssue,
+} from './slotVariableWiring.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
 const NO_VARIABLES: Readonly<Variables> = Object.freeze({});
+const NO_CLAIMS: ExclusiveVariableSlotMap = Object.freeze({});
 
 export type SlotVariableFieldProps = Readonly<{
-  /** The slot's path in the stage document, e.g. `nodeConfig.egoVariable`. */
+  /** The slot's path in the stage document, e.g. `personAttributes.egoVariable`. */
   name: string;
   /**
-   * What this slot is called, and what it is for.
-   *
-   * DESCRIPTORS throughout, because the words belong to the section that
-   * mounts this rather than to the control: a string handed across this seam
-   * is invisible to extraction, absent from the catalogs and covered by no
-   * guard, so every word this component renders would be the words that stayed
-   * English.
+   * What this slot is called, and what it is for. Descriptors, because the
+   * words belong to the section that mounts this control.
    */
   label: MessageDescriptor;
   hint: MessageDescriptor;
+  /** Titles the codebook editor a create escalates to. */
+  createLabel: MessageDescriptor;
   /** The type whose attributes this slot binds. `null` while none is chosen. */
   subject: CodebookSubject | null;
+  /** The attribute type this slot binds, and the type a created one is given. */
+  variableType: VariableType;
   /**
-   * The pool, already narrowed to the attribute TYPE this slot binds.
-   *
-   * Narrowing by VALUES is done here rather than by the section, because it
-   * is not a narrowing: an attribute whose values have stopped matching
-   * `lockedOptions` stays in the pool, ruled out and named for what is wrong
-   * with it, so the one a slot already holds is still listed as held. See
-   * `ruleOutValuesOutsideOwnedSet`.
+   * Whether the interface collects this attribute from the participant through
+   * a validated control (`validated`) or writes it itself (`unvalidated`).
    */
-  options: readonly SlotVariableOption[];
   writerClass: WriterClass;
-  /** The interface slot this picker fills, if the schema names one. */
+  /**
+   * The exclusive interface slot this picker fills, where the schema declares
+   * the slot exclusive. Keeps an attribute bound to the SAME slot elsewhere on
+   * offer, and refuses one any other exclusive slot claims.
+   */
   ownSlot?: string;
+  /**
+   * The value set the interface owns for this slot. An attribute whose values
+   * differ is ruled out of the picker and refused at save, and one created here
+   * is seeded with exactly this set, locked.
+   */
+  ownedOptions?: InterfaceOwnedOptionSetKey;
   /**
    * Attributes this stage's own unsaved draft already claims in the OPPOSITE
    * writer class.
    */
   draftConflicting?: readonly string[];
+  /** Exclusive claims this stage's own unsaved draft has made. */
+  draftSlotMap?: ExclusiveVariableSlotMap;
   /**
-   * The attribute this stage's display label names right now, which no
-   * structural slot may also write. See `slotWiring`'s own note.
-   */
-  draftLabelVariable?: string;
-  /** The attribute type a newly created attribute is given. */
-  variableType: VariableType;
-  /**
-   * The canonical value set the interface owns, seeded and locked.
-   *
-   * The picker, the create affordance and the save-time gate all read it: an
-   * attribute whose values do not match it is ruled out of the picker, one
-   * created here is seeded with it, and one the control is already holding is
-   * refused at the save when its values stop matching it.
-   */
-  lockedOptions?: readonly InterfaceOwnedOption[];
-  /**
-   * What inventing this slot's attribute is called.
-   *
-   * Titles the codebook editor the picker's create row escalates to, for the
-   * kinds of answer a name alone cannot finish — a list of values, a set the
-   * interface owns. Whole rather than a generic "Create": a pedigree editor
-   * binds several slots at once and a shared title would say nothing about
-   * which of them the open dialog is for.
-   */
-  createLabel: MessageDescriptor;
-  /** Said in place of the list when the codebook offers nothing usable. */
-  emptyMessage: MessageDescriptor;
-  /**
-   * Whether the chosen attribute's own rules are edited under this picker.
-   *
-   * Only the display label: it is the one slot the PARTICIPANT types into, so
-   * its rules are what stand between them and a family member with no name,
-   * and Architect mounts the rule section under exactly that picker
-   * (`sections/FamilyPedigree/NodeConfiguration.tsx`). The structural slots
-   * beside it are stamped by the interface, which no rule of the researcher's
-   * governs.
+   * Edit the chosen attribute's own validation rules under the picker. For a
+   * slot whose value the participant types.
    */
   offerValidation?: boolean;
 }>;
 
 /**
- * One attribute the pedigree binds: chosen from the codebook, or created.
+ * One attribute an interface binds to a slot of its own: chosen from the
+ * codebook, or created from the picker.
  *
  * The picker, the save-time gate and the create affordance are one component
- * because they have to agree. A picker that offered an attribute the gate then
- * refuses reads as the editor changing its mind; a create affordance that
- * seeded a different type — or a different value set — from the one the slot
- * accepts would produce an attribute the picker immediately hides again.
+ * because they have to agree: a picker offering what the gate refuses reads as
+ * the editor changing its mind, and a create seeding a different type or value
+ * set would produce an attribute the picker immediately hides again.
  */
 export default function SlotVariableField({
   name,
   label,
   hint,
+  createLabel,
   subject,
-  options,
+  variableType,
   writerClass,
   ownSlot,
+  ownedOptions,
   draftConflicting,
-  draftLabelVariable,
-  variableType,
-  lockedOptions,
-  createLabel,
-  emptyMessage,
+  draftSlotMap = NO_CLAIMS,
   offerValidation = false,
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
   const { committedFields, storeApi } = useStageEditorForm();
   const protocolContext = useProtocolContext();
-  const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
   const committedValue: unknown = get(committedFields, name);
+  const lockedOptions =
+    ownedOptions === undefined
+      ? undefined
+      : INTERFACE_OWNED_OPTION_SETS[ownedOptions].options;
+
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType,
@@ -149,6 +128,15 @@ export default function SlotVariableField({
       storeApi.getState().setFieldValue(name, variableId),
   });
 
+  const roleMap = useMemo(
+    () => buildVariableRoleMap(protocolContext),
+    [protocolContext],
+  );
+  const slotMap = useMemo(
+    () => buildExclusiveVariableSlotMap(protocolContext),
+    [protocolContext],
+  );
+
   const allVariables = useMemo(
     () =>
       subject === null
@@ -157,27 +145,27 @@ export default function SlotVariableField({
     [protocolContext, subject],
   );
 
-  // The picker is asked the SAME question as the gate below, `draftConflicting`
-  // included: an attribute this stage's own draft already claims in the other
-  // writer class is not on offer here, so the only pick that can reach the gate
-  // is one this picker never made — a value that arrived with the protocol, or
-  // one a slot was already holding when the conflicting field appeared.
+  const pool = useMemo(
+    () => subjectVariableOptions(protocolContext, subject, variableType),
+    [protocolContext, subject, variableType],
+  );
+
   const valueCheckedOptions = useMemo(
     () =>
       lockedOptions === undefined
-        ? options
+        ? pool
         : ruleOutValuesOutsideOwnedSet(
-            options,
+            pool,
             lockedOptions,
             (attributeName) => ({
               optionLabel: intl.formatMessage(
-                pedigreeMessages.slotValuesChangedOptionLabel,
+                slotVariableMessages.valuesChangedOptionLabel,
                 { attributeName },
               ),
-              note: intl.formatMessage(pedigreeMessages.slotValuesChangedNote),
+              note: intl.formatMessage(slotVariableMessages.valuesChangedNote),
             }),
           ),
-    [intl, lockedOptions, options],
+    [intl, lockedOptions, pool],
   );
 
   const pickerOptions = useMemo(
@@ -185,19 +173,17 @@ export default function SlotVariableField({
       slotPickerOptions({
         roleMap,
         slotMap,
+        draftSlotMap,
         subject,
         options: valueCheckedOptions,
         ...(currentValue === undefined ? {} : { currentValue }),
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
         ...(draftConflicting === undefined ? {} : { draftConflicting }),
-        ...(draftLabelVariable === undefined ? {} : { draftLabelVariable }),
-        draftSlotMap,
       }),
     [
       currentValue,
       draftConflicting,
-      draftLabelVariable,
       draftSlotMap,
       ownSlot,
       roleMap,
@@ -209,16 +195,9 @@ export default function SlotVariableField({
   );
 
   /**
-   * Everything the gate judges a pick against, kept live.
-   *
-   * The shared field registers its validation function once and memoises it on
-   * a JSON of its validation props — which drops functions, so a rebuilt
-   * closure would never replace the one registered on the first render. The
-   * gate therefore reads through a ref, the way that field's own message
-   * formatter does, and judges a pick against the draft as it stands when the
-   * researcher saves rather than as it stood when the editor opened. Without
-   * this, a form field added in this session would never refuse a structural
-   * slot: the whole point of the draft half of the rule.
+   * Everything the gate judges a pick against, kept live. The shared field
+   * memoises its validation on a JSON of its props, which drops functions, so
+   * the gate reads through a ref and judges the draft as it stands at save.
    */
   const judgeAgainst = useRef({
     variableType,
@@ -231,7 +210,6 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
-    draftLabelVariable,
     allVariables,
   });
   judgeAgainst.current = {
@@ -245,17 +223,14 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
-    draftLabelVariable,
     allVariables,
   };
 
-  const crossClassValidation = useMemo(
+  const slotValidation = useMemo(
     () =>
       messageRuleValidation([
-        // Asked first: an attribute that has been deleted or retyped under the
-        // slot is not a conflict with another writer, it is a reference to
-        // something that cannot hold what this slot writes — and saying so is
-        // more use than naming whoever else was writing it.
+        // Asked first: an attribute deleted or retyped under the slot is not a
+        // conflict with another writer, and saying so is more use.
         (value: unknown) =>
           unusableVariableIssue(
             judgeAgainst.current.allVariables,
@@ -272,6 +247,8 @@ export default function SlotVariableField({
     [],
   );
 
+  // A codebook change can make (or unmake) a standing error true; re-judge a
+  // field that is already showing one.
   useEffect(() => {
     const state = storeApi.getState();
     if (state.getFieldErrors(name) === null) return;
@@ -287,8 +264,8 @@ export default function SlotVariableField({
         hint={intl.formatMessage(hint)}
         required={REQUIRED}
         options={pickerOptions}
-        emptyMessage={intl.formatMessage(emptyMessage)}
-        custom={crossClassValidation}
+        emptyMessage={intl.formatMessage(slotVariableMessages.emptyState)}
+        custom={slotValidation}
         {...createProps}
       />
       {editor}

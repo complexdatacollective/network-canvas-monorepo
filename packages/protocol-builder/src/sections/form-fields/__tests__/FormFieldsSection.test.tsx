@@ -1,5 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { type ComponentProps, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -1249,181 +1249,52 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
 });
 
 /**
- * A Family Pedigree keeps its family-member form at `nodeConfig.form` and
- * names the node type it collects into at `nodeConfig.type` — which the schema
- * says in its own terms, as
- * `withStageSubjectResolution({ from: 'stagePath', path: ['nodeConfig', 'type'] })`.
- * The same section serves it, pointed at both.
+ * A form the researcher may switch off: a Family Pedigree's additional person
+ * fields. The schema accepts a pedigree with no `form` at all, but not one
+ * holding an empty list, so switching the capability off removes the whole
+ * `form`, and while it is on the form still needs a field.
  */
-/**
- * `unknown` rather than a list, because the protocol is not typed by the time
- * it reaches this section: what an import or a migration left at
- * `nodeConfig.form` is whatever it is, and a seed that could only be a list
- * could not ask the section what it says about the rest.
- */
-const pedigreeHoldingForm = (form: unknown) => {
+const pedigreeHoldingForm = (fields: unknown) => {
   const pedigree = loadFixtureStage('family-pedigree-1');
   return {
     id: pedigree.id,
     type: pedigree.type,
-    fields: {
-      ...pedigree.fields,
-      nodeConfig: { ...asRecord(pedigree.fields.nodeConfig), form },
-    },
+    fields: { ...pedigree.fields, form: { fields } },
   };
 };
 
-const pedigreeForm = (
-  request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
-): unknown => asRecord(request?.stageDocument.nodeConfig).form;
-
-/**
- * The pedigree's family-member form, and nothing else.
- *
- * Deliberately alone. A section pointed at a nested path owns that path and
- * only that path: the other five things a pedigree keeps on its node
- * configuration are edited by sections this test does not mount, and a save
- * from here must leave them exactly where it found them. This file used to
- * mount a stand-in for them, because a mounted field replaced its whole
- * top-level key.
- */
-const familyMemberForm = (
-  props: Partial<ComponentProps<typeof FormFieldsSection>> = {},
-) => (
-  <FormFieldsSection
-    subject="node"
-    fieldsPath="nodeConfig.form"
-    subjectTypePath="nodeConfig.type"
-    {...props}
-  />
-);
-
-const FAMILY_MEMBER_FORM: SectionCapability = {
-  fields: ['nodeConfig.form'],
+const PERSON_FORM: SectionCapability = {
+  fields: ['form'],
   confirmClear: {
-    title: fixtureMessage('Ask nothing about each family member?'),
+    title: fixtureMessage('Ask nothing more about each family member?'),
     description: fixtureMessage(
-      'The questions this pedigree asks about each family member will be forgotten.',
+      'The extra questions this pedigree asks about each family member will be forgotten.',
     ),
-    confirmLabel: fixtureMessage('Ask nothing'),
+    confirmLabel: fixtureMessage('Ask nothing more'),
   },
 };
 
-describe('a form the stage keeps somewhere other than `form.fields`', () => {
-  it('reads and writes the list at `fieldsPath`', async () => {
+const personForm = (
+  <FormFieldsSection subject="node" capability={PERSON_FORM} />
+);
+
+describe('a form the researcher may switch off', () => {
+  it('opens switched off on a stage with no form, and saves it without one', async () => {
     const harness = renderStageEditor({
-      stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
-      ]),
-      sections: familyMemberForm(),
+      stageId: 'family-pedigree-1',
+      sections: personForm,
     });
 
-    // The seeded field is on screen, so the list was read from `nodeConfig.form`
-    // rather than from an absent `form.fields`.
-    expect(
-      await screen.findByText('What is their name?', { exact: false }),
-    ).toBeInTheDocument();
-
-    const dialog = await openField(harness, 'Edit field');
-    const question = dialog.getByRole('textbox', { name: 'Question text' });
-    await harness.user.clear(question);
-    await harness.user.type(question, 'What do people call them?');
-    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-
-    // A bare array, which is the shape `FormFieldArraySchema` describes — the
-    // rewritten field went back where the seeded one came from, and nothing was
-    // written to `form.fields`.
-    expect(pedigreeForm(await harness.submit())).toEqual([
-      { variable: 'fm_name', prompt: 'What do people call them?' },
-    ]);
-  });
-
-  it('draws its picker from the type named at `subjectTypePath`', async () => {
-    const harness = renderStageEditor({
-      stage: pedigreeHoldingForm([]),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    const dialog = await openField(harness, 'Create new form field');
-    const offered = await offeredAttributes(
-      harness.user,
-      attributePicker(dialog),
-    );
-
-    // A family member's attributes, not a person's: `nodeConfig.type` is the
-    // only place this interface says which codebook the form collects into,
-    // and a section that went looking for `subject` would have found nothing.
-    expect(offered).toContain('fm_name');
-    expect(offered).not.toContain('relationship_to_ego');
-    expect(offered).not.toContain('name');
-    // Derived from the tree the participant draws, in this very stage, so the
-    // whole-protocol role map refuses them here.
-    expect(offered).not.toContain('is_ego');
-    expect(offered).not.toContain('fm_relationship_to_ego');
-    expect(offered).not.toContain('biologicalSex');
-  });
-
-  it('accepts a form emptied down to nothing when it is optional', async () => {
-    const harness = renderStageEditor({
-      stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
-      ]),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    // Twice: the row's own control asks, and the confirmation says what goes.
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Delete field' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Delete field' }),
-    );
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: 'Edit field' }),
-      ).not.toBeInTheDocument(),
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
+      ).toBe('Switched off'),
     );
-
-    // `FormFieldArraySchema.optional()` rather than `FormSchema.fields.min(1)`:
-    // a pedigree that asks nothing about each family member is a real protocol,
-    // so "add at least one field" must not be applied to it.
-    expect(pedigreeForm(await harness.submit())).toEqual([]);
-    expect(
-      screen.queryByText('You must create at least one item.'),
-    ).not.toBeInTheDocument();
-  });
-
-  it('leaves the rest of the node configuration to the sections that own it', async () => {
-    const seeded = pedigreeHoldingForm([
-      { variable: 'fm_name', prompt: 'What is their name?' },
-    ]);
-    const harness = renderStageEditor({
-      stage: seeded,
-      sections: familyMemberForm(),
-    });
-
-    const dialog = await openField(harness, 'Edit field');
-    const question = dialog.getByRole('textbox', { name: 'Question text' });
-    await harness.user.clear(question);
-    await harness.user.type(question, 'What do people call them?');
-    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-
-    // Nothing here edits the node type or the four variable slots, and a save
-    // that dropped them would leave the pedigree unable to draw a tree — the
-    // same loss as deleting a top-level key no section renders, one level down.
-    // Only the form moved.
-    expect(
-      asRecord((await harness.submit())?.stageDocument.nodeConfig),
-    ).toEqual({
-      ...asRecord(seeded.fields.nodeConfig),
-      form: [{ variable: 'fm_name', prompt: 'What do people call them?' }],
-    });
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'form')).toBe(false);
   });
 
   it('asks in the owning interface’s words before switching the form off', async () => {
@@ -1431,10 +1302,7 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
       stage: pedigreeHoldingForm([
         { variable: 'fm_name', prompt: 'What is their name?' },
       ]),
-      sections: familyMemberForm({
-        optional: true,
-        capability: FAMILY_MEMBER_FORM,
-      }),
+      sections: personForm,
     });
 
     // Seeded with a form, so the capability opens switched on.
@@ -1445,10 +1313,10 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
 
     await harness.user.click(toggle);
     expect(
-      await screen.findByText('Ask nothing about each family member?'),
+      await screen.findByText('Ask nothing more about each family member?'),
     ).toBeInTheDocument();
     await harness.user.click(
-      screen.getByRole('button', { name: 'Ask nothing' }),
+      screen.getByRole('button', { name: 'Ask nothing more' }),
     );
 
     await waitFor(() =>
@@ -1459,12 +1327,26 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
       ).toBe('Switched off'),
     );
 
-    // Absent, which is how the schema spells "this pedigree asks nothing about
-    // each family member" — not an empty list left behind by a closed section.
+    // Absent, which is how the schema spells "this pedigree asks nothing more
+    // about each family member" — not an empty list left behind.
     const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'form')).toBe(false);
+  });
+
+  it('asks for a first field while it is switched on', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      sections: personForm,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Form configuration' }),
+    );
+
+    expect(await harness.submit()).toBeNull();
     expect(
-      Object.hasOwn(asRecord(request?.stageDocument.nodeConfig), 'form'),
-    ).toBe(false);
+      await screen.findByText('You must create at least one item.'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -3121,37 +3003,10 @@ describe('a form whose list holds something that is not a field', () => {
  * Worse than a single unshowable entry, and from the same protocols: the
  * shared list has no entries at all to turn into rows, so the researcher is
  * looking at a form that reports itself finished while the schema refuses the
- * stage. `FormFieldArraySchema.optional()` spells "this pedigree asks nothing
- * about each family member" as an ABSENT value and only that, so `undefined`
- * is the one thing here that means absence — a string or an object left at
- * `nodeConfig.form` is malformed, and gets the sentence a `null` row gets.
+ * stage. A string or an object left where the list belongs is malformed, and
+ * gets the sentence a `null` row gets.
  */
 describe('a form whose list is not a list', () => {
-  it('says so when an optional form holds a string', async () => {
-    const harness = renderStageEditor({
-      stage: pedigreeHoldingForm('fm_name'),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    expect(await harness.submit()).toBeNull();
-    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
-  });
-
-  it('says so when an optional form holds an object', async () => {
-    const harness = renderStageEditor({
-      // The `form.fields` shape the three form stages use, written one level
-      // too high — which is what a hand-edit or a half-applied migration
-      // leaves behind here.
-      stage: pedigreeHoldingForm({
-        fields: [{ variable: 'fm_name', prompt: 'What is their name?' }],
-      }),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    expect(await harness.submit()).toBeNull();
-    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
-  });
-
   it('says so of a required form too, rather than asking for a first field', async () => {
     const harness = renderStageEditor({
       stage: {
@@ -3173,22 +3028,6 @@ describe('a form whose list is not a list', () => {
     expect(
       screen.queryByText('You must create at least one item.'),
     ).not.toBeInTheDocument();
-  });
-
-  it('still accepts an optional form that holds nothing at all', async () => {
-    // The fixture pedigree asks nothing about each family member: its
-    // `nodeConfig` has no `form` key, which is the shape the schema calls
-    // absent.
-    const pedigree = loadFixtureStage('family-pedigree-1');
-    const harness = renderStageEditor({
-      stage: pedigree,
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    const request = await harness.submit();
-    expect(request).not.toBeNull();
-    expect(pedigreeForm(request)).toBeUndefined();
-    expect(screen.queryByText(NOT_A_FIELD)).not.toBeInTheDocument();
   });
 });
 

@@ -312,18 +312,6 @@ export const validationRuleMessages = defineMessages({
     description:
       'Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged.',
   },
-  inheritancePattern: {
-    id: 'protocolValidation.rule.inheritancePattern',
-    defaultMessage: 'Inheritance pattern',
-    description:
-      'Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged.',
-  },
-  edgeConfig: {
-    id: 'protocolValidation.rule.edgeConfig',
-    defaultMessage: 'Link configuration',
-    description:
-      'Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged.',
-  },
   egoVariable: {
     id: 'protocolValidation.rule.egoVariable',
     defaultMessage: 'Participant indicator',

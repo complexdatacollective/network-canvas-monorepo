@@ -33,9 +33,6 @@ describe('the exclusive-variant containers of a stage document', () => {
    * - `background` is a sociogram's, a narrative's and a network composer's:
    *   an image XOR a number of concentric circles, said once as an
    *   author-facing refinement and once as the union it narrows to.
-   * - `framing` is the family pedigree's, discriminated on `mode`: a fixed
-   *   framing carries the value it is fixed to, and a participant's choice
-   *   carries nothing.
    * - `skipLogic.destination` is every stage's, discriminated on `type`: a
    *   named stage to jump to, or the end of the interview.
    *
@@ -46,8 +43,7 @@ describe('the exclusive-variant containers of a stage document', () => {
    * - a filter rule is a choice of subject, discriminated on `type`, wherever
    *   a filter appears: on the stage's skip logic, on a network filter, and on
    *   each of a narrative's panels.
-   * - a content item — an Information stage's `items`, a family pedigree's
-   *   `introScreen.items` — is text XOR an asset.
+   * - a content item — an Information stage's `items` — is text XOR an asset.
    * - `prompts.*.highlight` is a sociogram's: highlighting is on and names the
    *   attribute a tap writes, or it is off.
    */
@@ -55,8 +51,6 @@ describe('the exclusive-variant containers of a stage document', () => {
     expect(EXCLUSIVE_VARIANT_CONTAINERS).toEqual([
       ['background'],
       ['filter', 'rules', '*'],
-      ['framing'],
-      ['introScreen', 'items', '*'],
       ['items', '*'],
       ['panels', '*', 'filter', 'rules', '*'],
       ['prompts', '*', 'highlight'],
@@ -108,12 +102,15 @@ describe('the exclusive-variant containers of a stage document', () => {
    * two researchers configuring different parts of one capability both keep
    * their work. `skipLogic` holds the variant and is not one itself.
    */
-  it.each([['skipLogic'], ['form'], ['behaviours'], ['nodeConfig'], ['edges']])(
-    'does not claim %s, whose members are not rivals',
-    (key) => {
-      expect(isExclusiveVariantContainer([key])).toBe(false);
-    },
-  );
+  it.each([
+    ['skipLogic'],
+    ['form'],
+    ['behaviours'],
+    ['personAttributes'],
+    ['edges'],
+  ])('does not claim %s, whose members are not rivals', (key) => {
+    expect(isExclusiveVariantContainer([key])).toBe(false);
+  });
 
   /**
    * What "exclusive" means, said by the schema rather than by this list: a

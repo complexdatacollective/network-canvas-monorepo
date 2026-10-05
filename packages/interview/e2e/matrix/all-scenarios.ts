@@ -5,14 +5,12 @@ import { categoricalBinScenarios } from './categorical-bin.scenarios.js';
 import { crossCuttingScenarios } from './cross-cutting.scenarios.js';
 import { dyadCensusScenarios } from './dyad-census.scenarios.js';
 import { egoFormScenarios } from './ego-form.scenarios.js';
-import { familyPedigreeScenarios } from './family-pedigree.scenarios.js';
 import { finishSessionScenarios } from './finish-session.scenarios.js';
 import { geospatialScenarios } from './geospatial.scenarios.js';
 import { informationScenarios } from './information.scenarios.js';
 import { nameGeneratorQuickAddScenarios } from './name-generator-quick-add.scenarios.js';
 import { nameGeneratorRosterScenarios } from './name-generator-roster.scenarios.js';
 import { nameGeneratorScenarios } from './name-generator.scenarios.js';
-import { narrativePedigreeScenarios } from './narrative-pedigree.scenarios.js';
 import { narrativeScenarios } from './narrative.scenarios.js';
 import { networkComposerScenarios } from './network-composer.scenarios.js';
 import { oneToManyDyadCensusScenarios } from './one-to-many-dyad-census.scenarios.js';
@@ -35,7 +33,6 @@ export const ALL_SUITES: InterfaceScenarios[] = [
   crossCuttingScenarios,
   dyadCensusScenarios,
   egoFormScenarios,
-  familyPedigreeScenarios,
   finishSessionScenarios,
   geospatialScenarios,
   informationScenarios,
@@ -43,7 +40,6 @@ export const ALL_SUITES: InterfaceScenarios[] = [
   nameGeneratorRosterScenarios,
   nameGeneratorScenarios,
   narrativeScenarios,
-  narrativePedigreeScenarios,
   networkComposerScenarios,
   oneToManyDyadCensusScenarios,
   ordinalBinScenarios,

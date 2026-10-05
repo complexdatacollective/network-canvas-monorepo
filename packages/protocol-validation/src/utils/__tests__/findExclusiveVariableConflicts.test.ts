@@ -1,56 +1,38 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/8/family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../../schemas/8/schema.ts';
 import { findExclusiveVariableConflicts } from '../findExclusiveVariableConflicts.ts';
 
 type Stage = Record<string, unknown>;
 
+const personAttributes = {
+  nameVariable: 'fmName',
+  genderIdentityVariable: 'genderIdentity',
+  sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
+  egoVariable: 'isEgo',
+};
+
+const relationship = {
+  type: 'family_edge',
+  kindVariable: 'relationshipKind',
+  gestationalCarrierVariable: 'isGestationalCarrier',
+  currentPartnerVariable: 'isCurrentPartner',
+};
+
 const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
   label: 'Family Pedigree',
   type: 'FamilyPedigree',
-  nodeConfig: {
-    type: 'family_member',
-    nodeLabelVariable: 'fmName',
-    egoVariable: 'isEgo',
-    relationshipVariable: 'relationshipToEgo',
-    biologicalSexVariable: 'biologicalSex',
-  },
-  edgeConfig: {
-    type: 'family_edge',
-    relationshipTypeVariable: 'relationshipType',
-    isActiveVariable: 'isActive',
-    isGestationalCarrierVariable: 'isGestationalCarrier',
-    gameteRoleVariable: 'gameteRole',
-  },
-  censusPrompt: 'Build your family',
-  framing: { mode: 'fixed', value: 'gamete' },
-  boundaries: {
-    requireGrandparents: 'off',
-    requireChildrenContributors: 'off',
-  },
+  subject: { entity: 'node', type: 'family_member' },
+  prompt: 'Build your family',
+  personAttributes,
+  relationship,
   ...overrides,
-});
-
-const narrativePedigree = (variable: string): Stage => ({
-  id: 'np1',
-  label: 'Narrative Pedigree',
-  type: 'NarrativePedigree',
-  sourceStageId: 'fp1',
-  diseases: [
-    {
-      id: 'd1',
-      label: 'Condition X',
-      color: 'node-color-seq-1',
-      variable,
-      inheritancePattern: 'autosomalDominant',
-    },
-  ],
 });
 
 const protocolWith = (stages: Stage[]) => ({
@@ -65,14 +47,17 @@ const protocolWith = (stages: Stage[]) => ({
         variables: {
           fmName: { name: 'fm_name', type: 'text', component: 'Text' },
           isEgo: { name: 'is_ego', type: 'boolean' },
-          relationshipToEgo: { name: 'fm_relationship_to_ego', type: 'text' },
-          biologicalSex: {
-            name: 'biologicalSex',
+          genderIdentity: {
+            name: 'genderIdentity',
             type: 'categorical',
-            options: BIOLOGICAL_SEX_OPTIONS,
+            options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+          },
+          sexAssignedAtBirth: {
+            name: 'sexAssignedAtBirth',
+            type: 'categorical',
+            options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
           },
           hasConditionX: { name: 'hasConditionX', type: 'boolean' },
-          hadTesting: { name: 'hadTesting', type: 'boolean' },
           fmLayout: { name: 'fmLayout', type: 'layout' },
         },
       },
@@ -82,21 +67,16 @@ const protocolWith = (stages: Stage[]) => ({
         name: 'Family edge',
         color: 'edge-color-seq-1',
         variables: {
-          relationshipType: {
-            name: 'relationshipType',
+          relationshipKind: {
+            name: 'relationshipKind',
             type: 'categorical',
-            options: RELATIONSHIP_TYPE_OPTIONS,
+            options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
           },
-          isActive: { name: 'isActive', type: 'boolean' },
           isGestationalCarrier: {
             name: 'isGestationalCarrier',
             type: 'boolean',
           },
-          gameteRole: {
-            name: 'gameteRole',
-            type: 'categorical',
-            options: GAMETE_ROLE_OPTIONS,
-          },
+          isCurrentPartner: { name: 'isCurrentPartner', type: 'boolean' },
         },
       },
     },
@@ -105,95 +85,11 @@ const protocolWith = (stages: Stage[]) => ({
 });
 
 describe('findExclusiveVariableConflicts', () => {
-  it('reports nothing for a well-formed pedigree pair', () => {
-    const protocol = protocolWith([
-      familyPedigree({
-        nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'hasConditionX' },
-        ],
-      }),
-      narrativePedigree('hasConditionX'),
-    ]);
+  it('reports nothing for a well-formed pedigree', () => {
+    const protocol = protocolWith([familyPedigree()]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
-  });
-
-  it('reports a nomination prompt bound to the ego variable', () => {
-    const protocol = protocolWith([
-      familyPedigree({
-        nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'isEgo' },
-        ],
-      }),
-    ]);
-    const conflicts = findExclusiveVariableConflicts(protocol);
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.path).toEqual([
-      'stages',
-      0,
-      'nominationPrompts',
-      0,
-      'variable',
-    ]);
-    expect(conflicts[0]?.owner.slot).toBe(
-      'familyPedigree.nodeConfig.egoVariable',
-    );
-    expect(conflicts[0]?.variableName).toBe('is_ego');
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
-  });
-
-  // A disease row DECLARES what a variable means — "who is affected by this" —
-  // so pointing one at the pedigree's own participant marker contradicts the
-  // interface exactly as a second writer would, and paints the participant as
-  // affected in every interview.
-  it('reports a disease mapped onto an interface-owned slot', () => {
-    const protocol = protocolWith([
-      familyPedigree(),
-      narrativePedigree('isEgo'),
-    ]);
-    const conflicts = findExclusiveVariableConflicts(protocol);
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.path).toEqual([
-      'stages',
-      1,
-      'diseases',
-      0,
-      'variable',
-    ]);
-    expect(conflicts[0]?.owner.slot).toBe(
-      'familyPedigree.nodeConfig.egoVariable',
-    );
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
-  });
-
-  it('does not report a skip-logic filter rule that tests an interface-derived variable', () => {
-    const protocol = protocolWith([
-      familyPedigree(),
-      {
-        id: 'info1',
-        label: 'Wrap up',
-        type: 'Information',
-        items: [{ id: 'i1', type: 'text', content: 'Thanks', size: 'MEDIUM' }],
-        skipLogic: {
-          action: 'SKIP',
-          filter: {
-            join: 'OR',
-            rules: [
-              {
-                id: 'r1',
-                type: 'node',
-                options: {
-                  type: 'family_member',
-                  attribute: 'isEgo',
-                  operator: 'EXISTS',
-                },
-              },
-            ],
-          },
-        },
-      },
-    ]);
-    expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
+    const result = ProtocolSchemaV8.safeParse(protocol);
+    expect(result.success ? null : result.error.issues).toBeNull();
   });
 
   // A Sociogram prompt that sets `highlight.variable` without
@@ -253,23 +149,21 @@ describe('findExclusiveVariableConflicts', () => {
     expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
   });
 
-  it('reports a form field bound to an exclusive structural variable', () => {
+  it('reports a form field bound to the participant marker', () => {
     const protocol = protocolWith([
       familyPedigree({
-        nodeConfig: {
-          type: 'family_member',
-          nodeLabelVariable: 'fmName',
-          egoVariable: 'isEgo',
-          relationshipVariable: 'relationshipToEgo',
-          biologicalSexVariable: 'biologicalSex',
-          form: [{ variable: 'isEgo', prompt: 'Are you the participant?' }],
+        form: {
+          fields: [{ variable: 'isEgo', prompt: 'Are you the participant?' }],
         },
       }),
     ]);
     const conflicts = findExclusiveVariableConflicts(protocol);
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
-      ['stages', 0, 'nodeConfig', 'form', 0, 'variable'],
+      ['stages', 0, 'form', 'fields', 0, 'variable'],
     ]);
+    expect(conflicts[0]?.owner.slot).toBe('familyPedigree.person.egoVariable');
+    expect(conflicts[0]?.variableName).toBe('is_ego');
+    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
   });
 
   it('accepts two FamilyPedigree stages that share one node type and its structural slots', () => {
@@ -284,12 +178,9 @@ describe('findExclusiveVariableConflicts', () => {
   it('reports one variable claimed by two DIFFERENT exclusive slots', () => {
     const protocol = protocolWith([
       familyPedigree({
-        nodeConfig: {
-          type: 'family_member',
-          nodeLabelVariable: 'fmName',
-          egoVariable: 'isEgo',
-          relationshipVariable: 'isEgo',
-          biologicalSexVariable: 'biologicalSex',
+        relationship: {
+          ...relationship,
+          currentPartnerVariable: 'isGestationalCarrier',
         },
       }),
     ]);
@@ -298,23 +189,53 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts[0]?.path).toEqual([
       'stages',
       0,
-      'nodeConfig',
-      'relationshipVariable',
+      'relationship',
+      'currentPartnerVariable',
     ]);
   });
 
-  it('leaves the biological-sex variable free to be bound elsewhere', () => {
-    // Binning family members by sex is legitimate authoring: the interface owns
-    // the OPTIONS, not the reference. Only the options are locked.
+  it('does not report a skip-logic filter rule that tests an interface-derived variable', () => {
+    const protocol = protocolWith([
+      familyPedigree(),
+      {
+        id: 'info1',
+        label: 'Wrap up',
+        type: 'Information',
+        items: [{ id: 'i1', type: 'text', content: 'Thanks', size: 'MEDIUM' }],
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            join: 'OR',
+            rules: [
+              {
+                id: 'r1',
+                type: 'node',
+                options: {
+                  type: 'family_member',
+                  attribute: 'isEgo',
+                  operator: 'EXISTS',
+                },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
+  });
+
+  it('leaves the gender-identity variable free to be bound elsewhere', () => {
+    // Binning family members by gender is legitimate authoring: the interface
+    // owns the OPTIONS, not the reference. Only the options are locked.
     const protocol = protocolWith([
       familyPedigree(),
       {
         id: 'cb1',
-        label: 'Sort by sex',
+        label: 'Sort by gender',
         type: 'CategoricalBin',
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
-          { id: 'p1', text: 'Sort your family', variable: 'biologicalSex' },
+          { id: 'p1', text: 'Sort your family', variable: 'genderIdentity' },
         ],
       },
     ]);
@@ -326,19 +247,19 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree(),
       {
         id: 'cb1',
-        label: 'Sort by sex',
+        label: 'Sort by gender',
         type: 'CategoricalBin',
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
-          { id: 'p1', text: 'Sort your family', variable: 'biologicalSex' },
+          { id: 'p1', text: 'Sort your family', variable: 'genderIdentity' },
         ],
       },
     ]);
-    protocol.codebook.node.family_member.variables.biologicalSex = {
-      name: 'biologicalSex',
+    protocol.codebook.node.family_member.variables.genderIdentity = {
+      name: 'genderIdentity',
       type: 'categorical',
-      options: BIOLOGICAL_SEX_OPTIONS.map((option) =>
-        option.value === 'female' ? { ...option, label: 'Woman' } : option,
+      options: PEDIGREE_GENDER_IDENTITY_OPTIONS.map((option) =>
+        option.value === 'woman' ? { ...option, label: 'Female' } : option,
       ),
     };
     const result = ProtocolSchemaV8.safeParse(protocol);
@@ -346,7 +267,7 @@ describe('findExclusiveVariableConflicts', () => {
     expect(
       result.error?.issues.some((issue) =>
         issue.message.includes(
-          'biological sex attribute "biologicalSex" must use its fixed set of options',
+          'gender identity attribute "genderIdentity" must use its fixed set of options',
         ),
       ),
     ).toBe(true);

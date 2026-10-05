@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  BIOLOGICAL_SEX_OPTIONS,
-  BIOLOGICAL_SEX_VALUES,
-  FRAMING_IDS,
-  GAMETE_ROLE_OPTIONS,
-  GAMETE_ROLES,
-  RELATIONSHIP_TYPE_OPTIONS,
-  RELATIONSHIP_TYPES,
+  PEDIGREE_GENDER_IDENTITIES,
+  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
-import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
 
 /**
  * These sets are schema 8's contract, not implementation detail: a protocol
@@ -18,67 +16,58 @@ import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
  * decide whether it belongs in a new schema version.
  */
 describe('schema 8 interface-owned values', () => {
-  it('has the canonical relationship types, with labels', () => {
-    expect(RELATIONSHIP_TYPES).toEqual([
-      'biological',
-      'social',
-      'donor',
-      'surrogate',
-      'adoptive',
-      'partner',
+  it('has the canonical gender identities, with participant-facing labels', () => {
+    expect(PEDIGREE_GENDER_IDENTITIES).toEqual([
+      'woman',
+      'man',
+      'nonBinary',
+      'differentIdentity',
+      'unknown',
+      'preferNotToSay',
     ]);
-    expect(RELATIONSHIP_TYPE_OPTIONS).toEqual([
-      { value: 'biological', label: 'Biological' },
-      { value: 'social', label: 'Social' },
-      { value: 'donor', label: 'Donor' },
-      { value: 'surrogate', label: 'Surrogate' },
-      { value: 'adoptive', label: 'Adoptive' },
-      { value: 'partner', label: 'Partner' },
-    ]);
-  });
-
-  it('has the canonical gamete roles, with labels', () => {
-    expect(GAMETE_ROLES).toEqual(['egg', 'sperm']);
-    expect(GAMETE_ROLE_OPTIONS).toEqual([
-      { value: 'egg', label: 'Egg' },
-      { value: 'sperm', label: 'Sperm' },
+    expect(PEDIGREE_GENDER_IDENTITY_OPTIONS).toEqual([
+      { value: 'woman', label: 'Woman' },
+      { value: 'man', label: 'Man' },
+      { value: 'nonBinary', label: 'Non-binary' },
+      { value: 'differentIdentity', label: 'A different identity' },
+      { value: 'unknown', label: 'Don’t know' },
+      { value: 'preferNotToSay', label: 'Prefer not to say' },
     ]);
   });
 
-  it('has the canonical biological-sex values, with participant-facing labels', () => {
-    expect(BIOLOGICAL_SEX_VALUES).toEqual([
+  it('has the canonical sex-assigned-at-birth values, with labels', () => {
+    expect(PEDIGREE_SEX_ASSIGNED_AT_BIRTH).toEqual([
       'female',
       'male',
       'intersex',
       'unknown',
       'preferNotToSay',
     ]);
-    expect(BIOLOGICAL_SEX_OPTIONS).toEqual([
+    expect(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS).toEqual([
       { value: 'female', label: 'Female' },
       { value: 'male', label: 'Male' },
-      {
-        value: 'intersex',
-        label: 'Intersex or a variation in sex characteristics',
-      },
+      { value: 'intersex', label: 'Intersex' },
       { value: 'unknown', label: 'Don’t know' },
       { value: 'preferNotToSay', label: 'Prefer not to say' },
     ]);
   });
 
-  it('has exactly two framings', () => {
-    expect(FRAMING_IDS).toEqual(['gamete', 'gendered']);
-  });
-
-  it('has the canonical inheritance patterns', () => {
-    expect(INHERITANCE_PATTERNS).toEqual([
-      'autosomalDominant',
-      'autosomalRecessive',
-      'xLinkedDominant',
-      'xLinkedRecessive',
-      'yLinked',
-      'mitochondrial',
-      'multifactorial',
-      'unknown',
+  it('has the canonical relationship kinds, with labels', () => {
+    expect(PEDIGREE_RELATIONSHIP_KINDS).toEqual([
+      'partner',
+      'biological',
+      'adoptive',
+      'social',
+      'donor',
+      'surrogate',
+    ]);
+    expect(PEDIGREE_RELATIONSHIP_KIND_OPTIONS).toEqual([
+      { value: 'partner', label: 'Partner' },
+      { value: 'biological', label: 'Biological parent' },
+      { value: 'adoptive', label: 'Adoptive parent' },
+      { value: 'social', label: 'Step or social parent' },
+      { value: 'donor', label: 'Donor' },
+      { value: 'surrogate', label: 'Surrogate' },
     ]);
   });
 });

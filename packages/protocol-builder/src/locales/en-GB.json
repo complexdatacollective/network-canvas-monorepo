@@ -20,13 +20,6 @@
   "protocolBuilder.geospatial.searchHint": "Allow participants to search the map for addresses, neighbourhoods, and points of interest.",
   "protocolBuilder.geospatial.styleHint": "Choose the Mapbox basemap displayed beneath the selectable GeoJSON areas. Consider the contrast between the basemap, the configured outline colour, and any place labels participants need to read.",
   "protocolBuilder.geospatial.viewDescription": "Set where the map is centred and how far it is zoomed when the stage opens.",
-  "protocolBuilder.narrativePedigree.diseaseColorHint": "Select a colour for this disease.",
-  "protocolBuilder.narrativePedigree.diseaseColorLabel": "Colour",
-  "protocolBuilder.narrativePedigree.diseaseColorRequired": "Choose a colour for this disease.",
-  "protocolBuilder.narrativePedigree.diseaseNameHint": "Shown to the participant in the pedigree's key, so it should be a name they recognise.",
-  "protocolBuilder.narrativePedigree.diseasesFieldHint": "Define the diseases to visualise on the pedigree. Each disease maps to a boolean node attribute from the source Family Pedigree stage.",
-  "protocolBuilder.narrativePedigree.sourceHint": "Select the Family Pedigree stage whose network data this Narrative Pedigree will visualise. Only Family Pedigree stages are listed here.",
-  "protocolBuilder.narrativePedigree.sourceNotAPedigree": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.",
   "protocolBuilder.networkCanvas.backgroundSkewHint": "When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the centre of the canvas.",
   "protocolBuilder.networkCanvas.canvasInteractionTitle": "Narrative behaviours",
   "protocolBuilder.networkCanvas.composerEdgeTypeHint": "The kind of connection the participant draws. Its name and colour come from the codebook.",
@@ -35,6 +28,5 @@
   "protocolBuilder.networkCanvas.presetsDescription": "Create visualisations that researchers can switch between during the interview.",
   "protocolBuilder.networkCanvas.presetsFieldHint": "Add one or more \"presets\" below, to create different visualisations that you can switch between within the interview.",
   "protocolBuilder.networkCanvas.presetsTitle": "Visualisation presets",
-  "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
   "protocolBuilder.removeAfterConsideration.fieldLabel": "Removal behaviour"
 }

@@ -25,8 +25,8 @@ type ArchitectFixtures = {
 // build (see `webServer` in the config, which exists so the service worker and
 // the PWA-integrity check are real), and both warnings are development-only
 // code that the production build strips. Measured, not assumed: with the
-// controlled-Select fix reverted, `interfaces/narrative-pedigree.spec.ts`
-// still passed with an empty console, and the duplicate-key message does not
+// controlled-Select fix reverted, the interface editor specs still passed
+// with an empty console, and the duplicate-key message does not
 // appear in any emitted chunk. A gate here would be a test that cannot fail.
 //
 // The criterion is enforced instead where React's development build actually

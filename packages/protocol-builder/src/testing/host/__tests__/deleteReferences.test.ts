@@ -39,13 +39,6 @@ const informationWithSkipTo = (destination: SectionDoc): SectionDoc => ({
   skipLogic: { action: 'SHOW', filter: ANY_PERSON, destination },
 });
 
-const narrativePedigreeAbout = (sourceStageId: string): SectionDoc => ({
-  ...(FIXTURE.stages as SectionDoc[]).filter(
-    (document) => document.id === 'narrative-pedigree-1',
-  )[0],
-  sourceStageId,
-});
-
 /**
  * One stage-reference kind, as a stage that names another stage and the stage
  * that names it.
@@ -87,23 +80,6 @@ const CASES: readonly ReferenceCase[] = [
         sectionId: stage('information-1'),
         path: ['skipLogic', 'destination', 'stageId'],
       },
-    ],
-  },
-  {
-    site: 'sourceStageId',
-    target: 'family-pedigree-1',
-    // The fixture already pairs these two, seeded here anyway so the case says
-    // what it depends on rather than inheriting it.
-    referring: {
-      [stage('narrative-pedigree-1')]:
-        narrativePedigreeAbout('family-pedigree-1'),
-    },
-    dangling: {
-      [stage('narrative-pedigree-1')]:
-        narrativePedigreeAbout('family-pedigree-2'),
-    },
-    remaining: [
-      { sectionId: stage('narrative-pedigree-1'), path: ['sourceStageId'] },
     ],
   },
 ];

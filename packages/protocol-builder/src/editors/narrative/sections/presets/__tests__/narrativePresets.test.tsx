@@ -12,6 +12,7 @@ import {
 } from '../../../../../testing/attributePicker.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
+import { addFamilyMemberVariable } from '../../../../family-pedigree/__tests__/pedigreeFixtures.ts';
 import {
   addPreset,
   narrativeHolding,
@@ -180,8 +181,8 @@ describe('an attribute something else already collects', () => {
 /**
  * What another INTERFACE writes, offered to the pickers that only read it.
  *
- * A Family Pedigree derives its ego marker from the tree the participant
- * draws and claims that attribute outright, so no other stage may write it.
+ * A Family Pedigree sets its participant marker itself and claims that
+ * attribute outright, so no other stage may write it.
  * Highlighting by it writes nothing — it is the reason the pedigree records
  * the marker at all — and a narrative stage over the pedigree's own node type
  * is where a researcher goes to show the participant inside their family.
@@ -204,6 +205,10 @@ describe('an attribute another interface owns', () => {
 
   it('is offered to a preset that highlights by it', async () => {
     const harness = renderStageEditor(narrativeOverFamilyMembers());
+    addFamilyMemberVariable(harness, 'hasConditionX', {
+      name: 'hasConditionX',
+      type: 'boolean',
+    });
 
     const preset = await addPreset(harness);
 
@@ -215,7 +220,7 @@ describe('an attribute another interface owns', () => {
       await preset.findByRole('checkbox', { name: 'is_ego' }),
     ).toBeInTheDocument();
     expect(
-      preset.getByRole('checkbox', { name: 'hasConditionX' }),
+      await preset.findByRole('checkbox', { name: 'hasConditionX' }),
     ).toBeInTheDocument();
   });
 });

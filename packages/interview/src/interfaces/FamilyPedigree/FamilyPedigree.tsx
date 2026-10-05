@@ -1,636 +1,458 @@
 'use client';
 
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useSelector } from 'react-redux';
+import { v4 as uuid } from 'uuid';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
-import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
-import {
-  entityAttributesProperty,
-  isFamilyPedigreeStageMetadata,
-} from '@codaco/shared-consts';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import Node from '@codaco/fresco-ui/Node';
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
-import { useTrack } from '../../analytics/useTrack';
 import Prompts from '../../components/Prompts/Prompts';
-import { useContractFlags } from '../../contract/context';
-import useBeforeNext from '../../hooks/useBeforeNext';
-import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getNetworkEdges,
   getNetworkNodes,
-  getStageMetadata,
+  getNodeColorSelector,
 } from '../../selectors/session';
-import { toggleNodeAttributes } from '../../store/modules/session';
+import { getCodebook } from '../../store/modules/protocol';
+import {
+  addEdge,
+  addNode,
+  deleteEdge,
+  deleteNode,
+  updateNode,
+} from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
-import { buildPedigreeDialog } from './buildPedigreeDialog';
-import PedigreeChecklist from './components/PedigreeChecklist';
-import EgoCellWizard from './components/wizards/EgoCellWizard';
-import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
-import { useFamilyPedigreeDialog } from './familyPedigreeDialog';
-import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
+import AddRelativeMenu from './components/AddRelativeMenu';
+import PersonDrawer from './components/PersonDrawer';
+import PersonForm, {
+  type PersonFormMode,
+  type PersonFormResult,
+} from './components/PersonForm';
+import PersonNode from './components/PersonNode';
 import { messages } from './messages';
-import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
-import PedigreeView from './pedigree-layout/components/PedigreeView';
-import { SuppressPedigreeHintContext } from './pedigreeHintContext';
-import type { VariableConfig } from './store';
 import {
-  getEdgeTypeKey,
-  getGameteRoleVariable,
-  getIsActiveVariable,
-  getIsGestationalCarrierVariable,
-  getRelationshipTypeVariable,
-} from './utils/edgeUtils';
-import {
-  getBiologicalSexVariable,
-  getEgoVariable,
-  getNodeLabelVariable,
-  getNodeTypeKey,
-  getRelationshipVariable,
-} from './utils/nodeUtils';
-import { pedigreeMemberIds } from './utils/pedigreeMembership';
-import { getBoundaries } from './utils/stageConfig';
-import {
-  validatePedigreeCompleteness,
-  type Boundaries,
-} from './utils/validatePedigree';
+  missingDetailsFor,
+  pedigreeConfigFromStage,
+  planAddRelative,
+  planRemovePerson,
+  readFamily,
+  type Relation,
+} from './model';
+import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
+import type { PedigreeLink } from './pedigree-layout/types';
 
-// The interview network is a single shared graph, so getNetworkNodes/Edges
-// return entities of every type. Restrict the nomination-phase override maps to
-// the pedigree's own node/edge types, mirroring the provider seed
-// (FamilyPedigreeProvider.tsx), so foreign-typed entities are never laid out as
-// orphan pedigree members or coerced into pedigree relationships. When the
-// pedigree recorded its private membership (memberIds), also drop same-typed
-// alters nominated in later stages, which are not part of this pedigree.
-export const buildOverrideNodesMap = (
-  nodes: NcNode[],
-  nodeType: string,
-  memberIds: Set<string> | null = null,
-) =>
-  new Map<string, NcNode>(
-    nodes
-      .filter(
-        (node) =>
-          node.type === nodeType &&
-          (memberIds === null || memberIds.has(node._uid)),
-      )
-      .map((node) => [node._uid, node]),
-  );
+type PanelState = {
+  open: boolean;
+  /** Changes for every opening, so the form starts fresh. */
+  key: string;
+  mode: PersonFormMode;
+} | null;
 
-export const buildOverrideEdgesMap = (edges: NcEdge[], edgeType: string) =>
-  new Map<string, NcEdge>(
-    edges
-      .filter((edge) => edge.type === edgeType)
-      .map((edge) => [edge._uid, edge]),
-  );
-
-const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
+const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
-  const {
-    stage: { censusPrompt, nominationPrompts },
-  } = props;
-
   const dispatch = useAppDispatch();
-  const { confirm, openDialog } = useFamilyPedigreeDialog();
-  const suppressHint = useContext(SuppressPedigreeHintContext);
-  const { isDevelopment } = useContractFlags();
-  const { moveForward } = props.getNavigationHelpers();
-  const { updateReady } = useReadyForNextStage();
-  const nodesMap = useFamilyPedigreeStore((s) => s.network.nodes);
-  const edgesMap = useFamilyPedigreeStore((s) => s.network.edges);
-  const addNode = useFamilyPedigreeStore((s) => s.addNode);
-  const addEdge = useFamilyPedigreeStore((s) => s.addEdge);
-  const updateNode = useFamilyPedigreeStore((s) => s.updateNode);
-  const syncMetadata = useFamilyPedigreeStore((s) => s.syncMetadata);
-  const clearNetwork = useFamilyPedigreeStore((s) => s.clearNetwork);
-  const commitBatch = useFamilyPedigreeStore((s) => s.commitBatch);
-  const finalizeNetwork = useFamilyPedigreeStore((s) => s.finalizeNetwork);
-  const resetNetwork = useFamilyPedigreeStore((s) => s.resetNetwork);
-  const setActiveNominationVariable = useFamilyPedigreeStore(
-    (s) => s.setActiveNominationVariable,
+  const { currentStep } = useCurrentStep();
+  const { confirm } = useDialog();
+  const formId = useId();
+
+  const config = useMemo(() => pedigreeConfigFromStage(stage), [stage]);
+  const formFields = useMemo(() => stage.form?.fields ?? [], [stage.form]);
+
+  const nodes = useStageSelector(getNetworkNodes);
+  const edges = useStageSelector(getNetworkEdges);
+  const family = useMemo(
+    () => readFamily(nodes, edges, config),
+    [nodes, edges, config],
+  );
+  const nodeColor = useStageSelector(getNodeColorSelector);
+  const codebook = useSelector(getCodebook);
+
+  const requiredFormVariables = useMemo(() => {
+    const variables = codebook.node?.[config.personType]?.variables ?? {};
+    return formFields
+      .map((field) => field.variable)
+      .filter((variable) => {
+        const definition = variables[variable];
+        return (
+          definition !== undefined &&
+          'validation' in definition &&
+          definition.validation?.required === true
+        );
+      });
+  }, [codebook, config.personType, formFields]);
+
+  // The participant is always on the canvas: create them on first visit.
+  const creatingEgo = useRef(false);
+  useEffect(() => {
+    if (family.egoId || creatingEgo.current) return;
+    creatingEgo.current = true;
+    void dispatch(
+      addNode({
+        type: config.personType,
+        attributeData: { [config.egoVariable]: true },
+        modelData: { [entityPrimaryKeyProperty]: uuid() },
+        currentStep,
+      }),
+    );
+  }, [family.egoId, dispatch, config, currentStep]);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Ego starts selected, so the add menu is visible from the outset.
+  const egoSelectedOnce = useRef(false);
+  useEffect(() => {
+    if (family.egoId && !egoSelectedOnce.current) {
+      egoSelectedOnce.current = true;
+      setSelectedId(family.egoId);
+    }
+  }, [family.egoId]);
+  const selected = selectedId ? family.byId.get(selectedId) : undefined;
+
+  const [panel, setPanel] = useState<PanelState>(null);
+  const [announcement, setAnnouncement] = useState('');
+
+  const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
+  const setNodeRef = useCallback(
+    (personId: string) => (element: HTMLButtonElement | null) => {
+      if (element) nodeRefs.current.set(personId, element);
+      else nodeRefs.current.delete(personId);
+    },
+    [],
   );
 
-  const nodeType = useStageSelector(getNodeTypeKey);
-  const edgeType = useStageSelector(getEdgeTypeKey);
-  const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
-  const egoVariable = useStageSelector(getEgoVariable);
-  const relationshipVariable = useStageSelector(getRelationshipVariable);
-  const relationshipTypeVariable = useStageSelector(
-    getRelationshipTypeVariable,
-  );
-  const isActiveVariable = useStageSelector(getIsActiveVariable);
-  const isGestationalCarrierVariable = useStageSelector(
-    getIsGestationalCarrierVariable,
-  );
-  const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
-  const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
-
-  const allNodes = useStageSelector(getNetworkNodes);
-  const allEdges = useStageSelector(getNetworkEdges);
-
-  const stageMetadata = useStageSelector(getStageMetadata);
-  const boundaries = useStageSelector(getBoundaries);
-
-  const isNetworkCommitted =
-    isFamilyPedigreeStageMetadata(stageMetadata) &&
-    stageMetadata.isNetworkCommitted;
-  // The alters this pedigree committed to its private network, or null while it
-  // is still being built. Used to drop same-typed alters added by later stages.
-  const memberIds = useMemo(
-    () => pedigreeMemberIds(stageMetadata),
-    [stageMetadata],
+  const displayName = useCallback(
+    (personId: string) => {
+      const person = family.byId.get(personId);
+      if (person?.isEgo) return intl.formatMessage(messages.you);
+      return person?.name ?? intl.formatMessage(messages.unnamedPerson);
+    },
+    [family.byId, intl],
   );
 
-  const variableConfig: VariableConfig = {
-    nodeType,
-    edgeType,
-    nodeLabelVariable,
-    egoVariable,
-    relationshipVariable,
-    relationshipTypeVariable,
-    isActiveVariable,
-    isGestationalCarrierVariable,
-    gameteRoleVariable,
-    biologicalSexVariable,
+  const links: PedigreeLink[] = useMemo(
+    () =>
+      family.links.map((link) => ({
+        source: link.source,
+        target: link.target,
+        kind: link.kind,
+        isActive: link.isCurrentPartner,
+        isGestationalCarrier: link.isGestationalCarrier,
+      })),
+    [family.links],
+  );
+  const nodeIds = useMemo(
+    () => family.people.map((person) => person.id),
+    [family.people],
+  );
+  const nodeNames = useMemo(
+    () =>
+      new Map(family.people.map((person) => [person.id, person.name ?? ''])),
+    [family.people],
+  );
+
+  const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
+    component: <Node size="sm" />,
+  });
+
+  const openAdd = (relation: Relation) => {
+    if (!selected) return;
+    setPanel({
+      open: true,
+      key: uuid(),
+      mode: { kind: 'add', relation, anchor: selected },
+    });
   };
 
-  const reduxNodesMap = useMemo(
-    () => buildOverrideNodesMap(allNodes, nodeType, memberIds),
-    [allNodes, nodeType, memberIds],
-  );
-  const reduxEdgesMap = useMemo(
-    () => buildOverrideEdgesMap(allEdges, edgeType),
-    [allEdges, edgeType],
-  );
-  const handleToggleAttribute = (nodeId: string, variable: string) => {
-    const node = allNodes.find((n) => n._uid === nodeId);
-    const currentValue = node?.[entityAttributesProperty][variable] === true;
-    dispatch(
-      toggleNodeAttributes({
-        nodeId,
-        attributePatch: {
-          set: { [variable]: !currentValue },
-          unset: [],
-        },
+  const openEdit = (personId: string) => {
+    const person = family.byId.get(personId);
+    if (!person) return;
+    setPanel({
+      open: true,
+      key: uuid(),
+      mode: {
+        kind: 'edit',
+        person,
+        missing: missingDetailsFor(person, requiredFormVariables),
+      },
+    });
+  };
+
+  const closePanel = () =>
+    setPanel((current) => (current ? { ...current, open: false } : null));
+
+  const handleActivate = (personId: string) => {
+    if (selectedId === personId) {
+      openEdit(personId);
+      return;
+    }
+    setSelectedId(personId);
+    setAnnouncement(
+      intl.formatMessage(messages.selectedAnnouncement, {
+        isYou: family.byId.get(personId)?.isEgo ? 'true' : 'false',
+        name: displayName(personId),
       }),
     );
   };
 
-  const egoId = [...nodesMap.entries()].find(
-    ([, n]) => n[entityAttributesProperty][egoVariable] === true,
-  )?.[0];
-  const nonEgoNodeCount = [...nodesMap.values()].filter(
-    (n) => n[entityAttributesProperty][egoVariable] !== true,
-  ).length;
-  const hasNodes = nonEgoNodeCount > 0;
+  const handleSubmit = async (result: PersonFormResult) => {
+    if (!panel) return;
+    const { mode } = panel;
+    closePanel();
 
-  const scaffoldingPrompt = {
-    id: 'scaffolding',
-    text: censusPrompt,
-  };
-  const allPrompts = [scaffoldingPrompt, ...(nominationPrompts ?? [])] as {
-    id: string;
-    text: string;
-    variable?: string;
-  }[];
-  const hasNominationPrompts = allPrompts.length > 1;
-
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-
-  // moveForward() re-runs the registered beforeNext handlers; this lets our
-  // handler wave through the navigation we trigger ourselves after finalizing a
-  // pedigree that has no nomination prompts.
-  const bypassBeforeNextRef = useRef(false);
-
-  // Pulse the "next" control once every pedigree checklist item is checked,
-  // nudging the participant to finalize. Scoped to the building phase — the
-  // nomination steps manage their own progression.
-  const [checklistComplete, setChecklistComplete] = useState(false);
-  const buildingPhase =
-    currentStepIndex === 0 && hasNodes && !isNetworkCommitted;
-  useEffect(() => {
-    updateReady(buildingPhase && checklistComplete);
-  }, [updateReady, buildingPhase, checklistComplete]);
-
-  // Screen-reader announcements for the build phase. The pedigree is built via
-  // context-menu wizards that mutate the diagram without a page change, so
-  // without a live region a screen-reader participant gets no feedback that a
-  // relative was added or removed, or that the pedigree can now be finalized.
-  // The count is included so consecutive additions re-announce (identical text
-  // is not re-read by assistive technology).
-  const { announce } = useAccessibilityAnnouncements();
-  const prevNonEgoCountRef = useRef(nonEgoNodeCount);
-  const prevChecklistCompleteRef = useRef(checklistComplete);
-  useEffect(() => {
-    if (!buildingPhase) {
-      prevNonEgoCountRef.current = nonEgoNodeCount;
-      prevChecklistCompleteRef.current = checklistComplete;
-      return;
-    }
-    if (checklistComplete && !prevChecklistCompleteRef.current) {
-      announce(intl.formatMessage(messages.buildComplete));
-    } else if (nonEgoNodeCount > prevNonEgoCountRef.current) {
-      announce(
-        intl.formatMessage(messages.memberAdded, { count: nonEgoNodeCount }),
-      );
-    } else if (nonEgoNodeCount < prevNonEgoCountRef.current) {
-      announce(
-        intl.formatMessage(messages.memberRemoved, { count: nonEgoNodeCount }),
-      );
-    }
-    // Consume each count/checklist transition. The live-region hook clears the
-    // spoken result; changing locale cannot translate and replay an old event.
-    prevNonEgoCountRef.current = nonEgoNodeCount;
-    prevChecklistCompleteRef.current = checklistComplete;
-  }, [buildingPhase, nonEgoNodeCount, checklistComplete, intl, announce]);
-
-  const updateNominationVariable = (stepIndex: number) => {
-    const prompt = allPrompts[stepIndex];
-    setActiveNominationVariable(prompt?.variable ?? null);
-  };
-
-  useBeforeNext((direction, intent) => {
-    if (direction === 'forwards') {
-      // Step 0 → finalize before advancing
-      if (currentStepIndex === 0) {
-        // Navigation we trigger ourselves (moveForward, after finalizing a
-        // pedigree with no nomination prompts) should pass straight through.
-        if (bypassBeforeNextRef.current) {
-          bypassBeforeNextRef.current = false;
-          return true;
-        }
-
-        if (isNetworkCommitted) {
-          if (hasNominationPrompts && intent === 'step') {
-            // Already finalized (revisiting) — skip straight to nomination
-            setCurrentStepIndex(1);
-            updateNominationVariable(1);
-            return false;
-          }
-          // Finalized with no nomination prompts — leave the stage.
-          return true;
-        }
-
-        if (!hasNodes) {
-          // Ego wizard not yet completed
-          void openDialog({
-            type: 'acknowledge',
-            title: <AppMessage message={messages.incompleteTitle} />,
-            description: <AppMessage message={messages.incompleteNoFamily} />,
-            intent: 'destructive',
-            actions: {
-              primary: {
-                label: <AppMessage message={messages.okay} />,
-                value: true as const,
-              },
-            },
-          });
-        } else {
-          // Not finalized — show confirmation dialog
-          void handleConfirmAndAdvance();
-        }
-        return false;
-      }
-
-      const isLastStep = currentStepIndex === allPrompts.length - 1;
-      if (intent === 'jump' || isLastStep) {
-        syncMetadata();
-        return true;
-      }
-
-      const nextStep = currentStepIndex + 1;
-      setCurrentStepIndex(nextStep);
-      updateNominationVariable(nextStep);
-      return false;
-    }
-    if (direction === 'backwards') {
-      if (currentStepIndex === 0) {
-        return true;
-      }
-
-      if (intent === 'jump') {
-        syncMetadata();
-        return true;
-      }
-
-      const prevStep = currentStepIndex - 1;
-      setCurrentStepIndex(prevStep);
-      updateNominationVariable(prevStep);
-      return false;
-    }
-    return false;
-  });
-
-  const handleConfirmAndAdvance = async () => {
-    const issues = validatePedigreeCompleteness(
-      nodesMap,
-      edgesMap,
-      variableConfig,
-      boundaries,
-      isFamilyPedigreeStageMetadata(stageMetadata) &&
-        stageMetadata.noChildrenAffirmed === true,
-      intl,
-    );
-
-    if (issues.length > 0) {
-      await openDialog({
-        type: 'acknowledge',
-        title: <AppMessage message={messages.incompleteTitle} />,
-        intent: 'destructive',
-        description: <AppMessage message={messages.incompleteIssues} />,
-        children: (
-          <PedigreeValidationIssues
-            nodes={nodesMap}
-            edges={edgesMap}
-            variableConfig={variableConfig}
-            boundaries={boundaries}
-            noChildrenAffirmed={
-              isFamilyPedigreeStageMetadata(stageMetadata) &&
-              stageMetadata.noChildrenAffirmed === true
-            }
-          />
-        ),
-        actions: {
-          primary: {
-            label: <AppMessage message={messages.returnToEditing} />,
-            value: true as const,
+    if (mode.kind === 'edit') {
+      await dispatch(
+        updateNode({
+          nodeId: mode.person.id,
+          attributePatch: {
+            set: result.set,
+            unset: result.unset.filter((variable) => !(variable in result.set)),
           },
-        },
-      });
+          currentStep,
+        }),
+      );
+      setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
       return;
     }
 
-    const result = await confirm({
-      title: <AppMessage message={messages.finalizeQuestion} />,
-      description: <AppMessage message={messages.finalizeDescription} />,
-      confirmLabel: <AppMessage message={messages.finalize} />,
-      cancelLabel: <AppMessage message={messages.keepEditing} />,
-      intent: 'default',
-      onConfirm: async () => {
-        await finalizeNetwork();
-      },
+    if (!result.request) return;
+    const plan = planAddRelative({
+      family,
+      anchorId: mode.anchor.id,
+      newPersonId: uuid(),
+      details: result.set,
+      request: result.request,
+      createId: uuid,
     });
-
-    if (result === true) {
-      if (hasNominationPrompts) {
-        setCurrentStepIndex(1);
-        updateNominationVariable(1);
-      } else {
-        // No nomination prompts — finalizing leaves the stage.
-        bypassBeforeNextRef.current = true;
-        moveForward();
-      }
+    for (const person of plan.people) {
+      await dispatch(
+        addNode({
+          type: config.personType,
+          attributeData: person.details,
+          modelData: { [entityPrimaryKeyProperty]: person.id },
+          currentStep,
+        }),
+      ).unwrap();
     }
+    for (const link of plan.links) {
+      await dispatch(
+        addEdge({
+          from: link.source,
+          to: link.target,
+          type: config.relationshipType,
+          attributeData: {
+            [config.kindVariable]: [link.kind],
+            ...(link.kind === 'partner'
+              ? {
+                  [config.currentPartnerVariable]:
+                    link.isCurrentPartner ?? true,
+                }
+              : {
+                  [config.gestationalCarrierVariable]:
+                    link.isGestationalCarrier ?? false,
+                }),
+          },
+          currentStep,
+        }),
+      ).unwrap();
+    }
+    const name = result.set[config.nameVariable];
+    setAnnouncement(
+      intl.formatMessage(messages.addedAnnouncement, {
+        name:
+          typeof name === 'string'
+            ? name
+            : intl.formatMessage(messages.unnamedPerson),
+      }),
+    );
   };
 
-  const handleResetPedigree = async () => {
+  const handleRemove = async (personId: string) => {
+    const name = displayName(personId);
+    // Close the panel first: its focus trap would otherwise hold focus away
+    // from the confirmation.
+    closePanel();
     await confirm({
-      title: <AppMessage message={messages.resetQuestion} />,
-      description: <AppMessage message={messages.resetDescription} />,
-      confirmLabel: <AppMessage message={messages.reset} />,
-      cancelLabel: <AppMessage message={commonMessages.cancel} />,
+      title: intl.formatMessage(messages.removeConfirmTitle, { name }),
+      description: intl.formatMessage(messages.removeConfirmDescription),
+      confirmLabel: intl.formatMessage(messages.remove),
       intent: 'destructive',
       onConfirm: () => {
-        resetNetwork();
+        for (const linkId of planRemovePerson(family, personId).linkIds) {
+          dispatch(deleteEdge(linkId));
+        }
+        dispatch(deleteNode(personId));
+        if (selectedId === personId) setSelectedId(family.egoId ?? null);
+        setAnnouncement(
+          intl.formatMessage(messages.removedAnnouncement, { name }),
+        );
       },
     });
   };
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const showQuickStart = currentStepIndex === 0 && !hasNodes;
-  const track = useTrack();
-  const wizardShownRef = useRef(false);
-  useEffect(() => {
-    if (showQuickStart && !wizardShownRef.current) {
-      track('pedigree_wizard_shown');
-      wizardShownRef.current = true;
-    }
-  }, [showQuickStart, track]);
-  const showResetOption =
-    currentStepIndex === 0 && hasNodes && isNetworkCommitted;
-
-  const [dumpCopied, setDumpCopied] = useState(false);
-  const dumpCopiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(dumpCopiedTimer.current), []);
-
-  const handleDumpNetwork = async () => {
-    const json = JSON.stringify(
-      {
-        nodes: Object.fromEntries(nodesMap.entries()),
-        edges: Object.fromEntries(edgesMap.entries()),
-      },
-      null,
-      2,
-    );
-    await navigator.clipboard.writeText(json);
-    setDumpCopied(true);
-    clearTimeout(dumpCopiedTimer.current);
-    dumpCopiedTimer.current = setTimeout(() => setDumpCopied(false), 1500);
+  // Escape on the canvas clears the selection, returning focus to the person.
+  const handleCanvasKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key !== 'Escape' || !selectedId) return;
+    event.preventDefault();
+    nodeRefs.current.get(selectedId)?.focus();
+    setSelectedId(null);
   };
 
+  const panelTitle = (() => {
+    if (!panel) return '';
+    const { mode } = panel;
+    const subject = mode.kind === 'add' ? mode.anchor : mode.person;
+    const args = {
+      isYou: subject.isEgo ? 'true' : 'false',
+      name: displayName(subject.id),
+    };
+    if (mode.kind === 'edit')
+      return intl.formatMessage(messages.editTitle, args);
+    const titles = {
+      parent: messages.addParentTitle,
+      sibling: messages.addSiblingTitle,
+      partner: messages.addPartnerTitle,
+      child: messages.addChildTitle,
+    };
+    return intl.formatMessage(titles[mode.relation], args);
+  })();
+
+  const editedPerson = panel?.mode.kind === 'edit' ? panel.mode.person : null;
+
+  const panelSubject = panel
+    ? panel.mode.kind === 'add'
+      ? panel.mode.anchor
+      : panel.mode.person
+    : undefined;
+
   return (
-    <>
-      <div className="interface p-0">
+    <div className="interface flex h-full flex-col">
+      <div className="shrink-0">
         <Prompts
-          prompts={allPrompts}
-          currentPromptId={allPrompts[currentStepIndex]?.id}
-          className="phone-landscape:px-4 phone-landscape:pt-4 tablet-landscape:px-6 tablet-landscape:pt-6 desktop:px-8 shrink-0 px-2 pt-2"
+          prompts={[{ id: 'pedigree', text: stage.prompt }]}
+          currentPromptId="pedigree"
         />
-        <div
-          ref={containerRef}
-          className="relative flex min-h-0 w-full grow items-center justify-center"
-        >
-          {isDevelopment && (
-            <div className="absolute top-2 right-2 z-50 flex gap-1">
-              <button
-                type="button"
-                className="rounded bg-black/50 px-2 py-1 text-xs text-white opacity-50 hover:opacity-100"
-                onClick={handleDumpNetwork}
-              >
-                {dumpCopied
-                  ? intl.formatMessage(messages.copied)
-                  : intl.formatMessage(messages.dump)}
-              </button>
-              <button
-                type="button"
-                className="rounded bg-black/50 px-2 py-1 text-xs text-white opacity-50 hover:opacity-100"
-                onClick={() => {
-                  const json = window.prompt(
-                    intl.formatMessage(messages.pasteJson),
-                  );
-                  if (!json) return;
-                  try {
-                    const data = JSON.parse(json) as {
-                      nodes: Record<string, NcNode>;
-                      edges: Record<
-                        string,
-                        {
-                          from: string;
-                          to: string;
-                          attributes: Record<string, unknown>;
-                        }
-                      >;
-                    };
-                    clearNetwork();
-                    for (const [id, node] of Object.entries(data.nodes)) {
-                      addNode({
-                        id,
-                        attributes: node[entityAttributesProperty] as Record<
-                          string,
-                          VariableValue
-                        >,
-                      });
-                    }
-                    for (const [id, edge] of Object.entries(data.edges)) {
-                      addEdge({
-                        id,
-                        from: edge.from,
-                        to: edge.to,
-                        attributes: edge.attributes as Record<
-                          string,
-                          VariableValue
-                        >,
-                      });
-                    }
-                  } catch {
-                    // eslint-disable-next-line no-console
-                    console.error('Failed to parse network JSON');
-                  }
-                }}
-              >
-                <AppMessage message={messages.load} />
-              </button>
-            </div>
-          )}
-          {showQuickStart ? (
-            <>
-              <div className="flex h-full w-full flex-col items-center justify-center gap-12 py-10">
-                <FamilyPedigreePlaceholder className="hidden min-h-0 w-full flex-1 [@media_((min-height:800px))]:block" />
-                <div className="max-w-prose shrink-0 text-center">
-                  <Heading level="h3">
-                    <AppMessage message={messages.buildTitle} />
-                  </Heading>
-                  <Paragraph emphasis="muted">
-                    <AppMessage message={messages.buildDefinition} />
-                  </Paragraph>
-                  <Paragraph emphasis="muted">
-                    <AppMessage message={messages.buildInstructions} />
-                  </Paragraph>
-                  <Paragraph emphasis="muted" margin="none">
-                    <AppMessage message={messages.buildGetStarted} />
-                  </Paragraph>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {isNetworkCommitted && currentStepIndex > 0 ? (
-                <PedigreeView
-                  overrideNodes={reduxNodesMap}
-                  overrideEdges={reduxEdgesMap}
-                  activeNominationVariable={
-                    allPrompts[currentStepIndex]?.variable ?? null
-                  }
-                  onToggleAttribute={handleToggleAttribute}
-                />
-              ) : (
-                <PedigreeView isFinalized={isNetworkCommitted} />
-              )}
-              {currentStepIndex === 0 && hasNodes && !isNetworkCommitted && (
-                <PedigreeChecklist
-                  dragConstraints={containerRef}
-                  onFinalize={() => void handleConfirmAndAdvance()}
-                  onAllDoneChange={setChecklistComplete}
-                  variableConfig={variableConfig}
-                  boundaries={boundaries}
-                />
-              )}
-              {showResetOption && (
-                <div className="absolute bottom-4 flex flex-col items-center gap-2">
-                  <Paragraph emphasis="muted" margin="none">
-                    <AppMessage message={messages.finalized} />
-                  </Paragraph>
-                  <Button
-                    size="sm"
-                    color="destructive"
-                    onClick={() => void handleResetPedigree()}
-                  >
-                    <AppMessage message={messages.resetPedigree} />
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        {showQuickStart && (
-          <EgoCellWizard
-            egoId={egoId}
-            onSubmit={(result) => {
-              commitBatch(result.batch);
-              if (egoId && result.egoAttributes) {
-                updateNode(egoId, {
-                  set: result.egoAttributes,
-                  unset: [],
-                });
-              }
-              track('pedigree_wizard_complete', {
-                nodes_created: Object.keys(result.batch.nodes ?? {}).length,
-                edges_created: Object.keys(result.batch.edges ?? {}).length,
-              });
-              if (!suppressHint) void openDialog(buildPedigreeDialog);
-            }}
-            variableConfig={variableConfig}
-          />
-        )}
       </div>
-    </>
+      {measurementContainer}
+      <div
+        role="region"
+        aria-label={intl.formatMessage(messages.canvasLabel)}
+        className="relative min-h-0 flex-1 overflow-auto"
+        onKeyDown={handleCanvasKeyDown}
+        data-testid="pedigree-canvas"
+      >
+        <div className="flex min-h-full min-w-max items-center justify-center p-40">
+          <PedigreeLayout
+            nodeIds={nodeIds}
+            links={links}
+            nodeNames={nodeNames}
+            nodeWidth={nodeWidth}
+            nodeHeight={nodeHeight}
+            // Room around each person for the add menu that appears beside,
+            // above and below them, and for their name beneath.
+            rowGapRatio={1.4}
+            columnGapRatio={1.4}
+            renderNode={(personId) => {
+              const person = family.byId.get(personId);
+              if (!person) return null;
+              const isSelected = personId === selectedId;
+              return (
+                <PersonNode
+                  person={person}
+                  color={nodeColor}
+                  selected={isSelected}
+                  hasMissingDetails={
+                    missingDetailsFor(person, requiredFormVariables).length > 0
+                  }
+                  onActivate={() => handleActivate(personId)}
+                  nodeRef={setNodeRef(personId)}
+                >
+                  {isSelected && (
+                    <AddRelativeMenu
+                      isYou={person.isEgo}
+                      name={displayName(personId)}
+                      onAdd={openAdd}
+                      onEdit={() => openEdit(personId)}
+                    />
+                  )}
+                </PersonNode>
+              );
+            }}
+          />
+        </div>
+      </div>
+      <div aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
+      {/* Keyed per opening so every panel starts with an empty form. It wraps
+          the whole drawer so the footer's submit button reaches the form. */}
+      <FormStoreProvider key={panel?.key ?? 'closed'}>
+        <PersonDrawer
+          open={panel?.open ?? false}
+          onClose={closePanel}
+          onClosed={() => setPanel(null)}
+          returnFocus={() =>
+            panelSubject
+              ? (nodeRefs.current.get(panelSubject.id) ?? null)
+              : null
+          }
+          title={panelTitle}
+          footer={
+            <>
+              {editedPerson && !editedPerson.isEgo && (
+                <Button
+                  type="button"
+                  variant="text"
+                  color="destructive"
+                  className="mr-auto"
+                  onClick={() => void handleRemove(editedPerson.id)}
+                >
+                  <AppMessage message={messages.remove} />
+                </Button>
+              )}
+              <Button type="button" variant="text" onClick={closePanel}>
+                <AppMessage message={messages.cancel} />
+              </Button>
+              <SubmitButton form={formId}>
+                <AppMessage
+                  message={
+                    panel?.mode.kind === 'edit' ? messages.save : messages.add
+                  }
+                />
+              </SubmitButton>
+            </>
+          }
+        >
+          {panel && (
+            <PersonForm
+              key={panel.key}
+              formId={formId}
+              mode={panel.mode}
+              family={family}
+              config={config}
+              formFields={formFields}
+              displayName={displayName}
+              onSubmit={(result) => void handleSubmit(result)}
+            />
+          )}
+        </PersonDrawer>
+      </FormStoreProvider>
+    </div>
   );
 };
 
-export default function FamilyPedigreeWithProvider(
-  props: StageProps<'FamilyPedigree'>,
-) {
-  const allNodes = useStageSelector(getNetworkNodes);
-  const allEdges = useStageSelector(getNetworkEdges);
-  return (
-    <FamilyPedigreeProvider nodes={allNodes} edges={allEdges}>
-      <FamilyPedigree {...props} />
-    </FamilyPedigreeProvider>
-  );
-}
-
-function PedigreeValidationIssues({
-  nodes,
-  edges,
-  variableConfig,
-  boundaries,
-  noChildrenAffirmed,
-}: {
-  nodes: Map<string, NcNode>;
-  edges: Map<string, NcEdge>;
-  variableConfig: VariableConfig;
-  boundaries: Boundaries;
-  noChildrenAffirmed: boolean;
-}) {
-  const intl = useAppIntl();
-  const issues = validatePedigreeCompleteness(
-    nodes,
-    edges,
-    variableConfig,
-    boundaries,
-    noChildrenAffirmed,
-    intl,
-  );
-  return (
-    <ul className="list-disc space-y-1 pl-5">
-      {issues.map((issue, index) => (
-        <li key={`${issue.nodeId}-${index}`}>{issue.message}</li>
-      ))}
-    </ul>
-  );
-}
+export default FamilyPedigree;

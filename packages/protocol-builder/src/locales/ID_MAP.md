@@ -295,18 +295,17 @@ back with that name in it, in the same pull request.
 
 ### One file per family — the interface families
 
-| `<area>`            | Owns the copy in                                     | Declared in                                                        |
-| ------------------- | ---------------------------------------------------- | ------------------------------------------------------------------ |
-| `pedigree`          | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`             |
-| `networkCanvas`     | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                                |
-| `networkCanvas`     | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`           |
-| `networkCanvas`     | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts`    |
-| `networkCanvas`     | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts`    |
-| `networkCanvas`     | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`            |
-| `networkCanvas`     | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`                |
-| `geospatial`        | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                          |
-| `narrativePedigree` | `editors/narrative-pedigree/sections/`               | `editors/narrative-pedigree/sections/narrativePedigreeMessages.ts` |
-| `anonymisation`     | `editors/anonymisation/sections/`                    | `editors/anonymisation/sections/anonymisationMessages.ts`          |
+| `<area>`        | Owns the copy in                                     | Declared in                                                     |
+| --------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| `pedigree`      | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
+| `networkCanvas` | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                             |
+| `networkCanvas` | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
+| `networkCanvas` | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
+| `networkCanvas` | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts` |
+| `networkCanvas` | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`         |
+| `networkCanvas` | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`             |
+| `geospatial`    | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                       |
+| `anonymisation` | `editors/anonymisation/sections/`                    | `editors/anonymisation/sections/anonymisationMessages.ts`       |
 
 `anonymisation` was reserved for `sections/anonymisation/`, and its copy is
 declared under `editors/anonymisation/sections/` instead: one directory per

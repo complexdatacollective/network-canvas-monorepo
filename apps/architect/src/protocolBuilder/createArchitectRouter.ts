@@ -357,7 +357,7 @@ export function createArchitectRouter(
      * put the stage back with its next whole-section submit.
      *
      * A stage other stages depend on is refused naming them, not swept: a skip
-     * destination or the pedigree a narrative describes is a decision made
+     * destination is a decision made
      * about that other stage, and rewriting it as a side effect of removing
      * this one is not a deletion anybody asked for.
      */

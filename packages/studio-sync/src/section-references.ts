@@ -134,7 +134,7 @@ export function variableReferences(
 
 /**
  * Every reference to one codebook entity type the current schema declares:
- * stage subjects, edge creation settings, filter rules, the pedigree configs,
+ * stage subjects, edge creation settings, filter rules, the pedigree's relationship type,
  * and the attributes the type owns, which stop existing with it.
  */
 export function entityTypeReferences(
@@ -158,8 +158,7 @@ export function entityTypeReferences(
 
 /**
  * Every reference to one STAGE the current schema declares: a skip-logic
- * destination, the FamilyPedigree a NarrativePedigree describes the people of,
- * and whatever a stage type is tagged with next.
+ * destination, and whatever a stage type is tagged with next.
  *
  * The stage's own place in the stage order is not among them. That pointer is
  * how the protocol holds the stage rather than something naming it, and a

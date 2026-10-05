@@ -604,20 +604,17 @@ describe('a categorical bin with more bins than fit on one screen', () => {
 /**
  * A prompt binned by an attribute whose values another interface owns.
  *
- * The interview and the genetics engine branch on those exact values, so the
- * list belongs to that interface however the attribute is reached — but
- * binning family members by their sex is legitimate authoring, so the
- * attribute stays on offer and only its values are fixed.
+ * The interview branches on those exact values, so the list belongs to that
+ * interface however the attribute is reached — but binning family members by
+ * their sex assigned at birth is legitimate authoring, so the attribute stays
+ * on offer and only its values are fixed.
  */
 describe('a prompt whose attribute’s values an interface owns', () => {
   /** The canonical set the pedigree schema fixes, written out. */
-  const BIOLOGICAL_SEX_OPTIONS = [
+  const SEX_ASSIGNED_AT_BIRTH_OPTIONS = [
     { value: 'female', label: 'Female' },
     { value: 'male', label: 'Male' },
-    {
-      value: 'intersex',
-      label: 'Intersex or a variation in sex characteristics',
-    },
+    { value: 'intersex', label: 'Intersex' },
     { value: 'unknown', label: 'Don’t know' },
     { value: 'preferNotToSay', label: 'Prefer not to say' },
   ] as const;
@@ -647,7 +644,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
           {
             id: 'prompt-a',
             text: 'Which of these are they?',
-            variable: 'biologicalSex',
+            variable: 'sexAssignedAtBirth',
           },
         ],
       }),
@@ -662,7 +659,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
     // theirs to change.
     const locked = await screen.findByRole('table', { name: LOCKED_VALUES });
     expect(lockedRows(locked)).toEqual(
-      BIOLOGICAL_SEX_OPTIONS.map(({ label, value }) => [label, value]),
+      SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(({ label, value }) => [label, value]),
     );
     // And still read-only: the list is shown INSTEAD of the control that would
     // edit it, rather than beside it.

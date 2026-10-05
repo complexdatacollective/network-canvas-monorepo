@@ -217,7 +217,6 @@
       "NameGeneratorQuickAdd": "Generatore di nomi (aggiunta rapida)",
       "NameGeneratorRoster": "Generatore di nomi da elenco",
       "Narrative": "Narrazione",
-      "NarrativePedigree": "Albero genealogico narrativo",
       "NetworkComposer": "Compositore di reti",
       "OneToManyDyadCensus": "Censimento delle diadi uno-a-molti",
       "OrdinalBin": "Classificazione ordinale",
@@ -533,16 +532,6 @@
           "0": "Crea insieme familiari e relazioni, con una disposizione automatica che mantiene leggibile l’albero genealogico man mano che cresce.",
           "1": "Rappresenta relazioni biologiche, sociali, adottive, di donazione, di gestazione per altri e di coppia, e raccogli attributi per ogni familiare.",
           "2": "Aggiungi un passaggio facoltativo con domande di nomina sulle malattie, per registrare quali familiari hanno determinate condizioni e visualizzarle in seguito."
-        }
-      },
-      "narrativePedigree": {
-        "shortName": "Albero genealogico narrativo",
-        "name": "Interfaccia dell’albero genealogico narrativo",
-        "summary": "Trasforma un albero genealogico creato in precedenza in una visualizzazione di sola lettura che usa la notazione clinica standard degli alberi genealogici.",
-        "details": {
-          "0": "Mostra le persone affette e le persone portatrici certe di una o più condizioni, secondo le modalità di trasmissione ereditaria supportate.",
-          "1": "Se vuoi, mostra i possibili stati di rischio quando lo studio prevede un’interpretazione accompagnata da una guida adeguata.",
-          "2": "Metti in primo piano le persone che contribuiscono all’eredità genetica di un familiare ed esporta un’istantanea stampabile. La visualizzazione è un supporto, non una diagnosi."
         }
       },
       "networkComposer": {

@@ -80,8 +80,7 @@ export const uniqueFormFieldVariables = (
 
 /**
  * A bare array of form fields carrying the uniqueness rule — for the surfaces
- * that hold fields without the surrounding `FormSchema` object (FamilyPedigree's
- * `nodeConfig.form`).
+ * that hold fields without the surrounding `FormSchema` object.
  */
 export const FormFieldArraySchema = z
   .array(FormFieldSchema)

@@ -20,7 +20,6 @@ import { informationStageEditor } from '../information/InformationStageEditor.ts
 import { nameGeneratorQuickAddStageEditor } from '../name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
 import { nameGeneratorRosterStageEditor } from '../name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
-import { narrativePedigreeStageEditor } from '../narrative-pedigree/NarrativePedigreeStageEditor.ts';
 import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
 import { networkComposerStageEditor } from '../network-composer/NetworkComposerStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from '../one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
@@ -135,11 +134,6 @@ const CLAIMS = [
     editor: narrativeStageEditor.Narrative,
   },
   {
-    stageType: 'NarrativePedigree',
-    stageId: 'narrative-pedigree-1',
-    editor: narrativePedigreeStageEditor.NarrativePedigree,
-  },
-  {
     stageType: 'NetworkComposer',
     stageId: 'network-composer-1',
     editor: networkComposerStageEditor.NetworkComposer,
@@ -224,7 +218,7 @@ describe('the interfaces the package’s editors claim', () => {
   /**
    * And the list is every interface there is, read off the registry.
    *
-   * Five of these nineteen were here for a long time while fourteen families
+   * Five of these eighteen were here for a long time while fourteen families
    * were still landing, and nothing said which fourteen were missing. Derived
    * rather than counted, so the interface a later schema adds arrives as a
    * failure here rather than as an interface nothing in this file mentions.

@@ -30,7 +30,7 @@ type Story = StoryObj<typeof meta>;
  * Both halves are needed. That an editor appeared says the dispatcher found
  * one; that its stage name holds this stage's own label says it found the
  * right one, over the stage that was asked for rather than over a blank
- * document. Nineteen mounts of the Information editor would satisfy the first
+ * document. Eighteen mounts of the Information editor would satisfy the first
  * on its own.
  */
 export const EveryInterface: Story = {

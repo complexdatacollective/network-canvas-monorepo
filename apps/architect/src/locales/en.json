@@ -1572,7 +1572,7 @@
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.FamilyPedigree": {
-    "defaultMessage": "An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.",
+    "defaultMessage": "An interface where participants draw their family: they select a person and add that person’s parents, siblings, partners or children, describing each new person as they go.",
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.Geospatial": {
@@ -1597,10 +1597,6 @@
   },
   "architect.interface.description.Narrative": {
     "defaultMessage": "A qualitative interface that uses \"presets\" to switch between different views of the data in the network.",
-    "description": "Description of the interview interface in the New Stage chooser."
-  },
-  "architect.interface.description.NarrativePedigree": {
-    "defaultMessage": "A read-only visualisation interface that overlays disease status and inheritance patterns onto a family pedigree collected by a Family Pedigree stage.",
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.NetworkComposer": {
@@ -2227,6 +2223,42 @@
     "defaultMessage": "DataSource",
     "description": "The title text in lib / ProtocolSummary / components / Stage / DataSource."
   },
+  "architect.protocolSummary.stage.familyPedigree.currentPartner": {
+    "defaultMessage": "Current partner",
+    "description": "Label for the true/false attribute marking a partnership as current, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentity": {
+    "defaultMessage": "Gender identity",
+    "description": "Label for the attribute that holds each family member’s gender identity, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.gestationalCarrier": {
+    "defaultMessage": "Gestational carrier",
+    "description": "Label for the true/false attribute marking the parent who carried a pregnancy, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.name": {
+    "defaultMessage": "Name",
+    "description": "Label for the text attribute that holds each family member’s name, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.participantMarker": {
+    "defaultMessage": "Participant marker",
+    "description": "Label for the true/false attribute that marks which family member is the participant, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipEdgeType": {
+    "defaultMessage": "Relationship edge type",
+    "description": "Label for the kind of connection family relationships are recorded as, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipKind": {
+    "defaultMessage": "Relationship kind",
+    "description": "Label for the attribute recording whether a relationship is a partnership or a kind of parenthood, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.sexAssignedAtBirth": {
+    "defaultMessage": "Sex assigned at birth",
+    "description": "Label for the attribute that holds each family member’s sex assigned at birth, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.title": {
+    "defaultMessage": "Family Pedigree",
+    "description": "Heading of the printable protocol summary section describing how a Family Pedigree stage records each family member and each relationship."
+  },
   "architect.protocolSummary.stage.form.form": {
     "defaultMessage": "Form",
     "description": "The title text in lib / ProtocolSummary / components / Stage / Form."
@@ -2262,10 +2294,6 @@
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": {
     "defaultMessage": "Name Generation Step Instructions",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep."
-  },
-  "architect.protocolSummary.stage.nominationPrompts.nominationPrompts": {
-    "defaultMessage": "Nomination Prompts",
-    "description": "The title text in lib / ProtocolSummary / components / Stage / NominationPrompts. A Family Pedigree stage asks these after the family is built; each records a condition or trait as a boolean attribute of the family members the participant picks."
   },
   "architect.protocolSummary.stage.pageHeading.pageHeading": {
     "defaultMessage": "Page Heading",
@@ -2914,10 +2942,6 @@
   "architect.timeline.timeline.protocolStages": {
     "defaultMessage": "Protocol stages",
     "description": "The aria-label text in components / Timeline / Timeline."
-  },
-  "architect.timeline.timeline.thisFamilyPedigreeStageIsUsed": {
-    "defaultMessage": "{stageCount, plural, one {This Family Pedigree stage is used by the Narrative Pedigree stage {names}. Remove that stage or change its source before deleting this stage.} other {This Family Pedigree stage is used by the Narrative Pedigree stages {names}. Remove those stages or change their source before deleting this stage.}}",
-    "description": "The description text in components / Timeline / Timeline."
   },
   "architect.timeline.timelineStageRow.deleteStage": {
     "defaultMessage": "Delete stage {position, number}: {stageName}",

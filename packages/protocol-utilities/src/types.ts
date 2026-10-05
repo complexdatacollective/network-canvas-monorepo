@@ -1,12 +1,6 @@
 import type {
   ColorReference,
   ComponentType,
-  FamilyPedigreeBoundaries,
-  FamilyPedigreeEdgeConfigInput,
-  FamilyPedigreeFraming,
-  FamilyPedigreeIntroItem,
-  FamilyPedigreeNodeConfigInput,
-  FamilyPedigreeNominationPromptInput,
   EdgeColorReference,
   FilterOperator,
   Item,
@@ -171,12 +165,6 @@ export type TieStrengthCensusPromptEntry = {
   negativeLabel: string;
 };
 
-export type DiseaseNominationStepEntry = {
-  id: string;
-  text: string;
-  variable: string;
-};
-
 export type GeospatialPromptEntry = {
   id: string;
   text: string;
@@ -309,21 +297,10 @@ export type StageEntry = {
   validation?: { minLength?: number; maxLength?: number };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
-  // FamilyPedigree-specific fields, derived from the protocol-validation schema
-  // so they cannot drift from it.
-  nodeConfig?: FamilyPedigreeNodeConfigInput;
-  edgeConfig?: FamilyPedigreeEdgeConfigInput;
-  framing?: FamilyPedigreeFraming;
-  // NarrativePedigree-specific fields
-  narrativePedigreeSourceStageId?: string;
-  narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
-  narrativePedigreeShowAtRiskStatuses?: boolean;
-  boundaries?: FamilyPedigreeBoundaries;
-  introScreen?: {
-    items: FamilyPedigreeIntroItem[];
-  };
-  censusPrompt?: string;
-  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
+  // FamilyPedigree
+  prompt?: string;
+  personAttributes?: FamilyPedigreePersonAttributesEntry;
+  relationship?: FamilyPedigreeRelationshipEntry;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -331,6 +308,22 @@ export type StageEntry = {
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
   networkComposerEdges?: NetworkComposerEdgeEntry[];
   convexHullVariable?: string;
+};
+
+/** The person-node variable ids a FamilyPedigree stage binds. */
+export type FamilyPedigreePersonAttributesEntry = {
+  nameVariable: string;
+  genderIdentityVariable: string;
+  sexAssignedAtBirthVariable: string;
+  egoVariable: string;
+};
+
+/** The family edge type and edge variable ids a FamilyPedigree stage binds. */
+export type FamilyPedigreeRelationshipEntry = {
+  type: string;
+  kindVariable: string;
+  gestationalCarrierVariable: string;
+  currentPartnerVariable: string;
 };
 
 export type NodeEntry = {
@@ -464,30 +457,13 @@ export type AddStageInput = {
     body?: string;
   };
   validation?: { minLength?: number; maxLength?: number };
-  // FamilyPedigree
-  nodeConfig?: FamilyPedigreeNodeConfigInput;
-  // Derived from the schema's edge config, but the builder fills the non-core
-  // variables when omitted, so they are optional here.
-  edgeConfig?: Pick<
-    FamilyPedigreeEdgeConfigInput,
-    'type' | 'relationshipTypeVariable'
-  > &
-    Partial<
-      Omit<FamilyPedigreeEdgeConfigInput, 'type' | 'relationshipTypeVariable'>
-    >;
-  framing?: FamilyPedigreeFraming;
-  boundaries?: FamilyPedigreeBoundaries;
-  introScreen?: {
-    items: FamilyPedigreeIntroItem[];
-  };
-  censusPrompt?: string;
-  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
+  // FamilyPedigree. The person node type is the stage `subject`; the family
+  // edge type is created when omitted. Every variable the interface owns is
+  // created on those types.
+  prompt?: string;
+  relationshipType?: string;
   // Geospatial
   mapOptions?: MapOptionsEntry;
-  // NarrativePedigree
-  sourceStageId?: string;
-  diseases?: NarrativeDiseaseEntry[];
-  showAtRiskStatuses?: boolean;
   // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)
   layoutVariable?: string;
   nodeForm?: { fields: NetworkComposerFormFieldInput[] };
@@ -553,11 +529,6 @@ export type AddTieStrengthCensusPromptInput = {
   negativeLabel?: string;
 };
 
-export type AddDiseaseNominationStepInput = {
-  text?: string;
-  variable?: string;
-};
-
 export type AddGeospatialPromptInput = {
   text?: string;
   variable?: string;
@@ -571,14 +542,6 @@ export type AddPresetInput = {
   };
   groupVariable?: string | boolean;
   highlight?: string[] | boolean;
-};
-
-export type NarrativeDiseaseEntry = {
-  id: string;
-  label: string;
-  color: NodeColorReference;
-  variable: string;
-  inheritancePattern: string;
 };
 
 export type GetSessionInput = {

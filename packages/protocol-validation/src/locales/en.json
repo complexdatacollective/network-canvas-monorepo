@@ -299,10 +299,6 @@
     "defaultMessage": "Different from another attribute",
     "description": "Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged."
   },
-  "protocolValidation.rule.edgeConfig": {
-    "defaultMessage": "Link configuration",
-    "description": "Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged."
-  },
   "protocolValidation.rule.egoVariable": {
     "defaultMessage": "Participant indicator",
     "description": "Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged."
@@ -313,10 +309,6 @@
   },
   "protocolValidation.rule.greaterThanVariable": {
     "defaultMessage": "Greater than another attribute",
-    "description": "Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged."
-  },
-  "protocolValidation.rule.inheritancePattern": {
-    "defaultMessage": "Inheritance pattern",
     "description": "Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged."
   },
   "protocolValidation.rule.lessThanOrEqualToVariable": {
