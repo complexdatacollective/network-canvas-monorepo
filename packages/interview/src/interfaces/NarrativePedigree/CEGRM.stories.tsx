@@ -327,12 +327,20 @@ export function buildCegrmInterview(seed: number) {
       ...attrs,
     });
   };
+  // Nominated on the quick-add stage's only prompt, so the stage opens listing
+  // them rather than empty.
   const nonKin = (uid: string, attrs: Attrs) =>
-    si.addManualNode(ngId, person.id, uid, {
-      [KIN_TYPE_VAR]: ['fictive'],
-      ...(POS[uid] ? { [LAYOUT_VAR]: POS[uid] } : {}),
-      ...attrs,
-    });
+    si.addManualNode(
+      ngId,
+      person.id,
+      uid,
+      {
+        [KIN_TYPE_VAR]: ['fictive'],
+        ...(POS[uid] ? { [LAYOUT_VAR]: POS[uid] } : {}),
+        ...attrs,
+      },
+      { promptIndices: [0] },
+    );
 
   // Generation 1 — grandparents. The maternal grandmother founds the HBOC line;
   // the paternal grandmother is a key information disseminator.
