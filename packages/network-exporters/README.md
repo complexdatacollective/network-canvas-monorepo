@@ -133,6 +133,29 @@ document, and every `<data>` element uses the allocated ID. If the same external
 attribute appears on more than one entity kind, GraphML emits one `for="all"`
 key rather than conflicting node and edge keys.
 
+### Interview language
+
+Each interview is exported with the language it was last shown in, taken from
+`InterviewExportInput.locale`. The value is a BCP 47 tag. `und` means a protocol
+migrated from schema 8 that declares no language, and `null` means the runtime
+never reported one.
+
+- **CSV**: the ego file has a `networkCanvasInterviewLocale` column, written
+  after the other session columns (`APP_VERSION`, `COMMIT_HASH`) and before the
+  variable columns. The cell is empty when the language is `null`.
+- **GraphML**: the `<graph>` element has an `nc:interviewLocale` attribute,
+  omitted when the language is `null`.
+
+The CSV column is always present, so the language an interview was held in never
+changes the headers or keys an analysis is built from.
+
+Only the printed name `networkCanvasInterviewLocale` is reserved. A variable
+whose column would have that name is written as `networkCanvasInterviewLocale_2`
+in the ego CSV and reported once per protocol as a `column-renamed` warning in
+`ExportReturn.warnings`. A variable named `interviewLocale` is exported
+unchanged, and GraphML never renames one, because the language is an attribute
+of the graph rather than a key.
+
 ---
 
 ## Public surface
@@ -144,7 +167,7 @@ Imports use sub-paths — the package has no barrel export.
 | `@codaco/network-exporters/pipeline`                     | `exportPipeline`, type `ExportedProtocol`                                                                                                                                                                                |
 | `@codaco/network-exporters/options`                      | `ExportOptions`, `ExportOptionsSchema`, type `ExportFormat`                                                                                                                                                              |
 | `@codaco/network-exporters/input`                        | `InterviewExportInput`, `ProtocolExportInput`, plus session shape types (`FormattedSession`, `SessionVariables`, `SessionWithNetworkEgo`, `NodeWithResequencedID`, `EdgeWithResequencedID`, `SessionWithResequencedIDs`) |
-| `@codaco/network-exporters/output`                       | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle`                                                                                                          |
+| `@codaco/network-exporters/output`                       | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportWarning`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle`                                                                                         |
 | `@codaco/network-exporters/events`                       | `ExportEvent`, `stageMessages`                                                                                                                                                                                           |
 | `@codaco/network-exporters/errors`                       | `DatabaseError`, `OutputError`, `ExportGenerationError`, `ProtocolNotFoundError`, `SessionProcessingError`, type `ExportError`, `describeExportError`                                                                    |
 | `@codaco/network-exporters/services/InterviewRepository` | `InterviewRepository` Tag                                                                                                                                                                                                |
@@ -462,6 +485,7 @@ const result = await Effect.runPromise(...);
 //   status: "success" | "partial",
 //   successfulExports: ExportSuccess[],
 //   failedExports:     ExportFailure[],
+//   warnings:          ExportWarning[], // changes made to the data; never "partial"
 //   output:            OutputResult,   // host-defined
 // }
 
