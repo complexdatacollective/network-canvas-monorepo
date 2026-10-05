@@ -14,7 +14,6 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { messages } from '../messages';
 import { type Person, symbolFor } from '../model';
-import { SEX_ABBREVIATIONS } from '../options';
 
 type PersonNodeProps = {
   person: Person;
@@ -28,8 +27,8 @@ type PersonNodeProps = {
 };
 
 /**
- * One family member: their pedigree symbol, with their name and sex assigned
- * at birth beneath it, and a warning when required details are missing.
+ * One family member: their pedigree symbol labelled with their name, and a
+ * warning when required details are missing.
  */
 export default function PersonNode({
   person,
@@ -44,9 +43,6 @@ export default function PersonNode({
   const displayName = person.isEgo
     ? intl.formatMessage(messages.you)
     : (person.name ?? intl.formatMessage(messages.unnamedPerson));
-  const abbreviation = person.sexAssignedAtBirth
-    ? SEX_ABBREVIATIONS[person.sexAssignedAtBirth]
-    : undefined;
 
   return (
     <div
@@ -63,7 +59,7 @@ export default function PersonNode({
         size="sm"
         shape={symbolFor(person.genderIdentity)}
         color={color}
-        label=""
+        label={displayName}
         ariaLabel={intl.formatMessage(messages.personAccessibleName, {
           isYou: person.isEgo ? 'true' : 'false',
           name: displayName,
@@ -89,24 +85,6 @@ export default function PersonNode({
           </TooltipContent>
         </Tooltip>
       )}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute top-full left-1/2 mt-1 flex w-max max-w-48 -translate-x-1/2 flex-col items-center text-center leading-tight"
-      >
-        <span
-          className={cx(
-            'truncate font-semibold',
-            !person.isEgo && person.name === undefined && 'italic opacity-70',
-          )}
-        >
-          {displayName}
-        </span>
-        {abbreviation && (
-          <span className="text-sm opacity-70">
-            <AppMessage message={abbreviation} />
-          </span>
-        )}
-      </div>
       {children}
     </div>
   );

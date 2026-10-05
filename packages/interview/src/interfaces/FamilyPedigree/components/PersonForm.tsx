@@ -19,6 +19,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FormField,
   type PedigreeParentKind,
+  type PedigreeRelationshipKind,
 } from '@codaco/protocol-validation';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
@@ -27,6 +28,7 @@ import { messages } from '../messages';
 import {
   type AddRelativeRequest,
   type Family,
+  type FamilyLink,
   type MissingDetail,
   type PedigreeConfig,
   type Person,
@@ -55,6 +57,15 @@ export type PersonFormResult = {
   /** Attributes to clear (edit only). */
   unset: string[];
   request?: AddRelativeRequest;
+  /** Changes to the person's existing relationships (edit only). */
+  linkUpdates?: LinkUpdate[];
+};
+
+export type LinkUpdate = {
+  linkId: string;
+  kind: PedigreeRelationshipKind;
+  isGestationalCarrier: boolean;
+  isCurrentPartner: boolean;
 };
 
 // Names of the relationship questions. They are not attributes: the answers
@@ -174,6 +185,10 @@ export default function PersonForm({
         mode.kind === 'add'
           ? readRequest(mode.relation, values, mode.anchor, family)
           : undefined,
+      linkUpdates:
+        mode.kind === 'edit'
+          ? readLinkUpdates(existingLinksOf(family, mode.person.id), values)
+          : undefined,
     });
     return { success: true };
   };
@@ -257,6 +272,13 @@ export default function PersonForm({
             />
           </section>
         )}
+        {mode.kind === 'edit' && (
+          <ExistingRelationshipFields
+            person={mode.person}
+            family={family}
+            displayName={displayName}
+          />
+        )}
         {formFields.length > 0 && (
           <section className="flex flex-col">
             <Heading level="h3" margin="none" className="mb-4">
@@ -267,6 +289,164 @@ export default function PersonForm({
         )}
       </div>
     </FormWithoutProvider>
+  );
+}
+
+/** The links an edit can change: the person's partnerships and parents. */
+function existingLinksOf(family: Family, personId: string) {
+  return {
+    partnerships: family.links.filter(
+      (link) =>
+        link.kind === 'partner' &&
+        (link.source === personId || link.target === personId),
+    ),
+    parents: family.links.filter(
+      (link) => link.kind !== 'partner' && link.target === personId,
+    ),
+  };
+}
+
+const linkField = (
+  link: FamilyLink,
+  question: 'current' | 'kind' | 'carrier',
+) => `pedigreeLink:${link.id}:${question}`;
+
+function readLinkUpdates(
+  links: ReturnType<typeof existingLinksOf>,
+  values: Record<string, FieldValue>,
+): LinkUpdate[] {
+  const updates: LinkUpdate[] = [];
+  for (const link of links.partnerships) {
+    const isCurrentPartner = values[linkField(link, 'current')] !== false;
+    if (isCurrentPartner !== link.isCurrentPartner) {
+      updates.push({
+        linkId: link.id,
+        kind: 'partner',
+        isGestationalCarrier: false,
+        isCurrentPartner,
+      });
+    }
+  }
+  for (const link of links.parents) {
+    const kind =
+      (asString(values[linkField(link, 'kind')]) as
+        | PedigreeParentKind
+        | undefined) ?? link.kind;
+    const isGestationalCarrier =
+      kind === 'surrogate' ||
+      (kind === 'biological' && values[linkField(link, 'carrier')] === true);
+    if (
+      kind !== link.kind ||
+      isGestationalCarrier !== link.isGestationalCarrier
+    ) {
+      updates.push({
+        linkId: link.id,
+        kind,
+        isGestationalCarrier,
+        isCurrentPartner: true,
+      });
+    }
+  }
+  return updates;
+}
+
+function ExistingRelationshipFields({
+  person,
+  family,
+  displayName,
+}: {
+  person: Person;
+  family: Family;
+  displayName: (personId: string) => string;
+}) {
+  const intl = useAppIntl();
+  const { partnerships, parents } = existingLinksOf(family, person.id);
+  if (partnerships.length === 0 && parents.length === 0) return null;
+
+  const isYou = (personId: string) =>
+    family.byId.get(personId)?.isEgo ? 'true' : 'false';
+
+  return (
+    <section className="flex flex-col">
+      <Heading level="h3" margin="none" className="mb-4">
+        <AppMessage message={messages.relationshipsSection} />
+      </Heading>
+      {partnerships.map((link) => {
+        const partnerId = link.source === person.id ? link.target : link.source;
+        return (
+          <Field
+            key={link.id}
+            component={BooleanField}
+            name={linkField(link, 'current')}
+            nameMode="opaque"
+            label={intl.formatMessage(messages.stillTogetherLabel, {
+              personIsYou: isYou(person.id),
+              partnerIsYou: isYou(partnerId),
+              partner: displayName(partnerId),
+            })}
+            initialValue={link.isCurrentPartner}
+          />
+        );
+      })}
+      {parents.map((link) => (
+        <ParentLinkFields
+          key={link.id}
+          link={link}
+          personIsYou={isYou(person.id)}
+          parentIsYou={isYou(link.source)}
+          parentName={displayName(link.source)}
+        />
+      ))}
+    </section>
+  );
+}
+
+function ParentLinkFields({
+  link,
+  personIsYou,
+  parentIsYou,
+  parentName,
+}: {
+  link: FamilyLink;
+  personIsYou: string;
+  parentIsYou: string;
+  parentName: string;
+}) {
+  const intl = useAppIntl();
+  const kindField = linkField(link, 'kind');
+  const values = useFormValue([kindField], 'opaque');
+  const kind = asString(values[kindField]) ?? link.kind;
+
+  return (
+    <>
+      <Field
+        component={RadioGroupField}
+        name={kindField}
+        nameMode="opaque"
+        label={intl.formatMessage(messages.parentLinkKindLabel, {
+          personIsYou,
+          parentIsYou,
+          parent: parentName,
+        })}
+        options={PARENT_KINDS.map((value) => ({
+          value,
+          label: intl.formatMessage(PARENT_KIND_LABELS[value]),
+        }))}
+        initialValue={link.kind}
+      />
+      {kind === 'biological' && (
+        <Field
+          component={BooleanField}
+          name={linkField(link, 'carrier')}
+          nameMode="opaque"
+          label={intl.formatMessage(messages.parentCarriedLabel, {
+            parentIsYou,
+            parent: parentName,
+          })}
+          initialValue={link.isGestationalCarrier}
+        />
+      )}
+    </>
   );
 }
 

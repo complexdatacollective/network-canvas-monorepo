@@ -34,6 +34,7 @@ import {
   addNode,
   deleteEdge,
   deleteNode,
+  updateEdge,
   updateNode,
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
@@ -169,6 +170,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     component: <Node size="sm" />,
   });
 
+  // Bring the participant into view once their symbol is first laid out, so a
+  // large family opens centred on them rather than on its top-left corner.
+  const centredOnEgo = useRef(false);
+  useEffect(() => {
+    if (centredOnEgo.current || !family.egoId || nodeWidth === 0) return;
+    const egoNode = nodeRefs.current.get(family.egoId);
+    if (!egoNode) return;
+    centredOnEgo.current = true;
+    egoNode.scrollIntoView({ block: 'center', inline: 'center' });
+  });
+
   const openAdd = (relation: Relation) => {
     if (!selected) return;
     setPanel({
@@ -195,18 +207,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const closePanel = () =>
     setPanel((current) => (current ? { ...current, open: false } : null));
 
+  // Selecting a person opens their details; when the panel closes they stay
+  // selected, with the add menu around them.
   const handleActivate = (personId: string) => {
-    if (selectedId === personId) {
-      openEdit(personId);
-      return;
-    }
     setSelectedId(personId);
-    setAnnouncement(
-      intl.formatMessage(messages.selectedAnnouncement, {
-        isYou: family.byId.get(personId)?.isEgo ? 'true' : 'false',
-        name: displayName(personId),
-      }),
-    );
+    openEdit(personId);
   };
 
   const handleSubmit = async (result: PersonFormResult) => {
@@ -225,6 +230,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      for (const update of result.linkUpdates ?? []) {
+        await dispatch(
+          updateEdge({
+            edgeId: update.linkId,
+            attributePatch: {
+              set: {
+                [config.kindVariable]: [update.kind],
+                ...(update.kind === 'partner'
+                  ? { [config.currentPartnerVariable]: update.isCurrentPartner }
+                  : {
+                      [config.gestationalCarrierVariable]:
+                        update.isGestationalCarrier,
+                    }),
+              },
+              unset: [],
+            },
+          }),
+        );
+      }
       setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
       return;
     }
@@ -386,7 +410,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       isYou={person.isEgo}
                       name={displayName(personId)}
                       onAdd={openAdd}
-                      onEdit={() => openEdit(personId)}
                     />
                   )}
                 </PersonNode>

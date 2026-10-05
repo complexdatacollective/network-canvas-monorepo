@@ -1,13 +1,7 @@
 'use client';
 
 import { Toolbar } from '@base-ui/react/toolbar';
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Pencil,
-} from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { ReactNode } from 'react';
 
@@ -22,11 +16,10 @@ type AddRelativeMenuProps = {
   isYou: boolean;
   name: string;
   onAdd: (relation: Relation) => void;
-  onEdit: () => void;
 };
 
 type MenuItem = {
-  key: Relation | 'edit';
+  relation: Relation;
   label: MessageDescriptor;
   icon: ReactNode;
   /** Where the button sits around the person's symbol. */
@@ -34,39 +27,32 @@ type MenuItem = {
 };
 
 // Buttons sit on the side of the symbol where the new relative will appear:
-// parents above, children below, siblings beside to the left and partners to
-// the right. Their DOM order is the arrow-key order of the toolbar.
+// parents above, children below, siblings to the left and partners to the
+// right. Their DOM order is the arrow-key order of the toolbar.
 const ITEMS: MenuItem[] = [
   {
-    key: 'parent',
+    relation: 'parent',
     label: messages.addParent,
-    icon: <ArrowUp className="size-4" aria-hidden />,
-    placement: 'bottom-full left-1/2 mb-3 -translate-x-1/2',
+    icon: <ArrowUp className="size-5" aria-hidden />,
+    placement: 'bottom-full left-1/2 mb-4 -translate-x-1/2',
   },
   {
-    key: 'sibling',
+    relation: 'sibling',
     label: messages.addSibling,
-    icon: <ArrowLeft className="size-4" aria-hidden />,
-    placement: 'right-full top-1/2 mr-3 -translate-y-1/2',
+    icon: <ArrowLeft className="size-5" aria-hidden />,
+    placement: 'right-full top-1/2 mr-4 -translate-y-1/2',
   },
   {
-    key: 'partner',
+    relation: 'partner',
     label: messages.addPartner,
-    icon: <ArrowRight className="size-4" aria-hidden />,
-    placement: 'left-full top-1/2 ml-3 -translate-y-1/2',
+    icon: <ArrowRight className="size-5" aria-hidden />,
+    placement: 'left-full top-1/2 ml-4 -translate-y-1/2',
   },
   {
-    key: 'child',
+    relation: 'child',
     label: messages.addChild,
-    icon: <ArrowDown className="size-4" aria-hidden />,
-    // Below the name and sex annotation beneath the symbol.
-    placement: 'top-full left-1/2 mt-16 -translate-x-1/2',
-  },
-  {
-    key: 'edit',
-    label: messages.editDetails,
-    icon: <Pencil className="size-4" aria-hidden />,
-    placement: 'bottom-full left-full -mb-2 ml-1',
+    icon: <ArrowDown className="size-5" aria-hidden />,
+    placement: 'top-full left-1/2 mt-4 -translate-x-1/2',
   },
 ];
 
@@ -79,7 +65,6 @@ export default function AddRelativeMenu({
   isYou,
   name,
   onAdd,
-  onEdit,
 }: AddRelativeMenuProps) {
   const intl = useAppIntl();
   const reduceMotion = useReducedMotion();
@@ -95,13 +80,13 @@ export default function AddRelativeMenu({
     >
       {ITEMS.map((item, index) => (
         <Toolbar.Button
-          key={item.key}
-          onClick={() => (item.key === 'edit' ? onEdit() : onAdd(item.key))}
-          data-testid={`pedigree-menu-${item.key}`}
+          key={item.relation}
+          onClick={() => onAdd(item.relation)}
+          data-testid={`pedigree-menu-${item.relation}`}
           render={
             <motion.button
               type="button"
-              initial={reduceMotion ? false : { opacity: 0, scale: 0.8 }}
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{
                 type: 'spring',
@@ -110,7 +95,7 @@ export default function AddRelativeMenu({
                 delay: reduceMotion ? 0 : index * 0.02,
               }}
               className={cx(
-                'focusable pointer-events-auto absolute flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap',
+                'focusable pointer-events-auto absolute flex size-20 flex-col items-center justify-center gap-0.5 rounded-full text-sm font-semibold',
                 'bg-surface-1 text-text elevation-medium hover:bg-primary hover:text-primary-contrast',
                 item.placement,
               )}

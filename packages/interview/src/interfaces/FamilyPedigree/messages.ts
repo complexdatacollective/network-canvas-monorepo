@@ -69,12 +69,6 @@ export const messages = defineMessages({
     description:
       'Short button label next to a selected family member: adds a child of that person.',
   },
-  editDetails: {
-    id: 'interview.familyPedigree.editDetails',
-    defaultMessage: 'Details',
-    description:
-      'Short button label next to a selected family member: opens a panel to view and change the details about that person.',
-  },
   addParentTitle: {
     id: 'interview.familyPedigree.addParentTitle',
     defaultMessage:
@@ -120,6 +114,33 @@ export const messages = defineMessages({
     defaultMessage: 'How you are related',
     description:
       'Heading above the questions about how a new family member is related to the selected person.',
+  },
+  relationshipsSection: {
+    id: 'interview.familyPedigree.relationshipsSection',
+    defaultMessage: 'Relationships',
+    description:
+      'Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details.',
+  },
+  stillTogetherLabel: {
+    id: 'interview.familyPedigree.stillTogetherLabel',
+    defaultMessage:
+      '{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}',
+    description:
+      'Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or “Unnamed”.',
+  },
+  parentLinkKindLabel: {
+    id: 'interview.familyPedigree.parentLinkKindLabel',
+    defaultMessage:
+      '{parentIsYou, select, true {How are you their parent?} other {{personIsYou, select, true {How is {parent} your parent?} other {How is {parent} their parent?}}}}',
+    description:
+      'Question in the details panel about one of the family member’s parents. {parent} is the parent’s name or “Unnamed”. Options are the kinds of parent.',
+  },
+  parentCarriedLabel: {
+    id: 'interview.familyPedigree.parentCarriedLabel',
+    defaultMessage:
+      '{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}',
+    description:
+      'Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or “Unnamed”.',
   },
   moreAboutThisPerson: {
     id: 'interview.familyPedigree.moreAboutThisPerson',
@@ -199,24 +220,6 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.sex.intersex',
     defaultMessage: 'Intersex',
     description: 'Sex assigned at birth option.',
-  },
-  sexAbbreviationFemale: {
-    id: 'interview.familyPedigree.sexAbbreviation.female',
-    defaultMessage: 'AFAB',
-    description:
-      'Abbreviation shown beneath a family member’s symbol: assigned female at birth. Use the clinical abbreviation customary in the target language.',
-  },
-  sexAbbreviationMale: {
-    id: 'interview.familyPedigree.sexAbbreviation.male',
-    defaultMessage: 'AMAB',
-    description:
-      'Abbreviation shown beneath a family member’s symbol: assigned male at birth. Use the clinical abbreviation customary in the target language.',
-  },
-  sexAbbreviationIntersex: {
-    id: 'interview.familyPedigree.sexAbbreviation.intersex',
-    defaultMessage: 'UAAB',
-    description:
-      'Abbreviation shown beneath a family member’s symbol: unassigned at birth (intersex). Use the clinical abbreviation customary in the target language.',
   },
   parentKindLabel: {
     id: 'interview.familyPedigree.parentKindLabel',
@@ -404,12 +407,5 @@ export const messages = defineMessages({
     defaultMessage: '{name} removed from your family.',
     description:
       'Screen reader announcement after a family member is removed. {name} is their name or “Unnamed”.',
-  },
-  selectedAnnouncement: {
-    id: 'interview.familyPedigree.selectedAnnouncement',
-    defaultMessage:
-      '{isYou, select, true {You are selected.} other {{name} selected.}} Use the buttons that follow to add their relatives.',
-    description:
-      'Screen reader announcement when a family member is selected in the family tree.',
   },
 });

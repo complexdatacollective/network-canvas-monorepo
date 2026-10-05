@@ -36,15 +36,6 @@ export const SEX_ASSIGNED_AT_BIRTH_LABELS: Record<
   preferNotToSay: messages.preferNotToSay,
 };
 
-/** The clinical annotation beneath a symbol; none when not known. */
-export const SEX_ABBREVIATIONS: Partial<
-  Record<PedigreeSexAssignedAtBirth, MessageDescriptor>
-> = {
-  female: messages.sexAbbreviationFemale,
-  male: messages.sexAbbreviationMale,
-  intersex: messages.sexAbbreviationIntersex,
-};
-
 export const PARENT_KIND_LABELS: Record<PedigreeParentKind, MessageDescriptor> =
   {
     biological: messages.parentKindBiological,

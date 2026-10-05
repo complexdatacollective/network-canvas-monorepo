@@ -91,10 +91,6 @@
     "defaultMessage": "Don’t know",
     "description": "Answer option for a question about a family member, when the participant does not know."
   },
-  "interview.familyPedigree.editDetails": {
-    "defaultMessage": "Details",
-    "description": "Short button label next to a selected family member: opens a panel to view and change the details about that person."
-  },
   "interview.familyPedigree.editTitle": {
     "defaultMessage": "{isYou, select, true {About you} other {About {name}}}",
     "description": "Title of the side panel showing the details about a family member. {name} is that family member’s name or “Unnamed”."
@@ -155,6 +151,10 @@
     "defaultMessage": "Someone not shown yet",
     "description": "Option: the child’s other parent is not in the family tree yet; an unnamed person is added to fill in later."
   },
+  "interview.familyPedigree.parentCarriedLabel": {
+    "defaultMessage": "{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}",
+    "description": "Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or “Unnamed”."
+  },
   "interview.familyPedigree.parentKind.adoptive": {
     "defaultMessage": "Adoptive parent",
     "description": "Option: a parent through adoption."
@@ -178,6 +178,10 @@
   "interview.familyPedigree.parentKindLabel": {
     "defaultMessage": "What kind of parent are they?",
     "description": "Question in the side panel for adding a parent: how the new person is a parent of the selected family member."
+  },
+  "interview.familyPedigree.parentLinkKindLabel": {
+    "defaultMessage": "{parentIsYou, select, true {How are you their parent?} other {{personIsYou, select, true {How is {parent} your parent?} other {How is {parent} their parent?}}}}",
+    "description": "Question in the details panel about one of the family member’s parents. {parent} is the parent’s name or “Unnamed”. Options are the kinds of parent."
   },
   "interview.familyPedigree.parentPartnerLabel": {
     "defaultMessage": "Are they the partner of another parent?",
@@ -203,6 +207,10 @@
     "defaultMessage": "How you are related",
     "description": "Heading above the questions about how a new family member is related to the selected person."
   },
+  "interview.familyPedigree.relationshipsSection": {
+    "defaultMessage": "Relationships",
+    "description": "Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details."
+  },
   "interview.familyPedigree.remove": {
     "defaultMessage": "Remove from family",
     "description": "Button in the side panel that removes a family member from the family tree."
@@ -227,10 +235,6 @@
     "defaultMessage": "Details saved.",
     "description": "Screen reader announcement after a family member’s details are saved."
   },
-  "interview.familyPedigree.selectedAnnouncement": {
-    "defaultMessage": "{isYou, select, true {You are selected.} other {{name} selected.}} Use the buttons that follow to add their relatives.",
-    "description": "Screen reader announcement when a family member is selected in the family tree."
-  },
   "interview.familyPedigree.sex.female": {
     "defaultMessage": "Female",
     "description": "Sex assigned at birth option."
@@ -243,18 +247,6 @@
     "defaultMessage": "Male",
     "description": "Sex assigned at birth option."
   },
-  "interview.familyPedigree.sexAbbreviation.female": {
-    "defaultMessage": "AFAB",
-    "description": "Abbreviation shown beneath a family member’s symbol: assigned female at birth. Use the clinical abbreviation customary in the target language."
-  },
-  "interview.familyPedigree.sexAbbreviation.intersex": {
-    "defaultMessage": "UAAB",
-    "description": "Abbreviation shown beneath a family member’s symbol: unassigned at birth (intersex). Use the clinical abbreviation customary in the target language."
-  },
-  "interview.familyPedigree.sexAbbreviation.male": {
-    "defaultMessage": "AMAB",
-    "description": "Abbreviation shown beneath a family member’s symbol: assigned male at birth. Use the clinical abbreviation customary in the target language."
-  },
   "interview.familyPedigree.sexAssignedAtBirthLabel": {
     "defaultMessage": "Sex assigned at birth",
     "description": "Label of the question about the sex a family member was assigned at birth."
@@ -262,6 +254,10 @@
   "interview.familyPedigree.sharedParentsLabel": {
     "defaultMessage": "Which parents do they share?",
     "description": "Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names."
+  },
+  "interview.familyPedigree.stillTogetherLabel": {
+    "defaultMessage": "{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}",
+    "description": "Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or “Unnamed”."
   },
   "interview.familyPedigree.unnamedPerson": {
     "defaultMessage": "Unnamed",
