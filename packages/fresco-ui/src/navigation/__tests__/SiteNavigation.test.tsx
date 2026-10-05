@@ -135,8 +135,9 @@ describe('SiteNavigation', () => {
       'href',
       '/updates',
     );
-    expect(screen.getByRole('link', { name: 'Updates' })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Updates' })).toHaveAttribute(
       'target',
+      '_blank',
     );
     expect(
       screen.getByRole('button', { name: 'Software' }),
