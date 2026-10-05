@@ -8,8 +8,8 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 import { getFramingTerms } from '../../framingTerms';
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import { messages } from '../../messages';
-import PedigreeNodeFormFields from '../PedigreeNodeFormFields';
 import PersonNameField from '../PersonNameField';
 
 const INTRO_COPY = {
@@ -22,6 +22,8 @@ export default function SpermParentStep() {
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
   const terms = getFramingTerms(framingKey, intl);
+
+  const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <>
@@ -43,7 +45,7 @@ export default function SpermParentStep() {
           required
           inline
         />
-        <PedigreeNodeFormFields />
+        {fieldComponents}
       </FieldNamespace>
     </>
   );

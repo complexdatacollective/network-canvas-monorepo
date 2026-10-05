@@ -237,7 +237,7 @@ describe('pedigree built-in localization and recorded data', () => {
   it('keeps all five biological-sex values and a submitted failure across en, es and en-GB', async () => {
     const submit = vi.fn(() =>
       runFamilyPedigreeTransform(() => {
-        extractCustomAttributes({ attributes: { invalid: { nested: true } } });
+        extractCustomAttributes({ invalid: { nested: true } });
         return { success: true } as const;
       }),
     );

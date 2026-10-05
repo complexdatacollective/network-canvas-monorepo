@@ -150,7 +150,7 @@ test('edits a person in the Family Pedigree preview without losing the pedigree'
   // Change the name and one of the protocol-authored `nodeConfig.form` fields.
   await setField(dialog, 'name', 'Linda Edited');
   await dialog
-    .locator('[data-field-name="attributes.living_status"]')
+    .locator('[data-field-name="living_status"]')
     .getByRole('checkbox', { name: 'Deceased' })
     .click();
   await dialog.getByTestId('dialog-submit').click();
@@ -175,7 +175,7 @@ test('edits a person in the Family Pedigree preview without losing the pedigree'
   ).toHaveValue('Linda Edited');
   await expect(
     dialog
-      .locator('[data-field-name="attributes.living_status"]')
+      .locator('[data-field-name="living_status"]')
       .getByRole('checkbox', { name: 'Deceased' }),
   ).toHaveAttribute('aria-checked', 'true');
 });

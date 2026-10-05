@@ -5,9 +5,9 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import type { BiologicalSex } from '@codaco/protocol-validation';
 
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import { messages } from '../../messages';
 import BiologicalSexField from '../BiologicalSexField';
-import PedigreeNodeFormFields from '../PedigreeNodeFormFields';
 import PersonNameField from '../PersonNameField';
 
 type PersonFieldsProps = {
@@ -29,6 +29,13 @@ export default function PersonFields({
   currentEntityId,
 }: PersonFieldsProps) {
   const intl = useAppIntl();
+  const { fieldComponents } = usePedigreeNodeForm({
+    initialValues: initial?.attributes as
+      | Record<string, FieldValue>
+      | undefined,
+    currentEntityId,
+  });
+
   const content = (
     <>
       <PersonNameField
@@ -46,12 +53,7 @@ export default function PersonFields({
             : (initial.biologicalSex ?? 'unknown')
         }
       />
-      <PedigreeNodeFormFields
-        initialValues={
-          initial?.attributes as Record<string, FieldValue> | undefined
-        }
-        currentEntityId={currentEntityId}
-      />
+      {fieldComponents}
     </>
   );
 

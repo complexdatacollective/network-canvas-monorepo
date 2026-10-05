@@ -6,15 +6,7 @@ import { type VariableValue, VariableValueSchema } from '@codaco/shared-consts';
 import { runtimeMessages } from '../../../../../i18n/runtimeMessages';
 import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 
-/**
- * Each pedigree member's form values keep protocol-authored fields under this
- * key, apart from the interface's own controls (`name`, `biologicalSex`,
- * `is-donor`, `role`, …). Codebook variable IDs are author-chosen, so sharing
- * one namespace would let a variable alias a control and be read back as
- * pedigree structure.
- */
-export const PERSON_ATTRIBUTES_KEY = 'attributes';
-
+const KNOWN_PERSON_KEYS = new Set(['name', 'biologicalSex']);
 type FormSubmissionFailure = Extract<FormSubmissionResult, { success: false }>;
 const invalidSubmissionResult: FormSubmissionFailure = {
   success: false,
@@ -34,27 +26,14 @@ export function runFamilyPedigreeTransform<T>(
   }
 }
 
-const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** The protocol-authored field values submitted for one pedigree member. */
-export function readPersonAttributeValues(
-  person: Record<string, unknown>,
-): Record<string, unknown> {
-  const values = Object.hasOwn(person, PERSON_ATTRIBUTES_KEY)
-    ? person[PERSON_ATTRIBUTES_KEY]
-    : undefined;
-  return isPlainRecord(values) ? values : {};
-}
-
-export function validateCustomAttributes(
-  values: Record<string, unknown>,
-  ignoredKeys: ReadonlySet<string> = new Set(),
+export function extractCustomAttributes(
+  obj: Record<string, unknown>,
+  knownKeys: ReadonlySet<string> = KNOWN_PERSON_KEYS,
 ): Record<string, VariableValue> | undefined {
   const attrs: Record<string, VariableValue> = {};
   let hasAttrs = false;
-  for (const [key, val] of Object.entries(values)) {
-    if (ignoredKeys.has(key) || val === undefined) continue;
+  for (const [key, val] of Object.entries(obj)) {
+    if (knownKeys.has(key) || val === undefined) continue;
 
     const result = VariableValueSchema.safeParse(val);
     if (!result.success) {
@@ -67,12 +46,6 @@ export function validateCustomAttributes(
     hasAttrs = true;
   }
   return hasAttrs ? attrs : undefined;
-}
-
-export function extractCustomAttributes(
-  person: Record<string, unknown>,
-): Record<string, VariableValue> | undefined {
-  return validateCustomAttributes(readPersonAttributeValues(person));
 }
 
 /**

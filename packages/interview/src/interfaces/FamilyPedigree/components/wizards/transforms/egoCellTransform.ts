@@ -4,12 +4,17 @@ import type { VariableValue } from '@codaco/shared-consts';
 import type { CommitBatch, GameteRole, VariableConfig } from '../../../store';
 import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 import { buildChildParentage } from './buildChildParentage';
-import {
-  extractCustomAttributes,
-  readBiologicalSex,
-  validateCustomAttributes,
-} from './personAttributes';
+import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
+const KNOWN_BIO_PARENT_KEYS = new Set([
+  'is-donor',
+  'name',
+  'gestationalCarrier',
+  'biologicalSex',
+]);
+
+const KNOWN_ADDITIONAL_PARENT_KEYS = new Set(['role', 'name', 'biologicalSex']);
+const KNOWN_CHILD_KEYS = new Set(['name', 'parentage', 'biologicalSex']);
 const KNOWN_EGO_KEYS = new Set([
   'name',
   'biologicalSex',
@@ -46,7 +51,7 @@ function buildBioParent(
 ): ParentEntry {
   const isDonor = parent['is-donor'] === true;
   const name = typeof parent.name === 'string' ? parent.name : '';
-  const extraAttrs = extractCustomAttributes(parent);
+  const extraAttrs = extractCustomAttributes(parent, KNOWN_BIO_PARENT_KEYS);
 
   const attributes: Record<string, VariableValue> = {
     [variableConfig.nodeLabelVariable]: name,
@@ -76,7 +81,10 @@ function buildAdditionalParent(
   parent: Record<string, unknown>,
   variableConfig: VariableConfig,
 ): ParentEntry {
-  const extraAttrs = extractCustomAttributes(parent);
+  const extraAttrs = extractCustomAttributes(
+    parent,
+    KNOWN_ADDITIONAL_PARENT_KEYS,
+  );
 
   const attributes: Record<string, VariableValue> = {
     [variableConfig.nodeLabelVariable]:
@@ -176,7 +184,7 @@ export function egoCellTransform(
   const egoRef = existingEgoId ?? 'ego';
   const batch: CommitBatch = { nodes: [], edges: [] };
 
-  const egoCustomAttrs = validateCustomAttributes(values, KNOWN_EGO_KEYS);
+  const egoCustomAttrs = extractCustomAttributes(values, KNOWN_EGO_KEYS);
 
   const egoAttributes: Record<string, VariableValue> = {
     [variableConfig.egoVariable]: true,
@@ -272,7 +280,10 @@ export function egoCellTransform(
   if (hasPartner && partnerObj) {
     const partnerName =
       typeof partnerObj.name === 'string' ? partnerObj.name : '';
-    const partnerExtraAttrs = extractCustomAttributes(partnerObj);
+    const partnerExtraAttrs = extractCustomAttributes(
+      partnerObj,
+      KNOWN_BIO_PARENT_KEYS,
+    );
 
     const partnerAttrs: Record<string, VariableValue> = {
       [variableConfig.nodeLabelVariable]: partnerName,
@@ -319,7 +330,7 @@ export function egoCellTransform(
     if (!child) continue;
 
     const childName = typeof child.name === 'string' ? child.name : '';
-    const childExtraAttrs = extractCustomAttributes(child);
+    const childExtraAttrs = extractCustomAttributes(child, KNOWN_CHILD_KEYS);
     const tempId = `child-${String(i)}`;
 
     const childAttrs: Record<string, VariableValue> = {

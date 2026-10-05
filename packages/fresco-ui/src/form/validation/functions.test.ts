@@ -1135,41 +1135,6 @@ describe('Validation Functions', () => {
       expect(validator.safeParse('stale value').success).toBe(false);
     });
 
-    it('resolves an aliased form path from the form root, outside the namespace', () => {
-      const validator = validations.sameAs(
-        'displayName',
-        createMockContext({
-          formValueNamespacePath: ['parent', 'attributes'],
-          formValueAliases: { displayName: ['parent', 'name'] },
-          codebook: {
-            node: {
-              person: {
-                name: 'Person',
-                color: 'node-color-seq-1',
-                shape: { default: 'circle' },
-                variables: {
-                  displayName: {
-                    name: 'Display name',
-                    type: 'text',
-                  },
-                },
-              },
-            },
-          },
-        }),
-      )({
-        name: 'top-level decoy',
-        parent: {
-          name: 'live value',
-          attributes: { name: 'sibling decoy', displayName: 'stale value' },
-        },
-      });
-
-      expect(validator.safeParse('live value').success).toBe(true);
-      expect(validator.safeParse('stale value').success).toBe(false);
-      expect(validator.safeParse('sibling decoy').success).toBe(false);
-    });
-
     it('should throw error when attribute is not specified', () => {
       expect(() => {
         validations

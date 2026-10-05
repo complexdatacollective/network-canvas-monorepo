@@ -5,8 +5,8 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
 import { messages } from '../../messages';
-import PedigreeNodeFormFields from '../PedigreeNodeFormFields';
 import PersonNameField from '../PersonNameField';
 
 // "Gestational Carrier" is framing-invariant, but the explanatory body must not
@@ -22,6 +22,8 @@ export default function GestationalCarrierStep() {
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
 
+  const { fieldComponents } = usePedigreeNodeForm();
+
   return (
     <>
       <Paragraph>
@@ -34,7 +36,7 @@ export default function GestationalCarrierStep() {
           hint={intl.formatMessage(messages.unknownNameHint)}
           autoFocus
         />
-        <PedigreeNodeFormFields />
+        {fieldComponents}
       </FieldNamespace>
     </>
   );

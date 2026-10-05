@@ -7,7 +7,6 @@ import { z } from 'zod/mini';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { WizardContext } from '@codaco/fresco-ui/dialogs/useWizard';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import { useFieldNamespacePath } from '@codaco/fresco-ui/form/FieldNamespace';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type {
@@ -33,7 +32,6 @@ import {
   getNodeLabelVariable,
   getNodeType,
 } from '../utils/nodeUtils';
-import { PERSON_ATTRIBUTES_KEY } from './wizards/transforms/personAttributes';
 
 type PersonNameFieldProps = {
   autoFocus?: boolean;
@@ -54,8 +52,6 @@ function countPendingNames(value: unknown, target: string): number {
   if (typeof value !== 'object' || value === null) return 0;
 
   return Object.entries(value).reduce((count, [key, item]) => {
-    // Protocol fields are keyed by variable ID, which may itself be `name`.
-    if (key === PERSON_ATTRIBUTES_KEY) return count;
     const ownMatch = key === 'name' && item === target ? 1 : 0;
     return count + ownMatch + countPendingNames(item, target);
   }, 0);
@@ -84,7 +80,6 @@ export default function PersonNameField({
   const baseValidationContext = useStageSelector(getValidationContext);
   const getFormValues = useFormStore((state) => state.getFormValues);
   const wizardContext = useContext(WizardContext);
-  const personPath = useFieldNamespacePath();
 
   const nodeVariables = codebook.node?.[nodeType]?.variables ?? {};
   const validationMetadata = selectValidationMetadataForVariable(
@@ -142,18 +137,9 @@ export default function PersonNameField({
 
   const validationContext = useMemo<ValidationContext>(() => {
     const localIds = new Set(pedigreeNodes.keys());
-    // Comparison rules on the label variable must read the protocol fields'
-    // live answers, which sit under the person's attributes key.
-    const formValueAliases = Object.fromEntries(
-      (nodeForm ?? []).map(({ variable }) => [
-        variable,
-        [...personPath, PERSON_ATTRIBUTES_KEY, variable],
-      ]),
-    );
     return {
       ...baseValidationContext,
       stageSubject: { entity: 'node', type: nodeType },
-      formValueAliases,
       variableLabels: {
         ...formVariableLabels,
         ...buildVariableLabels([{ variable: nodeLabelVariable, label }]),
@@ -174,11 +160,9 @@ export default function PersonNameField({
     currentEntityId,
     formVariableLabels,
     label,
-    nodeForm,
     nodeLabelVariable,
     nodeType,
     pedigreeNodes,
-    personPath,
   ]);
 
   return (

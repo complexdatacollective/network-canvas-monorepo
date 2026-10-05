@@ -1,3 +1,4 @@
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { type VariableValue, VariableValueSchema } from '@codaco/shared-consts';
 
 import type { AttributePatch } from '../store/entityAttributePatch';
@@ -13,7 +14,7 @@ export type FormValuesToAttributePatchResult =
     };
 
 export function formValuesToAttributePatch(
-  values: Readonly<Record<string, unknown>>,
+  values: Readonly<Record<string, FieldValue>>,
   mountedFieldNames: readonly string[],
 ): FormValuesToAttributePatchResult {
   const set: Record<string, VariableValue> = {};
