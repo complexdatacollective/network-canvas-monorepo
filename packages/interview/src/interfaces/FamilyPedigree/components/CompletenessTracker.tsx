@@ -26,6 +26,7 @@ const ITEM_MESSAGES = {
   parents: messages.itemParents,
   siblings: messages.itemSiblings,
   children: messages.itemChildren,
+  details: messages.itemDetails,
 };
 
 const SPRING = { type: 'spring', stiffness: 500, damping: 40 } as const;

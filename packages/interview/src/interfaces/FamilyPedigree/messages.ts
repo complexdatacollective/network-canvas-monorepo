@@ -465,6 +465,13 @@ export const messages = defineMessages({
     description:
       'Item in the list of family members still needed: the person’s biological children, or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
   },
+  itemDetails: {
+    id: 'interview.familyPedigree.itemDetails',
+    defaultMessage:
+      '{isYou, select, true {Some details are missing about you} other {Some details are missing for “{name}”}}',
+    description:
+      'Item in the list of what is still needed before continuing: questions about this person that the study requires have not been answered. name is the person’s name or how they are related to the participant.',
+  },
   familySection: {
     id: 'interview.familyPedigree.familySection',
     defaultMessage: 'Their family',

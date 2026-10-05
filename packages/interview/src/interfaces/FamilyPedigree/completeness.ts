@@ -4,7 +4,7 @@ import {
   type PedigreeRelativesNotRecorded,
 } from '@codaco/protocol-validation';
 
-import type { Family } from './model';
+import type { Family, Person } from './model';
 
 /**
  * Something the participant still needs to record about one person before
@@ -15,10 +15,11 @@ import type { Family } from './model';
  *   about is still added.
  * - `siblings` / `children`: none are recorded and the participant has not
  *   said there are none, or that they don't know.
+ * - `details`: some of the person's required details are not given.
  */
 export type CompletenessItem =
   | { kind: 'parents'; personId: string; missing: number }
-  | { kind: 'siblings' | 'children'; personId: string };
+  | { kind: 'siblings' | 'children' | 'details'; personId: string };
 
 export type CompletenessProgress = {
   /** What is still needed, about people already in the family. */
@@ -115,8 +116,9 @@ function requirementsFor(
  *   (nieces, nephews and grandchildren).
  * - `thirdDegree`: each aunt's and uncle's children (first cousins).
  *
- * Progress counts one step for every biological parent and every answered
- * group of siblings or children. Steps belonging to a parent not yet added
+ * Progress counts one step for every biological parent, every answered
+ * group of siblings or children, and every person whose required details are
+ * all given. Steps belonging to a parent not yet added
  * are counted too, so adding someone never makes the family look less
  * complete — only adding a sibling or child, who brings questions of their
  * own, can.
@@ -124,6 +126,7 @@ function requirementsFor(
 export function evaluateCompleteness(
   family: Family,
   scope: PedigreeCompletenessScope,
+  hasMissingDetails: (person: Person) => boolean,
 ): CompletenessProgress {
   // Each with how far its person is from the participant, to list the
   // nearest first.
@@ -154,6 +157,9 @@ export function evaluateCompleteness(
         total += 1;
         const parentId = parents[slot];
         if (parentId) done += 1;
+        // A parent not yet added will need their details too; once added,
+        // they are counted with everyone else below.
+        else total += 1;
         visit(parentId ?? null, requirements.parents, distance + 1);
       }
       if (personId && parents.length < 2) {
@@ -208,6 +214,20 @@ export function evaluateCompleteness(
   const items = found
     .toSorted((a, b) => a.distance - b.distance)
     .map(({ item }) => item);
+
+  // Everyone in the family needs their required details, the participant
+  // first.
+  const people = family.people.toSorted(
+    (a, b) => Number(b.isEgo) - Number(a.isEgo),
+  );
+  for (const person of people) {
+    total += 1;
+    if (hasMissingDetails(person)) {
+      items.push({ kind: 'details', personId: person.id });
+    } else {
+      done += 1;
+    }
+  }
   return { items, done, total, asked };
 }
 

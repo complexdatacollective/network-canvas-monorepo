@@ -238,8 +238,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const completeness = stage.completeness;
   const progress = useMemo(
     () =>
-      completeness ? evaluateCompleteness(family, completeness.scope) : null,
-    [family, completeness],
+      completeness
+        ? evaluateCompleteness(
+            family,
+            completeness.scope,
+            (person) =>
+              missingDetailsFor(person, requiredFormVariables).length > 0,
+          )
+        : null,
+    [family, completeness, requiredFormVariables],
   );
   const [trackerOpen, setTrackerOpen] = useState(false);
 
