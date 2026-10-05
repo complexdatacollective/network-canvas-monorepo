@@ -467,6 +467,12 @@ export type ParentChoice = {
   carriedPregnancy: boolean;
 };
 
+/** Whether someone could have carried a pregnancy: anyone not recorded as
+ * male at birth, including people whose sex at birth is not yet known.
+ * Gender identity has no bearing on it. */
+export const couldCarryPregnancy = (sexAssignedAtBirth: string | undefined) =>
+  sexAssignedAtBirth !== 'male';
+
 /** Whether `ancestorId` is the person's parent, a parent's parent, and so on. */
 function isAncestor(family: Family, ancestorId: string, personId: string) {
   const seen = new Set<string>();
@@ -506,7 +512,8 @@ export function canConnectPartners(
  * The kinds of parent one person can be made of another. None when they are
  * already linked, or when the would-be parent descends from the child. A
  * person has at most two genetic parents (biological or donor), and one
- * person who carried the pregnancy (a biological parent or a surrogate).
+ * person who carried the pregnancy (a biological parent or a surrogate) —
+ * never someone recorded as male at birth.
  */
 export function availableParentChoices(
   family: Family,
@@ -525,14 +532,17 @@ export function availableParentChoices(
     (link) => link.kind === 'biological' || link.kind === 'donor',
   ).length;
   const hasCarrier = parentLinks.some((link) => link.isGestationalCarrier);
+  const canCarry =
+    !hasCarrier &&
+    couldCarryPregnancy(family.byId.get(parentId)?.sexAssignedAtBirth);
   const choices: ParentChoice[] = [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {
     if (kind === 'partner') continue;
     const genetic = kind === 'biological' || kind === 'donor';
     if (genetic && geneticParents >= 2) continue;
-    if (kind === 'surrogate' && hasCarrier) continue;
+    if (kind === 'surrogate' && !canCarry) continue;
     choices.push({ parentKind: kind, carriedPregnancy: kind === 'surrogate' });
-    if (kind === 'biological' && !hasCarrier) {
+    if (kind === 'biological' && canCarry) {
       choices.push({ parentKind: kind, carriedPregnancy: true });
     }
   }

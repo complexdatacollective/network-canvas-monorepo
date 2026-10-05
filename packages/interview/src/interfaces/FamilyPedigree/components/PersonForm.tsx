@@ -36,6 +36,7 @@ import {
   type Person,
   type PersonDetails,
   type Relation,
+  couldCarryPregnancy,
   fullSiblingsOf,
   partnersOf,
   primaryParentsOf,
@@ -333,6 +334,7 @@ export default function PersonForm({
               anchor={mode.anchor}
               family={family}
               displayName={displayName}
+              config={config}
             />
           </section>
         )}
@@ -504,10 +506,12 @@ function ExistingRelationshipFields({
     ]),
     'opaque',
   );
+  const canCarry = (link: FamilyLink) =>
+    couldCarryPregnancy(family.byId.get(link.source)?.sexAssignedAtBirth);
   const carries = (link: FamilyLink) => {
     const kind = asString(linkValues[linkField(link, 'kind')]) ?? link.kind;
     if (kind === 'surrogate') return true;
-    if (kind !== 'biological') return false;
+    if (kind !== 'biological' || !canCarry(link)) return false;
     const carrier = linkValues[linkField(link, 'carrier')];
     return carrier === undefined ? link.isGestationalCarrier : carrier === true;
   };
@@ -555,6 +559,7 @@ function ExistingRelationshipFields({
         >
           <ParentLinkFields
             link={link}
+            canCarry={canCarry(link)}
             carries={carries(link)}
             anotherCarries={parents.some(
               (other) => other.id !== link.id && carries(other),
@@ -632,6 +637,7 @@ function RemovableRelationship({
 
 function ParentLinkFields({
   link,
+  canCarry,
   carries,
   anotherCarries,
   personIsYou,
@@ -639,6 +645,9 @@ function ParentLinkFields({
   parentName,
 }: {
   link: FamilyLink;
+  /** This parent could have carried a pregnancy: they are not recorded as
+   * male at birth. */
+  canCarry: boolean;
   /** This parent carried the pregnancy, as the answers stand. */
   carries: boolean;
   /** Another of the person's parents did. */
@@ -666,11 +675,11 @@ function ParentLinkFields({
         options={PARENT_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(PARENT_KIND_LABELS[value]),
-          disabled: value === 'surrogate' && anotherCarries,
+          disabled: value === 'surrogate' && (anotherCarries || !canCarry),
         }))}
         initialValue={link.kind}
       />
-      {kind === 'biological' && (carries || !anotherCarries) && (
+      {kind === 'biological' && canCarry && (carries || !anotherCarries) && (
         <Field
           component={BooleanField}
           name={linkField(link, 'carrier')}
@@ -761,7 +770,24 @@ function readRequest(
       };
     case 'child': {
       const otherParent = asString(values[ROLE.otherParent]);
-      const carrier = asString(values[ROLE.carrier]);
+      // The carrier answer outlives a change of other parent, perhaps to one
+      // recorded as male at birth, who could not have carried the pregnancy.
+      const answer = asString(values[ROLE.carrier]);
+      const carrierId =
+        answer === 'anchor'
+          ? anchor.id
+          : answer === 'otherParent'
+            ? otherParent
+            : undefined;
+      const carrierCould =
+        carrierId === UNKNOWN ||
+        couldCarryPregnancy(
+          carrierId && family.byId.get(carrierId)?.sexAssignedAtBirth,
+        );
+      const carrier =
+        (answer === 'anchor' || answer === 'otherParent') && carrierCould
+          ? answer
+          : null;
       return {
         relation,
         otherParent:
@@ -774,8 +800,7 @@ function readRequest(
           (asString(values[ROLE.childKind]) as
             | (typeof CHILD_KINDS)[number]
             | undefined) ?? 'biological',
-        carrier:
-          carrier === 'anchor' || carrier === 'otherParent' ? carrier : null,
+        carrier,
       };
     }
     case 'sibling': {
@@ -794,11 +819,13 @@ function RelationshipFields({
   anchor,
   family,
   displayName,
+  config,
 }: {
   relation: Relation;
   anchor: Person;
   family: Family;
   displayName: (personId: string) => string;
+  config: PedigreeConfig;
 }) {
   switch (relation) {
     case 'parent':
@@ -807,6 +834,7 @@ function RelationshipFields({
           anchor={anchor}
           family={family}
           displayName={displayName}
+          config={config}
         />
       );
     case 'partner':
@@ -846,13 +874,20 @@ function ParentFields({
   anchor,
   family,
   displayName,
+  config,
 }: {
   anchor: Person;
   family: Family;
   displayName: (personId: string) => string;
+  config: PedigreeConfig;
 }) {
   const intl = useAppIntl();
   const values = useFormValue([ROLE.parentKind, ROLE.partnerId]);
+  const sexAssignedAtBirth = asString(
+    useFormValue([config.sexAssignedAtBirthVariable], 'opaque')[
+      config.sexAssignedAtBirthVariable
+    ],
+  );
   const parentKind = asString(values[ROLE.parentKind]) ?? 'biological';
   const raises =
     parentKind === 'biological' ||
@@ -868,6 +903,8 @@ function ParentFields({
       link.target === anchor.id &&
       link.isGestationalCarrier,
   );
+  // Nor can a parent recorded as male at birth.
+  const canCarry = !anchorHasCarrier && couldCarryPregnancy(sexAssignedAtBirth);
   const siblings = siblingsOf(family, anchor.id);
   const fullSiblings = new Set(fullSiblingsOf(family, anchor.id));
   const partnerChoice = asString(values[ROLE.partnerId]);
@@ -881,11 +918,11 @@ function ParentFields({
         options={PARENT_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(PARENT_KIND_LABELS[value]),
-          disabled: value === 'surrogate' && anchorHasCarrier,
+          disabled: value === 'surrogate' && !canCarry,
         }))}
         initialValue="biological"
       />
-      {parentKind === 'biological' && !anchorHasCarrier && (
+      {parentKind === 'biological' && canCarry && (
         <Field
           component={BooleanField}
           name={ROLE.carriedPregnancy}
@@ -943,6 +980,13 @@ function ChildFields({
   const childKind = asString(values[ROLE.childKind]) ?? 'biological';
   const otherParent = asString(values[ROLE.otherParent]);
   const hasOtherParent = otherParent !== undefined && otherParent !== NONE;
+  // Neither parent is offered as having carried the pregnancy if recorded as
+  // male at birth; an unknown other parent might have.
+  const anchorCanCarry = couldCarryPregnancy(anchor.sexAssignedAtBirth);
+  const otherParentCanCarry =
+    hasOtherParent &&
+    (otherParent === UNKNOWN ||
+      couldCarryPregnancy(family.byId.get(otherParent)?.sexAssignedAtBirth));
 
   return (
     <>
@@ -970,28 +1014,34 @@ function ChildFields({
         }))}
         initialValue="biological"
       />
-      {childKind === 'biological' && (
-        <Field
-          component={RadioGroupField}
-          name={ROLE.carrier}
-          label={intl.formatMessage(messages.carrierLabel)}
-          options={[
-            { value: 'anchor', label: displayName(anchor.id) },
-            ...(hasOtherParent
-              ? [
-                  {
-                    value: 'otherParent',
-                    label:
-                      otherParent === UNKNOWN
-                        ? intl.formatMessage(messages.otherParentUnknown)
-                        : displayName(otherParent),
-                  },
-                ]
-              : []),
-            { value: NONE, label: intl.formatMessage(messages.carrierUnknown) },
-          ]}
-        />
-      )}
+      {childKind === 'biological' &&
+        (anchorCanCarry || otherParentCanCarry) && (
+          <Field
+            component={RadioGroupField}
+            name={ROLE.carrier}
+            label={intl.formatMessage(messages.carrierLabel)}
+            options={[
+              ...(anchorCanCarry
+                ? [{ value: 'anchor', label: displayName(anchor.id) }]
+                : []),
+              ...(otherParentCanCarry
+                ? [
+                    {
+                      value: 'otherParent',
+                      label:
+                        otherParent === UNKNOWN
+                          ? intl.formatMessage(messages.otherParentUnknown)
+                          : displayName(otherParent),
+                    },
+                  ]
+                : []),
+              {
+                value: NONE,
+                label: intl.formatMessage(messages.carrierUnknown),
+              },
+            ]}
+          />
+        )}
     </>
   );
 }

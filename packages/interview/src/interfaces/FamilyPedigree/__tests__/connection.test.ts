@@ -103,6 +103,28 @@ describe('connecting two people', () => {
     ]);
   });
 
+  test('parents: not as having carried the pregnancy when male at birth', () => {
+    const f = family(
+      [...people, person('father', { sex: ['male'], gender: ['woman'] })],
+      [],
+    );
+    expect(kinds(availableParentChoices(f, 'father', 'ego'))).toEqual([
+      'biological',
+      'adoptive',
+      'social',
+      'donor',
+    ]);
+  });
+
+  test('parents: as having carried the pregnancy when sex at birth is not male', () => {
+    for (const sex of ['female', 'intersex', 'unknown', 'preferNotToSay']) {
+      const f = family([...people, person('parent', { sex: [sex] })], []);
+      expect(kinds(availableParentChoices(f, 'parent', 'ego'))).toContain(
+        'biological+carried',
+      );
+    }
+  });
+
   test('the recorded link', () => {
     expect(
       planConnection({
