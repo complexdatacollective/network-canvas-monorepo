@@ -1,3 +1,4 @@
+import type { PresentationalText } from '../../../PresentationalText';
 import {
   controlVariants,
   heightVariants,
@@ -26,14 +27,13 @@ export const selectWrapperVariants = cva({
 
 export type SelectOption = {
   value: string | number;
-  label: string;
-  disabled?: boolean;
   /**
-   * BCP 47 tag applied to the rendered `<option>` when its label is in a
-   * different language from the page — e.g. a locale autonym — so screen
+   * A label in a different language from the page — e.g. a locale autonym —
+   * passes its `lang`/`dir`, which the rendered `<option>` carries so screen
    * readers switch pronunciation per option.
    */
-  lang?: string;
+  label: PresentationalText;
+  disabled?: boolean;
 };
 
 /**
@@ -48,7 +48,7 @@ export type SelectOption = {
  * duplicate key.
  */
 export type SelectOptionGroup = {
-  label: string;
+  label: PresentationalText;
   options: SelectOption[];
 };
 

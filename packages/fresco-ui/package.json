@@ -55,6 +55,7 @@
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
     "./PortalContainer": "./src/PortalContainer.tsx",
+    "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
     "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
@@ -358,6 +359,10 @@
       "./PortalContainer": {
         "types": "./dist/PortalContainer.d.ts",
         "default": "./dist/PortalContainer.js"
+      },
+      "./PresentationalText": {
+        "types": "./dist/PresentationalText.d.ts",
+        "default": "./dist/PresentationalText.js"
       },
       "./ProgressBar": {
         "types": "./dist/ProgressBar.d.ts",

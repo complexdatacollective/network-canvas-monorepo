@@ -739,3 +739,58 @@ export const InsidePopover: Story = {
     await waitFor(() => expect(trigger).toHaveTextContent('1 item selected'));
   },
 };
+
+const localizedOptions: ComboboxOption[] = [
+  { value: 'ar', label: { text: 'العربية', lang: 'ar', dir: 'rtl' } },
+  { value: 'fa', label: { text: 'فارسی', lang: 'fa', dir: 'rtl' } },
+  { value: 'es', label: { text: 'Español', lang: 'es', dir: 'ltr' } },
+  { value: 'en', label: 'English' },
+];
+
+/**
+ * Protocol copy arrives as `PresentationalText`: each listed option carries
+ * the text's own `lang` and `dir`, so Arabic and Persian options lay out
+ * right-to-left inside a left-to-right page. Search filters on the bare text.
+ */
+export const LocalizedOptions: Story = {
+  render: () => {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <div className="w-80">
+        <ComboboxField
+          name="localized"
+          aria-label="Languages spoken"
+          options={localizedOptions}
+          searchPlaceholder="Type to filter..."
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: 'Languages spoken' }),
+    );
+
+    const arabic = await screen.findByRole('option', { name: 'العربية' });
+    await expect(arabic).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(arabic).direction).toBe('rtl');
+    await expect(
+      screen.getByRole('option', { name: 'English' }),
+    ).not.toHaveAttribute('lang');
+
+    await userEvent.type(
+      screen.getByPlaceholderText('Type to filter...'),
+      'فار',
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('option', { name: 'العربية' })).toBeNull(),
+    );
+    await expect(screen.getByRole('option', { name: 'فارسی' })).toHaveAttribute(
+      'dir',
+      'rtl',
+    );
+  },
+};

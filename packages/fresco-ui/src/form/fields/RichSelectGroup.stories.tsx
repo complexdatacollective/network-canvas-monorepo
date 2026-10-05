@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
 import RichSelectGroupField, {
@@ -132,6 +133,74 @@ export const WithMarkdown: Story = {
           aria-label="Select network type"
         />
       </div>
+    );
+  },
+};
+
+const localizedOptions: RichSelectOption[] = [
+  {
+    value: 'close',
+    label: { text: '**قريب جدا**', lang: 'ar', dir: 'rtl' },
+    description: {
+      text: 'نتحدث كل يوم تقريبا.',
+      lang: 'ar',
+      dir: 'rtl',
+    },
+  },
+  {
+    value: 'distant',
+    label: { text: '**Distante**', lang: 'es', dir: 'ltr' },
+    description: {
+      text: 'Hablamos *pocas veces* al año.',
+      lang: 'es',
+      dir: 'ltr',
+    },
+  },
+  {
+    value: 'unsure',
+    label: 'Not sure',
+    description: 'Neither description fits.',
+  },
+];
+
+/**
+ * Protocol copy arrives as `PresentationalText`: label and description each
+ * render as Markdown on an element carrying their own `lang` and `dir`, so an
+ * Arabic option lays out right-to-left inside a left-to-right page. Plain
+ * strings keep the page's language.
+ */
+export const LocalizedLabels: Story = {
+  render: function Render() {
+    const [value, setValue] = useState<
+      string | number | (string | number)[] | undefined
+    >(undefined);
+
+    return (
+      <div className="w-full max-w-lg">
+        <RichSelectGroupField
+          options={localizedOptions}
+          value={value}
+          onChange={setValue}
+          aria-label="Closeness"
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const close = canvas.getByText('قريب جدا');
+    await expect(close.tagName).toBe('STRONG');
+    await expect(close.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(close).direction).toBe('rtl');
+    await expect(
+      canvas.getByText('نتحدث كل يوم تقريبا.').closest('[lang]'),
+    ).toHaveAttribute('dir', 'rtl');
+    await expect(
+      canvas.getByText('pocas veces').closest('[lang]'),
+    ).toHaveAttribute('lang', 'es');
+    await expect(canvas.getByText('Not sure').closest('[lang]')).toBe(
+      document.documentElement,
     );
   },
 };

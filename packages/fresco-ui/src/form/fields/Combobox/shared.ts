@@ -1,3 +1,4 @@
+import type { PresentationalText } from '../../../PresentationalText';
 import {
   controlVariants,
   heightVariants,
@@ -12,7 +13,7 @@ import { cva } from '../../../utils/cva';
 
 export type ComboboxOption = {
   value: string | number;
-  label: string;
+  label: PresentationalText;
   disabled?: boolean;
 };
 

@@ -2,6 +2,11 @@
 
 import { type ReactNode, useId } from 'react';
 
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -38,7 +43,7 @@ const checkboxGroupComposedVariants = cva({
 
 type CheckboxOption = {
   value: string | number;
-  label: string;
+  label: PresentationalText;
   disabled?: boolean;
 };
 
@@ -159,8 +164,11 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
                   'cursor-[inherit] transition-colors duration-200',
                   isOptionDisabled && 'opacity-50',
                 )}
+                {...presentationalTextProps(option.label)}
               >
-                <RenderMarkdown>{option.label}</RenderMarkdown>
+                <RenderMarkdown>
+                  {presentationalTextValue(option.label)}
+                </RenderMarkdown>
               </span>
             </label>
           );
