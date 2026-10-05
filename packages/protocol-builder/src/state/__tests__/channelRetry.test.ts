@@ -102,11 +102,6 @@ async function until(predicate: () => boolean, what: string): Promise<void> {
 }
 
 describe('the protocol channel resuming', () => {
-  /**
-   * The resume asks for what came after the last cursor it was given, and the
-   * host answers with exactly that: a revision the channel already had is not
-   * delivered again, and one written while the stream was down is not lost.
-   */
   it('delivers every revision once across a dropped stream', async () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(allInterfaces),
@@ -155,7 +150,6 @@ describe('the protocol channel resuming', () => {
       () => labels.includes('after'),
       'the revision after the resume',
     );
-    // A resume from the wrong cursor delivers late, as a repeat.
     await new Promise((resolve) => setTimeout(resolve, 600));
 
     controller.abort();
@@ -165,11 +159,6 @@ describe('the protocol channel resuming', () => {
 });
 
 describe('the protocol channel refused by the session', () => {
-  /**
-   * The session's refusal is not one of the procedure's own: a host that has
-   * not recognised the caller yet may on the next attempt, so the channel
-   * goes back through the ladder rather than ending.
-   */
   it('reconnects after an unauthorized watch and delivers', async () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(allInterfaces),

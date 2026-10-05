@@ -3,23 +3,6 @@ import { Cause, Duration, Effect, Layer, MutableRef } from 'effect';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { JobWorker } from './worker.ts';
 
-// Maintenance mode, as it reaches the queue: while a deployment is in
-// maintenance the worker claims nothing at all — #1927 §20 Q9 answers "which
-// queues stop" with "all of them", so this is one flag over the whole worker
-// rather than a per-queue gate, and it is the worker's own `setFetching`,
-// which is what the poll fibers read before each claim. A handler already in
-// flight is not interrupted: maintenance stops new work, and the graceful
-// stop (worker.ts) is what bounds the work already running.
-//
-// The flag is `MaintenanceState`'s (`platform/maintenance-state.ts`), the same
-// cached read of `deployment_state` the web process's gate consults; nothing
-// here reads that table, because the queue must not grow a second opinion
-// about what maintenance is. That read cannot fail — a failed read answers
-// the last state it knew — so the gate never has to guess, which would either
-// claim through a maintenance window or stop claiming because a query timed
-// out.
-
-/** How often the gate asks; a second, as the deployment gate polls. */
 const DEFAULT_POLL_INTERVAL = Duration.seconds(1);
 
 export type JobMaintenanceGateConfig = {
@@ -27,13 +10,6 @@ export type JobMaintenanceGateConfig = {
 };
 
 export const JobMaintenanceGate = {
-  /**
-   * The gate fiber. It calls `setFetching` only when the answer changes, so
-   * the log carries one line per transition rather than one a second, and a
-   * read that fails is logged and retried on the next tick rather than
-   * killing the fiber — a gate that died would leave the worker fetching
-   * through a maintenance window with nothing saying why.
-   */
   layer: (
     config: JobMaintenanceGateConfig = {},
   ): Layer.Layer<never, never, JobWorker | MaintenanceState> =>
@@ -41,18 +17,8 @@ export const JobMaintenanceGate = {
       Effect.gen(function* () {
         const worker = yield* JobWorker;
         const state = yield* MaintenanceState;
-        // `null` until the first tick, so the first answer is always applied
-        // whichever way it points. That is what opens a worker built with
-        // `startPaused` (worker.ts), which is how a process that boots into
-        // maintenance never claims: a worker that started fetching would poll
-        // before any reading could stop it. The first tick is awaited while
-        // this layer builds, so the worker is open — or deliberately paused —
-        // before the process reports itself started; only the repeats are
-        // forked. A first read
-        // that fails or hangs still answers here — `MaintenanceState` answers
-        // the last value it read, and "not in maintenance" before any — so a
-        // database that cannot be read at boot opens the worker rather than
-        // leaving it paused for good.
+        // `null` until the first tick, so the first answer is always applied: that is
+        // what opens a worker built with `startPaused`.
         const applied = MutableRef.make<boolean | null>(null);
 
         const tick = Effect.gen(function* () {
@@ -68,7 +34,6 @@ export const JobMaintenanceGate = {
             );
             return;
           }
-          // Nothing at boot: "jobs are running" is only news after a pause.
           if (previous !== null) {
             yield* Effect.logInfo(
               'maintenance is over: the job worker is claiming jobs again',

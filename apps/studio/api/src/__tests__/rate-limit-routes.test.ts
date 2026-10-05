@@ -30,47 +30,19 @@ import {
   REDIS_DATABASES,
 } from './support/valkey.ts';
 
-// Every limited surface, through the request path a caller actually takes
-// (#1909). What the limiter itself decides is in
-// src/rate-limit/__tests__/limiter.test.ts; what is here is that each surface
-// asks it, with the right subject, and answers a refusal the same way.
-//
-// None of these needs a database. The limit is taken before anything is read —
-// which is the point of a rate limit — so a refused call is a 429 whether or
-// not the surface behind it would have worked, and an allowed one reaches the
-// surface and is answered by it.
-
 const url = await reachableRedis(REDIS_DATABASES.routes);
 
-/** One connection for the file; each case builds its own limiter over it. */
 const store = await openRateLimitStore(url);
 afterAll(() => store.dispose());
 
-/**
- * A client address of its own per case, so no two cases share a bucket.
- *
- * The HTTP limits are the Effect router's route middleware, keyed by the
- * address the global `ClientAddress` middleware resolved — so the cases run
- * over a real socket, whose peer is loopback, with loopback trusted as a
- * proxy: the address is then the forwarded one, exactly as it is behind a
- * deployment's reverse proxy. What the resolution itself decides is in
- * src/__tests__/client-address.test.ts.
- */
 function peer(address: string): Record<string, string> {
   return { 'x-forwarded-for': address };
 }
 
-/** The browser-facing origin these cases configure, which better-auth is handed. */
 const PUBLIC_URL = 'http://studio.example:5173';
 
-/** A limit small enough to count to, for the one scope a case is about. */
 const perMinute = (max: number) => ({ max, windowMs: 60_000 });
 
-/**
- * The shipped limits with one or two scopes turned down, stated in code
- * (#1909). There is no environment variable behind any of them any more, and
- * counting to the real `storage_read` limit would be two thousand requests.
- */
 function appOptions(
   limits: Partial<RateLimitSettings>,
   principalUserId?: string,
@@ -82,9 +54,6 @@ function appOptions(
     TRUSTED_PROXIES: ['127.0.0.1'],
     ...(url ? { REDIS_URL: url } : {}),
   });
-  // Auth configured without a database, which the environment's own decode
-  // would refuse: nothing here reaches one, and the origin the routes rebuild
-  // better-auth's request against is what a case asserts.
   const env: StudioEnv = {
     ...resolved,
     auth: {
@@ -96,10 +65,6 @@ function appOptions(
   };
   const deps = {
     limiter: store.limiter(limits),
-    // A data layer whose every client refuses. `openTeam` needs one to exist
-    // before it will look a membership up at all, and every procedure behind
-    // it fails when it uses one — which is what tells an admitted call from a
-    // refused one here.
     services: Effect.runSync(Effect.scoped(Layer.build(absentDataServices))),
     auth: authServiceStub(
       principalUserId
@@ -130,10 +95,6 @@ function appOptions(
   return { env, deps };
 }
 
-/**
- * The whole stack on a loopback port, and a request against it from a given
- * client address. `handler` stands in for better-auth's web handler.
- */
 async function serverWith(
   limits: Partial<RateLimitSettings>,
   options: {
@@ -161,7 +122,6 @@ async function serverWith(
   };
 }
 
-/** A JSON POST, as the SPA's sign-in form sends one. */
 const postJson = (body: unknown): RequestInit => ({
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -177,27 +137,10 @@ function studioWith(
   return createStudio(env, deps);
 }
 
-/**
- * A client on the rpc plane, which is where the `rpc_user`, `rpc_team` and
- * `invitation_accept` limits are charged now.
- *
- * A refusal there is the contract's `RateLimited({ retryAfterSeconds })` and
- * nothing else: the `Retry-After` header the oRPC fetch plane carried is gone
- * by design (design §14, "two failure planes"), because the same procedures
- * are served over a socket, where a frame has no headers to put it in. The
- * HTTP surfaces below keep the header, and their cases are unchanged.
- */
 function rpcClientFor(studio: Studio): Promise<RpcTestClient> {
   return createRpcClient(studio);
 }
 
-/**
- * A call the limiter admitted: there is no database behind these apps, so the
- * procedure behind the limit fails on the pool, and the call dies rather than
- * failing with one of its declared errors. That it got that far is what proves
- * it was admitted — the same thing `INTERNAL_SERVER_ERROR` proved on the oRPC
- * plane.
- */
 function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {
   expect(Exit.isFailure(exit)).toBe(true);
   if (Exit.isFailure(exit)) {
@@ -205,11 +148,6 @@ function expectAdmitted(exit: Exit.Exit<unknown, unknown>): void {
   }
 }
 
-/**
- * A protocol-builder call the limiter refused. That host's contract does not
- * declare `RateLimited`, so the refusal is a defect whose value is the
- * `RateLimited` error, rather than a declared failure.
- */
 function expectBuilderRateLimited(exit: Exit.Exit<unknown, unknown>): void {
   expect(Exit.isFailure(exit)).toBe(true);
   if (Exit.isSuccess(exit)) return;
@@ -228,7 +166,6 @@ function expectBuilderRateLimited(exit: Exit.Exit<unknown, unknown>): void {
   ).toBeGreaterThan(0);
 }
 
-/** The shape every refusal takes, whichever surface produced it. */
 async function expectProblemJson429(response: Response): Promise<void> {
   expect(response.status).toBe(429);
   expect(response.headers.get('Content-Type')).toContain(
@@ -246,8 +183,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   it('refuses a third magic-link request for one email address', async () => {
     const server = await serverWith({ sign_in_email: perMinute(2) });
     const email = `researcher-${randomUUID()}@example.org`;
-    // Three different addresses, so what refuses the third call can only be
-    // the per-email limit.
     const send = (address: string) =>
       server.request(
         address,
@@ -256,8 +191,6 @@ describe.skipIf(!url)('the limited request paths', () => {
       );
     try {
       expect((await send('203.0.113.1')).status).not.toBe(429);
-      // Upper case and a trailing slash name the same account on the same
-      // endpoint: one bucket.
       expect(
         (
           await server.request(
@@ -269,7 +202,6 @@ describe.skipIf(!url)('the limited request paths', () => {
       ).not.toBe(429);
       await expectProblemJson429(await send('203.0.113.3'));
 
-      // Another address is another bucket.
       const other = await server.request(
         '203.0.113.4',
         '/api/auth/sign-in/magic-link',
@@ -282,8 +214,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('hands better-auth the body the sign-in limit read', async () => {
-    // The limit has to read the body to know whose account it is, and the
-    // body can be read once: this is what says better-auth still got it.
     const seen: Array<{ url: string; method: string; body: string }> = [];
     const server = await serverWith(
       { sign_in_email: perMinute(1) },
@@ -311,18 +241,14 @@ describe.skipIf(!url)('the limited request paths', () => {
       );
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ signedIn: true });
-      // Mutation: forward the request without its body → `body` is ''.
       expect(seen).toEqual([
         {
-          // Rebuilt against the configured origin, not the socket's.
           url: `${PUBLIC_URL}/api/auth/sign-in/email?from=form`,
           method: 'POST',
           body: JSON.stringify(credentials),
         },
       ]);
 
-      // And it was the limit's to spend: the second attempt never reaches
-      // better-auth.
       await expectProblemJson429(
         await server.request(
           '203.0.113.7',
@@ -337,11 +263,8 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a sign-in body over the cap before better-auth sees it', async () => {
-    // In process, as the upload cap's case is: over a socket the server's
-    // early answer closes it under the client's write, which fetch reports as
-    // a failure. Streamed, so the body carries no Content-Length, and finite —
-    // four times the cap — so a read with no bound ends and says so rather
-    // than hanging the run.
+    // In process: over a socket the server's early answer closes it under the
+    // client's write, which fetch reports as a failure.
     let reached = 0;
     const { env, deps } = appOptions({}, undefined, undefined, {
       handler: () =>
@@ -368,7 +291,6 @@ describe.skipIf(!url)('the limited request paths', () => {
     };
     try {
       const response = await stack.request('/api/auth/sign-in/email', init);
-      // Mutation: `MAX_AUTH_BODY_BYTES = Number.MAX_SAFE_INTEGER` → 200.
       expect(response.status).toBe(413);
       expect(response.headers.get('Content-Type')).toContain(
         'application/problem+json',
@@ -386,8 +308,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it("answers better-auth's own rate limit as problem JSON with Retry-After", async () => {
-    // better-auth refuses its per-address limit with a `{ message }` body and
-    // `X-Retry-After`; a caller reads every refusal the same way here.
     let retryAfter: string | null = '42';
     const server = await serverWith(
       {},
@@ -413,7 +333,6 @@ describe.skipIf(!url)('the limited request paths', () => {
       expect(refused.headers.get('Retry-After')).toBe('42');
       await expectProblemJson429(refused);
 
-      // Without the header, the interval is the per-address window itself.
       retryAfter = null;
       const unstated = await server.request(
         '203.0.113.8',
@@ -429,10 +348,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a third acceptance of one invitation token, on the path the client takes', async () => {
-    // Not better-auth's `/organization/accept-invitation`: Studio blocks that
-    // route outright (audit/better-auth-policy.ts), so a limit there would
-    // guard a 404 and the live path would have none. The client accepts over
-    // RPC (web/src/routes/AcceptInvitation.tsx).
     const userId = `user-${randomUUID()}`;
     const client = await rpcClientFor(
       studioWith({ invitation_accept: perMinute(2) }, userId),
@@ -450,7 +365,6 @@ describe.skipIf(!url)('the limited request paths', () => {
       const refused = await expectRpcFailure(accept(), 'RateLimited');
       expect(refused.retryAfterSeconds).toBeGreaterThan(0);
 
-      // Another token is another bucket.
       expectAdmitted(await accept(TeamInvitationId.make(randomUUID())));
     } finally {
       await client.dispose();
@@ -458,8 +372,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses the blocked better-auth invitation route outright', async () => {
-    // The reason the limit moved: this path answers 404 whatever is sent to
-    // it, so nothing guessing a token ever reaches it.
     const server = await serverWith({});
     try {
       const response = await server.request(
@@ -482,7 +394,6 @@ describe.skipIf(!url)('the limited request paths', () => {
       expect((await read('203.0.113.11')).status).not.toBe(429);
       await expectProblemJson429(await read('203.0.113.11'));
 
-      // A different address still reads: the bucket is the caller, not the path.
       expect((await read('203.0.113.12')).status).not.toBe(429);
     } finally {
       await server.dispose();
@@ -490,10 +401,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('does not let a rotating Authorization header escape the public API limit', async () => {
-    // There is no token plane until #1899, so an Authorization header is an
-    // unvalidated string. Keying on it would let an anonymous caller mint a
-    // fresh allowance per request by changing the value — the address limit
-    // doing nothing at all.
     const server = await serverWith({ public_api: perMinute(2) });
     const call = () =>
       server.request('203.0.113.21', '/api/v1/status', {
@@ -563,9 +470,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   );
 
   it('charges every alias of a route to the one bucket', async () => {
-    // The router matches case-insensitively and collapses slashes (the
-    // maintainer's ruling on #1999, I1), so an alias is the route: it answers
-    // and it is counted, and spelling a path differently buys nothing.
     const server = await serverWith({ public_api: perMinute(3) });
     const call = (path: string) => server.raw('203.0.113.37', path);
     try {
@@ -588,7 +492,6 @@ describe.skipIf(!url)('the limited request paths', () => {
       expect((await call('/api/v1/docs')).status).toBe(200);
       expect((await call('/api/v1/docs')).status).toBe(200);
       await expectProblemJson429(await call('/api/v1/docs'));
-      // The rest of the API is still open to the same caller.
       expect((await call('/api/v1/status')).status).toBe(200);
     } finally {
       await server.dispose();
@@ -608,8 +511,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a third WebSocket upgrade for one user, from any address', async () => {
-    // Keyed by the user the principal gate resolved, not by the address: a
-    // tab that reconnects from a new network is the same tab.
     const userId = `user-${randomUUID()}`;
     const server = await serverWith(
       { ws_upgrade: perMinute(2) },
@@ -621,9 +522,6 @@ describe.skipIf(!url)('the limited request paths', () => {
           headers: { origin: new URL(PUBLIC_URL).origin },
         });
 
-      // The route behind the guards needs a real upgrade, which a plain GET
-      // is not; what matters is that the first two reached it and the third
-      // did not.
       expect((await upgrade('203.0.113.41')).status).not.toBe(429);
       expect((await upgrade('203.0.113.42')).status).not.toBe(429);
       await expectProblemJson429(await upgrade('203.0.113.43'));
@@ -645,10 +543,6 @@ describe.skipIf(!url)('the limited request paths', () => {
         client.call(client.rpc('me', undefined)),
       ).resolves.toMatchObject({ userId });
 
-      // One refusal, carrying the interval: the `Retry-After` header the fetch
-      // plane used to answer with is gone, because these procedures are served
-      // over a socket too and a frame carries no headers. The declared error
-      // is the one answer both transports can give.
       const refused = await expectRpcFailure(
         client.callExit(client.rpc('me', undefined)),
         'RateLimited',
@@ -660,9 +554,6 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('charges the team nothing for a caller who is not in it', async () => {
-    // Charging the team bucket before the membership lookup would let any
-    // signed-in stranger who can guess a team id exhaust that team's quota
-    // with calls that are all refused.
     const teamId = TeamId.make(`team-${randomUUID()}`);
     const outsider = await rpcClientFor(
       studioWith(
@@ -685,7 +576,6 @@ describe.skipIf(!url)('the limited request paths', () => {
         );
       }
 
-      // A member of that team still has the whole allowance.
       for (let call = 0; call < 2; call += 1) {
         expectAdmitted(
           await insider.callExit(insider.rpc('studies.list', { teamId })),
@@ -702,19 +592,7 @@ describe.skipIf(!url)('the limited request paths', () => {
   });
 
   it('refuses a third protocol-builder call for one user', async () => {
-    // Every procedure on that host authenticates through `openSession` rather
-    // than `requireUser`, so without the limiter charged there it would be the
-    // one part of the RPC plane with no per-user limit — including edits over
-    // an open WebSocket.
     const userId = `user-${randomUUID()}`;
-    // In process rather than over a transport, so there is no response status
-    // to assert — a frame has none, and the refusal the caller reads is the
-    // defect itself.
-    //
-    // The caller hands the host a principal outright, so the user the limiter
-    // charges is the one this case names rather than one resolved from a
-    // session. Nothing here covers the auth path; what it covers is that the
-    // limit is charged at all.
     const client = await createProtocolBuilderClient(
       studioWith({ rpc_user: perMinute(2) }, userId),
     );
@@ -739,8 +617,6 @@ describe.skipIf(!url)('the limited request paths', () => {
         }),
       );
     try {
-      // Admitted: the caller holds no membership, so the host answers from
-      // them — past the limiter — that there is no such protocol.
       for (let attempt = 0; attempt < 2; attempt += 1) {
         await expectRpcFailure(call(), 'ProtocolNotFound');
       }
@@ -754,8 +630,6 @@ describe.skipIf(!url)('the limited request paths', () => {
     const teamId = TeamId.make(`team-${randomUUID()}`);
     const client = await rpcClientFor(
       studioWith(
-        // The per-user limit is left generous so that what refuses the third
-        // call can only be the team's.
         { rpc_team: perMinute(2), rpc_user: perMinute(100) },
         `user-${randomUUID()}`,
         teamId,

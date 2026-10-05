@@ -12,14 +12,6 @@ import {
 import type { SessionPrincipal } from '../../auth/service.ts';
 import { appendDeniedAuditSummary } from '../denial-summary.ts';
 
-// What a suppressed window becomes in the log. Who calls this changed with
-// #1909 — it is the worker's summary job now, not the web process at shutdown
-// (src/jobs/handlers/__tests__/denied-attempts-summary.test.ts covers that end
-// to end) — and how it writes changed with #1927 stage 3: the node-postgres
-// writer seam is gone, and the append goes through `audit/store.ts` on the
-// worker's own maintenance client. What it writes did not change, and the row
-// it writes is immutable, which is the property this file exists for.
-
 const FIRST = '2026-08-31T10:00:10.000Z';
 const LAST = '2026-08-31T10:00:30.000Z';
 
@@ -43,8 +35,6 @@ describe.skipIf(!testDb)('a denied-attempts summary', () => {
             emailVerified: true,
             name: 'Denied Summary Actor',
             locale: null,
-            // No session to name: the attempts this summarises were made in
-            // sessions that ended before the window did.
             sessionId: '',
           };
 
@@ -83,9 +73,6 @@ describe.skipIf(!testDb)('a denied-attempts summary', () => {
           assert.strictEqual(event.outcome, 'denied');
           assert.strictEqual(event.actor_id, actor.userId);
           assert.strictEqual(event.actor_label, actor.name);
-          // The label read under `FOR UPDATE` by the same store function
-          // `audited` uses, so a summary names its team exactly as every other
-          // event in the log does.
           assert.strictEqual(event.team_label, 'Summary Team');
           assert.deepStrictEqual(event.details, {
             operation: 'team.updateMemberRole',

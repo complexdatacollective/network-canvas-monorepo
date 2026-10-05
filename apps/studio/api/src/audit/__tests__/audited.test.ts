@@ -32,21 +32,6 @@ import { AuditContext } from '../context.ts';
 import { AuditSignal, RecordedSignals } from '../signal.ts';
 import { lockedTeamLabel, lockTeam } from '../store.ts';
 
-// `audited` is commit-then-fail, and every case below exists to hold one half
-// of that against the other: the domain write must not survive an auditable
-// failure, and the audit event must.
-//
-// It is measured against a real server because nothing about it is visible
-// from the process. "The savepoint rolled back" is the database not having a
-// row; "the outer transaction still holds its locks" is another connection
-// being refused; and "the transaction committed before the command failed" is
-// a row that is there after an effect that failed — and "the locks outlived
-// the rolled-back body" is another connection that could only take them once
-// the denial event had committed.
-
-// A team per case, never reused. `audit_events` is append-only — its own
-// sidecar trigger refuses a DELETE — so a case cannot tidy up after itself,
-// and two cases sharing a team would read each other's history.
 const newTeam = () =>
   unsafeMakeTeamAccess(`audited-${randomUUID().slice(0, 8)}`, 'owner');
 
@@ -62,7 +47,6 @@ const principal = Principal.of({
   sessionId: 'audited-session',
 });
 
-/** One event body, in the shape a command may write. */
 const ROLE_CHANGED: AuditEvents = [
   {
     eventType: 'team.member.role_changed',
@@ -78,7 +62,6 @@ const ROLE_CHANGED: AuditEvents = [
   },
 ];
 
-/** A denial a command raises, carrying the event the team is entitled to see. */
 class RoleChangeDenied extends Error {
   constructor() {
     super('role change denied');
@@ -115,7 +98,6 @@ const Harness = Layer.mergeAll(
   Layer.succeed(RequestId, RequestId.of(REQUEST_ID)),
 );
 
-/** A fresh team, seeded and returned as the access token that opens it. */
 const seedTeam = Effect.fnUntraced(function* (name: string) {
   const harness = yield* TestDatabase;
   const team = newTeam();
@@ -126,7 +108,6 @@ const seedTeam = Effect.fnUntraced(function* (name: string) {
   return team;
 });
 
-/** Every audit row this team has, oldest first, read as the connecting login. */
 const auditRows = Effect.fnUntraced(function* (teamId: string) {
   const harness = yield* TestDatabase;
   return yield* harness.onOwner(
@@ -143,7 +124,6 @@ const auditRows = Effect.fnUntraced(function* (teamId: string) {
   );
 });
 
-/** A marker row the body writes, so "the body's write was undone" is testable. */
 const markerCount = Effect.fnUntraced(function* (id: string) {
   const harness = yield* TestDatabase;
   const rows = yield* harness.onOwner(
@@ -161,12 +141,6 @@ const writeMarker = (id: string, teamId: string) =>
       sql`insert into protocols (id, team_id, name) values (${id}, ${teamId}, 'marker')`,
   );
 
-/**
- * Forked from inside a command's body: takes one of the command's locks on the
- * second application client, and once it has it, counts the team's committed
- * audit rows. The count is the moment the lock came free — none if the
- * savepoint's rollback released it, the denial if only the commit did.
- */
 const waitForLock = (
   access: TeamAccess,
   take: Effect.Effect<unknown, unknown, Transaction>,
@@ -192,11 +166,6 @@ const waitForLock = (
     ),
   );
 
-/**
- * Returns once another backend is queued behind this transaction, so the body
- * fails only after the waiter is really waiting. A waiter that ended without
- * queueing dies here with its own exit rather than at the deadline.
- */
 const untilSomeoneWaits = (
   waiter: Fiber.Fiber<number, unknown>,
 ): Effect.Effect<void, unknown, Transaction> =>
@@ -255,9 +224,6 @@ describe.skipIf(!testDb)('audited', () => {
           Effect.succeed(changed('ok', ROLE_CHANGED)),
         );
         const rows = yield* auditRows(TEAM.teamId);
-        // A command supplies none of these three; the combinator does, which is
-        // what makes a forged context unrepresentable rather than merely
-        // refused.
         assert.strictEqual(rows[0]?.actor_label, 'Audited Actor');
         assert.strictEqual(rows[0]?.request_id, REQUEST_ID);
         assert.strictEqual(rows[0]?.team_label, 'Audited Team');
@@ -273,9 +239,6 @@ describe.skipIf(!testDb)('audited', () => {
           'team.updateMemberRole',
           TEAM,
           Effect.gen(function* () {
-            // A rename committed *inside* the command must not change the
-            // label: the event describes the team as it was when the command
-            // took its lock.
             const { sql } = yield* Transaction;
             yield* sql`update teams set name = 'After The Rename' where id = ${TEAM.teamId}`;
             return changed('ok', ROLE_CHANGED);
@@ -306,11 +269,6 @@ describe.skipIf(!testDb)('audited', () => {
       }),
     );
 
-    // ---------------------------------------------------------------------
-    // The decider (#1927 section 21 F1, slice S4.4). Everything above would
-    // also pass under the `tapError` shape the first draft proposed; this is
-    // the case that does not.
-    // ---------------------------------------------------------------------
     it.effect(
       'commits the denial event while rolling the body back, then fails',
       () =>
@@ -328,15 +286,10 @@ describe.skipIf(!testDb)('audited', () => {
             ),
           );
 
-          // It still fails, with the command's own error.
           assert.isTrue(Exit.isFailure(exit));
 
-          // The body's write is gone: the savepoint rolled back.
           assert.strictEqual(yield* markerCount(marker), 0);
 
-          // The denial event is not: the outer transaction committed it after
-          // that rollback, which is the whole point of capturing the Exit
-          // rather than letting it propagate.
           const rows = yield* auditRows(TEAM.teamId);
           assert.lengthOf(rows, 1);
           assert.strictEqual(
@@ -347,10 +300,6 @@ describe.skipIf(!testDb)('audited', () => {
         }),
     );
 
-    // A subtransaction's rollback releases the locks taken inside it, and the
-    // denial is appended after exactly that rollback — so both locks have to
-    // be the outer transaction's. Each case queues a second connection behind
-    // one of them and reads what it could see once it got through.
     for (const [lock, take] of [
       ['team advisory lock', lockTeam],
       ['team row lock', lockedTeamLabel],
@@ -361,8 +310,6 @@ describe.skipIf(!testDb)('audited', () => {
         TestClock.withLive(
           Effect.gen(function* () {
             const TEAM = yield* seedTeam('Audited Team');
-            // Connected before the command opens, so the waiter's first
-            // statement is the lock rather than a connect under load.
             const { secondApp } = yield* TestDatabase;
             yield* secondApp.sql`select 1`;
             let waiter: Fiber.Fiber<number, unknown> | undefined;
@@ -378,16 +325,10 @@ describe.skipIf(!testDb)('audited', () => {
                 }),
               ),
             );
-            // The denial itself, not a defect: a waiter that never queued dies
-            // above, and the rollback that follows would read as a released
-            // lock below.
             assert.isTrue(Exit.isFailure(exit) && !Exit.hasDies(exit));
             assert.isDefined(waiter);
             if (waiter === undefined) return;
 
-            // The waiter got the lock only after the command committed, so it
-            // saw the denial event. Released at the savepoint's rollback, it
-            // would have got it first and seen nothing.
             assert.strictEqual(yield* Fiber.join(waiter), 1);
             assert.lengthOf(yield* auditRows(TEAM.teamId), 1);
           }),
@@ -405,8 +346,6 @@ describe.skipIf(!testDb)('audited', () => {
             'team.updateMemberRole',
             TEAM,
             Effect.flatMap(writeMarker(marker, TEAM.teamId), () =>
-              // No marker: an ordinary failure, not a decision the team is
-              // entitled to a record of.
               Effect.fail(new Error('the database was unreachable')),
             ),
           ),
@@ -430,8 +369,6 @@ describe.skipIf(!testDb)('audited', () => {
             Effect.as(writeMarker(marker, TEAM.teamId), {
               _tag: 'Changed' as const,
               value: 'ok',
-              // Reachable only from an untyped caller; the tuple type is the
-              // compile-time guard, and this is the runtime one.
               events: [] as unknown as AuditEvents,
             }),
           ),
@@ -445,9 +382,6 @@ describe.skipIf(!testDb)('audited', () => {
 
     it.effect('refuses a team that is not there', () =>
       Effect.gen(function* () {
-        // Never seeded. An access token can outlive the team it names — a team
-        // deleted between the membership check and the command — and the
-        // locked read is what catches it.
         const TEAM = newTeam();
 
         const exit = yield* Effect.exit(
@@ -469,9 +403,6 @@ describe.skipIf(!testDb)('audited', () => {
           const harness = yield* TestDatabase;
           const marker = randomUUID();
 
-          // The mechanism the pre-Effect suite used, kept verbatim: a trigger
-          // that refuses the insert. What changed is only where the assertion
-          // reads from — a recorded signal rather than a spy on `process`.
           yield* harness.onOwner(
             harness.owner.sql.unsafe(`
             create or replace function refuse_audit_append() returns trigger as $refuse$
@@ -503,7 +434,6 @@ describe.skipIf(!testDb)('audited', () => {
           );
 
           assert.isTrue(Exit.isFailure(exit));
-          // The action never commits without its record.
           assert.strictEqual(yield* markerCount(marker), 0);
 
           const recorded = yield* Effect.flatMap(
@@ -517,11 +447,6 @@ describe.skipIf(!testDb)('audited', () => {
         }),
     );
 
-    // And nowhere else. That half is a *compile* assertion rather than a
-    // runtime one, because it is the stronger statement: reading the context
-    // outside a command leaves `AuditContext` in the effect's requirements,
-    // and the layer does not provide it, so the code does not build. A runtime
-    // check could only observe a failure that the compiler already forbids.
     it.effect(
       'provides the audit context only inside the locked transaction',
       () =>

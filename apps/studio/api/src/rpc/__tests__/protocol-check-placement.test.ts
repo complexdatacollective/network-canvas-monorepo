@@ -18,18 +18,6 @@ import {
   sourceTokens,
 } from '../../__tests__/support/source-tokens.ts';
 
-// Where #1257's protocol-line check is allowed to happen (#1927 §10).
-//
-// The primary guarantee is not this test. `requireProtocol` requires the
-// `Transaction` service, so the compiler refuses a call outside a transaction
-// altogether — which is stronger than any source walk, because it also refuses
-// a call in a transaction on some other connection. What a source walk adds is
-// an inventory of the callers, so that a check placed in a transaction *of its
-// own*, ahead of a command that opens a second one, is a line a reader has to
-// write down rather than something that slips in unnoticed.
-//
-// The inventory below shrinks as each command converts. It never grows.
-
 const SERVER_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../');
 
 function typescriptFiles(root: string): string[] {
@@ -42,7 +30,6 @@ function typescriptFiles(root: string): string[] {
   });
 }
 
-/** Every production file naming `name`, as repository-relative paths. */
 function callersOf(name: string): string[] {
   const named = new RegExp(`\\b${name}\\b`);
   return typescriptFiles(SERVER_ROOT)
@@ -53,7 +40,6 @@ function callersOf(name: string): string[] {
 
 const CHECK = 'requireProtocol';
 
-/** Each transaction opener, and which of its arguments is the body it runs. */
 const OPENERS: Record<string, number> = {
   'TenantScope.open': 1,
   'MaintenanceScope.openTenant': 1,
@@ -62,8 +48,6 @@ const OPENERS: Record<string, number> = {
   'OwnerScope.open': 0,
   'savepoint': 0,
   'audited': 2,
-  // The protocol-builder host's `audited`, with the session's principal and
-  // request id provided (`protocol-builder/host.ts`).
   'auditedCommand': 2,
   'noAuditTransaction': 2,
   'noAuditMaintenanceTransaction': 2,
@@ -73,7 +57,6 @@ type OpenerCall = {
   name: string;
   open: number;
   close: number;
-  /** `[start, end)` token ranges of each top-level argument. */
   args: [number, number][];
 };
 
@@ -124,11 +107,6 @@ function openerCalls(tokens: SourceToken[]): OpenerCall[] {
   return calls;
 }
 
-/**
- * Whether `[start, end)` calls anything but the check and the `Effect.gen` /
- * `Effect.fn` wrapping it. The check's own argument list is skipped, so
- * `requireProtocol(access, lookup(id))` is still the check alone.
- */
 function doesMoreThanTheCheck(
   tokens: SourceToken[],
   start: number,
@@ -143,10 +121,6 @@ function doesMoreThanTheCheck(
       index = closingParen(tokens, call);
       continue;
     }
-    // Plumbing is not work: a call on the `Effect` namespace (a generator
-    // wrapper, a log line, `asVoid`) or a `.pipe(` changes what the check
-    // returns, not what the scope does, so a scope holding only those beside
-    // the check is still a transaction of its own.
     const plumbing =
       token.raw === 'pipe' ||
       (tokens[index - 1]?.kind === SyntaxKind.DotToken &&
@@ -158,7 +132,6 @@ function doesMoreThanTheCheck(
 
 type CheckUse = { span: string | null; problems: string[] };
 
-/** Every production mention of the check in `source`, and what is wrong with where it sits. */
 function checkUsesIn(source: string): CheckUse[] {
   const tokens = sourceTokens(source);
   const spans = spansOf(tokens);
@@ -205,12 +178,6 @@ function checkUses(): { site: string; problems: string[] }[] {
 
 describe('the protocol reachability check', () => {
   it('is reached only through requireProtocol and the editor host', () => {
-    // `protocol/store.ts` declares it; `rpc/team-scope.ts` is `requireProtocol`,
-    // the one wrapper the rpc plane calls it through; `protocol-builder`'s host
-    // has its own gate, which §10 keeps because its inputs name a protocol and
-    // never a team. Anything else asking the store this question directly is a
-    // second answer to "may this caller reach this line", and #1257's rule then
-    // has two places to drift between.
     expect(callersOf('isReachableByCaller')).toEqual([
       'protocol-builder/tenancy.ts',
       'protocol/store.ts',
@@ -219,15 +186,6 @@ describe('the protocol reachability check', () => {
   });
 
   it('never runs in a transaction of its own', () => {
-    // A handler that opens `TenantScope` around `requireProtocol` alone and
-    // then runs a command that opens its own transaction is taking two, so the
-    // check answers about a snapshot the write does not share — the TOCTOU §10
-    // closes. The last two (`protocols.addInformationStage` and
-    // `protocols.moveStage`) converted in stage 3: `protocol/commands.ts` now
-    // calls `requireProtocol` inside the command's own `audited` body. The
-    // protocol-builder host's four joined them at stage 8: its session gate
-    // read the role before the write's transaction opened, so the lease and
-    // the three audited writes re-decide it on the rows they lock.
     const uses = checkUses();
     expect(uses.map((use) => use.site)).toEqual([
       'protocol-builder/host.ts › protocolBuilder.acquireLock',
@@ -242,18 +200,6 @@ describe('the protocol reachability check', () => {
   });
 });
 
-// What the case above checks, precisely: every mention of `requireProtocol`
-// in production code (a call or a reference handed on; not its declaration or
-// an import) sits lexically inside the body argument of a transaction opener —
-// `TenantScope.open`, `UntenantedScope.open`, `MaintenanceScope.open` /
-// `.openTenant`, `OwnerScope.open`, `savepoint`, `audited`,
-// `auditedCommand`, `noAuditTransaction` or `noAuditMaintenanceTransaction` —
-// and that body calls
-// something other than the check and the `Effect.gen` / `Effect.fn` wrapping
-// it. The route the compiler also allows — the check inside an `Effect.fn`
-// that requires `Transaction` and is only ever called inside one — is not
-// followed across calls: such a caller fails here and is taken up when it is
-// written.
 describe('the placement collector', () => {
   it('refuses the old separate-transaction shape', () => {
     const problems = placementProblems(`
@@ -279,8 +225,6 @@ describe('the placement collector', () => {
   });
 
   it('counts plumbing beside the check as nothing', () => {
-    // Both are the two-transaction shape with something inert added: a log
-    // line or a `.pipe(` does not make the scope do the work it guards.
     expect(
       placementProblems(`
         yield* TenantScope.open(access, requireProtocol(access, id).pipe(Effect.asVoid));`),

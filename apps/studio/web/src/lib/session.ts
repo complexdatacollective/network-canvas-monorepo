@@ -255,7 +255,6 @@ export function setUnauthorizedResponseHandler(
   unauthorizedResponseHandler = handler;
 }
 
-/** Called by the rpc client for every procedure that answers 401. */
 export async function reportUnauthorizedResponse(): Promise<void> {
   await unauthorizedResponseHandler?.();
 }

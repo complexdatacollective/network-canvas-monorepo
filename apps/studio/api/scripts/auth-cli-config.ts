@@ -22,9 +22,6 @@ export const auth = createBetterAuthInstance({
     trustedProxies: undefined,
     socialProviders: {},
   },
-  // The drizzle adapter, not the server's: generate emits a schema in the
-  // adapter's own dialect, and a drizzle schema is what src/db/auth-schema.ts
-  // is. The dev Postgres from scripts/dev.ts: generate diffs the live schema.
   adapter: drizzleAdapter(
     drizzle({ client: new pg.Pool({ connectionString: DEV_DATABASE_URL }) }),
     { provider: 'pg', schema: AUTH_TABLES },

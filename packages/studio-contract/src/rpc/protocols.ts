@@ -22,33 +22,9 @@ import {
 } from '../schema/protocol.ts';
 import { TeamScoped } from '../schema/team.ts';
 
-// Team-scoped procedures: every input carries a teamId, checked against the
-// caller's membership (`Forbidden` for non-members and unknown teams alike —
-// no existence oracle).
-
-// Every procedure here declares `RateLimited` as well as its own refusals,
-// because its handler raises it: the per-team call limit (#1909) is charged in
-// the helper that resolves the caller's team, once membership is confirmed, and
-// `Rpc.ToHandlerFn` types a handler's error channel from the rpc's OWN error
-// schema rather than from `Rpc.ErrorSchema` — which is what folds a middleware's
-// errors in. So a refusal the middleware's schema would happily encode still has
-// to be declared here for a handler to be able to raise it. The per-user limit
-// is not the reason: the `Authenticated` middleware charges it before any
-// handler runs, and its own error schema carries that refusal. Nor, for
-// `protocols.create`, is the team's: `TeamAdministration` charges it and
-// declares it, so that entry is redundant rather than wrong, and is kept
-// rather than change the declared union.
 export const ProtocolsRpcs = RpcGroup.make(
-  // The one admin-only procedure, so the one that declares the tier gate. A
-  // line no study owns is reachable only by an Admin or Owner, so only they may
-  // make one — and `TeamAdministration` resolves that before the handler runs,
-  // handing it the `TeamAccess` it opens its transaction with.
-  //
   // `.middleware(TeamAdministration)` comes BEFORE the group's
-  // `.middleware(Authenticated)` below, and the order is load-bearing: the
-  // middleware added last is the outermost and runs first, so `Authenticated`
-  // has to be last for the principal to exist when this gate reads it
-  // (`middleware/teamAdministration.ts`, `__tests__/ordering-probe.test.ts`).
+  // `.middleware(Authenticated)`: the middleware added last runs first.
   Rpc.make('protocols.create', {
     payload: CreateProtocolInput,
     success: CreateProtocolResult,

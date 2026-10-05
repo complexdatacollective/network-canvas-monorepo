@@ -31,21 +31,12 @@ import { CI, PGPORT } from './test-env.ts';
 
 export const TEST_TEAM_ID = 'team-test';
 
-/** The isolation levels a test scope may ask Postgres for. */
 export type TestIsolation = 'repeatable read' | 'serializable';
 
-/**
- * Runs an effect inside ONE team-stamped transaction — the studio-sync half of
- * what `TenantScope.open` does in `apps/studio/api`, which this package
- * cannot import because that app depends on it. Same order for the same
- * reason: the role first, then the team, so no statement in the body runs
- * unpinned or unstamped.
- */
 export type RunTenant = <A, E>(
   body: Effect.Effect<A, E, Transaction>,
   options?: {
     readonly isolation?: TestIsolation;
-    /** `null` opens a scope that stamps no team, as a maintenance one does. */
     readonly teamId?: string | null;
   },
 ) => Promise<A>;
@@ -77,16 +68,6 @@ const layerSyncDb = (url: string): Layer.Layer<SyncDb> =>
     }),
   ).pipe(Layer.provide(Reactivity.layer), Layer.orDie);
 
-/**
- * The promise-shaped facade the suites drive the server through.
- *
- * Every method opens its own team-stamped transaction, which is exactly the
- * boundary the node-postgres executor gave each operation before the
- * conversion — so the scenarios below still read as "the client makes a call".
- * `resume` opens its at `repeatable read`, because its two reads must come
- * from one snapshot; `transaction.test.ts` drives the Effect-native path,
- * where several operations share one.
- */
 export type SyncFacade = {
   createDraft(
     draftId: string,
@@ -258,7 +239,6 @@ export type SyncHarness = {
   db: pg.Pool;
   app: pg.Pool;
   maintenance: pg.Pool;
-  /** Opens one team-stamped transaction and runs the effect inside it. */
   run: RunTenant;
   server: SyncFacade;
   dispose: () => Promise<void>;

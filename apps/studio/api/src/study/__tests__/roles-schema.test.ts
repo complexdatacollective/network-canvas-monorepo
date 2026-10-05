@@ -1,12 +1,3 @@
-// The study-role tier's database-enforced promises: one live grant per user
-// per study, the four roles #1257 names, the composite foreign key that keeps a
-// grant's study inside its own team, and the row-level security that stops one
-// team granting itself a role over another team's study.
-//
-// The table carries no sidecar trigger by design: a grant is current state, not
-// evidence — changing a role is an UPDATE, removing someone is a DELETE, and
-// the audit log is the history. The last case pins that, so a trigger added
-// later has to update it rather than silently subsume it.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -32,12 +23,8 @@ const TEAM_B: Team = 'team-b';
 type Row = Record<string, unknown>;
 
 /**
- * One rejection case: the label the test title reads, the row override that
- * provokes the rejection, and the constraint Postgres must name.
- *
- * A tuple rather than an object because the title is interpolated with `%s`,
- * which prints the label whole — a `$property` substitution is truncated at
- * forty characters.
+ * A tuple because the title is interpolated with `%s`: a `$property`
+ * substitution is truncated at forty characters.
  */
 type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
@@ -57,16 +44,11 @@ const grantRow = (studyId: string, overrides: Row = {}): Row => ({
   ...overrides,
 });
 
-/** One study per team, named up front so the fixtures can reach both. */
 const studyOf: Record<Team, string> = {
   'team-a': randomUUID(),
   'team-b': randomUUID(),
 };
 
-/**
- * The suite's `beforeAll`, as a layer: it runs once when the scratch schema is
- * built, which is what the node-postgres suite's `beforeAll` did.
- */
 const seed = Effect.flatMap(TestDatabase, (harness) =>
   harness.onOwner(
     Effect.forEach(TEAMS, (teamId) =>
@@ -101,8 +83,6 @@ describe.skipIf(!testDb)('study role grants schema', () => {
               `SELECT pii_access FROM study_role_grants WHERE id = $1`,
               [row.id],
             );
-            // The flag is orthogonal to the role and defaults closed: a Manager
-            // has no contact details until someone grants them separately.
             expect(stored[0]).toEqual({ pii_access: false });
           }),
       );
@@ -181,7 +161,6 @@ describe.skipIf(!testDb)('study role grants schema', () => {
             )).constraint,
           ).toBe('study_role_grants_study_id_user_id_unique');
 
-          // The same person may hold a different role on a different study.
           expect(
             yield* ownerInsert(
               'study_role_grants',
@@ -223,8 +202,6 @@ describe.skipIf(!testDb)('study role grants schema', () => {
 
       it.effect('stops one team granting itself a role over another team', () =>
         Effect.gen(function* () {
-          // Writing a row carrying the other team's id is refused by the
-          // policy...
           expect(
             (yield* refusalOf(
               tenantRows(
@@ -237,9 +214,6 @@ describe.skipIf(!testDb)('study role grants schema', () => {
             )).state,
           ).toBe('42501');
 
-          // ...and claiming the other team's study under this team's id is
-          // refused by the composite foreign key, so neither half of the pair
-          // is a way in.
           expect(
             yield* refusalOf(
               tenantRows(
@@ -282,7 +256,6 @@ describe.skipIf(!testDb)('study role grants schema', () => {
           );
           expect([...visible]).toEqual([]);
 
-          // The positive control: the login that no policy binds does see it.
           const login = yield* ownerRows<{ id: string }>(
             `SELECT id FROM study_role_grants WHERE id = $1`,
             [grantId],
@@ -299,8 +272,6 @@ describe.skipIf(!testDb)('study role grants schema', () => {
             const row = grantRow(studyId);
             yield* ownerInsert('study_role_grants', row);
 
-            // Changing someone's role is an UPDATE, and PII access is granted
-            // on top of an existing role rather than by reissuing the grant.
             expect(
               yield* ownerAffected(
                 `UPDATE study_role_grants
@@ -309,7 +280,6 @@ describe.skipIf(!testDb)('study role grants schema', () => {
                 [row.id],
               ),
             ).toBe(1);
-            // Removing them is a DELETE: there is no revocation tombstone.
             expect(
               yield* ownerAffected(
                 `DELETE FROM study_role_grants WHERE id = $1`,

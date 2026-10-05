@@ -12,9 +12,6 @@ import {
   unclassifiedSurfacePaths,
 } from '@codaco/studio-contract/surfaces';
 
-// The surfaces module is exercised here, in the suite of the deployable whose
-// HTTP gate reads it.
-
 describe('the surface classification', () => {
   it('classifies every declared path exactly once', () => {
     // A duplicate would be silently absorbed by the lookup, taking whichever

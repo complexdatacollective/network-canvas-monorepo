@@ -35,9 +35,6 @@ import {
   rowsOf,
 } from '../store.ts';
 
-// The schema audit.list actually validates its payload with, decoded exactly
-// as the rpc server decodes it rather than through a second copy of the bound:
-// what the wire rejects is the whole point of the assertion below.
 const decodeAuditListInput = Schema.decodeUnknownResult(AuditListInput);
 
 function auditListInputIssues(input: unknown) {
@@ -45,20 +42,8 @@ function auditListInputIssues(input: unknown) {
   return Result.isFailure(result) ? [result.failure] : [];
 }
 
-/**
- * The store takes tenancy from the open transaction, so every case names its
- * team by opening a scope. The membership these stand in for is proved by the
- * commands in production; a store suite has no command to prove it.
- */
 const access = (teamId: string) => unsafeMakeTeamAccess(teamId, 'owner');
 
-/**
- * One transaction as the connecting login, carrying the `Transaction` service
- * the store requires. There is no `OwnerScope` — the owner is not a tenant
- * identity — so the cases that need the store on the owner's own connection
- * (the sequence allocator reading across teams, the cross-team oracle) open it
- * here, pinning the same search path `TestDatabase.onOwner` does.
- */
 const ownerScope = <A, E, R>(
   teamId: string | null,
   body: Effect.Effect<A, E, R>,
@@ -80,22 +65,11 @@ const ownerScope = <A, E, R>(
     ),
   );
 
-/**
- * The SQLSTATE a refused statement carried, or the literal `'no failure'` when
- * it was not refused at all — so a case that stops refusing fails on the value
- * rather than passing vacuously.
- */
 const stateOf = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.map(Effect.result(effect), (result) =>
     Result.isFailure(result) ? sqlState(result.failure) : 'no failure',
   );
 
-/**
- * Every message down a failure's cause chain, joined. A trigger's own words
- * reach us as the driver's message, which both `SqlError` and drizzle's
- * wrapper replace with their own — so the top message alone would never name
- * the trigger that refused.
- */
 function messagesOf(error: unknown): string {
   const parts: string[] = [];
   let current: unknown = error;
@@ -141,14 +115,6 @@ function invitationEvent(teamId: string): AuditEventInput {
   };
 }
 
-/**
- * A row placed exactly where a test needs it, which `append` cannot do:
- * `occurred_at` defaults to the insert's own clock, and `event_type` is
- * confined to what this build registers. `at` plus `offset` names an instant
- * to the microsecond — an interval literal rather than a float, so the value
- * stored is the one written. Runs on the owner's connection: the point is to
- * write what no producer in this build can.
- */
 const insertRawEvent = (
   teamId: string,
   sequence: number,
@@ -194,8 +160,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             expect(first.sequence).toBe('1');
             expect(first.teamLabel).toBe(team);
 
-            // The worker appends a team's event under an explicit tenant scope,
-            // which is the only state in which it may touch audit_events.
             const second = yield* MaintenanceScope.openTenant(
               access(team),
               append(invitationEvent(team)),
@@ -234,9 +198,8 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               },
             ]);
 
-            // Each refusal opens its own scope: the first one aborts the
-            // transaction it ran in, so a shared one would report the abort
-            // rather than the privilege check for every statement after it.
+            // Each refusal opens its own scope: the first one aborts the transaction
+            // it ran in.
             const asTenant = (statement: string) =>
               stateOf(tenantRows(team, statement));
             const asMaintenance = (statement: string) =>
@@ -259,8 +222,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             );
             expect(yield* asMaintenance(`TRUNCATE audit_events`)).toBe('42501');
 
-            // The connecting login keeps every privilege, so only the trigger
-            // stands between it and a rewritten history.
             expect(
               yield* failureOf(
                 harness.onOwner(
@@ -294,8 +255,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               yield* TenantScope.open(access('audit-a'), list('audit-a')),
             ).toHaveLength(1);
 
-            // A read with no team predicate at all, inside team A's scope:
-            // the policy, not the predicate, is what hides team B's row.
             const unpredicated = yield* TenantScope.open(
               access('audit-a'),
               Effect.flatMap(
@@ -305,8 +264,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             );
             expect(unpredicated).toHaveLength(1);
 
-            // A maintenance scope stamps no team, and audit_events has no
-            // maintenance escape: it reads nothing and may write nothing.
             expect(yield* MaintenanceScope.open(list('audit-a'))).toHaveLength(
               0,
             );
@@ -325,9 +282,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               ),
             ).toBe('42501');
 
-            // The connecting login is not confined by the policy, so on that
-            // connection the explicit team predicate is the only thing that
-            // separates the two teams' histories.
             expect(yield* ownerScope(null, list('audit-a'))).toHaveLength(1);
             expect(yield* ownerScope(null, list('audit-b'))).toHaveLength(1);
           }),
@@ -356,11 +310,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           ),
       );
 
-      // The one writer that does not want the statement's own clock: the
-      // synthetic-data seed dates its whole corpus from one anchor, so the log
-      // agrees with the rows it describes. Left out, the column's
-      // `statement_timestamp()` default applies — which is why the two are one
-      // case: the option has to be honoured *and* absent has to mean now.
       it.effect(
         'records the instant a writer names, and now when it does not',
         () =>
@@ -383,7 +332,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             );
             expect(live.occurredAt.getTime()).toBeGreaterThanOrEqual(before);
 
-            // Stored, not merely returned: the row reads back the same way.
             const stored = yield* TenantScope.open(access(team), list(team));
             expect(stored.map((row) => row.occurredAt.toISOString())).toContain(
               anchor.toISOString(),
@@ -423,10 +371,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             const harness = yield* TestDatabase;
             const team = 'audit-concurrency';
 
-            // The suite's application client holds one connection on purpose,
-            // so twelve appends through it would queue on the pool rather than
-            // on the team lock. This case is about the lock, so it brings a
-            // client that can actually run them at once.
             const inserted = yield* Effect.forEach(
               Array.from({ length: 12 }, (_, index) => index),
               () =>
@@ -459,9 +403,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           Effect.gen(function* () {
             const harness = yield* TestDatabase;
 
-            // The contender is a second application client, which keys its own
-            // transaction connection: its statements cannot land inside the
-            // holder's transaction, which is what makes the answer meaningful.
             const tryLock = (teamId: string) =>
               TenantScope.open(
                 access(teamId),
@@ -523,10 +464,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               append(invitationEvent(team)),
             );
 
-            // The one actor shape no producer in this build can append: the
-            // CHECK constraint permits a system actor with no id, and the facet
-            // scan has to reach it even though the ascending walk over actor_id
-            // never can.
             yield* harness.onOwner(
               harness.owner.sql.unsafe(
                 `INSERT INTO audit_events (
@@ -560,8 +497,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             });
             expect(reported.truncated).toBe(false);
 
-            // Below the real cardinality the list is cut and says so, rather
-            // than silently pretending the team has only one action.
             const capped = yield* TenantScope.open(
               access(team),
               facets(team, 1),
@@ -572,17 +507,11 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           }),
       );
 
-      // The cap is two independent walks, and the flag is their disjunction —
-      // so a team whose actions are capped while its actors are not, and the
-      // mirror of it, are the only shapes that can tell one walk's bound from
-      // the other's.
       it.effect('flags a cap reached by either walk on its own', () =>
         Effect.gen(function* () {
           const actions = 'audit-facet-actions';
           yield* insertRawEvent(actions, 1, { eventType: 'audit.one' });
           yield* insertRawEvent(actions, 2, { eventType: 'audit.two' });
-          // Both rows carry the same system actor, so only the action walk
-          // can be the one that overflows.
           const byAction = yield* TenantScope.open(
             access(actions),
             facets(actions, 1),
@@ -600,7 +529,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             access(actors),
             append({ ...invitationEvent(actors), actorId: 'actor-two' }),
           );
-          // One event type, two actors: now only the actor walk can overflow.
           const byActor = yield* TenantScope.open(
             access(actors),
             facets(actors, 1),
@@ -609,7 +537,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           expect(byActor.actors).toHaveLength(1);
           expect(byActor.truncated).toBe(true);
 
-          // And at a cap the team does reach, neither walk claims more.
           const whole = yield* TenantScope.open(
             access(actors),
             facets(actors, 10),
@@ -643,10 +570,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           }),
       );
 
-      // The page the feed asks for: newest first, cut to the caller's limit,
-      // and continued from the last sequence it was given. The cursor is a
-      // base-10 string on the wire and a bigint in the predicate, so this is
-      // also the only case that proves that conversion.
       it.effect(
         'pages backwards from a cursor, within the asked-for limit',
         () =>
@@ -671,8 +594,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             );
             expect(nextPage.map((row) => row.sequence)).toEqual(['1']);
 
-            // The cursor is exclusive, so a cursor at the oldest row ends the
-            // feed rather than repeating it.
             expect(
               yield* TenantScope.open(
                 access(team),
@@ -682,12 +603,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           }),
       );
 
-      // The action menu is built from the team's whole history, which can hold
-      // event types this build never registered, so the filter input has to
-      // accept every event_type the table can store. The CHECK constraint is
-      // the only authority on that length; a narrower input schema would show
-      // an event in the feed, offer it in the menu, and then refuse the
-      // selection as a bad request.
       it.effect(
         'accepts a filter on the longest event type the table can store',
         () =>
@@ -697,8 +612,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             expect(longest).toHaveLength(128);
             yield* insertRawEvent(team, 1, { eventType: longest });
 
-            // One character further is refused by the table, so 128 really is
-            // the ceiling this bound has to reach and no further.
             const refused = yield* Effect.result(
               insertRawEvent(team, 2, { eventType: `${longest}e` }),
             );
@@ -714,7 +627,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               auditListInputIssues({
                 teamId: team,
                 eventTypes: [longest],
-                // The same table caps actor_id at 255 characters.
                 actor: { kind: 'user', id: 'a'.repeat(255) },
               }),
             ).toEqual([]);
@@ -733,21 +645,11 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           }),
       );
 
-      // `occurred_at` is `statement_timestamp()`, which Postgres keeps to the
-      // microsecond, so no millisecond-precision cutoff can name the last
-      // instant of a day. The window is half-open instead: the caller passes
-      // the instant the next period begins, and everything before it belongs
-      // to the period that instant closes.
       it.effect(
         'closes the occurred_at window on the instant the next period begins',
         () =>
           Effect.gen(function* () {
             const team = 'audit-window';
-            // The bounds the activity screen sends for "to: 5 March 2026" —
-            // the viewer's local midnights. Both these and the stored values
-            // are absolute instants, so whatever timezone the server keeps
-            // never enters the comparison: the day filtered on is the viewer's
-            // own.
             const dayStart = new Date('2026-03-05T00:00:00');
             const nextDayStart = new Date('2026-03-06T00:00:00');
 
@@ -765,15 +667,8 @@ describe.skipIf(!testDb)('immutable audit store', () => {
                 occurredTo: nextDayStart,
               }),
             );
-            // Sequence 2 sits 500 microseconds before midnight, inside the day
-            // and past anything a millisecond bound could express. Sequence 3
-            // is midnight itself, which opens the next day rather than closing
-            // this one.
             expect(withinDay.map((row) => row.sequence)).toEqual(['2', '1']);
 
-            // The cutoff this replaced, kept as the reason it had to: an
-            // inclusive end-of-day rounded to the millisecond drops sequence 2,
-            // so the day the viewer asked for silently loses its last event.
             const millisecondCutoff = yield* TenantScope.open(
               access(team),
               list(team, {
@@ -785,9 +680,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           }),
       );
 
-      // `get` reads one row by id, and the two directions are worth keeping
-      // apart: a row the team owns comes back whole, and an id that matches
-      // nothing is `null` rather than an empty row the caller would render.
       it.effect('returns a stored event by id, and null for no match', () =>
         Effect.gen(function* () {
           const team = 'audit-get';
@@ -808,11 +700,6 @@ describe.skipIf(!testDb)('immutable audit store', () => {
             yield* TenantScope.open(access(team), get(team, randomUUID())),
           ).toBeNull();
 
-          // Another team's id is no more reachable than an absent one. Asked
-          // inside a tenant scope the policy alone would hide it, so the
-          // question is put on the connecting login's connection, which the
-          // policy does not confine: there the team predicate is the only
-          // thing that can answer it.
           expect(
             yield* TenantScope.open(
               access('audit-a'),

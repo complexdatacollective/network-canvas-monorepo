@@ -68,13 +68,7 @@ import { HostClient } from '../runtime/runtime.ts';
 const route = getRouteApi('/app/study/$studyId/editor/');
 
 /**
- * The protocol builder's host, bound once for the life of the tab.
- *
- * `ProtocolBuilder` memoises its whole context on this identity and every lock
- * in the editor is taken from an effect keyed on it, so it is built here rather
- * than per render. The runtime under it resolves the host session in force at
- * each call, so ending a session at sign-out swaps the socket without any of
- * the editor noticing a new object.
+ * Built once: `ProtocolBuilder` memoises its whole context on this identity.
  */
 const hostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
   runtime: hostRuntime,
@@ -694,8 +688,6 @@ function EditorWorkspace({
 
   const addStage = useMutation({
     mutationFn: async () => {
-      // Checked rather than merely branded: an identifier this screen mints
-      // and the schema then refuses is a defect, not a refusal.
       const stageId = StageId.make(createUuid());
       await rpcCall('protocols.addInformationStage', { ...params, stageId });
       return stageId;

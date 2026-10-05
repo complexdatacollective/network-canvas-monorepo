@@ -22,66 +22,26 @@ import {
 } from './better-auth.ts';
 import { makeSqlBridge } from './sql-bridge.ts';
 
-// Studio's auth provider as an Effect service (#1927 §12, S6 §3). better-auth
-// is a Promise API; this is the one place its answers become Effects, so every
-// caller — the rpc middleware, the HTTP gates, `setup.complete`, the team and
-// study access helpers — asks the same questions of the same instance and
-// reads the same null cases.
-//
-// Nothing here fails in the error channel. A session that does not resolve and
-// a membership that does not exist are `Option.none()`, the two sign-in paths
-// answer their refusal tags, and anything else better-auth rejects with is a
-// defect — the same reading as before, where a failure left as a 500.
-
-/**
- * A researcher signed in with a cookie session. The `kind` discriminant
- * reserves the slot for the token plane's ServicePrincipal (#1288).
- */
 export type SessionPrincipal = {
   kind: 'user';
   userId: string;
   email: string;
   emailVerified: boolean;
   name: string;
-  /**
-   * The stored UI-language preference (user.locale, localization design
-   * §5.2); null until the researcher chooses one. On the principal because
-   * the session lookup already reads the user row, so `me` forwards it
-   * without a query of its own — and stays answerable database-free.
-   */
   locale: string | null;
   sessionId: string;
 };
 
 export type Principal = SessionPrincipal;
 
-/**
- * A user's standing in the team they were resolved against. Roles are the
- * organization plugin's ('owner' | 'admin' | 'member' by default); #1257's
- * RBAC taxonomy maps onto them later. Read-only request authorization stays
- * behind AuthService so better-auth remains replaceable (#1245); audited team
- * commands re-read and lock the same domain rows through TeamStore because
- * their authorization decision must share the write transaction.
- */
 export type TeamMembership = {
   role: string;
 };
 
-/** A membership that names its team: what a study's tenant is resolved over. */
 export type IdentifiedTeamMembership = TeamMembership & {
   teamId: string;
 };
 
-/**
- * A session the auth provider has just established for a caller who had none.
- *
- * `setCookies` are the provider's own `set-cookie` values: the browser is
- * signed in by carrying them out through the surface that asked — the `/rpc`
- * route's `SetCookies` holder — rather than by any cookie this application
- * knows how to spell. Strings rather than the provider's `Headers`, because an
- * Effect rpc handler cannot touch a response; it can only hand values to the
- * holder that does.
- */
 export type EstablishedSession = {
   readonly userId: string;
   readonly setCookies: ReadonlyArray<string>;
@@ -89,69 +49,38 @@ export type EstablishedSession = {
 
 export type SignUpOutcome =
   | { kind: 'created'; session: EstablishedSession }
-  /** The address already has an account; nothing was created. */
   | { kind: 'emailTaken' }
-  /** Auth is not configured, so no account can exist. */
   | { kind: 'unavailable' };
 
 export type SignInOutcome =
   | { kind: 'signedIn'; session: EstablishedSession }
-  /** Wrong credentials, no such account, or auth is not configured. */
   | { kind: 'refused' };
 
 export class AuthService extends Context.Service<
   AuthService,
   {
-    /** better-auth's own web handler, for the `/api/auth/*` mount. */
     readonly handler: (request: Request) => Effect.Effect<Response>;
-    /** Cookie-session lookup; none when absent, expired, or auth is disabled. */
     readonly getSession: (
       headers: Headers.Headers,
     ) => Effect.Effect<Option.Option<SessionPrincipal>>;
-    /** None when the user is not a member of the team (or auth is disabled). */
     readonly getMembership: (
       userId: string,
       teamId: string,
     ) => Effect.Effect<Option.Option<TeamMembership>>;
-    /**
-     * Every team the user belongs to. The search space a study identifier is
-     * resolved over (app-shell design §6.3): a `/study/$studyId` URL names no
-     * team, so the server derives it rather than trusting one from the browser.
-     * Empty when the user belongs to nothing, or auth is disabled.
-     */
     readonly listMemberships: (
       userId: string,
     ) => Effect.Effect<ReadonlyArray<IdentifiedTeamMembership>>;
-    /**
-     * Creates an email/password account and signs it in, returning the
-     * cookies that carry the session.
-     *
-     * Here for first-run bootstrap alone (#1909): every other account arrives
-     * through the provider's own endpoints under `/api/auth/*`, which the
-     * browser talks to directly. `/setup` cannot, because the account it
-     * creates and the ownership mark it writes have to be one procedure.
-     */
     readonly signUpEmail: (input: {
       name: string;
       email: string;
       password: string;
     }) => Effect.Effect<SignUpOutcome>;
-    /**
-     * Signs an existing account in, for the one case `/setup` has to recover
-     * from: an account created by an interrupted setup, whose ownership mark
-     * never landed. Proving the password is what makes adopting it safe.
-     */
     readonly signInEmail: (input: {
       email: string;
       password: string;
     }) => Effect.Effect<SignInOutcome>;
   }
 >()('@studio/AuthService') {
-  /**
-   * An instance with no auth configured: `/api/auth/*` answers 503 problem
-   * JSON and every question answers its null case, so a protected procedure
-   * reads it as "nobody is signed in" rather than as a fault.
-   */
   static readonly disabled = AuthService.of({
     handler: () =>
       Effect.succeed(
@@ -174,12 +103,6 @@ export class AuthService extends Context.Service<
     AuthService,
   )(AuthService.disabled);
 
-  /**
-   * better-auth over the application client: the sql-pg adapter through the
-   * bridge, the secrets wrapper over it, sign-in limits counted by the
-   * process's `RateLimiter`, and sign-in mail queued on `Jobs`. It owns no
-   * socket of its own — every statement is the application client's.
-   */
   static readonly layer: Layer.Layer<
     AuthService,
     never,
@@ -189,15 +112,6 @@ export class AuthService extends Context.Service<
     Effect.suspend(() => makeLive),
   );
 
-  /**
-   * Which of the two this process is: live where there is a database and auth
-   * is configured, disabled everywhere else.
-   *
-   * A database with no keyring is refused here rather than served, although
-   * the environment's own decode already refuses it: reaching the live layer
-   * without one would surface as a missing-method error from inside
-   * better-auth's first account write, and this names the cause instead.
-   */
   static readonly layerFromEnvironment: Layer.Layer<
     AuthService,
     never,
@@ -220,12 +134,6 @@ export class AuthService extends Context.Service<
 
 const { team_members: members } = AUTH_TABLES;
 
-/**
- * Through the drizzle definitions rather than a raw SQL string, so the
- * physical names stay single-sourced in `auth-schema.ts`. The plugin's own api
- * surface is session-header-driven; this check is (userId, teamId)-keyed, so it
- * queries directly.
- */
 const readMembership = Effect.fnUntraced(function* (
   userId: string,
   teamId: string,
@@ -245,12 +153,6 @@ const readMembership = Effect.fnUntraced(function* (
   return Option.fromNullishOr(rows[0]);
 });
 
-/**
- * The same policy-free table `readMembership` reads, and the same index
- * (`team_members_user_id_team_id_idx`) serves it: this is the whole search
- * space a study identifier may be resolved over, so it is read before any
- * tenant is pinned and nothing else is read with it.
- */
 const readMemberships = Effect.fnUntraced(function* (
   userId: string,
 ): Effect.fn.Return<
@@ -268,43 +170,13 @@ const readMemberships = Effect.fnUntraced(function* (
   );
 });
 
-/**
- * How a magic link leaves this process: as a `sign-in-email` job the worker
- * sends (#1895). This process holds no mail transport at all. The URL travels
- * in the payload — the documented exception to identifiers-only payloads,
- * because the token is minted by better-auth inside the request and exists
- * nowhere else.
- *
- * A transaction of its own, because better-auth calls `sendMagicLink` outside
- * any adapter transaction: the magic-link endpoint writes its verification row
- * and then calls the hook as two separate awaits, with nothing enclosing them.
- * There is no domain write for this job to join. It is still a transaction
- * rather than a bare statement because `Jobs.enqueue` requires `Transaction`
- * and nothing but a scope provides one — which is the queue's atomicity
- * guarantee at the type level, and holds for this caller exactly as it does for
- * a command with domain work beside its job.
- *
- * Untenanted: a sign-in belongs to no team, and the queue's own tables carry
- * no tenant policy.
- */
-const enqueueSignInEmail = Effect.fn('auth.sendMagicLink')(
-  function* (data: SignInEmailJob) {
-    const jobs = yield* Jobs;
-    yield* UntenantedScope.open(jobs.enqueue('sign-in-email', data));
-  },
-  // Nothing about a magic link is retryable here and nothing downstream can
-  // act on the distinction: a refused singleton and an unreachable database
-  // both mean the mail was not queued. Raising it as a defect is what rejects
-  // the promise better-auth awaits, so it answers the sign-in request with a
-  // failure rather than tell the person to check an inbox nothing will reach.
-  Effect.orDie,
-);
+const enqueueSignInEmail = Effect.fn('auth.sendMagicLink')(function* (
+  data: SignInEmailJob,
+) {
+  const jobs = yield* Jobs;
+  yield* UntenantedScope.open(jobs.enqueue('sign-in-email', data));
+}, Effect.orDie);
 
-/**
- * The hook better-auth is handed: a promise over the services the layer was
- * built with. The context is captured once rather than read per call, because
- * better-auth's callback is a promise with no Effect context of its own.
- */
 export const makeSendMagicLink: Effect.Effect<
   SendMagicLink,
   never,
@@ -334,12 +206,6 @@ const makeLive = Effect.gen(function* () {
     },
   });
 
-  /**
-   * The two membership reads, each in an untenanted transaction of its own,
-   * since both are store reads that require `Transaction`. Nothing about
-   * either is a refusal the caller could act on, so a database failure is a
-   * defect.
-   */
   const pinned = <A>(
     read: Effect.Effect<A, SqlError.SqlError, Transaction>,
   ): Effect.Effect<A> =>
@@ -379,9 +245,6 @@ const makeLive = Effect.gen(function* () {
     ) {
       return yield* pinned(readMemberships(userId));
     }),
-    // `returnHeaders` is what makes these usable from a procedure: the session
-    // cookie better-auth would have set on its own response comes back as
-    // headers, and their `set-cookie` values are what the caller carries out.
     signUpEmail: Effect.fn('auth.signUpEmail')(
       function* ({
         name,
@@ -438,10 +301,8 @@ const makeLive = Effect.gen(function* () {
           },
         };
       },
-      // Every refusal reads the same — wrong password, no such account, a
-      // provider-side policy — because the caller has nothing different to
-      // do about any of them, and `/setup` must not become an oracle for
-      // which addresses have accounts.
+      // Every refusal reads the same: `/setup` must not become an oracle for which
+      // addresses have accounts.
       Effect.catch((error): Effect.Effect<SignInOutcome> =>
         isRefusal(error)
           ? Effect.succeed({ kind: 'refused' })

@@ -55,7 +55,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-/** The signed-in researcher, as `me` reports them, per test. */
 function me(): Me {
   return {
     userId: 'user-1',
@@ -67,7 +66,6 @@ function me(): Me {
   };
 }
 
-/** What this instance says about itself; nothing here turns on any of it. */
 const STATUS: InstanceStatus = {
   name: 'Network Canvas Studio',
   version: '0.1.0',
@@ -136,8 +134,6 @@ beforeEach(() => {
   });
   fixtures.setActive.mockResolvedValue({ data: null, error: null });
   setBrowserLanguages(['en-US', 'en']);
-  // The in-process rpc client. `Effect.never` is identity that has not
-  // answered — the first-paint window the device mirror exists for.
   installRpcHarness({
     'me': () => (fixtures.meUnresolved ? Effect.never : Effect.succeed(me())),
     'status': () => Effect.succeed(STATUS),

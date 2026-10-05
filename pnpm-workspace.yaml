@@ -124,19 +124,11 @@ catalog:
   # 0.31.x `push` silently drops RLS policy USING/WITH CHECK expressions, which
   # #1249's tenancy layer depends on. Keep both in lock-step; unpin to a normal
   # range once 1.0.0 stable ships.
-  #
-  # The `rc5` snapshot rather than the `rc` tag (still 1.0.0-rc.4): rc.4's
-  # `drizzle-orm/effect-postgres` entry point does not load on Effect
-  # 4.0.0-rc.115 at all — it calls `Schema.TaggedErrorClass`, which Effect
-  # removed, so importing it throws `Schema$1.TaggedErrorClass is not a
-  # function` before any Studio code runs. rc.5 also adds the
-  # `transaction(fn, config)` overload #1927 §9 needs to set an isolation
-  # level on a tenant scope. Both packages move together, as the note above
-  # requires.
+  # The rc5 snapshot: rc.4's `drizzle-orm/effect-postgres` calls
+  # `Schema.TaggedErrorClass`, which Effect 4 removed.
   drizzle-kit: 1.0.0-rc.5-5935859
   drizzle-orm: 1.0.0-rc.5-5935859
-  # Pinned exactly, with every `@effect/*` entry above in lock-step. Bumping is
-  # a chore PR of its own.
+  # Pinned exactly, in lock-step with every `@effect/*` entry above.
   effect: 4.0.0
   electron: ^43.7.7
   electron-builder: ^26.16.1
@@ -283,13 +275,8 @@ overrides:
   valibot: '^1.4.2'
 autoInstallPeers: true
 packageExtensions:
-  # `@effect/platform-node` declares `redis` as a hard peer for its
-  # NodeClusterSocket module, which Studio never imports. With
-  # `autoInstallPeers` a hard peer is installed whether or not
-  # `peerDependencyRules.ignoreMissing` names it (that rule only silences the
-  # warning), and it would ship a second Redis client beside ioredis into the
-  # studio-api image. Making the peer optional is what keeps it out;
-  # apps/studio/api's process-separation suite asserts that it stays out.
+  # A hard peer for NodeClusterSocket, which Studio never imports;
+  # `autoInstallPeers` would otherwise ship a second Redis client.
   '@effect/platform-node':
     peerDependenciesMeta:
       redis:
@@ -336,9 +323,7 @@ minimumReleaseAgeExclude:
   - '@next/third-parties@16.3.8'
   - 'better-auth@1.7.5'
   - 'electron@43.7.7'
-  # Effect 4.0.0, published 2026-10-01 between 01:47Z and 03:11Z — excluded only
-  # so the upgrade could install before it ages out at 2026-10-02T03:12Z. Inert
-  # after that, and safe to delete in any passing sweep.
+  # Effect 4.0.0; inert once it ages out at 2026-10-02T03:12Z.
   - 'effect@4.0.0'
   - '@effect/platform-node@4.0.0'
   - '@effect/platform-node-shared@4.0.0'

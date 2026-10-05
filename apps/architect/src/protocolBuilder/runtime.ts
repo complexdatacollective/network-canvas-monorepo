@@ -10,7 +10,6 @@ import { ArchitectHandlers } from './handlers.ts';
 import { makeInProcessClient } from './inProcessClient.ts';
 import { ArchitectHostSession } from './session.ts';
 
-/** The protocol-builder client, served in process from one Architect store. */
 export class ArchitectHostClient extends Context.Service<
   ArchitectHostClient,
   ProtocolBuilderClient
@@ -28,10 +27,6 @@ export class ArchitectHostClient extends Context.Service<
     );
 }
 
-/**
- * One runtime per store. Nothing is built until the first call, and disposing
- * it ends every call in flight and the protocol's event stream with them.
- */
 export const makeArchitectHostRuntime = (
   store: ArchitectStore,
   otherTabName: string,

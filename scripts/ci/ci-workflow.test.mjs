@@ -73,11 +73,6 @@ function job(name) {
 }
 
 test('full CI runs on PRs to main and the Effect 4 integration branch while merge groups request only quality', () => {
-  // `integration/studio-effect4` is the Effect 4 integration branch (#1927
-  // §15): stage PRs target it, so it is a listed base for the branch's
-  // lifetime. The final PR into main restores `[main]` here and in the
-  // workflow in the same commit. Comment lines between the trigger and its
-  // branch list are allowed; a second base beyond these two is not.
   assert.match(
     workflow,
     /^  pull_request:\n(?: {4}#.*\n)*    branches: \[main, integration\/studio-effect4\]$/m,

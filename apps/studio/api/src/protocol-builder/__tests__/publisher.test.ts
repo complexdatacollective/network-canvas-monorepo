@@ -17,11 +17,6 @@ const event = (cursor: number): LoggedProtocolEvent => ({
 const cursors = (entries: Iterable<LoggedProtocolEvent>) =>
   Array.from(entries, (entry) => Number(entry.cursor));
 
-/**
- * Drains a stream that is expected to end, reporting what it delivered and how
- * it ended — or `undefined` for the exit if it was still running a second of
- * test time later.
- */
 const drain = Effect.fnUntraced(function* (
   stream: Stream.Stream<LoggedProtocolEvent, SubscriberOverflow>,
 ) {
@@ -37,8 +32,6 @@ const drain = Effect.fnUntraced(function* (
 });
 
 describe('ProtocolEvents', () => {
-  // Mutation: remove the overflow detector (drop the `failCauseUnsafe`, or
-  // subscribe with an unbounded queue) → the slow stream never ends.
   it.effect(
     'ends a subscriber past the bound without stalling the publisher or its peers',
     () =>
@@ -103,8 +96,6 @@ describe('ProtocolEvents', () => {
         expect(yield* events.subscribers('draft')).toBe(2);
         yield* Scope.close(first, Exit.void);
         yield* Scope.close(second, Exit.void);
-        // Mutation: never take a subscriber out of the fan-out → the draft
-        // keeps both, and every later publish offers to their dead queues.
         expect(yield* events.subscribers('draft')).toBe(0);
 
         const ended = yield* drain(stale);

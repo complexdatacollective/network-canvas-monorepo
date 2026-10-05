@@ -24,20 +24,10 @@ import { withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 import { openTeam } from '../team-scope.ts';
 
-// The team's immutable activity record. Every audit denial is `Forbidden` and
-// nothing else, including the denial-rate-limit refusal: telling a caller which
-// refusals were recorded would make the audit log's own suppression observable
-// from outside.
-
 const decodeList = Schema.decodeUnknownSync(AuditListOutput);
 const decodeDetail = Schema.decodeUnknownSync(AuditEventDetail);
 const decodeFilterOptions = Schema.decodeUnknownSync(AuditFilterOptions);
 
-/**
- * Every refusal on this surface is the same `Forbidden`, carrying no reason;
- * a database failure and a team that went away under the read are faults,
- * exactly as the thrown ones were.
- */
 const refusals = <A, R>(
   read: Effect.Effect<A, AuditReadDenied | NotFound | SqlError.SqlError, R>,
 ): Effect.Effect<A, Forbidden, R> =>
@@ -104,9 +94,6 @@ export const AuditHandlers = (deps: RpcDeps) =>
         if (event === null) return yield* new NotFound({});
         return decodeDetail(renderAuditEventDetail(event));
       }),
-    // The same rows as audit.list through the same read surface, so it takes
-    // the same locked-membership authorization inside the read's own
-    // transaction, and the same committed, rate-limited denial.
     'audit.filterOptions': (payload) =>
       Effect.gen(function* () {
         const access = yield* openTeam(deps, yield* Principal, payload.teamId);

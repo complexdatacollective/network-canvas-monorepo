@@ -202,8 +202,6 @@ function withTheFirstAnswerLost(
           if (lost) return Effect.succeed(answer);
           lost = true;
           resends += 1;
-          // The first answer never reaches the client, so the very same
-          // request goes out again.
           return host.handle.Create(input);
         }),
     }),
@@ -325,7 +323,6 @@ function withTheAnswerSwallowed(host: InMemoryHost): Readonly<{
           );
         });
       },
-      // A channel that never delivers anything.
       WatchProtocol: () => Stream.never,
     }),
   };
@@ -486,11 +483,6 @@ describe('a codebook lock whose acquire answer is lost', () => {
 });
 
 describe('a codebook lock the session refuses', () => {
-  /**
-   * An acquire the session refuses reached no answer about the lock, so it is
-   * treated as one that was lost: the change is reported as not sent, and the
-   * lock is given back in case it was granted.
-   */
   it('is reported as not sent, and given back', async () => {
     const user = userEvent.setup();
     const host = createInMemoryHost({

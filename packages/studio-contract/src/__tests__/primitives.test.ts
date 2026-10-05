@@ -32,10 +32,6 @@ describe('DecimalSequence', () => {
   });
 
   it('reports a non-numeric string as an issue, not a defect, when every check runs', () => {
-    // Under `errors: 'all'` the range filter runs even though the pattern
-    // check already failed. A `BigInt('abc')` inside it would throw, and a
-    // throw in a filter is a defect that escapes the parse result rather than
-    // a validation failure the caller can report.
     const exit = decodeDecimalCollectingAll('abc');
 
     expect(Exit.hasDies(exit)).toBe(false);
@@ -58,7 +54,6 @@ describe('Email', () => {
     expect(Exit.isSuccess(decodeEmail('a@b.co'))).toBe(true);
   });
 
-  // Each row is what zod 4.5.4's `z.email()` returned for the address.
   it.each([
     ['a..b@c.de', false],
     ['.a@b.cd', false],

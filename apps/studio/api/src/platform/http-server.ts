@@ -10,21 +10,6 @@ import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import { Environment } from '../env.ts';
 
-// The listeners the two long-running processes bind. Studio's own
-// `node:http` server rather than a framework's: everything above it — the
-// router and the WebSocket upgrade — is Effect's, and the only
-// thing this decides is the address and how long a stop waits.
-//
-// Neither layer logs: the programs print their own boot line, which names the
-// build as well as the address, and two lines for one event in a container log
-// is one too many.
-
-/**
- * How long a stop waits for in-flight requests before it closes the listener
- * on them. A container's own stop window is longer than this, so a deploy
- * replaces a process that finished what it had rather than one that dropped
- * it.
- */
 const GRACEFUL_SHUTDOWN_TIMEOUT = '10 seconds';
 
 type StudioHttpServer = Layer.Layer<
@@ -36,7 +21,6 @@ type StudioHttpServer = Layer.Layer<
   Environment
 >;
 
-/** The web process's listener, on the configured port and interface. */
 export const HttpServerLive: StudioHttpServer = Layer.unwrap(
   Effect.map(Environment, (env) =>
     NodeHttpServer.layer(createServer, {
@@ -49,11 +33,8 @@ export const HttpServerLive: StudioHttpServer = Layer.unwrap(
 );
 
 /**
- * The worker's health listener. `127.0.0.1` is written here rather than taken
- * from `env.host` on purpose: the worker routes no traffic, so this listener
- * exists for the container healthcheck and must not be reachable from
- * anywhere else. `src/__tests__/worker-entrypoint.test.ts` proves it is not
- * published by connecting to every external address this machine answers on.
+ * `127.0.0.1` rather than `env.host` on purpose: this listener exists for the
+ * container healthcheck and must not be reachable from anywhere else.
  */
 export const WorkerHealthServerLive: StudioHttpServer = Layer.unwrap(
   Effect.map(Environment, (env) =>

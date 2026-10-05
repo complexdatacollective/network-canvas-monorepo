@@ -181,8 +181,6 @@ export function useRereadProtocol(): () => Promise<void> {
       { queryKey: adapter.rpcKey('ListSections', { protocolId }) },
       { throwOnError: true },
     );
-    // Every section of this protocol: a key prefix matches the payloads it
-    // is a part of.
     await queryClient.invalidateQueries(
       { queryKey: [...adapter.rpcKey('GetSection'), { protocolId }] },
       { throwOnError: true },

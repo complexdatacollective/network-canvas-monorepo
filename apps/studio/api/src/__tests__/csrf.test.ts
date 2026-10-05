@@ -7,16 +7,6 @@ import { readEnv } from '../env.ts';
 import { authServiceStub } from './support/auth.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
-/**
- * One unsafe request at `POST /rpc` through the composed Effect router.
- *
- * The gate under test is `http/middleware/origin.ts`'s `requireSameOrigin`,
- * the route middleware every cookie-plane surface is given — `/rpc` here,
- * the unsafe `/storage` methods in assets.test.ts. The body is empty on
- * purpose: the gate answers before the rpc server reads a frame, so a refusal
- * needs no payload, and a request the gate lets through only has to prove it
- * was not refused.
- */
 async function postRpc(headers: Record<string, string> = {}) {
   const env = readEnv();
   const stack = composeStudio(
@@ -30,11 +20,6 @@ async function postRpc(headers: Record<string, string> = {}) {
   }
 }
 
-/**
- * The whole stack on a real port, because the `/ws` route upgrades: its
- * guards (`requireWsOrigin`, then the principal) are route middleware in
- * front of the upgrade.
- */
 function serverWithFakeAuth() {
   const env = readEnv();
   return startStudioServer(env, createStudio(env, { auth: authServiceStub() }));
@@ -52,8 +37,6 @@ describe('cookie-plane CSRF', () => {
   it('refuses unsafe methods that assert a cross-site fetch', async () => {
     const res = await postRpc({
       'sec-fetch-site': 'cross-site',
-      // Sec-Fetch-Site wins even when Origin looks right: a browser that
-      // says cross-site is cross-site.
       'origin': 'http://localhost:5173',
     });
     expect(res.status).toBe(403);
@@ -75,7 +58,6 @@ describe('cookie-plane CSRF', () => {
   });
 
   it('leaves safe methods alone', async () => {
-    // Through the composed stack, because liveness is an Effect route now.
     const env = readEnv();
     const stack = composeStudio(
       env,

@@ -146,14 +146,6 @@ export function npmPackageUrl(registryUrl, packageName) {
   return new URL(encodedName, base).href;
 }
 
-/**
- * Whether the version is a release this pull request merges in rather than one
- * it claims: the release lane tags `<name>@<version>` on the commit it
- * published, and that commit is in the head but not in the base. A pull
- * request into a long-lived branch that merges `main` carries `main`'s
- * releases this way. A version whose tag the base already contains is an
- * older release being reused, and is still checked.
- */
 function arrivesWithItsRelease(repoRoot, baseRef, { name, version }) {
   const tag = `${name}@${version}`;
   if (git(repoRoot, ['tag', '--list', tag, '--merged', 'HEAD']) === '') {

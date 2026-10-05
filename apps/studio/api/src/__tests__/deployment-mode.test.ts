@@ -19,9 +19,6 @@ import { composeStudio } from './support/serve.ts';
 // What the server still owns is telling the client which topology it is, which
 // is the whole input to that guard — so a server that reported the wrong mode,
 // or stopped reporting one, would disable the guard everywhere at once.
-//
-// No database: this drives the rpc plane and the composed stack against an env
-// with no DATABASE_URL, so it runs in every lane.
 
 function studioFor(deploymentMode: DeploymentMode) {
   return createStudio(
@@ -29,7 +26,6 @@ function studioFor(deploymentMode: DeploymentMode) {
   );
 }
 
-/** The composed stack for one topology, disposed after the request. */
 async function requestAs(deploymentMode: DeploymentMode, path: string) {
   const env = resolve({
     NODE_ENV: 'test',
@@ -43,7 +39,6 @@ async function requestAs(deploymentMode: DeploymentMode, path: string) {
   }
 }
 
-/** The instance descriptor over the rpc plane, harness disposed either way. */
 async function statusOver(studio: Studio) {
   const client = await createRpcClient(studio);
   try {

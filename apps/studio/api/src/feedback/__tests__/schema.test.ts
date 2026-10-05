@@ -1,11 +1,3 @@
-// The feedback module's database-enforced promises: the consent gate that
-// makes stored context structural rather than a form-layer promise, the
-// reporter/kind/triage-state checks, and the composite foreign key that keeps
-// a report and the study it names inside one team.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK or foreign-key violation — so a guard that stopped firing
-// cannot pass as "no error".
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -34,7 +26,6 @@ const CONTEXT = JSON.stringify({
   appVersion: '0.2.0',
 });
 
-/** One study per team, for the optional study reference. */
 const studyOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -54,7 +45,6 @@ const newReport = (overrides: Row = {}) => {
   return Effect.as(ownerInsert('feedback_reports', row), row.id as string);
 };
 
-/** Both teams and a study each, once for the file. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) =>
     Effect.andThen(
@@ -157,7 +147,6 @@ describe.skipIf(!testDb)('feedback schema', () => {
               'feedback_reports_context_consent_check',
             );
 
-            // Withdrawal is only ever consent plus erasure, in one statement.
             expect(
               yield* ownerAffected(
                 `UPDATE feedback_reports

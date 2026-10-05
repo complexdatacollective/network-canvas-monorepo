@@ -14,37 +14,10 @@ import { RpcRoutes } from './rpc-routes.ts';
 import { StorageRoutes } from './storage.ts';
 
 /**
- * Everything this process serves, registered in the order it has to be.
- *
- * Order is load-bearing twice over. A global middleware registered first runs
- * outermost and registers its pre-response handler first, so the problem-JSON
- * rewrite has to come before the request id — otherwise the rewrite would
- * replace the response the id header was put on. And every middleware has to
- * be registered before any route, because a route captures the middleware
- * stack that exists when it is added. `Layer.mergeAll` builds its members
- * concurrently and would give no order at all, so this is a `provideMerge`
- * chain instead: `self.pipe(Layer.provideMerge(that))` builds `that` first,
- * which is why the chain below reads inside-out.
- *
- * The maintenance gate is the last global middleware (#1901): inside the
- * problem-JSON rewrite and the request id, so its 503 carries an
- * `x-request-id` like any other answer, and wrapping every route, so nothing
- * behind it runs while the instance is closed. A global middleware sees every
- * request before a route is matched, which is why the gate exempts `/healthz`
- * and `/readyz` by exact path itself rather than by being registered after
- * them.
- *
- * The routes follow in design §8's order: health, the better-auth mount, the
- * public API, `/storage`, `/rpc`, and the protocol builder's two mounts (`/ws`
- * and `/rpc/protocol-builder`). Nothing else is served: a path none of them
- * matches is the router's own 404, which the problem-JSON rewrite fills in.
- * Each route layer carries its own route middlewares (the origin gates, the
- * principal, the HTTP-level limits), so the order among the routes is
- * registration order and nothing more.
- *
- * The environment is read here rather than passed in, because the only thing
- * the routes want from it is the browser-facing origin the `/rpc` CSRF gate
- * compares against, and every caller of this function already provides it.
+ * Order is load-bearing: the problem-JSON rewrite must come before the request
+ * id, and every middleware before any route, since a route captures the
+ * middleware stack that exists when it is added. `Layer.mergeAll` gives no
+ * order, so this is a `provideMerge` chain, which reads inside-out.
  */
 export const Routes = (studio: Studio, checks: HealthChecks) =>
   Layer.unwrap(

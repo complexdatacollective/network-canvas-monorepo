@@ -31,37 +31,11 @@ import { PROTOCOL_TABLES } from './schema.ts';
 import { emptyProtocol } from './sectionize.ts';
 import { createProtocol, ProtocolStoreError } from './store.ts';
 
-// The protocol tier's audited commands, and the two locks every protocol write
-// takes — the editor host's as well as these (#1927 §10).
-//
-// `protocol-builder/tenancy.ts` carried copies of all three while this file
-// was still node-postgres: a second authorization error, and its own
-// `lockActorMembership` / `lockProtocolDraft` making the same checks with the
-// same `FOR UPDATE OF protocols, protocol_drafts`. They are one definition
-// each now, here, and the editor host imports them.
-//
-// `requireProtocol` is imported from the rpc plane rather than restated,
-// which is the one import in this file that points the other way. #1257's
-// visibility rule has exactly one definition and it lives beside the other
-// two rpc-plane gates; a second copy here is precisely what would drift. It
-// is called INSIDE each command's transaction, which is what it requires —
-// the handlers used to open a transaction of their own for it ahead of the
-// command, and a grant revoked between those two transactions could let an
-// edit through.
-
 const { protocols, protocolDrafts } = PROTOCOL_TABLES;
 
 export type ProtocolRevision = { sequence: string; hash: string };
 export type CreatedProtocol = { protocolId: string; draftId: string };
 
-/**
- * The actor's membership was gone, or had lost the tier it needed, by the time
- * the write's transaction opened.
- *
- * One class for the rpc commands below and for the editor host, because it is
- * one refusal: both re-read the same locked membership row for the same
- * reason, and a caller cannot tell which transport asked.
- */
 export class ProtocolCommandAuthorizationError extends Schema.TaggedError<ProtocolCommandAuthorizationError>()(
   'ProtocolCommandAuthorizationError',
   {},
@@ -77,16 +51,6 @@ export type LockedProtocolDraft = {
   protocolLabel: string;
 };
 
-/**
- * Re-proves the actor's membership from the LOCKED row, inside the write's own
- * transaction.
- *
- * Whatever admitted the caller — the rpc middleware, or the editor session's
- * own gate — answered about a membership that is already stale by the time a
- * transaction opens. A role revoked in that window must refuse the write
- * rather than commit it, and locking the row is what makes the answer hold for
- * the rest of the transaction.
- */
 export const lockProtocolActorMembership: (input: {
   teamId: string;
   actorUserId: string;
@@ -102,13 +66,6 @@ export const lockProtocolActorMembership: (input: {
   if (actor === null) return yield* new ProtocolCommandAuthorizationError();
 });
 
-/**
- * Creating a protocol line that no study owns is a team Admin or Owner action
- * — the rule `createAuditedStudy` applies to the study that would otherwise
- * own one, and the same rule that makes such a line reachable by nobody else
- * (#1257, `protocol/store.ts`). Read from the LOCKED membership row, for the
- * reason above.
- */
 const lockProtocolCreationActor: (input: {
   teamId: string;
   actorUserId: string;
@@ -126,14 +83,6 @@ const lockProtocolCreationActor: (input: {
   }
 });
 
-/**
- * The protocol line and its draft, locked together, with the name the audit
- * event records the protocol by.
- *
- * `FOR UPDATE OF` both rows rather than the join's whole output: a draft
- * published or discarded, or a line renamed, while this write is in flight
- * would otherwise leave the event naming something that no longer holds.
- */
 export const lockProtocolDraft: (input: {
   teamId: string;
   protocolId: string;
@@ -183,7 +132,6 @@ export const lockProtocolDraft: (input: {
   };
 }, sqlErrorsOnlyBeside);
 
-/** The fields every protocol event carries, minus the ones `audited` owns. */
 const protocolEventFields = (protocol: {
   protocolId: string;
   protocolLabel: string;
@@ -225,10 +173,6 @@ export const createAuditedProtocol: (
   const protocolName = yield* Effect.sync(() =>
     Schema.decodeUnknownSync(ProtocolName)(input.name).trim(),
   );
-  // From the environment rather than a parameter (#1900): the process has one
-  // keyring and one cipher over it, so a call site cannot seal under a key
-  // nothing else in the program can open — and the rpc plane's "wired without
-  // a cipher" 500 goes with the parameter.
   const cipher = yield* SecretsCipher;
 
   return yield* audited(
@@ -249,9 +193,6 @@ export const createAuditedProtocol: (
         protocolId: result.protocolId,
         draftId: result.draftId,
       };
-      // A replay of a creation that already committed: the identities are the
-      // same and nothing changed, so a second creation event would put one
-      // protocol in the activity log twice.
       if (!result.created) return unchanged(response);
 
       return changed(response, [
@@ -290,17 +231,14 @@ export const addAuditedInformationStage: (
     access,
     Effect.gen(function* () {
       const principal = yield* Principal;
-      // The membership row first, `FOR UPDATE`: `requireProtocol` then
-      // re-reads it under a share lock this transaction already covers,
-      // rather than asking to upgrade one.
+      // The membership row first, `FOR UPDATE`: `requireProtocol` then re-reads it
+      // under a share lock this transaction already covers, rather than upgrading one.
       yield* lockProtocolActorMembership({
         teamId: access.teamId,
         actorUserId: principal.userId,
       });
-      // #1257's visibility rule, inside the write's own transaction and on
-      // the locked role and grants rather than the ones `openTeam` read ahead
-      // of it: a demotion or revocation in flight can no longer let an edit
-      // through.
+      // Inside the write's own transaction, on the locked role and grants: a
+      // revocation in flight must not let an edit through.
       yield* requireProtocol(access, input.protocolId);
       const protocol = yield* lockProtocolDraft({
         teamId: access.teamId,
@@ -390,8 +328,6 @@ export const moveAuditedProtocolStage: (
         expectedRevision,
       });
       const response = protocolRevision(result);
-      // The move was a no-op — the stage was already where it was asked to go
-      // — so the manifest did not advance and there is nothing to record.
       if (result.manifestSeq === expectedRevision) return unchanged(response);
 
       return changed(response, [

@@ -17,20 +17,8 @@ import {
 } from '../scopes.ts';
 import { RateLimitStore } from '../store.ts';
 
-// The limiter service itself (#1909). The request paths that use it are in
-// src/__tests__/rate-limit-routes.test.ts; what is here is the decision, the
-// key material, and what happens when the store is not there.
-
 const url = await reachableRedis(REDIS_DATABASES.limiter);
 
-/**
- * A limit per scope, small enough to count to and different in every scope, so
- * that a limiter applying one scope's rule to another would fail here rather
- * than pass by coincidence. The maxima are what the trip cases below count to.
- *
- * Injected in code, because that is the only way a limit is ever anything but
- * its constant: there is no environment variable behind any of these (#1909).
- */
 const INJECTED: RateLimitSettings = {
   sign_in_address: { max: 1, windowMs: 60_000 },
   sign_in_email: { max: 2, windowMs: 60_000 },
@@ -46,13 +34,11 @@ const INJECTED: RateLimitSettings = {
   api_docs: { max: 12, windowMs: 60_000 },
 };
 
-/** Another limiter over whichever store the case runs on. */
 const limiterWith = (limits: Partial<RateLimitSettings> = {}) =>
   Effect.service(RateLimiter).pipe(
     Effect.provide(RateLimiter.layerWith(limits)),
   );
 
-/** Every line a program logged, as the message alone. */
 function capturingLogger(lines: string[]): Layer.Layer<never> {
   return Logger.layer([
     Logger.make(({ message }: Logger.Options<unknown>) => {
@@ -65,8 +51,6 @@ function capturingLogger(lines: string[]): Layer.Layer<never> {
 
 describe('the limits a process enforces', () => {
   it.effect('are the constants when nothing is injected', () =>
-    // Which is every deployment: `layerWith` is a test seam, and there is
-    // nothing else left for a limit to come from now the variables are gone.
     Effect.gen(function* () {
       const limiter = yield* Effect.service(RateLimiter);
       expect(limiter.rules).toEqual(RATE_LIMITS);
@@ -77,10 +61,6 @@ describe('the limits a process enforces', () => {
   );
 
   it('are a positive count over a whole number of seconds', () => {
-    // What the removed `count/window` pattern used to refuse on the way in: a
-    // window of `10` meaning ten milliseconds rather than ten minutes, or a
-    // count of zero refusing everybody. Written as numbers those are a typo
-    // away and nothing else in the system would notice.
     const wrong = RATE_LIMIT_SCOPES.filter((scope) => {
       const { max, windowMs } = RATE_LIMITS[scope];
       return max < 1 || windowMs < 1_000 || windowMs % 1_000 !== 0;
@@ -101,7 +81,6 @@ describe('the limits a process enforces', () => {
 });
 
 describe.skipIf(!url)('the limiter against a real store', () => {
-  // Never built when the probe found no store: the describe is skipped.
   layer(
     RateLimiter.layerWith(INJECTED).pipe(
       Layer.provideMerge(RateLimitStore.layerOf(url ?? 'redis://unused')),
@@ -124,15 +103,9 @@ describe.skipIf(!url)('the limiter against a real store', () => {
 
             const refused = yield* limiter.check(scope, subject);
             if (refused.allowed) throw new Error(`${scope} was not refused`);
-            // Positive and inside the window: a `Retry-After` of zero invites
-            // an immediate retry that is refused again, and one longer than the
-            // window would tell a caller to wait past the point the window
-            // reopens.
             expect(refused.retryAfterSeconds).toBeGreaterThan(0);
             expect(refused.retryAfterSeconds).toBeLessThanOrEqual(60);
 
-            // A different subject in the same scope is a different bucket,
-            // which is what keeps one caller from refusing everyone else.
             expect(yield* limiter.check(scope, `${subject}-other`)).toEqual({
               allowed: true,
             });
@@ -156,9 +129,6 @@ describe.skipIf(!url)('the limiter against a real store', () => {
         expect(keys).toContain(
           `studio:rl:sign_in_email:${createHash('sha256').update(email).digest('hex').slice(0, 32)}`,
         );
-        // Nothing anywhere in the key space spells the address out, which is
-        // the property: a hashed subject is only worth having if nothing else
-        // leaks it.
         expect(JSON.stringify(keys)).not.toContain(email);
       }),
     );
@@ -173,9 +143,6 @@ describe.skipIf(!url)('the limiter against a real store', () => {
             (reply): Record<string, string> =>
               Predicate.isObject(reply) ? reply : {},
           );
-          // A delta, because the cases above have denied calls of their own:
-          // what is being asserted is that one denial adds one, in this scope
-          // and no other.
           const before = yield* read;
           const limiter = yield* limiterWith({
             participant_sync: { max: 1, windowMs: 60_000 },
@@ -194,10 +161,6 @@ describe.skipIf(!url)('the limiter against a real store', () => {
     );
 
     suite.effect('shares one window between two limiters on one store', () =>
-      // The property the acceptance criterion is about, at module scale: two
-      // API containers are two of these, and the count they read is one
-      // count. src/__tests__/rate-limit-processes.test.ts proves the same with
-      // two operating-system processes.
       Effect.gen(function* () {
         const first = yield* limiterWith({
           rpc_user: { max: 2, windowMs: 60_000 },
@@ -221,9 +184,6 @@ describe.skipIf(!url)('the limiter against a real store', () => {
     suite.effect(
       "logs a scope's denials once a minute, naming the scope and never the subject",
       () =>
-        // On the TestClock, which is the only clock the interval reads: the
-        // window itself is Valkey's, and in the few real milliseconds this
-        // takes it never reopens, so every call past the first is a denial.
         Effect.gen(function* () {
           const lines: string[] = [];
           const limiter = yield* limiterWith({
@@ -243,7 +203,6 @@ describe.skipIf(!url)('the limiter against a real store', () => {
           yield* limiter.check('participant_redeem_link', subject);
           yield* deny;
           yield* deny;
-          // Mutation: drop the interval check in `logDenial` → two lines.
           expect(denials()).toEqual([
             'Rate limit reached for participant_redeem_link; callers are refused for up to 60s.',
           ]);
@@ -273,13 +232,10 @@ describe.skipIf(!url)('the limiter against a real store', () => {
 describe('the limiter with no store to reach', () => {
   it.effect('allows every call, warns once, and reports degraded', () =>
     Effect.gen(function* () {
-      // A port nothing is listening on: the store is configured and
-      // unreachable, which is the outage this fails open for.
       const closed = `redis://127.0.0.1:${yield* Effect.promise(() => freePort())}`;
       const lines: string[] = [];
-      // On the store's layer as well as on the case: ioredis reports a failed
-      // connection both to the command that asked and as an 'error' event,
-      // which the store warns from on the services it was built with.
+      // ioredis reports a failed connection both to the command that asked and
+      // as an 'error' event.
       const logger = capturingLogger(lines);
       yield* Effect.gen(function* () {
         const limiter = yield* RateLimiter;
@@ -289,8 +245,6 @@ describe('the limiter with no store to reach', () => {
             allowed: true,
           });
         }
-        // Five refused round trips, one line: this is a failing dependency,
-        // and a line per request would bury everything else in the log.
         expect(
           lines.filter((line) =>
             line.includes('Rate limit store is unavailable'),
@@ -317,8 +271,6 @@ describe('the limiter with no store to reach', () => {
     Effect.gen(function* () {
       const limiter = yield* RateLimiter;
       expect(limiter.configured).toBe(false);
-      // Readiness leaves the check out entirely in that case (src/app.ts), so
-      // what this asserts is only that asking is harmless.
       expect(yield* limiter.readiness).toBe('ok');
       expect(yield* limiter.check('rpc_user', 'anyone')).toEqual({
         allowed: true,

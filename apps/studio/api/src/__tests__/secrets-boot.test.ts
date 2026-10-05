@@ -36,11 +36,6 @@ const MISSING_KEY_ID = 'gone';
 const MISSING_ASSET_KEY_ID = 'gone-asset';
 const PROTOCOL = 'b6e4a1c2-5d3f-4e8a-9c07-1f2b3d4e5a6b';
 
-/**
- * Each process, and the line it prints once it is doing the work the keyring
- * gate stands in front of: the web process's listener, and the worker's job
- * queue (which it logs only once the job worker is built and fetching).
- */
 const ENTRYPOINTS = [
   ['the web process', 'src/index.ts', /listening on/i],
   ['the worker', 'src/worker.ts', /Network Canvas Studio worker \S+ started/],
@@ -157,10 +152,6 @@ describe.skipIf(!db)('refusing to boot without the keys in use', () => {
       // And what to do about it, because the two remedies are very different
       // things to reach for.
       expect(output).toMatch(/restore the database backup that matches/);
-      // The refusal precedes the listener and the job queue: a process that
-      // served requests first and exited afterwards would take a deployment's
-      // traffic and fail the half of it that touches a secret, and a worker
-      // that fetched first would run jobs it cannot sign.
       expect(output).not.toMatch(serving);
     });
   });

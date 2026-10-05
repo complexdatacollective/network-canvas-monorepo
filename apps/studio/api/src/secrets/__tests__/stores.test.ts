@@ -1,15 +1,3 @@
-// The secret-store registry against real rows (#1900).
-//
-// Every property these stores have is a property of their statements, so all
-// of it is measured against a real server: that "not under the current key"
-// means the same thing to the count and to the batch, that a held row is
-// stepped over rather than waited on, that a key id nothing could hold is
-// reported rather than dropped, and that a sealed value moved to another row
-// stops opening.
-//
-// Every statement runs in a MAINTENANCE scope, which stamps no team: the
-// tenant tables force row-level security, so any other role would see one
-// team's rows and a check that passed would mean nothing.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -41,9 +29,7 @@ const TEAM = 'team-secret-stores';
 const USER = 'user-secret-stores';
 const PROTOCOL = '9b3d7c22-1f40-4e6a-8b95-2c7d0e1a3f64';
 
-/** `test-2` current: what the fixtures below are written under. */
 const BEFORE = createSecretsCipher(testKeyring(['test-2', 'test-1']));
-/** `test-1` current: the keyring a rotation deploys. */
 const AFTER = createSecretsCipher(testKeyring(['test-1', 'test-2']));
 
 const storeNamed = (name: string): SecretStore => {
@@ -52,14 +38,12 @@ const storeNamed = (name: string): SecretStore => {
   return store;
 };
 
-/** A batch sealed by `cipher`, as the process's own `SecretsCipher`. */
 const rotateBatchWith = (
   cipher: SecretsCipherApi,
   store: SecretStore,
   batchSize: number,
 ) => Effect.provideService(store.rotateBatch(batchSize), SecretsCipher, cipher);
 
-/** The probe's answer, with "none" read as null. */
 const probeOf = (store: SecretStore, keyId: string) =>
   Effect.map(store.probe(keyId), Option.getOrNull);
 
@@ -67,11 +51,6 @@ const webhookStore = storeNamed('webhook_subscriptions');
 const accountStore = storeNamed('account');
 const assetKeyStore = storeNamed('protocol_asset_keys');
 
-/**
- * The team, the user and the protocol line the fixtures hang off, and an empty
- * slate in all three stores. Every case starts from this: the stores are
- * database-wide, so a row left behind by one case is a row the next one counts.
- */
 const reset = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
   yield* harness.onOwner(
@@ -86,8 +65,6 @@ const reset = Effect.fnUntraced(function* () {
       yield* sql`insert into "user" (id, name, email, "emailVerified")
                  values (${USER}, 'Stores', 'stores@example.test', true)
                  on conflict (id) do nothing`;
-      // `protocol_asset_keys` rows are pinned to a protocol by a composite
-      // foreign key, so the line has to exist before any key is stored on it.
       yield* sql`insert into protocols (id, team_id, name)
                  values (${PROTOCOL}, ${TEAM}, 'Stores protocol')
                  on conflict (id) do nothing`;
@@ -95,7 +72,6 @@ const reset = Effect.fnUntraced(function* () {
   );
 });
 
-/** A subscription sealed by `cipher`, returning its id and its plaintext. */
 const newSubscription = Effect.fnUntraced(function* (
   cipher = BEFORE,
   keyIdOverride?: string,
@@ -119,11 +95,6 @@ const newSubscription = Effect.fnUntraced(function* (
   return { id, secret };
 });
 
-/**
- * One `account` row. `tokens` is what to store in each column BEFORE sealing:
- * a value given as `{ plaintext: … }` is written as-is, which is the write
- * that bypassed the auth adapter.
- */
 const newAccount = Effect.fnUntraced(function* (
   cipher = BEFORE,
   tokens: Partial<
@@ -160,7 +131,6 @@ const newAccount = Effect.fnUntraced(function* (
   return { id, accountId, tokens };
 });
 
-/** One sealed API key for `PROTOCOL`. */
 const newAssetKey = Effect.fnUntraced(function* (
   cipher = BEFORE,
   keyIdOverride?: string,
@@ -186,12 +156,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
   layer(TestDatabaseLive, { excludeTestServices: true })(
     'on a scratch schema, as the maintenance role',
     (it) => {
-      // The shared-fragment case. `notUnderCurrentKeySql` is written once and
-      // embedded by `remaining` and by `rotateBatch`, and the two must answer
-      // about the same rows. Three boundary rows at once: one already current
-      // (neither may take it), one under an older key (both must), and one
-      // whose only token is PLAINTEXT — which carries no prefix at all, used
-      // to match nothing, and was walked past while rotation reported success.
       it.effect(
         'makes the account count and the account batch agree on a boundary row',
         () =>
@@ -203,22 +167,12 @@ describe.skipIf(!testDb)('the secret stores', () => {
               refreshToken: { plaintext: '1//written-around-the-adapter' },
             });
 
-            // The count says two rows are behind: the older key and the
-            // plaintext one.
             const behind = yield* MaintenanceScope.open(
               accountStore.remaining(AFTER.currentKeyId),
             );
             expect(behind).toBe(2);
             expect(typeof behind).toBe('number');
 
-            // And the batch takes exactly those two — proved by which row it
-            // chokes on: the plaintext token reaches `reseal`, which refuses
-            // it rather than sealing it on the way past.
-            //
-            // A DEFECT rather than a failure, deliberately: a stored value
-            // that will not open under the key it names is not an outcome a
-            // caller can do anything with (src/secrets/cipher.ts), so it
-            // escapes `Effect.result` and has to be caught as an exit.
             const exit = yield* Effect.exit(
               MaintenanceScope.open(rotateBatchWith(AFTER, accountStore, 10)),
             );
@@ -231,21 +185,11 @@ describe.skipIf(!testDb)('the secret stores', () => {
           }).pipe(Effect.orDie),
       );
 
-      // Why every span in `stores.ts` carries `sqlErrorsOnly`. The drizzle
-      // builder catches a statement's failure and re-raises it with the query
-      // text and the bind parameters in its OWN message — and the bind
-      // parameters here are sealed ciphertext. The positive control is the
-      // point: the unwrapped failure IS asked to carry the bytes, so a day
-      // when it stops would fail this case rather than quietly make the second
-      // assertion vacuous.
       it.effect('keeps a bound ciphertext out of the published failure', () =>
         Effect.gen(function* () {
           yield* reset();
           // 600 bytes: over `webhook_subscriptions_lengths_check`'s 512-byte
-          // ceiling, so the row is refused with the bytes already bound. The
-          // payload is printable because the wrapper prints a bound `bytea`
-          // as the bytes themselves rather than as hex — which is precisely
-          // how a real ciphertext would come out.
+          // ceiling, so the row is refused with the bytes already bound.
           const marker = 'THE-SEALED-BYTES';
           const ciphertext = Buffer.from(`${marker}-`.repeat(40), 'utf8');
           const insert = Effect.flatMap(Transaction, ({ tx }) =>
@@ -273,18 +217,13 @@ describe.skipIf(!testDb)('the secret stores', () => {
             ),
           );
 
-          // Both are the same refusal…
           expect(bare).not.toBe('no failure');
           expect(published).not.toBe('no failure');
-          // …and only one of them prints what was bound.
           expect(bare).toContain(marker);
           expect(published).not.toContain(marker);
         }).pipe(Effect.orDie),
       );
 
-      // The fragment itself, run against the same rows: what `remaining`
-      // reports is what the predicate selects, rather than a number that
-      // happens to agree with it today.
       it.effect('counts exactly the rows its own predicate selects', () =>
         Effect.gen(function* () {
           yield* reset();
@@ -342,8 +281,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
               rotateBatchWith(AFTER, webhookStore, 10),
             ),
           ).toBe(1);
-          // The store's own postcondition, counted rather than inferred from
-          // the batch returning a number.
           expect(
             yield* MaintenanceScope.open(
               webhookStore.remaining(AFTER.currentKeyId),
@@ -358,15 +295,11 @@ describe.skipIf(!testDb)('the secret stores', () => {
                where id = ${subscription.id}`,
           );
           expect(after[0]?.secret_key_id).toBe('test-1');
-          // Rotation changes how a row is stored, not when anyone last changed
-          // it.
           expect(after[0]?.updated_at).toBeInstanceOf(Date);
           expect(after[0]?.updated_at.getTime()).toBe(
             before[0]?.updated_at.getTime(),
           );
 
-          // The plaintext survived the re-seal: the row now opens under the
-          // new keyring and says the same thing.
           const opener = yield* MaintenanceScope.open(
             probeOf(webhookStore, 'test-1'),
           );
@@ -375,10 +308,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
         }).pipe(Effect.orDie),
       );
 
-      // `FOR UPDATE SKIP LOCKED` is what keeps a second runner — or a request
-      // writing the same row — from waiting on this one. The lock is taken on
-      // the connecting login's own connection, which is a different client
-      // from the maintenance one, so the batch below really is another session.
       it.effect('steps over a row another session holds', () =>
         Effect.gen(function* () {
           yield* reset();
@@ -395,10 +324,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
               );
             }),
           );
-          // One of the two, not both and not a wait.
           expect(taken).toBe(1);
-          // And the held row is still behind, which is why a batch returning
-          // zero is not proof that a store is finished.
           expect(
             yield* MaintenanceScope.open(
               webhookStore.remaining(AFTER.currentKeyId),
@@ -412,13 +338,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
           yield* reset();
           yield* newSubscription();
           yield* newSubscription(BEFORE, 'not-a-keyring-id');
-          // Two rows under one bad id are one id in use, not two.
           yield* newAssetKey(BEFORE, 'asset-gone');
           yield* newAssetKey(BEFORE, 'asset-gone');
           const harness = yield* TestDatabase;
-          // `split_part` answers '' for a value with nothing between the two
-          // colons — an id no keyring could hold, which is exactly what the
-          // boot check has to count rather than drop.
           yield* harness.onOwner(
             harness.owner
               .sql`insert into account (id, "accountId", "providerId", "userId",
@@ -453,9 +375,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
           expect(opener).not.toBeNull();
           expect(opener?.(BEFORE)).toBe(key.value);
 
-          // The identity is bound into the ciphertext, so the same bytes under
-          // another asset id do not open: this is what makes "no plaintext at
-          // rest" survive a row being copied.
           const harness = yield* TestDatabase;
           yield* harness.onOwner(
             harness.owner
@@ -471,10 +390,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
         }).pipe(Effect.orDie),
       );
 
-      // The boot gate's only read of `account`, and the reason the probe is a
-      // union over all three token columns rather than over `accessToken`: a
-      // deployment whose only sealed token happens to be an id token must
-      // still be checked against the keyring.
       it.effect('probes a token in whichever column holds it', () =>
         Effect.gen(function* () {
           for (const column of [
@@ -491,8 +406,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
             );
             expect(opener, column).not.toBeNull();
             expect(opener?.(BEFORE), column).toBe(`only.${column}`);
-            // And the identity really is per column: the same stored value
-            // read as another column does not open.
             expect(() =>
               BEFORE.openOAuthToken(
                 {
@@ -552,8 +465,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
           ).toBe(0);
 
           const after = yield* readRow;
-          // The identity is the whole primary key here, so the row that moved
-          // key is the row that was named — and it is still the same asset.
           expect(after[0]?.asset_id).toBe(key.assetId);
           expect(after[0]?.key_id).toBe('test-1');
           expect(after[0]?.updated_at).toBeInstanceOf(Date);
@@ -572,9 +483,6 @@ describe.skipIf(!testDb)('the secret stores', () => {
         'keeps each asset key of a protocol under its own asset when re-sealing',
         () =>
           Effect.gen(function* () {
-            // Two keys on one protocol line: a re-seal whose predicate stopped
-            // naming the asset would write the first key's ciphertext over the
-            // second, which then opens as the wrong key or not at all.
             yield* reset();
             const first = yield* newAssetKey();
             const second = yield* newAssetKey();

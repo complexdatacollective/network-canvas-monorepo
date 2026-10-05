@@ -81,8 +81,6 @@ export async function streamProtocolEvents(
         { protocolId, ...(since === undefined ? {} : { since }) },
         (event) => {
           delay = FIRST_RECONNECT_DELAY_MS;
-          // Presence carries no cursor: it is not replayed, so it is no
-          // position to resume from.
           if (event.type !== 'presence' && event.cursor !== undefined) {
             since = event.cursor;
           }

@@ -21,9 +21,6 @@ import { ProtocolAuthorizationError } from '../schema/protocol.ts';
 import { StudyCommandError } from '../schema/study.ts';
 import { TeamCommandError } from '../schema/team.ts';
 
-// `Schema.toCodecJson` is the codec the rpc transport derives for a payload or
-// error (`RpcServer`'s `codecFor`), so encoding through it is what actually
-// reaches a client.
 const encodeUnauthorized = Schema.encodeUnknownSync(
   Schema.toCodecJson(Unauthorized),
 );
@@ -125,9 +122,6 @@ describe('RateLimited.retryAfterSeconds', () => {
 });
 
 describe('the error union', () => {
-  // The reason `_tag` stays on the wire: without it every member is the same
-  // four-key document, and the union would resolve each one to its first
-  // structurally compatible member.
   const ProblemUnion = Schema.Union([
     Unauthorized,
     Forbidden,
@@ -140,10 +134,6 @@ describe('the error union', () => {
     Schema.toCodecJson(ProblemUnion),
   );
 
-  // The documents are built inside the test body, not in the table: a table
-  // evaluated at collection time turns one bad member into a whole-file
-  // collection error, which reports as five other tests vanishing rather than
-  // as the one that broke.
   it.each([
     ['Unauthorized', () => encodeUnauthorized(new Unauthorized({}))],
     ['Forbidden', () => encodeForbidden(new Forbidden({}))],
@@ -156,9 +146,6 @@ describe('the error union', () => {
     ['Maintenance', () => encodeMaintenance(new Maintenance({}))],
   ])('round-trips a %s back to its own tag', (tag, encode) => {
     const document = encode();
-    // The wire document itself carries the tag: one member encoded without
-    // it is the first step towards the ambiguity described above, and it is
-    // caught here before a second member makes the union misdecode.
     expect(document).toMatchObject({ _tag: tag });
     expect(decodeUnion(document)._tag).toBe(tag);
   });
@@ -191,9 +178,7 @@ describe('decoding a problem document', () => {
 });
 
 describe('the HttpApi view', () => {
-  // `HttpApiSchema`'s own readers for these two annotations are `@internal` and
-  // absent from the published types, so the test reads the annotations the way
-  // they were written — which is also what those readers do.
+  // `HttpApiSchema`'s own readers for these two annotations are `@internal`.
   const EncodingAnnotation = Schema.Struct({ contentType: Schema.String });
   const readEncoding = Schema.decodeUnknownSync(EncodingAnnotation);
 
@@ -210,22 +195,8 @@ describe('the HttpApi view', () => {
   });
 });
 
-// Every error a procedure declares, round-tripped through that procedure's own
-// codec. The point is the whole declared union, not the class in isolation: a
-// member only reaches a client if the union it sits in can encode it AND can
-// pick it out again on the way back, and the second half is what a shared
-// four-key problem shape puts at risk.
-
 type ErrorSample = {
-  /**
-   * A thunk, not a shared instance: a case that mutated a shared one would
-   * change what every later case round-trips.
-   */
   readonly make: () => unknown;
-  /**
-   * Closes over the class, so the decoded value is checked against the real
-   * constructor rather than against a tag string that any object could carry.
-   */
   readonly isInstance: (value: unknown) => boolean;
 };
 
@@ -314,13 +285,6 @@ const isUnionSchema = (
 ): schema is Schema.Union<ReadonlyArray<Schema.Top>> =>
   SchemaAST.isUnion(schema.ast);
 
-/**
- * The leaves of a procedure's error channel. `Rpc.make` stores `Schema.Never`
- * for a procedure that declares no error, which has no members at all; a lone
- * class is its own single member. The recursion is for a union built out of
- * other unions, which the contract does not do today but which would otherwise
- * hide members from this walk.
- */
 const errorMembers = (schema: Schema.Top): ReadonlyArray<Schema.Top> => {
   if (SchemaAST.isNever(schema.ast)) {
     return [];
@@ -331,12 +295,6 @@ const errorMembers = (schema: Schema.Top): ReadonlyArray<Schema.Top> => {
     : [schema];
 };
 
-/**
- * `Schema.Top` is too wide to decode through: its decoding and encoding
- * service channels are `unknown`, and the sync codecs only accept a schema
- * that needs no services. Every error schema the contract declares needs none,
- * which is exactly what the rpc transport requires of them.
- */
 type ServicelessSchema = Schema.Codec<unknown, unknown>;
 
 type ErrorCase = {
@@ -345,9 +303,6 @@ type ErrorCase = {
   readonly errorSchema: ServicelessSchema;
 };
 
-// Enumerated at collection time so each member gets its own reported test, but
-// nothing is encoded here: the documents are built in the test bodies, where a
-// bad one fails its own case instead of the whole file's collection.
 const errorCases: ReadonlyArray<ErrorCase> = [
   ...StudioRpcs.requests,
   ...ParticipantRpcs.requests,
@@ -388,8 +343,6 @@ describe('every error a procedure declares', () => {
 
       const { encoded, decoded } = roundTrip(errorSchema, sample.make());
 
-      // On the wire and back: a member whose encoding drops `_tag` would be
-      // indistinguishable from any other problem document in the union.
       expect(encoded).toMatchObject({ _tag: memberTag });
       expect(decoded).toMatchObject({ _tag: memberTag });
       expect(sample.isInstance(decoded)).toBe(true);

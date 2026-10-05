@@ -26,11 +26,6 @@ import {
   storeDb,
 } from './helpers.ts';
 
-/**
- * One settings edit through the sync server, in its own transaction — which
- * is what an editor's commit is. The server takes the caller's `Transaction`
- * now, so the scope is the suite's.
- */
 const setDescription = (draftId: string, description: string) =>
   Effect.gen(function* () {
     const sync = makeTestSyncServer();
@@ -50,7 +45,6 @@ const setDescription = (draftId: string, description: string) =>
 describe.skipIf(!storeDb)('publishDraft', () => {
   let store: StoreSchema;
   let run: <A, E>(body: Effect.Effect<A, E, Transaction>) => Promise<A>;
-  /** The same, on a second connection, for a transaction that must overlap. */
   let runAlongside: <A, E>(
     body: Effect.Effect<A, E, Transaction>,
   ) => Promise<A>;
@@ -202,10 +196,8 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const changes = await run(
       diffVersions(TEST_TEAM_ID, first.versionId, second.versionId),
     );
-    // One section changed, and the diff names that change and nothing else.
     expect(changes.map((change) => change.kind)).toEqual(['settings-changed']);
 
-    // A version against itself is no change at all.
     await expect(
       run(diffVersions(TEST_TEAM_ID, first.versionId, first.versionId)),
     ).resolves.toEqual([]);
@@ -309,8 +301,6 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     ).toMatch(/immutable/);
   });
 
-  // Every other case here runs on the trimmed baseProtocol; these cover a real
-  // protocol's shape, and a document that has to survive jsonb.
   for (const fixture of FIXTURES) {
     it(`publishes ${fixture} and reads it back unchanged but for its sealed API keys`, async () => {
       const protocol = readFixtureProtocol(fixture);
@@ -324,11 +314,6 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       const result = await run(publishDraft(TEST_TEAM_ID, { draftId }));
       if (result.status !== 'published') throw new Error(result.status);
 
-      // A published document is what was imported, except that an API key's
-      // value has been sealed out of it (#1900): the manifest keeps the entry
-      // naming the asset, and the value lives in `protocol_asset_keys`. Two of
-      // these fixtures carry a real Mapbox token, so this is the round trip
-      // over a protocol that actually exercises it.
       const manifest = (protocol as unknown as Record<string, unknown>)
         .assetManifest;
       const { doc: redacted, values: keys } = stripAssetKeyValues(

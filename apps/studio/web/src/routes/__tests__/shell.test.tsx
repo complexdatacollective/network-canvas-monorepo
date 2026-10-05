@@ -170,8 +170,6 @@ beforeEach(() => {
         email: 'researcher@example.org',
         emailVerified: true,
         name: 'Researcher',
-        // `me` carries the account's UI-language preference; null means
-        // "follow the browser" (2026-09-04 localization design §5.2).
         locale: null,
         teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
       }),

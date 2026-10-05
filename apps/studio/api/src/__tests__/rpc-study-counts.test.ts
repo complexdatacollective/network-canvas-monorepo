@@ -53,11 +53,6 @@ const PRINCIPAL: SessionPrincipal = {
 type SeededStudy = { id: string; teamId: string; protocolId: string | null };
 
 describe.skipIf(!testDb)('studies.counts', () => {
-  /**
-   * The scratch schema and the Effect data layer over it, which is what every
-   * `/rpc` handler runs its reads and writes on. Shared by every Studio rather
-   * than built per Studio: the clients underneath it are connection pools.
-   */
   let database: TestDatabaseRuntime;
   /** An Admin of the study's team: sees every study the team owns. */
   let client: RpcTestClient;
@@ -69,7 +64,6 @@ describe.skipIf(!testDb)('studies.counts', () => {
   let collectingStudy: SeededStudy;
   let otherTeamStudy: SeededStudy;
 
-  /** One scalar, as its own statement: the oracle never reuses the handler's SQL. */
   const count = async (sql: string, values: unknown[]): Promise<number> => {
     const rows = await database.run(ownerRows<{ n: number }>(sql, values));
     return rows[0]?.n ?? -1;

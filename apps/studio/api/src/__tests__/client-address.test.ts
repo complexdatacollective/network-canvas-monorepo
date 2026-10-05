@@ -11,14 +11,7 @@ import {
   resolveClientAddress,
 } from '../http/middleware/client-address.ts';
 
-// Which address a rate limit is counted against (#1909). The case this exists
-// for is the forged header: `X-Forwarded-For` is written by a client as easily
-// as by a proxy, so believing one from a peer that is not a proxy would give
-// every request a bucket of its own and make every address-keyed limit a
-// no-op.
-
 function resolveAddress(options: {
-  /** Omitted means the transport exposed no peer at all. */
   peerAddress?: string | undefined;
   forwarded?: string;
   trustedProxies?: string[];
@@ -45,9 +38,6 @@ describe('the client address', () => {
   });
 
   it('ignores a header forged by an untrusted peer', () => {
-    // The whole point: the caller is not one of our proxies, so what it claims
-    // about who it is forwarding for is worth nothing — and believing it would
-    // let one host mint a fresh rate-limit bucket per request.
     expect(
       resolveAddress({
         peerAddress: '198.51.100.7',
@@ -58,9 +48,6 @@ describe('the client address', () => {
   });
 
   it('takes the rightmost untrusted hop from a trusted peer', () => {
-    // Each hop appends, so the entries to the left of the last trusted one are
-    // whatever the client supplied. `203.0.113.9` is the last address one of
-    // our own proxies observed.
     expect(
       resolveAddress({
         peerAddress: '10.0.0.5',
@@ -81,8 +68,6 @@ describe('the client address', () => {
   });
 
   it('stops at a hop that is not an address at all', () => {
-    // A chain written by something that does not speak the header's grammar;
-    // nothing to its left can be trusted either.
     expect(
       resolveAddress({
         peerAddress: '10.0.0.5',
@@ -93,7 +78,6 @@ describe('the client address', () => {
   });
 
   it('counts a dual-stack peer as the IPv4 client it is', () => {
-    // Two buckets for one client would make the limit twice as loose.
     expect(resolveAddress({ peerAddress: '::ffff:198.51.100.7' })).toBe(
       '198.51.100.7',
     );
@@ -117,9 +101,6 @@ describe('the client address', () => {
   });
 
   it('shares one bucket where the transport exposes no connection', () => {
-    // An in-process request, or a transport with no socket. Everything then
-    // counts together, which is blunt and safe — the direction that cannot be
-    // exploited.
     expect(resolveAddress({ peerAddress: undefined })).toBe('unknown');
     expect(
       resolveAddress({
@@ -147,11 +128,6 @@ describe('the client address', () => {
   });
 });
 
-/**
- * A peer for a request that has none, registered before `ClientAddressLive`
- * so it is outermost: a Web `Request` carries no socket, and this is the one
- * value only a real transport could supply.
- */
 const PeerLive = (peer: string) =>
   HttpRouter.middleware(
     (httpEffect) =>
@@ -167,9 +143,6 @@ const PeerLive = (peer: string) =>
 
 describe('the middleware over a request', () => {
   it('hands a route the rightmost untrusted hop', async () => {
-    // Mutation: take the first entry of the header — what
-    // `HttpMiddleware.xForwardedHeaders` does — and this answers `192.0.2.1`,
-    // the one value in the chain the client wrote for itself.
     const Routes = HttpRouter.use((router) =>
       router.add(
         'GET',

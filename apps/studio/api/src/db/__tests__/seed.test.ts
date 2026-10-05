@@ -21,42 +21,10 @@ import {
 import { CI } from '../../__tests__/support/env.ts';
 import { testCipher, testKeyring } from '../../__tests__/support/secrets.ts';
 
-// Seeding the whole model takes seconds on a quiet machine and well over a
-// minute on the CI runner (see SEED_BUDGET_MS). One layer below builds
-// the corpus every case in this file reads; the only other seed here runs at
-// `tiny`.
-//
-// The bound stays at 360s rather than following the file's cost down. It
-// exists to fail a seed that has actually hung rather than one sharing a
-// runner, and it was already set too tight once, at 180s, where the slowest
-// passing case left a 4% margin. Tightening it again buys a couple of minutes
-// on a run that is failing anyway.
 const SEEDING_TIMEOUT_MS = 360_000;
 
-/**
- * A `demo` seed has to stay fast enough to run on every `pnpm dev` boot, where
- * it takes around five seconds against a quiet database. The bound is loose
- * against that because this case measures a seed running beside the rest of the
- * suite on one Postgres: it exists to catch a phase that becomes minutes — a
- * full-cohort schedule resolution, or a network config an order of magnitude
- * wider — not one that becomes a second slower.
- *
- * It is not asserted on the CI runner at all. Wall time measures the seed only
- * where the seed is what the machine is doing; there, two vCPUs are shared by
- * every affected package's vitest workers and the Postgres service container,
- * and this same five-second seed measured 117 seconds — a number that says
- * nothing about a dev boot. `MAX_DEMO_ROWS` is the budget that holds
- * everywhere, because nothing a neighbour does can change it.
- */
 const SEED_BUDGET_MS = 60_000;
 
-/**
- * The whole demo corpus, every table counted. The network is most of it
- * (around 18 000 nodes and 11 000 edges at the current window); the bound sits
- * far enough above the total to admit another study or a longer prompt run,
- * and far enough below ten times it to catch the width regression the time
- * budget was written for.
- */
 const MAX_DEMO_ROWS = 80_000;
 
 const count = (statement: string, values: ReadonlyArray<unknown> = []) =>
@@ -65,7 +33,6 @@ const count = (statement: string, values: ReadonlyArray<unknown> = []) =>
     (rows) => rows[0]?.n ?? -1,
   );
 
-/** The demo corpus every case below reads, seeded once. */
 class SeededCorpus extends Context.Service<
   SeededCorpus,
   {
@@ -89,9 +56,6 @@ const SeededCorpusLive = Layer.effect(
   }).pipe(Effect.orDie),
 ).pipe(Layer.provideMerge(TestDatabaseLive));
 
-// The populated corpus, seeded once into a shared scratch schema. It is
-// declared first so that its timing case measures a seed into a database
-// this file has not already churned schemas through.
 describe.skipIf(!testDb)('the seeded dataset', () => {
   layer(SeededCorpusLive, { timeout: SEEDING_TIMEOUT_MS })((it) => {
     it.effect.skipIf(CI)(
@@ -121,9 +85,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
     it.effect('leaves the instance owned, so first-run setup is closed', () =>
       Effect.gen(function* () {
         const { adminId } = yield* SeededCorpus;
-        // A dev boot reseeds on every `pnpm dev`, and a seeded instance is one
-        // somebody already set up (#1909): `/setup` must not be standing open in
-        // front of a database full of synthetic studies.
         const installation = yield* ownerRows<{
           name: string | null;
           owner_user_id: string | null;
@@ -144,9 +105,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
 
     it.effect('keeps the deployment state row the schema step wrote', () =>
       Effect.gen(function* () {
-        // The seed wipes every populated table, and neither application role
-        // may re-insert this singleton: without it `maintenance on|off` and
-        // the maintenance gate's read have no row to act on.
         const rows = yield* ownerRows<{ id: number; maintenance: boolean }>(
           'select id, maintenance from deployment_state',
         );
@@ -170,7 +128,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
         );
         expect(modes.map((row) => row.mode)).toEqual(['anonymous', 'managed']);
 
-        // The deletion marker and its consistency check both need a live example.
         expect(
           yield* count(`select count(*)::int as n from studies
          where deletion_requested_at is not null and purge_after is not null`),
@@ -180,8 +137,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
 
     it.effect('numbers every study’s waves densely from one', () =>
       Effect.gen(function* () {
-        // Dense from one is exactly: the lowest number is 1, the highest equals
-        // the count, and no number repeats.
         const gaps = yield* ownerRows<{ id: string }>(
           `select s.id from studies s
        join study_waves w on w.study_id = s.id
@@ -213,7 +168,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
                     and v.protocol_id = s.protocol_id
                     and v.team_id = s.team_id))`),
           ).toBe(0);
-          // A draft study may carry a protocol line, but its waves pin nothing.
           expect(
             yield* count(`select count(*)::int as n
          from study_waves w join studies s on s.id = w.study_id
@@ -238,13 +192,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           ).toBe(0);
         }),
     );
-
-    // A session pinning anything but its wave's version was asserted here too,
-    // which `interview_sessions_version_wave_pin` already refuses on INSERT —
-    // and refuses more strictly, since it rejects the two-NULL pair that
-    // `IS DISTINCT FROM` accepts. The seed inserts every session, so a violation
-    // aborts the transaction and fails `beforeAll` rather than reaching a case.
-    // The trigger is proven where it lives, in study/__tests__/schema.test.ts.
 
     it.effect(
       'keeps anonymous studies single-wave, participant-free and unattributed',
@@ -348,8 +295,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           'manager',
           'protocol_designer',
         ]);
-        // The PII flag is orthogonal to the role, so both values appear inside one
-        // study rather than only across the corpus.
         expect(
           yield* count(`select count(*)::int as n from (
            select study_id from study_role_grants
@@ -361,14 +306,10 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
 
     it.effect('writes plain contact columns and codes well-formed', () =>
       Effect.gen(function* () {
-        // Every participant is reachable by email, and every address is stored in
-        // the one normalised spelling the opt-out join depends on.
         expect(
           yield* count(`select count(*)::int as n from participants
          where email is null or email <> lower(btrim(email))`),
         ).toBe(0);
-        // Some but not all carry a phone, so the corpus holds both the
-        // SMS-reachable and the email-only case …
         expect(
           yield* count(
             `select count(*)::int as n from participants where phone is not null`,
@@ -379,8 +320,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
             `select count(*)::int as n from participants where phone is null`,
           ),
         ).toBeGreaterThan(0);
-        // … and every phone that is there is E.164, which is the only form an SMS
-        // provider takes.
         expect(
           yield* count(`select count(*)::int as n from participants
          where phone is not null and phone !~ '^\\+[1-9][0-9]{6,14}$'`),
@@ -389,9 +328,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           yield* count(`select count(*)::int as n from participants
          where name is null or name !~ '[^[:space:]]'`),
         ).toBe(0);
-        // The attribute bag is an object with something in it: a seed that wrote
-        // `{}` everywhere would satisfy the column's own check and give a filter
-        // in the UI nothing to bite on.
         expect(
           yield* count(`select count(*)::int as n from participants
          where jsonb_typeof(attributes) <> 'object'
@@ -402,8 +338,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           yield* count(`select count(*)::int as n from participants
          where participant_code !~ '^P-[0-9]{4}$' or enrolled_at is null`),
         ).toBe(0);
-        // A southern-hemisphere zone is in the mix, so DST arithmetic has
-        // something to bite on.
         expect(
           yield* count(`select count(*)::int as n from participants
          where timezone in ('Australia/Sydney', 'Pacific/Auckland')`),
@@ -415,9 +349,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'captures consent inside a session only where the participant interviewed, and never before it began',
       () =>
         Effect.gen(function* () {
-          // Both shapes the column exists for appear: remote onboarding, captured
-          // inside the participant's first session minutes after it started, and
-          // researcher-led onboarding, captured outside any session.
           expect(
             yield* count(
               `select count(*)::int as n from participant_consents where session_id is not null`,
@@ -465,13 +396,11 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
          join consent_items i on i.id = r.consent_item_id
          where not r.affirmed and not i.required`),
           ).toBeGreaterThan(0);
-          // A required item is never declined: the grant could not exist if it were.
           expect(
             yield* count(`select count(*)::int as n from participant_consent_item_responses r
          join consent_items i on i.id = r.consent_item_id
          where not r.affirmed and i.required`),
           ).toBe(0);
-          // One study carries a superseded v1 beside its published v2.
           expect(
             yield* count(`select count(*)::int as n from (
            select study_id from consent_documents
@@ -485,8 +414,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'suppresses exactly the deliveries enqueued after their address opted out',
       () =>
         Effect.gen(function* () {
-          // A suppressed delivery names an address that had opted out by the time
-          // it was enqueued …
           expect(
             yield* count(`select count(*)::int as n from message_deliveries d
          where d.suppressed_at is not null
@@ -501,8 +428,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
               `select count(*)::int as n from message_deliveries where suppressed_at is not null`,
             ),
           ).toBeGreaterThan(0);
-          // … nothing enqueued after an opt-out went anywhere but the suppression
-          // list, and what was enqueued before it went out as it would have.
           expect(
             yield* count(`select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
@@ -566,9 +491,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'keeps the wave rollups equal to a recomputation from the sessions',
       () =>
         Effect.gen(function* () {
-          // Written as joins and grouping rather than as the seed's scalar
-          // subqueries, so this is a second expression of the definition rather than
-          // the same query twice.
           const drift = yield* ownerRows<{ wave_id: string }>(
             `with links as (
          select wave_id, count(*)::int as invited
@@ -613,7 +535,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           or r.delivery_failed_count is distinct from coalesce(f.failed, 0)`,
           );
           expect(drift).toEqual([]);
-          // One rollup per wave, and the numbers are not all zero.
           expect(
             yield* count(`select count(*)::int as n from study_waves w
          where not exists (select 1 from study_wave_rollups r where r.wave_id = w.id)`),
@@ -667,9 +588,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'issues one live link per managed participant per collecting wave',
       () =>
         Effect.gen(function* () {
-          // Every participant link belongs to a wave of a live or paused study, and
-          // no participant holds two live links on one wave (the partial unique
-          // index proves the second half; this proves the first).
           expect(
             yield* count(`select count(*)::int as n from interview_links l
          join studies s on s.id = l.study_id and s.team_id = l.team_id
@@ -686,7 +604,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
              where l.wave_id = w.id and l.participant_id = p.id
                and l.kind = 'participant')`),
           ).toBe(0);
-          // Exactly one open link per anonymous study.
           expect(
             yield* count(`select count(*)::int as n from studies s
          where s.participation_mode = 'anonymous'
@@ -700,9 +617,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'records on every link exactly the redemptions its sessions are',
       () =>
         Effect.gen(function* () {
-          // A visit through a link is a session, so the link's count is its
-          // session count and its last redemption the newest session's start — for
-          // both kinds, and zero where no session cites the link.
           expect(
             yield* count(`select count(*)::int as n from interview_links l
          left join (
@@ -818,8 +732,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'hashes every consent document over the canonical form of what it retains',
       () =>
         Effect.gen(function* () {
-          // content_hash is the digest of the canonical (title, body, items), items
-          // by key, so a document's evidence can be recomputed from the row.
           const rows = yield* ownerRows<{
             title: string;
             body: unknown;
@@ -882,8 +794,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
               `select count(*)::int as n from studies where deletion_requested_at is not null`,
             ),
           ).toBeGreaterThan(0);
-          // A delivery behind a dispatched occurrence was attempted: it has a
-          // provider and a terminal timestamp, never a pending outbox row.
           expect(
             yield* count(`select count(*)::int as n from message_deliveries d
          join schedule_occurrences o on o.id = d.occurrence_id
@@ -898,8 +808,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'hashes every snapshot over the canonical form of the payload it stores',
       () =>
         Effect.gen(function* () {
-          // jsonb keeps no key order, so the evidence must be checkable from the
-          // payload as it is read back.
           const rows = yield* ownerRows<{
             payload: unknown;
             payload_hash: string;
@@ -915,8 +823,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'resolves every occurrence from a schedule that already existed',
       () =>
         Effect.gen(function* () {
-          // An occurrence's created_at is when the resolver produced it, which
-          // cannot precede the schedule it was resolved from.
           expect(
             yield* count(`select count(*)::int as n from schedule_occurrences o
          join study_schedules s on s.id = o.schedule_id and s.team_id = o.team_id
@@ -946,9 +852,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'backs every webhook event with a row of the kind it names, enqueued after it',
       () =>
         Effect.gen(function* () {
-          // A payload is thin, but the resource it names exists — in the study
-          // the payload cites, of the subscription's own team — and the event was
-          // enqueued no earlier than the moment that row records.
           const cases: [string, string, string][] = [
             ['session.completed', 'interview_sessions', 'completed_at'],
             ['session.abandoned', 'interview_sessions', 'abandoned_at'],
@@ -984,11 +887,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
       'leaves every webhook delivery one its own subscription asked for',
       () =>
         Effect.gen(function* () {
-          // The corpus still covers both subscription states, and reaches the
-          // disabled one the way the dispatcher does: deliveries first, disablement
-          // afterwards. Written the other way round, none of those deliveries could
-          // exist — webhook_deliveries_subscription_wants_event admits a delivery
-          // only while its subscription is active and only for a type it asks for.
           const states = yield* ownerRows<{ state: string }>(
             `select distinct state from webhook_subscriptions order by state`,
           );
@@ -1017,9 +915,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
         Effect.gen(function* () {
           const { plaintextSecrets } = yield* SeededCorpus;
           const keyring = testKeyring();
-          // Every row names the current entry, never an older one: the seed writes
-          // under whatever is current, which is the state `rotate-secrets` leaves
-          // behind and the state the boot check expects to find.
           expect(
             yield* count(
               `select count(*)::int as n from webhook_subscriptions
@@ -1042,16 +937,12 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           if (!row)
             throw new Error('unreachable: the seed writes subscriptions');
 
-          // The round trip is the assertion that matters: the bytes in the column
-          // are a real envelope over a real secret, bound to this row's identity,
-          // not opaque filler that happens to be the right length.
           const opened = testCipher(keyring).openWebhookSecret(
             { teamId: row.team_id, subscriptionId: row.id },
             { ciphertext: row.secret_ciphertext, keyId: row.secret_key_id },
           );
           expect(plaintextSecrets).toContain(opened);
           expect(opened).toMatch(/^whsec_[0-9a-f]{48}$/);
-          // The column does not hold what the round trip returned.
           expect(
             Buffer.from(row.secret_ciphertext).toString('utf8'),
           ).not.toContain(opened);
@@ -1087,8 +978,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
             expect(
               stored.startsWith(`studio-secret:${keyring.currentId}:`),
             ).toBe(true);
-            // The round trip, as for the webhook secrets: the column holds a real
-            // envelope bound to this account and column, not opaque filler.
             const opened = cipher.openOAuthToken(
               { providerId: 'google', accountId: row.accountId, column },
               stored,
@@ -1138,9 +1027,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           expect(opened).toMatch(/^sk\.seed-[0-9a-f]{32}$/);
           expect(plaintextSecrets).toContain(opened);
 
-          // The manifest entry survives in the stored document; only its value is
-          // gone. Asked of every section row, because a key must not be at rest in
-          // any revision — not only the one the draft currently points at.
           const apikeyEntries = `from sections s, jsonb_each(s.doc) e
        where jsonb_typeof(e.value) = 'object' and e.value ->> 'type' = 'apikey'`;
           expect(
@@ -1165,8 +1051,6 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           );
           expect(sequences.length).toBeGreaterThan(0);
           expect(sequences.every((row) => row.ok)).toBe(true);
-          // Neither outbox has a production writer yet, so the seed leaves both
-          // empty rather than inventing rows that bypass invariants no code states.
           expect(
             yield* count(`select count(*)::int as n from audit_alert_outbox`),
           ).toBe(0);
@@ -1178,51 +1062,20 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
   });
 });
 
-/**
- * The five columns the seed does not choose, and therefore cannot reproduce.
- * Every one of them is a consequence of the seed writing through real code
- * rather than around it, which is the trade it makes everywhere: two are
- * allocated inside a writer it calls, and three are wall-clock stamps that
- * belong to the operation rather than to the data — two of them stamped by
- * the schema step, whose rows the seed's wipe leaves alone.
- *
- * Everything else — every other id, every timestamp, every encryption nonce —
- * comes from the pinned PRNG or the fixed anchor, which is what this case
- * exists to hold the seed to. Adding a column here is a decision, not
- * bookkeeping: it says a value is not the seed's to pick.
- */
 const IRREPRODUCIBLE = {
-  // better-auth's `hashPassword` draws a fresh scrypt salt per call, and
-  // the audit store's `append` allocates an event id with `randomUUID()`; both are
-  // documented where they are written (`seed/teams.ts`, `seed/audit.ts`).
   account: ['password'],
   audit_events: ['id'],
-  // When the projection was computed, which is now, in both runs. The seed
-  // calls the real `refreshProjectionsForSessions`; the counts it derives are
-  // compared, and they are what the seeded data determines.
   session_stats: ['computed_at'],
-  // Not the seed's row at all — `applySchema` stamps it, and the seed's wipe
-  // skips the table for that reason. The fingerprint itself is still
-  // compared, which is worth having: it says both runs seeded one schema.
   schemaFingerprint: ['appliedAt'],
-  // The same: the schema step inserts the singleton and stamps it, and the
-  // wipe skips it. Whether the window is open is still compared.
   deployment_state: ['updated_at'],
 } as const;
 
 /**
- * One reproducible tiny seed into a scratch schema of its own, dumped.
- *
  * `Layer.fresh`, because inside `layer(…)` a plain `Effect.provide` resolves
- * through the suite's memo map and hands back the schema already built: the
- * second run would seed over the first, and the case would stop proving the
- * seed is independent of what a database held before it.
+ * through the suite's memo map and hands back the schema already built.
  */
 const seedAndDump = Effect.gen(function* () {
   const { schema } = yield* TestDatabase;
-  // The only thing that makes two dumps comparable: without it the
-  // secret envelopes take fresh CSPRNG nonces, as they do in a
-  // deployment.
   yield* seed({
     secrets: testKeyring(),
     scale: 'tiny',
@@ -1246,9 +1099,6 @@ describe.skipIf(!testDb)('seed', () => {
           const first = firstRun.dump;
           const second = secondRun.dump;
 
-          // Reported as a list of table names and the first row that differs,
-          // rather than as one `toEqual` over the corpus: a failure has to be
-          // readable, and the corpus is tens of thousands of rows.
           expect([...second.keys()]).toEqual([...first.keys()]);
           const differences = [...first].flatMap(([table, rows]) => {
             const other = second.get(table) ?? [];
@@ -1261,8 +1111,6 @@ describe.skipIf(!testDb)('seed', () => {
               : [`${table}: row ${index}\n  ${rows[index]}\n  ${other[index]}`];
           });
           expect(differences).toEqual([]);
-          // The dump is worth comparing: a helper that returned nothing would
-          // make every line above pass.
           expect([...first.values()].flat().length).toBeGreaterThan(1000);
         }),
       SEEDING_TIMEOUT_MS,

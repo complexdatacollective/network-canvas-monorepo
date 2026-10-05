@@ -72,15 +72,6 @@ type TeamRefreshRecovery = {
 type TeamMutationOutcome = {
   commit: 'confirmed' | 'unknown';
   refreshed: boolean;
-  /**
-   * What the mutation rejected with, for the caller that recognises a
-   * particular refusal. `undefined` whenever the commit is confirmed.
-   *
-   * The reconciler cannot read it: an unknown commit is unknown precisely
-   * because a failure says nothing about whether the command landed. A caller
-   * that can identify a *declared* refusal knows more than that, and this is
-   * where it gets to look.
-   */
   failure: unknown;
 };
 
@@ -99,13 +90,6 @@ async function reconcileTeamMutation<Result>(
   return { commit, failure, refreshed: await refresh() };
 }
 
-/**
- * The one refusal this screen can explain rather than reconcile: the delivery
- * job holds the invitation while it sends the email, so a cancellation that
- * races it is turned away with nothing changed (design §5). It is a confirmed
- * refusal, not an unknown commit — the researcher needs to know to try again
- * in a moment, not to go and check what happened.
- */
 const isDeliveryInProgress = (failure: unknown): boolean =>
   failure instanceof TeamCommandError &&
   failure.code === 'DELIVERY_IN_PROGRESS';
@@ -710,9 +694,7 @@ function TeamManagement(props: {
         refreshTeamState,
       );
       if (outcome.commit === 'unknown') {
-        // A declared refusal, so there is nothing to reconcile: the invitation
-        // is exactly as it was, and the researcher is told to try again rather
-        // than sent to check the list.
+        // A declared refusal, so there is nothing to reconcile.
         if (isDeliveryInProgress(outcome.failure)) {
           setMessage({
             kind: 'error',

@@ -1,8 +1,3 @@
-// The keyring gate's boot ordering, in process: what is built beneath the gate
-// is built only once the gate has passed, and the one client that sees every
-// team's rows is gone before then. The processes themselves (src/index.ts,
-// src/worker.ts) are asked the same question from outside, with their output
-// and exit code, in src/__tests__/secrets-boot.test.ts.
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -29,7 +24,6 @@ import {
 
 const TEAM = 'team-keyring-gate';
 const USER = 'user-keyring-gate';
-/** The id the fixture row is sealed under, which the gate's keyring lacks. */
 const MISSING = 'gone';
 
 const secretsFor = (keyring: KeyringApi) =>
@@ -53,7 +47,6 @@ const reset = Effect.fnUntraced(function* () {
   );
 });
 
-/** One webhook secret sealed under `keyId` of the test keyring. */
 const storeSecretUnder = Effect.fnUntraced(function* (keyId: string) {
   const harness = yield* TestDatabase;
   const id = randomUUID();
@@ -72,7 +65,6 @@ const storeSecretUnder = Effect.fnUntraced(function* (keyId: string) {
   );
 });
 
-/** Connections the named client holds right now, as the server counts them. */
 const connectionsOf = Effect.fnUntraced(function* (applicationName: string) {
   const harness = yield* TestDatabase;
   const rows = yield* harness.owner.sql<{ count: number }>`
@@ -81,11 +73,6 @@ const connectionsOf = Effect.fnUntraced(function* (applicationName: string) {
   return rows[0]?.count ?? 0;
 });
 
-/**
- * A layer standing for everything a process builds beneath the gate — the
- * listener, the job worker. It records that it was built, and how many
- * connections the gate's client still held at that moment.
- */
 const Beneath = (built: Ref.Ref<number[]>, applicationName: string) =>
   Layer.effectDiscard(
     Effect.gen(function* () {
@@ -94,7 +81,6 @@ const Beneath = (built: Ref.Ref<number[]>, applicationName: string) =>
     }),
   );
 
-/** The gate as a process builds it, over this suite's scratch schema. */
 const gateOn = (applicationName: string) =>
   Effect.gen(function* () {
     const harness = yield* TestDatabase;
@@ -162,8 +148,6 @@ describe.skipIf(!testDb)('the keyring gate', () => {
             );
 
             expect(Exit.isSuccess(exit)).toBe(true);
-            // Built exactly once, and at that moment the cross-team client the
-            // check ran on held no connection at all.
             expect(yield* Ref.get(built)).toEqual([0]);
           }),
       );
@@ -172,10 +156,6 @@ describe.skipIf(!testDb)('the keyring gate', () => {
         'would see a maintenance client the gate kept for the life of the graph',
         () =>
           Effect.gen(function* () {
-            // The control for the case above: the same check with its client
-            // provided at the layer rather than inside the effect — the shape
-            // that keeps a cross-team client for the life of a serving process
-            // — is seen by the same count.
             yield* reset();
             yield* storeSecretUnder('test-1');
             const harness = yield* TestDatabase;
@@ -210,8 +190,6 @@ describe.skipIf(!testDb)('the keyring gate', () => {
         'refuses to build without a keyring, before it reaches the database',
         () =>
           Effect.gen(function* () {
-            // A database no client could reach: a gate that tried would fail
-            // with `StoredKeysUnreadable`, not with the missing keyring.
             const env = {
               ...readEnv(),
               db: { url: 'postgres://nobody@127.0.0.1:1/nothing' },

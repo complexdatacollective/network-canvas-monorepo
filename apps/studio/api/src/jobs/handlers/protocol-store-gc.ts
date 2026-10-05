@@ -10,44 +10,12 @@ import { exitSqlState, INSUFFICIENT_PRIVILEGE } from '../errors.ts';
 import { maintenanceTeamAccess } from '../team-access.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 
-// The protocol store's hourly sweep, and the whole of the handler that runs it
-// (#1895). It joins the two halves that used to be `src/protocol/gc.ts` and
-// the pg-boss handler beside it: nine statements of node-postgres over a
-// maintenance pool and a `createTenantDb` per tenant became `sql` over
-// `MaintenanceScope.open` and `MaintenanceScope.openTenant` on the maintenance
-// client.
-//
-// What the port did not change: which rows are eligible. Every predicate below
-// is the one `gc.ts` runs, text for text — the `referenced` expression above
-// all, which three statements share.
-//
-// What the port did change, and had to:
-//
-//  - A statement hands back the rows it returned rather than a `rowCount`, so
-//    each counted statement carries a `RETURNING` and the count is that
-//    array's length.
-//  - `runNoAuditTenantTransaction` became `noAuditMaintenanceTransaction`
-//    (`audit/no-audit.ts`), which is the same registry check on the
-//    maintenance client. The four operation names are entries in
-//    `NO_AUDIT_TRANSACTION_POLICIES` again rather than comments, so the guard
-//    applies: a fifth unaudited sweep cannot be added without saying in the
-//    registry why it emits nothing. They stay outside `audited` for the reason
-//    each entry gives — a sweep is not anybody's action.
-//  - What the role assertion catches and what it cannot are spelled out above
-//    the assertion itself.
-
 export type GcResult = {
   manifestsDeleted: number;
   sectionsDeleted: number;
   commandLogDeleted: number;
 };
 
-/**
- * The sweep is not running as the maintenance role: either the client it was
- * given carries another identity, or its login may not assume the role.
- * Under any other role the tenant enumeration below sees nothing, so the run
- * would report a clean sweep without having visited anyone.
- */
 export class GcRoleError extends Schema.TaggedError<GcRoleError>()(
   'GcRoleError',
   { role: Schema.String },
@@ -57,11 +25,6 @@ export class GcRoleError extends Schema.TaggedError<GcRoleError>()(
   }
 }
 
-/**
- * A bound that would widen deletion rather than narrow it. A typed failure
- * rather than a defect because it is what a misconfigured caller gets, and the
- * bound's name is the whole of the diagnosis.
- */
 export class GcBoundsError extends Schema.TaggedError<GcBoundsError>()(
   'GcBoundsError',
   { bound: Schema.String, requirement: Schema.String },
@@ -72,45 +35,18 @@ export class GcBoundsError extends Schema.TaggedError<GcBoundsError>()(
 }
 
 export type GcOptions = {
-  /** Manifests kept per draft below the head. */
   retainManifestsPerDraft: number;
-  /** Minimum age before an unreferenced section document is swept. */
   sectionGraceMs: number;
-  /** How long a client may still retransmit a lost-acknowledgement commit. */
   commandRetryHorizonMs: number;
 };
 
-/**
- * What the deployment's sweep keeps. These are the production bounds rather
- * than a caller's choice, because the sweep is not addressed at anything — the
- * cron sends an empty payload and every tenant is visited the same way — so a
- * bound that varied by job would only ever be a way to get them wrong.
- *
- * A thousand manifests per draft is far more history than a researcher can
- * reach through the editor and small enough that a long-lived draft does not
- * grow without bound.
- *
- * The two windows answer different questions and are deliberately different
- * lengths. A command-log row survives a day because that is how long a client
- * whose acknowledgement was lost has to retransmit and find its recorded
- * result; nothing but that client reads it.
- *
- * A section's grace is three days because a deleted section is not only a
- * live client's problem: backups are taken daily (#1901), so a window shorter
- * than the backup interval can delete bytes that no backup ever captured, and
- * a restore then produces a manifest naming a section that exists nowhere. It
- * has to exceed the interval, not merely match it — a backup that runs late,
- * or a sweep that runs just before one, would otherwise close the gap — so
- * three days for a daily backup (#1909).
- */
+/** The section grace must exceed the daily backup interval (#1901), or a restore can name a section no backup captured. */
 export const PROTOCOL_STORE_GC_BOUNDS: GcOptions = {
   retainManifestsPerDraft: 1000,
   sectionGraceMs: 259_200_000,
   commandRetryHorizonMs: 86_400_000,
 };
 
-// A negative or non-finite bound would move a cutoff into the future, widening
-// deletion to everything eligible regardless of age.
 const assertNonNegativeFinite = (
   bound: string,
   value: number,
@@ -124,17 +60,6 @@ const assertNonNegativeFinite = (
         }),
       );
 
-// Version-pinned sections are FK-protected regardless; these predicates only
-// decide what is eligible. A command-log row survives while its (owner, epoch)
-// lease is live and until the retry horizon passes, because a retransmitted
-// client_seq must keep finding its recorded result — as must the manifest that
-// result names.
-//
-// A section is referenced by any published protocol version, any draft
-// manifest, or any published template version. Template pins are immutable
-// like version pins, so a section only a template holds would otherwise
-// be swept into their foreign key and abort the tenant's whole pass — on
-// every pass thereafter.
 const REFERENCED = `EXISTS (
       SELECT 1 FROM version_sections vs
       WHERE vs.team_id = s.team_id AND vs.section_hash = s.hash
@@ -179,20 +104,8 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
     commandRetryHorizonMs,
   );
 
-  // What this verifies and what it cannot. The client sends its identity's
-  // role in every connection's startup packet (src/db/client.ts), so a bare
-  // `current_user` reads back the role the connection actually has. That
-  // refuses a worker whose maintenance client was built from `Database.layer`
-  // — the misconfiguration the check exists for — but it cannot tell one
-  // maintenance client from another: a maintenance identity over the wrong
-  // login still passes, because any login that is a member of
-  // `studio_maintenance`, which rls.ts grants to the connecting login WITH SET
-  // TRUE, may assume it.
-  //
-  // A login that may *not* assume the role is refused at connect with `42501`,
-  // before any statement runs, so that failure is caught here and given the
-  // same diagnosis rather than an opaque `SqlError`. No connection exists to
-  // ask who it is, so the login is named from the client's own URL.
+  // A login that may not assume the role is refused at connect with `42501`,
+  // before any statement runs, so that failure is caught here.
   const identity = yield* Effect.exit(
     MaintenanceDatabase.use(
       ({ sql }) => sql<{ role: string }>`SELECT current_user AS role`,
@@ -225,14 +138,8 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
     commandLogDeleted: 0,
   };
 
-  // The one deliberately cross-team read: maintenance visits every tenant.
-  // Enumerated from the swept tables rather than from `teams`, because
-  // team_id carries no foreign key into it (studio-sync/src/schema.ts): a
-  // tenant whose team row never existed or has since been deleted still owns
-  // collectable rows, and driving the loop from `teams` would strand them
-  // forever. Not a membership lookup, so the AuthService seam stays intact.
-  // The row-level security policies admit this scan only to the maintenance
-  // role checked above (studio-sync/src/rls.ts).
+  // Deliberately cross-team; RLS admits this scan only to the maintenance role.
+  // Enumerated from the swept tables, not `teams`: team_id has no foreign key into it.
   const tenants = yield* MaintenanceScope.open(
     Effect.flatMap(
       Transaction,
@@ -348,17 +255,6 @@ export const gcProtocolStore = Effect.fn('protocol.gcProtocolStore')(function* (
   return result;
 });
 
-/**
- * The job. The sweep itself has existed since #1247 and has never run in a
- * deployment: there was nothing to run it. This is that something, and the
- * whole of the handler is calling it and saying what it collected.
- *
- * The queue retries nothing (`retryLimit: 0`): the sweep is idempotent and the
- * next hour picks up whatever this pass left, which is a better answer than
- * retrying a pass that failed halfway through a tenant. So a failure here is
- * the end of the job, and `drainOnce`'s `failed` line is the only notice a
- * deployment gets that an hour was lost.
- */
 export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
   job: HandledJob<'protocol-store-gc'>,
 ): Effect.fn.Return<
@@ -367,9 +263,6 @@ export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
   MaintenanceDatabase
 > {
   const swept = yield* gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS);
-  // The counts are the only evidence a deployment has that the sweep is
-  // keeping up; a pass that collects nothing and one that collects thousands
-  // are both normal, and only the series tells them apart.
   yield* Effect.logInfo(
     `protocol-store-gc ${job.id}: manifests ${swept.manifestsDeleted}, sections ${swept.sectionsDeleted}, command log ${swept.commandLogDeleted}`,
   );

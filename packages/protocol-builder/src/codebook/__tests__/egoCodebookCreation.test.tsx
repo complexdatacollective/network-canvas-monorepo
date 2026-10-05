@@ -191,8 +191,6 @@ describe('the first attribute asked of the participant', () => {
 });
 
 /**
- * A host whose `Create` a collaborator gets in front of.
- *
  * The race the refusal is about, made to happen: this editor's acquire is
  * answered "no such section", and by the time its create arrives the section
  * exists. `Create` takes no lock, so this is the only thing standing between

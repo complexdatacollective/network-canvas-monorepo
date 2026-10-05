@@ -32,31 +32,10 @@ import { KeyringVerified } from '../secrets/verify.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
-// The worker program: the same image as src/programs/serve.ts, started with a
-// different command (#1895). It executes the jobs the web process creates and
-// runs the cron schedules. It serves no surface — it imports neither the HTTP
-// router nor the RPC router, which a source-policy test pins
-// (src/__tests__/process-separation.test.ts) — and the one port it binds is
-// the loopback health listener, which exists because a container healthcheck
-// is otherwise the one thing that cannot ask a process which answers nothing
-// whether it is working (#1897, #1909).
-//
-// It is also the only process that holds a mail transport, which is why it is
-// the only one that reads SMTP_URL and EMAIL_FROM (`Environment.layerWithMail`)
-// and the only one that imports src/mail/live.ts.
-//
-// Acquisition order is the boot order and finalizers run in reverse. The
-// health listener binds before the schema gate, so a `docker compose up` can
-// read an honest `failing` — naming the schema — rather than a refused
-// connection; and because it is acquired before the queue it closes after the
-// job drain, so `/readyz` stays answerable while jobs finish. The drain itself
-// is `JobWorker.layer`'s own scope finalizer: it stops claiming, waits 25
-// seconds for in-flight handlers, then lets the scope interrupt whatever is
-// left — inside the compose file's 40-second `stop_grace_period`. Exit codes
-// come from `NodeRuntime.runMain`: 0 after a clean stop, 130 on a signal, 1 for
-// a layer that would not build.
+// The health listener binds before the schema gate, and because it is acquired
+// before the queue it closes after the job drain, so `/readyz` stays answerable
+// while jobs finish.
 
-/** A refusal that stands in for the process: a message for the operator, exit code 1. */
 class WorkerRefused extends Schema.TaggedError<WorkerRefused>()(
   'WorkerRefused',
   { reason: Schema.String },
@@ -66,13 +45,6 @@ class WorkerRefused extends Schema.TaggedError<WorkerRefused>()(
   }
 }
 
-/**
- * The `jobs` readiness check before the queue's own layers are built. They are
- * built after the schema gate and the secrets check, on purpose — nothing may
- * claim a job against a schema this build did not make, or with a keyring that
- * cannot produce the key ids already in the database — while the listener binds
- * before both, so it can say which of the two it is still waiting on.
- */
 class JobsNotStarted extends Schema.TaggedError<JobsNotStarted>()(
   'JobsNotStarted',
   {},
@@ -82,19 +54,11 @@ class JobsNotStarted extends Schema.TaggedError<JobsNotStarted>()(
   }
 }
 
-/** What the `jobs` check reads once the queue's layers have been built. */
 type StartedQueue = {
   readonly worker: JobWorker['Service'];
   readonly database: MaintenanceDatabase['Service'];
 };
 
-/**
- * Readiness (#1897). `jobs` is `jobsCheck` — the worker's own `ready` flag,
- * which its first answered claim sets, plus a read issued now — reached through
- * a handle the graph fills in, because the listener binds first. Until then the
- * answer is `failed: not started`: an instance that does not exist answers
- * nothing, and the readiness client would still reach Postgres.
- */
 function workerChecks(
   readiness: ReadinessDatabase['Service'],
   limiter: RateLimiter['Service'],
@@ -110,10 +74,7 @@ function workerChecks(
     // Checked live rather than through `SchemaStatus`, because the listener is
     // acquired before the gate on purpose (above).
     schema: schemaCheckOn(readiness.sql),
-    // `degraded`, never `failed`: the limiter fails open, so a worker that
-    // cannot reach it still runs every job it has — only the summary job has
-    // nothing to drain. Omitted where no store is configured, like every other
-    // unconfigured surface.
+    // `degraded`, never `failed`: the limiter fails open.
     ...(limiter.configured ? { limiter: limiter.readiness } : {}),
     jobs,
   };
@@ -126,9 +87,6 @@ function workerWith(db: DbEnv) {
       const limiter = yield* RateLimiter;
       const started = yield* Ref.make(Option.none<StartedQueue>());
 
-      // 127.0.0.1 by construction, not by configuration
-      // (`WorkerHealthServerLive`): this listener answers the container runtime
-      // and nothing else, and a worker is not a service anything routes to.
       const Health = HttpRouter.serve(
         HealthRoutes(workerChecks(readiness, limiter, started)),
         {
@@ -137,34 +95,21 @@ function workerWith(db: DbEnv) {
         },
       ).pipe(Layer.provideMerge(WorkerHealthServerLive));
 
-      // Beside the fingerprint check and for the same reason (#1900): the
-      // worker is what signs webhook deliveries, so a keyring that cannot
-      // produce a stored key id would turn every delivery for that team into a
-      // failed job. Waits for the gate, so the development lane's wait is one
-      // wait: `Layer.provide` builds what it is given first, so the schema is
+      // `Layer.provide` builds what it is given first, so the schema is
       // current before the keyring is read.
       const SchemaCurrent = Layer.effectDiscard(
         Effect.flatMap(SchemaStatus, (status) => status.current),
       );
-      // The worker seals nothing itself, so the keyring and the cipher are
-      // built for the gate alone.
       const SecretsVerified = KeyringVerified.pipe(
         Layer.provide(SchemaCurrent),
         Layer.provide(SecretsCipher.layerFromEnvironment),
       );
 
-      // The maintenance client the queue runs on, and the only client the
-      // handlers use: the denied-attempts summary reads its idempotency check
-      // and appends its audit row on this one client, so the two cannot
-      // disagree about the database, role or search path. The
-      // `ReadinessDatabase` beside it serves the schema gate and readiness.
       const QueueDatabase = MaintenanceDatabase.layer({
         ...db,
         applicationName: 'studio-worker',
       });
 
-      // Started means every handler registered and the first job claimable,
-      // which is what readiness reports from here on.
       const Started = Layer.effectDiscard(
         Effect.gen(function* () {
           const worker = yield* JobWorker;
@@ -177,15 +122,8 @@ function workerWith(db: DbEnv) {
       );
 
       return Started.pipe(
-        // One flag over the whole worker (#1927 §20 Q9): the
-        // `deployment_state` row `studio-api maintenance on|off` writes, read
-        // on the queue's own maintenance client — the only client this process
-        // runs work on.
         Layer.provide(JobMaintenanceGate.layer()),
         Layer.provide(MaintenanceState.layerMaintenance),
-        // For `studio_jobs_queue_depth` and the backlog warning. Readiness does
-        // not depend on it: the worker's own poll fibers set `ready` from their
-        // first answered claim, or, while paused, from one read of the tables.
         Layer.provide(JobQueueMetrics.layer()),
         Layer.provide(JobHandlersLive),
         Layer.provide(DeniedAttemptsStore.layer),
@@ -195,8 +133,6 @@ function workerWith(db: DbEnv) {
           JobWorker.layer({ schema: JOB_SCHEMA, startPaused: true }),
         ),
         Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
-        // The production skew correction, measured against this client's own
-        // `now()`; the uncorrected clock is the suites'.
         Layer.provide(JobClock.layer()),
         Layer.provideMerge(QueueDatabase),
         Layer.provide(MailerLive),
@@ -206,23 +142,14 @@ function workerWith(db: DbEnv) {
       );
     }),
   ).pipe(
-    // The one Valkey client, for the `limiter` readiness check and the
-    // denied-attempts summary job. Acquired before everything that reads
-    // through it, so it closes after the job drain.
+    // Acquired before everything that reads through it, so it closes after
+    // the job drain.
     Layer.provide(RateLimiter.layer),
     Layer.provide(RateLimitStore.layer),
     Layer.provide(Layer.orDie(ReadinessDatabase.layer('maintenance', db))),
   );
 }
 
-/**
- * Everything the worker process is. A worker without a database has no work
- * at all — the web process serves a useful surface without one, but a
- * container that stayed up pretending otherwise would look healthy — so the
- * absence is a refusal rather than a degraded mode. `auth` follows the
- * database down and cannot be undefined beside one: `resolve` refuses a
- * database without a signing secret or a public URL.
- */
 const WorkerProgramLayer = Layer.unwrap(
   Effect.gen(function* () {
     const env = yield* Environment;
@@ -240,9 +167,5 @@ const WorkerProgramLayer = Layer.unwrap(
   Layer.provide(Environment.layerWithMail),
 );
 
-/**
- * The process, launched: alive until interrupted, and a refusal to start is
- * printed as the one sentence to act on, as the one-shot commands print theirs.
- */
 export const WorkerProgram =
   Layer.launch(WorkerProgramLayer).pipe(reportingRefusals);

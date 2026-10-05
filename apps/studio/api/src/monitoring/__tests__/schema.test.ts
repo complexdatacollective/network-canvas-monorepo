@@ -1,11 +1,3 @@
-// The monitoring module's database-enforced promises: a rollup is keyed once
-// per wave and once per (wave, stage), every count is non-negative, and the
-// three-column wave key refuses a wave belonging to another team or another
-// study.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK or unique violation, the referenced table for a foreign-key
-// violation — so a guard that stopped firing cannot pass as "no error".
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -26,7 +18,6 @@ const TEAM_B = 'monitoring-team-b';
 
 type Row = Record<string, unknown>;
 
-/** Per team: one study with one wave. */
 const studyOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -35,14 +26,8 @@ const waveOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
 };
-/** A second team-A study and wave, for the cross-study oracle. */
 const otherStudyId = randomUUID();
 const otherWaveId = randomUUID();
-/**
- * A second wave in that study, carrying no rollup of its own. The primary
- * keys here are the wave, so a cross-study oracle reusing `otherWaveId`
- * would trip the unique violation before the foreign key was ever consulted.
- */
 const spareWaveId = randomUUID();
 
 const waveRollupRow = (overrides: Row = {}): Row => ({
@@ -243,7 +228,6 @@ describe.skipIf(!testDb)('monitoring rollup schema', () => {
             constraint: 'study_stage_rollups_pkey',
           });
 
-          // A different stage in the same wave is a different row …
           expect(
             yield* ownerInsert(
               'study_stage_rollups',
@@ -251,7 +235,6 @@ describe.skipIf(!testDb)('monitoring rollup schema', () => {
             ),
           ).toBe(1);
 
-          // … and so is the same stage id in another wave.
           expect(
             yield* ownerInsert(
               'study_stage_rollups',

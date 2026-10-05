@@ -21,14 +21,8 @@ import {
 } from '../rpc.ts';
 import { getWebRuntime, HostClient, WebLayer } from '../runtime.ts';
 
-// The transport, through a stubbed `fetch`. What is being proved is what every
-// `/rpc` request carries rather than what any procedure answers, so the stub's
-// reply here is deliberately useless and every call below is expected to
-// reject; the refusal suite is where an answer is the subject.
-
 const fetchStub = installFetchStub();
 
-/** An answer the rpc parser cannot make sense of: the request is the subject. */
 const answerEmptyOk = () => {
   fetchStub.mockImplementation(() =>
     Promise.resolve(new Response('', { status: 200 })),
@@ -64,16 +58,10 @@ const firstCall = (): Parameters<typeof globalThis.fetch> => {
 };
 
 describe('the web runtime', () => {
-  // First in the file on purpose: the runtime is a module singleton, and the
-  // claim is about the state it is in before anything has asked it for
-  // anything — a signed-out visitor on a marketing page pays for no transport.
-  // Mutation: build the layer at module load in runtime.ts (a `runSync` of the
-  // client) and `cachedContext` is populated here.
+  // First in the file on purpose: the runtime is a module singleton.
   it('builds nothing until the first call', async () => {
     expect(getWebRuntime().cachedContext).toBeUndefined();
 
-    // And for a runtime built here, so the claim does not rest on this file
-    // having been the first to import the module.
     const idle = ManagedRuntime.make(WebLayer);
     expect(idle.cachedContext).toBeUndefined();
     expect(fetchStub).not.toHaveBeenCalled();
@@ -91,10 +79,6 @@ describe('the web runtime', () => {
   });
 
   it('names this tab on every request', async () => {
-    // `lib/api.ts:20-23`'s reason, kept: the server derives a protocol-builder
-    // lock's owner from this header, so a call that omitted it would be a
-    // stranger to the section this tab is holding. It rides on the transport
-    // rather than at the call sites precisely so that none of them can forget.
     answerEmptyOk();
 
     await callStatus();
@@ -109,9 +93,6 @@ describe('the web runtime', () => {
   });
 
   it('sends the session cookie, and accepts one back', async () => {
-    // `same-origin` rather than `include`: the SPA is same-origin with the API
-    // in every topology. It is also what lets first-run setup's `Set-Cookie`
-    // land, which is the only thing that makes that new session visible.
     answerEmptyOk();
 
     await callStatus();
@@ -124,10 +105,6 @@ describe('the adapter bound to that runtime', () => {
   const TEAM = TeamId.make('team-under-test');
 
   it('derives a key that a tag-wide invalidation reaches', () => {
-    // The property every screen's invalidation rests on: the tag-only key is a
-    // prefix of the key any payload produces, so
-    // `invalidateQueries({ queryKey: rpcKey('studies.list') })` refetches the
-    // list for every team it is holding rather than one chosen payload's.
     expect(rpcKey('me')).toEqual(['rpc', 'me']);
     expect(rpcKey('studies.list', { teamId: TEAM })).toEqual([
       'rpc',
@@ -151,8 +128,6 @@ describe('the adapter bound to that runtime', () => {
   });
 
   it('binds all six members', () => {
-    // The destructuring in `runtime/rpc.ts` is what the screens import; a
-    // member left out of it is a screen that cannot be written.
     expect(
       [
         rpcKey,
@@ -167,7 +142,6 @@ describe('the adapter bound to that runtime', () => {
 });
 
 describe('the protocol builder host’s socket', () => {
-  /** A host call nothing answers: what is being proved is what it opens. */
   const callTheHost = (): void => {
     void hostRuntime
       .runPromise(
@@ -197,9 +171,6 @@ describe('the protocol builder host’s socket', () => {
   });
 
   it('is not opened until the first host call, whatever else the tab asks', async () => {
-    // A signed-out visitor's page still asks Studio things — its status, the
-    // session — and none of that may dial the editor's socket. Mutation: merge
-    // `HostClient.layer` into `WebLayer`, and the Studio call below opens one.
     answerEmptyOk();
     await callStatus();
     expect(fetchStub).toHaveBeenCalledTimes(1);
@@ -216,9 +187,6 @@ describe('the protocol builder host’s socket', () => {
   });
 
   it('names this tab on the upgrade URL', async () => {
-    // The id this tab presents everywhere else, not one minted for the socket:
-    // a second id would be a second lock owner, and the section this tab is
-    // holding would be somebody else's the moment it reconnected.
     callTheHost();
     const url = new URL((await firstSocket()).url);
 
@@ -228,8 +196,6 @@ describe('the protocol builder host’s socket', () => {
   });
 
   it('frames its calls in binary, as `/ws` expects', async () => {
-    // The server's `/ws` reads `layerSchemaBinary` frames, so a client on
-    // `layerJson` would put text frames on a socket that cannot read them.
     callTheHost();
     const socket = await firstSocket();
 

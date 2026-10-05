@@ -1,8 +1,3 @@
-// What the conversion to Effect actually bought: the operations are Effects
-// that REQUIRE an open, team-stamped transaction, so a host composes several
-// of them — and its own rows — into one. The suites next door drive the same
-// server through a facade that opens a transaction per call, which is the old
-// boundary; this one drives the seam itself.
 import { randomUUID } from 'node:crypto';
 
 import { Effect } from 'effect';
@@ -23,7 +18,6 @@ import {
   TEST_TEAM_ID,
 } from './helpers.ts';
 
-/** The shared fragment run on its own, as `assertSectionExists` runs it. */
 const runFragment = (draftId: string, sectionId: string) =>
   Effect.gen(function* () {
     const open = yield* Transaction;
@@ -85,10 +79,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
             clientSeq: 1n,
             commands: [{ op: 'set', key: 'label', value: 'never lands' }],
           });
-          // The host's own work fails after the sync writes. They are in its
-          // transaction, so they go with it — which is the reason these are
-          // Effects requiring `Transaction` rather than methods that each
-          // open one.
           return yield* Effect.fail(new Error('the host changed its mind'));
         }),
       ),
@@ -120,10 +110,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
   describe('resume and the single snapshot', () => {
     it('refuses a read-committed transaction', async () => {
       const draft = await makeDraft(server);
-      // The facade asks for `repeatable read`; a caller that forgets gets a
-      // transaction whose two reads can straddle a concurrent commit, which
-      // would leave the client's base behind the server with nothing queued
-      // to replay the difference. Loud rather than silent.
       await expect(run(sync.resume(draft, 'tab-A'))).rejects.toThrow(
         /repeatable read/,
       );
@@ -138,12 +124,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
     });
   });
 
-  // The one predicate three statements embed. They agree only because they
-  // share a definition; a boundary row is what would catch a second copy that
-  // had drifted, so it is built by hand: a head manifest that lists one
-  // section and an OLDER manifest that lists another. `stage-2` is in the
-  // draft's history and not in its head — a section for every reading of the
-  // table except the one all three are supposed to use.
   describe('the shared section-exists fragment', () => {
     it('acquire, takeover and the standalone check agree on a boundary row', async () => {
       const draft = await makeDraft(server);
@@ -166,8 +146,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
         [draft],
       );
 
-      // A lease row for stage-2 exists, so takeover's UPDATE would match on
-      // every predicate but this one.
       await db.query(
         `INSERT INTO leases (draft_id, team_id, section_id, owner, epoch, expires_at)
          VALUES ($1, $2, 'stage-2', 'squatter', 1, clock_timestamp() + interval '1 hour')`,
@@ -183,7 +161,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
         /no section stage-2/,
       );
 
-      // …and all three still say yes to the section the head does list.
       const present = await run(runFragment(draft, 'stage-1'));
       expect(present).toHaveLength(1);
       expect(await server.acquire(draft, 'stage-1', 'tab-A')).not.toBeNull();
@@ -191,11 +168,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
     });
   });
 
-  // Every write whose outcome is read back says `returning`, because a
-  // drizzle write without one hands back the driver's result object wearing a
-  // rows array's type: `result[0]` typechecks and is undefined, so a branch
-  // reading it inverts silently. These are the branches that read it, each
-  // driven to its zero-row case.
   describe('zero-row outcomes', () => {
     it('acquire: no row when another owner holds a live lease', async () => {
       const draft = await makeDraft(server);
@@ -205,9 +177,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
 
     it('takeover: no row when the section has never been leased', async () => {
       const draft = await makeDraft(server);
-      // The section is real, so the EXISTS holds; there is simply no lease
-      // row to update. `returning` is what distinguishes that from a
-      // takeover that happened.
       expect(await server.takeover(draft, 'stage-1', 'tab-A')).toBeNull();
       const rows = await db.query(
         `SELECT count(*)::int AS c FROM leases WHERE draft_id = $1`,
@@ -222,8 +191,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
       expect(lease).not.toBeNull();
       expect(await server.renew(draft, 'stage-1', 'tab-B', 1n)).toBeNull();
       expect(await server.renew(draft, 'stage-1', 'tab-A', 99n)).toBeNull();
-      // The real holder still renews, so the zero rows above were the
-      // predicate and not a broken statement.
       expect(await server.renew(draft, 'stage-1', 'tab-A', 1n)).not.toBeNull();
     });
 
@@ -249,16 +216,11 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
       expect(after.owner).toBe('tab-A');
       expect(after.expires_at.getTime()).toBe(before.expires_at.getTime());
 
-      // And the real holder's release still expires it.
       await server.release(draft, 'stage-1', 'tab-A', lease!.epoch);
       expect((await server.acquire(draft, 'stage-1', 'tab-C'))?.epoch).toBe(2n);
     });
   });
 
-  // The host's validator is a plain throwing function — it is shared with
-  // code that has no Effect around it — so the commit path catches its refusal
-  // at the one call site and re-raises it as a typed failure. Left unwrapped it
-  // would travel as a defect, which no caller can branch on.
   it('turns a validator refusal into a typed failure and rolls the commit back', async () => {
     const refused = makeSyncFacade(run, {
       validateSection: (sectionId) => {
@@ -286,7 +248,6 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
     expect(failure._tag).toBe('SectionRejectedError');
     expect(failure.message).toBe('refusing stage-1');
 
-    // Through the promise boundary the host still sees its own error.
     await expect(
       refused.commit({
         draftId: draft,
@@ -298,13 +259,9 @@ describe.skipIf(!dbAvailable)('the transaction seam', () => {
       }),
     ).rejects.toThrow('refusing stage-1');
 
-    // Nothing landed: the head never moved.
     expect(await assertLinearChain(server, draft)).toBe(1);
   });
 
-  // The row shapes the driver change moved. node-postgres handed int8 back as
-  // a string, which is why the old code wrapped every epoch in BigInt(); the
-  // drizzle builder decodes the column itself.
   describe('row shapes', () => {
     it('reads every int8 column as a bigint, with no conversion left', async () => {
       const draft = await makeDraft(server);

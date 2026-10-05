@@ -13,21 +13,6 @@ import { TenantScope, unsafeMakeTeamAccess } from '../../db/tenant.ts';
 import { enqueueInvitationDelivery } from '../invitation-delivery-store.ts';
 import * as store from '../store.ts';
 
-// What each write in `team/store.ts` does when it changes NO row.
-//
-// Every one of those writes ends in `.returning()`, and the reason is not
-// decoration: without it the drizzle builder answers with the driver's own
-// result object, which is *typed* as a row array and is not one. Every check
-// below would then read a length that is `undefined` — and `!== 1` and
-// `=== 0` do not fail the same way, so one site would start dying on writes
-// that worked and another would start reporting a conflict as a success.
-//
-// So each case here drives the zero-row state deliberately, and asserts which
-// of the two the site chooses. Two writes have no zero-row state to drive at
-// all — a plain INSERT with no `ON CONFLICT` either writes its row or raises —
-// and they are covered by their positive half instead, which is what catches a
-// missing `.returning()` there.
-
 const REASON = (exit: Exit.Exit<unknown, unknown>): string =>
   Exit.isFailure(exit) ? Cause.pretty(exit.cause) : 'it succeeded';
 
@@ -87,9 +72,6 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
             access,
             store.updateMemberRole({
               teamId,
-              // A member id this team does not carry: the caller locked a row
-              // a statement ago, so a write that matches none means the row
-              // went away under it, and there is no state to recover to.
               memberId: `${teamId}-absent-member`,
               role: 'admin',
             }),
@@ -105,8 +87,6 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
     suite.effect('dies when an acceptance matches no pending invitation', () =>
       Effect.gen(function* () {
         const { teamId, userId, access } = yield* seed('store-accept-zero');
-        // Already accepted: the predicate names `status = 'pending'`, so the
-        // second acceptance matches nothing.
         const invitationId = yield* seedInvitation({
           teamId,
           inviterId: userId,
@@ -153,11 +133,6 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
           const { teamId, userId, access } = yield* seed(
             'store-insert-returns',
           );
-          // `createInvitation` and `createMember` have no zero-row state to
-          // drive: neither carries `ON CONFLICT`, so each either writes its row
-          // or raises. What a missing `.returning()` would do to them is make
-          // the row they read back `undefined` — so reading a real row back IS
-          // the assertion.
           const invitation = yield* TenantScope.open(
             access,
             store.createInvitation({
@@ -170,8 +145,6 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
           );
           assert.strictEqual(invitation.status, 'pending');
           assert.strictEqual(invitation.role, 'member');
-          // The lifetime is the database's, so it is a real instant rather than
-          // whatever a caller passed — 48 hours ahead, give or take the run.
           assert.isAbove(
             invitation.expiresAt.getTime(),
             Date.now() + 47 * 60 * 60 * 1000,
@@ -232,19 +205,12 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
             access,
             enqueueInvitationDelivery(payload),
           );
-          // `ON CONFLICT (invitation_id) DO NOTHING` returns no row the second
-          // time. The re-read is what turns that into the SAME delivery rather
-          // than a second one — which is what a command retry needs.
           const replay = yield* TenantScope.open(
             access,
             enqueueInvitationDelivery(payload),
           );
           assert.deepStrictEqual(replay, first);
 
-          // And a payload that does not match the durable row is not a retry at
-          // all: the conflict returns no row and the re-read finds none either,
-          // so the command that asked dies rather than queueing a send under
-          // somebody else's labels.
           const mismatched = yield* Effect.exit(
             TenantScope.open(
               access,
@@ -328,7 +294,6 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
           );
           yield* refused(canceled);
 
-          // The payload matches the row exactly; the row has lapsed.
           const lapsed = yield* invite();
           const past = new Date(Date.now() - 60_000);
           yield* harness.onOwner(

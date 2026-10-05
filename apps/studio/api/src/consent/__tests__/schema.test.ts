@@ -1,13 +1,3 @@
-// The consent module's database-enforced promises: every CHECK, the composite
-// foreign keys that prove a consent record's participant, document and item
-// belong together, and the sidecar triggers that make a published document
-// immutable, freeze its items, hold a grant to its evidence, complete that
-// evidence at commit, make a withdrawal one-way, and admit a delete only from
-// an audited erasure or the maintenance purge.
-//
-// Every case asserts the rejection Postgres actually raises — the constraint
-// name for a CHECK, unique or foreign-key violation, the message for a trigger
-// — so a guard that stopped firing cannot pass as "no error".
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
@@ -37,10 +27,8 @@ type CheckCase = readonly [label: string, overrides: Row, constraint: string];
 
 const UUID = /^[0-9a-f-]{36}$/;
 
-/** A well-formed sha256 hex digest; the checks only ever look at the shape. */
 const hash = () => randomBytes(32).toString('hex');
 
-/** One protocol line and one published version per team, for the pins. */
 const protocolOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
@@ -49,7 +37,6 @@ const versionOf: Record<string, string> = {
   [TEAM_A]: randomUUID(),
   [TEAM_B]: randomUUID(),
 };
-/** Each written document's content hash, keyed by document id. */
 const hashOf: Record<string, string> = {};
 
 const insertStatement = (table: string, row: Row) => {
@@ -61,10 +48,6 @@ const insertStatement = (table: string, row: Row) => {
   ] as const;
 };
 
-// The study names its team's protocol line and every wave below pins that
-// line's published version: `study_waves_version_own_line` refuses a pin
-// whose study has no line, and `interview_sessions_version_wave_pin` refuses
-// a session under a wave that pins nothing.
 const newStudy = Effect.fnUntraced(function* (overrides: Row = {}) {
   const id = randomUUID();
   yield* ownerInsert('studies', {
@@ -158,11 +141,6 @@ const newItem = Effect.fnUntraced(function* (
   return row.id as string;
 });
 
-/**
- * The consent hash defaults to the document's own, because
- * `participant_consents_document_published` refuses anything else — a case
- * that wants a mismatch overrides it.
- */
 const consentRow = (
   studyId: string,
   participantId: string,
@@ -194,16 +172,6 @@ const responseRow = (
   ...overrides,
 });
 
-/**
- * A grant and its responses, in one owner transaction: the commit-time check
- * refuses a grant that leaves any item unanswered or a required item
- * unaffirmed, and the responses may only be written beside their own grant.
- * `responses` names exactly what the grant carries; by default it affirms
- * every item, which is the only shape most cases need.
- *
- * A refusal at COMMIT arrives as a defect rather than a failure, so a case
- * expecting one reads it through `refusalOf`.
- */
 const newConsent = Effect.fnUntraced(function* (
   studyId: string,
   participantId: string,
@@ -239,7 +207,6 @@ const newConsent = Effect.fnUntraced(function* (
   return consentId;
 });
 
-/** Moves a draft document to `published`, the state the triggers turn on. */
 const publish = (documentId: string) =>
   ownerAffected(
     `UPDATE consent_documents
@@ -248,7 +215,6 @@ const publish = (documentId: string) =>
     [documentId],
   );
 
-/** A published document with one required item, and a participant for it. */
 const publishedDocument = Effect.fnUntraced(function* () {
   const studyId = yield* newStudy();
   const participantId = yield* newParticipant(studyId);
@@ -258,7 +224,6 @@ const publishedDocument = Effect.fnUntraced(function* () {
   return { studyId, participantId, documentId, itemId };
 });
 
-/** That document, consented to, with its one required item affirmed. */
 const grantedConsent = Effect.fnUntraced(function* () {
   const fixture = yield* publishedDocument();
   const consentId = yield* newConsent(
@@ -269,11 +234,6 @@ const grantedConsent = Effect.fnUntraced(function* () {
   return { ...fixture, consentId };
 });
 
-/**
- * A document carrying one required and one optional item, published, with a
- * participant to consent to it. Two items, because the interesting failures
- * pit one item's key against another's.
- */
 const twoItemDocument = Effect.fnUntraced(function* () {
   const studyId = yield* newStudy();
   const participantId = yield* newParticipant(studyId);
@@ -291,7 +251,6 @@ const twoItemDocument = Effect.fnUntraced(function* () {
   return { studyId, participantId, documentId, requiredId, optionalId };
 });
 
-/** Both teams, each with a protocol line and one published version of it. */
 const Fixtures = Layer.effectDiscard(
   Effect.forEach([TEAM_A, TEAM_B], (teamId) =>
     Effect.gen(function* () {
@@ -429,8 +388,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             ),
           ).toBe(1);
 
-          // A second study numbers from one again: the uniqueness is per study,
-          // not per team.
           const otherStudyId = yield* newStudy();
           expect(
             yield* ownerInsert(
@@ -439,9 +396,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             ),
           ).toBe(1);
 
-          // Density itself is the command layer's job. Nothing here refuses a
-          // gap, so a CHECK added later must update this case rather than
-          // subsume it.
           expect(
             yield* ownerInsert(
               'consent_documents',
@@ -473,9 +427,6 @@ describe.skipIf(!testDb)('consent schema', () => {
           const otherStudyId = yield* newStudy();
           const documentId = yield* newDocument(studyId);
 
-          // The positive control: every one of these moves freely while the
-          // document is still a draft, so the rejections below are the trigger
-          // and not the columns themselves.
           for (const assignment of [
             `title = 'Reworded'`,
             `body = '{"blocks":[1]}'::jsonb`,
@@ -551,7 +502,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             ),
           ).toBe(1);
 
-          // Retirement supersedes; it never rewrites the evidence.
           const refused = yield* refusalOf(
             ownerAffected(
               `UPDATE consent_documents SET title = 'Reworded' WHERE id = $1`,
@@ -566,9 +516,6 @@ describe.skipIf(!testDb)('consent schema', () => {
 
       it.effect('never revives a retired document', () =>
         Effect.gen(function* () {
-          // Retirement is one-way. A superseded version that became current
-          // again would be accepted by participant_consents_document_published,
-          // and new participants could consent to it after its replacement.
           const studyId = yield* newStudy();
           const documentId = yield* newDocument(studyId);
           yield* publish(documentId);
@@ -590,7 +537,6 @@ describe.skipIf(!testDb)('consent schema', () => {
           expect(revived.message).toContain(
             'published consent documents are immutable',
           );
-          // The timestamp is part of the record too, not just the state.
           const restamped = yield* refusalOf(
             ownerAffected(
               `UPDATE consent_documents SET retired_at = now() - interval '1 day'
@@ -693,7 +639,6 @@ describe.skipIf(!testDb)('consent schema', () => {
           const itemId = yield* newItem(documentId);
           const frozen = 'published consent documents are immutable';
 
-          // The positive control: all three writes succeed under a draft.
           const throwawayId = yield* newItem(documentId, {
             position: 2,
             key: 'throwaway',
@@ -736,8 +681,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             )).message,
           ).toContain(frozen);
 
-          // Nor may an item leave a published document for a draft, where it
-          // could be rewritten while the published hash still vouches for it.
           const escapeDocumentId = yield* newDocument(studyId, { version: 9 });
           expect(
             (yield* refusalOf(
@@ -748,10 +691,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             )).message,
           ).toContain(frozen);
 
-          // The maintenance purge removes a study bottom-up, items before their
-          // document, so its DELETE — and only its DELETE — is admitted; it may
-          // no more add or reword an item under a published document than
-          // anyone else.
           expect(
             (yield* refusalOf(
               maintenanceAffected(
@@ -767,7 +706,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             ),
           ).toBe(1);
 
-          // A different, still-draft document is untouched by the freeze.
           const draftDocumentId = yield* newDocument(studyId, { version: 2 });
           expect(
             yield* ownerInsert('consent_items', itemRow(draftDocumentId)),
@@ -895,8 +833,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               'participant_consents_participant_id_consent_document_id_unique',
             );
 
-            // Re-consent to a new version is a new row, so the history is the
-            // set.
             expect(
               yield* newConsent(studyId, participantId, laterDocumentId),
             ).toMatch(UUID);
@@ -913,10 +849,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             const otherDocumentId = yield* newDocument(otherStudyId);
             yield* publish(otherDocumentId);
 
-            // The participant belongs to `studyId`, the document to
-            // `otherStudyId`. Whichever study the record claims, one of the
-            // three-column foreign keys refuses it — which is exactly the
-            // guarantee.
             expect(
               yield* refusalOf(
                 ownerInsert(
@@ -940,7 +872,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               constraint: 'participant_consents_participant_fk',
             });
 
-            // The same-study pairing the checks exist to admit.
             expect(
               yield* newConsent(
                 otherStudyId,
@@ -974,8 +905,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             constraint: 'participant_consents_session_fk',
           });
 
-          // The participant's own session in the consent's own study is
-          // accepted.
           expect(
             yield* newConsent(studyId, participantId, documentId, {
               session_id: yield* newSession(studyId, {
@@ -999,8 +928,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             'a participant may only consent to a published document (draft)',
           );
 
-          // A retired version is superseded, not current: a new grant against
-          // it would record agreement to terms the study has withdrawn.
           const retiredId = yield* newDocument(studyId, { version: 2 });
           yield* publish(retiredId);
           yield* ownerAffected(
@@ -1027,9 +954,6 @@ describe.skipIf(!testDb)('consent schema', () => {
           const { studyId, participantId, documentId } =
             yield* publishedDocument();
 
-          // Well-formed and wrong: the CHECK admits any sha256 digest, so only
-          // the trigger can tie the copy back to the words it was taken
-          // against.
           const refused = yield* refusalOf(
             newConsent(studyId, participantId, documentId, {
               consent_content_hash: hash(),
@@ -1049,7 +973,6 @@ describe.skipIf(!testDb)('consent schema', () => {
           const studyId = yield* newStudy();
           const documentId = yield* newDocument(studyId);
           yield* publish(documentId);
-          // One wave, so two participants can each hold a session in it.
           const waveId = randomUUID();
           yield* ownerInsert('study_waves', {
             id: waveId,
@@ -1077,8 +1000,6 @@ describe.skipIf(!testDb)('consent schema', () => {
           const consentingId = yield* newParticipant(studyId);
           const bystanderSession = yield* sessionFor(bystanderId);
 
-          // Same study, so the composite key is satisfied; only the trigger can
-          // tell whose session it is.
           const refused = yield* refusalOf(
             newConsent(studyId, consentingId, documentId, {
               session_id: bystanderSession,
@@ -1133,7 +1054,6 @@ describe.skipIf(!testDb)('consent schema', () => {
         Effect.gen(function* () {
           const { consentId } = yield* grantedConsent();
 
-          // Withdrawing once is the write the trigger exists to admit.
           expect(
             yield* ownerAffected(
               `UPDATE participant_consents
@@ -1158,8 +1078,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             );
           }
 
-          // The note about the withdrawal stays editable: it is commentary,
-          // not the fact of the withdrawal.
           expect(
             yield* ownerAffected(
               `UPDATE participant_consents
@@ -1196,8 +1114,6 @@ describe.skipIf(!testDb)('consent schema', () => {
           });
           yield* publish(documentId);
 
-          // The grant row itself is accepted; the check runs at commit, which
-          // is the only moment the responses beside it are all written.
           const unanswered = yield* refusalOf(
             newConsent(studyId, participantId, documentId, {}, () => []),
           );
@@ -1205,7 +1121,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             'a consent grant must answer every item of its document (consent_to_take_part)',
           );
 
-          // A recorded refusal of a required item is no better than no answer.
           const declined = yield* refusalOf(
             newConsent(studyId, participantId, documentId, {}, (consentId) => [
               responseRow(consentId, documentId, requiredId, {
@@ -1219,9 +1134,6 @@ describe.skipIf(!testDb)('consent schema', () => {
             'a consent grant must affirm every required item of its document (consent_to_take_part)',
           );
 
-          // The optional item must be answered too — declined is an answer, an
-          // absent row is not: an unanswered item is exactly the response a
-          // later transaction could otherwise add.
           const optionalUnanswered = yield* refusalOf(
             newConsent(studyId, participantId, documentId, {}, (consentId) => [
               responseRow(consentId, documentId, requiredId, {
@@ -1263,15 +1175,12 @@ describe.skipIf(!testDb)('consent schema', () => {
             const guarded =
               'participant consent grants are deleted only by an audited erasure or the maintenance purge';
 
-            // The responses go first: the grant is their parent and nothing
-            // cascades.
             yield* erasing(TEAM_A, participantId, removeResponses, [consentId]);
 
             expect(
               (yield* refusalOf(tenantAffected(TEAM_A, remove, [consentId])))
                 .message,
             ).toContain(guarded);
-            // The marker authorizes exactly one participant's consent.
             expect(
               (yield* refusalOf(
                 erasing(TEAM_A, bystander.participantId, remove, [consentId]),
@@ -1281,7 +1190,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               yield* erasing(TEAM_A, participantId, remove, [consentId]),
             ).toBe(1);
 
-            // The purge deletes without a marker, as it does everywhere else.
             yield* maintenanceAffected(removeResponses, [bystander.consentId]);
             expect(
               yield* maintenanceAffected(remove, [bystander.consentId]),
@@ -1333,15 +1241,12 @@ describe.skipIf(!testDb)('consent schema', () => {
                 ],
               );
 
-            // Named under the consent's document, the item is not that
-            // document's…
             expect(
               yield* refusalOf(respond(foreignItemId, documentId)),
             ).toMatchObject({
               state: '23503',
               constraint: 'participant_consent_item_responses_item_fk',
             });
-            // …and named under its own document, the consent is not for it.
             expect(
               yield* refusalOf(respond(foreignItemId, otherDocumentId)),
             ).toMatchObject({
@@ -1364,9 +1269,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               responseRow(consentId, documentId, optionalId),
             ]);
 
-          // Both keys are real keys of the consented document, and both are
-          // syntactically valid, so only the item's own key can say which
-          // terms the exported answer belongs to.
           expect(yield* refusalOf(respond('may_contact_again'))).toMatchObject({
             state: '23503',
             constraint: 'participant_consent_item_responses_item_fk',
@@ -1425,12 +1327,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               documentId,
             );
 
-            // Every item was answered when the grant committed, so the only
-            // row a later transaction could write — the one that would rewrite
-            // what the participant agreed to — collides with the primary key.
-            // Proving "the grant's own transaction" instead would not hold: a
-            // withdrawal updates the consent row and makes it look freshly
-            // written.
             const late = yield* refusalOf(
               ownerInsert(
                 'participant_consent_item_responses',
@@ -1459,8 +1355,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               'participant_consent_item_responses_pkey',
             );
 
-            // The same row, written beside its own grant, is what the guard
-            // admits.
             expect(
               yield* newConsent(
                 studyId,
@@ -1493,8 +1387,6 @@ describe.skipIf(!testDb)('consent schema', () => {
               (yield* refusalOf(tenantAffected(TEAM_A, remove, [consentId])))
                 .message,
             ).toContain(guarded);
-            // The marker is proven through the response's own consent, so
-            // another participant's erasure cannot reach these rows.
             expect(
               (yield* refusalOf(
                 erasing(TEAM_A, bystander.participantId, remove, [consentId]),

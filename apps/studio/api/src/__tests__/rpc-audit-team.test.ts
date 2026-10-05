@@ -77,8 +77,6 @@ describe.skipIf(!testDb)('audited team RPC', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth,
-        // What the web process hands the router: creating an invitation queues
-        // its delivery in the same transaction (#1895).
         services: database.services,
       }),
     );
@@ -137,8 +135,6 @@ describe.skipIf(!testDb)('audited team RPC', () => {
         [invitation.invitationId],
       ),
     );
-    // Exactly one, carrying the delivery id alone: the command's transaction
-    // creates the invitation, its delivery row and its job together.
     expect(queued).toHaveLength(1);
     expect(queued[0]?.queue).toBe('invitation-delivery');
 

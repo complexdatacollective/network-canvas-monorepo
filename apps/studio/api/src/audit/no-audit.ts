@@ -15,17 +15,6 @@ import {
   type NoAuditTransactionOperation,
 } from './transaction-policy.ts';
 
-/**
- * The registry-checked way to open a tenant transaction that intentionally
- * emits no audit event. The reads that open a scope directly are pinned
- * instead, by `audit/__tests__/scope-openers.test.ts`. A new caller must first add an exact,
- * statically reasoned operation to `NO_AUDIT_TRANSACTION_POLICIES`.
- *
- * The registry check is kept as a runtime guard and **dies** rather than
- * failing: an operation whose policy is not `{ kind: 'none' }` with a reason is
- * a programming error caught at the first call, not a condition a caller could
- * handle.
- */
 const guard = (operation: NoAuditTransactionOperation): Effect.Effect<void> =>
   Effect.suspend(() => {
     const policy: AuditPolicy | undefined =
@@ -56,12 +45,6 @@ export const noAuditTransaction = <A, E, R>(
     TenantScope.open(access, body, options),
   );
 
-/**
- * The worker's form of the same escape hatch, on the maintenance client. The
- * protocol store's sweep runs four of these: a sweep is nobody's action, so it
- * produces no audit event, but it is still a tenant transaction and still has
- * to say in the registry why it emits nothing.
- */
 export const noAuditMaintenanceTransaction = <A, E, R>(
   operation: NoAuditTransactionOperation,
   access: TeamAccess,

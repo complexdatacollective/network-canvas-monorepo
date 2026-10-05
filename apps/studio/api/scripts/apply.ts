@@ -26,13 +26,6 @@ import { seed, type SeedOptions, type SeedResult } from './seed/seed.ts';
 // image's bundles. `studio-api migrate` applies the same schema from the DDL
 // this file renders at build time — see src/db/migrate.ts.
 
-// The test support has to hash the job statements without paying for
-// drizzle-kit's module graph, so they are rendered in src/jobs/queues.ts and
-// re-exported here — this file stays the one place that describes what a
-// schema application consists of. Installing the job schema lives in
-// src/jobs/install.ts for the same reason: `studio-api migrate` in the
-// image does exactly what the call below does, and nothing in src/ may import
-// drizzle-kit.
 export { renderJobStatements };
 
 let renderedDrizzleSchema: Promise<string[]> | undefined;
@@ -51,11 +44,6 @@ export async function renderSchemaStatements(): Promise<string[]> {
 }
 
 /**
- * The public schema and the job queue's, hashed together: a change to either —
- * a column on `studio_jobs.jobs`, a job grant — is a schema change like any
- * other, applied once here and refused at boot by every process until it has
- * been.
- *
  * `renderSchemaStatements` deliberately stays the public statements alone —
  * they are the DDL the suites execute into a scratch schema, and the job
  * statements name their own schema rather than running inside that one.
@@ -104,8 +92,7 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     }
     // Confined to `public`: without a schema filter, push introspects every
     // schema in the database and reconciles it against the Drizzle schema,
-    // which would mean dropping the job tables as unmanaged. `public` is the
-    // only schema Drizzle declares.
+    // which would drop the job tables as unmanaged.
     const push = await pushSchema(SCHEMA, drizzle({ client: pool }), {
       schemas: ['public'],
       tables: undefined,
@@ -114,9 +101,7 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     });
     await push.apply();
     await lock.query(SIDECARS.join('\n'));
-    // One transaction for everything after the push: `installJobSchema`
-    // applies its statements one at a time, so a failure part-way needs the
-    // caller's transaction to undo it — and the stamp belongs with what it
+    // One transaction for everything after the push: the stamp belongs with what it
     // vouches for either way. The push above stays outside it; drizzle-kit
     // manages its own statements and this function has never been atomic
     // across it (see the note above).
@@ -166,10 +151,6 @@ export async function resetSchemaAndSeed(
 ): Promise<void> {
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');
-  // The job schema is Studio's too, and a reset that left it behind would keep
-  // jobs naming rows the reset had just removed. `pgboss` goes with it for as
-  // long as databases created before #1957 are still around: it is nothing
-  // this build installs, reads or recreates.
   await pool.query(`drop schema if exists ${JOB_SCHEMA} cascade`);
   await pool.query('drop schema if exists pgboss cascade');
 
@@ -179,13 +160,6 @@ export async function resetSchemaAndSeed(
   await seedDatabase(db, options);
 }
 
-/**
- * The seed, on its own owner client. It is an Effect over `OwnerDatabase`
- * because the protocol store it writes through is, so it cannot share the
- * node-postgres pool the schema application above runs on — which is fine,
- * because it needs none of that pool's state: the schema it seeds is
- * committed by the time it runs, and the seed is one transaction of its own.
- */
 export function seedDatabase(
   db: DbEnv,
   options: SeedOptions,

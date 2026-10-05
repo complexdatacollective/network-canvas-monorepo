@@ -1,8 +1,3 @@
-// The leases this process is keeping alive for the protocol-builder host.
-//
-// The contract has no renew: an editor takes a section and holds it until it
-// releases. Studio's storage is a lease with a wall-clock expiry, so keeping
-// the two agreeing is the server's business — this is where that happens.
 import {
   Clock,
   Context,
@@ -22,47 +17,14 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 export const RENEW_INTERVAL_MS = 10_000;
 
 /**
- * How long an owner's leases wait for its next connection after the last one
- * ended.
- *
- * A lock belongs to a browser tab, and a tab keeps its identity across the
- * sockets it opens, so a socket that vanishes is a reconnection in progress
- * rather than a departure. Shorter than the 30s lease TTL, per #1247's rule
- * that a dirty drop holds the lease for a window shorter than the TTL: a tab
- * whose socket died must never cost a colleague more than a server that died,
- * which frees its sections within one TTL because nothing is left to renew
- * them. Long enough for five rungs of the reconnect ladder #1247 fixes for the
- * client (500ms doubling to a 30s cap: 0.5s, 1.5s, 3.5s, 7.5s, 15.5s), which
- * is every blip a researcher would call one. A tab that closes cleanly
- * releases its lock and gives the section back at once, so this bounds a crash
- * or a drop rather than a departure.
+ * Shorter than the 30s lease TTL, but long enough for five rungs of the
+ * client's reconnect ladder (0.5s to 15.5s).
  */
 export const RECONNECT_GRACE_MS = 20_000;
 
-/**
- * How long a lease — and the imports staged beside it — outlives an owner that
- * has never opened a channel.
- *
- * Studio's editor opens one, so this is the unary plane alone: a script, or a
- * client whose network refuses WebSockets. There is no connection to end
- * there, so the only sign of life is a call, and the bound is wide enough that
- * a researcher reading a section does not lose it mid-thought.
- */
 export const IDLE_MS = 5 * 60_000;
 
 export type HeldLease = {
-  /**
-   * Renews this lease, in a transaction the caller opens.
-   *
-   * An effect rather than the sync server itself, because a sync operation
-   * requires the open `Transaction` and this keeper has none to give: it runs
-   * from a timer, outside any request, and a transaction opened here would be
-   * one no team GUC had been stamped on. The host is what turns the call into
-   * a transaction, so the effect arrives with everything it needs provided.
-   *
-   * `null` is the storage's answer that the lease is gone; a failure is the
-   * storage not answering, which `renewDue` tells apart below.
-   */
   readonly renew: Effect.Effect<Lease | null, unknown>;
   readonly draftId: string;
   readonly sectionId: ProtocolSectionId;
@@ -70,25 +32,13 @@ export type HeldLease = {
 };
 
 type Entry = HeldLease & {
-  /** Which `hold` this is, so a late answer never acts on its successor. */
   readonly generation: number;
   readonly touchedAt: number;
 };
 
 type OwnerConnections = {
   readonly open: number;
-  /**
-   * The reconnect grace running since the owner's last connection ended,
-   * while none has replaced it.
-   */
   readonly grace?: Fiber.Fiber<void>;
-  /**
-   * Everything the owner loses once the grace has run out: the leases it still
-   * holds, given back with a lock event, and the imports it had staged.
-   *
-   * One per draft the owner opened a channel on, because one tab may hold
-   * sections in more than one protocol and each release is that draft's own.
-   */
   readonly ends: ReadonlyMap<string, Effect.Effect<void>>;
 };
 
@@ -98,18 +48,6 @@ const leaseKey = (draftId: string, sectionId: string, owner: string) =>
 export class Leases extends Context.Service<
   Leases,
   {
-    /**
-     * Counts one live connection for an owner until the calling scope closes.
-     * While a connection is open its owner's leases are renewed however long
-     * the researcher spends not calling anything: losing a lock under an open
-     * editor is not a thing that may happen.
-     *
-     * The last connection ending starts the reconnect grace rather than the
-     * release: the owner is a browser tab, and a tab reconnecting is the same
-     * tab. `end` is what runs for this draft if none comes back in time; it
-     * runs in this layer's scope, long after the connection's, so it must
-     * arrive with everything it needs provided.
-     */
     readonly connect: (
       owner: string,
       draftId: string,
@@ -121,13 +59,7 @@ export class Leases extends Context.Service<
       sectionId: ProtocolSectionId,
       owner: string,
     ) => Effect.Effect<void>;
-    /**
-     * Whether this owner still has a channel: one open, or one whose reconnect
-     * grace has not run out. What keeps its leases out of the idle bound is
-     * what keeps the imports it staged, so both ask this.
-     */
     readonly connected: (owner: string) => Effect.Effect<boolean>;
-    /** Every section this owner still holds here, as far as this process knows. */
     readonly heldSections: (
       draftId: string,
       owner: string,
@@ -135,10 +67,6 @@ export class Leases extends Context.Service<
     readonly touch: (owner: string) => Effect.Effect<void>;
   }
 >()('@studio/Leases') {
-  /**
-   * Renews every lease this process is holding until it is released, or until
-   * its owner has gone the reconnect grace with no connection at all.
-   */
   static readonly layer: Layer.Layer<Leases> = Layer.effect(
     Leases,
     Effect.gen(function* () {
@@ -149,7 +77,6 @@ export class Leases extends Context.Service<
       >(new Map());
       let generations = 0;
 
-      /** Removes `key` only while it still names the entry that was read. */
       const forget = (key: string, generation: number) =>
         Ref.update(held, (current) => {
           if (current.get(key)?.generation !== generation) return current;
@@ -158,12 +85,6 @@ export class Leases extends Context.Service<
           return next;
         });
 
-      /**
-       * Owners whose reconnection never came. Renewal continues throughout the
-       * grace, so what ends the lease is this rather than the storage expiry —
-       * the section is free the moment the grace is up, and the release
-       * publishes the lock event that tells everyone watching.
-       */
       const endStranded = Effect.fnUntraced(function* (owner: string) {
         const ends = yield* Ref.modify(connections, (current) => {
           const state = current.get(owner);
@@ -175,10 +96,8 @@ export class Leases extends Context.Service<
         });
         if (ends === undefined) return;
         for (const end of ends.values()) {
-          // This runs from a timer, so a release that cannot reach the
-          // database has nobody to report to and must not take the keeper down
-          // with it. The leases it was giving back are already out of this
-          // keeper, so they lapse on their own expiry instead.
+          // Runs from a timer, so a failing release must not take the keeper
+          // down with it.
           yield* end.pipe(
             Effect.catchCause((cause) =>
               Effect.logError('Releasing a stranded lease owner failed', cause),
@@ -196,17 +115,9 @@ export class Leases extends Context.Service<
             continue;
           }
           const renewed = yield* Effect.exit(lease.renew);
-          // A renewal that could not be made is not an answer: a database that
-          // was briefly unreachable has said nothing about whose lease it is,
-          // and forgetting the lease here would let it expire under an editor
-          // who is still holding it — whose next submit is then refused as
-          // `NotLockHolder`. The entry stays and the next tick asks again; the
-          // interval is a third of the TTL so that two may be lost this way.
+          // An unanswered renewal says nothing about whose lease it is: the
+          // entry stays and the next tick asks again.
           if (Exit.isFailure(renewed)) continue;
-          // `null` is the update matching no row, which is a lease that
-          // expired or was taken over. The acquire that took it publishes its
-          // own lock event, so dropping the entry is the whole of the response
-          // here.
           if (renewed.value === null) yield* forget(key, lease.generation);
         }
       });

@@ -151,7 +151,6 @@ const LockEventSchema = Schema.Struct({
   cursor: Schema.optionalKey(CursorSchema),
 });
 
-/** Not replayable, so it carries no cursor: a watcher is sent the current one. */
 const PresenceEventSchema = Schema.Struct({
   type: Schema.Literal('presence'),
   present: Schema.Array(PresenceSchema),
@@ -405,7 +404,6 @@ export const StageResourceInputSchema = Schema.Struct({
         }),
       ),
       contentType: NonEmptyString,
-      /** Base64 on a JSON transport. */
       bytes: Schema.Uint8Array,
     }),
     Schema.Struct({

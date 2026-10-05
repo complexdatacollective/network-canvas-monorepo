@@ -146,7 +146,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
   let eventIds: Record<number, AuditEventId>;
   let otherTeamEventId: AuditEventId;
 
-  /** A seeded event's id, so a missing fixture fails as one. */
   const eventId = (sequence: number): AuditEventId => {
     const id = eventIds[sequence];
     if (id === undefined) {
@@ -155,7 +154,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     return id;
   };
 
-  /** One statement as the connecting login, in its own transaction. */
   const query = <A extends object = Record<string, unknown>>(
     statement: string,
     params?: ReadonlyArray<unknown>,
@@ -720,9 +718,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       await client.callExit(
         client.rpc('audit.get', {
           teamId: TEAM,
-          // The branded id is what the contract asks for, so a value it
-          // refuses can only be presented by going round the type — which is
-          // the point: the boundary, not the caller, has to refuse it.
           eventId: 'not-a-uuid' as unknown as AuditEventId,
         }),
       ),
@@ -802,10 +797,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     extraClients.push(demotedClient);
 
     const { harness } = database;
-    // Hold the membership row so the demotion is guaranteed to be in flight
-    // while the request is past requireTeam but before it reads any rows. One
-    // owner transaction, committed when the body returns, rolled back if it
-    // fails.
     const { request } = await database.run(
       harness.onOwner(
         Effect.gen(function* () {
@@ -878,8 +869,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     extraClients.push(promotedClient);
 
     const { harness } = database;
-    // Hold the membership row so the promotion is guaranteed to be in flight
-    // while the request is past requireTeam but before it authorizes.
     const { request } = await database.run(
       harness.onOwner(
         Effect.gen(function* () {
@@ -946,12 +935,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     );
     extraClients.push(unrecordedClient);
 
-    // The append refused by the database rather than starved of a connection.
-    // Starving one used to work because the denial event was written through
-    // the same `pg.Pool` the read borrowed; the append goes through the Effect
-    // client now, so a client budget on the pool no longer reaches it — and a
-    // trigger is the stronger oracle anyway, since the insert really is
-    // attempted and really does fail.
     await query(`
       create or replace function refuse_read_denial() returns trigger as $refuse$
       begin raise exception 'audit read denial rejected'; end;
@@ -982,8 +965,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
         Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
     );
     expect(lost).toHaveLength(1);
-    // `AuditSignal` owns the wording now (`audit/signal.ts`), which is what
-    // makes one code mean one sentence wherever it is emitted from.
     expect(lost[0]?.[0]).toBe(
       'An audit read denial could not be recorded; the read was still denied.',
     );
@@ -993,13 +974,8 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       teamId: TEAM,
       actorId: unrecorded.userId,
       requestId: expect.any(String),
-      // The failure the DATABASE reported, not the wrapper's: the operator
-      // needs to know why the append was lost, and `@effect/sql-pg`'s own
-      // message is always `PgConnection: Query failed`.
-      //
-      // Mutation: `error.message` in place of `deepestMessage(error)` in
-      // `rpc/audit-read.ts` — the detail then reads `PgConnection: Query
-      // failed` and this fails.
+      // The failure the DATABASE reported, not the wrapper's: `@effect/sql-pg`'s
+      // own message is always `PgConnection: Query failed`.
       causeName: 'effect/sql/SqlError',
       causeMessage: expect.stringContaining('audit read denial rejected'),
     });
@@ -1016,10 +992,6 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
   it.skipIf(!limiterStore)(
     'spends the denial window only on denial events that committed',
     async () => {
-      // A member's read is predicted to be denied, so its window slot is
-      // reserved before the read opens. A denial whose append was lost wrote
-      // nothing, and must not count towards the five the window allows —
-      // or a run of append failures would suppress the next real denial.
       const lost = principal(`audit-window-${randomUUID()}`, 'Audit Window');
       await query(
         `INSERT INTO "user" (id, name, email, "emailVerified")

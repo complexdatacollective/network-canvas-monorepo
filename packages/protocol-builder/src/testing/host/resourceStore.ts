@@ -17,7 +17,6 @@ type Inspection = (typeof ResourceInspectionSchema)['Type'];
 type Preview = (typeof ResourcePreviewSchema)['Type'];
 type ContractStageRequest =
   (typeof StageResourceInputSchema)['Type']['request'];
-/** Imported content is held as a `Blob`, the way a browser holds a file. */
 type StageRequest =
   | Exclude<ContractStageRequest, Readonly<{ kind: 'content' }>>
   | (Omit<

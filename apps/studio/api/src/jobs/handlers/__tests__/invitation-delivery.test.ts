@@ -63,17 +63,11 @@ import {
 } from '../invitation-delivery.ts';
 import { layerRecordingMailer, RecordedMail } from './support.ts';
 
-// `src/team/__tests__/invitation-delivery.test.ts`, ported to the native queue
-// and now the only copy: the original went with pg-boss. The numbering below
-// is that file's case order, all twenty of them, so a claim can still be
-// traced to the case it came from.
-
 const TEAM_ID = 'effect-invitation-delivery-team';
 const INVITER_ID = 'effect-invitation-delivery-inviter';
 const INVITER_MEMBER_ID = 'effect-invitation-delivery-inviter-member';
 const PUBLIC_BASE_URL = 'https://studio.example.test';
 
-/** Who the two command cases below run as: the team's owner. */
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: INVITER_ID,
@@ -85,7 +79,6 @@ const PRINCIPAL: SessionPrincipal = {
 };
 
 const DELIVERY = resolvedQueue('invitation-delivery');
-/** What the queue declares: eight attempts in all. */
 const RETRY_LIMIT = DELIVERY.retryLimit;
 
 type DeliveryRow = {
@@ -97,7 +90,6 @@ type DeliveryRow = {
   uncertain_at: Date | null;
 };
 
-/** Studio's schema, the queue, an enqueue and a recording transport. */
 const suiteLayer = Layer.mergeAll(
   layerJobs,
   layerRecordingMailer,
@@ -163,10 +155,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       return seeded;
     });
 
-    /**
-     * The delivery row, written as the application role inside a tenant
-     * transaction — which is how the command writes it, minus the audit.
-     */
     const enqueueDeliveryRow = Effect.fnUntraced(function* (
       invitation: SeededInvitation,
     ) {
@@ -193,7 +181,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       return deliveryId;
     });
 
-    /** The delivery row and its job, the way the command creates both. */
     const seedQueuedDelivery = Effect.fnUntraced(function* (
       invitation: SeededInvitation,
     ) {
@@ -239,10 +226,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       yield* Effect.orDie(ownerRows(`DELETE FROM ${schema}.jobs`));
     });
 
-    /**
-     * Runs a handler against one job, the way the worker does — claim, run,
-     * settle — with the mailer behaving however the case says.
-     */
     const runDelivery = (
       deliveryId: string,
       behaviour: (
@@ -269,8 +252,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           harness.app,
         );
         if (options.attemptsBefore !== undefined) {
-          // Start the attempt ladder part-way along, the way the original
-          // suite hands the handler a `retryCount`.
           yield* Effect.orDie(
             ownerRows(
               `UPDATE ${harness.schema}.jobs SET attempts = $2 WHERE id = $1`,
@@ -282,12 +263,9 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       }).pipe(Effect.provide(layerWorker()));
 
     const succeeds = () => Effect.void;
-    // Stage 1's `MailFailed` carries the transport's own error rather than a
-    // message field; the message an operator reads off the row is that error's.
     const failsWith = (message: string) => () =>
       Effect.fail(new MailFailed({ cause: new Error(message) }));
 
-    // -------------------------------------------------------------- 1, 2 ----
     it.effect(
       'creates the delivery and its job only when it commits, carrying the delivery id and nothing else',
       () =>
@@ -331,9 +309,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
             ),
           );
           assert.strictEqual(orphans.length, 0);
-          // The job was created on the command's own connection, so the rollback
-          // took it too. A job that survived would send mail for an invitation
-          // that does not exist.
           assert.deepStrictEqual(yield* readJobs('invitation-delivery'), []);
 
           const committed = yield* seedInvitation();
@@ -342,13 +317,10 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           assert.strictEqual(queued.length, 1);
           assert.strictEqual(queued[0]?.id, jobId);
           assert.strictEqual(queued[0]?.state, 'created');
-          // Identifiers only (#1895): the job table is one table for every team,
-          // so the payload names the delivery row and carries nothing of it.
           assert.deepStrictEqual(queued[0]?.payload, { deliveryId });
         }),
     );
 
-    // -------------------------------------------------------------- 5, 20 ----
     it.effect(
       'records a failed attempt and sends the snapshot, end to end, on the next',
       () =>
@@ -387,8 +359,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           mail.invitations.length = 0;
           const second = yield* runDelivery(deliveryId, succeeds);
           assert.strictEqual(second._tag, 'settled');
-          // The labels are the ones the command snapshotted, not the renamed
-          // team and inviter: the invitation says what it said when it was sent.
           assert.deepStrictEqual(mail.invitations.at(-1), {
             email: invitation.email,
             expiresAt: invitation.expiresAt,
@@ -402,16 +372,12 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           assert.strictEqual(afterSecond.attempt_count, 1);
           assert.strictEqual(afterSecond.last_error, null);
           assert.instanceOf(afterSecond.sent_at, Date);
-          // And the job the send belonged to is `completed` with the outcome
-          // the handler answered, which is the whole of "the invitation went
-          // out" as the queue records it.
           const [row] = yield* readJobs('invitation-delivery');
           assert.strictEqual(row?.state, 'completed');
           assert.strictEqual(row?.outcome, 'completed');
         }),
     );
 
-    // ---------------------------------------------------------------- 6 ----
     it.effect(
       'does not retry when SMTP accepted but the marker cannot commit',
       () =>
@@ -451,7 +417,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
             ),
           );
 
-          // Settled rather than retried: the mail has gone (#1305, #1307).
           assert.strictEqual(step._tag, 'settled');
           assert.strictEqual(
             step._tag === 'settled' ? step.outcome : undefined,
@@ -471,14 +436,12 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           const again = yield* runDelivery(deliveryId, succeeds);
           assert.strictEqual(again._tag, 'settled');
           assert.strictEqual(mail.invitations.length, 0);
-          // Not even the attempt counter moves: an uncertain delivery is done.
           const unchanged = yield* deliveryState(deliveryId);
           assert.strictEqual(unchanged.attempt_count, 1);
           assert.instanceOf(unchanged.uncertain_at, Date);
         }),
     );
 
-    // ---------------------------------------------------------------- 8 ----
     it.effect('stamps a failed send before it lets go of the invitation', () =>
       Effect.gen(function* () {
         yield* clearQueue();
@@ -499,10 +462,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         const mail = yield* RecordedMail;
         yield* waitFor(() => mail.invitations.length === 1);
 
-        // Whoever is next in line for the invitation, as one statement:
-        // taking the lock and settling the row cannot be interleaved from
-        // here, so what this finds the instant the invitation is released is
-        // exactly what the handler had written before letting go.
         const contender = asMaintenance(
           MaintenanceScope.open(
             Effect.flatMap(Transaction, ({ sql }) =>
@@ -532,8 +491,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         );
         const contending = yield* Effect.forkChild(contender);
 
-        // It has to be waiting on the lock before the send fails, or it would
-        // simply arrive after the handler and prove nothing.
         yield* waitForEffect(
           Effect.map(
             Effect.orDie(
@@ -565,7 +522,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       }),
     );
 
-    // ------------------------------------------------------------- 7, 9 ----
     it.effect(
       'records the delivery failed on the attempt nothing will retry, and dead-letters it',
       () =>
@@ -583,8 +539,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           const failed = step as Extract<JobStep, { _tag: 'failed' }>;
           assert.isString(failed.deadLetter);
 
-          // The delivery row is terminal: `failed_at` is what tells a
-          // researcher the invitation will not arrive on its own.
           const row = yield* deliveryState(deliveryId);
           assert.strictEqual(row.attempt_count, RETRY_LIMIT + 1);
           assert.instanceOf(row.failed_at, Date);
@@ -596,15 +550,12 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
             rows.map(({ queue, state }) => ({ queue, state })),
             [
               { queue: 'invitation-delivery', state: 'failed' },
-              // The copy #1307's manual re-send works from, naming the same
-              // delivery as the job that failed.
               { queue: 'invitation-delivery-dead-letter', state: 'created' },
             ],
           );
         }),
     );
 
-    // --------------------------------------------------------------- 10 ----
     it.effect(
       'suppresses deliveries whose invitations are cancelled or expired',
       () =>
@@ -644,7 +595,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // --------------------------------------------------------------- 11 ----
     it.effect('sends once when two workers hold the same queue', () =>
       Effect.gen(function* () {
         yield* clearQueue();
@@ -658,8 +608,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         >();
         yield* mail.setInvitationBehaviour(() => Deferred.await(sending));
 
-        // Two workers on one schema, exactly as two replicas are, racing for
-        // the same job.
         const steps = yield* Effect.gen(function* () {
           const first = yield* JobWorker;
           yield* first.work(
@@ -682,10 +630,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
               ),
             );
             yield* waitFor(() => mail.invitations.length === 1);
-            // The winner holds the job active and the invitation locked; this
-            // is the window in which the loser would send a second copy.
-            // The window in which the loser would send a second copy: real
-            // time, because the loser's claim is a real round trip.
             yield* realSleep(300);
             assert.strictEqual(mail.invitations.length, 1);
             yield* Deferred.succeed(sending, undefined);
@@ -703,7 +647,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       }),
     );
 
-    // --------------------------------------------------------------- 12 ----
     it.effect(
       'refuses a second attempt while the first holds the invitation',
       () =>
@@ -725,15 +668,11 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           );
           yield* waitFor(() => mail.invitations.length === 1);
 
-          // The expiry of the first attempt would make the queue hand the job to
-          // a second worker while the first is still inside its SMTP call.
           const second = yield* runDelivery(deliveryId, succeeds, {
             attemptsBefore: 1,
           });
           assert.strictEqual(second._tag, 'retrying');
           assert.strictEqual(mail.invitations.length, 1);
-          // The refusal counted nothing: an attempt that never got the lock did
-          // no work.
           const during = yield* deliveryState(deliveryId);
           assert.strictEqual(during.attempt_count, 1);
           assert.strictEqual(during.last_error, null);
@@ -751,7 +690,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // --------------------------------------------------------------- 13 ----
     it.effect(
       'leaves the row to its holder when the last attempt is refused',
       () =>
@@ -775,8 +713,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
             rows.find((row) => row.state === 'failed')?.last_error,
             LOCK_HELD_ON_LAST_ATTEMPT,
           );
-          // Every column, not a subset: the whole point is that this attempt
-          // wrote nothing at all.
           assert.deepStrictEqual(yield* deliveryState(deliveryId), {
             attempt_count: 0,
             failed_at: null,
@@ -788,7 +724,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // --------------------------------------------------------------- 14 ----
     it.effect(
       'refuses a job whose payload is not one this queue declares',
       () =>
@@ -800,10 +735,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           const mail = yield* RecordedMail;
           mail.invitations.length = 0;
 
-          // Nothing this server enqueues looks like either of these — the
-          // enqueue validates on the way in — so what they stand for is a row
-          // written by an older release or by hand. The second carries a real
-          // delivery id beside a field the schema does not declare.
           for (const payload of [
             '{}',
             JSON.stringify({ deliveryId, teamId: TEAM_ID }),
@@ -822,8 +753,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
               'invitation-delivery',
               invitationDelivery({ publicBaseUrl: PUBLIC_BASE_URL }),
             );
-            // The decode is in the worker now (#1927 §11), not the handler, so
-            // the job is killed rather than retried — and the handler never ran.
             assert.strictEqual(step._tag, 'dead');
             yield* clearQueue();
           }
@@ -840,7 +769,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // --------------------------------------------------------------- 16 ----
     it.effect(
       'lets a cancellation win the lock and suppresses what follows',
       () =>
@@ -852,9 +780,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           mail.invitations.length = 0;
 
           const holder = yield* holdInvitation(invitation.invitationId);
-          // A cancellation holding the row is indistinguishable from another
-          // attempt holding it: the handler gives up rather than sending mail for
-          // an invitation someone is in the middle of withdrawing.
           const refused = yield* runDelivery(deliveryId, succeeds);
           assert.strictEqual(refused._tag, 'retrying');
           yield* holder.query(
@@ -877,7 +802,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // --------------------------------------------------------------- 17 ----
     it.effect('lets the application enqueue but not alter delivery state', () =>
       Effect.gen(function* () {
         const invitation = yield* seedInvitation();
@@ -902,7 +826,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       }),
     );
 
-    // --------------------------------------------------------------- 18 ----
     it.effect(
       'lets maintenance advance delivery state but not rewrite it',
       () =>
@@ -946,7 +869,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // --------------------------------------------------------------- 19 ----
     it.effect(
       'structurally rejects an outbox row assigned to another team',
       () =>
@@ -971,17 +893,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
-    // The last three drive `createTeamInvitation` / `cancelTeamInvitation`
-    // themselves, because what they are about is the seam between a command
-    // and this queue: the invitation, its delivery row and the job that sends
-    // it are one transaction, and a cancellation that cannot get the row
-    // refuses rather than waiting behind a send.
-    //
-    // They run the real `Jobs` layer on the harness's own job schema rather
-    // than the recording one: the row in `<schema>.jobs` is what the handler
-    // above claims, so a recorded enqueue would prove the wrong half.
-
-    /** One command, as the inviting researcher, on the harness's clients. */
     const asInviter = <A, E, R>(command: Effect.Effect<A, E, R>) =>
       Effect.flatMap(DeliveryHarness, (harness) =>
         command.pipe(
@@ -993,7 +904,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         ),
       );
 
-    // ---------------------------------------------------------------- 3 ----
     it.effect('creates the invitation, the delivery and one job in one', () =>
       Effect.gen(function* () {
         yield* clearQueue();
@@ -1015,8 +925,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         );
         const deliveryId = delivery?.id;
         assert.isString(deliveryId);
-        // One command, one job: the invitation, its delivery row and the job
-        // that sends it are written by the same transaction.
         const queued = yield* readJobs('invitation-delivery');
         assert.strictEqual(queued.length, 1);
         assert.strictEqual(queued[0]?.state, 'created');
@@ -1024,7 +932,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       }),
     );
 
-    // ---------------------------------------------------------------- 4 ----
     it.effect('leaves no invitation behind when the enqueue fails', () =>
       Effect.gen(function* () {
         yield* clearQueue();
@@ -1032,13 +939,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         const harness = yield* DeliveryHarness;
         const email = `${randomUUID()}@example.com`;
 
-        // The "no job client" refusal this case used to assert is gone with
-        // the optional dependency: `Jobs` is a service the command requires,
-        // so a process without one does not build rather than failing at the
-        // first invitation. What is still worth pinning is the other half —
-        // an enqueue that FAILS must take the invitation with it, because
-        // committing one anyway would leave a researcher waiting on mail
-        // nothing will send.
         const refusal = yield* Effect.exit(
           createTeamInvitation(unsafeMakeTeamAccess(TEAM_ID, 'owner'), {
             email,
@@ -1046,8 +946,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           }).pipe(
             Effect.provideService(Principal, principalOf(PRINCIPAL)),
             Effect.provideService(RequestId, RequestId.of(randomUUID())),
-            // A queue that answers every enqueue with a failure, which is
-            // what an unreachable one looks like from inside the command.
             Effect.provideService(
               Jobs,
               Jobs.of({
@@ -1076,14 +974,10 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
       }),
     );
 
-    // --------------------------------------------------------------- 15 ----
     it.effect('refuses and audits cancellation after delivery has begun', () =>
       Effect.gen(function* () {
         yield* clearQueue();
         const invitation = yield* seedInvitation();
-        // Held the way an attempt inside its SMTP call holds it: the command
-        // asks for the row `NOWAIT` rather than wait out a send behind the
-        // team's audit lock, so a held row is what makes it refuse.
         const held = yield* holdInvitation(invitation.invitationId);
 
         const exit = yield* Effect.exit(
@@ -1124,8 +1018,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           ),
         };
         assert.deepStrictEqual(rows.status, [{ status: 'pending' }]);
-        // The refusal is a decision the team can see, so it is audited like
-        // any other — and committed even though the command changed nothing.
         assert.deepStrictEqual(rows.audited, [
           {
             event_type: 'team.invitation.cancellation_failed',
@@ -1138,16 +1030,6 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
   });
 });
 
-/**
- * Holds the invitation the way an earlier attempt inside its SMTP call does,
- * and hands back the means to let go. Taken as the maintenance role because
- * that is the role a delivery attempt would be — pinned by hand, the way
- * `MaintenanceScope` pins it, on a reserved connection of the owner client:
- * every client connects as the same login, and the maintenance client's two
- * connections belong to the worker under test. A reserved connection rather
- * than a scope, because a scope's transaction would carry every statement the
- * case's fiber then ran on that client onto the holder's connection.
- */
 const holdInvitation = Effect.fnUntraced(function* (invitationId: string) {
   const harness = yield* TestDatabase;
   const scope = yield* Scope.make();
@@ -1171,12 +1053,6 @@ const holdInvitation = Effect.fnUntraced(function* (invitationId: string) {
   };
 });
 
-/**
- * `vi.waitFor`, in Effect. Real time rather than `Effect.sleep`, deliberately:
- * these cases wait on another *connection* doing real work, which the virtual
- * clock knows nothing about. The rest of the queue's suites run in virtual
- * time; this file is the exception and says so.
- */
 const realSleep = (ms: number): Effect.Effect<void> =>
   Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 

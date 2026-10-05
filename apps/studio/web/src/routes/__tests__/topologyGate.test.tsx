@@ -125,11 +125,6 @@ beforeEach(() => {
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
     error: null,
   });
-  // The two procedures the shell asks for on these routes. `studies.get` and
-  // `studies.list` are deliberately absent: with no study in any of these
-  // URLs the lockup skips both queries rather than asking about a study that
-  // is not there, so a handler for either would stand for a call the shell
-  // must not make — and the harness names the tag if one ever is.
   installRpcHarness({
     status: () =>
       Effect.succeed({
@@ -141,12 +136,7 @@ beforeEach(() => {
           emailAndPassword: true,
           socialProviders: [],
         },
-        // Open, so a served `/setup` renders its form rather than its own
-        // "already set up" not-found; what these cases decide is the
-        // topology, and this keeps the second guard out of the way.
         setup: { required: true },
-        // Read at call time, so each case picks the topology before it
-        // renders.
         deployment: fixtures.deployment,
       }),
     me: () =>

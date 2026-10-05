@@ -1,9 +1,3 @@
-// Who is in a protocol, per process.
-//
-// Ephemeral by decision (#1247): presence has no persistence and no delivery
-// guarantee, so it lives here and carries no cursor on the wire. A lock event
-// names its holder from the persisted log instead, which is why a second
-// process still reports locks correctly.
 import { Context, Effect, Layer, Ref, type Scope } from 'effect';
 
 import type { Presence as PresenceValue } from '@codaco/protocol-builder-core/contract/schemas';
@@ -23,26 +17,15 @@ const withEntry = (
 export class Presence extends Context.Service<
   Presence,
   {
-    /**
-     * Present for as long as the calling scope is open. A connection's
-     * presence goes with the connection even though its locks stay: a
-     * colleague's cursor cannot outlive the socket it was drawn from.
-     */
     readonly join: (
       draftId: string,
       presence: PresenceValue,
     ) => Effect.Effect<void, never, Scope.Scope>;
-    /**
-     * Records or replaces a connection's presence without tying it to a scope:
-     * what a lock taken over a connection does, leaving the removal to that
-     * connection's own `join`.
-     */
     readonly put: (
       draftId: string,
       presence: PresenceValue,
     ) => Effect.Effect<void>;
     readonly leave: (draftId: string, sessionId: string) => Effect.Effect<void>;
-    /** Moves a present connection between viewing and editing one section. */
     readonly setMode: (
       draftId: string,
       sessionId: string,

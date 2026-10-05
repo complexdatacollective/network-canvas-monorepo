@@ -1,8 +1,5 @@
 /**
  * A one-consumer queue an event source pushes into and a generator drains.
- *
- * The store's `watch` is an async generator, so it needs its own bridge from
- * the store's synchronous publish to an async iterator.
  */
 export class EventQueue<T> {
   #buffer: T[] = [];

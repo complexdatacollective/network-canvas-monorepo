@@ -50,7 +50,6 @@ const LOCK_STATES = ['nobody', 'the caller', 'a collaborator'] as const;
 type LockState = (typeof LOCK_STATES)[number];
 
 type Call = Readonly<{
-  /** Tag of the contract procedure this exercises. */
   procedure: string;
   name: string;
   host?: () => InMemoryHost;
@@ -178,7 +177,6 @@ const CALLS: readonly Call[] = [
     procedure: 'WatchProtocol',
     name: 'watching the protocol',
     run: async (host) => {
-      // Watched until the first event, then closed.
       const controller = new AbortController();
       await host.adapter
         .rpcStream(
@@ -518,7 +516,6 @@ function holderNamedBy(error: unknown): string | undefined {
   )[0];
 }
 
-/** How a call settled: taken, or refused with what it was refused with. */
 async function settled(
   run: Promise<unknown>,
 ): Promise<Readonly<{ isSuccess: boolean; error: unknown }>> {

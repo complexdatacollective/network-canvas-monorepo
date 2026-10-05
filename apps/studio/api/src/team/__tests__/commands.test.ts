@@ -54,34 +54,6 @@ import {
   updateTeamMemberRole,
 } from '../commands.ts';
 
-// The four audited team commands, against a real Postgres.
-//
-// What moved to `audit/__tests__/audited.test.ts` when the combinator was
-// extracted: the empty-event-list refusal, the savepoint rollback, and the
-// team-label snapshot are properties of `audited` and are proved there once,
-// rather than once per command tier. What stayed here is everything that is
-// this tier's own — which decisions are auditable, which are not, and what
-// each command actually writes.
-//
-// Two things about the harness that are load-bearing:
-//
-//   * `Jobs.layerRecording`. An invitation's delivery job is created inside the
-//     command's own transaction, and the recording layer still requires
-//     `Transaction` — so a command that enqueued outside one would not compile
-//     under it any more than under the live layer, and a recorded job is
-//     evidence the scope was open.
-//   * `harness.secondApp`. The application client has ONE connection, which is
-//     what makes "the next transaction is on the same backend" a property of
-//     the harness. Every concurrency case here therefore runs its second
-//     command with `Database` substituted for the second client — two real
-//     connections contending for one team's advisory lock.
-
-/**
- * A compile assertion, and the stronger half of "a forged actor context is
- * unrepresentable": a command may not name the fields `audited` owns, and the
- * type says so. The runtime half is the case below, because this check only
- * fires for a fresh object literal.
- */
 const forgedContextDoesNotType: AuditEventBody = {
   eventType: 'team.invitation.created',
   eventVersion: 1,
@@ -98,7 +70,6 @@ const forgedContextDoesNotType: AuditEventBody = {
 };
 void forgedContextDoesNotType;
 
-/** The same for the outcome, which the marker decides and the body may not. */
 const forgedOutcomeDoesNotType: AuditEventBody = {
   eventType: 'team.invitation.created',
   eventVersion: 1,
@@ -115,13 +86,6 @@ const forgedOutcomeDoesNotType: AuditEventBody = {
 };
 void forgedOutcomeDoesNotType;
 
-/**
- * The three cases below assert where the audit denial window's cap falls, and
- * that window counts in Valkey since #1909. It fails open, so without a store
- * they would not fail to be limited — they would simply not be limited, write
- * a sixth denial event and fail. They skip instead, like the database-backed
- * cases; on CI the probe throws, because there the store is part of the job.
- */
 const deniedAuditWindow = await reachableDeniedAuditStore();
 
 type Identity = {
@@ -167,7 +131,6 @@ const Harness = Layer.mergeAll(
 
 describe.skipIf(!testDb)('audited team commands', () => {
   layer(Harness)('over a provisioned schema', (suite) => {
-    /** A fresh team per case: `audit_events` is append-only and cannot be tidied. */
     const seedTeam = Effect.fnUntraced(function* (
       label: string,
       name?: string,
@@ -271,7 +234,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
       return rows[0]?.status ?? null;
     });
 
-    /** One command, run as one person, under one request id. */
     const asActor = <A, E, R>(
       person: Identity,
       command: Effect.Effect<A, E, R>,
@@ -288,11 +250,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
         ),
       );
 
-    /**
-     * The same, on the harness's SECOND application client — a real second
-     * connection, which is what a concurrency case needs and what the one-
-     * connection default deliberately withholds.
-     */
     const asContender = <A, E, R>(
       person: Identity,
       command: Effect.Effect<A, E, R>,
@@ -314,10 +271,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
       const signals = yield* RecordedSignals;
       yield* signals.clear;
     });
-
-    // -----------------------------------------------------------------------
-    // Invitation acceptance
-    // -----------------------------------------------------------------------
 
     suite.effect(
       'accepts an invitation atomically and treats a lost-response replay as unchanged',
@@ -359,8 +312,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             [{ id: first.memberId, role: 'admin' }],
           );
 
-          // One event, not two: the replay changed nothing and must not put
-          // the acceptance in the log twice.
           const events = yield* auditRows(teamId);
           assert.lengthOf(events, 1);
           assert.strictEqual(events[0]?.event_type, 'team.invitation.accepted');
@@ -427,8 +378,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
           yield* refused(wrongUser, liveId);
           yield* refused(invitee, liveId, false);
           yield* refused(invitee, expiredId);
-          // An id no invitation carries: refused before any tenant is
-          // resolved, so it leaves no event at all.
           yield* refused(invitee, randomUUID());
 
           const members = yield* memberRoles(teamId);
@@ -487,15 +436,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
                                where id = ${invitationId}`,
           );
 
-          // An application host whose clock is years behind PostgreSQL. Both
-          // clocks are moved: `Date.now` is what the limiter's window reads,
-          // and the Effect `Clock` is what a `TestClock`-driven suite would
-          // move — and neither may reach the invitation's liveness, which is
-          // `expires_at > clock_timestamp()` inside the SELECT.
-          //
-          // Mutation: compare `expiresAt` against a JavaScript instant in
-          // `team/store.ts`'s `lockInvitation` instead of computing `isLive` in
-          // SQL. The acceptance then succeeds.
           const applicationClock = vi
             .spyOn(Date, 'now')
             .mockReturnValue(new Date('2000-01-01T00:00:00.000Z').getTime());
@@ -649,8 +589,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
                 },
               ],
             );
-            // The domain write is undone and the invitation is untouched:
-            // the failure event commits, the mutation does not.
             const members = yield* memberRoles(teamId);
             assert.lengthOf(
               members.filter(({ id }) => id === invitee.memberId),
@@ -707,10 +645,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
         }),
       { timeout: 60_000 },
     );
-
-    // -----------------------------------------------------------------------
-    // Role changes
-    // -----------------------------------------------------------------------
 
     suite.effect(
       'changes a role with exact actor, target, before/after, and request context',
@@ -833,14 +767,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
           );
           yield* Deferred.await(started);
 
-          // A second connection cannot take the same key while the body is
-          // still running, which is what "before command work begins" means:
-          // the lock is taken outside the savepoint, before the body runs at
-          // all.
-          //
-          // Mutation: move `lockTeam` inside the savepoint in `audit/audited.ts`
-          // — this still passes, because the lock is held either way. Move it
-          // AFTER the body and it fails, which is the ordering this asserts.
           const contender = yield* harness.onOwner(
             harness.owner.sql.unsafe<{ acquired: boolean }>(
               `select pg_try_advisory_xact_lock(${AUDIT_TEAM_LOCK_KEY_SQL}) as acquired`,
@@ -869,9 +795,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
 
           const held = yield* Deferred.make<void>();
           const release = yield* Deferred.make<void>();
-          // The holder takes the team's audit lock and demotes the admin, then
-          // waits: everything the command is about to re-read is already
-          // changed, but not yet visible, and the lock is what makes it wait.
           const holder = yield* Effect.forkChild(
             harness.onOwner(
               Effect.gen(function* () {
@@ -897,9 +820,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
               }),
             ),
           );
-          // The command is blocked on the advisory lock — a real signal, polled,
-          // rather than a sleep: `pg_locks` reports an ungranted advisory lock
-          // exactly while somebody is waiting for one.
           yield* waitUntilBlocked(harness);
           yield* Deferred.succeed(release, undefined);
           yield* Fiber.join(holder);
@@ -930,10 +850,8 @@ describe.skipIf(!testDb)('audited team commands', () => {
           const owner = identity(teamId, 'owner', 'owner');
           yield* seedIdentity(teamId, owner);
 
-          // The runtime half of the two compile assertions at the top of this
-          // file. Built through a variable rather than as a fresh literal,
-          // because TypeScript's excess-property check only fires on a literal
-          // — which is exactly the shape a forged body would arrive in.
+          // Through a variable rather than a fresh literal: TypeScript's excess-property
+          // check only fires on a literal.
           const forged: AuditEventBody = {
             eventType: 'team.invitation.created',
             eventVersion: 1,
@@ -956,10 +874,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             outcome: 'denied',
           };
           Object.assign(forged, forgery);
-          // A real request id, because `stamp` parses what it builds against
-          // the registry's own schema — which is the second check behind the
-          // combinator, and would refuse a made-up one before the assertions
-          // below could read it.
           const requestId = randomUUID();
           const context = AuditContext.of({
             teamId,
@@ -971,9 +885,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
 
           const stamped = stamp(context, forged, 'succeeded');
 
-          // Every field the combinator owns comes from the context, whatever
-          // the body carried — which is why there is no assertion left to
-          // refuse a mismatch: there is no mismatch to have.
           assert.strictEqual(stamped.teamId, teamId);
           assert.strictEqual(stamped.teamLabel, 'Locked Team');
           assert.strictEqual(stamped.actorKind, 'user');
@@ -982,8 +893,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
           assert.strictEqual(stamped.requestId, requestId);
           assert.strictEqual(stamped.outcome, 'succeeded');
 
-          // And the outcome comes from the DECISION, not from the body — twice
-          // over. A denial event stamps `denied`:
           const deniedBody: AuditEventBody = {
             eventType: 'team.invitation.creation_denied',
             eventVersion: 1,
@@ -1004,9 +913,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             stamp(context, deniedBody, 'denied').outcome,
             'denied',
           );
-          // …and the registry refuses the pairing outright rather than taking
-          // the body's word for it: `team.invitation.created` has no denied
-          // form, so stamping it as one cannot produce a row at all.
           assert.throws(() => stamp(context, forged, 'denied'));
 
           assert.lengthOf(yield* auditRows(teamId), 0);
@@ -1140,8 +1046,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             reason: 'owner_role_requires_owner',
           });
 
-          // Committed AND immutable: the row the caller never saw cannot be
-          // edited away afterwards.
           const amended = yield* Effect.exit(
             harness.onOwner(
               harness.owner.sql`update audit_events set outcome = 'succeeded'
@@ -1188,8 +1092,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
                 where team_id = ${teamId}`,
           );
           assert.lengthOf(deliveries, 0);
-          // And no job: the enqueue is inside the transaction the denial
-          // rolled back, so a refused invitation cannot leave one behind.
           assert.lengthOf(yield* recorded(), 0);
 
           const events = yield* auditRows(teamId);
@@ -1243,9 +1145,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             );
           }
 
-          // Five events, not six: the sixth attempt was refused before any
-          // transaction opened, which is the whole point of taking the slot
-          // ahead of the scope.
           const events = yield* auditRows(teamId);
           assert.lengthOf(
             events.filter(
@@ -1299,7 +1198,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
               outcome: 'succeeded',
             })),
           );
-          // One job per invitation, identifiers only.
           const jobs = yield* recorded();
           assert.lengthOf(jobs, 6);
           for (const job of jobs) {
@@ -1366,8 +1264,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
               {
                 event_type: 'team.invitation.cancellation_denied',
                 outcome: 'denied',
-                // The refusal names no invitation: a member who cannot cancel
-                // must not learn which one they asked about.
                 subject_id: null,
                 subject_label: null,
                 request_id: requestId,
@@ -1442,9 +1338,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             'NO_CHANGE',
           );
 
-          // The positive oracle: the team is still workable afterwards, and
-          // the failure event did not take the transaction's other writes with
-          // it.
           const positive = yield* asActor(
             owner,
             createTeamInvitation(access(teamId), {
@@ -1529,8 +1422,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
           );
           assert.isTrue(Exit.isFailure(exit));
 
-          // The write is gone and the record is not: the savepoint rolled
-          // back, and the outer transaction committed the event after it.
           const members = yield* memberRoles(teamId);
           assert.strictEqual(
             members.find(({ id }) => id === owner.memberId)?.role,
@@ -1632,10 +1523,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
       { timeout: 60_000 },
     );
 
-    // -----------------------------------------------------------------------
-    // Invitation creation and cancellation
-    // -----------------------------------------------------------------------
-
     suite.effect(
       'creates and cancels an invitation without recording secret material',
       () =>
@@ -1656,9 +1543,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
           assert.strictEqual(created.email, 'invitee@example.com');
           assert.strictEqual(created.role, 'admin');
           assert.strictEqual(created.status, 'pending');
-          // The lifetime is the database's arithmetic on the database's
-          // clock, so it lands 48 hours from now however this host's clock is
-          // set.
           assert.isAbove(
             created.expiresAt.getTime(),
             Date.now() + 47 * 60 * 60 * 1000,
@@ -1686,9 +1570,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
               inviter_label: owner.name,
             },
           ]);
-          // Exactly one job, identifiers only, and in the same transaction —
-          // the recorded enqueue requires `Transaction`, so its presence is
-          // what says the scope was open.
           const jobs = yield* recorded();
           assert.lengthOf(jobs, 1);
           assert.strictEqual(jobs[0]?.queue, 'invitation-delivery');
@@ -1769,9 +1650,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
           );
           assert.strictEqual(longest.email, address(320));
 
-          // Mutation: drop `isMaxLength(320)` from the address schema — the
-          // 321-character address then reaches the insert and fails there, on
-          // the delivery table's length constraint, as a typed SQL failure.
           const exit = yield* Effect.exit(
             asActor(
               owner,
@@ -1863,10 +1741,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
       { timeout: 30_000 },
     );
 
-    // -----------------------------------------------------------------------
-    // The required append
-    // -----------------------------------------------------------------------
-
     const refusingAuditInsert = Effect.fnUntraced(function* (name: string) {
       const harness = yield* TestDatabase;
       yield* harness.onOwner(
@@ -1913,8 +1787,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
           ).pipe(Effect.ensuring(drop));
           assert.isTrue(Exit.isFailure(exit));
 
-          // The operator is told, and read from a recorded signal rather than a
-          // spy on `process`, which is a global and therefore order-dependent.
           const recordedSignals = yield* Effect.flatMap(
             RecordedSignals,
             (recorder) => recorder.signals,
@@ -1940,7 +1812,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             },
           );
 
-          // And the action never committed without its record.
           const members = yield* memberRoles(teamId);
           assert.strictEqual(
             members.find(({ id }) => id === member.memberId)?.role,
@@ -2037,8 +1908,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
             }>`select id from team_invitations where team_id = ${teamId}`,
           );
           assert.lengthOf(invitations, 0);
-          // The log outlives every mutable row it names, which is what makes
-          // it a record rather than a view.
           assert.lengthOf(yield* auditRows(teamId), 1);
         }),
       { timeout: 30_000 },
@@ -2046,7 +1915,6 @@ describe.skipIf(!testDb)('audited team commands', () => {
   });
 });
 
-/** Asserts a command failed with `FORBIDDEN` and nothing else. */
 const expectForbidden = <A, E, R>(command: Effect.Effect<A, E, R>) =>
   expectCode(command, 'FORBIDDEN');
 
@@ -2066,14 +1934,6 @@ const expectCode = Effect.fnUntraced(function* <A, E, R>(
   );
 });
 
-/**
- * Waits until some backend is blocked on an advisory lock — the signal a
- * command that is queued behind the team's audit lock actually produces.
- *
- * Polled on a bounded schedule rather than slept through: a fixed wait would
- * either be long enough to be slow or short enough to be flaky, and neither
- * would be evidence that the command reached the lock at all.
- */
 const waitUntilBlocked = Effect.fnUntraced(function* (
   harness: TestDatabase['Service'],
 ) {
@@ -2090,9 +1950,8 @@ const waitUntilBlocked = Effect.fnUntraced(function* (
           ? Effect.void
           : Effect.fail('not blocked yet' as const),
     ),
-    // Bounded by round trips rather than by an interval: every iteration is a
-    // real query, so the loop paces itself — and `it.effect` installs a
-    // `TestClock`, under which a spaced schedule would never advance.
+    // Bounded by round trips: `it.effect` installs a `TestClock`, under which a
+    // spaced schedule would never advance.
     Schedule.recurs(200),
   ).pipe(Effect.orDie);
 });

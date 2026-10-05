@@ -5,21 +5,10 @@ import { describe, expect, it } from 'vitest';
 
 import { StudioRpcs } from '../rpc/studio.ts';
 
-// A type test. What it guards is a decision, not a behaviour: `Authenticated`
-// declares `requiredForClient: false`, because Studio's credential is an
-// httpOnly cookie the browser attaches by itself and script cannot read. Flip
-// that flag and `RpcClient.make` starts demanding a client-side middleware
-// layer from every caller — the web app, the tests, any future client — and
-// nothing at runtime would say so. The assertions below therefore live in the
-// types: each `Assert<…>` fails `tsc` rather than vitest, so the proof of this
-// file is `pnpm --filter @codaco/studio-contract typecheck`. The `it` bodies
-// exist so vitest counts the cases and so the types are attached to values
-// that are actually used.
+// A type test: each `Assert<…>` fails `tsc` rather than vitest.
 
-/** Fails to compile unless `Condition` is exactly `true`. */
 type Assert<Condition extends true> = Condition;
 
-/** Deliberately not distributive: the question is about the whole union. */
 type Extends<Subject, Bound> = [Subject] extends [Bound] ? true : false;
 
 type IsNever<T> = [T] extends [never] ? true : false;
@@ -28,11 +17,6 @@ type IsNotNever<T> = [T] extends [never] ? false : true;
 const clientEffect = RpcClient.make(StudioRpcs);
 type Requirements = Effect.Services<typeof clientEffect>;
 
-// The positive control. Without it the two assertions above would also hold if
-// `RpcMiddleware.ForClient` had been renamed, or if `Rpc.MiddlewareClient`
-// stopped contributing anything at all: `Extract` of a type nothing matches is
-// `never` either way. This scratch group declares the one thing the contract
-// declines to declare, so the extract it produces must NOT be `never`.
 class ProbeCredential extends RpcMiddleware.Service<ProbeCredential>()(
   'probe/Credential',
   { requiredForClient: true },

@@ -18,7 +18,6 @@ import {
 const SETTINGS: ProtocolSectionId = sectionId({ kind: 'settings' });
 const LEASE: Lease = { epoch: 1n, expiresAt: new Date(0) };
 
-/** A renewal that counts its calls and answers with whatever `answer` says. */
 function renewal(
   answer: (call: number) => Effect.Effect<Lease | null, unknown>,
 ) {
@@ -43,8 +42,6 @@ const open = Effect.fnUntraced(function* (
 });
 
 describe('Leases', () => {
-  // Mutation: drop the `forkScoped` renewal fiber (or skip a tick) → fewer
-  // than three renewals in thirty seconds.
   it.effect(
     'renews a held lease every interval while a connection is open',
     () =>
@@ -69,8 +66,6 @@ describe('Leases', () => {
       }).pipe(Effect.provide(Leases.layer)),
   );
 
-  // Mutation: forget the entry on a failed renewal → the second tick never
-  // asks and the section is no longer held.
   it.effect('keeps a lease whose renewal went unanswered and asks again', () =>
     Effect.gen(function* () {
       const leases = yield* Leases;
@@ -115,8 +110,6 @@ describe('Leases', () => {
     }).pipe(Effect.provide(Leases.layer)),
   );
 
-  // Mutation: sleep `RECONNECT_GRACE_MS - 1000` before ending → `end` has
-  // already run one second early.
   it.effect(
     'ends a stranded owner exactly when the reconnect grace runs out',
     () =>
@@ -164,8 +157,6 @@ describe('Leases', () => {
     }).pipe(Effect.provide(Leases.layer)),
   );
 
-  // Mutation: leave the running grace alone when the owner reconnects → the
-  // first disconnect's grace ends the owner five seconds after the second.
   it.effect(
     'times a second disconnect’s grace from that disconnect, not the first',
     () =>
@@ -206,8 +197,6 @@ describe('Leases', () => {
       }).pipe(Effect.provide(Leases.layer)),
   );
 
-  // Mutation: drop the `!open.has(owner)` idle check → the lease is still
-  // renewed after the idle bound.
   it.effect(
     'forgets the leases of an owner with no connection after the idle bound',
     () =>
@@ -254,8 +243,6 @@ describe('Leases', () => {
     }).pipe(Effect.provide(Leases.layer)),
   );
 
-  // Mutation: remove the `catchCause` around `end` → the failure escapes and
-  // the other draft's `end` never runs.
   it.effect('survives an end that fails, and goes on renewing', () =>
     Effect.gen(function* () {
       const leases = yield* Leases;

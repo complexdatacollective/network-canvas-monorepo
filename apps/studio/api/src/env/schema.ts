@@ -240,12 +240,6 @@ export const EnvironmentSchema = Schema.Struct({
     example: 'true',
   }),
 
-  /**
-   * Absence is the gate: no endpoint means no exporter is built at all, so a
-   * deployment that says nothing pays nothing. `STUDIO_TELEMETRY=false` turns
-   * the export off even where an endpoint is configured, which is why the two
-   * are separate variables rather than one.
-   */
   OTEL_EXPORTER_OTLP_ENDPOINT: variable(HttpUrl, {
     group: 'Process',
     summary:

@@ -25,12 +25,6 @@ const PRINCIPAL = Principal.of({
   sessionId: 'protocol-command-owner-session',
 });
 
-/**
- * Everything the command needs EXCEPT a usable database. `DatabaseAbsent`
- * throws on first touch, which is what makes "before opening a transaction" an
- * oracle rather than a claim: a command that reached the scope would fail with
- * that error instead of the name refusal.
- */
 const Harness = Layer.mergeAll(
   DatabaseAbsent,
   AuditSignal.layer,
@@ -55,8 +49,6 @@ describe('audited protocol commands', () => {
     );
 
     assert.isTrue(Exit.isFailure(outcome));
-    // A contract violation rather than a refusal a caller could act on, so it
-    // is a defect — and the message is the schema's, not the database's.
     assert.include(
       Exit.isFailure(outcome) ? Cause.pretty(outcome.cause) : '',
       'Protocol name must contain a non-whitespace character',

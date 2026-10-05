@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { ParticipantRpcs } from '../rpc/participant.ts';
 import { RPC_PATH, StudioRpcs, WS_PATH } from '../rpc/studio.ts';
 
-// The surface itself, pinned. A procedure added to, removed from, or renamed
-// in any merged group changes what a deployed client may call and what the
-// audit policy walk must cover, so the tag list and the middleware each tag
-// carries are written out here by hand rather than computed from the groups —
-// a computed expectation would agree with any change.
-
 const STUDIO_TAGS = [
   'account.updateLocale',
   'audit.filterOptions',
@@ -36,15 +30,6 @@ const AUTHENTICATED = '@studio/Authenticated';
 const TEAM_ADMINISTRATION = '@studio/TeamAdministration';
 const REQUIRE_SESSION = '@studio/RequireSession';
 
-/**
- * Which middleware each merged procedure declares, sorted — the *set*, with the
- * order asserted separately below because it is load-bearing. `status` answers
- * before anyone has signed in and `setup.complete` is authorized by the
- * bootstrap token in its own payload, so those two carry none; every other
- * procedure on the rpc plane is a researcher-facing one and carries
- * `Authenticated`. `protocols.create` is the one admin-only procedure, so it
- * carries the tier gate as well.
- */
 const STUDIO_MIDDLEWARE: Record<
   (typeof STUDIO_TAGS)[number],
   ReadonlyArray<string>
@@ -71,11 +56,6 @@ const STUDIO_MIDDLEWARE: Record<
   'team.updateMemberRole': [AUTHENTICATED],
 };
 
-/**
- * `participant.redeem` spends a link before any session exists, so it is the
- * one participant procedure without `RequireSession` — which is why
- * `rpc/participant.ts` builds two groups and merges them.
- */
 const PARTICIPANT_MIDDLEWARE: Record<string, ReadonlyArray<string>> = {
   'participant.redeem': [],
   'participant.session': [REQUIRE_SESSION],
@@ -83,8 +63,6 @@ const PARTICIPANT_MIDDLEWARE: Record<string, ReadonlyArray<string>> = {
   'participant.finish': [REQUIRE_SESSION],
 };
 
-// The structural minimum this file reads off a declaration: enough to name the
-// middleware, and nothing that ties the helper to one group's rpc union.
 type DeclaredRpc = {
   readonly middlewares: ReadonlySet<{ readonly key: string }>;
 };
@@ -114,18 +92,6 @@ describe('StudioRpcs', () => {
     },
   );
 
-  /**
-   * The order, which the sorted assertion above cannot see and which decides
-   * whether `protocols.create` works at all.
-   *
-   * `RpcServer.applyMiddleware` walks an rpc's middleware set in INSERTION
-   * order rebinding `handler = middleware(handler)`, so the one inserted last
-   * is the outermost and runs first. `TeamAdministration` reads the `Principal`
-   * that `Authenticated` installs, so `Authenticated` has to be last. Reverse
-   * the two `.middleware()` calls in `rpc/protocols.ts` and this fails; the
-   * runtime and type-level consequences of that reversal are in
-   * `ordering-probe.test.ts`.
-   */
   it('declares Authenticated last on protocols.create, so it runs first', () => {
     const create = StudioRpcs.requests.get('protocols.create');
     if (create === undefined) throw new Error('protocols.create is not served');

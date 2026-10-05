@@ -53,13 +53,6 @@ export type OAuthTokenIdentity = {
  */
 const OAUTH_PREFIX = 'studio-secret:';
 
-/**
- * What the cipher does, as one function per place a secret is stored. Every
- * one of them is synchronous and none of them is typed to fail: a value that
- * will not open under the key it names is a defect, not an outcome a caller
- * can do anything with, and the boot gate (src/secrets/services.ts) is what
- * turns it into a refusal to start rather than a surprise at request time.
- */
 export type SecretsCipherApi = {
   /**
    * The id every `seal` writes under. Rotation reads it to select the rows

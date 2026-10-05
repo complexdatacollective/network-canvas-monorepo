@@ -17,25 +17,9 @@ import {
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
-// The image's third entry: `studio-api migrate`, the one-shot that creates the
-// schema (#1909). It runs once per deployment, never per replica, which is why
-// it is a command and not boot work — the web process and the worker only
-// verify the fingerprint (src/platform/schema-gate.ts).
-//
 // It connects as the login in DATABASE_URL rather than as either pinned role:
-// the statements create those roles, so the login needs `CREATEROLE` the first
-// time, exactly as `apply-schema` documents for a repository checkout.
-//
-// A one-shot `Effect` rather than a launched Layer: it runs to completion and
-// `NodeRuntime.runMain`'s teardown turns the outcome into the exit code — 0
-// when the schema is in place, 1 for a refusal, whose message is printed as
-// the failure.
-//
-// Everything it writes goes through one `OwnerDatabase` client, built once in
-// the program's scope and shared by the schema application and the bootstrap
-// token: one client value per identity per program (src/db/client.ts).
+// the statements create those roles.
 
-/** What every refusal from this command is: a message for whoever typed it. */
 class MigrateRefused extends Schema.TaggedError<MigrateRefused>()(
   'MigrateRefused',
   { reason: Schema.String },
@@ -45,7 +29,6 @@ class MigrateRefused extends Schema.TaggedError<MigrateRefused>()(
   }
 }
 
-/** A step of the migration that did not complete, reported by its own message. */
 class MigrateFailed extends Schema.TaggedError<MigrateFailed>()(
   'MigrateFailed',
   { cause: Schema.Defect() },
@@ -58,19 +41,11 @@ class MigrateFailed extends Schema.TaggedError<MigrateFailed>()(
 }
 
 /**
- * Written by `scripts/render-schema-ddl.ts` after `vite build`, so it sits
- * beside the emitted `dist/migrate.js` — read through `import.meta.url`
- * rather than the working directory, which a container runtime may set to
- * anything. Rollup rewrites `import.meta.url` to the emitted file's, and
- * every emitted file stays one level below the package root
- * (vite.config.ts), so the relative path holds wherever this module lands in
- * the bundle.
+ * Read through `import.meta.url` rather than the working directory, which a
+ * container runtime may set to anything.
  */
 const readSchemaDdl = Effect.tryPromise({
   try: async () =>
-    // Typed at the parse site: `@total-typescript/ts-reset` types `JSON.parse`
-    // as `unknown`, so the shape has to be stated before use; `verifySchemaDdl`
-    // inside `migrateDatabaseEffect` checks the fingerprint it carries.
     JSON.parse(
       await readFile(new URL('./schema-ddl.json', import.meta.url), 'utf8'),
     ) as SchemaDdl,
@@ -94,8 +69,6 @@ const migrate = Effect.gen(function* () {
     Effect.catch((cause) => new MigrateFailed({ cause })),
   );
 
-  // Defects too: a DDL document from another build is refused by a throw
-  // inside the program, and it is reported like any other failed step.
   yield* migrateDatabaseEffect(ddl, {
     log: (line) => Effect.runSync(Console.log(line)),
   }).pipe(
@@ -104,25 +77,14 @@ const migrate = Effect.gen(function* () {
     Effect.provide(owner),
   );
 
-  // After the schema, before anything runs against it (#1900): the check
-  // `apply-schema` runs in a checkout, so a database restored from a backup
-  // that does not match the keyring is caught by the command an operator ran
-  // by hand, with the output in front of them, rather than by the next
-  // container start. `Environment` already refused to run without a keyring
-  // at all. Before the bootstrap token, so a refused database never prints a
-  // token nobody should use.
+  // Before the bootstrap token, so a refused database never prints a token.
   yield* verifyKeyring.pipe(Effect.provide(SecretsCipher.layerFromEnvironment));
   yield* Console.log(
     'Stored secrets are readable with the configured keyring.',
   );
 
-  // First-run bootstrap (#1909): on a database nobody owns yet, issue the
-  // token `/setup` spends and print it once — rotating any earlier one, so a
-  // lost token is recovered by running this again. An owned instance issues
-  // nothing and prints nothing. After `migrateDatabaseEffect`, because the
-  // installation table exists only once its transaction has committed, and on
-  // the OWNER scope, because neither application role holds INSERT on it —
-  // arming an instance is deliberately not something the server can do.
+  // On the OWNER scope, because neither application role holds INSERT on the
+  // installation table.
   const token = yield* OwnerScope.open(issueBootstrapToken()).pipe(
     Effect.provide(owner),
     Effect.catch((cause) => new MigrateFailed({ cause })),
@@ -130,7 +92,6 @@ const migrate = Effect.gen(function* () {
   printBootstrapToken(token, env.auth?.baseUrl);
 });
 
-/** The command, with the environment decoded once at its root. */
 export const MigrateProgram = migrate.pipe(
   Effect.scoped,
   Effect.provide(

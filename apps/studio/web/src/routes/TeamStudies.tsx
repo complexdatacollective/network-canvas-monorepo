@@ -322,9 +322,6 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
                     : {
                         teamId,
                         name,
-                        // Checked rather than merely branded: an identifier
-                        // this screen mints and the schema then refuses is a
-                        // defect, not a refusal.
                         studyId: StudyId.make(createUuid()),
                         protocolId: ProtocolId.make(createUuid()),
                         draftId: DraftId.make(createUuid()),

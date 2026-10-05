@@ -179,7 +179,6 @@ const RACES: readonly Race[] = [
     name: 'presence arriving while a section is being read',
     read: 'GetSection',
     cause: async (host) => {
-      // A second watcher joining, held open once its first event is in.
       await new Promise<void>((joined) => {
         void host
           .asCollaborator(COLLABORATOR)
@@ -255,12 +254,6 @@ describe('an event arriving around an answer that is still in flight', () => {
     });
   }
 
-  /**
-   * The stream drops after the read was answered and before the next event,
-   * which is written while nothing is watching. The resume picks it up from
-   * the last cursor the channel was given — once: a revision delivered before
-   * the drop is not handed over again.
-   */
   it('ends with the newer state when the event lands while the stream is down', async () => {
     const race = RACES[0];
     if (race === undefined) throw new Error('no revision race');
@@ -280,8 +273,7 @@ describe('an event arriving around an answer that is still in flight', () => {
 
     gate.release();
     await settle();
-    // Past the channel's first reconnect delay, so a resume from the wrong
-    // cursor has had the chance to repeat itself.
+    // Past the channel's first reconnect delay.
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     expect(labelOf(cache, INFORMATION)).toBe('While the stream was down');
@@ -332,10 +324,6 @@ function Reader() {
   );
 }
 
-/**
- * The host with one procedure's answers held at a gate the test opens: the
- * host has formed the answer and the client does not have it yet.
- */
 function gatedRead(host: InMemoryHost, procedure: Read) {
   const gates: (() => void)[] = [];
   const held = <A,>(answer: A) =>
@@ -362,13 +350,6 @@ function gatedRead(host: InMemoryHost, procedure: Read) {
   };
 }
 
-/**
- * The adapter, recording each event the channel has finished with.
- *
- * An event is recorded once the channel's handler for it has returned, so a
- * test that waits for the record can read the cache knowing what the channel
- * did with that event is in it.
- */
 function handledEvents(adapter: ProtocolBuilderAdapter) {
   const handled: string[] = [];
   return {

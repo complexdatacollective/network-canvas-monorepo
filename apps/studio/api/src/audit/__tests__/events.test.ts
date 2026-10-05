@@ -112,15 +112,11 @@ describe('audit event registry', () => {
     ).toThrow();
   });
   it('decodes every fixture through the union to what its own definition decodes', () => {
-    // Mutation: drop a member from `AuditEventInputSchema` — its fixture no
-    // longer decodes through the union.
     for (const definition of Object.values(AUDIT_EVENT_REGISTRY)) {
       expect(decodeUnion(definition.fixture)).toEqual(
         parseAuditEventInput(definition.fixture),
       );
     }
-    // The one event type with two retained versions: each version's fixture
-    // keeps its own details, and neither version's details pass as the other.
     const v1 = AUDIT_EVENT_REGISTRY['team.invitation.cancelled@1'].fixture;
     const v2 = AUDIT_EVENT_REGISTRY['team.invitation.cancelled@2'].fixture;
     expect(decodeUnion(v1).details).toEqual({ role: 'member' });
@@ -130,8 +126,6 @@ describe('audit event registry', () => {
   });
 
   it('refuses an undeclared key at the top level and inside details', () => {
-    // Mutation: set `onExcessProperty` in `AUDIT_EVENT_PARSE_OPTIONS` to
-    // 'ignore' — both keys are then stripped and the event decodes.
     const fixture = AUDIT_EVENT_REGISTRY['team.invitation.created@1'].fixture;
     expect(parseAuditEventInput(fixture)).toEqual(fixture);
     expect(() =>
@@ -146,8 +140,6 @@ describe('audit event registry', () => {
   });
 
   it('bounds an email subject label at 320 characters', () => {
-    // Mutation: give `subjectLabel` an email schema without `isMaxLength(320)`
-    // — the 321-character address then decodes.
     const fixture = AUDIT_EVENT_REGISTRY['team.invitation.created@1'].fixture;
     const address = (length: number) =>
       `${'a'.repeat(length - '@example.com'.length)}@example.com`;
@@ -161,8 +153,6 @@ describe('audit event registry', () => {
   });
 
   it('holds requestId to the uuid rule z.uuid() applied', () => {
-    // Mutation: use `Schema.isUUID()` for `requestId` — it admits the
-    // upper-case max UUID, which z.uuid() refused.
     const fixture = AUDIT_EVENT_REGISTRY['protocol.created@1'].fixture;
     const accepts = (requestId: string) =>
       parseAuditEventInput({ ...fixture, requestId }).requestId === requestId;
@@ -186,8 +176,6 @@ describe('audit event registry', () => {
   });
 
   it('holds suppression timestamps to an offset date-time', () => {
-    // Mutation: drop the pattern check from the timestamp schema — the
-    // date-only string then decodes.
     const fixture =
       AUDIT_EVENT_REGISTRY['security.denied_attempts.rate_limited@1'].fixture;
     const withFirst = (firstSuppressedAt: string) => ({

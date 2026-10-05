@@ -1,10 +1,3 @@
-// `requireProtocol` against a role or grant that changes while the request is
-// in flight. `openTeam` reads the caller's role before the command's
-// transaction opens, so a check that trusted it would let a demoted Admin — or
-// a Member whose grant was just revoked — through. Each case holds the change
-// open in an owner transaction, starts the request, waits until the request is
-// blocked behind that transaction (or has already answered), and only then
-// commits: the answer has to be the committed state's.
 import { randomUUID } from 'node:crypto';
 
 import { Effect, type Exit, Option } from 'effect';
@@ -57,10 +50,6 @@ describe.skipIf(!testDb)(
     const clients: RpcTestClient[] = [];
     let admin: Researcher;
 
-    /**
-     * A team member whose `openTeam` always answers `staleRole`, whatever the
-     * row says by the time the request's transaction reads it.
-     */
     const addResearcher = async (
       slug: string,
       role: string,
@@ -126,12 +115,6 @@ describe.skipIf(!testDb)(
       };
     };
 
-    /**
-     * Runs `change` in an owner transaction held open across `request`, and
-     * commits it once the request is blocked behind that transaction or has
-     * already answered — so a request that never waits for the change is not
-     * given the time to see it by accident.
-     */
     const withChangeInFlight = async <A, E>(
       change: { statement: string; params: readonly unknown[] },
       request: () => Promise<Exit.Exit<A, E>>,
@@ -225,8 +208,6 @@ describe.skipIf(!testDb)(
           ),
       );
 
-      // A Member with no grant on the study cannot reach its line, and the
-      // committed role is Member — whatever `openTeam` read before.
       await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
       expect(await stageOrder(study)).toEqual({ stages: [] });
     });
@@ -270,8 +251,6 @@ describe.skipIf(!testDb)(
           ],
         ),
       );
-      // The grant reaches the line before the revocation, so the refusal below
-      // is the revocation's and not a line this Member never held.
       await member.client.call(
         member.client.rpc('protocols.draft', { teamId: TEAM_ID, ...study }),
       );

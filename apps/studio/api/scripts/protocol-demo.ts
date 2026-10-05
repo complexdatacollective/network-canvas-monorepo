@@ -160,14 +160,9 @@ const pool = createPool(env.db);
 
 const TEAM_ID = 'demo-team';
 
-// The store is an Effect over `@effect/sql-pg` now, and every one of its
-// functions requires the caller's `Transaction`. This demo has no command
-// layer to open one, so it opens a tenant scope per call — which is exactly
-// what the `ProtocolStore` it replaced did per method.
 const runtime = ManagedRuntime.make(
   Database.layer({ ...env.db, applicationName: 'studio-protocol-demo' }),
 );
-// The membership a command proves in production; a demo has no command.
 const access = unsafeMakeTeamAccess(TEAM_ID, 'owner');
 const inTeam = <A, E>(body: Effect.Effect<A, E, Transaction>): Promise<A> =>
   runtime.runPromise(TenantScope.open(access, body));
