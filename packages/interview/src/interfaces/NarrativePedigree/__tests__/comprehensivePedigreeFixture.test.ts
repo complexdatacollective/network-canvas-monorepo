@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { buildCegrmInterview } from '../CEGRM.stories';
 import { buildComprehensivePedigree } from '../comprehensivePedigreeFixture';
 
 // SyntheticInterview.getNetwork() fills any UNSET node attribute with a random
@@ -20,6 +22,27 @@ const YHL_VAR = 'hasYLinkedHearingLoss';
 const MITO_VAR = 'hasMitochondrialMyopathy';
 
 const SEEDS = [1, 2, 3, 4];
+
+describe('pedigree demonstration protocols', () => {
+  it.each([
+    ['comprehensive', buildComprehensivePedigree(1)],
+    ['CEGRM inherited statuses', buildCegrmInterview(11).si],
+    ['CEGRM recorded history', buildCegrmInterview(11, true).si],
+  ])(
+    'validates the %s scenario against the current schema',
+    async (_, interview) => {
+      const { schemaVersion, codebook, stages } = interview.getProtocol();
+      const result = await CurrentProtocolSchema.safeParseAsync({
+        name: 'Pedigree demonstration',
+        schemaVersion,
+        codebook,
+        stages,
+        assetManifest: {},
+      });
+      expect(result.success, JSON.stringify(result, null, 2)).toBe(true);
+    },
+  );
+});
 
 describe('comprehensive pedigree — deterministic synthetic data', () => {
   for (const seed of SEEDS) {

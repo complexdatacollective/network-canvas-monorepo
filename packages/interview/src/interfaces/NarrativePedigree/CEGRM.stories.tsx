@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -33,6 +35,7 @@ import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 const EGO_VAR = 'isEgo';
 const BIO_SEX_VAR = 'biologicalSex';
+const GENDER_VAR = 'gender';
 const REL_TO_EGO_VAR = 'relationshipToEgo';
 const CANCER_VAR = 'hasCancer';
 const KIN_TYPE_VAR = 'kinType';
@@ -71,21 +74,21 @@ const FAMILY_PEDIGREE_STAGE_INDEX = 1;
  * private membership (kin only) that scopes the pedigree interfaces so the
  * later-added friends do not appear on the family tree.
  */
-export function buildCegrmInterview(seed: number) {
+export function buildCegrmInterview(seed: number, recordedOnly = false) {
   const si = new SyntheticInterview(seed);
 
   // --- One Person node type for kin AND non-kin -------------------------------
   const person = si.addNodeType({
     name: 'Person',
     shape: {
-      default: 'circle',
+      default: 'diamond',
       dynamic: {
         type: 'discrete',
-        variable: BIO_SEX_VAR,
+        variable: GENDER_VAR,
         map: [
-          { value: 'male', shape: 'square' },
-          { value: 'female', shape: 'circle' },
-          { value: 'other', shape: 'diamond' },
+          { value: 'man', shape: 'square' },
+          { value: 'woman', shape: 'circle' },
+          { value: 'gender_diverse', shape: 'diamond' },
         ],
       },
     },
@@ -97,6 +100,16 @@ export function buildCegrmInterview(seed: number) {
   const NAME_VAR = person.addVariable({ name: 'name', type: 'text' }).id;
   person.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
   person.addVariable({ id: BIO_SEX_VAR, name: BIO_SEX_VAR, type: 'text' });
+  person.addVariable({
+    id: GENDER_VAR,
+    name: 'Gender',
+    type: 'categorical',
+    options: [
+      { value: 'man', label: 'Man' },
+      { value: 'woman', label: 'Woman' },
+      { value: 'gender_diverse', label: 'Gender diverse' },
+    ],
+  });
   person.addVariable({
     id: REL_TO_EGO_VAR,
     name: REL_TO_EGO_VAR,
@@ -133,10 +146,7 @@ export function buildCegrmInterview(seed: number) {
     id: REL_TYPE_VAR,
     name: REL_TYPE_VAR,
     type: 'categorical',
-    options: [
-      { label: 'biological', value: 'biological' },
-      { label: 'partner', value: 'partner' },
-    ],
+    options: RELATIONSHIP_TYPE_OPTIONS,
   });
   familyEdge.addVariable({
     id: IS_ACTIVE_VAR,
@@ -272,16 +282,18 @@ export function buildCegrmInterview(seed: number) {
   // Reads the committed FamilyPedigree membership (kin only), so the friends and
   // colleagues added since do not appear on the family tree.
   si.addStage('NarrativePedigree', {
-    label: 'Hereditary cancer risk',
+    label: recordedOnly ? 'Family health history' : 'Hereditary cancer risk',
     sourceStageId: fpStage.id,
-    showAtRiskStatuses: true,
+    showAtRiskStatuses: !recordedOnly,
     diseases: [
       {
         id: 'hboc',
-        label: 'Hereditary breast/ovarian cancer',
+        label: recordedOnly
+          ? 'Reported cancer history'
+          : 'Hereditary breast/ovarian cancer',
         color: 'node-color-seq-1',
         variable: CANCER_VAR,
-        inheritancePattern: 'autosomalDominant',
+        inheritancePattern: recordedOnly ? 'unknown' : 'autosomalDominant',
       },
     ],
   });
@@ -339,17 +351,20 @@ export function buildCegrmInterview(seed: number) {
   kin('mgm', {
     [NAME_VAR]: 'Rosa',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
   });
   kin('mgf', {
     [NAME_VAR]: 'Bill',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [KIN_TYPE_VAR]: ['biological'],
   });
   kin('pgm', {
     [NAME_VAR]: 'Mary',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [KIN_TYPE_VAR]: ['biological'],
     [DISSEMINATOR_VAR]: true,
     [INFO_IN_VAR]: true,
@@ -362,6 +377,7 @@ export function buildCegrmInterview(seed: number) {
   kin('pgf', {
     [NAME_VAR]: 'Simon',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [KIN_TYPE_VAR]: ['biological'],
   });
 
@@ -369,6 +385,7 @@ export function buildCegrmInterview(seed: number) {
   kin('mother', {
     [NAME_VAR]: 'Nancy',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
     [BARRIER_VAR]: true,
@@ -376,6 +393,7 @@ export function buildCegrmInterview(seed: number) {
   kin('father', {
     [NAME_VAR]: 'David',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [KIN_TYPE_VAR]: ['biological'],
     [INFO_IN_VAR]: true,
     [INFO_OUT_VAR]: true,
@@ -387,6 +405,7 @@ export function buildCegrmInterview(seed: number) {
   kin('aunt', {
     [NAME_VAR]: 'Carol',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
     [FEELINGS_IN_VAR]: true,
@@ -398,11 +417,13 @@ export function buildCegrmInterview(seed: number) {
     [NAME_VAR]: 'Jane',
     [EGO_VAR]: true,
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [KIN_TYPE_VAR]: ['biological'],
   });
   kin('sister', {
     [NAME_VAR]: 'Cynthia',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
     [INFO_IN_VAR]: true,
@@ -413,6 +434,7 @@ export function buildCegrmInterview(seed: number) {
   kin('husband', {
     [NAME_VAR]: 'Mark',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [KIN_TYPE_VAR]: ['affinal'],
     [INFO_IN_VAR]: true,
     [INFO_OUT_VAR]: true,
@@ -427,12 +449,14 @@ export function buildCegrmInterview(seed: number) {
   kin('daughter', {
     [NAME_VAR]: 'Ada',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [KIN_TYPE_VAR]: ['biological'],
     [SUPPORT_OUT_VAR]: true,
   });
   kin('son', {
     [NAME_VAR]: 'Sam',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [KIN_TYPE_VAR]: ['biological'],
   });
 
@@ -442,6 +466,7 @@ export function buildCegrmInterview(seed: number) {
   nonKin('bestfriend', {
     [NAME_VAR]: 'Priya',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [INFO_IN_VAR]: true,
     [INFO_OUT_VAR]: true,
     [SUPPORT_IN_VAR]: true,
@@ -452,11 +477,13 @@ export function buildCegrmInterview(seed: number) {
   nonKin('colleague', {
     [NAME_VAR]: 'Tom',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [INFO_IN_VAR]: true,
   });
   nonKin('childhoodfriend', {
     [NAME_VAR]: 'Beth',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [FEELINGS_IN_VAR]: true,
     [FEELINGS_OUT_VAR]: true,
   });
@@ -512,13 +539,21 @@ export function buildCegrmInterview(seed: number) {
   return { si, stageMetadata };
 }
 
-function CegrmWrapper({ seed, step }: { seed: number; step: number }) {
+function CegrmWrapper({
+  seed,
+  step,
+  recordedOnly = false,
+}: {
+  seed: number;
+  step: number;
+  recordedOnly?: boolean;
+}) {
   const rawPayload = useMemo(() => {
-    const { si, stageMetadata } = buildCegrmInterview(seed);
+    const { si, stageMetadata } = buildCegrmInterview(seed, recordedOnly);
     return SuperJSON.stringify(
       si.getInterviewPayload({ currentStep: step, stageMetadata }),
     );
-  }, [seed, step]);
+  }, [seed, step, recordedOnly]);
   return (
     <div className="h-screen">
       <StoryInterviewShell rawPayload={rawPayload} isDevelopment={false} />
@@ -544,6 +579,12 @@ type Story = StoryObj;
  */
 export const FullWalkthrough: Story = {
   render: () => <CegrmWrapper seed={11} step={0} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Your family and support network'),
+    ).toBeVisible();
+  },
 };
 
 /**
@@ -556,6 +597,34 @@ export const FullWalkthrough: Story = {
  */
 export const SupportNetwork: Story = {
   render: () => <CegrmWrapper seed={11} step={3} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Tom')).toBeVisible();
+    await expect(await canvas.findByText('Beth')).toBeVisible();
+  },
+};
+
+export const FamilyHealthNarrative: Story = {
+  render: () => <CegrmWrapper seed={11} step={4} recordedOnly />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Reported cancer history' }),
+    );
+    await expect(
+      await canvas.findByRole('button', { name: 'Focus on You' }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText('May develop this condition'),
+    ).not.toBeInTheDocument();
+  },
+};
+
+export const PedigreeStructure: Story = {
+  render: () => <CegrmWrapper seed={11} step={1} recordedOnly />,
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nancy')).toBeVisible();
+  },
 };
 
 /**
@@ -565,4 +634,21 @@ export const SupportNetwork: Story = {
  */
 export const HereditaryCancerRisk: Story = {
   render: () => <CegrmWrapper seed={11} step={4} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const condition = await canvas.findByRole('button', {
+      name: 'Hereditary breast/ovarian cancer',
+    });
+    await userEvent.click(condition);
+    await expect(condition).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Focus on You' }),
+    );
+    await expect(
+      canvas.getByRole('button', { name: 'Clear focus' }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole('button', { name: 'Focus on Tom' }),
+    ).not.toBeInTheDocument();
+  },
 };
