@@ -207,41 +207,22 @@ const updateRowSchema = z
             'must not repeat an app',
           ),
       ),
-    title: requiredText,
-    summary: optionalText,
-    details: optionalText,
     link: optionalText.pipe(internalPath.optional()),
   })
   .strict()
   .superRefine((row, context) => {
-    const allowed = {
-      launch: { summary: true, details: false, link: true },
-      featured: { summary: true, details: true, link: false },
-      normal: { summary: true, details: false, link: false },
-      mini: { summary: false, details: false, link: false },
-    }[row.prominence];
-
-    for (const field of ['summary', 'details', 'link'] as const) {
-      if (row[field] && !allowed[field]) {
-        context.addIssue({
-          code: 'custom',
-          path: [field],
-          message: `must be empty for a ${row.prominence} update`,
-        });
-      }
-    }
-    if (row.prominence !== 'mini' && !row.summary) {
-      context.addIssue({
-        code: 'custom',
-        path: ['summary'],
-        message: `is required for a ${row.prominence} update`,
-      });
-    }
     if (row.prominence === 'launch' && !row.link) {
       context.addIssue({
         code: 'custom',
         path: ['link'],
         message: 'is required for a launch update',
+      });
+    }
+    if (row.prominence !== 'launch' && row.link) {
+      context.addIssue({
+        code: 'custom',
+        path: ['link'],
+        message: `must be empty for a ${row.prominence} update`,
       });
     }
   });
@@ -459,21 +440,107 @@ export async function loadSiteContent(
   };
 }
 
+const DETAILS_MARKER = '<!-- more -->';
+
+const updateTextRules = {
+  launch: { summary: true, details: false },
+  featured: { summary: true, details: true },
+  normal: { summary: true, details: false },
+  mini: { summary: false, details: false },
+} as const satisfies Record<
+  UpdateProminence,
+  { summary: boolean; details: boolean }
+>;
+
+async function readUpdateText(
+  contentDirectory: string,
+  updateId: string,
+  locale: Locale,
+) {
+  // British English differs from American English only where an update says
+  // so, so it falls back to the American text.
+  const candidates = locale === 'en-GB' ? ['en-GB', 'en-US'] : [locale];
+  for (const candidate of candidates) {
+    const filename = `updates/${updateId}.${candidate}.md`;
+    try {
+      const source = await readFile(join(contentDirectory, filename), 'utf8');
+      return { filename, source };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+  throw new Error(`updates/${updateId}.${locale}.md: missing translation`);
+}
+
+function parseUpdateText(
+  filename: string,
+  source: string,
+  prominence: UpdateProminence,
+) {
+  const heading = /^# (.+)\n?/.exec(source.replace(/\r\n/g, '\n'));
+  const title = heading?.[1]?.trim();
+  if (!heading || !title) {
+    throw new Error(`${filename}: title: must start with a "# " heading`);
+  }
+
+  const body = source.replace(/\r\n/g, '\n').slice(heading[0].length);
+  const [summaryPart = '', detailsPart, ...rest] = body.split(DETAILS_MARKER);
+  if (rest.length > 0) {
+    throw new Error(`${filename}: details: must have one ${DETAILS_MARKER}`);
+  }
+  const summary = summaryPart.trim() || undefined;
+  const details = detailsPart?.trim() || undefined;
+  const rules = updateTextRules[prominence];
+
+  if (rules.summary && !summary) {
+    throw new Error(
+      `${filename}: summary: is required for a ${prominence} update`,
+    );
+  }
+  if (!rules.summary && summary) {
+    throw new Error(
+      `${filename}: summary: must be empty for a ${prominence} update`,
+    );
+  }
+  if (detailsPart !== undefined && !rules.details) {
+    throw new Error(
+      `${filename}: details: must be empty for a ${prominence} update`,
+    );
+  }
+
+  return { title, summary, details };
+}
+
 export async function loadUpdates(
+  locale: Locale,
   contentDirectory = join(process.cwd(), 'content'),
 ): Promise<Update[]> {
   const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
 
-  return rows
-    .map((row) => ({
-      id: row.id,
-      date: row.date,
-      prominence: row.prominence,
-      apps: row.apps,
-      title: row.title,
-      ...(row.summary ? { summary: row.summary } : {}),
-      ...(row.details ? { details: row.details } : {}),
-      ...(row.link ? { link: row.link } : {}),
-    }))
-    .toSorted((a, b) => b.date.localeCompare(a.date));
+  const updates = await Promise.all(
+    rows.map(async (row) => {
+      const { filename, source } = await readUpdateText(
+        contentDirectory,
+        row.id,
+        locale,
+      );
+      const { title, summary, details } = parseUpdateText(
+        filename,
+        source,
+        row.prominence,
+      );
+      return {
+        id: row.id,
+        date: row.date,
+        prominence: row.prominence,
+        apps: row.apps,
+        title,
+        ...(summary ? { summary } : {}),
+        ...(details ? { details } : {}),
+        ...(row.link ? { link: row.link } : {}),
+      };
+    }),
+  );
+
+  return updates.toSorted((a, b) => b.date.localeCompare(a.date));
 }

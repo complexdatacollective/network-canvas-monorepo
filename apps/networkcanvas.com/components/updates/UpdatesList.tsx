@@ -310,7 +310,6 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                       variant="subheading"
                       margin="none"
                       id={update.id}
-                      lang="en"
                       className={cx(
                         'scroll-mt-8',
                         titleSizes[update.prominence],
@@ -319,7 +318,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                       {update.title}
                     </Heading>
                     {update.summary ? (
-                      <div className="mt-3" lang="en">
+                      <div className="mt-3">
                         <RenderMarkdown
                           allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
                           components={markdownComponents}
@@ -330,7 +329,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                     ) : null}
                     {update.details ? (
                       <>
-                        <AccordionPanel inert={!open} lang="en">
+                        <AccordionPanel inert={!open}>
                           <RenderMarkdown
                             allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
                             components={markdownComponents}

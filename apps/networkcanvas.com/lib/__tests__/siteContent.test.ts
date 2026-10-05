@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -268,19 +268,30 @@ person,Person Name,Institution,Institución,机构,機構,Institution,Instelling
 describe('loadUpdates', () => {
   let directory: string;
 
-  beforeEach(async () => {
-    directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
+  async function writeUpdates(rows: string) {
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,prominence,apps,title,summary,details,link
-older,2026-01-05,launch,fresco,Older update,Older summary,,/older-announcement
-newer,2026-03-10,featured,architect|interviewer,Newer update,"Newer summary
-
-- A list item","### Heading
-
-Newer details",
-`,
+      `id,date,prominence,apps,link\n${rows}`,
     );
+  }
+
+  async function writeText(name: string, text: string) {
+    await writeFile(join(directory, 'updates', name), text);
+  }
+
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
+    await mkdir(join(directory, 'updates'));
+    await writeUpdates(`older,2026-01-05,launch,fresco,/older-announcement
+newer,2026-03-10,featured,architect|interviewer,
+`);
+    await writeText('older.en-US.md', '# Older update\n\nOlder summary\n');
+    await writeText(
+      'newer.en-US.md',
+      '# Newer update\n\nNewer summary\n\n- A list item\n\n<!-- more -->\n\n### Heading\n\nNewer details\n',
+    );
+    await writeText('older.es.md', '# Novedad anterior\n\nResumen anterior\n');
+    await writeText('newer.es.md', '# Novedad reciente\n\nResumen reciente\n');
   });
 
   afterEach(async () => {
@@ -288,7 +299,7 @@ Newer details",
   });
 
   it('orders updates newest first with their markdown intact', async () => {
-    await expect(loadUpdates(directory)).resolves.toEqual([
+    await expect(loadUpdates('en-US', directory)).resolves.toEqual([
       {
         id: 'newer',
         date: '2026-03-10',
@@ -310,28 +321,37 @@ Newer details",
     ]);
   });
 
-  it('rejects an update without a summary', async () => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,prominence,apps,title,summary,details,link
-older,2026-01-05,normal,fresco,Older update,,,
-`,
-    );
+  it('reads each update in the requested language', async () => {
+    const updates = await loadUpdates('es', directory);
 
-    await expect(loadUpdates(directory)).rejects.toThrow(
-      'updates.csv: row 2: summary:',
+    expect(updates.map(({ title, summary }) => ({ title, summary }))).toEqual([
+      { title: 'Novedad reciente', summary: 'Resumen reciente' },
+      { title: 'Novedad anterior', summary: 'Resumen anterior' },
+    ]);
+  });
+
+  it('rejects a language with a missing translation', async () => {
+    await writeText('older.de.md', '# Ältere Neuigkeit\n\nZusammenfassung\n');
+    await expect(loadUpdates('de', directory)).rejects.toThrow(
+      'updates/newer.de.md: missing translation',
     );
   });
 
-  it('accepts a mini update with only a title', async () => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,prominence,apps,title,summary,details,link
-tiny,2026-01-05,mini,fresco,Tiny update,,,
-`,
-    );
+  it('falls back to American English for British English', async () => {
+    await writeText('older.en-GB.md', '# Older update, localised\n\nSummary\n');
+    const updates = await loadUpdates('en-GB', directory);
 
-    await expect(loadUpdates(directory)).resolves.toEqual([
+    expect(updates.map(({ title }) => title)).toEqual([
+      'Newer update',
+      'Older update, localised',
+    ]);
+  });
+
+  it('accepts a mini update with only a title', async () => {
+    await writeUpdates('tiny,2026-01-05,mini,fresco,\n');
+    await writeText('tiny.en-US.md', '# Tiny update\n');
+
+    await expect(loadUpdates('en-US', directory)).resolves.toEqual([
       {
         id: 'tiny',
         date: '2026-01-05',
@@ -343,74 +363,87 @@ tiny,2026-01-05,mini,fresco,Tiny update,,,
   });
 
   it.each([
-    ['an unknown prominence', 'major,fresco,Title,Summary,,', 'prominence:'],
-    ['a launch without a link', 'launch,fresco,Title,Summary,,', 'link:'],
     [
-      'a launch with details',
-      'launch,fresco,Title,Summary,Details,/a',
-      'details:',
+      'an unknown prominence',
+      'major,fresco,',
+      'updates.csv: row 2: prominence:',
     ],
+    ['a launch without a link', 'launch,fresco,', 'updates.csv: row 2: link:'],
     [
       'a featured update with a link',
-      'featured,fresco,Title,Summary,,/a',
-      'link:',
+      'featured,fresco,/a',
+      'updates.csv: row 2: link:',
+    ],
+    [
+      'a normal update with a link',
+      'normal,fresco,/a',
+      'updates.csv: row 2: link:',
+    ],
+    [
+      'an app it does not know',
+      'normal,fresco|studio,',
+      'updates.csv: row 2: apps:',
+    ],
+  ])('rejects a row with %s', async (_, fields, message) => {
+    await writeUpdates(`row,2026-01-05,${fields}\n`);
+    await writeText('row.en-US.md', '# Title\n\nSummary\n');
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(message);
+  });
+
+  it.each([
+    ['without a title', 'normal', 'Summary only\n', 'title:'],
+    ['without a summary', 'normal', '# Title\n', 'summary:'],
+    [
+      'a launch with details',
+      'launch',
+      '# Title\n\nSummary\n\n<!-- more -->\n\nDetails\n',
+      'details:',
     ],
     [
       'a normal update with details',
-      'normal,fresco,Title,Summary,Details,',
+      'normal',
+      '# Title\n\nSummary\n\n<!-- more -->\n\nDetails\n',
       'details:',
     ],
-    ['a mini update with a summary', 'mini,fresco,Title,Summary,,', 'summary:'],
-  ])('rejects %s', async (_, fields, field) => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,prominence,apps,title,summary,details,link
-older,2026-01-05,${fields}
-`,
-    );
+    [
+      'a mini update with a summary',
+      'mini',
+      '# Title\n\nSummary\n',
+      'summary:',
+    ],
+    [
+      'two details markers',
+      'featured',
+      '# Title\n\nA\n\n<!-- more -->\n\nB\n\n<!-- more -->\n\nC\n',
+      'details:',
+    ],
+  ])('rejects text %s', async (_, prominence, text, field) => {
+    const link = prominence === 'launch' ? '/a' : '';
+    await writeUpdates(`row,2026-01-05,${prominence},fresco,${link}\n`);
+    await writeText('row.en-US.md', text);
 
-    await expect(loadUpdates(directory)).rejects.toThrow(
-      `updates.csv: row 2: ${field}`,
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+      `updates/row.en-US.md: ${field}`,
     );
   });
 
   it('rejects a link that leaves the site', async () => {
     for (const link of ['//attacker.example', '/\\attacker.example']) {
-      await writeFile(
-        join(directory, 'updates.csv'),
-        `id,date,prominence,apps,title,summary,details,link
-older,2026-01-05,launch,fresco,Older update,Older summary,,${link}
-`,
-      );
+      await writeUpdates(`row,2026-01-05,launch,fresco,${link}\n`);
+      await writeText('row.en-US.md', '# Title\n\nSummary\n');
 
-      await expect(loadUpdates(directory)).rejects.toThrow(
+      await expect(loadUpdates('en-US', directory)).rejects.toThrow(
         'updates.csv: row 2: link:',
       );
     }
   });
 
-  it('rejects an app it does not know', async () => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,prominence,apps,title,summary,details,link
-older,2026-01-05,normal,fresco|studio,Older update,Older summary,,
-`,
-    );
-
-    await expect(loadUpdates(directory)).rejects.toThrow(
-      'updates.csv: row 2: apps:',
-    );
-  });
-
   it('rejects a date that is not an ISO calendar date', async () => {
-    await writeFile(
-      join(directory, 'updates.csv'),
-      `id,date,prominence,apps,title,summary,details,link
-older,05/01/2026,normal,fresco,Older update,Older summary,,
-`,
-    );
+    await writeUpdates('row,05/01/2026,normal,fresco,\n');
+    await writeText('row.en-US.md', '# Title\n\nSummary\n');
 
-    await expect(loadUpdates(directory)).rejects.toThrow(
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
       'updates.csv: row 2: date:',
     );
   });
