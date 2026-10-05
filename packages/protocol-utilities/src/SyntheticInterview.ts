@@ -3,7 +3,9 @@ import { invariant } from 'es-toolkit';
 import {
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
-  type Item,
+  escapeMessageText,
+  type LocalizedString,
+  messageText,
   type Stage,
   type StageType,
   type StructuralCodebook,
@@ -87,6 +89,8 @@ import type {
   FormFieldInput,
   GeospatialPromptEntry,
   GetSessionInput,
+  ItemInput,
+  LocalizationInput,
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
   NetworkComposerFormFieldEntry,
@@ -96,9 +100,11 @@ import type {
   OneToManyDyadCensusPromptEntry,
   OrdinalBinPromptEntry,
   PresetEntry,
+  PromptEntry,
   SkipLogicInput,
   SociogramPromptEntry,
   StageEntry,
+  TextInput,
   TieStrengthCensusPromptEntry,
   VariableEntry,
 } from './types.ts';
@@ -181,15 +187,15 @@ type StageHandleBase = {
 type AddFormFieldOpts = {
   component: ComponentType;
   variable?: string;
-  prompt?: string;
-  hint?: string;
+  prompt?: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
 };
 
 type AddPanelOpts = {
-  title?: string;
+  title?: TextInput;
   dataSource?: string;
   filter?: FilterInput;
 };
@@ -262,6 +268,7 @@ type GeospatialHandle = StageHandleBase & {
 };
 
 type NarrativePedigreeHandle = StageHandleBase;
+type LanguageChooserHandle = StageHandleBase;
 type NetworkComposerHandle = StageHandleBase & {
   // Each call appends an entry to the stage's `edges[]`, returning the edge
   // type id so callers can seed edges of that type via `addEdges`.
@@ -289,6 +296,7 @@ type StageHandleMap = {
   Geospatial: GeospatialHandle;
   NarrativePedigree: NarrativePedigreeHandle;
   NetworkComposer: NetworkComposerHandle;
+  LanguageChooser: LanguageChooserHandle;
 };
 
 // Stage types that have no subject (node/edge)
@@ -297,6 +305,7 @@ const SUBJECTLESS_STAGES = new Set<StageType>([
   'Information',
   'Anonymisation',
   'NarrativePedigree',
+  'LanguageChooser',
 ]);
 
 // Stage types where the subject is an edge, not a node
@@ -304,6 +313,11 @@ const EDGE_SUBJECT_STAGES = new Set<StageType>(['AlterEdgeForm']);
 
 /** Shared default for deterministic synthetic interview fixtures. */
 export const DEFAULT_SYNTHETIC_SEED = 42;
+
+const DEFAULT_LOCALIZATION: LocalizationInput = {
+  defaultLocale: 'en-US',
+  locales: ['en-US'],
+};
 
 export class SyntheticInterview {
   private seed: number;
@@ -320,6 +334,7 @@ export class SyntheticInterview {
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
   private experiments: { encryptedVariables?: boolean } | null = null;
+  private localization: LocalizationInput = DEFAULT_LOCALIZATION;
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
@@ -341,6 +356,7 @@ export class SyntheticInterview {
     const entry: NodeTypeEntry = {
       id,
       name: opts?.name ?? `Person ${this.nodeTypeCounter}`,
+      label: opts?.label,
       color: opts?.color ?? NODE_COLORS[colorIndex]!,
       icon: opts?.icon ?? 'add-a-person',
       shape: opts?.shape ?? { default: 'circle' },
@@ -379,6 +395,7 @@ export class SyntheticInterview {
     const entry: EdgeTypeEntry = {
       id,
       name: opts?.name ?? `Edge ${this.edgeTypeCounter}`,
+      label: opts?.label,
       color: opts?.color ?? EDGE_COLORS[colorIndex]!,
       variables: new Map(),
     };
@@ -428,6 +445,7 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name,
+      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -468,6 +486,7 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name,
+      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -497,6 +516,7 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name: opts?.name ?? this.defaultVariableName(type),
+      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -767,6 +787,10 @@ export class SyntheticInterview {
       }
     }
 
+    if (type === 'LanguageChooser' && opts?.introduction !== undefined) {
+      entry.introduction = opts.introduction;
+    }
+
     // NetworkComposer
     if (type === 'NetworkComposer') {
       if (subject?.entity !== 'node') {
@@ -864,12 +888,12 @@ export class SyntheticInterview {
   }
 
   addInformationStage(opts?: {
-    title?: string;
-    text?: string;
-    label?: string;
+    title?: TextInput;
+    text?: TextInput;
+    label?: TextInput;
     interviewScript?: string;
     skipLogic?: SkipLogicInput;
-    items?: Item[];
+    items?: ItemInput[];
   }): InformationHandle {
     const stageId = this.nextId('stage');
     const title = opts?.title ?? 'Information';
@@ -1108,6 +1132,7 @@ export class SyntheticInterview {
         } as StageHandleMap[T];
 
       case 'NarrativePedigree':
+      case 'LanguageChooser':
         return base as StageHandleMap[T];
       case 'NetworkComposer':
         return {
@@ -1159,6 +1184,18 @@ export class SyntheticInterview {
     return undefined;
   }
 
+  /**
+   * The name a variable auto-created for a field takes from the field's
+   * caption: the caption itself, or its default-locale text when it is a
+   * locale map.
+   */
+  private variableNameFrom(caption: TextInput | undefined): string | undefined {
+    if (caption === undefined || typeof caption === 'string') return caption;
+    const message =
+      caption[this.localization.defaultLocale] ?? Object.values(caption)[0];
+    return message === undefined ? undefined : messageText(message);
+  }
+
   private defaultVariableName(type: VariableType): string {
     const names: Record<string, string> = {
       text: 'textValue',
@@ -1180,7 +1217,7 @@ export class SyntheticInterview {
       // Auto-create variable from component type
       const ref = this.addVariableToNodeType(nodeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name: this.variableNameFrom(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1208,7 +1245,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name: this.variableNameFrom(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1238,7 +1275,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         component: input.component,
-        name: input.label,
+        name: this.variableNameFrom(input.label),
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1265,7 +1302,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
         component: input.component,
-        name: input.label,
+        name: this.variableNameFrom(input.label),
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1289,7 +1326,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addEgoVariable({
         component: input.component,
-        name: input.prompt,
+        name: this.variableNameFrom(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1652,6 +1689,10 @@ export class SyntheticInterview {
     return {
       id: `protocol-${this.seed}`,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      localization: {
+        defaultLocale: this.localization.defaultLocale,
+        locales: [...this.localization.locales],
+      },
       codebook,
       // Stage configs are built dynamically and satisfy the Stage schema
       // at runtime, but TypeScript can't verify this statically.
@@ -2336,24 +2377,61 @@ export class SyntheticInterview {
     };
   }
 
+  /**
+   * Participant-facing text in protocol form: a plain string becomes the
+   * default locale's ICU literal message, and a locale map is kept as written.
+   */
+  private localized(text: TextInput): LocalizedString {
+    return typeof text === 'string'
+      ? { [this.localization.defaultLocale]: escapeMessageText(text) }
+      : text;
+  }
+
+  // A scale's end labels are participant copy; every other parameter is
+  // configuration and passes through unchanged.
+  private localizedParameters(
+    parameters: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const result = { ...parameters };
+    for (const key of ['minLabel', 'maxLabel']) {
+      const value = parameters[key];
+      if (typeof value === 'string') result[key] = this.localized(value);
+    }
+    return result;
+  }
+
+  private buildVariable(entry: VariableEntry): Record<string, unknown> {
+    const variable: Record<string, unknown> = {
+      name: entry.name,
+      label: this.localized(entry.label ?? entry.name),
+      type: entry.type,
+    };
+    if (entry.component) variable.component = entry.component;
+    if (entry.options) {
+      variable.options = entry.options.map((option) => ({
+        ...option,
+        label: this.localized(option.label),
+      }));
+    }
+    if (entry.validation) variable.validation = entry.validation;
+    if (entry.parameters) {
+      variable.parameters = this.localizedParameters(entry.parameters);
+    }
+    return variable;
+  }
+
   private buildCodebook() {
     const node: Record<string, unknown> = {};
     for (const [id, entry] of this.nodeTypes) {
       const variables: Record<string, unknown> = {};
       for (const [varId, varEntry] of entry.variables) {
-        const variable: Record<string, unknown> = {
-          name: varEntry.name,
-          type: varEntry.type,
-        };
-        if (varEntry.component) variable.component = varEntry.component;
-        if (varEntry.options) variable.options = varEntry.options;
-        if (varEntry.validation) variable.validation = varEntry.validation;
-        if (varEntry.parameters) variable.parameters = varEntry.parameters;
+        const variable = this.buildVariable(varEntry);
         if (varEntry.encrypted) variable.encrypted = varEntry.encrypted;
         variables[varId] = variable;
       }
       node[id] = {
         name: entry.name,
+        label: this.localized(entry.label ?? entry.name),
         color: entry.color,
         icon: entry.icon,
         shape: entry.shape,
@@ -2365,21 +2443,14 @@ export class SyntheticInterview {
     for (const [id, entry] of this.edgeTypes) {
       const edgeEntry: Record<string, unknown> = {
         name: entry.name,
+        label: this.localized(entry.label ?? entry.name),
         color: entry.color,
       };
       // Serialize edge type variables if any exist
       if (entry.variables.size > 0) {
         const variables: Record<string, unknown> = {};
         for (const [varId, varEntry] of entry.variables) {
-          const variable: Record<string, unknown> = {
-            name: varEntry.name,
-            type: varEntry.type,
-          };
-          if (varEntry.component) variable.component = varEntry.component;
-          if (varEntry.options) variable.options = varEntry.options;
-          if (varEntry.validation) variable.validation = varEntry.validation;
-          if (varEntry.parameters) variable.parameters = varEntry.parameters;
-          variables[varId] = variable;
+          variables[varId] = this.buildVariable(varEntry);
         }
         edgeEntry.variables = variables;
       }
@@ -2391,15 +2462,7 @@ export class SyntheticInterview {
     if (this.egoVariables.size > 0) {
       const variables: Record<string, unknown> = {};
       for (const [varId, varEntry] of this.egoVariables) {
-        const variable: Record<string, unknown> = {
-          name: varEntry.name,
-          type: varEntry.type,
-        };
-        if (varEntry.component) variable.component = varEntry.component;
-        if (varEntry.options) variable.options = varEntry.options;
-        if (varEntry.validation) variable.validation = varEntry.validation;
-        if (varEntry.parameters) variable.parameters = varEntry.parameters;
-        variables[varId] = variable;
+        variables[varId] = this.buildVariable(varEntry);
       }
       ego = { variables };
     }
@@ -2407,11 +2470,52 @@ export class SyntheticInterview {
     return { node, edge, ego };
   }
 
+  private buildPrompt(prompt: PromptEntry): Record<string, unknown> {
+    const built: Record<string, unknown> = {
+      ...prompt,
+      text: this.localized(prompt.text),
+    };
+    if ('otherVariablePrompt' in prompt && prompt.otherVariablePrompt) {
+      built.otherVariablePrompt = this.localized(prompt.otherVariablePrompt);
+    }
+    if ('otherOptionLabel' in prompt && prompt.otherOptionLabel) {
+      built.otherOptionLabel = this.localized(prompt.otherOptionLabel);
+    }
+    if ('negativeLabel' in prompt) {
+      built.negativeLabel = this.localized(prompt.negativeLabel);
+    }
+    return built;
+  }
+
+  private buildItem(item: ItemInput): Record<string, unknown> {
+    if (item.type === 'text') {
+      return { ...item, content: this.localized(item.content) };
+    }
+    return item.description === undefined
+      ? item
+      : { ...item, description: this.localized(item.description) };
+  }
+
+  private buildComposerField(
+    field: NetworkComposerFormFieldEntry,
+  ): Record<string, unknown> {
+    return {
+      ...field,
+      ...(field.parameters
+        ? { parameters: this.localizedParameters(field.parameters) }
+        : {}),
+      ...(field.label !== undefined
+        ? { label: this.localized(field.label) }
+        : {}),
+      ...(field.hint !== undefined ? { hint: this.localized(field.hint) } : {}),
+    };
+  }
+
   private buildStageConfig(stage: StageEntry): unknown {
     const config: Record<string, unknown> = {
       id: stage.id,
       type: stage.type,
-      label: stage.label,
+      label: this.localized(stage.label),
     };
 
     if (stage.interviewScript !== undefined) {
@@ -2433,26 +2537,39 @@ export class SyntheticInterview {
     }
 
     if (stage.form) {
+      const fields = stage.form.fields.map((field) => ({
+        ...field,
+        prompt: this.localized(field.prompt),
+        ...(field.hint !== undefined
+          ? { hint: this.localized(field.hint) }
+          : {}),
+      }));
       // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm forms must not
       // carry a title; every other form stage keeps it.
       config.form =
         stage.type === 'AlterForm' ||
         stage.type === 'AlterEdgeForm' ||
         stage.type === 'EgoForm'
-          ? { fields: stage.form.fields }
-          : stage.form;
+          ? { fields }
+          : { title: this.localized(stage.form.title), fields };
     }
 
     if (stage.prompts.length > 0) {
-      config.prompts = stage.prompts;
+      config.prompts = stage.prompts.map((prompt) => this.buildPrompt(prompt));
     }
 
     if (stage.presets.length > 0) {
-      config.presets = stage.presets;
+      config.presets = stage.presets.map((preset) => ({
+        ...preset,
+        label: this.localized(preset.label),
+      }));
     }
 
     if (stage.panels.length > 0) {
-      config.panels = stage.panels;
+      config.panels = stage.panels.map((panel) => ({
+        ...panel,
+        title: this.localized(panel.title),
+      }));
     }
 
     if (stage.background) {
@@ -2464,15 +2581,18 @@ export class SyntheticInterview {
     }
 
     if (stage.introductionPanel) {
-      config.introductionPanel = stage.introductionPanel;
+      config.introductionPanel = {
+        title: this.localized(stage.introductionPanel.title),
+        text: this.localized(stage.introductionPanel.text),
+      };
     }
 
     if (stage.title !== undefined) {
-      config.title = stage.title;
+      config.title = this.localized(stage.title);
     }
 
     if (stage.items) {
-      config.items = stage.items;
+      config.items = stage.items.map((item) => this.buildItem(item));
     }
 
     // NameGeneratorQuickAdd
@@ -2485,10 +2605,26 @@ export class SyntheticInterview {
       config.dataSource = stage.dataSource;
     }
     if (stage.cardOptions) {
-      config.cardOptions = stage.cardOptions;
+      const properties = stage.cardOptions.additionalProperties;
+      config.cardOptions = properties
+        ? {
+            additionalProperties: properties.map((property) => ({
+              ...property,
+              label: this.localized(property.label),
+            })),
+          }
+        : {};
     }
     if (stage.sortOptions) {
-      config.sortOptions = stage.sortOptions;
+      config.sortOptions = {
+        sortOrder: stage.sortOptions.sortOrder,
+        sortableProperties: stage.sortOptions.sortableProperties.map(
+          (property) => ({
+            ...property,
+            label: this.localized(property.label),
+          }),
+        ),
+      };
     }
     if (stage.searchOptions) {
       config.searchOptions = stage.searchOptions;
@@ -2496,7 +2632,10 @@ export class SyntheticInterview {
 
     // Anonymisation
     if (stage.explanationText) {
-      config.explanationText = stage.explanationText;
+      config.explanationText = {
+        title: this.localized(stage.explanationText.title),
+        body: this.localized(stage.explanationText.body),
+      };
     }
     if (stage.validation) {
       config.validation = stage.validation;
@@ -2506,12 +2645,22 @@ export class SyntheticInterview {
     if (stage.type === 'FamilyPedigree') {
       if (stage.nodeConfig) config.nodeConfig = stage.nodeConfig;
       if (stage.edgeConfig) config.edgeConfig = stage.edgeConfig;
-      if (stage.censusPrompt) config.censusPrompt = stage.censusPrompt;
-      if (stage.nominationPrompts?.length)
-        config.nominationPrompts = stage.nominationPrompts;
+      if (stage.censusPrompt) {
+        config.censusPrompt = this.localized(stage.censusPrompt);
+      }
+      if (stage.nominationPrompts?.length) {
+        config.nominationPrompts = stage.nominationPrompts.map((prompt) => ({
+          ...prompt,
+          text: this.localized(prompt.text),
+        }));
+      }
       if (stage.framing) config.framing = stage.framing;
       if (stage.boundaries) config.boundaries = stage.boundaries;
-      if (stage.introScreen) config.introScreen = stage.introScreen;
+      if (stage.introScreen) {
+        config.introScreen = {
+          items: stage.introScreen.items.map((item) => this.buildItem(item)),
+        };
+      }
     }
 
     // Geospatial
@@ -2525,9 +2674,9 @@ export class SyntheticInterview {
         config.sourceStageId = stage.narrativePedigreeSourceStageId;
       }
       if (stage.narrativePedigreeDiseases) {
-        config.diseases = stage.narrativePedigreeDiseases.map((d) => ({
-          ...d,
-          variable: d.variable,
+        config.diseases = stage.narrativePedigreeDiseases.map((disease) => ({
+          ...disease,
+          label: this.localized(disease.label),
         }));
       }
       config.showAtRiskStatuses =
@@ -2537,12 +2686,33 @@ export class SyntheticInterview {
     // NetworkComposer (quickAdd is serialized by the shared block above)
     if (stage.type === 'NetworkComposer') {
       if (stage.layoutVariable) config.layoutVariable = stage.layoutVariable;
-      if (stage.nodeForm) config.nodeForm = stage.nodeForm;
+      if (stage.nodeForm) {
+        config.nodeForm = {
+          fields: stage.nodeForm.fields.map((field) =>
+            this.buildComposerField(field),
+          ),
+        };
+      }
       if (stage.convexHullVariable)
         config.convexHullVariable = stage.convexHullVariable;
       if (stage.networkComposerEdges) {
-        config.edges = stage.networkComposerEdges;
+        config.edges = stage.networkComposerEdges.map((edge) => ({
+          ...edge,
+          ...(edge.form
+            ? {
+                form: {
+                  fields: edge.form.fields.map((field) =>
+                    this.buildComposerField(field),
+                  ),
+                },
+              }
+            : {}),
+        }));
       }
+    }
+
+    if (stage.type === 'LanguageChooser' && stage.introduction !== undefined) {
+      config.introduction = this.localized(stage.introduction);
     }
 
     return config;
@@ -2689,6 +2859,15 @@ export class SyntheticInterview {
    */
   addAsset(asset: Record<string, unknown>): void {
     this.assets.push(asset);
+  }
+
+  /**
+   * Set the protocol's languages, emitted by getProtocol(). Plain-string text
+   * is written in `defaultLocale` whenever the protocol is built, so this may
+   * be called before or after the stages are added.
+   */
+  setLocalization(localization: LocalizationInput): void {
+    this.localization = localization;
   }
 
   /**

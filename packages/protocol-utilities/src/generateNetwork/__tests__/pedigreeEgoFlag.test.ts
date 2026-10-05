@@ -115,8 +115,8 @@ describe('FamilyPedigree fixed-value constraints', () => {
     const sex = invalid.node?.person?.variables?.sex;
     if (sex && sex.type === 'categorical') {
       sex.options = [
-        { value: 'unknown', label: 'Unknown' },
-        { value: 'preferNotToSay', label: 'Prefer not to say' },
+        { value: 'unknown', label: { 'en-US': 'Unknown' } },
+        { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
       ];
     }
     expect(() =>

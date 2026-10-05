@@ -4,17 +4,31 @@ import type {
   FamilyPedigreeBoundaries,
   FamilyPedigreeEdgeConfigInput,
   FamilyPedigreeFraming,
-  FamilyPedigreeIntroItem,
   FamilyPedigreeNodeConfigInput,
   FamilyPedigreeNominationPromptInput,
   EdgeColorReference,
   FilterOperator,
   Item,
+  LocaleTag,
+  LocalizedString,
   NodeColorReference,
   OrdinalColorReference,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
+
+/**
+ * Participant-facing text. A plain string is plain text in the protocol's
+ * default locale and is escaped into an ICU literal message on output; a
+ * locale map is emitted as written, so its values must already be ICU literal
+ * messages.
+ */
+export type TextInput = string | LocalizedString;
+
+export type LocalizationInput = {
+  defaultLocale: LocaleTag;
+  locales: readonly LocaleTag[];
+};
 
 /**
  * Structural (unbranded) filter input. The real `Filter` type brands
@@ -55,7 +69,7 @@ export type SkipLogicInput = {
  * union does not admit.
  */
 export type VariableOptionInput = {
-  label: string;
+  label: TextInput;
   value: string | number | boolean;
   negative?: boolean;
 };
@@ -63,6 +77,8 @@ export type VariableOptionInput = {
 export type VariableEntry = {
   id: string;
   name: string;
+  // Codebook label; the variable's name when omitted.
+  label?: TextInput;
   type: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];
@@ -88,6 +104,7 @@ type ShapeMapping =
 export type NodeTypeEntry = {
   id: string;
   name: string;
+  label?: TextInput;
   color: NodeColorReference;
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
@@ -97,19 +114,20 @@ export type NodeTypeEntry = {
 export type EdgeTypeEntry = {
   id: string;
   name: string;
+  label?: TextInput;
   color: EdgeColorReference;
   variables: Map<string, VariableEntry>;
 };
 
 export type NameGeneratorPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   additionalAttributes?: { variable: string; value: boolean }[];
 };
 
 export type SociogramPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   layout: {
     layoutVariable: string;
   };
@@ -131,13 +149,13 @@ type SortRule = {
 
 export type DyadCensusPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   createEdge: string;
 };
 
 export type OneToManyDyadCensusPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   createEdge: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
@@ -145,7 +163,7 @@ export type OneToManyDyadCensusPromptEntry = {
 
 export type OrdinalBinPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   variable: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
@@ -154,32 +172,32 @@ export type OrdinalBinPromptEntry = {
 
 export type CategoricalBinPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   variable: string;
   otherVariable?: string;
-  otherVariablePrompt?: string;
-  otherOptionLabel?: string;
+  otherVariablePrompt?: TextInput;
+  otherOptionLabel?: TextInput;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
 };
 
 export type TieStrengthCensusPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   createEdge: string;
   edgeVariable: string;
-  negativeLabel: string;
+  negativeLabel: TextInput;
 };
 
 export type DiseaseNominationStepEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   variable: string;
 };
 
 export type GeospatialPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   variable: string;
 };
 
@@ -195,7 +213,7 @@ type MapOptionsEntry = {
   allowSearch?: boolean;
 };
 
-type PromptEntry =
+export type PromptEntry =
   | NameGeneratorPromptEntry
   | SociogramPromptEntry
   | DyadCensusPromptEntry
@@ -207,7 +225,7 @@ type PromptEntry =
 
 export type PresetEntry = {
   id: string;
-  label: string;
+  label: TextInput;
   layoutVariable: string;
   edges?: {
     display: string[];
@@ -218,8 +236,9 @@ export type PresetEntry = {
 
 type FormFieldEntry = {
   variable: string;
-  component?: ComponentType;
-  prompt?: string;
+  prompt: TextInput;
+  hint?: TextInput;
+  showValidationHints?: boolean;
 };
 
 // Unlike the shared form fields' `prompt`, composer attribute fields caption
@@ -229,8 +248,8 @@ export type NetworkComposerFormFieldEntry = {
   variable: string;
   component: ComponentType;
   parameters?: Record<string, unknown>;
-  label?: string;
-  hint?: string;
+  label?: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
 };
 
@@ -243,21 +262,49 @@ export type NetworkComposerEdgeEntry = {
 };
 
 type FormEntry = {
-  title: string;
+  title: TextInput;
   fields: FormFieldEntry[];
 };
 
 type PanelEntry = {
   id: string;
-  title: string;
+  title: TextInput;
   dataSource: string;
   filter?: FilterInput;
 };
 
+type TextItemInput = {
+  id: string;
+  type: 'text';
+  content: TextInput;
+  // A researcher note, never shown to participants, so it is not localized.
+  description?: string;
+};
+
+type AssetItemInput = {
+  id: string;
+  type: 'asset';
+  content: string;
+  description?: TextInput;
+};
+
+export type ItemInput =
+  | TextItemInput
+  | (AssetItemInput & { size?: Extract<Item, { type: 'asset' }>['size'] });
+
+// The pedigree intro screen has no item-resizing UI, so its asset items carry
+// no `size`.
+export type IntroItemInput = TextItemInput | AssetItemInput;
+
+export type NominationPromptInput = Omit<
+  FamilyPedigreeNominationPromptInput,
+  'text'
+> & { text: TextInput };
+
 export type StageEntry = {
   id: string;
   type: StageType;
-  label: string;
+  label: TextInput;
   interviewScript?: string;
   skipLogic?: SkipLogicInput;
   filter?: FilterInput;
@@ -280,22 +327,22 @@ export type StageEntry = {
     maxNodes?: number;
   };
   introductionPanel?: {
-    title: string;
-    text: string;
+    title: TextInput;
+    text: TextInput;
   };
-  title?: string;
-  items?: Item[];
+  title?: TextInput;
+  items?: ItemInput[];
   initialEdges: [number, number][];
   // NameGeneratorQuickAdd
   quickAdd?: string;
   // NameGeneratorRoster
   dataSource?: string;
   cardOptions?: {
-    additionalProperties?: { label: string; variable: string }[];
+    additionalProperties?: { label: TextInput; variable: string }[];
   };
   sortOptions?: {
     sortOrder: SortRule[];
-    sortableProperties: { variable: string; label: string }[];
+    sortableProperties: { variable: string; label: TextInput }[];
   };
   searchOptions?: {
     fuzziness: number;
@@ -303,8 +350,8 @@ export type StageEntry = {
   };
   // Anonymisation
   explanationText?: {
-    title: string;
-    body: string;
+    title: TextInput;
+    body: TextInput;
   };
   validation?: { minLength?: number; maxLength?: number };
   // TieStrengthCensus (edge type reference on stage)
@@ -320,12 +367,14 @@ export type StageEntry = {
   narrativePedigreeShowAtRiskStatuses?: boolean;
   boundaries?: FamilyPedigreeBoundaries;
   introScreen?: {
-    items: FamilyPedigreeIntroItem[];
+    items: IntroItemInput[];
   };
-  censusPrompt?: string;
-  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
+  censusPrompt?: TextInput;
+  nominationPrompts?: NominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // LanguageChooser
+  introduction?: TextInput;
   // NetworkComposer
   layoutVariable?: string;
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
@@ -370,6 +419,7 @@ export type InitialNodesSpec = {
 
 export type AddNodeTypeInput = {
   name?: string;
+  label?: TextInput;
   color?: NodeColorReference;
   icon?: string;
   shape?: { default: string; dynamic?: ShapeMapping };
@@ -377,12 +427,14 @@ export type AddNodeTypeInput = {
 
 export type AddEdgeTypeInput = {
   name?: string;
+  label?: TextInput;
   color?: EdgeColorReference;
 };
 
 export type AddVariableInput = {
   id?: string;
   name?: string;
+  label?: TextInput;
   type?: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];
@@ -393,8 +445,8 @@ export type AddVariableInput = {
 
 export type FormFieldInput = {
   variable?: string;
-  prompt?: string;
-  hint?: string;
+  prompt?: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
@@ -406,8 +458,8 @@ export type FormFieldInput = {
 // shared fields' `prompt`.
 export type NetworkComposerFormFieldInput = {
   variable?: string;
-  label?: string;
-  hint?: string;
+  label?: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
@@ -415,7 +467,7 @@ export type NetworkComposerFormFieldInput = {
 };
 
 export type AddStageInput = {
-  label?: string;
+  label?: TextInput;
   interviewScript?: string;
   skipLogic?: SkipLogicInput;
   filter?: FilterInput;
@@ -436,23 +488,23 @@ export type AddStageInput = {
     maxNodes?: number;
   };
   form?: {
-    title?: string;
+    title?: TextInput;
     fields: FormFieldInput[];
   };
   introductionPanel?: {
-    title?: string;
-    text?: string;
+    title?: TextInput;
+    text?: TextInput;
   };
   // NameGeneratorQuickAdd
   quickAdd?: string;
   // NameGeneratorRoster
   dataSource?: string;
   cardOptions?: {
-    additionalProperties?: { label: string; variable: string }[];
+    additionalProperties?: { label: TextInput; variable: string }[];
   };
   sortOptions?: {
     sortOrder?: SortRule[];
-    sortableProperties?: { variable: string; label: string }[];
+    sortableProperties?: { variable: string; label: TextInput }[];
   };
   searchOptions?: {
     fuzziness?: number;
@@ -460,8 +512,8 @@ export type AddStageInput = {
   };
   // Anonymisation
   explanationText?: {
-    title?: string;
-    body?: string;
+    title?: TextInput;
+    body?: TextInput;
   };
   validation?: { minLength?: number; maxLength?: number };
   // FamilyPedigree
@@ -478,12 +530,14 @@ export type AddStageInput = {
   framing?: FamilyPedigreeFraming;
   boundaries?: FamilyPedigreeBoundaries;
   introScreen?: {
-    items: FamilyPedigreeIntroItem[];
+    items: IntroItemInput[];
   };
-  censusPrompt?: string;
-  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
+  censusPrompt?: TextInput;
+  nominationPrompts?: NominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // LanguageChooser
+  introduction?: TextInput;
   // NarrativePedigree
   sourceStageId?: string;
   diseases?: NarrativeDiseaseEntry[];
@@ -501,7 +555,7 @@ export type AddNetworkComposerEdgeInput = {
 };
 
 export type AddPromptInput = {
-  text?: string;
+  text?: TextInput;
   additionalAttributes?: { variable: string; value: boolean }[];
   sortOrder?: SortRule[];
   layout?: {
@@ -517,19 +571,19 @@ export type AddPromptInput = {
 };
 
 export type AddDyadCensusPromptInput = {
-  text?: string;
+  text?: TextInput;
   createEdge?: boolean | string;
 };
 
 export type AddOneToManyDyadCensusPromptInput = {
-  text?: string;
+  text?: TextInput;
   createEdge?: boolean | string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
 };
 
 export type AddOrdinalBinPromptInput = {
-  text?: string;
+  text?: TextInput;
   variable?: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
@@ -537,34 +591,34 @@ export type AddOrdinalBinPromptInput = {
 };
 
 export type AddCategoricalBinPromptInput = {
-  text?: string;
+  text?: TextInput;
   variable?: string;
   otherVariable?: string;
-  otherVariablePrompt?: string;
-  otherOptionLabel?: string;
+  otherVariablePrompt?: TextInput;
+  otherOptionLabel?: TextInput;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
 };
 
 export type AddTieStrengthCensusPromptInput = {
-  text?: string;
+  text?: TextInput;
   createEdge?: boolean | string;
   edgeVariable?: string;
-  negativeLabel?: string;
+  negativeLabel?: TextInput;
 };
 
 export type AddDiseaseNominationStepInput = {
-  text?: string;
+  text?: TextInput;
   variable?: string;
 };
 
 export type AddGeospatialPromptInput = {
-  text?: string;
+  text?: TextInput;
   variable?: string;
 };
 
 export type AddPresetInput = {
-  label?: string;
+  label?: TextInput;
   layoutVariable?: string;
   edges?: {
     display?: string[];
@@ -575,7 +629,7 @@ export type AddPresetInput = {
 
 export type NarrativeDiseaseEntry = {
   id: string;
-  label: string;
+  label: TextInput;
   color: NodeColorReference;
   variable: string;
   inheritancePattern: string;

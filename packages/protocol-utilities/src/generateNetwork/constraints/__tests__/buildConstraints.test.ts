@@ -969,10 +969,10 @@ describe('a date field whose floor is later than today, through feasibility', ()
   const nameGenerator: Stage = {
     id: 'stage-1',
     type: 'NameGenerator',
-    label: 'Name generator',
+    label: { 'en-US': 'Name generator' },
     subject: { entity: 'node', type: 'person' },
-    form: { title: 'About this person', fields: [] },
-    prompts: [{ id: 'p1', text: 'Name people' }],
+    form: { title: { 'en-US': 'About this person' }, fields: [] },
+    prompts: [{ id: 'p1', text: { 'en-US': 'Name people' } }],
     behaviours: { maxNodes: 4 },
   };
 
@@ -984,6 +984,7 @@ describe('a date field whose floor is later than today, through feasibility', ()
           variables: {
             due: {
               name: 'Due',
+              label: { 'en-US': 'Due' },
               type: 'datetime',
               component: 'DatePicker',
               parameters,
@@ -1019,8 +1020,18 @@ describe('buildEntityConstraints', () => {
   it('builds one entry per codebook variable, keyed by id', () => {
     const result = buildEntityConstraints(
       {
-        v1: { name: 'Name', type: 'text', validation: { required: true } },
-        v2: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+        v1: {
+          name: 'Name',
+          label: { 'en-US': 'Name' },
+          type: 'text',
+          validation: { required: true },
+        },
+        v2: {
+          name: 'Age',
+          label: { 'en-US': 'Age' },
+          type: 'number',
+          validation: { minValue: 18 },
+        },
       },
       TODAY,
     );

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  type LocalizedString,
   type SkipLogic,
   type SkipLogicDestination,
   type Stage,
@@ -18,6 +19,8 @@ import {
 import { generateNetwork } from '../generateNetwork.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
+
+const en = (text: string): LocalizedString => ({ 'en-US': text });
 
 type ZodLiteralDef = { _zod: { def: { values: string[] } } };
 type ZodOptionShape = { shape: { type: ZodLiteralDef } };
@@ -43,7 +46,11 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
       'node-type-1': {
         color: 'node-color-seq-1',
         variables: {
-          'var-name': { name: 'Name', type: 'text' },
+          'var-name': {
+            name: 'Name',
+            label: en('Name'),
+            type: 'text',
+          },
         },
       },
     },
@@ -60,10 +67,10 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
 function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-ng',
-    label: 'Name Generator',
+    label: en('Name Generator'),
     type: 'NameGenerator',
     subject: { entity: 'node', type: 'node-type-1' },
-    prompts: [{ id: 'prompt-ng', text: 'Add people' }],
+    prompts: [{ id: 'prompt-ng', text: en('Add people') }],
     behaviours: { minNodes: 5, maxNodes: 8 },
     ...overrides,
   } as Stage;
@@ -72,11 +79,11 @@ function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
 function makeRosterStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-ngr',
-    label: 'Roster',
+    label: en('Roster'),
     type: 'NameGeneratorRoster',
     subject: { entity: 'node', type: 'node-type-1' },
     dataSource: 'roster-asset',
-    prompts: [{ id: 'prompt-ngr', text: 'Pick people' }],
+    prompts: [{ id: 'prompt-ngr', text: en('Pick people') }],
     behaviours: { minNodes: 1, maxNodes: 8 },
     ...overrides,
   } as Stage;
@@ -122,12 +129,20 @@ function stripUnstableIds(network: { nodes: NcNode[]; edges: unknown[] }) {
 function makeDyadCensusStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-dc',
-    label: 'Dyad Census',
+    label: en('Dyad Census'),
     type: 'DyadCensus',
     subject: { entity: 'node', type: 'node-type-1' },
     prompts: [
-      { id: 'prompt-dc-1', text: 'Pair 1', createEdge: 'edge-type-1' },
-      { id: 'prompt-dc-2', text: 'Pair 2', createEdge: 'edge-type-1' },
+      {
+        id: 'prompt-dc-1',
+        text: en('Pair 1'),
+        createEdge: 'edge-type-1',
+      },
+      {
+        id: 'prompt-dc-2',
+        text: en('Pair 2'),
+        createEdge: 'edge-type-1',
+      },
     ],
     ...overrides,
   } as Stage;
@@ -138,11 +153,15 @@ function makeTieStrengthCensusStage(
 ): Stage {
   return {
     id: 'stage-tsc',
-    label: 'Tie Strength',
+    label: en('Tie Strength'),
     type: 'TieStrengthCensus',
     subject: { entity: 'node', type: 'node-type-1' },
     prompts: [
-      { id: 'prompt-tsc', text: 'Strength', createEdge: 'edge-type-1' },
+      {
+        id: 'prompt-tsc',
+        text: en('Strength'),
+        createEdge: 'edge-type-1',
+      },
     ],
     ...overrides,
   } as Stage;
@@ -151,7 +170,7 @@ function makeTieStrengthCensusStage(
 function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
   return {
     id: 'stage-fp',
-    label: 'Family',
+    label: en('Family'),
     type: 'FamilyPedigree',
     nodeConfig: {
       type: 'node-type-1',
@@ -166,7 +185,7 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
       isActiveVariable: 'var-active',
       isGestationalCarrierVariable: 'var-gestational',
     },
-    censusPrompt: 'Tell us about your family',
+    censusPrompt: en('Tell us about your family'),
     ...overrides,
   } as unknown as Stage;
 }
@@ -174,9 +193,9 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
 function makeInformationStage(id: string, skipLogic?: SkipLogic): Stage {
   return {
     id,
-    label: id,
+    label: en(id),
     type: 'Information',
-    title: id,
+    title: en(id),
     items: [],
     skipLogic,
   } as Stage;
@@ -217,13 +236,19 @@ function makeHiddenSkipLogic(
 function makeSkipRoutingCodebook(): Codebook {
   const nodeDefinition: NonNullable<Codebook['node']>[string] = {
     color: 'node-color-seq-1',
-    variables: { 'var-name': { name: 'Name', type: 'text' } },
+    variables: {
+      'var-name': { name: 'Name', label: en('Name'), type: 'text' },
+    },
   };
 
   return makeCodebook({
     ego: {
       variables: {
-        consent: { name: 'Consent', type: 'boolean' },
+        consent: {
+          name: 'Consent',
+          label: en('Consent'),
+          type: 'boolean',
+        },
       },
     },
     node: {
@@ -233,6 +258,7 @@ function makeSkipRoutingCodebook(): Codebook {
           ...nodeDefinition.variables,
           blocked: {
             name: 'Blocked',
+            label: en('Blocked'),
             type: 'text',
             validation: { minLength: 10, maxLength: 5 },
           },
@@ -251,8 +277,16 @@ describe('generateNetwork', () => {
         'node-type-1': {
           color: 'node-color-seq-1',
           variables: {
-            'var-name': { name: 'Name', type: 'text' },
-            'var-nickname': { name: 'Nickname', type: 'text' },
+            'var-name': {
+              name: 'Name',
+              label: en('Name'),
+              type: 'text',
+            },
+            'var-nickname': {
+              name: 'Nickname',
+              label: en('Nickname'),
+              type: 'text',
+            },
           },
         },
       },
@@ -279,8 +313,16 @@ describe('generateNetwork', () => {
         'node-type-1': {
           color: 'node-color-seq-1',
           variables: {
-            'var-name': { name: 'Name', type: 'text' },
-            'highlighted': { name: 'Highlighted', type: 'boolean' },
+            'var-name': {
+              name: 'Name',
+              label: en('Name'),
+              type: 'text',
+            },
+            'highlighted': {
+              name: 'Highlighted',
+              label: en('Highlighted'),
+              type: 'boolean',
+            },
           },
         },
       },
@@ -532,8 +574,16 @@ describe('generateNetwork', () => {
           'node-type-1': {
             color: 'node-color-seq-1',
             variables: {
-              'var-name': { name: 'Name', type: 'text' },
-              'var-ego': { name: 'Is ego', type: 'boolean' },
+              'var-name': {
+                name: 'Name',
+                label: en('Name'),
+                type: 'text',
+              },
+              'var-ego': {
+                name: 'Is ego',
+                label: en('Is ego'),
+                type: 'boolean',
+              },
             },
           },
         },
@@ -580,10 +630,10 @@ describe('generateNetwork', () => {
       const stages: Stage[] = [
         {
           id: 'stage-ng',
-          label: 'Name Generator',
+          label: en('Name Generator'),
           type: 'NameGenerator',
           subject: { entity: 'node', type: 'node-type-1' },
-          prompts: [{ id: 'prompt-1', text: 'Add people' }],
+          prompts: [{ id: 'prompt-1', text: en('Add people') }],
           behaviours: { minNodes: 2, maxNodes: 5 },
         } as Stage,
         makeFamilyPedigreeStage(),
@@ -731,25 +781,35 @@ describe('generateNetwork', () => {
           'node-type-1': {
             color: 'node-color-seq-1',
             variables: {
-              'var-name': { name: 'Name', type: 'text' },
+              'var-name': {
+                name: 'Name',
+                label: en('Name'),
+                type: 'text',
+              },
               'var-ordinal': {
                 name: 'Closeness',
+                label: en('Closeness'),
                 type: 'ordinal',
                 options: [
-                  { label: 'Low', value: 1 },
-                  { label: 'Mid', value: 2 },
-                  { label: 'High', value: 3 },
+                  { label: en('Low'), value: 1 },
+                  { label: en('Mid'), value: 2 },
+                  { label: en('High'), value: 3 },
                 ],
               },
               'var-cat': {
                 name: 'Group',
+                label: en('Group'),
                 type: 'categorical',
                 options: [
-                  { label: 'A', value: 'a' },
-                  { label: 'B', value: 'b' },
+                  { label: en('A'), value: 'a' },
+                  { label: en('B'), value: 'b' },
                 ],
               },
-              'var-other': { name: 'Other group', type: 'text' },
+              'var-other': {
+                name: 'Other group',
+                label: en('Other group'),
+                type: 'text',
+              },
             },
           },
         },
@@ -759,11 +819,15 @@ describe('generateNetwork', () => {
     function makeOrdinalBinStage(): Stage {
       return {
         id: 'stage-ob',
-        label: 'Ordinal Bin',
+        label: en('Ordinal Bin'),
         type: 'OrdinalBin',
         subject: { entity: 'node', type: 'node-type-1' },
         prompts: [
-          { id: 'prompt-ob', text: 'How close?', variable: 'var-ordinal' },
+          {
+            id: 'prompt-ob',
+            text: en('How close?'),
+            variable: 'var-ordinal',
+          },
         ],
       } as Stage;
     }
@@ -771,13 +835,13 @@ describe('generateNetwork', () => {
     function makeCategoricalBinStage(): Stage {
       return {
         id: 'stage-cb',
-        label: 'Categorical Bin',
+        label: en('Categorical Bin'),
         type: 'CategoricalBin',
         subject: { entity: 'node', type: 'node-type-1' },
         prompts: [
           {
             id: 'prompt-cb',
-            text: 'Which group?',
+            text: en('Which group?'),
             variable: 'var-cat',
             otherVariable: 'var-other',
           },
@@ -856,8 +920,16 @@ describe('generateNetwork', () => {
           'node-type-1': {
             color: 'node-color-seq-1',
             variables: {
-              'var-name': { name: 'Name', type: 'text' },
-              'var-layout': { name: 'Layout', type: 'layout' },
+              'var-name': {
+                name: 'Name',
+                label: en('Name'),
+                type: 'text',
+              },
+              'var-layout': {
+                name: 'Layout',
+                label: en('Layout'),
+                type: 'layout',
+              },
             },
           },
         },
@@ -866,13 +938,13 @@ describe('generateNetwork', () => {
         makeNameGeneratorStage(),
         {
           id: 'stage-soc',
-          label: 'Sociogram',
+          label: en('Sociogram'),
           type: 'Sociogram',
           subject: { entity: 'node', type: 'node-type-1' },
           prompts: [
             {
               id: 'prompt-soc',
-              text: 'Place people',
+              text: en('Place people'),
               layout: { layoutVariable: 'var-layout' },
             },
           ],
@@ -1420,7 +1492,11 @@ describe('generateNetwork', () => {
           'edge-type-1': {
             color: 'edge-color-seq-1',
             variables: {
-              'var-strength': { name: 'Strength', type: 'text' },
+              'var-strength': {
+                name: 'Strength',
+                label: en('Strength'),
+                type: 'text',
+              },
             },
           },
         },
