@@ -87,6 +87,38 @@
     "defaultMessage": "Is this child…",
     "description": "Question in the side panel for adding a child: how the child is related to their parents. Followed by the options below."
   },
+  "interview.familyPedigree.connectBack": {
+    "defaultMessage": "Back",
+    "description": "Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships."
+  },
+  "interview.familyPedigree.connectHint": {
+    "defaultMessage": "Select a person, then select another to connect them.",
+    "description": "Instruction shown under the toolbar while the tool for connecting two people is on."
+  },
+  "interview.familyPedigree.connectHintLinking": {
+    "defaultMessage": "{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to “{name}”.}}",
+    "description": "Instruction shown under the toolbar once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.connectParent": {
+    "defaultMessage": "{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}",
+    "description": "Option in the menu for connecting two people, opening a list of kinds of parent (biological, adoptive and so on). parent and child are names or how the people are related to the participant."
+  },
+  "interview.familyPedigree.connectPartners": {
+    "defaultMessage": "{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}",
+    "description": "Option in the menu for connecting two people: they are, or were, a couple."
+  },
+  "interview.familyPedigree.connectQuestion": {
+    "defaultMessage": "{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}",
+    "description": "Heading of the menu that appears after selecting two people to connect. first and second are their names or how they are related to the participant."
+  },
+  "interview.familyPedigree.connectTool": {
+    "defaultMessage": "Connect two people",
+    "description": "Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then another connects them, for relatives added separately."
+  },
+  "interview.familyPedigree.connectedParentAnnouncement": {
+    "defaultMessage": "{relationship} ({kind})",
+    "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent)."
+  },
   "interview.familyPedigree.dontKnow": {
     "defaultMessage": "Don’t know",
     "description": "Answer option for a question about a family member, when the participant does not know."
@@ -239,6 +271,10 @@
     "defaultMessage": "Two parents will be added for you to fill in later, so the family tree can show these siblings together.",
     "description": "Note in the side panel for adding a sibling, shown when the selected person has no parents yet."
   },
+  "interview.familyPedigree.pointerTool": {
+    "defaultMessage": "Add and edit people",
+    "description": "Toolbar button (icon only; this is its name and tooltip). While it is on, selecting a person opens their details and shows buttons to add their relatives."
+  },
   "interview.familyPedigree.preferNotToSay": {
     "defaultMessage": "Prefer not to say",
     "description": "Answer option for a question about a family member, when the participant would rather not answer."
@@ -306,6 +342,14 @@
   "interview.familyPedigree.stillTogetherLabel": {
     "defaultMessage": "{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}",
     "description": "Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or “Unnamed”."
+  },
+  "interview.familyPedigree.toolGroupLabel": {
+    "defaultMessage": "What clicking a person does",
+    "description": "Accessible name of the pair of buttons in the toolbar that choose what selecting a person does."
+  },
+  "interview.familyPedigree.toolsLabel": {
+    "defaultMessage": "Family tree tools",
+    "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people and connecting two people."
   },
   "interview.familyPedigree.trackerClose": {
     "defaultMessage": "Hide this list",

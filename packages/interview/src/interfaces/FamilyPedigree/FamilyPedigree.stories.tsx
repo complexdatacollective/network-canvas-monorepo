@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -420,6 +420,86 @@ export const Adoption: Story = {
  * partner and a child with them — the participant's half siblings. The
  * stepfather is also a social parent to the participant.
  */
+/**
+ * A relative added on their own, not yet connected to anyone: the connect
+ * tool joins them to people already shown. Here Tom becomes Ella's father and
+ * Rachel's partner.
+ */
+export const ConnectingExistingPeople: Story = {
+  args: { requirement: 'parents', enforcement: 'required' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ella',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+          { id: 'dad', name: 'Tom', gender: 'man', sex: 'male' },
+        ],
+        links: [{ from: 'mum', to: 'ego', kind: 'biological', carrier: true }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    const person = (id: string) => {
+      const element = canvasElement.querySelector<HTMLButtonElement>(
+        `[data-person-id="${id}"] button`,
+      );
+      if (!element) throw new Error(`No person ${id}`);
+      return element;
+    };
+    await waitFor(() => expect(person('dad')).toBeVisible());
+
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(person('dad'));
+    await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
+      'Now select the person to connect to “Tom”.',
+    );
+    await userEvent.click(person('ego'));
+    await userEvent.click(
+      await page.findByRole('menuitem', { name: '“Tom” is your parent' }),
+    );
+    await userEvent.click(
+      await page.findByRole('menuitem', { name: 'Biological parent' }),
+    );
+    await waitFor(() =>
+      expect(
+        canvas.getByText('“Tom” is your parent (Biological parent)'),
+      ).toBeInTheDocument(),
+    );
+
+    await userEvent.click(person('dad'));
+    await userEvent.click(person('mum'));
+    await userEvent.click(
+      await page.findByRole('menuitem', {
+        name: '“Tom” and “Rachel” are partners',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        canvas.getByText('“Tom” and “Rachel” are partners'),
+      ).toBeInTheDocument(),
+    );
+    // Already partners, so that choice is no longer offered.
+    await userEvent.click(person('mum'));
+    await userEvent.click(person('dad'));
+    await expect(
+      await page.findByRole('menuitem', {
+        name: '“Rachel” and “Tom” are partners',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
 export const BlendedFamily: Story = {
   args: { requirement: 'firstDegree', enforcement: 'required' },
   render: (args) => (

@@ -516,4 +516,74 @@ export const messages = defineMessages({
     description:
       'Screen reader announcement after a family member is removed. {name} is their name or, when it is not known, how they are related to the participant.',
   },
+  toolsLabel: {
+    id: 'interview.familyPedigree.toolsLabel',
+    defaultMessage: 'Family tree tools',
+    description:
+      'Accessible name of the toolbar above the family tree, which switches between adding or editing people and connecting two people.',
+  },
+  toolGroupLabel: {
+    id: 'interview.familyPedigree.toolGroupLabel',
+    defaultMessage: 'What clicking a person does',
+    description:
+      'Accessible name of the pair of buttons in the toolbar that choose what selecting a person does.',
+  },
+  pointerTool: {
+    id: 'interview.familyPedigree.pointerTool',
+    defaultMessage: 'Add and edit people',
+    description:
+      'Toolbar button (icon only; this is its name and tooltip). While it is on, selecting a person opens their details and shows buttons to add their relatives.',
+  },
+  connectTool: {
+    id: 'interview.familyPedigree.connectTool',
+    defaultMessage: 'Connect two people',
+    description:
+      'Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then another connects them, for relatives added separately.',
+  },
+  connectHint: {
+    id: 'interview.familyPedigree.connectHint',
+    defaultMessage: 'Select a person, then select another to connect them.',
+    description:
+      'Instruction shown under the toolbar while the tool for connecting two people is on.',
+  },
+  connectHintLinking: {
+    id: 'interview.familyPedigree.connectHintLinking',
+    defaultMessage:
+      '{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to “{name}”.}}',
+    description:
+      'Instruction shown under the toolbar once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant.',
+  },
+  connectQuestion: {
+    id: 'interview.familyPedigree.connectQuestion',
+    defaultMessage:
+      '{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}',
+    description:
+      'Heading of the menu that appears after selecting two people to connect. first and second are their names or how they are related to the participant.',
+  },
+  connectPartners: {
+    id: 'interview.familyPedigree.connectPartners',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}',
+    description:
+      'Option in the menu for connecting two people: they are, or were, a couple.',
+  },
+  connectParent: {
+    id: 'interview.familyPedigree.connectParent',
+    defaultMessage:
+      '{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}',
+    description:
+      'Option in the menu for connecting two people, opening a list of kinds of parent (biological, adoptive and so on). parent and child are names or how the people are related to the participant.',
+  },
+  connectedParentAnnouncement: {
+    id: 'interview.familyPedigree.connectedParentAnnouncement',
+    defaultMessage: '{relationship} ({kind})',
+    description:
+      'Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent).',
+  },
+  connectBack: {
+    id: 'interview.familyPedigree.connectBack',
+    defaultMessage: 'Back',
+    description:
+      'Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships.',
+  },
 });

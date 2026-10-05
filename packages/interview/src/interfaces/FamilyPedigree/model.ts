@@ -454,3 +454,102 @@ export function planRemovePerson(family: Family, personId: string) {
       .map((link) => link.id),
   };
 }
+
+/** A relationship the participant draws between two people already shown. */
+export type Connection =
+  | { kind: 'partner'; firstId: string; secondId: string }
+  | {
+      kind: 'parent';
+      parentId: string;
+      childId: string;
+      parentKind: PedigreeParentKind;
+    };
+
+/** Whether `ancestorId` is the person's parent, a parent's parent, and so on. */
+function isAncestor(family: Family, ancestorId: string, personId: string) {
+  const seen = new Set<string>();
+  const queue = [personId];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined || seen.has(current)) continue;
+    seen.add(current);
+    for (const link of parentLinksOf(family, current)) {
+      if (link.source === ancestorId) return true;
+      queue.push(link.source);
+    }
+  }
+  return false;
+}
+
+const isParentLinkBetween = (family: Family, a: string, b: string) =>
+  family.links.some(
+    (link) =>
+      link.kind !== 'partner' &&
+      ((link.source === a && link.target === b) ||
+        (link.source === b && link.target === a)),
+  );
+
+/** Two people can be made partners unless they already are, or one is the
+ * other's parent. */
+export function canConnectPartners(
+  family: Family,
+  firstId: string,
+  secondId: string,
+): boolean {
+  return (
+    firstId !== secondId &&
+    !partnersOf(family, firstId).includes(secondId) &&
+    !isParentLinkBetween(family, firstId, secondId)
+  );
+}
+
+/**
+ * The kinds of parent one person can be made of another. None when they are
+ * already parent and child, or when the would-be parent descends from the
+ * child. A person has at most two genetic parents (biological or donor) and
+ * one surrogate.
+ */
+export function availableParentKinds(
+  family: Family,
+  parentId: string,
+  childId: string,
+): PedigreeParentKind[] {
+  if (
+    parentId === childId ||
+    isParentLinkBetween(family, parentId, childId) ||
+    isAncestor(family, childId, parentId)
+  ) {
+    return [];
+  }
+  const parentLinks = parentLinksOf(family, childId);
+  const geneticParents = parentLinks.filter(
+    (link) => link.kind === 'biological' || link.kind === 'donor',
+  ).length;
+  const hasSurrogate = parentLinks.some((link) => link.kind === 'surrogate');
+  return PEDIGREE_RELATIONSHIP_KINDS.filter(
+    (kind): kind is PedigreeParentKind => {
+      if (kind === 'partner') return false;
+      if (kind === 'biological' || kind === 'donor') return geneticParents < 2;
+      if (kind === 'surrogate') return !hasSurrogate;
+      return true;
+    },
+  );
+}
+
+/** The link that records a connection. */
+export function planConnection(connection: Connection): PlannedLink {
+  if (connection.kind === 'partner') {
+    return {
+      source: connection.firstId,
+      target: connection.secondId,
+      kind: 'partner',
+      isCurrentPartner: true,
+    };
+  }
+  return {
+    source: connection.parentId,
+    target: connection.childId,
+    kind: connection.parentKind,
+    isGestationalCarrier: connection.parentKind === 'surrogate',
+  };
+}

@@ -1,5 +1,6 @@
 'use client';
 
+import { MousePointer2, Waypoints } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -17,6 +18,11 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
+import {
+  SegmentedToolbar,
+  ToolbarIconButton,
+  ToolbarToggleGroup,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import Prompts from '../../components/Prompts/Prompts';
@@ -49,6 +55,8 @@ import {
 } from './completeness';
 import AddRelativeMenu from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
+import ConnectMenu, { type ConnectPair } from './components/ConnectMenu';
+import ConnectorPreview from './components/ConnectorPreview';
 import PersonDrawer from './components/PersonDrawer';
 import PersonForm, {
   type PersonFormMode,
@@ -58,9 +66,12 @@ import PersonNode from './components/PersonNode';
 import { formatPersonLabel, labelFamily } from './kinship';
 import { messages } from './messages';
 import {
+  type Connection,
   missingDetailsFor,
   pedigreeConfigFromStage,
   planAddRelative,
+  planConnection,
+  type PlannedLink,
   planRemovePerson,
   readFamily,
   type Relation,
@@ -72,6 +83,12 @@ import {
   nearestInDirection,
   type Point,
 } from './spatialNavigation';
+
+/**
+ * What selecting a person does: open their details (with their add menu on
+ * hover or focus), or pick them as one of two people to connect.
+ */
+type Tool = 'pointer' | 'connect';
 
 type PanelState = {
   open: boolean;
@@ -147,9 +164,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [panel, setPanel] = useState<PanelState>(null);
   const selectedId =
     panel?.open && panel.mode.kind === 'edit' ? panel.mode.person.id : null;
+
+  // The connect tool links two people already shown: the first person
+  // selected waits (`linkingId`) for the second, and then a menu asks how
+  // the pair are related.
+  const [tool, setTool] = useState<Tool>('pointer');
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [connectPair, setConnectPair] = useState<ConnectPair | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
   // No menu while the panel is open: it would offer to add to someone else
-  // mid-way through describing this person.
-  const menuPersonId = panel?.open ? null : (hoveredId ?? focusedId);
+  // mid-way through describing this person. Nor while connecting people.
+  const menuPersonId =
+    panel?.open || tool === 'connect' ? null : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
   const [announcement, setAnnouncement] = useState('');
 
@@ -276,6 +303,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const handleTrackerItem = (item: CompletenessItem) => {
     const person = family.byId.get(item.personId);
     if (!person) return;
+    chooseTool('pointer');
     if (item.kind === 'parents') {
       setPanel({
         open: true,
@@ -331,7 +359,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const handlePersonPointerLeave = (event: React.PointerEvent) => {
     if (event.pointerType !== 'mouse') return;
     clearTimeout(hoverLeaveTimer.current);
-    hoverLeaveTimer.current = setTimeout(() => setHoveredId(null), 300);
+    // The connector line lets go of a person at once; the add menu waits.
+    if (tool === 'connect') setHoveredId(null);
+    else hoverLeaveTimer.current = setTimeout(() => setHoveredId(null), 300);
   };
 
   // A touch screen has no hover, so a tap leaves the person's menu showing
@@ -341,6 +371,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Selecting a person (click, tap, Enter or Space) opens their details. The
   // panel returns focus to them when it closes.
   const handleActivate = (personId: string) => {
+    if (tool === 'connect') {
+      handleConnectSelect(personId);
+      return;
+    }
     setLastFocusedId(personId);
     if (lastPointerType.current === 'touch') setFocusedId(personId);
     lastPointerType.current = null;
@@ -387,6 +421,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     ) {
       setFocusedId(null);
       setHoveredId(null);
+      setLinkingId(null);
     }
   };
 
@@ -402,6 +437,57 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       !next.closest('[data-testid="pedigree-person-panel"]')
     ) {
       setFocusedId(null);
+    }
+  };
+
+  const linkAttributes = (link: PlannedLink) => ({
+    [config.kindVariable]: [link.kind],
+    ...(link.kind === 'partner'
+      ? { [config.currentPartnerVariable]: link.isCurrentPartner ?? true }
+      : {
+          [config.gestationalCarrierVariable]:
+            link.isGestationalCarrier ?? false,
+        }),
+  });
+
+  const addLink = (link: PlannedLink) =>
+    dispatch(
+      addEdge({
+        from: link.source,
+        to: link.target,
+        type: config.relationshipType,
+        attributeData: linkAttributes(link),
+        currentStep,
+      }),
+    ).unwrap();
+
+  // Recording a sibling or child replaces any earlier answer that there are
+  // none, or that the participant didn't know.
+  const clearRelativesAnswers = async (
+    personIds: readonly string[],
+    relatives: 'siblings' | 'children',
+  ) => {
+    const notRecordedVariable = config.relativesNotRecordedVariable;
+    if (!notRecordedVariable) return;
+    const group = RELATIVES_NOT_RECORDED[relatives];
+    const answers: readonly string[] = [group.none, group.unknown];
+    for (const personId of personIds) {
+      const recorded = family.byId.get(personId)?.relativesNotRecorded ?? [];
+      if (!recorded.some((value) => answers.includes(value))) continue;
+      await dispatch(
+        updateNode({
+          nodeId: personId,
+          attributePatch: {
+            set: {
+              [notRecordedVariable]: recorded.filter(
+                (value) => !answers.includes(value),
+              ),
+            },
+            unset: [],
+          },
+          currentStep,
+        }),
+      );
     }
   };
 
@@ -464,69 +550,68 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       ).unwrap();
     }
-    for (const link of plan.links) {
-      await dispatch(
-        addEdge({
-          from: link.source,
-          to: link.target,
-          type: config.relationshipType,
-          attributeData: {
-            [config.kindVariable]: [link.kind],
-            ...(link.kind === 'partner'
-              ? {
-                  [config.currentPartnerVariable]:
-                    link.isCurrentPartner ?? true,
-                }
-              : {
-                  [config.gestationalCarrierVariable]:
-                    link.isGestationalCarrier ?? false,
-                }),
-          },
-          currentStep,
-        }),
-      ).unwrap();
-    }
-    // Adding a sibling or child replaces any earlier answer that there are
-    // none, or that the participant didn't know.
-    const notRecordedVariable = config.relativesNotRecordedVariable;
+    for (const link of plan.links) await addLink(link);
     const request = result.request;
-    if (
-      notRecordedVariable &&
-      (request.relation === 'sibling' || request.relation === 'child')
-    ) {
-      const group =
-        request.relation === 'sibling'
-          ? RELATIVES_NOT_RECORDED.siblings
-          : RELATIVES_NOT_RECORDED.children;
-      const answers: readonly string[] = [group.none, group.unknown];
-      const affected = [mode.anchor.id];
-      if (
-        request.relation === 'child' &&
-        request.otherParent &&
-        request.otherParent !== 'unknown'
-      ) {
-        affected.push(request.otherParent);
-      }
-      for (const personId of affected) {
-        const recorded = family.byId.get(personId)?.relativesNotRecorded ?? [];
-        if (!recorded.some((value) => answers.includes(value))) continue;
-        await dispatch(
-          updateNode({
-            nodeId: personId,
-            attributePatch: {
-              set: {
-                [notRecordedVariable]: recorded.filter(
-                  (value) => !answers.includes(value),
-                ),
-              },
-              unset: [],
-            },
-            currentStep,
-          }),
-        );
-      }
+    if (request.relation === 'sibling') {
+      await clearRelativesAnswers([mode.anchor.id], 'siblings');
+    } else if (request.relation === 'child') {
+      const otherParent =
+        request.otherParent && request.otherParent !== 'unknown'
+          ? [request.otherParent]
+          : [];
+      await clearRelativesAnswers([mode.anchor.id, ...otherParent], 'children');
     }
     setJustAddedId(newPersonId);
+  };
+
+  const chooseTool = (next: Tool) => {
+    setTool(next);
+    setLinkingId(null);
+    setConnectPair(null);
+    setHoveredId(null);
+    setFocusedId(null);
+  };
+
+  const handleConnectSelect = (personId: string) => {
+    setLastFocusedId(personId);
+    if (connectPair) return;
+    if (!linkingId) {
+      setLinkingId(personId);
+      setAnnouncement(
+        intl.formatMessage(messages.connectHintLinking, {
+          isYou: family.byId.get(personId)?.isEgo ? 'true' : 'false',
+          name: displayName(personId),
+        }),
+      );
+    } else if (linkingId === personId) {
+      // Selecting the first person again lets them go.
+      setLinkingId(null);
+    } else {
+      setConnectPair({ firstId: linkingId, secondId: personId });
+    }
+  };
+
+  const endConnecting = () => {
+    setConnectPair(null);
+    setLinkingId(null);
+  };
+
+  const handleConnect = async (connection: Connection, description: string) => {
+    endConnecting();
+    await addLink(planConnection(connection));
+    if (connection.kind === 'parent') {
+      const { parentId, childId } = connection;
+      await clearRelativesAnswers([parentId], 'children');
+      // The parent's other children are now the child's siblings.
+      const hasOtherChildren = family.links.some(
+        (link) =>
+          link.kind !== 'partner' &&
+          link.source === parentId &&
+          link.target !== childId,
+      );
+      if (hasOtherChildren) await clearRelativesAnswers([childId], 'siblings');
+    }
+    setAnnouncement(description);
   };
 
   const handleRemove = async (personId: string) => {
@@ -555,6 +640,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Escape in the add menu returns focus to its person; Escape on the person
   // hides the menu.
   const handleCanvasKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape' && linkingId) {
+      event.preventDefault();
+      setLinkingId(null);
+      return;
+    }
     if (event.key !== 'Escape' || !focusedId) return;
     event.preventDefault();
     const node = nodeRefs.current.get(focusedId);
@@ -592,6 +682,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         : undefined;
   const returnFocusId = panelSubject?.id ?? tabStopId;
 
+  // The preview line runs from the first person selected to the second once
+  // chosen, or else to the person the mouse or keyboard focus is on.
+  const connectorFrom = linkingId
+    ? (nodeRefs.current.get(linkingId) ?? null)
+    : null;
+  const connectorTargetId =
+    connectPair?.secondId ??
+    [hoveredId, focusedId].find((id) => id !== null && id !== linkingId) ??
+    null;
+  const connectorTo = connectorTargetId
+    ? (nodeRefs.current.get(connectorTargetId) ?? null)
+    : null;
+
   return (
     <div
       className="interface relative flex h-full flex-col"
@@ -604,65 +707,138 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         />
       </div>
       {measurementContainer}
-      <div
-        role="region"
-        aria-label={intl.formatMessage(messages.canvasLabel)}
-        className="relative min-h-0 w-full flex-1 overflow-auto"
-        onKeyDown={handleCanvasKeyDown}
-        onBlur={handleCanvasBlur}
-        data-testid="pedigree-canvas"
-      >
-        <div className="flex min-h-full min-w-max items-center justify-center p-40">
-          <PedigreeLayout
-            nodeIds={nodeIds}
-            links={links}
-            nodeNames={nodeNames}
-            nodeWidth={nodeWidth}
-            nodeHeight={nodeHeight}
-            // Room around each person for the add menu that appears beside,
-            // above and below them, and for their name beneath.
-            rowGapRatio={1.4}
-            columnGapRatio={1.4}
-            renderNode={(personId) => {
-              const person = family.byId.get(personId);
-              if (!person) return null;
-              const hasMenu = personId === menuPersonId;
-              return (
-                <PersonNode
-                  person={person}
-                  label={displayName(personId)}
-                  color={nodeColor}
-                  selected={personId === selectedId}
-                  menuOpen={hasMenu}
-                  hasMissingDetails={
-                    missingDetailsFor(person, requiredFormVariables).length > 0
-                  }
-                  onActivate={() => handleActivate(personId)}
-                  tabIndex={personId === tabStopId ? 0 : -1}
-                  onFocus={(event) => handleFocusPerson(personId, event)}
-                  onKeyDown={(event) => handleNodeKeyDown(personId, event)}
-                  onPointerEnter={(event) =>
-                    handlePersonPointerEnter(personId, event)
-                  }
-                  onPointerLeave={handlePersonPointerLeave}
-                  onPointerDown={(event) => {
-                    lastPointerType.current = event.pointerType;
-                  }}
-                  nodeRef={setNodeRef(personId)}
-                >
-                  {hasMenu && (
-                    <AddRelativeMenu
-                      isYou={person.isEgo}
-                      name={displayName(personId)}
-                      onAdd={openAdd}
-                    />
-                  )}
-                </PersonNode>
-              );
-            }}
-          />
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex flex-col items-center gap-2 px-4">
+          <SegmentedToolbar
+            aria-label={intl.formatMessage(messages.toolsLabel)}
+            className="pointer-events-auto"
+          >
+            <ToolbarToggleGroup
+              aria-label={intl.formatMessage(messages.toolGroupLabel)}
+              value={[tool]}
+              onValueChange={(value) => {
+                const next = value[0];
+                if (next === 'pointer' || next === 'connect') chooseTool(next);
+              }}
+            >
+              <ToolbarIconButton
+                value="pointer"
+                aria-label={intl.formatMessage(messages.pointerTool)}
+                icon={<MousePointer2 />}
+                data-testid="pedigree-tool-pointer"
+              />
+              <ToolbarIconButton
+                value="connect"
+                aria-label={intl.formatMessage(messages.connectTool)}
+                icon={<Waypoints />}
+                data-testid="pedigree-tool-connect"
+              />
+            </ToolbarToggleGroup>
+          </SegmentedToolbar>
+          {tool === 'connect' && (
+            <p
+              className="text-sm opacity-80"
+              data-testid="pedigree-connect-hint"
+            >
+              {linkingId
+                ? intl.formatMessage(messages.connectHintLinking, {
+                    isYou: family.byId.get(linkingId)?.isEgo ? 'true' : 'false',
+                    name: displayName(linkingId),
+                  })
+                : intl.formatMessage(messages.connectHint)}
+            </p>
+          )}
+        </div>
+        <div
+          role="region"
+          aria-label={intl.formatMessage(messages.canvasLabel)}
+          className="relative min-h-0 w-full flex-1 overflow-auto"
+          onKeyDown={handleCanvasKeyDown}
+          onBlur={handleCanvasBlur}
+          data-testid="pedigree-canvas"
+        >
+          <div
+            ref={contentRef}
+            className="relative flex min-h-full min-w-max items-center justify-center p-40"
+          >
+            {connectorFrom && (
+              <ConnectorPreview
+                container={contentRef}
+                from={connectorFrom}
+                to={connectorTo}
+              />
+            )}
+            <PedigreeLayout
+              nodeIds={nodeIds}
+              links={links}
+              nodeNames={nodeNames}
+              nodeWidth={nodeWidth}
+              nodeHeight={nodeHeight}
+              // Room around each person for the add menu that appears beside,
+              // above and below them, and for their name beneath.
+              rowGapRatio={1.4}
+              columnGapRatio={1.4}
+              renderNode={(personId) => {
+                const person = family.byId.get(personId);
+                if (!person) return null;
+                const hasMenu = personId === menuPersonId;
+                return (
+                  <PersonNode
+                    person={person}
+                    label={displayName(personId)}
+                    color={nodeColor}
+                    selected={
+                      tool === 'connect'
+                        ? personId === linkingId ||
+                          personId === connectPair?.secondId
+                        : personId === selectedId
+                    }
+                    menuOpen={hasMenu}
+                    hasMissingDetails={
+                      missingDetailsFor(person, requiredFormVariables).length >
+                      0
+                    }
+                    onActivate={() => handleActivate(personId)}
+                    tabIndex={personId === tabStopId ? 0 : -1}
+                    onFocus={(event) => handleFocusPerson(personId, event)}
+                    onKeyDown={(event) => handleNodeKeyDown(personId, event)}
+                    onPointerEnter={(event) =>
+                      handlePersonPointerEnter(personId, event)
+                    }
+                    onPointerLeave={handlePersonPointerLeave}
+                    onPointerDown={(event) => {
+                      lastPointerType.current = event.pointerType;
+                    }}
+                    nodeRef={setNodeRef(personId)}
+                  >
+                    {hasMenu && (
+                      <AddRelativeMenu
+                        isYou={person.isEgo}
+                        name={displayName(personId)}
+                        onAdd={openAdd}
+                      />
+                    )}
+                  </PersonNode>
+                );
+              }}
+            />
+          </div>
         </div>
       </div>
+      <ConnectMenu
+        pair={connectPair}
+        family={family}
+        displayName={displayName}
+        anchor={
+          connectPair
+            ? (nodeRefs.current.get(connectPair.secondId) ?? null)
+            : null
+        }
+        onConnect={(connection, description) =>
+          void handleConnect(connection, description)
+        }
+        onClose={endConnecting}
+      />
       {progress && completeness && (
         <CompletenessTracker
           progress={progress}
