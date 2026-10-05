@@ -40,19 +40,15 @@ export function excludeNodeLabelVariable<T extends { variable: string }>(
   form: readonly T[] | undefined,
   nodeLabelVariable: string,
 ): T[] | undefined {
-  return form?.filter(
-    (field) =>
-      field.variable !== nodeLabelVariable && field.variable !== 'name',
-  );
+  return form?.filter((field) => field.variable !== nodeLabelVariable);
 }
 
 // The pedigree renders its configured label through PersonNameField whenever
 // it collects a family member. Ego is the deliberate exception: it is rendered
 // iconically and its setup step has neither this field nor the additional node
-// form. The wizard submits that label through its internal `name` path, so
-// suppress both the configured label variable and any separate variable whose
-// id is literally `name`; either would otherwise register a second writer on
-// the same form path.
+// form. The label is therefore dropped from the form so it is not asked twice;
+// every other field, whatever its id, renders under the person's attributes
+// namespace and cannot collide with the wizard's own controls.
 export const getNodeForm: (
   state: RootState,
   currentStep: number,

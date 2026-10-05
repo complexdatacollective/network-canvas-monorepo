@@ -15,17 +15,20 @@ describe('excludeNodeLabelVariable', () => {
     ).toEqual([{ variable: 'birthYear', prompt: 'Birth year' }]);
   });
 
-  it('reserves the internal name path when the label uses another variable', () => {
+  it('keeps a variable named `name` when the label uses another variable', () => {
     expect(
       excludeNodeLabelVariable(
         [
           { variable: 'displayName', prompt: 'Duplicate label' },
-          { variable: 'name', prompt: 'Colliding internal path' },
+          { variable: 'name', prompt: 'Legal name' },
           { variable: 'birthYear', prompt: 'Birth year' },
         ],
         'displayName',
       ),
-    ).toEqual([{ variable: 'birthYear', prompt: 'Birth year' }]);
+    ).toEqual([
+      { variable: 'name', prompt: 'Legal name' },
+      { variable: 'birthYear', prompt: 'Birth year' },
+    ]);
   });
 
   it('preserves an absent form', () => {
