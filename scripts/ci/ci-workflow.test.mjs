@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 import { test } from 'vitest';
@@ -1722,6 +1723,67 @@ test('own-proxy has a guide block to extract its configuration from', () => {
     assert.ok(
       block.includes(required),
       `the nginx block still has: ${required}`,
+    );
+  }
+});
+
+function runDetectFlag(pkg, env) {
+  const detectJob = job('detect');
+  const definition = detectJob.match(
+    /^(?<indent> +)flag\(\) \{\n[\s\S]*?^\k<indent>\}$/m,
+  );
+  assert.ok(definition, 'detect defines flag()');
+  const body = definition[0]
+    .split('\n')
+    .map((line) => line.slice(definition.groups.indent.length))
+    .join('\n');
+  const script = [
+    'set -eo pipefail',
+    `npx() {
+      case "$*" in
+        *"--filter=@codaco/known..."*) echo '{"packages":{"items":[{"path":"packages/known"}]}}' ;;
+        *) echo "x No package found with name '$*' in workspace" >&2; return 1 ;;
+      esac
+    }`,
+    body,
+    `result=$(flag ${JSON.stringify(pkg)})`,
+    'echo "result=$result"',
+  ].join('\n');
+  return spawnSync('bash', ['-c', script], {
+    encoding: 'utf8',
+    env: {
+      PATH: process.env.PATH,
+      TURBO_VERSION: '0.0.0',
+      PREV: '',
+      CURR: 'HEAD',
+      FORCE_RUN: 'false',
+      WORKFLOW_CHANGED: 'false',
+      ...env,
+    },
+  });
+}
+
+test('detect fails closed on a flag naming no workspace package', () => {
+  const known = runDetectFlag('@codaco/known', {});
+  assert.equal(known.status, 0, known.stderr);
+  assert.match(known.stdout, /^result=true$/m);
+
+  for (const forced of [
+    {},
+    { FORCE_RUN: 'true' },
+    { WORKFLOW_CHANGED: 'true' },
+    { PREV: 'HEAD' },
+  ]) {
+    const unknown = runDetectFlag('@codaco/renamed-away', forced);
+    assert.notEqual(
+      unknown.status,
+      0,
+      `a stale name answers ${unknown.stdout} under ${JSON.stringify(forced)}`,
+    );
+    assert.doesNotMatch(unknown.stdout, /^result=/m);
+    assert.match(
+      unknown.stderr,
+      /::error::detect: '@codaco\/renamed-away' names no workspace package/,
     );
   }
 });
