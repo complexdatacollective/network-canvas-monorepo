@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
@@ -62,6 +62,13 @@ export type PersonFormResult = {
   linkUpdates?: LinkUpdate[];
 };
 
+/** The person being added, as the form stands: shown in the family before
+ * the participant confirms them. */
+export type PersonDraft = {
+  details: PersonDetails;
+  request: AddRelativeRequest;
+};
+
 export type LinkUpdate = {
   linkId: string;
   kind: PedigreeRelationshipKind;
@@ -106,6 +113,9 @@ type PersonFormProps = {
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
   askAbout?: { siblings: boolean; children: boolean };
+  /** Add only: called with the person being added whenever the answers
+   * that decide how they are drawn change. */
+  onDraftChange?: (draft: PersonDraft) => void;
   onSubmit: (result: PersonFormResult) => void;
 };
 
@@ -129,6 +139,7 @@ export default function PersonForm({
   formFields,
   displayName,
   askAbout,
+  onDraftChange,
   onSubmit,
 }: PersonFormProps) {
   const intl = useAppIntl();
@@ -155,20 +166,12 @@ export default function PersonForm({
   });
 
   const handleSubmit: FormSubmitHandler = (values) => {
-    const set: PersonDetails = {};
-    const unset: string[] = [];
-
-    const name = asString(values[config.nameVariable])?.trim();
-    if (name) set[config.nameVariable] = name;
-    else unset.push(config.nameVariable);
-
-    const gender = asString(values[config.genderIdentityVariable]);
-    if (gender) set[config.genderIdentityVariable] = [gender];
-    else unset.push(config.genderIdentityVariable);
-
-    const sex = asString(values[config.sexAssignedAtBirthVariable]);
-    if (sex) set[config.sexAssignedAtBirthVariable] = [sex];
-    else unset.push(config.sexAssignedAtBirthVariable);
+    const set: PersonDetails = readOwnDetails(values, config);
+    const unset = [
+      config.nameVariable,
+      config.genderIdentityVariable,
+      config.sexAssignedAtBirthVariable,
+    ].filter((variable) => !(variable in set));
 
     // "No" and "Don't know" are recorded; "Yes" leaves the question to the
     // siblings or children the participant goes on to add.
@@ -293,6 +296,15 @@ export default function PersonForm({
             initialValue={person?.sexAssignedAtBirth}
           />
         </section>
+        {mode.kind === 'add' && onDraftChange && (
+          <DraftWatcher
+            relation={mode.relation}
+            anchor={mode.anchor}
+            family={family}
+            config={config}
+            onDraftChange={onDraftChange}
+          />
+        )}
         {mode.kind === 'add' && (
           <section className="flex flex-col">
             <Heading level="h3" margin="none" className="mb-4">
@@ -548,9 +560,57 @@ function ParentLinkFields({
   );
 }
 
+/** The interface's own details about the person: name, gender identity and
+ * sex assigned at birth, where given. */
+function readOwnDetails(
+  values: Record<string, FieldValue | undefined>,
+  config: PedigreeConfig,
+): PersonDetails {
+  const details: PersonDetails = {};
+  const name = asString(values[config.nameVariable])?.trim();
+  if (name) details[config.nameVariable] = name;
+  const gender = asString(values[config.genderIdentityVariable]);
+  if (gender) details[config.genderIdentityVariable] = [gender];
+  const sex = asString(values[config.sexAssignedAtBirthVariable]);
+  if (sex) details[config.sexAssignedAtBirthVariable] = [sex];
+  return details;
+}
+
+/** Reports the person being added as the answers that decide how they are
+ * drawn — their own details and how they are related — change. */
+function DraftWatcher({
+  relation,
+  anchor,
+  family,
+  config,
+  onDraftChange,
+}: {
+  relation: Relation;
+  anchor: Person;
+  family: Family;
+  config: PedigreeConfig;
+  onDraftChange: (draft: PersonDraft) => void;
+}) {
+  const values = useFormValue([
+    config.nameVariable,
+    config.genderIdentityVariable,
+    config.sexAssignedAtBirthVariable,
+    ...Object.values(ROLE),
+  ]);
+  const report = useRef(onDraftChange);
+  report.current = onDraftChange;
+  useEffect(() => {
+    report.current({
+      details: readOwnDetails(values, config),
+      request: readRequest(relation, values, anchor, family),
+    });
+  }, [values, config, relation, anchor, family]);
+  return null;
+}
+
 function readRequest(
   relation: Relation,
-  values: Record<string, FieldValue>,
+  values: Record<string, FieldValue | undefined>,
   anchor: Person,
   family: Family,
 ): AddRelativeRequest {

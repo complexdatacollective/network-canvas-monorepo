@@ -24,7 +24,12 @@ import {
   ToolbarSeparator,
   ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import Prompts from '../../components/Prompts/Prompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
@@ -61,6 +66,7 @@ import ConnectMenu, { type ConnectPair } from './components/ConnectMenu';
 import ConnectorPreview from './components/ConnectorPreview';
 import PersonDrawer from './components/PersonDrawer';
 import PersonForm, {
+  type PersonDraft,
   type PersonFormMode,
   type PersonFormResult,
 } from './components/PersonForm';
@@ -71,12 +77,15 @@ import {
   areConnected,
   type Connection,
   missingDetailsFor,
+  type PedigreeConfig,
   pedigreeConfigFromStage,
   planAddRelative,
   planConnection,
   type PlannedLink,
   planRemovePerson,
   readFamily,
+  type Family,
+  type Person,
   type Relation,
 } from './model';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
@@ -98,7 +107,40 @@ type PanelState = {
   /** Changes for every opening, so the form starts fresh. */
   key: string;
   mode: PersonFormMode;
+  /** Adding: ids for the new person (first) and any unnamed parents their
+   * relationship needs, fixed for the opening so the person drawn while the
+   * form is filled in is the one added. */
+  ids: string[];
 } | null;
+
+/** The attributes recording a link. */
+const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
+  [config.kindVariable]: [link.kind],
+  ...(link.kind === 'partner'
+    ? { [config.currentPartnerVariable]: link.isCurrentPartner ?? true }
+    : {
+        [config.gestationalCarrierVariable]: link.isGestationalCarrier ?? false,
+      }),
+});
+
+/** Everything to create to add a relative, under the panel's ids. */
+const planAddition = (
+  family: Family,
+  anchorId: string,
+  ids: readonly string[],
+  details: PersonDraft['details'],
+  request: PersonDraft['request'],
+) => {
+  let next = 1;
+  return planAddRelative({
+    family,
+    anchorId,
+    newPersonId: ids[0] ?? uuid(),
+    details,
+    request,
+    createId: () => ids[next++] ?? uuid(),
+  });
+};
 
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
@@ -116,6 +158,52 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => readFamily(nodes, edges, config),
     [nodes, edges, config],
   );
+
+  // The person being added is drawn in the family from the moment the panel
+  // opens, as the form stands, and only recorded when the participant adds
+  // them. `shown` is the family drawn; everything else reads `family`.
+  const [draft, setDraft] = useState<
+    (PersonDraft & { anchorId: string; ids: string[] }) | null
+  >(null);
+  const shown = useMemo(() => {
+    if (!draft) return family;
+    const plan = planAddition(
+      family,
+      draft.anchorId,
+      draft.ids,
+      draft.details,
+      draft.request,
+    );
+    // While the addition is being recorded, part of it is already real.
+    const draftNodes: NcNode[] = plan.people
+      .filter((person) => !family.byId.has(person.id))
+      .map((person) => ({
+        [entityPrimaryKeyProperty]: person.id,
+        type: config.personType,
+        [entityAttributesProperty]: person.details,
+      }));
+    const draftEdges: NcEdge[] = plan.links
+      .filter(
+        (link) =>
+          !family.links.some(
+            (existing) =>
+              existing.source === link.source &&
+              existing.target === link.target,
+          ),
+      )
+      .map((link, index) => ({
+        [entityPrimaryKeyProperty]: `draft-${index}`,
+        type: config.relationshipType,
+        from: link.source,
+        to: link.target,
+        [entityAttributesProperty]: linkAttributesFor(config, link),
+      }));
+    return readFamily(
+      [...nodes, ...draftNodes],
+      [...edges, ...draftEdges],
+      config,
+    );
+  }, [draft, family, nodes, edges, config]);
   const nodeColor = useStageSelector(getNodeColorSelector);
   // Connectors, and the preview of a new one, take the codebook's colour for
   // the relationship type ('edge-color-seq-N' is the CSS variable --edge-N).
@@ -173,8 +261,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, [family.egoId, family.people.length]);
 
   const [panel, setPanel] = useState<PanelState>(null);
-  const selectedId =
-    panel?.open && panel.mode.kind === 'edit' ? panel.mode.person.id : null;
+  // The person whose details are open, or who is being added.
+  const selectedId = !panel?.open
+    ? null
+    : panel.mode.kind === 'edit'
+      ? panel.mode.person.id
+      : (panel.ids[0] ?? null);
 
   // The connect tool links two people already shown: the first person
   // selected waits (`linkingId`) for the second, and then a menu asks how
@@ -205,7 +297,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // A person is shown by name, or by how they are related to the participant
   // when their name is not known.
   const framing = stage.framing ?? 'gendered';
-  const labels = useMemo(() => labelFamily(family, framing), [family, framing]);
+  const labels = useMemo(() => labelFamily(shown, framing), [shown, framing]);
   const displayName = useCallback(
     (personId: string) => {
       const label = labels.get(personId);
@@ -231,23 +323,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const links: PedigreeLink[] = useMemo(
     () =>
-      family.links.map((link) => ({
+      shown.links.map((link) => ({
         source: link.source,
         target: link.target,
         kind: link.kind,
         isActive: link.isCurrentPartner,
         isGestationalCarrier: link.isGestationalCarrier,
       })),
-    [family.links],
+    [shown.links],
   );
   const nodeIds = useMemo(
-    () => family.people.map((person) => person.id),
-    [family.people],
+    () => shown.people.map((person) => person.id),
+    [shown.people],
   );
   const nodeNames = useMemo(
-    () =>
-      new Map(family.people.map((person) => [person.id, person.name ?? ''])),
-    [family.people],
+    () => new Map(shown.people.map((person) => [person.id, person.name ?? ''])),
+    [shown.people],
   );
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
@@ -265,13 +356,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     egoNode.scrollIntoView({ block: 'center', inline: 'center' });
   });
 
-  const openAdd = (relation: Relation) => {
-    if (!menuPerson) return;
+  const openAddPanel = (relation: Relation, anchor: Person) =>
     setPanel({
       open: true,
       key: uuid(),
-      mode: { kind: 'add', relation, anchor: menuPerson },
+      mode: { kind: 'add', relation, anchor },
+      // The new person, and up to two unnamed parents for a sibling.
+      ids: [uuid(), uuid(), uuid()],
     });
+
+  const openAdd = (relation: Relation) => {
+    if (menuPerson) openAddPanel(relation, menuPerson);
   };
 
   // How far the family is from what the researcher requires (or recommends)
@@ -324,11 +419,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!person) return;
     chooseTool('pointer');
     if (item.kind === 'parents') {
-      setPanel({
-        open: true,
-        key: uuid(),
-        mode: { kind: 'add', relation: 'parent', anchor: person },
-      });
+      openAddPanel('parent', person);
     } else {
       openEdit(person.id);
     }
@@ -345,11 +436,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         person,
         missing: missingDetailsFor(person, requiredFormVariables),
       },
+      ids: [],
     });
   };
 
   const closePanel = () =>
     setPanel((current) => (current ? { ...current, open: false } : null));
+
+  // Cancelling (or dismissing the panel) takes away the person being added.
+  const cancelPanel = () => {
+    setDraft(null);
+    closePanel();
+  };
+
+  const handleDraftChange = (next: PersonDraft) => {
+    if (!panel?.open || panel.mode.kind !== 'add') return;
+    setDraft({ ...next, anchorId: panel.mode.anchor.id, ids: panel.ids });
+  };
 
   // Keyboard focus shows the menu; focus from a click (or returned there by
   // the panel after a click) does not, so for a mouse user the menu follows
@@ -460,15 +563,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  const linkAttributes = (link: PlannedLink) => ({
-    [config.kindVariable]: [link.kind],
-    ...(link.kind === 'partner'
-      ? { [config.currentPartnerVariable]: link.isCurrentPartner ?? true }
-      : {
-          [config.gestationalCarrierVariable]:
-            link.isGestationalCarrier ?? false,
-        }),
-  });
+  const linkAttributes = (link: PlannedLink) => linkAttributesFor(config, link);
 
   const addLink = (link: PlannedLink) =>
     dispatch(
@@ -550,16 +645,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       return;
     }
 
-    if (!result.request) return;
-    const newPersonId = uuid();
-    const plan = planAddRelative({
+    if (!result.request) {
+      setDraft(null);
+      return;
+    }
+    const plan = planAddition(
       family,
-      anchorId: mode.anchor.id,
-      newPersonId,
-      details: result.set,
-      request: result.request,
-      createId: uuid,
-    });
+      mode.anchor.id,
+      panel.ids,
+      result.set,
+      result.request,
+    );
+    const newPersonId = plan.people[0]?.id ?? '';
     for (const person of plan.people) {
       await dispatch(
         addNode({
@@ -581,6 +678,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           : [];
       await clearRelativesAnswers([mode.anchor.id, ...otherParent], 'children');
     }
+    // Recorded: the people drawn are now the family's own.
+    setDraft(null);
     setJustAddedId(newPersonId);
   };
 
@@ -788,7 +887,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               rowGapRatio={1.4}
               columnGapRatio={1.4}
               renderNode={(personId) => {
-                const person = family.byId.get(personId);
+                const person = shown.byId.get(personId);
                 if (!person) return null;
                 const hasMenu = personId === menuPersonId;
                 return (
@@ -802,10 +901,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       (personId === linkingId || personId === connectorTargetId)
                     }
                     menuOpen={hasMenu}
+                    // The person being added has not been asked yet.
                     hasMissingDetails={
+                      family.byId.has(personId) &&
                       missingDetailsFor(person, requiredFormVariables).length >
-                      0
+                        0
                     }
+                    adopted={shown.links.some(
+                      (link) =>
+                        link.kind === 'adoptive' && link.target === personId,
+                    )}
+                    lineColor={edgeColor}
                     onActivate={() => handleActivate(personId)}
                     tabIndex={personId === tabStopId ? 0 : -1}
                     onFocus={(event) => handleFocusPerson(personId, event)}
@@ -912,7 +1018,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       <FormStoreProvider key={panel?.key ?? 'closed'}>
         <PersonDrawer
           open={panel?.open ?? false}
-          onClose={closePanel}
+          onClose={cancelPanel}
           onClosed={() => setPanel(null)}
           returnFocus={() =>
             returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
@@ -931,7 +1037,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   <AppMessage message={messages.remove} />
                 </Button>
               )}
-              <Button type="button" variant="text" onClick={closePanel}>
+              <Button type="button" variant="text" onClick={cancelPanel}>
                 <AppMessage message={messages.cancel} />
               </Button>
               <SubmitButton form={formId}>
@@ -958,6 +1064,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   ? relativesToAskAbout(family, progress, panel.mode.person.id)
                   : undefined
               }
+              onDraftChange={handleDraftChange}
               onSubmit={(result) => void handleSubmit(result)}
             />
           )}

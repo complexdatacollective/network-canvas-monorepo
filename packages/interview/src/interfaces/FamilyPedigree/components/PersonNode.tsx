@@ -20,6 +20,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { messages } from '../messages';
 import { type Person, symbolFor } from '../model';
+import { EDGE_WIDTH } from '../pedigree-layout/components/EdgeRenderer';
 
 type PersonNodeProps = {
   person: Person;
@@ -32,6 +33,10 @@ type PersonNodeProps = {
   menuOpen: boolean;
   /** One of the two people being connected with the connect tool. */
   linking: boolean;
+  /** Adopted: drawn within brackets, as pedigree nomenclature has it. */
+  adopted: boolean;
+  /** The family's connector colour, for the brackets. */
+  lineColor: string;
   hasMissingDetails: boolean;
   onActivate: () => void;
   /** 0 for the family's single tab stop, -1 for everyone else. */
@@ -58,6 +63,8 @@ export default function PersonNode({
   selected,
   menuOpen,
   linking,
+  adopted,
+  lineColor,
   hasMissingDetails,
   onActivate,
   tabIndex,
@@ -85,6 +92,24 @@ export default function PersonNode({
       onPointerLeave={onPointerLeave}
       onPointerDown={onPointerDown}
     >
+      {adopted &&
+        (['left', 'right'] as const).map((side) => (
+          <span
+            key={side}
+            aria-hidden
+            className={cx(
+              'pointer-events-none absolute -inset-y-2 w-3 border-solid',
+              side === 'left' ? '-left-4' : '-right-4',
+            )}
+            style={{
+              borderColor: lineColor,
+              borderTopWidth: EDGE_WIDTH,
+              borderBottomWidth: EDGE_WIDTH,
+              borderLeftWidth: side === 'left' ? EDGE_WIDTH : 0,
+              borderRightWidth: side === 'right' ? EDGE_WIDTH : 0,
+            }}
+          />
+        ))}
       <Node
         ref={nodeRef}
         size="sm"
