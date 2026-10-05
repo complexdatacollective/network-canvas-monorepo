@@ -1,4 +1,9 @@
-import posthog from 'posthog-js';
+// The no-external build carries no script loader, so an extension exists only
+// if it is bundled here. Exception autocapture is the one Architect uses;
+// importing it registers the error-wrapping hooks that `init` reads. Session
+// replay, surveys and the rest stay out of the bundle entirely.
+import 'posthog-js/dist/exception-autocapture';
+import posthog from 'posthog-js/dist/module.no-external';
 
 import {
   buildAppSuperProperties,
@@ -45,6 +50,9 @@ export function initializeAnalytics({
     capture_pageview: true,
     capture_pageleave: true,
     capture_exceptions: true,
+    // Belt and braces with the no-external build: even a build that regained
+    // a loader must never fetch extension scripts from the relay.
+    disable_external_dependency_loading: true,
     // Architect edits IRB-sensitive study text (stage/prompt/variable/option
     // labels) and can render a plaintext Mapbox API key on screen. Autocapture
     // would send element text as $el_text, and session recording would capture
