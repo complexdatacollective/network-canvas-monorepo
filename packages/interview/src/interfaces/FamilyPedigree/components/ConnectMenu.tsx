@@ -14,14 +14,27 @@ import {
 
 import { messages } from '../messages';
 import {
-  availableParentKinds,
+  availableParentChoices,
   canConnectPartners,
   type Connection,
   type Family,
+  type ParentChoice,
 } from '../model';
 import { PARENT_KIND_LABELS } from '../options';
 
 export type ConnectPair = { firstId: string; secondId: string };
+
+/** A biological parent who carried the pregnancy is offered as its own
+ * choice; every other kind by its usual label. */
+const parentChoiceLabel = (choice: ParentChoice) =>
+  choice.parentKind === 'biological' && choice.carriedPregnancy
+    ? messages.parentKindBiologicalCarrier
+    : PARENT_KIND_LABELS[choice.parentKind];
+
+const choiceId = (choice: ParentChoice) =>
+  choice.parentKind === 'biological' && choice.carriedPregnancy
+    ? 'biological-carrier'
+    : choice.parentKind;
 
 type ConnectMenuProps = {
   /** The two people being connected, in the order they were selected. */
@@ -36,7 +49,7 @@ type ConnectMenuProps = {
   onClose: () => void;
 };
 
-type ParentChoice = { parentId: string; childId: string };
+type ParentAndChild = { parentId: string; childId: string };
 
 /**
  * Asks how two people the participant has selected are related: as partners,
@@ -57,7 +70,7 @@ export default function ConnectMenu({
   // The parent and child chosen in the first step, for the current pair.
   const [choice, setChoice] = useState<{
     pair: ConnectPair;
-    parent: ParentChoice;
+    parent: ParentAndChild;
   } | null>(null);
   const parentChoice = choice && choice.pair === pair ? choice.parent : null;
 
@@ -74,7 +87,7 @@ export default function ConnectMenu({
   const content = (() => {
     if (!pair) return null;
     const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
-    const parentLabel = ({ parentId, childId }: ParentChoice) =>
+    const parentLabel = ({ parentId, childId }: ParentAndChild) =>
       intl.formatMessage(messages.connectParent, {
         parentIsYou: isYou(parentId) ? 'true' : 'false',
         childIsYou: isYou(childId) ? 'true' : 'false',
@@ -87,22 +100,21 @@ export default function ConnectMenu({
       return (
         <DropdownMenuGroup>
           <DropdownMenuLabel>{label}</DropdownMenuLabel>
-          {availableParentKinds(
+          {availableParentChoices(
             family,
             parentChoice.parentId,
             parentChoice.childId,
-          ).map((parentKind, index) => {
-            const kindLabel = intl.formatMessage(
-              PARENT_KIND_LABELS[parentKind],
-            );
+          ).map((option, index) => {
+            const kindLabel = intl.formatMessage(parentChoiceLabel(option));
+            const id = choiceId(option);
             return (
               <DropdownMenuItem
-                key={parentKind}
+                key={id}
                 ref={index === 0 ? firstItemRef : undefined}
-                data-testid={`pedigree-connect-kind-${parentKind}`}
+                data-testid={`pedigree-connect-kind-${id}`}
                 onClick={() =>
                   onConnect(
-                    { kind: 'parent', ...parentChoice, parentKind },
+                    { kind: 'parent', ...parentChoice, ...option },
                     intl.formatMessage(messages.connectedParentAnnouncement, {
                       relationship: label,
                       kind: kindLabel,
@@ -135,12 +147,17 @@ export default function ConnectMenu({
       second: displayName(second),
     };
     const partners = intl.formatMessage(messages.connectPartners, pairArgs);
-    const parentOption = (parent: ParentChoice) => (
+    const formerPartners = intl.formatMessage(
+      messages.connectFormerPartners,
+      pairArgs,
+    );
+    const canPartner = canConnectPartners(family, first, second);
+    const parentOption = (parent: ParentAndChild) => (
       <DropdownMenuItem
         key={parent.parentId}
         closeOnClick={false}
         disabled={
-          availableParentKinds(family, parent.parentId, parent.childId)
+          availableParentChoices(family, parent.parentId, parent.childId)
             .length === 0
         }
         data-testid={`pedigree-connect-parent-${parent.parentId}`}
@@ -157,16 +174,38 @@ export default function ConnectMenu({
         </DropdownMenuLabel>
         <DropdownMenuItem
           ref={firstItemRef}
-          disabled={!canConnectPartners(family, first, second)}
+          disabled={!canPartner}
           data-testid="pedigree-connect-partners"
           onClick={() =>
             onConnect(
-              { kind: 'partner', firstId: first, secondId: second },
+              {
+                kind: 'partner',
+                firstId: first,
+                secondId: second,
+                current: true,
+              },
               partners,
             )
           }
         >
           {partners}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canPartner}
+          data-testid="pedigree-connect-former-partners"
+          onClick={() =>
+            onConnect(
+              {
+                kind: 'partner',
+                firstId: first,
+                secondId: second,
+                current: false,
+              },
+              formerPartners,
+            )
+          }
+        >
+          {formerPartners}
         </DropdownMenuItem>
         {parentOption({ parentId: first, childId: second })}
         {parentOption({ parentId: second, childId: first })}

@@ -587,4 +587,37 @@ export const messages = defineMessages({
     description:
       'Shown under the toolbar, and read out, when the participant selects two people to connect who are already connected. first and second are their names or how they are related to the participant.',
   },
+  connectFormerPartners: {
+    id: 'interview.familyPedigree.connectFormerPartners',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}',
+    description:
+      'Option in the menu for connecting two people: they were a couple but are no longer together.',
+  },
+  parentKindBiologicalCarrier: {
+    id: 'interview.familyPedigree.parentKind.biologicalCarrier',
+    defaultMessage: 'Biological parent who carried the pregnancy',
+    description:
+      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child.',
+  },
+  removeRelationship: {
+    id: 'interview.familyPedigree.removeRelationship',
+    defaultMessage:
+      '{otherIsYou, select, true {Remove the connection to you} other {Remove the connection to “{name}”}}',
+    description:
+      'Button under a relationship in a family member’s details: takes the connection away when the details are saved. name is the other person’s name or how they are related to the participant.',
+  },
+  relationshipWillBeRemoved: {
+    id: 'interview.familyPedigree.relationshipWillBeRemoved',
+    defaultMessage:
+      '{otherIsYou, select, true {The connection to you will be removed when you save.} other {The connection to “{name}” will be removed when you save.}}',
+    description:
+      'Shown in place of a relationship that the participant has chosen to remove, until they save. name is the other person’s name or how they are related to the participant.',
+  },
+  undoRemoveRelationship: {
+    id: 'interview.familyPedigree.undoRemoveRelationship',
+    defaultMessage: 'Keep it',
+    description:
+      'Button next to a relationship that will be removed on saving: keeps the relationship instead.',
+  },
 });

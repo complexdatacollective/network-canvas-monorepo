@@ -622,6 +622,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      for (const linkId of result.linkRemovals ?? []) {
+        dispatch(deleteEdge(linkId));
+      }
       for (const update of result.linkUpdates ?? []) {
         await dispatch(
           updateEdge({

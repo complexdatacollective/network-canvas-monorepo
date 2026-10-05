@@ -457,13 +457,15 @@ export function planRemovePerson(family: Family, personId: string) {
 
 /** A relationship the participant draws between two people already shown. */
 export type Connection =
-  | { kind: 'partner'; firstId: string; secondId: string }
-  | {
-      kind: 'parent';
-      parentId: string;
-      childId: string;
-      parentKind: PedigreeParentKind;
-    };
+  | { kind: 'partner'; firstId: string; secondId: string; current: boolean }
+  | ({ kind: 'parent'; parentId: string; childId: string } & ParentChoice);
+
+/** A kind of parent, and — for a biological parent — whether they carried
+ * the pregnancy. */
+export type ParentChoice = {
+  parentKind: PedigreeParentKind;
+  carriedPregnancy: boolean;
+};
 
 /** Whether `ancestorId` is the person's parent, a parent's parent, and so on. */
 function isAncestor(family: Family, ancestorId: string, personId: string) {
@@ -503,14 +505,14 @@ export function canConnectPartners(
 /**
  * The kinds of parent one person can be made of another. None when they are
  * already linked, or when the would-be parent descends from the child. A
- * person has at most two genetic parents (biological or donor) and one
- * surrogate.
+ * person has at most two genetic parents (biological or donor), and one
+ * person who carried the pregnancy (a biological parent or a surrogate).
  */
-export function availableParentKinds(
+export function availableParentChoices(
   family: Family,
   parentId: string,
   childId: string,
-): PedigreeParentKind[] {
+): ParentChoice[] {
   if (
     parentId === childId ||
     areConnected(family, parentId, childId) ||
@@ -522,15 +524,19 @@ export function availableParentKinds(
   const geneticParents = parentLinks.filter(
     (link) => link.kind === 'biological' || link.kind === 'donor',
   ).length;
-  const hasSurrogate = parentLinks.some((link) => link.kind === 'surrogate');
-  return PEDIGREE_RELATIONSHIP_KINDS.filter(
-    (kind): kind is PedigreeParentKind => {
-      if (kind === 'partner') return false;
-      if (kind === 'biological' || kind === 'donor') return geneticParents < 2;
-      if (kind === 'surrogate') return !hasSurrogate;
-      return true;
-    },
-  );
+  const hasCarrier = parentLinks.some((link) => link.isGestationalCarrier);
+  const choices: ParentChoice[] = [];
+  for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {
+    if (kind === 'partner') continue;
+    const genetic = kind === 'biological' || kind === 'donor';
+    if (genetic && geneticParents >= 2) continue;
+    if (kind === 'surrogate' && hasCarrier) continue;
+    choices.push({ parentKind: kind, carriedPregnancy: kind === 'surrogate' });
+    if (kind === 'biological' && !hasCarrier) {
+      choices.push({ parentKind: kind, carriedPregnancy: true });
+    }
+  }
+  return choices;
 }
 
 /** The link that records a connection. */
@@ -540,13 +546,15 @@ export function planConnection(connection: Connection): PlannedLink {
       source: connection.firstId,
       target: connection.secondId,
       kind: 'partner',
-      isCurrentPartner: true,
+      isCurrentPartner: connection.current,
     };
   }
   return {
     source: connection.parentId,
     target: connection.childId,
     kind: connection.parentKind,
-    isGestationalCarrier: connection.parentKind === 'surrogate',
+    isGestationalCarrier:
+      connection.parentKind === 'surrogate' ||
+      (connection.parentKind === 'biological' && connection.carriedPregnancy),
   };
 }

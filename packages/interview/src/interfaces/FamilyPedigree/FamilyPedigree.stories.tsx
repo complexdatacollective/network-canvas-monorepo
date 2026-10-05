@@ -505,6 +505,33 @@ export const ConnectingExistingPeople: Story = {
     );
     await expect(page.queryByRole('menu')).toBeNull();
     await userEvent.keyboard('{Escape}');
+
+    // Removing the partnership from Tom's details lets the pair be connected
+    // again — this time as former partners.
+    await userEvent.click(canvas.getByTestId('pedigree-tool-pointer'));
+    await userEvent.click(person('dad'));
+    await userEvent.click(
+      await page.findByRole('button', {
+        name: 'Remove the connection to “Rachel”',
+      }),
+    );
+    await userEvent.click(page.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(page.queryByTestId('pedigree-person-panel')).toBeNull(),
+    );
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(person('dad'));
+    await userEvent.click(person('mum'));
+    await userEvent.click(
+      await page.findByRole('menuitem', {
+        name: '“Tom” and “Rachel” were partners',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        canvas.getByText('“Tom” and “Rachel” were partners'),
+      ).toBeInTheDocument(),
+    );
   },
 };
 

@@ -95,6 +95,10 @@
     "defaultMessage": "Back",
     "description": "Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships."
   },
+  "interview.familyPedigree.connectFormerPartners": {
+    "defaultMessage": "{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}",
+    "description": "Option in the menu for connecting two people: they were a couple but are no longer together."
+  },
   "interview.familyPedigree.connectHint": {
     "defaultMessage": "Select a person, then select another to connect them.",
     "description": "Instruction shown under the toolbar while the tool for connecting two people is on."
@@ -239,6 +243,10 @@
     "defaultMessage": "Biological parent",
     "description": "Option: a genetic parent, who contributed an egg or sperm and raised the child or was otherwise their parent."
   },
+  "interview.familyPedigree.parentKind.biologicalCarrier": {
+    "defaultMessage": "Biological parent who carried the pregnancy",
+    "description": "Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child."
+  },
   "interview.familyPedigree.parentKind.donor": {
     "defaultMessage": "Egg or sperm donor",
     "description": "Option: someone who donated an egg or sperm but did not raise the child."
@@ -287,6 +295,10 @@
     "defaultMessage": "How you are related",
     "description": "Heading above the questions about how a new family member is related to the selected person."
   },
+  "interview.familyPedigree.relationshipWillBeRemoved": {
+    "defaultMessage": "{otherIsYou, select, true {The connection to you will be removed when you save.} other {The connection to “{name}” will be removed when you save.}}",
+    "description": "Shown in place of a relationship that the participant has chosen to remove, until they save. name is the other person’s name or how they are related to the participant."
+  },
   "interview.familyPedigree.relationshipsSection": {
     "defaultMessage": "Relationships",
     "description": "Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details."
@@ -310,6 +322,10 @@
   "interview.familyPedigree.removeConfirmTitle": {
     "defaultMessage": "Remove {name}?",
     "description": "Title of the confirmation shown before removing a family member. {name} is their name or “Unnamed”."
+  },
+  "interview.familyPedigree.removeRelationship": {
+    "defaultMessage": "{otherIsYou, select, true {Remove the connection to you} other {Remove the connection to “{name}”}}",
+    "description": "Button under a relationship in a family member’s details: takes the connection away when the details are saved. name is the other person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.removedAnnouncement": {
     "defaultMessage": "{name} removed from your family.",
@@ -370,6 +386,10 @@
   "interview.familyPedigree.trackerTitle": {
     "defaultMessage": "Before you continue, please complete the following:",
     "description": "Heading of the list of family members the participant still needs to add before moving on."
+  },
+  "interview.familyPedigree.undoRemoveRelationship": {
+    "defaultMessage": "Keep it",
+    "description": "Button next to a relationship that will be removed on saving: keeps the relationship instead."
   },
   "interview.familyPedigree.yes": {
     "defaultMessage": "Yes",

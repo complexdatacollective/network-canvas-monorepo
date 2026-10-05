@@ -4,7 +4,7 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import {
   areConnected,
-  availableParentKinds,
+  availableParentChoices,
   canConnectPartners,
   planConnection,
   readFamily,
@@ -41,9 +41,18 @@ describe('connecting two people', () => {
     expect(canConnectPartners(f, 'ego', 'ego')).toBe(false);
   });
 
+  const kinds = (choices: ReturnType<typeof availableParentChoices>) =>
+    choices.map(
+      (choice) =>
+        `${choice.parentKind}${choice.parentKind === 'biological' && choice.carriedPregnancy ? '+carried' : ''}`,
+    );
+
   test('parents: every kind for two unrelated people', () => {
-    expect(availableParentKinds(family(people, []), 'mum', 'ego')).toEqual([
+    expect(
+      kinds(availableParentChoices(family(people, []), 'mum', 'ego')),
+    ).toEqual([
       'biological',
+      'biological+carried',
       'adoptive',
       'social',
       'donor',
@@ -56,9 +65,9 @@ describe('connecting two people', () => {
       link('mum', 'ego', 'adoptive'),
       link('mum', 'dad', 'partner'),
     ]);
-    expect(availableParentKinds(f, 'mum', 'ego')).toEqual([]);
-    expect(availableParentKinds(f, 'ego', 'mum')).toEqual([]);
-    expect(availableParentKinds(f, 'dad', 'mum')).toEqual([]);
+    expect(availableParentChoices(f, 'mum', 'ego')).toEqual([]);
+    expect(availableParentChoices(f, 'ego', 'mum')).toEqual([]);
+    expect(availableParentChoices(f, 'dad', 'mum')).toEqual([]);
   });
 
   test('parents: none that would make someone their own ancestor', () => {
@@ -66,8 +75,8 @@ describe('connecting two people', () => {
       link('nan', 'mum', 'biological'),
       link('mum', 'ego', 'biological'),
     ]);
-    expect(availableParentKinds(f, 'ego', 'nan')).toEqual([]);
-    expect(availableParentKinds(f, 'nan', 'ego')).not.toEqual([]);
+    expect(availableParentChoices(f, 'ego', 'nan')).toEqual([]);
+    expect(availableParentChoices(f, 'nan', 'ego')).not.toEqual([]);
   });
 
   test('parents: at most two genetic parents and one surrogate', () => {
@@ -76,27 +85,54 @@ describe('connecting two people', () => {
       link('dad', 'ego', 'donor'),
       link('nan', 'ego', 'surrogate', { carrier: true }),
     ]);
-    expect(availableParentKinds(f, 'other', 'ego')).toEqual([
+    expect(kinds(availableParentChoices(f, 'other', 'ego'))).toEqual([
       'adoptive',
       'social',
     ]);
   });
 
+  test('parents: one person carried the pregnancy', () => {
+    const f = family(people, [
+      link('mum', 'ego', 'biological', { carrier: true }),
+    ]);
+    expect(kinds(availableParentChoices(f, 'dad', 'ego'))).toEqual([
+      'biological',
+      'adoptive',
+      'social',
+      'donor',
+    ]);
+  });
+
   test('the recorded link', () => {
     expect(
-      planConnection({ kind: 'partner', firstId: 'a', secondId: 'b' }),
+      planConnection({
+        kind: 'partner',
+        firstId: 'a',
+        secondId: 'b',
+        current: false,
+      }),
     ).toEqual({
       source: 'a',
       target: 'b',
       kind: 'partner',
-      isCurrentPartner: true,
+      isCurrentPartner: false,
     });
     expect(
       planConnection({
         kind: 'parent',
         parentId: 'p',
         childId: 'c',
+        parentKind: 'biological',
+        carriedPregnancy: true,
+      }),
+    ).toMatchObject({ kind: 'biological', isGestationalCarrier: true });
+    expect(
+      planConnection({
+        kind: 'parent',
+        parentId: 'p',
+        childId: 'c',
         parentKind: 'surrogate',
+        carriedPregnancy: true,
       }),
     ).toEqual({
       source: 'p',
