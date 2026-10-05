@@ -203,13 +203,18 @@ function assertClientCanParse(url: string): void {
     );
   }
   const sslmode = parsed.searchParams.get('sslmode');
-  if (sslmode !== null && !CLIENT_SSL_MODES.has(sslmode)) {
+  if (sslmode === null || CLIENT_SSL_MODES.has(sslmode)) return;
+  const accepted = [...CLIENT_SSL_MODES].join(', ');
+  if (sslmode === 'prefer' || sslmode === 'allow') {
     throw new Error(
       `DATABASE_URL has sslmode=${sslmode}, which Studio refuses: it can ` +
-        'connect without TLS when the server declines it. Use one of ' +
-        `${[...CLIENT_SSL_MODES].join(', ')}.`,
+        `connect without TLS when the server declines it. Use one of ${accepted}.`,
     );
   }
+  throw new Error(
+    `DATABASE_URL has sslmode=${sslmode}, which is not a supported sslmode. ` +
+      `Use one of ${accepted}.`,
+  );
 }
 
 /**

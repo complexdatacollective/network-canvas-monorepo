@@ -637,13 +637,29 @@ describe('the pinned role', () => {
   it('refuses an sslmode that can fall back to plaintext', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', '');
-    vi.stubEnv('DATABASE_URL', 'postgres://u@db.example/studio?sslmode=prefer');
-    expect(() => readEnv()).toThrow(/sslmode=prefer/);
+    for (const mode of ['prefer', 'allow']) {
+      vi.stubEnv(
+        'DATABASE_URL',
+        `postgres://u@db.example/studio?sslmode=${mode}`,
+      );
+      expect(() => readEnv(), mode).toThrow(
+        `DATABASE_URL has sslmode=${mode}, which Studio refuses: it can connect without TLS when the server declines it. Use one of disable, require, verify-ca, verify-full.`,
+      );
+    }
     vi.stubEnv(
       'DATABASE_URL',
       'postgres://u@db.example/studio?sslmode=verify-full',
     );
     expect(readEnv().db?.url).toContain('sslmode=verify-full');
+  });
+
+  it('refuses an sslmode it does not know as unsupported', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv('DATABASE_URL', 'postgres://u@db.example/studio?sslmode=bogus');
+    expect(() => readEnv()).toThrow(
+      'DATABASE_URL has sslmode=bogus, which is not a supported sslmode. Use one of disable, require, verify-ca, verify-full.',
+    );
   });
 
   it('accepts a Unix socket named by the host parameter', () => {
