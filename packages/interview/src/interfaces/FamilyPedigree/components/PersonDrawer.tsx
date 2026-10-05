@@ -6,10 +6,13 @@ import type { ReactNode } from 'react';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 
 type PersonDrawerProps = {
   open: boolean;
+  /** Changes for every opening, so each starts with an empty form. */
+  formKey: string;
   onClose: () => void;
   /** Called once the closing animation has finished. */
   onClosed?: () => void;
@@ -27,6 +30,7 @@ type PersonDrawerProps = {
  */
 export default function PersonDrawer({
   open,
+  formKey,
   onClose,
   onClosed,
   returnFocus,
@@ -73,10 +77,17 @@ export default function PersonDrawer({
                 }
               />
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-current/10 p-4">
-              {footer}
-            </div>
+            {/* The form's store is keyed per opening, inside the drawer: the
+                drawer itself stays mounted, so opening it is a change it can
+                animate. The footer's submit button sits within the store. */}
+            <FormStoreProvider key={formKey}>
+              <div className="min-h-0 flex-1 overflow-y-auto p-6">
+                {children}
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-current/10 p-4">
+                {footer}
+              </div>
+            </FormStoreProvider>
           </Drawer.Popup>
         </Drawer.Viewport>
       </Drawer.Portal>

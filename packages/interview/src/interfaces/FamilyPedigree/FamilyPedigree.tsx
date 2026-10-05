@@ -15,7 +15,6 @@ import { v4 as uuid } from 'uuid';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
 import {
@@ -1016,63 +1015,60 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       <div aria-live="polite" className="sr-only">
         {announcement}
       </div>
-      {/* Keyed per opening so every panel starts with an empty form. It wraps
-          the whole drawer so the footer's submit button reaches the form. */}
-      <FormStoreProvider key={panel?.key ?? 'closed'}>
-        <PersonDrawer
-          open={panel?.open ?? false}
-          onClose={cancelPanel}
-          onClosed={() => setPanel(null)}
-          returnFocus={() =>
-            returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
-          }
-          title={panelTitle}
-          footer={
-            <>
-              {editedPerson && !editedPerson.isEgo && (
-                <Button
-                  type="button"
-                  variant="text"
-                  color="destructive"
-                  className="mr-auto"
-                  onClick={() => void handleRemove(editedPerson.id)}
-                >
-                  <AppMessage message={messages.remove} />
-                </Button>
-              )}
-              <Button type="button" variant="text" onClick={cancelPanel}>
-                <AppMessage message={messages.cancel} />
+      <PersonDrawer
+        open={panel?.open ?? false}
+        formKey={panel?.key ?? 'closed'}
+        onClose={cancelPanel}
+        onClosed={() => setPanel(null)}
+        returnFocus={() =>
+          returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
+        }
+        title={panelTitle}
+        footer={
+          <>
+            {editedPerson && !editedPerson.isEgo && (
+              <Button
+                type="button"
+                variant="text"
+                color="destructive"
+                className="mr-auto"
+                onClick={() => void handleRemove(editedPerson.id)}
+              >
+                <AppMessage message={messages.remove} />
               </Button>
-              <SubmitButton form={formId}>
-                <AppMessage
-                  message={
-                    panel?.mode.kind === 'edit' ? messages.save : messages.add
-                  }
-                />
-              </SubmitButton>
-            </>
-          }
-        >
-          {panel && (
-            <PersonForm
-              key={panel.key}
-              formId={formId}
-              mode={panel.mode}
-              family={family}
-              config={config}
-              formFields={formFields}
-              displayName={displayName}
-              askAbout={
-                panel.mode.kind === 'edit' && progress
-                  ? relativesToAskAbout(family, progress, panel.mode.person.id)
-                  : undefined
-              }
-              onDraftChange={handleDraftChange}
-              onSubmit={(result) => void handleSubmit(result)}
-            />
-          )}
-        </PersonDrawer>
-      </FormStoreProvider>
+            )}
+            <Button type="button" variant="text" onClick={cancelPanel}>
+              <AppMessage message={messages.cancel} />
+            </Button>
+            <SubmitButton form={formId}>
+              <AppMessage
+                message={
+                  panel?.mode.kind === 'edit' ? messages.save : messages.add
+                }
+              />
+            </SubmitButton>
+          </>
+        }
+      >
+        {panel && (
+          <PersonForm
+            key={panel.key}
+            formId={formId}
+            mode={panel.mode}
+            family={family}
+            config={config}
+            formFields={formFields}
+            displayName={displayName}
+            askAbout={
+              panel.mode.kind === 'edit' && progress
+                ? relativesToAskAbout(family, progress, panel.mode.person.id)
+                : undefined
+            }
+            onDraftChange={handleDraftChange}
+            onSubmit={(result) => void handleSubmit(result)}
+          />
+        )}
+      </PersonDrawer>
     </div>
   );
 };
