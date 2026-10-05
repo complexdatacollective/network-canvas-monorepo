@@ -61,8 +61,12 @@ export function pedigreeDrawnNodeVariables(stage: Stage): Set<string> {
     nodeLabelVariable,
     ...(stage.nodeConfig?.form ?? [])
       .map((field) => field.variable)
-      // The live interface drops a form field duplicating the label variable.
-      .filter((variable) => variable !== nodeLabelVariable),
+      // PersonNameField owns the wizard's internal `name` path. A second form
+      // field with that id is suppressed by the live interface, as is a form
+      // field duplicating the configured label variable.
+      .filter(
+        (variable) => variable !== nodeLabelVariable && variable !== 'name',
+      ),
   ]);
 }
 
