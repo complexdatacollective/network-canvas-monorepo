@@ -30,7 +30,10 @@ CI.
 ## Wiring
 
 - Claude Code: `.claude/settings.json`. Hooks apply to subagents, teammates,
-  and headless runs. `$CLAUDE_PROJECT_DIR` is the worktree root.
+  and headless runs. `$CLAUDE_PROJECT_DIR` only locates the scripts: in a
+  linked worktree session it is the main checkout, not the worktree, so the
+  scripts take the repository they inspect from the hook event's `cwd` and
+  fall back to the variable only when an event carries none.
 - Codex: `.codex/hooks.json`. File edits arrive as `apply_patch` (or as
   `Bash` when the model applies a patch through the shell), and the touched
   paths are read from the patch text and from the tool response's `A/M/D`
