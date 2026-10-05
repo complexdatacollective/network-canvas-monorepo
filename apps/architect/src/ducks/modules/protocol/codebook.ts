@@ -50,13 +50,14 @@ import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
 import { find, get, has, omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
-import type {
-  Codebook,
-  EdgeColor,
-  EdgeDefinition,
-  EntityDefinition,
-  Variable,
-  VariablePropertyKey,
+import {
+  type Codebook,
+  type EdgeColor,
+  type EdgeDefinition,
+  type EntityDefinition,
+  escapeMessageText,
+  type Variable,
+  type VariablePropertyKey,
 } from '@codaco/protocol-validation';
 import {
   CodebookNameSchema,
@@ -130,6 +131,16 @@ const defaultTypeTemplate: Partial<EntityDefinition> = {
 const normalizedName = (name: unknown) =>
   typeof name === 'string' ? { name: normalizeCodebookName(name) } : {};
 
+// Participants see the label, not the name. A new type or variable starts with
+// its name as the label in the protocol's default language; a label the caller
+// supplies replaces it.
+const labelFromName = (state: RootState, name: string | undefined) => {
+  const localization = getProtocol(state)?.localization;
+  return name && localization
+    ? { label: { [localization.defaultLocale]: escapeMessageText(name) } }
+    : {};
+};
+
 // Only categorical and ordinal options carry text a researcher typed; a boolean
 // variable's options are true and false. It runs on the variable as stored,
 // because an edit sends only what changed and so may not say the type.
@@ -158,16 +169,19 @@ export const createTypeAsync = createAppAsyncThunk(
       entity,
       configuration,
     }: { entity: Entity; configuration: Partial<EntityDefinition> },
-    { dispatch },
+    { dispatch, getState },
   ) => {
     const type = uuid();
+    const name = normalizedName(get(configuration, 'name'));
     const payload: CreateTypePayload = {
       entity,
       type,
       configuration: {
         ...defaultTypeTemplate,
+        // The ego has no label: the participant is never shown a type name.
+        ...(entity === 'ego' ? {} : labelFromName(getState(), name.name)),
         ...configuration,
-        ...normalizedName(get(configuration, 'name')),
+        ...name,
       },
     };
 
@@ -214,13 +228,15 @@ export const createEdgeAsync = createAppAsyncThunk(
       : undefined;
     const color = configuration.color ?? colorFromHelper;
     const type = uuid();
+    const name = normalizedName(configuration.name);
 
     const payload: CreateTypePayload<EdgeDefinition> = {
       entity,
       type,
       configuration: {
+        ...labelFromName(state, name.name),
         ...configuration,
-        ...normalizedName(configuration.name),
+        ...name,
       },
     };
 
@@ -257,12 +273,13 @@ export const createVariableAsync = createAppAsyncThunk(
       throw new Error(createMessageError(errorMessages.invalidName));
     }
 
+    const state = getState();
     const safeConfiguration = prune({
+      ...labelFromName(state, name),
       ...configuration,
       name,
     }) as Variable;
 
-    const state = getState();
     const variables = getVariablesForSubject(state, { entity, type });
     const variableNameExists = Object.values(variables).some(
       (existing) =>

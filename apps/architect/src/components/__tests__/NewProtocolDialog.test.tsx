@@ -131,6 +131,50 @@ describe('NewProtocolDialog', () => {
   });
 });
 
+describe('NewProtocolDialog protocol language', () => {
+  const renderWithLanguage = () => {
+    const onSubmit = vi.fn();
+    render(
+      <NewProtocolDialog
+        open
+        onOpenChange={vi.fn()}
+        chooseLanguage
+        onSubmit={onSubmit}
+      />,
+    );
+    return onSubmit;
+  };
+
+  const languageSelect = () =>
+    screen.getByRole('combobox', { name: /Protocol language/i });
+
+  it('starts on the language that best matches Architect’s own', () => {
+    renderWithLanguage();
+
+    expect(languageSelect()).toHaveValue('en');
+  });
+
+  it('never offers the unidentified language', () => {
+    renderWithLanguage();
+
+    expect(
+      languageSelect().querySelector('option[value="und"]'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('creates the protocol in the chosen language', async () => {
+    const onSubmit = renderWithLanguage();
+
+    fireEvent.change(nameInput(), { target: { value: 'Étude' } });
+    fireEvent.change(languageSelect(), { target: { value: 'fr-CA' } });
+    submit();
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({ name: 'Étude', locale: 'fr-CA' }),
+    );
+  });
+});
+
 const PROTOCOL_NAME_TOO_LONG_MESSAGE = createAppIntl({
   locale: 'en',
 }).formatMessage(protocolNameTooLongDescriptor, {

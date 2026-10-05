@@ -588,9 +588,9 @@ function protocolWithStages(): CurrentProtocol {
     ...emptyProtocol(),
     stages: [1, 2, 3].map((index) => ({
       id: `info-${index}`,
-      label: `Information ${index}`,
+      label: { en: `Information ${index}` },
       type: 'Information',
-      title: `Information ${index}`,
+      title: { en: `Information ${index}` },
       items: [],
     })),
   };

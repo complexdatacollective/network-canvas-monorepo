@@ -19,8 +19,8 @@ const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 const STAGE: SectionDoc = {
   id: STAGE_ID,
   type: 'Information',
-  label: 'Welcome to the study',
-  title: 'Welcome',
+  label: { en: 'Welcome to the study' },
+  title: { en: 'Welcome' },
   items: [],
 };
 
@@ -45,6 +45,7 @@ function StageTitleInTheRoute({
         [sectionId({ kind: 'settings' })]: {
           name: 'Stage title proof host',
           schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
         },
         [sectionId({ kind: 'stageOrder' })]: { stages: [STAGE_ID] },
         [sectionId({ kind: 'assets' })]: {},
@@ -57,7 +58,7 @@ function StageTitleInTheRoute({
     <div className="h-full overflow-y-auto pb-32">
       {/* The route's own heading, which the title's `h2` counts from. */}
       <Heading level="h1" className="sr-only">
-        {String(STAGE.label)}
+        Welcome to the study
       </Heading>
       <div className="phone-landscape:px-6 px-4">
         <div className="@container mx-auto w-full max-w-6xl">

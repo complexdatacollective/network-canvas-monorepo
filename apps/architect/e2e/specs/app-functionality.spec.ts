@@ -3,6 +3,7 @@ import { validateProtocol } from '@codaco/protocol-validation';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { englishText } from '../helpers/localized-text.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -82,9 +83,15 @@ test('keeps history to saved changes while a stage editor is open', async ({
       {
         id: 'information-1',
         type: 'Information',
-        label: 'A page to rename',
-        title: 'Welcome',
-        items: [{ id: 'item-1', type: 'text', content: 'Thanks for coming.' }],
+        label: { en: 'A page to rename' },
+        title: { en: 'Welcome' },
+        items: [
+          {
+            id: 'item-1',
+            type: 'text',
+            content: { en: 'Thanks for coming.' },
+          },
+        ],
       },
     ],
   });
@@ -193,7 +200,9 @@ test('discards an invalid stage draft before returning to the start screen', asy
 
   await seed(protocol, { name: 'Discard Invalid Draft', assets });
   await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage(informationStage.label);
+  await new Timeline(architectPage).openStage(
+    englishText(informationStage.label),
+  );
 
   // Clearing Information's required page heading makes the in-progress stage
   // invalid. The stage editor keeps this in its separate draft until the user

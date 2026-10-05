@@ -86,8 +86,12 @@ vi.mock('../../app', () => ({
 }));
 
 // Imported after mocks so the thunks pick up the mocked collaborators.
-const { openBundledTemplate, openLibraryProtocol, openLocalNetcanvas } =
-  await import('../userActions');
+const {
+  createNetcanvas,
+  openBundledTemplate,
+  openLibraryProtocol,
+  openLocalNetcanvas,
+} = await import('../userActions');
 const { APP_SCHEMA_VERSION } = await import('~/config');
 const { takeProtocolUpgrades } = await import('~/utils/protocolUpgradeQueue');
 
@@ -102,18 +106,19 @@ const dispatch = vi.fn((action: unknown) => {
 
 const runThunk = (
   thunk:
+    | ReturnType<typeof createNetcanvas>
     | ReturnType<typeof openBundledTemplate>
     | ReturnType<typeof openLibraryProtocol>,
 ) => thunk(dispatch, () => ({}) as never, undefined);
 
-const makeProtocol = (): CurrentProtocol =>
-  ({
-    name: 'My Study',
-    schemaVersion: APP_SCHEMA_VERSION,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest: {},
-  }) as CurrentProtocol;
+const makeProtocol = (): CurrentProtocol => ({
+  name: 'My Study',
+  schemaVersion: APP_SCHEMA_VERSION,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest: {},
+});
 
 describe('userActions', () => {
   beforeEach(() => {
@@ -133,6 +138,20 @@ describe('userActions', () => {
     dispatch.mockClear();
     // The upgrade queue is module state shared across the suite.
     takeProtocolUpgrades();
+  });
+
+  describe('createNetcanvas', () => {
+    it('declares the chosen language as the only and default protocol language', async () => {
+      await runThunk(createNetcanvas({ name: 'Étude', locale: 'fr' }));
+
+      expect(putStoredProtocol).toHaveBeenCalledWith(
+        expect.objectContaining({
+          protocol: expect.objectContaining({
+            localization: { defaultLocale: 'fr', locales: ['fr'] },
+          }),
+        }),
+      );
+    });
   });
 
   describe('import validation-failure analytics redaction (#766)', () => {

@@ -1,6 +1,7 @@
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { englishText } from '../helpers/localized-text.js';
 import { selectOrCreateNodeType } from '../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../pageobjects/editor-sections/prompts.js';
 import { createAttribute } from '../pageobjects/editor-sections/variables.js';
@@ -28,7 +29,9 @@ test('names the offending field on the first open of the issues panel', async ({
 
   await seed(protocol, { name: 'Issues Panel', assets });
   await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage(informationStage.label);
+  await new Timeline(architectPage).openStage(
+    englishText(informationStage.label),
+  );
 
   // Clearing Information's required page heading is the smallest way to make
   // the stage fail its own validation.
@@ -71,7 +74,9 @@ test('sends focus to the control an issue row names', async ({
 
   await seed(protocol, { name: 'Issues Focus', assets });
   await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage(informationStage.label);
+  await new Timeline(architectPage).openStage(
+    englishText(informationStage.label),
+  );
 
   const heading = architectPage.getByRole('textbox', { name: 'Page heading' });
   await heading.fill('');

@@ -6,6 +6,7 @@ import {
   recordAnnouncements,
 } from '../helpers/announcements.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { englishText } from '../helpers/localized-text.js';
 import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';
 import { acknowledgeRefusal } from '../helpers/refusal.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -60,13 +61,18 @@ function toStage(value: unknown): Stage {
     'id' in value &&
     typeof value.id === 'string' &&
     'label' in value &&
-    typeof value.label === 'string' &&
+    typeof value.label === 'object' &&
+    value.label !== null &&
+    'en' in value.label &&
+    typeof value.label.en === 'string' &&
     'type' in value &&
     typeof value.type === 'string'
   ) {
-    return { id: value.id, label: value.label, type: value.type };
+    return { id: value.id, label: value.label.en, type: value.type };
   }
-  throw new Error('protocol stage missing a string id, label, or type');
+  throw new Error(
+    'protocol stage missing a string id, English label, or string type',
+  );
 }
 
 // `readProtocolJson` returns `Record<string, unknown>`; extract its stages as
@@ -107,7 +113,9 @@ test('shows the skip-logic icon without a destination note', async ({
   await seed(protocol, { name: 'All Interfaces', assets });
   await gotoProtocol(architectPage);
 
-  const row = new Timeline(architectPage).stageRowByLabel(firstStage.label);
+  const row = new Timeline(architectPage).stageRowByLabel(
+    englishText(firstStage.label),
+  );
   await expect(row.getByRole('img', { name: 'Has skip logic' })).toBeVisible();
   await expect(row.getByText(/^If skipped:/)).toHaveCount(0);
 });
@@ -185,7 +193,7 @@ test('keeps the timeline tab order insertion-point-then-stage', async ({
   // asserted directly: the point that inserts before a stage comes immediately
   // before that stage's own controls, for every stage.
   await tabUntilFocused(architectPage, timeline.insertButtons().first());
-  for (const label of [first.label, second.label]) {
+  for (const label of [englishText(first.label), englishText(second.label)]) {
     await architectPage.keyboard.press('Tab');
     await expect(timeline.openControl(label)).toBeFocused();
     await architectPage.keyboard.press('Tab');
@@ -616,7 +624,7 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
 
   const before = stagesOf(await readProtocolJson(architectPage));
   const timeline = new Timeline(architectPage);
-  const openControl = timeline.openControl(destination.label);
+  const openControl = timeline.openControl(englishText(destination.label));
   await openControl.focus();
   await openControl.press('ArrowUp');
 
@@ -811,7 +819,7 @@ test('falls back to the add control when the last stage is deleted', async ({
   await recordAnnouncements(architectPage);
 
   const timeline = new Timeline(architectPage);
-  const deleteControl = timeline.deleteControl(only.label);
+  const deleteControl = timeline.deleteControl(englishText(only.label));
   await deleteControl.focus();
   await deleteControl.press('Enter');
   await architectPage

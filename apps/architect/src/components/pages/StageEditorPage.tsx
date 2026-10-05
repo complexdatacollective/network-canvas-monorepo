@@ -39,7 +39,13 @@ import {
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
 import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
-import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
+import {
+  getLocalization,
+  getProtocol,
+  getStage,
+  getStageIndex,
+} from '~/selectors/protocol';
+import { localizedText } from '~/utils/localizedText';
 const messages = defineMessages({
   stageNotFound: {
     id: 'architect.stageEditor.stageEditor.stageNotFound',
@@ -246,10 +252,11 @@ const StageEditorPage = () => {
     };
   }, []);
 
-  const draftName = useStageDraft((beacon) => beacon.stage?.label);
+  const localization = useSelector(getLocalization);
+  const draftLabel = useStageDraft((beacon) => beacon.stage?.label);
   const stageName =
-    (typeof draftName === 'string' && draftName !== '' ? draftName : null) ??
-    stage?.label ??
+    localizedText(draftLabel, localization) ||
+    localizedText(stage?.label, localization) ||
     intl.formatMessage(messages.newStage);
 
   const renderChrome = useCallback(

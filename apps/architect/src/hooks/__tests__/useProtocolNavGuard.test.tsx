@@ -286,6 +286,7 @@ describe('getLeavePersistence', () => {
   const protocol: CurrentProtocol = {
     name: 'Test Protocol',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: {},
   };

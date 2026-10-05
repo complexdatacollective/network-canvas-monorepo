@@ -86,6 +86,12 @@ async function readNarrativePedigreeStage(
 // inside the library, not here), matching how e.g.
 // `packages/interview/src/interfaces/NarrativePedigree/components/
 // NarrativePedigreeView.stories.tsx` already builds pedigree fixtures.
+// The interface-owned value sets carry plain-string labels; a protocol's
+// codebook localizes them.
+const localizedOptions = (
+  options: readonly { value: string; label: string }[],
+) => options.map(({ value, label }) => ({ value, label: { en: label } }));
+
 function protocolWithFamilyPedigreeStage(): CurrentProtocol {
   return {
     ...emptyProtocol(),
@@ -93,42 +99,64 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
       node: {
         person: {
           name: 'person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'name', type: 'text' },
-            is_ego: { name: 'is_ego', type: 'boolean' },
-            relationship_to_ego: { name: 'relationship_to_ego', type: 'text' },
+            name: { name: 'name', label: { en: 'Name' }, type: 'text' },
+            is_ego: {
+              name: 'is_ego',
+              label: { en: 'Is ego' },
+              type: 'boolean',
+            },
+            relationship_to_ego: {
+              name: 'relationship_to_ego',
+              label: { en: 'Relationship to ego' },
+              type: 'text',
+            },
             biologicalSex: {
               name: 'biologicalSex',
+              label: { en: 'Biological sex' },
               type: 'categorical',
-              options: BIOLOGICAL_SEX_OPTIONS,
+              options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
               readOnly: true,
             },
-            hasConditionX: { name: 'hasConditionX', type: 'boolean' },
+            hasConditionX: {
+              name: 'hasConditionX',
+              label: { en: 'Has condition X' },
+              type: 'boolean',
+            },
           },
         },
       },
       edge: {
         family_edge: {
           name: 'family_edge',
+          label: { en: 'Family edge' },
           color: 'edge-color-seq-1',
           variables: {
             relationshipType: {
               name: 'relationshipType',
+              label: { en: 'Relationship type' },
               type: 'categorical',
-              options: RELATIONSHIP_TYPE_OPTIONS,
+              options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
               readOnly: true,
             },
-            isActive: { name: 'isActive', type: 'boolean' },
+            isActive: {
+              name: 'isActive',
+              label: { en: 'Is active' },
+              type: 'boolean',
+            },
             isGestationalCarrier: {
               name: 'isGestationalCarrier',
+              label: { en: 'Is gestational carrier' },
               type: 'boolean',
             },
             gameteRole: {
               name: 'gameteRole',
+              label: { en: 'Gamete role' },
               type: 'categorical',
-              options: GAMETE_ROLE_OPTIONS,
+              options: localizedOptions(GAMETE_ROLE_OPTIONS),
               readOnly: true,
             },
           },
@@ -139,7 +167,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
       {
         id: SOURCE_STAGE_ID,
         type: 'FamilyPedigree',
-        label: 'Family Pedigree',
+        label: { en: 'Family Pedigree' },
         nodeConfig: {
           type: 'person',
           nodeLabelVariable: asEntityAttributeReference('name'),
@@ -164,11 +192,13 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
           requireGrandparents: 'off',
           requireChildrenContributors: 'off',
         },
-        censusPrompt: 'Who is in your family?',
+        censusPrompt: { en: 'Who is in your family?' },
         nominationPrompts: [
           {
             id: 'nomination-1',
-            text: 'Who in your family has been diagnosed with condition X?',
+            text: {
+              en: 'Who in your family has been diagnosed with condition X?',
+            },
             variable: asEntityAttributeReference('hasConditionX'),
           },
         ],

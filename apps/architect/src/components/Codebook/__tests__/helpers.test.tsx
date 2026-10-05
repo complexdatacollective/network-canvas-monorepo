@@ -32,6 +32,7 @@ const state = {
           variables: {
             1: {
               name: 'name',
+              label: { en: 'name' },
               type: 'text' as const,
             },
           },
@@ -39,11 +40,13 @@ const state = {
         node: {
           person: {
             name: 'Person',
+            label: { en: 'Person' },
             color: 'node-color-seq-1' as const,
             shape: { default: 'circle' as const },
             variables: {
               2: {
                 name: 'name',
+                label: { en: 'name' },
                 type: 'text' as const,
               },
             },
@@ -52,10 +55,12 @@ const state = {
         edge: {
           friend: {
             name: 'Friend',
+            label: { en: 'Friend' },
             color: 'edge-color-seq-1' as const,
             variables: {
               3: {
                 name: 'name',
+                label: { en: 'name' },
                 type: 'text' as const,
               },
             },
@@ -63,9 +68,9 @@ const state = {
         },
       },
       stages: [
-        { label: 'foo', id: 'abcd', other: 'ignored' },
-        { label: 'bar', id: 'efgh', other: 'ignored' },
-        { label: 'bazz', id: 'ijkl', other: 'ignored' },
+        { label: { en: 'foo' }, id: 'abcd', other: 'ignored' },
+        { label: { en: 'bar' }, id: 'efgh', other: 'ignored' },
+        { label: { en: 'bazz' }, id: 'ijkl', other: 'ignored' },
       ],
     },
   },
@@ -279,20 +284,27 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
       activeProtocol: {
         present: {
           schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           name: 'test',
           codebook: {
             node: {
               person: {
                 name: 'Person',
+                label: { en: 'Person' },
                 color: 'node-color-seq-1',
                 shape: { default: 'circle' },
                 variables: {
                   'owner.id': {
                     name: 'Owner',
+                    label: { en: 'Owner' },
                     type: 'number',
                     validation: { sameAs: 'target.id' },
                   },
-                  'target.id': { name: 'Target', type: 'number' },
+                  'target.id': {
+                    name: 'Target',
+                    label: { en: 'Target' },
+                    type: 'number',
+                  },
                 },
               },
             },
@@ -318,11 +330,13 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
       activeProtocol: {
         present: {
           schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           name: 'test',
           codebook: {
             node: {
               'person.v2': {
                 name: 'Person',
+                label: { en: 'Person' },
                 color: 'node-color-seq-1',
                 shape: {
                   default: 'circle',
@@ -335,8 +349,9 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
                 variables: {
                   category: {
                     name: 'Category',
+                    label: { en: 'Category' },
                     type: 'categorical',
-                    options: [{ label: 'A', value: 'a' }],
+                    options: [{ label: { en: 'A' }, value: 'a' }],
                   },
                 },
               },

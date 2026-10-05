@@ -341,7 +341,7 @@ test('formats printed attribute order and updates linked-list grammar live while
         variables: Object.fromEntries(
           names.map((name, index) => [
             `attribute-${index}`,
-            { name, type: 'text', component: 'Text' },
+            { name, label: { en: name }, type: 'text', component: 'Text' },
           ]),
         ),
       },
@@ -350,30 +350,30 @@ test('formats printed attribute order and updates linked-list grammar live while
       {
         id: 'sort',
         type: 'EgoForm',
-        label: 'Authored_sort',
+        label: { en: 'Authored_sort' },
         introductionPanel: {
-          title: 'Authored introduction',
-          text: 'Authored content',
+          title: { en: 'Authored introduction' },
+          text: { en: 'Authored content' },
         },
         form: {
           fields: names.map((_, index) => ({
             variable: `attribute-${index}`,
-            prompt: `Authored_prompt_${index}`,
+            prompt: { en: `Authored_prompt_${index}` },
           })),
         },
       },
       {
         id: 'conjunction',
         type: 'EgoForm',
-        label: 'Authored_conjunction',
+        label: { en: 'Authored_conjunction' },
         introductionPanel: {
-          title: 'Authored introduction',
-          text: 'Authored content',
+          title: { en: 'Authored introduction' },
+          text: { en: 'Authored content' },
         },
         form: {
           fields: [0, 3].map((index) => ({
             variable: `attribute-${index}`,
-            prompt: `Authored_prompt_${index}`,
+            prompt: { en: `Authored_prompt_${index}` },
           })),
         },
       },

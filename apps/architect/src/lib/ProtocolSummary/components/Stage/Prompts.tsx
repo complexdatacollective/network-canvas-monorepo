@@ -3,6 +3,7 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
 import Prompt from './Prompt';
 import SectionFrame from './SectionFrame';
@@ -17,7 +18,7 @@ const messages = defineMessages({
 
 export type PromptType = {
   id?: string;
-  text: string;
+  text: LocalizedString;
   [key: string]: unknown;
 };
 

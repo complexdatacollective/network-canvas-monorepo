@@ -133,6 +133,13 @@ const descriptionMessages = defineMessages({
     description:
       'Description of the interview interface in the New Stage chooser.',
   },
+  LanguageChooser: {
+    id: 'architect.interface.description.LanguageChooser',
+    defaultMessage:
+      'A screen where participants choose the language for the rest of the interview, from the languages your protocol offers.',
+    description:
+      'Description of the interview interface in the New Stage chooser.',
+  },
   Anonymisation: {
     id: 'architect.interface.description.Anonymisation',
     defaultMessage:
@@ -251,6 +258,7 @@ const INTERFACE_TYPE_NAMES = [
   'AlterEdgeForm',
   'EgoForm',
   'Information',
+  'LanguageChooser',
   'Anonymisation',
 ] as const;
 
@@ -424,6 +432,14 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
       'instruction text participant guide intro image video audio media resource',
     type: 'Information',
     description: descriptionMessages.Information,
+  },
+  {
+    category: CATEGORIES.UTILITIES,
+    tags: [],
+    keywords:
+      'language languages translation translate multilingual locale choose chooser participant',
+    type: 'LanguageChooser',
+    description: descriptionMessages.LanguageChooser,
   },
   {
     category: CATEGORIES.UTILITIES,

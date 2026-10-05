@@ -5,12 +5,19 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
+import type {
+  FamilyPedigreeStageDefinition,
+  Item,
+  LocalizedString,
+  Panel,
+} from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import { SummaryText } from '../SummaryText';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import DataSource from './DataSource';
@@ -47,7 +54,7 @@ const messages = defineMessages({
 });
 
 type FormFieldType = {
-  prompt: string;
+  prompt: LocalizedString;
   variable: string;
   [key: string]: unknown;
 };
@@ -70,7 +77,7 @@ const variablesOnStage =
 type StageProps = {
   configuration: Record<string, unknown>;
   id: string;
-  label: string;
+  label: LocalizedString;
   stageNumber: number;
   type: string;
 };
@@ -108,23 +115,17 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   const introductionPanel = configuration.introductionPanel as
     | {
-        title: string;
-        text: string;
+        title: LocalizedString;
+        text: LocalizedString;
       }
     | undefined;
   const dataSource = configuration.dataSource as string | undefined;
   const quickAdd = configuration.quickAdd as string | undefined;
-  const panels = configuration.panels as
-    | {
-        id: string;
-        title: string;
-        dataSource: string;
-      }[]
-    | undefined;
+  const panels = configuration.panels as Panel[] | undefined;
   const prompts = configuration.prompts as PromptType[] | undefined;
   const form = configuration.form as
     | {
-        title?: string;
+        title?: LocalizedString;
         fields?: FormFieldType[];
       }
     | undefined;
@@ -133,7 +134,8 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   const presets = configuration.presets as
     | {
-        label: string;
+        id: string;
+        label: LocalizedString;
         layoutVariable?: string;
         groupVariable?: string;
         edges?: {
@@ -142,15 +144,8 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         highlight?: string[];
       }[]
     | undefined;
-  const title = configuration.title as string | undefined;
-  const items = configuration.items as
-    | {
-        id?: string;
-        type?: string;
-        content?: string;
-        size?: string;
-      }[]
-    | undefined;
+  const title = configuration.title as LocalizedString | undefined;
+  const items = configuration.items as Item[] | undefined;
   const interviewScript = configuration.interviewScript as string | undefined;
   // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
   const edgeType = configuration.edgeType as
@@ -172,17 +167,17 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   const scaffoldingStep = configuration.scaffoldingStep as
     | {
-        text: string;
+        text: LocalizedString;
         showQuickStartModal: boolean;
       }
     | undefined;
   const nameGenerationStep = configuration.nameGenerationStep as
     | {
-        text: string;
+        text: LocalizedString;
         form: {
           fields?: Array<{
             variable: string;
-            prompt: string;
+            prompt: LocalizedString;
           }>;
         };
       }
@@ -191,17 +186,13 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   // built. (`diseaseNominationStep` was the legacy FamilyTreeCensus key; no
   // current schema stage carries it, so it is not read here.)
   const nominationPrompts = configuration.nominationPrompts as
-    | Array<{
-        id: string;
-        text: string;
-        variable: string;
-      }>
+    | FamilyPedigreeStageDefinition['nominationPrompts']
     | undefined;
   // Anonymisation
   const explanationText = configuration.explanationText as
     | {
-        title: string;
-        body: string;
+        title: LocalizedString;
+        body: LocalizedString;
       }
     | undefined;
   const validation = configuration.validation as
@@ -234,7 +225,9 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
             className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
             data-number={intl.formatNumber(stageNumber)}
           >
-            <Heading level="h1">{label}</Heading>
+            <Heading level="h1">
+              <SummaryText value={label} />
+            </Heading>
           </div>
           {(subject || edgeType || !isEmpty(stageVariables)) && (
             <MiniTable

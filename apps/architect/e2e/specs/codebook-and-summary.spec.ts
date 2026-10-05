@@ -458,6 +458,7 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
   if (!personType?.variables) throw new Error('fixture lost its person type');
   personType.variables['long-name-variable'] = {
     name: LONG_NAME,
+    label: { en: LONG_NAME },
     type: 'text',
     component: 'Text',
   };

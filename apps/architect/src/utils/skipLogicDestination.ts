@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import {
   createAppIntl,
   defineMessages,
@@ -41,7 +43,7 @@ const localeMessages = defineMessages({
 
 type StageReference = {
   id: string;
-  label: string;
+  label: ReactNode;
 };
 
 export const getSkipLogicDestinationLabel = (

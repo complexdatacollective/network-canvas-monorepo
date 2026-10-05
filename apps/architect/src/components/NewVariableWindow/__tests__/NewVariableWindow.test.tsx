@@ -246,8 +246,8 @@ describe('NewVariableWindow option export columns', () => {
   };
 
   const options = [
-    { label: 'Bar', value: 'bar' },
-    { label: 'Baz', value: 'baz' },
+    { label: { en: 'Bar' }, value: 'bar' },
+    { label: { en: 'Baz' }, value: 'baz' },
   ];
 
   beforeEach(() => {

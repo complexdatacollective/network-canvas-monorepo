@@ -1,6 +1,7 @@
 import {
   createSlice,
   current,
+  type Draft,
   type PayloadAction,
   type UnknownAction,
 } from '@reduxjs/toolkit';
@@ -21,12 +22,30 @@ import { timelineActions } from '../middleware/timeline';
 import { getProtocolOwnedHere } from './app';
 import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
+import {
+  addLocales,
+  type LocaleOperationResult,
+  moveLocale,
+  relabelLocale,
+  removeLocale,
+  setDefaultLocale,
+} from './protocol/localeOperations';
 import stages from './protocol/stages';
 
 // Types
 type ActiveProtocolState = CurrentProtocol | null;
 
 const initialState = null as ActiveProtocolState;
+
+// A refused operation leaves the protocol untouched, so it records no history.
+const applyLocaleOperation = (
+  state: Draft<CurrentProtocol> | null,
+  operation: (protocol: CurrentProtocol) => LocaleOperationResult,
+) => {
+  if (!state) return state;
+  const result = operation(current(state));
+  return result.ok ? result.protocol : undefined;
+};
 
 const activeProtocolSlice = createSlice({
   name: 'activeProtocol',
@@ -61,6 +80,38 @@ const activeProtocolSlice = createSlice({
       if (!state) return state;
       return { ...state, lastModified: action.payload };
     },
+    addProtocolLocales: (
+      state,
+      action: PayloadAction<{ locales: readonly string[] }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        addLocales(protocol, action.payload.locales),
+      ),
+    removeProtocolLocale: (state, action: PayloadAction<{ locale: string }>) =>
+      applyLocaleOperation(state, (protocol) =>
+        removeLocale(protocol, action.payload.locale),
+      ),
+    setProtocolDefaultLocale: (
+      state,
+      action: PayloadAction<{ locale: string }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setDefaultLocale(protocol, action.payload.locale),
+      ),
+    moveProtocolLocale: (
+      state,
+      action: PayloadAction<{ locale: string; index: number }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        moveLocale(protocol, action.payload.locale, action.payload.index),
+      ),
+    relabelProtocolLocale: (
+      state,
+      action: PayloadAction<{ from: string; to: string }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        relabelLocale(protocol, action.payload.from, action.payload.to),
+      ),
     clearActiveProtocol: (_state) => {
       // Assets are namespaced per protocol and owned by the library; deleting a
       // protocol (deleteLibraryProtocol) removes its assets. Closing the active
@@ -121,6 +172,13 @@ export const updateLastModified =
   activeProtocolSlice.actions.updateLastModified;
 export const clearActiveProtocol =
   activeProtocolSlice.actions.clearActiveProtocol;
+export const {
+  addProtocolLocales,
+  removeProtocolLocale,
+  setProtocolDefaultLocale,
+  moveProtocolLocale,
+  relabelProtocolLocale,
+} = activeProtocolSlice.actions;
 
 export const actionCreators = {
   setActiveProtocol: activeProtocolSlice.actions.setActiveProtocol,

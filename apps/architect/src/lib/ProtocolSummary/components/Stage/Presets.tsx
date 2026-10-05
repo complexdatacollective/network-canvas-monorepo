@@ -2,10 +2,12 @@ import { get } from 'es-toolkit/compat';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
+import { SummaryText } from '../SummaryText';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
@@ -19,7 +21,8 @@ const messages = defineMessages({
 
 type PresetsProps = {
   presets?: Array<{
-    label: string;
+    id: string;
+    label: LocalizedString;
     layoutVariable?: string;
     groupVariable?: string;
     edges?: { display?: string[] };
@@ -37,8 +40,8 @@ const Presets = ({ presets = null }: PresetsProps) => {
     <SectionFrame title={intl.formatMessage(messages.presets)}>
       <div className="flex flex-col gap-5 pt-5">
         {presets.map((preset) => (
-          <div key={preset.label}>
-            <SectionFrame title={preset.label}>
+          <div key={preset.id}>
+            <SectionFrame title={<SummaryText value={preset.label} />}>
               <MiniTable
                 rotated
                 rows={[

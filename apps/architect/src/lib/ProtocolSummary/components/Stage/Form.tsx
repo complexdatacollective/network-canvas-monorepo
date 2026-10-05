@@ -3,12 +3,13 @@ import { useContext } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Markdown from '~/components/Markdown';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import { getVariableMeta } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import { SummaryMarkdown, SummaryText } from '../SummaryText';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
@@ -27,12 +28,12 @@ const messages = defineMessages({
 });
 
 type FormFieldType = {
-  prompt: string;
+  prompt: LocalizedString;
   variable: string;
 };
 type FormProps = {
   form?: {
-    title?: string;
+    title?: LocalizedString;
     fields?: FormFieldType[];
   } | null;
 };
@@ -48,7 +49,7 @@ const Form = ({ form = null }: FormProps) => {
       return [
         <Variable key={`var-${variable}`} id={variable} />,
         <span key={`comp-${variable}`}>{meta.component ?? ''}</span>,
-        <Markdown key={`prompt-${variable}`} label={prompt} />,
+        <SummaryMarkdown key={`prompt-${variable}`} value={prompt} />,
       ];
     }) ?? [];
   return (
@@ -58,7 +59,9 @@ const Form = ({ form = null }: FormProps) => {
     >
       {form.title && (
         <Heading level="h4">
-          {intl.formatMessage(messages.title, { value1: form.title })}
+          {intl.formatMessage(messages.title, {
+            value1: <SummaryText value={form.title} />,
+          })}
         </Heading>
       )}
       <MiniTable

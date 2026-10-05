@@ -10,6 +10,7 @@ const mockProtocol: CurrentProtocol = {
   name: 'Test Protocol',
   description: 'test description',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},
@@ -23,13 +24,14 @@ const mockProtocol2: CurrentProtocol = {
   name: 'Test Protocol 2',
   description: 'another description',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [
     {
       id: 'stage-1',
       type: 'NameGenerator',
-      label: 'Test Stage',
+      label: { en: 'Test Stage' },
       form: {
-        title: 'Test Form',
+        title: { en: 'Test Form' },
         fields: [],
       },
       subject: {
@@ -39,7 +41,7 @@ const mockProtocol2: CurrentProtocol = {
       prompts: [
         {
           id: 'prompt-1',
-          text: 'Test prompt',
+          text: { en: 'Test prompt' },
         },
       ],
     },
@@ -48,6 +50,7 @@ const mockProtocol2: CurrentProtocol = {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {},

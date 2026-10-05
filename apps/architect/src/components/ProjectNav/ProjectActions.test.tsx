@@ -33,6 +33,7 @@ const mockedGetStoredProtocol = vi.mocked(getStoredProtocol);
 const PROTOCOL: StoredProtocolRow['protocol'] = {
   name: 'Test protocol',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {},
   stages: [],
 };

@@ -12,14 +12,15 @@ import { ARCHITECT_LOCALE_KEY } from '../preference';
 const protocol = {
   name: 'Authored protocol',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {},
   assetManifest: {},
   stages: [
     {
       id: 'authored-stage',
-      label: 'Authored stage',
+      label: { en: 'Authored stage' },
       type: 'Information',
-      title: 'Authored title',
+      title: { en: 'Authored title' },
       items: [],
     },
   ],
@@ -57,11 +58,16 @@ it('reorders both printed attribute surfaces after a locale change without chang
   const { container } = render(
     <ArchitectI18nProvider>
       <SummaryContext.Provider
-        value={{ protocol, protocolName: 'Authored protocol', index }}
+        value={{
+          protocol,
+          protocolName: 'Authored protocol',
+          index,
+          locale: 'en',
+        }}
       >
         <Stage
           id="authored-stage"
-          label="Authored stage"
+          label={{ en: 'Authored stage' }}
           type="Information"
           stageNumber={12345}
           configuration={{}}
@@ -116,11 +122,16 @@ it('formats a whole linked list using the literal names, including Spanish e bef
   render(
     <ArchitectI18nProvider>
       <SummaryContext.Provider
-        value={{ protocol, protocolName: 'Authored protocol', index }}
+        value={{
+          protocol,
+          protocolName: 'Authored protocol',
+          index,
+          locale: 'en',
+        }}
       >
         <Stage
           id="authored-stage"
-          label="Authored stage"
+          label={{ en: 'Authored stage' }}
           type="Information"
           stageNumber={1}
           configuration={{}}

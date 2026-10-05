@@ -23,14 +23,14 @@ const asset = (
 
 const makeProtocol = (
   assetManifest: CurrentProtocol['assetManifest'],
-): CurrentProtocol =>
-  ({
-    name: 'test',
-    schemaVersion: 9,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest,
-  }) as CurrentProtocol;
+): CurrentProtocol => ({
+  name: 'test',
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest,
+});
 
 describe('bundleProtocol', () => {
   beforeEach(() => {

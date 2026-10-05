@@ -4,7 +4,7 @@ import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import Markdown from '~/components/Markdown';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
@@ -12,6 +12,7 @@ import EntityBadge from '../EntityBadge';
 import { SummaryValue } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import { SummaryMarkdown, SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   explanationText: {
@@ -43,8 +44,8 @@ const finalMessages = defineMessages({
 
 type AnonymisationProps = {
   explanationText?: {
-    title: string;
-    body: string;
+    title: LocalizedString;
+    body: LocalizedString;
   } | null;
   validation?: {
     minLength?: number;
@@ -132,8 +133,10 @@ const Anonymisation = ({
     <>
       {hasExplanation && (
         <SectionFrame title={intl.formatMessage(messages.explanationText)}>
-          <Heading level="h1">{explanationText.title}</Heading>
-          <Markdown label={explanationText.body} />
+          <Heading level="h1">
+            <SummaryText value={explanationText.title} />
+          </Heading>
+          <SummaryMarkdown value={explanationText.body} />
         </SectionFrame>
       )}
 

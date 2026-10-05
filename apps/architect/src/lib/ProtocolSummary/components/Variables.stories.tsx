@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
-import type { Variable } from '@codaco/protocol-validation';
+import type { CurrentProtocol, Variable } from '@codaco/protocol-validation';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 
+import SummaryContext from './SummaryContext';
 import Variables from './Variables';
 
 const NAME = 'consentPreference';
@@ -14,10 +15,19 @@ const variables = {
     name: NAME,
     type: 'categorical',
     options: [
-      { value: STORED_VALUE, label: 'Prefer not to say' },
-      { value: 'yes', label: 'Yes' },
+      { value: STORED_VALUE, label: { en: 'Prefer not to say' } },
+      { value: 'yes', label: { en: 'Yes' } },
     ],
   } as unknown as Variable,
+};
+
+const protocol: CurrentProtocol = {
+  name: 'Study',
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  assetManifest: {},
+  codebook: {},
+  stages: [],
 };
 
 const meta = {
@@ -27,7 +37,11 @@ const meta = {
   decorators: [
     (Story) => (
       <ArchitectI18nProvider>
-        <Story />
+        <SummaryContext.Provider
+          value={{ protocol, protocolName: 'Study', index: [], locale: 'en' }}
+        >
+          <Story />
+        </SummaryContext.Provider>
       </ArchitectI18nProvider>
     ),
   ],

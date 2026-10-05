@@ -1583,6 +1583,10 @@
     "defaultMessage": "A general purpose screen that can be used to present information to participants using a variety of text and media resources.",
     "description": "Description of the interview interface in the New Stage chooser."
   },
+  "architect.interface.description.LanguageChooser": {
+    "defaultMessage": "A screen where participants choose the language for the rest of the interview, from the languages your protocol offers.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
   "architect.interface.description.NameGenerator": {
     "defaultMessage": "A name generator interface which provides a form that participants complete when creating an alter.",
     "description": "Description of the interview interface in the New Stage chooser."
@@ -1655,6 +1659,270 @@
     "defaultMessage": "{stages, plural, one {# stage} other {# stages}} · {nodes, plural, one {# node type} other {# node types}} · {edges, plural, one {# edge type} other {# edge types}}",
     "description": "Researcher-facing Architect control or feedback."
   },
+  "architect.localization.languageActions.addDescription": {
+    "defaultMessage": "Participants can take the protocol in any of its languages. Until you translate a text, participants see it in the default language.",
+    "description": "Explanation in the dialog that adds languages to a protocol."
+  },
+  "architect.localization.languageActions.addSubmit": {
+    "defaultMessage": "Add languages",
+    "description": "Submit button of the dialog that adds languages."
+  },
+  "architect.localization.languageActions.addTitle": {
+    "defaultMessage": "Add languages",
+    "description": "Title of the dialog that adds languages to a protocol."
+  },
+  "architect.localization.languageActions.alreadyDeclared": {
+    "defaultMessage": "{language} is already one of this protocol's languages.",
+    "description": "Error when a language the protocol already has is entered again. language is the language name."
+  },
+  "architect.localization.languageActions.changeDescription": {
+    "defaultMessage": "Every text marked as {language} will be marked as the language you choose. Nothing is translated or deleted.",
+    "description": "Explanation in the dialog that changes a protocol language. language is its current name."
+  },
+  "architect.localization.languageActions.changeSubmit": {
+    "defaultMessage": "Change language",
+    "description": "Submit button of the change-language dialog."
+  },
+  "architect.localization.languageActions.changeTitle": {
+    "defaultMessage": "Change {language}",
+    "description": "Title of the dialog that says which language a protocol language really is. language is its current name."
+  },
+  "architect.localization.languageActions.chooseALanguage": {
+    "defaultMessage": "Choose a language",
+    "description": "Placeholder of the list of languages to change to."
+  },
+  "architect.localization.languageActions.chooseAtLeastOne": {
+    "defaultMessage": "Choose at least one language, or enter a language code.",
+    "description": "Error when the add-languages dialog is submitted empty."
+  },
+  "architect.localization.languageActions.chooseLanguages": {
+    "defaultMessage": "Choose languages",
+    "description": "Placeholder of the list of languages to add."
+  },
+  "architect.localization.languageActions.chooseOne": {
+    "defaultMessage": "Choose a language, or enter a language code.",
+    "description": "Error when the change-language dialog is submitted empty."
+  },
+  "architect.localization.languageActions.codeHint": {
+    "defaultMessage": "For a language or regional variant that is not in the list, enter its language code, such as \"gsw\" or \"es-AR\".",
+    "description": "Hint for the language code field. The quoted codes are examples of language codes and are not translated."
+  },
+  "architect.localization.languageActions.codeLabel": {
+    "defaultMessage": "Other language code",
+    "description": "Label of the field for a language code that is not in the list."
+  },
+  "architect.localization.languageActions.identifyDescription": {
+    "defaultMessage": "Protocols made before protocols declared their languages have their text marked as an unidentified language. Choose the language it is written in. Nothing is translated or deleted.",
+    "description": "Explanation in the dialog that names the language of text whose language has not been identified."
+  },
+  "architect.localization.languageActions.identifyTitle": {
+    "defaultMessage": "Identify the language of your text",
+    "description": "Title of the dialog that names the language of text whose language has not been identified."
+  },
+  "architect.localization.languageActions.invalidCode": {
+    "defaultMessage": "\"{code}\" is not a language code. Use a code such as \"es\" or \"pt-BR\".",
+    "description": "Error for a malformed language code. code is what the researcher typed; the quoted examples are not translated."
+  },
+  "architect.localization.languageActions.languageLabel": {
+    "defaultMessage": "Language",
+    "description": "Label of the list of languages in the change-language dialog."
+  },
+  "architect.localization.languageActions.languageOption": {
+    "defaultMessage": "{name} ({tag})",
+    "description": "One entry in a list of languages. name is the language name in the interface language; tag is its language code, such as \"de\" or \"pt-BR\"."
+  },
+  "architect.localization.languageActions.languagePlural": {
+    "defaultMessage": "languages",
+    "description": "Plural noun in the summary of chosen languages, as in \"3 languages selected\"."
+  },
+  "architect.localization.languageActions.languageSingular": {
+    "defaultMessage": "language",
+    "description": "Singular noun in the summary of chosen languages, as in \"1 language selected\"."
+  },
+  "architect.localization.languageActions.languagesLabel": {
+    "defaultMessage": "Languages",
+    "description": "Label of the searchable list of languages to add."
+  },
+  "architect.localization.languageActions.noLanguagesFound": {
+    "defaultMessage": "No language matches your search.",
+    "description": "Shown when a language search finds nothing."
+  },
+  "architect.localization.languageActions.removeConfirm": {
+    "defaultMessage": "Remove language",
+    "description": "Confirm button that removes a language from a protocol."
+  },
+  "architect.localization.languageActions.removeDescription": {
+    "defaultMessage": "{count, plural, =0 {There are no {language} translations yet, so no text will be deleted.} one {The # translation written in {language} will be deleted.} other {All # translations written in {language} will be deleted.}} Participants will no longer be able to choose this language.",
+    "description": "Confirmation before a language is removed. count is how many translations are deleted; language is the language name."
+  },
+  "architect.localization.languageActions.removeTitle": {
+    "defaultMessage": "Remove {language}?",
+    "description": "Title of the confirmation before a language is removed from a protocol."
+  },
+  "architect.localization.languageActions.searchLanguages": {
+    "defaultMessage": "Search languages",
+    "description": "Placeholder of the search box in the list of languages."
+  },
+  "architect.localization.languageActions.unspecifiedCode": {
+    "defaultMessage": "\"und\" stands for an unidentified language. Enter the code of the language itself.",
+    "description": "Error when the researcher enters the code reserved for unidentified languages. \"und\" is a code and is not translated."
+  },
+  "architect.localization.languageList.addLanguages": {
+    "defaultMessage": "Add languages",
+    "description": "Button that opens the dialog for adding languages."
+  },
+  "architect.localization.languageList.changeLanguage": {
+    "defaultMessage": "Change language",
+    "description": "Button that says which language the text marked with this language is really written in."
+  },
+  "architect.localization.languageList.coverage": {
+    "defaultMessage": "{translated, number} of {total, number} texts translated",
+    "description": "How much of a protocol is translated into one language."
+  },
+  "architect.localization.languageList.coverageLabel": {
+    "defaultMessage": "{language} translation progress",
+    "description": "Accessible name of the progress bar of one language."
+  },
+  "architect.localization.languageList.defaultBadge": {
+    "defaultMessage": "Default",
+    "description": "Badge marking the default language of a protocol."
+  },
+  "architect.localization.languageList.defaultNote": {
+    "defaultMessage": "To remove the default language, make another language the default first.",
+    "description": "Why the default language cannot be removed."
+  },
+  "architect.localization.languageList.description": {
+    "defaultMessage": "Participants choose one of these languages. Text without a translation in their language is shown in the default language, or else in the first language in this list that has it.",
+    "description": "Explanation of the list of protocol languages and its order."
+  },
+  "architect.localization.languageList.identifyLanguage": {
+    "defaultMessage": "Identify language",
+    "description": "Button that names the language of text whose language has not been identified."
+  },
+  "architect.localization.languageList.makeDefault": {
+    "defaultMessage": "Make default",
+    "description": "Button that makes a language the default."
+  },
+  "architect.localization.languageList.moveDown": {
+    "defaultMessage": "Move {language} down",
+    "description": "Button that moves a language later in the list."
+  },
+  "architect.localization.languageList.moveUp": {
+    "defaultMessage": "Move {language} up",
+    "description": "Button that moves a language earlier in the list."
+  },
+  "architect.localization.languageList.moved": {
+    "defaultMessage": "{language} moved to position {position, number} of {count, number}.",
+    "description": "Screen-reader announcement after a language is moved."
+  },
+  "architect.localization.languageList.noText": {
+    "defaultMessage": "There is no text to translate yet.",
+    "description": "Shown instead of translation progress in an empty protocol."
+  },
+  "architect.localization.languageList.remove": {
+    "defaultMessage": "Remove",
+    "description": "Button that removes a language from a protocol."
+  },
+  "architect.localization.languageList.showMissing": {
+    "defaultMessage": "{count, plural, one {Show # missing translation} other {Show # missing translations}}",
+    "description": "Button that lists the texts not yet translated into one language."
+  },
+  "architect.localization.languageList.strandedNote": {
+    "defaultMessage": "{count, plural, one {# text exists only in {language}. Translate it into another language before removing {language}.} other {# texts exist only in {language}. Translate them into another language before removing {language}.}}",
+    "description": "Why a language cannot be removed: some text has no other translation."
+  },
+  "architect.localization.languageList.title": {
+    "defaultMessage": "Protocol languages",
+    "description": "Heading of the list of languages a protocol is written in."
+  },
+  "architect.localization.languageList.unspecifiedDescription": {
+    "defaultMessage": "This protocol was made before protocols declared their languages, so its text is marked as an unidentified language. Identify the language before you add translations, so participants and exported data show the right language.",
+    "description": "Notice asking the researcher to identify the language of text whose language has not been identified."
+  },
+  "architect.localization.languageList.unspecifiedTitle": {
+    "defaultMessage": "Which language is your text written in?",
+    "description": "Title of the notice asking the researcher to identify the language of text whose language has not been identified."
+  },
+  "architect.localization.languageName.unspecified": {
+    "defaultMessage": "Unidentified language",
+    "description": "Name shown for text whose language has not been identified yet, usually text from a protocol made before protocols declared their languages."
+  },
+  "architect.localization.localizationAlert.goToLanguages": {
+    "defaultMessage": "Go to Languages",
+    "description": "Link to the Languages page, where the protocol languages and translations are managed."
+  },
+  "architect.localization.localizationAlert.missingDescription": {
+    "defaultMessage": "Some text is not translated into every language of this protocol. Participants see it in another language instead.",
+    "description": "Notice shown when some translations are missing."
+  },
+  "architect.localization.localizationAlert.missingTitle": {
+    "defaultMessage": "{count, plural, one {# missing translation} other {# missing translations}}",
+    "description": "Title of the notice about missing translations."
+  },
+  "architect.localization.localizationAlert.unspecifiedDescription": {
+    "defaultMessage": "This protocol was made before protocols declared their languages, so its text is marked as an unidentified language. Say which language it is written in before you add translations.",
+    "description": "Notice shown when a protocol has text whose language has not been identified."
+  },
+  "architect.localization.localizationAlert.unspecifiedTitle": {
+    "defaultMessage": "Identify the language of your protocol",
+    "description": "Title of the notice shown when a protocol has text whose language has not been identified."
+  },
+  "architect.localization.missingTranslations.allLanguages": {
+    "defaultMessage": "All languages",
+    "description": "Filter option that shows missing translations in every language."
+  },
+  "architect.localization.missingTranslations.complete": {
+    "defaultMessage": "Every text is translated into every language.",
+    "description": "Shown when no translation is missing."
+  },
+  "architect.localization.missingTranslations.description": {
+    "defaultMessage": "Missing translations do not stop you from saving, previewing or using the protocol. Participants see the text in another language instead.",
+    "description": "Explanation above the list of missing translations."
+  },
+  "architect.localization.missingTranslations.edgeType": {
+    "defaultMessage": "Edge type",
+    "description": "Kind of place a missing translation is in: an edge type."
+  },
+  "architect.localization.missingTranslations.ego": {
+    "defaultMessage": "Ego",
+    "description": "Place a missing translation is in: the attributes of the ego (the participant)."
+  },
+  "architect.localization.missingTranslations.filterLabel": {
+    "defaultMessage": "Show missing translations for",
+    "description": "Label of the language filter of the missing translations."
+  },
+  "architect.localization.missingTranslations.filterOption": {
+    "defaultMessage": "{language} ({count, number})",
+    "description": "Filter option for one language. count is how many of its translations are missing."
+  },
+  "architect.localization.missingTranslations.gap": {
+    "defaultMessage": "{language}: shows {fallback}",
+    "description": "One missing translation. language is the missing language; fallback is the language participants see instead."
+  },
+  "architect.localization.missingTranslations.nodeType": {
+    "defaultMessage": "Node type",
+    "description": "Kind of place a missing translation is in: a node type."
+  },
+  "architect.localization.missingTranslations.protocol": {
+    "defaultMessage": "Protocol",
+    "description": "Place a missing translation is in: the protocol itself."
+  },
+  "architect.localization.missingTranslations.singleLanguage": {
+    "defaultMessage": "This protocol has one language. Add a language to start translating.",
+    "description": "Shown when a protocol has only one language."
+  },
+  "architect.localization.missingTranslations.stage": {
+    "defaultMessage": "Stage",
+    "description": "Kind of place a missing translation is in: a stage."
+  },
+  "architect.localization.missingTranslations.title": {
+    "defaultMessage": "Missing translations",
+    "description": "Heading of the list of texts that are not translated into every language."
+  },
+  "architect.localization.missingTranslations.unnamed": {
+    "defaultMessage": "Untitled",
+    "description": "Name shown for a stage or type that has no name."
+  },
   "architect.nestedDraftReclaimDialog.backToTheEditor": {
     "defaultMessage": "Back to the Editor",
     "description": "The label text in components / NestedDraftReclaimDialog."
@@ -1670,6 +1938,22 @@
   "architect.newProtocolDialog.enterANameForYourProtocol": {
     "defaultMessage": "Enter a name for your protocol...",
     "description": "The placeholder text in components / NewProtocolDialog."
+  },
+  "architect.newProtocolDialog.languageOption": {
+    "defaultMessage": "{name} ({tag})",
+    "description": "One choice in the protocol language list. name is the language name in the interface language; tag is its language code, such as \"de\" or \"pt-BR\"."
+  },
+  "architect.newProtocolDialog.protocolLanguage": {
+    "defaultMessage": "Protocol language",
+    "description": "Label for the choice of the language a new protocol is written in."
+  },
+  "architect.newProtocolDialog.protocolLanguageHint": {
+    "defaultMessage": "The language you will write this protocol in. You can add other languages, or change this one, on the Languages page.",
+    "description": "Hint for the new protocol language. \"Languages page\" is the protocol tab where languages are managed."
+  },
+  "architect.newProtocolDialog.protocolLanguageRequired": {
+    "defaultMessage": "Choose the language this protocol is written in",
+    "description": "Error shown when no language is chosen for a new protocol."
   },
   "architect.newProtocolDialog.protocolName": {
     "defaultMessage": "Protocol Name",
@@ -1807,6 +2091,14 @@
     "defaultMessage": "These features are experimental and may not be fully supported.",
     "description": "Visible text in components / pages / ExperimentsPage."
   },
+  "architect.pages.localizationPage.description": {
+    "defaultMessage": "Choose the languages participants can take this protocol in, and see which text still needs translating.",
+    "description": "Description of the page that manages protocol languages."
+  },
+  "architect.pages.localizationPage.title": {
+    "defaultMessage": "Languages",
+    "description": "Title of the page that manages the languages of a protocol."
+  },
   "architect.pages.summaryPage.belowIsAComprehensiveSummaryOf": {
     "defaultMessage": "Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.",
     "description": "The description text in components / pages / SummaryPage."
@@ -1814,6 +2106,10 @@
   "architect.pages.summaryPage.protocolSummary": {
     "defaultMessage": "Protocol Summary",
     "description": "The title text in components / pages / SummaryPage."
+  },
+  "architect.pages.summaryPage.summaryLanguage": {
+    "defaultMessage": "Summary language",
+    "description": "Label of the control that chooses which of the protocol languages the summary shows the protocol text in."
   },
   "architect.presentation.conflictSubject": {
     "defaultMessage": "{entityName}: {variableNames}",
@@ -2027,6 +2323,10 @@
     "defaultMessage": "Codebook",
     "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
   },
+  "architect.projectNav.projectNav.config.languages": {
+    "defaultMessage": "Languages",
+    "description": "Project navigation tab for the languages a protocol is written in and their translations."
+  },
   "architect.projectNav.projectNav.config.resources": {
     "defaultMessage": "Resources",
     "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
@@ -2042,6 +2342,14 @@
   "architect.projectNav.projectNav.readOnly": {
     "defaultMessage": "Read only",
     "description": "Visible text in components / ProjectNav / ProjectNav."
+  },
+  "architect.projectNav.projectNav.translationsWarning": {
+    "defaultMessage": "has missing translations",
+    "description": "Screen-reader warning on the Languages tab when some text is not translated into every language of the protocol."
+  },
+  "architect.projectNav.projectNav.unspecifiedLanguageWarning": {
+    "defaultMessage": "has text in a language that has not been identified",
+    "description": "Screen-reader warning on the Languages tab when a protocol still has text marked as an unspecified language."
   },
   "architect.projectNav.stageEditorNav.editingActions": {
     "defaultMessage": "Editing actions",

@@ -15,6 +15,8 @@ import {
   uniqueOptionValues,
 } from '../Options';
 
+const en = (text: string) => ({ en: text });
+
 const MINIMUM_OPTIONS_MESSAGE = createAppIntl({ locale: 'en' }).formatMessage(
   minimumOptionsMessage,
 );
@@ -22,13 +24,13 @@ describe('Options validators', () => {
   it('requires at least two options', () => {
     expect(minTwoOptions(undefined)).toMatch(/minimum of two options/i);
     expect(minTwoOptions([])).toMatch(/minimum of two options/i);
-    expect(minTwoOptions([{ label: 'One', value: 1 }])).toMatch(
+    expect(minTwoOptions([{ label: en('One'), value: 1 }])).toMatch(
       /minimum of two options/i,
     );
     expect(
       minTwoOptions([
-        { label: 'One', value: 1 },
-        { label: 'Two', value: 2 },
+        { label: en('One'), value: 1 },
+        { label: en('Two'), value: 2 },
       ]),
     ).toBeUndefined();
   });
@@ -36,7 +38,7 @@ describe('Options validators', () => {
   it('leaves empty lists to native required before checking for a second option', () => {
     expect(minTwoPopulatedOptions(undefined)).toBeUndefined();
     expect(minTwoPopulatedOptions([])).toBeUndefined();
-    expect(minTwoPopulatedOptions([{ label: 'One', value: 1 }])).toBe(
+    expect(minTwoPopulatedOptions([{ label: en('One'), value: 1 }])).toBe(
       MINIMUM_OPTIONS_MESSAGE,
     );
   });
@@ -44,20 +46,22 @@ describe('Options validators', () => {
   it('requires every option to have a label and a value', () => {
     expect(
       completeOptions([
-        { label: 'One', value: 1 },
-        { label: 'Two', value: 2 },
+        { label: en('One'), value: 1 },
+        { label: en('Two'), value: 2 },
       ]),
     ).toBeUndefined();
-    expect(completeOptions([{ label: 'Zero', value: 0 }])).toBeUndefined();
+    expect(completeOptions([{ label: en('Zero'), value: 0 }])).toBeUndefined();
     expect(completeOptions(undefined)).toBeUndefined();
 
     expect(completeOptions([{}])).toMatch(/label and a value/i);
-    expect(completeOptions([{ label: 'One' }])).toMatch(/label and a value/i);
-    expect(completeOptions([{ value: 1 }])).toMatch(/label and a value/i);
-    expect(completeOptions([{ label: '  ', value: 1 }])).toMatch(
+    expect(completeOptions([{ label: en('One') }])).toMatch(
       /label and a value/i,
     );
-    expect(completeOptions([{ label: 'One', value: '' }])).toMatch(
+    expect(completeOptions([{ value: 1 }])).toMatch(/label and a value/i);
+    expect(completeOptions([{ label: en('  '), value: 1 }])).toMatch(
+      /label and a value/i,
+    );
+    expect(completeOptions([{ label: en('One'), value: '' }])).toMatch(
       /label and a value/i,
     );
   });
@@ -108,35 +112,38 @@ describe('Options validators', () => {
   it('rejects duplicate option values at the array level', () => {
     expect(
       uniqueOptionValues([
-        { label: 'One', value: 'a' },
-        { label: 'Two', value: 'b' },
+        { label: en('One'), value: 'a' },
+        { label: en('Two'), value: 'b' },
       ]),
     ).toBeUndefined();
     expect(
       uniqueOptionValues([
-        { label: 'One', value: 'a' },
-        { label: 'Two', value: 'a' },
+        { label: en('One'), value: 'a' },
+        { label: en('Two'), value: 'a' },
       ]),
     ).toMatch(/unique value/i);
     // Matches `uniqueArrayAttribute`'s case-insensitive string comparison, so
     // the array and its rows never disagree about which entries clash.
     expect(
       uniqueOptionValues([
-        { label: 'One', value: 'One' },
-        { label: 'Two', value: 'one' },
+        { label: en('One'), value: 'One' },
+        { label: en('Two'), value: 'one' },
       ]),
     ).toMatch(/unique value/i);
     // `1` and `"1"` are stored differently but exported as the same text, so
     // the column `attribute_1` would be written twice.
     expect(
       uniqueOptionValues([
-        { label: 'One', value: 1 },
-        { label: 'Two', value: '1' },
+        { label: en('One'), value: 1 },
+        { label: en('Two'), value: '1' },
       ]),
     ).toMatch(/unique value/i);
     // Empty values are `completeOptions`' business.
     expect(
-      uniqueOptionValues([{ label: 'One' }, { label: 'Two', value: '' }]),
+      uniqueOptionValues([
+        { label: en('One') },
+        { label: en('Two'), value: '' },
+      ]),
     ).toBeUndefined();
     expect(uniqueOptionValues(undefined)).toBeUndefined();
   });
@@ -144,18 +151,18 @@ describe('Options validators', () => {
   it('rejects duplicate option labels at the array level', () => {
     expect(
       uniqueOptionLabels([
-        { label: 'One', value: 'a' },
-        { label: 'Two', value: 'b' },
+        { label: en('One'), value: 'a' },
+        { label: en('Two'), value: 'b' },
       ]),
     ).toBeUndefined();
     expect(
       uniqueOptionLabels([
-        { label: 'One', value: 'a' },
-        { label: 'one', value: 'b' },
+        { label: en('One'), value: 'a' },
+        { label: en('one'), value: 'b' },
       ]),
     ).toMatch(/unique label/i);
     expect(
-      uniqueOptionLabels([{ value: 'a' }, { label: '  ', value: 'b' }]),
+      uniqueOptionLabels([{ value: 'a' }, { label: en('  '), value: 'b' }]),
     ).toBeUndefined();
   });
 
@@ -174,8 +181,8 @@ describe('Options validators', () => {
     it('are rejected as duplicate labels', () => {
       expect(
         uniqueOptionLabels([
-          { label: precomposed, value: 'cafe_a' },
-          { label: decomposed, value: 'cafe_b' },
+          { label: en(precomposed), value: 'cafe_a' },
+          { label: en(decomposed), value: 'cafe_b' },
         ]),
       ).toMatch(/unique label/i);
     });
@@ -183,8 +190,8 @@ describe('Options validators', () => {
     it('are rejected as duplicate labels across case as well', () => {
       expect(
         uniqueOptionLabels([
-          { label: precomposed, value: 'cafe_a' },
-          { label: decomposed.toUpperCase(), value: 'cafe_b' },
+          { label: en(precomposed), value: 'cafe_a' },
+          { label: en(decomposed.toUpperCase()), value: 'cafe_b' },
         ]),
       ).toMatch(/unique label/i);
     });
@@ -192,8 +199,8 @@ describe('Options validators', () => {
     it('are rejected as duplicate values', () => {
       expect(
         uniqueOptionValues([
-          { label: 'One', value: precomposed },
-          { label: 'Two', value: decomposed },
+          { label: en('One'), value: precomposed },
+          { label: en('Two'), value: decomposed },
         ]),
       ).toMatch(/unique value/i);
     });
@@ -220,8 +227,8 @@ describe('Options validators', () => {
       expect(parseOptionValue('ﬁve')).toBe('ﬁve');
       expect(
         uniqueOptionLabels([
-          { label: 'ﬁve', value: 'a' },
-          { label: 'five', value: 'b' },
+          { label: en('ﬁve'), value: 'a' },
+          { label: en('five'), value: 'b' },
         ]),
       ).toBeUndefined();
     });
@@ -234,21 +241,21 @@ describe('Options validators', () => {
   it('accepts option values in any script, with spaces and punctuation', () => {
     expect(
       allowedOptionValues([
-        { label: 'Close friend', value: 'amigo cercano' },
-        { label: 'Colleague', value: 'Collègue' },
-        { label: 'Friend', value: '友人' },
-        { label: 'Percent', value: '100%' },
-        { label: 'Slash', value: 'yes/no (maybe)' },
+        { label: en('Close friend'), value: 'amigo cercano' },
+        { label: en('Colleague'), value: 'Collègue' },
+        { label: en('Friend'), value: '友人' },
+        { label: en('Percent'), value: '100%' },
+        { label: en('Slash'), value: 'yes/no (maybe)' },
       ]),
     ).toBeUndefined();
     // `parseOptionValue` stores numeric-looking input as a number, so the rule
     // has to test the stringified value rather than the raw one.
     expect(
       allowedOptionValues([
-        { label: 'One', value: 1 },
-        { label: 'Minus one', value: -1 },
-        { label: 'Point five', value: '1.5' },
-        { label: 'Yes', value: true },
+        { label: en('One'), value: 1 },
+        { label: en('Minus one'), value: -1 },
+        { label: en('Point five'), value: '1.5' },
+        { label: en('Yes'), value: true },
       ]),
     ).toBeUndefined();
   });
@@ -258,23 +265,29 @@ describe('Options validators', () => {
       'This can’t contain tabs, line breaks or other control characters';
     expect(
       allowedOptionValues([
-        { label: 'Has a tab', value: 'bad\tvalue' },
-        { label: 'Fine', value: 'fine' },
+        { label: en('Has a tab'), value: 'bad\tvalue' },
+        { label: en('Fine'), value: 'fine' },
       ]),
     ).toBe(message);
     expect(
       allowedOptionValues([
-        { label: 'Fine', value: 'fine' },
-        { label: 'Has a line break', value: 'two\nlines' },
+        { label: en('Fine'), value: 'fine' },
+        { label: en('Has a line break'), value: 'two\nlines' },
       ]),
     ).toBe(message);
     // Empty values are `completeOptions`' business — flagging them here would
     // raise a syntax error against a row that is merely unfinished.
     expect(
-      allowedOptionValues([{ label: 'One' }, { label: 'Two', value: '' }]),
+      allowedOptionValues([
+        { label: en('One') },
+        { label: en('Two'), value: '' },
+      ]),
     ).toBeUndefined();
     expect(
-      allowedOptionValues([{ label: 'One' }, { label: 'Two', value: '   ' }]),
+      allowedOptionValues([
+        { label: en('One') },
+        { label: en('Two'), value: '   ' },
+      ]),
     ).toBeUndefined();
     expect(allowedOptionValues(undefined)).toBeUndefined();
     expect(allowedOptionValues([])).toBeUndefined();
@@ -283,29 +296,29 @@ describe('Options validators', () => {
   it('bundles every array-level rule so a call site cannot keep only some', () => {
     const rules = optionsValidation();
     expect(rules.required).toBe(MINIMUM_OPTIONS_MESSAGE);
-    expect(rules.minTwoOptions([{ label: 'One', value: 1 }])).toBe(
+    expect(rules.minTwoOptions([{ label: en('One'), value: 1 }])).toBe(
       MINIMUM_OPTIONS_MESSAGE,
     );
-    expect(rules.completeOptions([{ label: 'One' }])).toBe(
+    expect(rules.completeOptions([{ label: en('One') }])).toBe(
       'Every option needs both a label and a value.',
     );
     expect(
       rules.uniqueOptionValues([
-        { label: 'One', value: 1 },
-        { label: 'Two', value: 1 },
+        { label: en('One'), value: 1 },
+        { label: en('Two'), value: 1 },
       ]),
     ).toBe('Every option needs a unique value.');
     expect(
       rules.uniqueOptionLabels([
-        { label: 'One', value: 1 },
-        { label: 'One', value: 2 },
+        { label: en('One'), value: 1 },
+        { label: en('One'), value: 2 },
       ]),
     ).toBe('Every option needs a unique label.');
     expect(
-      rules.allowedOptionValues([{ label: 'One', value: 'bad\tvalue' }]),
+      rules.allowedOptionValues([{ label: en('One'), value: 'bad\tvalue' }]),
     ).toBe('This can’t contain tabs, line breaks or other control characters');
     expect(
-      rules.allowedOptionValues([{ label: 'One', value: 'not valid' }]),
+      rules.allowedOptionValues([{ label: en('One'), value: 'not valid' }]),
     ).toBeUndefined();
   });
 
@@ -313,8 +326,8 @@ describe('Options validators', () => {
   // An unfinished row must explain the missing value before its syntax.
   it('reports completeness before syntax when a row is both', () => {
     const rows = [
-      { label: '', value: 'bad\tvalue' },
-      { label: 'Two', value: 2 },
+      { label: en(''), value: 'bad\tvalue' },
+      { label: en('Two'), value: 2 },
     ];
     const firstError = getValidations(optionsValidation())
       .map((validate) => validate(rows))

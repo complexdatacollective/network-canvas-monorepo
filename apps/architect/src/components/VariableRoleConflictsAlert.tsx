@@ -6,7 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import type { VariableRoleHit } from '@codaco/protocol-validation';
 import { getVariableRoleConflicts } from '~/selectors/issues';
-import { getProtocol } from '~/selectors/protocol';
+import { getStageList } from '~/selectors/protocol';
 
 // Rich-text tag renderers live at module scope so they keep one identity across
 // renders (an inline arrow returning JSX is a component defined during render).
@@ -77,13 +77,11 @@ const describeHits = (
 const VariableRoleConflictsAlert = () => {
   const intl = useAppIntl();
   const conflicts = useSelector(getVariableRoleConflicts);
-  const protocol = useSelector(getProtocol);
+  const stages = useSelector(getStageList);
 
   if (conflicts.length === 0) {
     return null;
   }
-
-  const stages = protocol?.stages ?? [];
 
   return (
     <Alert variant="warning" className="mx-auto mb-10 max-w-3xl">

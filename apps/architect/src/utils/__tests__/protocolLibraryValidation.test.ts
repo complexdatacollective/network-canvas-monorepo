@@ -37,6 +37,7 @@ vi.mock('../assetUtils', () => ({
 const protocol: CurrentProtocol = {
   name: 'Study',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},

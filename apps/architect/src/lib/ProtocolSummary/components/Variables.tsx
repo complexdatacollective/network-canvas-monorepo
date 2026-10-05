@@ -1,11 +1,10 @@
-import { find, get, isEmpty, toPairs } from 'es-toolkit/compat';
+import { isEmpty, toPairs } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 import React, { useContext } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { Variable } from '@codaco/protocol-validation';
-import Markdown from '~/components/Markdown';
 import { VariablePill } from '~/components/VariablePill';
 import { VARIABLE_TYPES } from '~/config/variables';
 import { formatConfig } from '~/i18n/formatConfig';
@@ -15,6 +14,7 @@ import DualLink from './DualLink';
 import { SummaryValue } from './helpers';
 import MiniTable from './MiniTable';
 import SummaryContext from './SummaryContext';
+import { SummaryMarkdown, SummaryText } from './SummaryText';
 const messages = defineMessages({
   name: {
     id: 'architect.protocolSummary.variables.name',
@@ -42,32 +42,11 @@ const messages = defineMessages({
   },
 });
 
-type ProtocolType = {
-  stages?: Array<{ id: string; label: string }>;
-  [key: string]: unknown;
-};
-
 type IndexEntry = {
   id: string;
   stages?: string[];
   [key: string]: unknown;
 };
-
-const getStageName = (protocol: ProtocolType) => (stageId: string) => {
-  const stageConfiguration = find(protocol.stages, ['id', stageId]);
-  return get(stageConfiguration, 'label');
-};
-
-// TODO: Make this part of the index?
-const makeGetUsedIn =
-  (protocol: ProtocolType) => (indexEntry: IndexEntry | undefined) => {
-    const stages = get(indexEntry, 'stages', []) as string[];
-
-    return stages.map((stageId: string) => [
-      stageId,
-      getStageName(protocol)(stageId),
-    ]);
-  };
 
 type VariablesProps = {
   variables?: Record<string, unknown>;
@@ -77,7 +56,11 @@ const Variables = ({ variables }: VariablesProps) => {
   const intl = useAppIntl();
   const { protocol, index } = useContext(SummaryContext);
 
-  const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
+  const getUsedIn = (indexEntry: IndexEntry | undefined) =>
+    (indexEntry?.stages ?? []).flatMap((stageId) => {
+      const stage = protocol.stages.find(({ id }) => id === stageId);
+      return stage ? [stage] : [];
+    });
 
   const sortedVariables = toPairs(variables).toSorted((a, b) =>
     (a[1] as Variable).name.localeCompare((b[1] as Variable).name, intl.locale),
@@ -117,7 +100,10 @@ const Variables = ({ variables }: VariablesProps) => {
                   <span key={`val-${String(value)}`}>
                     {<SummaryValue value={value} />}
                   </span>,
-                  <Markdown key={`label-${String(value)}`} label={label} />,
+                  <SummaryMarkdown
+                    key={`label-${String(value)}`}
+                    value={label}
+                  />,
                 ]) ?? [];
             }
 
@@ -148,10 +134,10 @@ const Variables = ({ variables }: VariablesProps) => {
                   )}
                 </td>
                 <td>
-                  {getUsedIn(indexEntry).map(([stageId, stageName]) => (
-                    <React.Fragment key={String(stageId)}>
-                      <DualLink to={`#stage-${String(stageId)}`}>
-                        {String(stageName)}
+                  {getUsedIn(indexEntry).map((stage) => (
+                    <React.Fragment key={stage.id}>
+                      <DualLink to={`#stage-${stage.id}`}>
+                        <SummaryText value={stage.label} />
                       </DualLink>
                       <br />
                     </React.Fragment>

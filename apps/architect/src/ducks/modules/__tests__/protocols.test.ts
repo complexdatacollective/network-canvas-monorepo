@@ -14,6 +14,7 @@ const mockProtocol: CurrentProtocol = {
   name: 'Test Protocol',
   description: 'test description',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},
@@ -27,6 +28,7 @@ const mockProtocol2: CurrentProtocol = {
   name: 'Test Protocol 2',
   description: 'another description',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},

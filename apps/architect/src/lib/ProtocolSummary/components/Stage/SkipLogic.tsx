@@ -8,6 +8,7 @@ import { getSkipLogicDestinationLabel } from '~/utils/skipLogicDestination';
 import MiniTable from '../MiniTable';
 import Rules from '../Rules';
 import SummaryContext from '../SummaryContext';
+import { SummaryText, useSummaryText } from '../SummaryText';
 
 type FilterType = {
   join?: string;
@@ -21,6 +22,7 @@ type SkipLogicProps = {
 const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
   const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
+  const summaryText = useSummaryText();
 
   if (!skipLogic) {
     return null;
@@ -41,7 +43,10 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
         [
           intl.formatMessage(summaryMessages.destination),
           getSkipLogicDestinationLabel(
-            protocol.stages ?? [],
+            protocol.stages.map(({ id, label }) => ({
+              id,
+              label: summaryText(label) ? <SummaryText value={label} /> : '',
+            })),
             destination,
             intl,
           ),

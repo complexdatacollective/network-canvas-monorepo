@@ -89,6 +89,7 @@ vi.mock('~/utils/protocolLibrary', () => ({
 const protocol: CurrentProtocol = {
   name: 'Test',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},

@@ -30,9 +30,9 @@ for (const { kind, label } of [
       throw new Error('Expected the Information stage and contactType fixture');
     }
     variable.options = [
-      { value: 'in_person', label: 'Bravo' },
-      { value: 'call', label: 'Zulu' },
-      { value: 'text', label },
+      { value: 'in_person', label: { en: 'Bravo' } },
+      { value: 'call', label: { en: 'Zulu' } },
+      { value: 'text', label: { en: label } },
     ];
     stage.skipLogic = {
       action: 'SKIP',

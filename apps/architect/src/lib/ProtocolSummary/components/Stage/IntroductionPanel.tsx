@@ -1,8 +1,9 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Markdown from '~/components/Markdown';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
+import { SummaryMarkdown, SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   introductionPanel: {
@@ -15,8 +16,8 @@ const messages = defineMessages({
 
 type IntroductionPanelProps = {
   introductionPanel?: {
-    title: string;
-    text: string;
+    title: LocalizedString;
+    text: LocalizedString;
   } | null;
 };
 const IntroductionPanel = ({
@@ -28,8 +29,10 @@ const IntroductionPanel = ({
   }
   return (
     <SectionFrame title={intl.formatMessage(messages.introductionPanel)}>
-      <Heading level="h1">{introductionPanel.title}</Heading>
-      <Markdown label={introductionPanel.text} />
+      <Heading level="h1">
+        <SummaryText value={introductionPanel.title} />
+      </Heading>
+      <SummaryMarkdown value={introductionPanel.text} />
     </SectionFrame>
   );
 };

@@ -3,12 +3,13 @@ import { useContext } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Markdown from '~/components/Markdown';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import { getVariableMeta } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import { SummaryMarkdown } from '../SummaryText';
 import Variable from '../Variable';
 const messages = defineMessages({
   nameGenerationStepInstructions: {
@@ -26,12 +27,12 @@ const messages = defineMessages({
 });
 
 type FormFieldType = {
-  prompt: string;
+  prompt: LocalizedString;
   variable: string;
 };
 type NameGenerationStepProps = {
   nameGenerationStep?: {
-    text: string;
+    text: LocalizedString;
     form: {
       fields?: FormFieldType[];
     };
@@ -51,7 +52,7 @@ const NameGenerationStep = ({
       return [
         <Variable key={`var-${variable}`} id={variable} />,
         <span key={`comp-${variable}`}>{meta.component ?? ''}</span>,
-        <Markdown key={`prompt-${variable}`} label={prompt} />,
+        <SummaryMarkdown key={`prompt-${variable}`} value={prompt} />,
       ];
     }) ?? [];
   return (
@@ -59,7 +60,7 @@ const NameGenerationStep = ({
       <Heading level="h4">
         {intl.formatMessage(messages.nameGenerationStepInstructions)}
       </Heading>
-      <Markdown label={nameGenerationStep.text} />
+      <SummaryMarkdown value={nameGenerationStep.text} />
       {fieldRows.length > 0 && (
         <>
           <Heading level="h4">
