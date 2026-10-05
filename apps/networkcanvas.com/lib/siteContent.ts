@@ -35,12 +35,21 @@ export type TeamMember = {
   photo: string;
 };
 
+export const updateProminences = [
+  'launch',
+  'featured',
+  'normal',
+  'mini',
+] as const;
+export type UpdateProminence = (typeof updateProminences)[number];
+
 export type Update = {
   id: string;
   date: string;
+  prominence: UpdateProminence;
   apps: UpdateAppId[];
   title: string;
-  summary: string;
+  summary?: string;
   details?: string;
   link?: string;
 };
@@ -175,10 +184,17 @@ const teamMemberRowSchema = z
 
 const isoDate = z.iso.date();
 
+const optionalText = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => value || undefined);
+
 const updateRowSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
     date: isoDate,
+    prominence: z.enum(updateProminences),
     apps: z
       .string()
       .transform((value) => value.split('|').map((app) => app.trim()))
@@ -192,22 +208,43 @@ const updateRowSchema = z
           ),
       ),
     title: requiredText,
-    summary: requiredText,
-    details: z
-      .string()
-      .trim()
-      .optional()
-      .transform((value) => value || undefined),
-    link: z
-      .string()
-      .trim()
-      .optional()
-      .transform((value) => value || undefined)
-      .pipe(
-        z.string().startsWith('/', 'must be a path on this site').optional(),
-      ),
+    summary: optionalText,
+    details: optionalText,
+    link: optionalText.pipe(internalPath.optional()),
   })
-  .strict();
+  .strict()
+  .superRefine((row, context) => {
+    const allowed = {
+      launch: { summary: true, details: false, link: true },
+      featured: { summary: true, details: true, link: false },
+      normal: { summary: true, details: false, link: false },
+      mini: { summary: false, details: false, link: false },
+    }[row.prominence];
+
+    for (const field of ['summary', 'details', 'link'] as const) {
+      if (row[field] && !allowed[field]) {
+        context.addIssue({
+          code: 'custom',
+          path: [field],
+          message: `must be empty for a ${row.prominence} update`,
+        });
+      }
+    }
+    if (row.prominence !== 'mini' && !row.summary) {
+      context.addIssue({
+        code: 'custom',
+        path: ['summary'],
+        message: `is required for a ${row.prominence} update`,
+      });
+    }
+    if (row.prominence === 'launch' && !row.link) {
+      context.addIssue({
+        code: 'custom',
+        path: ['link'],
+        message: 'is required for a launch update',
+      });
+    }
+  });
 
 const csvRowsSchema = z.array(z.record(z.string(), z.string()));
 
@@ -431,9 +468,10 @@ export async function loadUpdates(
     .map((row) => ({
       id: row.id,
       date: row.date,
+      prominence: row.prominence,
       apps: row.apps,
       title: row.title,
-      summary: row.summary,
+      ...(row.summary ? { summary: row.summary } : {}),
       ...(row.details ? { details: row.details } : {}),
       ...(row.link ? { link: row.link } : {}),
     }))

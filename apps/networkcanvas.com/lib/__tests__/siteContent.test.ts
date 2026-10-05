@@ -272,9 +272,9 @@ describe('loadUpdates', () => {
     directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,2026-01-05,fresco,Older update,Older summary,,/older-announcement
-newer,2026-03-10,architect|interviewer,Newer update,"Newer summary
+      `id,date,prominence,apps,title,summary,details,link
+older,2026-01-05,launch,fresco,Older update,Older summary,,/older-announcement
+newer,2026-03-10,featured,architect|interviewer,Newer update,"Newer summary
 
 - A list item","### Heading
 
@@ -292,6 +292,7 @@ Newer details",
       {
         id: 'newer',
         date: '2026-03-10',
+        prominence: 'featured',
         apps: ['architect', 'interviewer'],
         title: 'Newer update',
         summary: 'Newer summary\n\n- A list item',
@@ -300,6 +301,7 @@ Newer details",
       {
         id: 'older',
         date: '2026-01-05',
+        prominence: 'launch',
         apps: ['fresco'],
         title: 'Older update',
         summary: 'Older summary',
@@ -311,8 +313,8 @@ Newer details",
   it('rejects an update without a summary', async () => {
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,2026-01-05,fresco,Older update,,,
+      `id,date,prominence,apps,title,summary,details,link
+older,2026-01-05,normal,fresco,Older update,,,
 `,
     );
 
@@ -321,11 +323,62 @@ older,2026-01-05,fresco,Older update,,,
     );
   });
 
+  it('accepts a mini update with only a title', async () => {
+    await writeFile(
+      join(directory, 'updates.csv'),
+      `id,date,prominence,apps,title,summary,details,link
+tiny,2026-01-05,mini,fresco,Tiny update,,,
+`,
+    );
+
+    await expect(loadUpdates(directory)).resolves.toEqual([
+      {
+        id: 'tiny',
+        date: '2026-01-05',
+        prominence: 'mini',
+        apps: ['fresco'],
+        title: 'Tiny update',
+      },
+    ]);
+  });
+
+  it.each([
+    ['an unknown prominence', 'major,fresco,Title,Summary,,', 'prominence:'],
+    ['a launch without a link', 'launch,fresco,Title,Summary,,', 'link:'],
+    [
+      'a launch with details',
+      'launch,fresco,Title,Summary,Details,/a',
+      'details:',
+    ],
+    [
+      'a featured update with a link',
+      'featured,fresco,Title,Summary,,/a',
+      'link:',
+    ],
+    [
+      'a normal update with details',
+      'normal,fresco,Title,Summary,Details,',
+      'details:',
+    ],
+    ['a mini update with a summary', 'mini,fresco,Title,Summary,,', 'summary:'],
+  ])('rejects %s', async (_, fields, field) => {
+    await writeFile(
+      join(directory, 'updates.csv'),
+      `id,date,prominence,apps,title,summary,details,link
+older,2026-01-05,${fields}
+`,
+    );
+
+    await expect(loadUpdates(directory)).rejects.toThrow(
+      `updates.csv: row 2: ${field}`,
+    );
+  });
+
   it('rejects an app it does not know', async () => {
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,2026-01-05,fresco|studio,Older update,Older summary,,
+      `id,date,prominence,apps,title,summary,details,link
+older,2026-01-05,normal,fresco|studio,Older update,Older summary,,
 `,
     );
 
@@ -337,8 +390,8 @@ older,2026-01-05,fresco|studio,Older update,Older summary,,
   it('rejects a date that is not an ISO calendar date', async () => {
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,apps,title,summary,details,link
-older,05/01/2026,fresco,Older update,Older summary,,
+      `id,date,prominence,apps,title,summary,details,link
+older,05/01/2026,normal,fresco,Older update,Older summary,,
 `,
     );
 

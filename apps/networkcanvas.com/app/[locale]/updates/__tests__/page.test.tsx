@@ -8,6 +8,7 @@ import {
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { updateIllustrations } from '~/components/updates/illustrations/updateIllustrations';
 import { loadUpdates } from '~/lib/siteContent';
 import { renderWithIntl } from '~/test/renderWithIntl';
 
@@ -104,6 +105,20 @@ describe('updates page', () => {
         expect(toggle).toBeNull();
       }
     }
+  });
+
+  it('has an illustration for every launch and featured update, and no other', async () => {
+    const updates = await loadUpdates();
+    const prominent = updates
+      .filter(
+        ({ prominence }) =>
+          prominence === 'launch' || prominence === 'featured',
+      )
+      .map(({ id }) => id);
+
+    expect(Object.keys(updateIllustrations).toSorted()).toEqual(
+      prominent.toSorted(),
+    );
   });
 
   it('expands an update’s full details on request', async () => {

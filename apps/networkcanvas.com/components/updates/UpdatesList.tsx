@@ -29,7 +29,7 @@ import { SiteLink } from '~/components/ui/SiteLink';
 import { updateIllustrations } from '~/components/updates/illustrations/updateIllustrations';
 import { tools } from '~/lib/content';
 import { Link } from '~/lib/i18n/navigation';
-import type { Update } from '~/lib/siteContent';
+import type { Update, UpdateProminence } from '~/lib/siteContent';
 import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
 
 function MarkdownLink({
@@ -47,7 +47,7 @@ const markdownComponents = { a: MarkdownLink };
 
 // Link destinations are not part of what a reader sees, so they do not match.
 function searchableText(update: Update) {
-  const text = `${update.title} ${update.summary} ${update.details ?? ''}`;
+  const text = `${update.title} ${update.summary ?? ''} ${update.details ?? ''}`;
   return foldText(text.replace(/\]\([^)]*\)/g, ']'));
 }
 
@@ -58,6 +58,13 @@ const appFilters: readonly AppFilter[] = ['all', ...updateAppIds];
 function appName(id: UpdateAppId) {
   return tools.find((tool) => tool.id === id)?.name ?? id;
 }
+
+const titleSizes = {
+  launch: 'text-2xl',
+  featured: 'text-2xl',
+  normal: 'text-xl',
+  mini: 'text-lg',
+} as const satisfies Record<UpdateProminence, string>;
 
 function visibleUpdatesFor(
   updates: readonly (Update & { searchText: string })[],
@@ -205,7 +212,11 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
         className="mt-6 gap-0"
       >
         {visibleUpdates.map((update) => {
-          const illustration = updateIllustrations[update.id];
+          const illustration =
+            update.prominence === 'launch' || update.prominence === 'featured'
+              ? updateIllustrations[update.id]
+              : undefined;
+          const mini = update.prominence === 'mini';
           const date = new Date(update.date);
           const open = openIds.includes(update.id);
           return (
@@ -247,7 +258,12 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                 />
                 <span className="bg-text/10 absolute top-1 -bottom-2 left-1/2 w-1 -translate-x-1/2 rounded-full group-last:hidden" />
               </div>
-              <div className="tablet-portrait:col-start-3 tablet-portrait:row-start-1 tablet-portrait:row-span-2 col-start-2 row-start-2 pb-12">
+              <div
+                className={cx(
+                  'tablet-portrait:col-start-3 tablet-portrait:row-start-1 tablet-portrait:row-span-2 col-start-2 row-start-2',
+                  mini ? 'pb-8' : 'pb-12',
+                )}
+              >
                 <Surface
                   as="article"
                   noContainer
@@ -265,8 +281,19 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                       <illustration.Illustration />
                     </div>
                   ) : null}
-                  <div className="tablet-portrait:p-8 p-6">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div
+                    className={
+                      mini
+                        ? 'tablet-portrait:px-8 px-6 py-4'
+                        : 'tablet-portrait:p-8 p-6'
+                    }
+                  >
+                    <div
+                      className={cx(
+                        'flex flex-wrap items-center gap-2',
+                        mini ? 'mb-2' : 'mb-3',
+                      )}
+                    >
                       {update.apps.map((id) => (
                         <Fragment key={id}>
                           {' '}
@@ -282,18 +309,23 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                       margin="none"
                       id={update.id}
                       lang="en"
-                      className="scroll-mt-8"
+                      className={cx(
+                        'scroll-mt-8',
+                        titleSizes[update.prominence],
+                      )}
                     >
                       {update.title}
                     </Heading>
-                    <div className="mt-3" lang="en">
-                      <RenderMarkdown
-                        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-                        components={markdownComponents}
-                      >
-                        {update.summary}
-                      </RenderMarkdown>
-                    </div>
+                    {update.summary ? (
+                      <div className="mt-3" lang="en">
+                        <RenderMarkdown
+                          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+                          components={markdownComponents}
+                        >
+                          {update.summary}
+                        </RenderMarkdown>
+                      </div>
+                    ) : null}
                     {update.details ? (
                       <>
                         <AccordionPanel inert={!open} lang="en">
