@@ -352,12 +352,16 @@ const expectLabelsFullyVisible = async (
         // The fitter's hyphenating rung only helps where the browser has a
         // hyphenation dictionary, which Chrome on Linux (Chromatic included)
         // downloads after install and may never have. The label has to fit
-        // without one, so re-measure with hyphenation off.
+        // without one, in both directions: a word the dictionary broke can
+        // overflow the width as well as push the text down.
         label.style.hyphens = 'manual';
         try {
           await expect(
             label.scrollHeight - label.clientHeight,
           ).toBeLessThanOrEqual(heightSlack);
+          await expect(
+            label.scrollWidth - label.clientWidth,
+          ).toBeLessThanOrEqual(1);
         } finally {
           label.style.hyphens = '';
         }
