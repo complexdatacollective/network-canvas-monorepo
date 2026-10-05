@@ -194,9 +194,14 @@ No multipart upload. Two further requirements:
   the region in the endpoint's name — R2 signs for `auto`. A mismatch is a
   signature failure on every request rather than a slow one.
 
-The five `S3_*` variables are all-or-nothing: a partial configuration fails at
-boot. With none of them set, asset routes refuse with 503 and readiness leaves
-the object store out rather than reporting it failed.
+With `STUDIO_OBJECT_STORE=s3`, the five `S3_*` variables are all-or-nothing:
+a partial configuration fails at boot.
+
+An instance with no object store at all leaves `STUDIO_OBJECT_STORE` unset
+and every `S3_*` and `AZURE_*` variable empty — clearing the `S3_*` values
+alone, beside the shipped `STUDIO_OBJECT_STORE=s3`, is a partial S3
+configuration and fails at boot. Without a store, asset routes refuse with 503
+and readiness leaves the object store out rather than reporting it failed.
 
 #### Azure Blob Storage
 
