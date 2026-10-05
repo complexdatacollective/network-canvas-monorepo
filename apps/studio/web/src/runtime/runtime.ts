@@ -21,6 +21,7 @@ import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 import {
   Forbidden,
   Maintenance,
+  NotFound,
   RateLimited,
   Unauthorized,
 } from '@codaco/studio-contract/schema/errors';
@@ -71,7 +72,13 @@ const refusalFor = (
   status: number,
   problem: ProblemDocument | undefined,
   retryAfter: number | undefined,
-): Forbidden | Maintenance | RateLimited | Unauthorized | undefined => {
+):
+  | Forbidden
+  | Maintenance
+  | NotFound
+  | RateLimited
+  | Unauthorized
+  | undefined => {
   const members = {
     ...(problem?.detail === undefined ? {} : { detail: problem.detail }),
     ...(problem?.instance === undefined ? {} : { instance: problem.instance }),
@@ -82,6 +89,8 @@ const refusalFor = (
       return new Unauthorized(members);
     case 403:
       return new Forbidden(members);
+    case 404:
+      return new NotFound(members);
     case 429:
       return new RateLimited({
         ...members,

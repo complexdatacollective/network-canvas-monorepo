@@ -11,6 +11,7 @@ import {
 } from '@codaco/studio-contract/schema/errors';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
+import { refusalRetryDelay, retryRefusals } from '../../lib/queryClient.ts';
 import { installFetchStub, problemResponse } from '../../test/fetchStub.ts';
 import {
   isConflict,
@@ -293,4 +294,72 @@ describe('the guards the screens branch on', () => {
     expect(isNotFound(new NotFound({}))).toBe(true);
     expect(isNotFound(new Conflict({}))).toBe(false);
   });
+});
+
+const POLICY = [
+  {
+    status: 401,
+    kind: 'unauthorized',
+    typed: () => new Unauthorized({}),
+    retries: [false, false],
+  },
+  {
+    status: 403,
+    kind: 'forbidden',
+    typed: () => new Forbidden({}),
+    retries: [false, false],
+  },
+  {
+    status: 404,
+    kind: 'notFound',
+    typed: () => new NotFound({}),
+    retries: [false, false],
+  },
+  {
+    status: 429,
+    kind: 'rateLimited',
+    typed: () => new RateLimited({ retryAfterSeconds: 7 }),
+    retries: [true, false],
+  },
+  {
+    status: 503,
+    kind: 'maintenance',
+    typed: () => new Maintenance({ retryAfterSeconds: 7 }),
+    retries: [true, true],
+  },
+] as const;
+
+const PLANES = [
+  {
+    plane: 'the HTTP plane',
+    failure: (row: (typeof POLICY)[number]) => {
+      answer(() =>
+        problemResponse(
+          row.status,
+          { title: 'Refused', status: row.status },
+          { 'retry-after': '7' },
+        ),
+      );
+      return failureOfStatusCall();
+    },
+  },
+  {
+    plane: 'the rpc plane',
+    failure: (row: (typeof POLICY)[number]) => Promise.resolve(row.typed()),
+  },
+] as const;
+
+describe('the retry policy, on both planes', () => {
+  it.each(POLICY.flatMap((row) => PLANES.map((plane) => ({ row, ...plane }))))(
+    'treats $row.status on $plane as $row.kind',
+    async ({ row, failure }) => {
+      const error = await failure(row);
+
+      expect(refusalOf(error)?.kind).toBe(row.kind);
+      expect([retryRefusals(0, error), retryRefusals(3, error)]).toEqual(
+        row.retries,
+      );
+      if (row.retries[0]) expect(refusalRetryDelay(0, error)).toBe(7_000);
+    },
+  );
 });
