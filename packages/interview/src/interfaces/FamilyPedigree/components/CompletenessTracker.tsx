@@ -2,7 +2,7 @@
 
 import { Check } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
@@ -89,7 +89,8 @@ function ProgressRing({
 /**
  * Progress towards the family the researcher requires, in the corner of the
  * stage: a ring that fills as people are added, expanding into a short list
- * of what is still needed. Pressing Next before it is full opens the list.
+ * of what is still needed when hovered, focused or clicked. Pressing Next
+ * before it is full opens the list.
  */
 export default function CompletenessTracker({
   progress,
@@ -103,20 +104,44 @@ export default function CompletenessTracker({
   const intl = useAppIntl();
   const reduceMotion = useReducedMotion();
   const titleId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const listRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(open);
+
+  // The list shows while it is open (pinned by a click or by pressing Next),
+  // while the mouse is over it, or while focus is in it. Closing it hides it
+  // until both the pointer and focus have left, so it does not spring
+  // straight back.
+  const [hovered, setHovered] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
+  const [suppressed, setSuppressed] = useState(false);
+  // Read from timers and handlers that outlive the render they came from.
+  const hoveredRef = useRef(false);
+  const focusWithinRef = useRef(false);
+  hoveredRef.current = hovered;
+  focusWithinRef.current = focusWithin;
+  const expanded = !suppressed && (open || hovered || focusWithin);
+
+  // Leaving waits a moment, so brushing past the edge does not collapse it.
+  const leaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(leaveTimer.current), []);
 
   const fraction = progress.total === 0 ? 1 : progress.done / progress.total;
   const complete = progress.items.length === 0;
 
-  // Opening moves focus into the list, so it is read out wherever it was
-  // opened from (the ring, or the Next button); closing returns to the ring.
+  // Opening it (from the ring, or the Next button) moves focus into the list,
+  // so it is read out; closing it returns focus to the ring.
   useEffect(() => {
-    if (open && !wasOpen.current) panelRef.current?.focus();
-    if (!open && wasOpen.current) ringRef.current?.focus();
+    if (open && !wasOpen.current) listRef.current?.focus();
     wasOpen.current = open;
   }, [open]);
+
+  const close = () => {
+    setSuppressed(true);
+    onOpenChange(false);
+    ringRef.current?.focus();
+  };
 
   const transition = reduceMotion ? { duration: 0 } : SPRING;
 
@@ -126,29 +151,64 @@ export default function CompletenessTracker({
       transition={transition}
       className={cx(
         'bg-surface-1 publish-colors text-text elevation-high absolute bottom-6 left-6 z-20 overflow-hidden',
-        open && 'w-96 max-w-[calc(100%-3rem)]',
+        expanded && 'w-96 max-w-[calc(100%-3rem)]',
       )}
-      style={{ borderRadius: open ? 12 : 9999 }}
+      style={{ borderRadius: expanded ? 12 : 9999 }}
       data-testid="pedigree-completeness"
+      onPointerEnter={(event) => {
+        if (event.pointerType !== 'mouse') return;
+        clearTimeout(leaveTimer.current);
+        setHovered(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType !== 'mouse') return;
+        clearTimeout(leaveTimer.current);
+        leaveTimer.current = setTimeout(() => {
+          setHovered(false);
+          if (!focusWithinRef.current) setSuppressed(false);
+        }, 200);
+      }}
+      onFocus={() => setFocusWithin(true)}
+      onBlur={(event) => {
+        const next = event.relatedTarget;
+        if (next instanceof Node && event.currentTarget.contains(next)) return;
+        setFocusWithin(false);
+        if (!hoveredRef.current) setSuppressed(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && expanded) {
+          event.stopPropagation();
+          close();
+        }
+      }}
     >
-      {open ? (
-        <motion.div
-          ref={panelRef}
-          role="region"
-          aria-labelledby={titleId}
-          tabIndex={-1}
+      <div
+        className={cx('flex items-center gap-2', expanded ? 'p-2 pr-3' : '')}
+      >
+        <motion.button
+          ref={ringRef}
           layout="position"
-          className="flex flex-col gap-3 p-4 outline-none"
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation();
-              onOpenChange(false);
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={expanded ? listId : undefined}
+          aria-label={intl.formatMessage(messages.trackerProgressLabel, {
+            complete: complete ? 'true' : 'false',
+            percent: fraction,
+          })}
+          className="focusable flex shrink-0 rounded-full p-2"
+          onClick={() => {
+            if (open) close();
+            else {
+              setSuppressed(false);
+              onOpenChange(true);
             }
           }}
         >
-          <div className="flex items-start gap-3">
-            <ProgressRing fraction={fraction} size="sm" />
-            <p id={titleId} className="flex-1 self-center font-semibold">
+          <ProgressRing fraction={fraction} size={expanded ? 'sm' : 'lg'} />
+        </motion.button>
+        {expanded && (
+          <>
+            <p id={titleId} className="flex-1 font-semibold">
               <AppMessage
                 message={
                   complete ? messages.trackerComplete : messages.trackerTitle
@@ -157,11 +217,23 @@ export default function CompletenessTracker({
             </p>
             <CloseButton
               title={intl.formatMessage(messages.trackerClose)}
-              onClick={() => onOpenChange(false)}
+              onClick={close}
             />
-          </div>
+          </>
+        )}
+      </div>
+      {expanded && (
+        <motion.div
+          ref={listRef}
+          id={listId}
+          role="region"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          layout="position"
+          className="flex flex-col gap-3 px-4 pb-4 outline-none"
+        >
           {!complete && (
-            <ul className="ml-13 flex flex-col gap-2">
+            <ul className="ml-14 flex flex-col gap-2">
               {progress.items.map((item) => (
                 <li
                   key={`${item.kind}:${item.personId}`}
@@ -189,26 +261,11 @@ export default function CompletenessTracker({
             </ul>
           )}
           {!complete && enforcement === 'recommended' && (
-            <p className="ml-13 text-sm opacity-80">
+            <p className="ml-14 text-sm opacity-80">
               <AppMessage message={messages.trackerRecommendedNote} />
             </p>
           )}
         </motion.div>
-      ) : (
-        <motion.button
-          ref={ringRef}
-          layout="position"
-          type="button"
-          aria-expanded={false}
-          aria-label={intl.formatMessage(messages.trackerProgressLabel, {
-            complete: complete ? 'true' : 'false',
-            percent: fraction,
-          })}
-          className="focusable flex rounded-full p-2"
-          onClick={() => onOpenChange(true)}
-        >
-          <ProgressRing fraction={fraction} size="lg" />
-        </motion.button>
       )}
     </motion.div>
   );

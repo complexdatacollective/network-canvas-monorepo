@@ -128,22 +128,58 @@ function PedigreeStory({
   );
 }
 
-type StoryArgs = { framing: FramingId };
+type StoryArgs = {
+  framing: FramingId;
+  requirement: PedigreeCompletenessScope | 'none';
+  enforcement: Completeness['enforcement'];
+};
 
 const meta: Meta<StoryArgs> = {
   title: 'Interfaces/FamilyPedigree',
   parameters: { layout: 'fullscreen' },
-  // The stage's framing: the words unnamed family members are described by.
-  args: { framing: 'gendered' },
+  // Protocol settings for the stage, each story starting from the ones that
+  // suit its family.
+  args: {
+    framing: 'gendered',
+    requirement: 'parents',
+    enforcement: 'required',
+  },
   argTypes: {
     framing: {
       control: 'inline-radio',
       options: ['gendered', 'gamete'],
       description:
-        'gendered: mother, father, grandmother… · gamete: egg parent, sperm parent, grandparent…',
+        'The words unnamed family members are described by. gendered: mother, father, grandmother… · gamete: egg parent, sperm parent, grandparent…',
+    },
+    requirement: {
+      control: 'select',
+      options: [
+        'none',
+        'parents',
+        'firstDegree',
+        'grandparents',
+        'secondDegree',
+        'thirdDegree',
+      ],
+      description:
+        'How much of the family must be recorded before continuing. Each level includes the ones before: both biological parents; siblings and children; grandparents, aunts and uncles; nieces, nephews and grandchildren; first cousins.',
+    },
+    enforcement: {
+      control: 'inline-radio',
+      options: ['required', 'recommended'],
+      description:
+        'required: Next is held back until complete · recommended: pressing Next again with the list open continues',
+      if: { arg: 'requirement', neq: 'none' },
     },
   },
 };
+
+/** The stage's protocol settings from the story's controls. */
+const settings = ({ framing, requirement, enforcement }: StoryArgs) => ({
+  framing,
+  completeness:
+    requirement === 'none' ? undefined : { scope: requirement, enforcement },
+});
 
 export default meta;
 type Story = StoryObj<StoryArgs>;
@@ -158,7 +194,8 @@ const expectPeople = (count: number) =>
 
 /** The first visit: only the participant, with the add menu around them. */
 export const FirstVisit: Story = {
-  render: ({ framing }) => <PedigreeStory framing={framing} withFormFields />,
+  args: { requirement: 'parents', enforcement: 'required' },
+  render: (args) => <PedigreeStory {...settings(args)} withFormFields />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() =>
@@ -177,9 +214,10 @@ export const FirstVisit: Story = {
  * and sex assigned at birth are still missing, so they carry a warning.
  */
 export const FamilyInProgress: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           {
@@ -209,7 +247,7 @@ export const FamilyInProgress: Story = {
     await expectPeople(5)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: /Unnamed, some details missing/,
+        name: /^Partner, some details missing/,
       }),
     ).toBeVisible();
   },
@@ -229,9 +267,10 @@ export const FamilyInProgress: Story = {
  * surrogate hang from the child on auxiliary lines.
  */
 export const EggDonorAndGestationalCarrier: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'parents', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           {
@@ -265,9 +304,10 @@ export const EggDonorAndGestationalCarrier: Story = {
  * through the donor and both mothers are parents to both.
  */
 export const SpermDonorWithTwoMothers: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'parents', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           {
@@ -302,9 +342,10 @@ export const SpermDonorWithTwoMothers: Story = {
  * are biological parents, and neither carried the pregnancy.
  */
 export const GestationalSurrogacy: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'parents', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           { id: 'ego', name: 'Noah', gender: 'man', sex: 'male', ego: true },
@@ -335,9 +376,10 @@ export const GestationalSurrogacy: Story = {
  * biological line of descent while they sit beneath their adoptive parents.
  */
 export const Adoption: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'parents', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           { id: 'ego', name: 'Jun', gender: 'man', sex: 'male', ego: true },
@@ -379,9 +421,10 @@ export const Adoption: Story = {
  * stepfather is also a social parent to the participant.
  */
 export const BlendedFamily: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           {
@@ -427,9 +470,10 @@ export const BlendedFamily: Story = {
  * the double line.
  */
 export const ConsanguineousParents: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'grandparents', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           { id: 'ego', name: 'Amir', gender: 'man', sex: 'male', ego: true },
@@ -481,9 +525,10 @@ export const ConsanguineousParents: Story = {
  * a trans woman.
  */
 export const GenderDiverseFamily: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           { id: 'ego', name: 'Eli', gender: 'man', sex: 'female', ego: true },
@@ -515,9 +560,10 @@ export const GenderDiverseFamily: Story = {
  * partner's child from an earlier relationship.
  */
 export const MultiplePartners: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'firstDegree', enforcement: 'recommended' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           {
@@ -573,9 +619,10 @@ export const MultiplePartners: Story = {
  * Grandparent).
  */
 export const UnnamedRelatives: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'thirdDegree', enforcement: 'recommended' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
+      {...settings(args)}
       family={{
         people: [
           { id: 'ego', ego: true, gender: 'woman', sex: 'female' },
@@ -634,12 +681,8 @@ export const UnnamedRelatives: Story = {
  * is still needed.
  */
 export const RequiresBothParents: Story = {
-  render: ({ framing }) => (
-    <PedigreeStory
-      framing={framing}
-      completeness={{ scope: 'parents', enforcement: 'required' }}
-    />
-  ),
+  args: { requirement: 'parents', enforcement: 'required' },
+  render: (args) => <PedigreeStory {...settings(args)} />,
   play: expectPeople(1),
 };
 
@@ -650,10 +693,10 @@ export const RequiresBothParents: Story = {
  * anyway.
  */
 export const RecommendsThreeGenerations: Story = {
-  render: ({ framing }) => (
+  args: { requirement: 'grandparents', enforcement: 'recommended' },
+  render: (args) => (
     <PedigreeStory
-      framing={framing}
-      completeness={{ scope: 'grandparents', enforcement: 'recommended' }}
+      {...settings(args)}
       family={{
         people: [
           {
