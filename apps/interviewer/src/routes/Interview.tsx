@@ -504,7 +504,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onRequestAsset={state.resolver}
         analytics={analytics}
         posthogClient={posthogClient ?? undefined}
-        disableAnalytics={readOnly || !analyticsEnabled}
+        // Without a client the Shell would start its own posthog-js instance
+        // from the default entrypoint, so analytics stay off until ours has
+        // resolved (it lags the opt-in state at unlock and on a later opt-in,
+        // and is null for good when disabled at build time or failed to load).
+        disableAnalytics={readOnly || !analyticsEnabled || !posthogClient}
         reviewMode={readOnly}
         initialStageOverrideIndex={state.initialStageOverrideIndex}
         finishConfirmationDescription={<InterviewFinishDescription />}

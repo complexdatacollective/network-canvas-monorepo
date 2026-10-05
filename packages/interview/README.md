@@ -272,7 +272,7 @@ standalone controls use their English defaults.
 The interview package emits PostHog events directly — there is no `onError`-style host bridge. Three operating modes:
 
 1. **Host-supplied client** — pass `posthogClient`; the package emits via the host's instance, with `distinct_id` overridden per event to the interview id. Host instance config (autocapture, identify, session recording) is the host's responsibility.
-2. **Own instance** — omit `posthogClient`; the package lazy-imports `posthog-js` and inits a named instance (`'@codaco/interview'`) against `https://ph-relay.networkcanvas.com`.
+2. **Own instance** — omit `posthogClient`; the package lazy-imports the `posthog-js/dist/module.no-external` build (no remote script loader, so it runs under a `script-src 'self'` policy) and inits a named instance (`'@codaco/interview'`) against `https://ph-relay.networkcanvas.com`.
 3. **Disabled** — pass `disableAnalytics={true}`; no events emitted, no posthog-js import.
 
 PII contract: events never include protocol-network data, protocol-author content (stage labels, prompt text, codebook labels, asset names), or participant input (form values, free-text, alter labels, search queries, passphrases). Events include only structural identifiers (stage type/index, prompt index, random node/edge UUIDs), codebook **internal ids** (e.g. `"person"`, `"friend"`), counts, durations, and package-defined discriminators.

@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode, useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { InterviewPayload, SessionPayload } from '@codaco/interview';
@@ -72,9 +72,30 @@ vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
 }));
 
+// The app-level analytics context as the route sees it. `client` lags
+// `enabled`: the provider flips the opt-in state first and resolves its
+// posthog-js client afterwards, and the client stays null for good in builds
+// with analytics disabled or when the load fails.
+const { analyticsContext, fakeAnalyticsClient } = vi.hoisted(() => {
+  const client = {
+    capture: vi.fn(),
+    captureException: vi.fn(),
+    register: vi.fn(),
+  };
+  const context: { enabled: boolean; client: typeof client | null } = {
+    enabled: false,
+    client: null,
+  };
+  return { analyticsContext: context, fakeAnalyticsClient: client };
+});
+vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
+  useAnalytics: () => analyticsContext,
+}));
+
 type CapturedShellProps = {
   currentStep: number;
   disableAnalytics: boolean;
+  posthogClient?: unknown;
   finishConfirmationDescription: ReactNode;
   requestedLocale: string;
   localePreference: string | null;
@@ -719,5 +740,58 @@ describe('InterviewRoute finish flow', () => {
     await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
 
     expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
+  });
+});
+
+describe('InterviewRoute analytics wiring', () => {
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+  });
+
+  afterEach(() => {
+    analyticsContext.enabled = false;
+    analyticsContext.client = null;
+  });
+
+  // The Shell's contract for "analytics on, no client" is to start its own
+  // posthog-js instance from the default entrypoint, which the app never
+  // bundles deliberately: it carries the remote script loader the CSP forbids,
+  // is not opted out by default, and knows nothing of the app's super
+  // properties. The Shell must therefore stay off until the app's client is
+  // attached, however long that takes.
+  it('keeps Shell analytics off while opted in but the client has not resolved', async () => {
+    analyticsContext.enabled = true;
+    analyticsContext.client = null;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().posthogClient).toBeUndefined();
+    expect(lastShellProps().disableAnalytics).toBe(true);
+  });
+
+  it('enables Shell analytics only with the app client attached', async () => {
+    analyticsContext.enabled = true;
+    analyticsContext.client = fakeAnalyticsClient;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().posthogClient).toBe(fakeAnalyticsClient);
+    expect(lastShellProps().disableAnalytics).toBe(false);
+  });
+
+  it('keeps Shell analytics off after an opt-out even though the client stays loaded', async () => {
+    analyticsContext.enabled = false;
+    analyticsContext.client = fakeAnalyticsClient;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().disableAnalytics).toBe(true);
   });
 });

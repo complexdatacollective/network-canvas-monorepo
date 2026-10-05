@@ -14,7 +14,12 @@ export async function resolveClient({
   if (posthogClient) return posthogClient;
 
   try {
-    const { default: posthog } = await import('posthog-js');
+    // The runtime's own instance must never fetch scripts from the relay: the
+    // no-external build has no script loader, so it works under a host's
+    // `script-src 'self'` policy and nothing this instance is configured for
+    // (no replay, surveys or exception autocapture) needs one.
+    const { default: posthog } =
+      await import('posthog-js/dist/module.no-external');
     return posthog.init(
       POSTHOG_API_KEY,
       {
