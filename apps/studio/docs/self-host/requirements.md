@@ -71,8 +71,8 @@ instead, see [the ingress swap](./swap.md#the-ingress).
 
 ### Outbound hosts
 
-The complete list. Anything else an instance appears to contact is worth
-investigating.
+The complete list of fixed hosts. The rest are the ones you choose, below;
+anything else an instance appears to contact is worth investigating.
 
 <!-- outbound-hosts start -->
 
@@ -90,9 +90,17 @@ The same list is checked in as
 [#1897](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1897)'s
 CI job uses as its allowlist; a test fails if that file and this table disagree.
 
-**The fifth outbound host is yours: the SMTP host in `SMTP_URL`.** It is not on
-the list because there is no fixed value to name. See
-[Run the stack](./run.md#8-configure-mail).
+**The other outbound hosts are yours to choose.** They are not on the list
+because there is no fixed value to name:
+
+- **The SMTP host** in `SMTP_URL`. See
+  [Run the stack](./run.md#8-configure-mail).
+- **Any service you [swapped in](./swap.md)** for one of the stack's own: the
+  host in `DATABASE_URL`, in `S3_ENDPOINT`, or in `REDIS_URL`. For Azure Blob
+  Storage it is the storage account's blob endpoint, normally
+  `<account>.blob.core.windows.net` — the host in `AZURE_STORAGE_ACCOUNT_URL`,
+  or the one the connection string names. A managed identity gets its tokens
+  from the Azure host's own metadata endpoint, so it adds no host to allow.
 
 Two things worth knowing before your firewall team asks:
 

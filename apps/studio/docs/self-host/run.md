@@ -205,7 +205,8 @@ docker compose up -d worker
 
 Whichever provider you use, its host is one of the instance's
 [outbound hosts](./requirements.md#outbound-hosts) — it must be reachable from
-this machine, and it is the only one of them that is yours to choose.
+this machine, and it is yours to choose, like the host of any service you
+swap in.
 
 ## Where to go next
 

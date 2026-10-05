@@ -29,13 +29,18 @@ const PIPELINE: StoragePipelineOptions = {
 /**
  * A missing blob, and not a missing container: a `get` from a container that
  * is not there is a misconfiguration to report, as S3's `NoSuchBucket` is,
- * rather than an asset that was never uploaded.
+ * rather than an asset that was never uploaded. The service's code is read
+ * from `details.errorCode` (the `x-ms-error-code` header) because a HEAD
+ * response has no body, so `RestError.code` is unset for every `stat`.
  */
-function isNotFound(error: unknown): boolean {
+export function isNotFound(error: unknown): boolean {
+  if (!(error instanceof RestError)) return false;
+  const details = error.details;
   return (
-    error instanceof RestError &&
-    error.statusCode === 404 &&
-    error.code !== 'ContainerNotFound'
+    typeof details === 'object' &&
+    details !== null &&
+    'errorCode' in details &&
+    details.errorCode === 'BlobNotFound'
   );
 }
 

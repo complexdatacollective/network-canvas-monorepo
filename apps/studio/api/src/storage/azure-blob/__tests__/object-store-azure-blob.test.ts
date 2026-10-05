@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { BlobServiceClient } from '@azure/storage-blob';
-import { afterAll } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import {
   DEV,
@@ -13,7 +13,10 @@ import {
   reachable,
   unavailable,
 } from '../../__tests__/contract.ts';
-import { ObjectStoreAzureBlob } from '../object-store-azure-blob.ts';
+import {
+  isNotFound,
+  ObjectStoreAzureBlob,
+} from '../object-store-azure-blob.ts';
 
 // Azurite from the dev stack (`pnpm dev:object-stores` starts it). Each run
 // creates its own container and removes it afterwards, since Azurite keeps
@@ -53,8 +56,10 @@ async function subject(): Promise<ContractSubject | undefined> {
   return { store, missing: storeFor(`studio-missing-${suffix}`) };
 }
 
+const available = await subject();
+
 objectStoreContract('Azure Blob', {
-  subject: await subject(),
+  subject: available,
   storeAt: (origin) =>
     ObjectStoreAzureBlob.make({
       container: 'studio-test',
@@ -63,4 +68,33 @@ objectStoreContract('Azure Blob', {
         connectionString: `DefaultEndpointsProtocol=http;AccountName=${DEV.azuriteAccount};AccountKey=${DEV.azuriteAccountKey};BlobEndpoint=${origin}/${DEV.azuriteAccount};`,
       },
     }),
+});
+
+// The contract cannot see this: a `put` whose `stat` mistakes a missing
+// container for a missing blob still fails, at the write that follows. So the
+// predicate is held to the errors Azurite actually returns, HEAD and GET alike.
+describe.skipIf(available === undefined)('isNotFound', () => {
+  const rejection = (request: Promise<unknown>) =>
+    request.then(
+      () => expect.fail('the request succeeded'),
+      (error: unknown) => error,
+    );
+  const absentBlob = container.getBlobClient('assets/absent');
+  const inMissingContainer = service
+    .getContainerClient(`studio-missing-${suffix}`)
+    .getBlobClient('assets/absent');
+
+  it('is a missing blob, from a HEAD or a GET', async () => {
+    expect(isNotFound(await rejection(absentBlob.getProperties()))).toBe(true);
+    expect(isNotFound(await rejection(absentBlob.download()))).toBe(true);
+  });
+
+  it('is not a missing container, from a HEAD or a GET', async () => {
+    expect(
+      isNotFound(await rejection(inMissingContainer.getProperties())),
+    ).toBe(false);
+    expect(isNotFound(await rejection(inMissingContainer.download()))).toBe(
+      false,
+    );
+  });
 });
