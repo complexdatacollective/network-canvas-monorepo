@@ -100,6 +100,37 @@ describe('the sections of an anonymisation stage', () => {
     );
   });
 
+  it('refuses an explanation heading over 50 characters in any of the protocol languages', async () => {
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      registry: anonymisationStageEditor,
+      localization: { defaultLocale: 'en-US', locales: ['en-US', 'es'] },
+    });
+
+    // Every localized field draws the one shared menu, so any of them will do.
+    const [languageMenu] = await screen.findAllByRole('button', {
+      name: /Editing language/,
+    });
+    if (languageMenu === undefined) throw new Error('No language menu');
+    await harness.user.click(languageMenu);
+    await harness.user.click(
+      await screen.findByRole('menuitemradio', { name: /^español/ }),
+    );
+    const heading = screen.getByRole('textbox', { name: 'Title' });
+    await harness.user.type(heading, 'x'.repeat(51));
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('Too long. Enter at most 50 characters.'),
+    ).toBeInTheDocument();
+
+    await harness.user.type(heading, '{Backspace}');
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.explanationText).toMatchObject({
+      title: { es: 'x'.repeat(50) },
+    });
+  });
+
   it('refuses passphrase rules whose shortest allowed length exceeds its longest', async () => {
     const harness = openEditor();
 

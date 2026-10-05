@@ -1,6 +1,7 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
+import { localizedMaxLength } from '../../../fields/localizedMaxLength.ts';
 import {
   LocalizedInputField,
   LocalizedRichTextField,
@@ -12,6 +13,9 @@ import { anonymisationMessages } from './anonymisationMessages.ts';
 /** The schema keeps this stage's explanation in one object with two parts. */
 const TITLE_FIELD = 'explanationText.title';
 const BODY_FIELD = 'explanationText.body';
+
+/** A heading, so it has to read as one rather than as a paragraph. */
+const TITLE_LIMIT = 50;
 
 /**
  * What the participant is told before they choose a passphrase.
@@ -43,6 +47,7 @@ export default function TaskExplanationSection() {
           anonymisationMessages.explanationHeadingPlaceholder,
         )}
         required={REQUIRED}
+        custom={localizedMaxLength(TITLE_LIMIT, intl)}
       />
       <Field<typeof LocalizedRichTextField>
         name={BODY_FIELD}

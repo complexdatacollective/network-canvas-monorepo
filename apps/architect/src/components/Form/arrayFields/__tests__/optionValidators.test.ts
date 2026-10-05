@@ -166,6 +166,27 @@ describe('Options validators', () => {
     ).toBeUndefined();
   });
 
+  // A participant meets the words of their own language, so a clash in any one
+  // language refuses the list, not only a clash in the default language.
+  it('rejects labels that read the same in one language only', () => {
+    expect(
+      uniqueOptionLabels([
+        { label: { en: 'Close', es: 'Cerca' }, value: 'close' },
+        { label: { en: 'Nearby', es: 'cerca' }, value: 'nearby' },
+      ]),
+    ).toMatch(/unique label/i);
+  });
+
+  it('does not compare a label with a translation it has not got', () => {
+    expect(
+      uniqueOptionLabels([
+        { label: { en: 'Close', es: 'Cerca' }, value: 'close' },
+        { label: { en: 'Distant' }, value: 'distant' },
+        { label: { en: 'Far' }, value: 'far' },
+      ]),
+    ).toBeUndefined();
+  });
+
   // Issue #1383. `Café` written with the precomposed U+00E9 and `Café`
   // written as `e` + U+0301 are the same text: they render identically, so
   // they reach the participant as two choices nothing tells apart.
