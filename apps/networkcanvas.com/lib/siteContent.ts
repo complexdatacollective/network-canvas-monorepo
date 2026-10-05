@@ -230,7 +230,9 @@ const updateRowSchema = z
       .trim()
       .optional()
       .transform((value) => value || undefined)
-      .pipe(internalPath.optional()),
+      .pipe(
+        z.string().startsWith('/', 'must be a path on this site').optional(),
+      ),
   })
   .strict();
 

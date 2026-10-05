@@ -165,9 +165,7 @@ function githubLatest(version: string, body = 'github notes') {
 
 function routedFetch(feed: unknown, github: unknown) {
   return vi.fn((url: string) =>
-    Promise.resolve(
-      new URL(url).hostname === 'networkcanvas.com' ? feed : github,
-    ),
+    Promise.resolve(url.includes('networkcanvas.com') ? feed : github),
   );
 }
 

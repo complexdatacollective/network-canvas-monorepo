@@ -13,10 +13,10 @@ type SiteLinkProps = Omit<
  * other websites in a new tab.
  */
 export function SiteLink({ href, ...props }: SiteLinkProps) {
-  if (/^\/(?![\\/])/.test(href)) {
+  if (href.startsWith('/')) {
     return <NativeLink {...props} href={href} render={<Link href={href} />} />;
   }
-  if (/^(?:https?:)?[\\/]{2}/i.test(href)) {
+  if (/^https?:\/\//.test(href)) {
     return (
       <NativeLink {...props} href={href} target="_blank" rel="noreferrer" />
     );
