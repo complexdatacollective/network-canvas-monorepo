@@ -156,15 +156,38 @@ if (strayMaps.length > 0) {
   fail(`source map(s) left in dist: ${strayMaps.join(', ')}`);
 }
 
+const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
+
+// script-src is the backstop that keeps the PostHog relay — or any other
+// origin — from ever supplying executable code, so the directive is compared
+// whole rather than by prefix: `script-src 'self' https://…` has the prefix too.
+const cspMeta = html.match(
+  /<meta\b[^>]*http-equiv="Content-Security-Policy"[^>]*>/,
+)?.[0];
+const cspAttr = cspMeta?.match(/\bcontent="([^"]*)"/)?.[1];
+if (cspAttr === undefined) {
+  fail('Content-Security-Policy meta tag missing from dist/index.html');
+}
+// Vite HTML-escapes attribute values, and the entities end in ';', so decode
+// before splitting on the directive separator.
+const cspContent = cspAttr
+  ?.replace(/&#39;/g, "'")
+  .replace(/&quot;/g, '"')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&amp;/g, '&');
+const scriptSrc = cspContent
+  ?.split(';')
+  .map((directive) => directive.trim())
+  .find((directive) => /^script-src(\s|$)/.test(directive));
+if (scriptSrc !== "script-src 'self'") {
+  fail(
+    `script-src must be exactly 'self'; found ${scriptSrc ?? 'no script-src directive'}`,
+  );
+}
+
 // The entry module (referenced by index.html) boots the app; it must be
 // precached for an offline start. Derive it rather than hardcode the hash.
-const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
-if (!html.includes('script-src &#39;self&#39;')) {
-  fail('self-only script-src CSP directive missing');
-}
-if (/script-src[^;]*ph-relay\.networkcanvas\.com/.test(html)) {
-  fail('PostHog relay must not be allowed as a script source');
-}
 const entry = (html.match(/assets\/[^"']+\.js/) || [])[0];
 if (!entry) fail('no entry chunk referenced in dist/index.html');
 if (!precached.has(entry)) fail(`entry chunk excluded from precache: ${entry}`);

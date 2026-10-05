@@ -1,4 +1,4 @@
-import type { PostHog } from 'posthog-js';
+import type { PostHog } from 'posthog-js/dist/module.no-external';
 
 import { POSTHOG_API_KEY, POSTHOG_HOST, POSTHOG_INSTANCE_NAME } from './config';
 
@@ -15,16 +15,20 @@ export function getAnalyticsClient(): Promise<PostHog | null> {
 
 async function initClient(): Promise<PostHog | null> {
   // Skip analytics entirely when disabled at build time (e2e / CI / preview
-  // builds). This also prevents live PostHog dependency requests whose
-  // non-deterministic timing can otherwise flake Playwright actions.
+  // builds), so the build under test never makes relay requests whose
+  // non-deterministic timing could flake Playwright actions.
   if (import.meta.env.VITE_DISABLE_ANALYTICS === 'true') {
     return null;
   }
   try {
-    const { default: posthog } =
-      await import('posthog-js/dist/module.full.no-external');
-    // The full and default builds expose the same client API, but PostHog's
-    // declarations give their private class members incompatible identities.
+    // The no-external build carries no script loader, so an extension exists
+    // only if it is bundled here. Exception autocapture is the one this app
+    // uses; importing it registers the error-wrapping hooks that `init` reads.
+    // Session replay, surveys and the rest stay out of the bundle entirely.
+    const [{ default: posthog }] = await Promise.all([
+      import('posthog-js/dist/module.no-external'),
+      import('posthog-js/dist/exception-autocapture'),
+    ]);
     return posthog.init(
       POSTHOG_API_KEY,
       {
@@ -40,8 +44,8 @@ async function initClient(): Promise<PostHog | null> {
         // tracking. These carry stack traces only, never network/participant
         // data.
         capture_exceptions: true,
-        // Keep every executable analytics extension in this app's own bundle.
-        // The relay is a data endpoint only and must never become a script origin.
+        // Belt and braces with the no-external build: even a build that
+        // regained a loader must never fetch extension scripts from the relay.
         disable_external_dependency_loading: true,
         // Persist opt-in/opt-out state across launches.
         persistence: 'localStorage',
@@ -50,7 +54,7 @@ async function initClient(): Promise<PostHog | null> {
         opt_out_capturing_by_default: true,
       },
       POSTHOG_INSTANCE_NAME,
-    ) as unknown as PostHog;
+    );
   } catch {
     // Telemetry must never break the app. Swallow and run without analytics.
     return null;

@@ -1,16 +1,15 @@
-import type { PostHog } from 'posthog-js';
-
 import { INSTANCE_NAME, POSTHOG_API_KEY, POSTHOG_HOST } from './PROPERTY_KEYS';
+import type { AnalyticsClient } from './tracker';
 
 type ResolveArgs = {
   disableAnalytics: boolean;
-  posthogClient?: PostHog;
+  posthogClient?: AnalyticsClient;
 };
 
 export async function resolveClient({
   disableAnalytics,
   posthogClient,
-}: ResolveArgs): Promise<PostHog | null> {
+}: ResolveArgs): Promise<AnalyticsClient | null> {
   if (disableAnalytics) return null;
   if (posthogClient) return posthogClient;
 
