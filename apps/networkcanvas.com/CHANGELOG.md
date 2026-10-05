@@ -1,5 +1,70 @@
 # networkcanvas.com
 
+## 0.6.0
+
+### Minor Changes
+
+- networkcanvas.com is now available in Brazilian Portuguese (Português (Brasil))
+  at `/pt-BR/`, including the site navigation, news, publications, grants and
+  team listings. Visitors whose browser prefers Portuguese are sent there
+  automatically.
+- networkcanvas.com is now available in Dutch (Nederlands) at `/nl/`, including
+  the site navigation, news, publications, grants and team listings. Visitors
+  whose browser prefers Dutch are sent there automatically.
+- networkcanvas.com is now available in French (Français) at `/fr/`, including
+  the site navigation, news, publications, grants and team listings. Visitors
+  whose browser prefers French, wherever they are, are sent there automatically.
+- networkcanvas.com is now available in German (Deutsch) at `/de/`, including
+  the site navigation, news, publications, grants and team listings. Visitors
+  whose browser prefers German are sent there automatically.
+- networkcanvas.com is now available in Italian (Italiano) at `/it/`, including
+  the site navigation, news, publications, grants and team listings. Visitors
+  whose browser prefers Italian are sent there automatically.
+- networkcanvas.com is now available in Simplified Chinese (简体中文) at
+  `/zh-Hans/`, including the site navigation, news, publications, grants and team
+  listings. Visitors whose browser prefers Chinese are sent there automatically.
+- networkcanvas.com is now available in Traditional Chinese (繁體中文) at
+  `/zh-Hant/`, including the site navigation, news, publications, grants and team
+  listings. Visitors whose browser prefers Chinese for Taiwan, Hong Kong or Macau
+  are sent there automatically; other Chinese browser languages still go to
+  `/zh-Hans/`.
+
+### Patch Changes
+
+- The homepage news ticker no longer breaks the page for visitors who prefer
+  reduced motion.
+
+  The ticker chose between two different layouts based on that preference, but the
+  server cannot know it — so the page arrived built one way and was immediately
+  re-rendered the other way. React treats that disagreement as a failure, discards
+  everything it had already placed on the page and builds it again from scratch,
+  which is slower and loses the benefit of sending a finished page at all.
+
+  The ticker now arrives the same way for everyone and settles into its reduced
+  version once the page is interactive. It never animates for these visitors at
+  any point.
+
+- The site now honours the operating-system "reduce motion" setting throughout.
+
+  Motion is off by default in the animation library the site uses, so the
+  preference reached only those components that had been written to ask for it
+  individually. The homepage background, the hero intro, the publication rail and
+  the Summer Update visuals all did ask, and were already correct. Everywhere
+  else — the site header, the hero, the grants section, the Summer Update's
+  entrance sequence, and every animated dialog, menu and overlay from the shared
+  component library — a visitor who had asked their device for less movement
+  still got the full animation.
+
+  The preference is now applied once, for the whole site. Content that used to
+  slide, travel or scale into place arrives already in position for those
+  visitors, while gentle fades still play, so pages stay legible rather than
+  appearing without any sense of progression.
+
+- The site's language list now opens with a search box, so you can find your
+  language by typing its name instead of scrolling through every language on
+  offer.
+- Update third-party dependencies to their latest minor and patch releases, including Base UI 1.8, next-intl 4.14, Motion 13.4, Lucide 1.49, the Inclusive Sans and Nunito variable fonts 5.3 and PostHog.
+
 ## 0.5.2
 
 ### Patch Changes
