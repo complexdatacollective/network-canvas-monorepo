@@ -23,6 +23,8 @@ import { type Person, symbolFor } from '../model';
 
 type PersonNodeProps = {
   person: Person;
+  /** Their name, or how they are related to the participant. */
+  label: string;
   color: NodeColorSequence;
   /** Their details are open in the side panel. */
   selected: boolean;
@@ -49,6 +51,7 @@ type PersonNodeProps = {
  */
 export default function PersonNode({
   person,
+  label,
   color,
   selected,
   menuOpen,
@@ -64,9 +67,6 @@ export default function PersonNode({
   children,
 }: PersonNodeProps) {
   const intl = useAppIntl();
-  const displayName = person.isEgo
-    ? intl.formatMessage(messages.you)
-    : (person.name ?? intl.formatMessage(messages.unnamedPerson));
 
   return (
     <div
@@ -87,10 +87,10 @@ export default function PersonNode({
         size="sm"
         shape={symbolFor(person.genderIdentity)}
         color={color}
-        label={displayName}
+        label={label}
         ariaLabel={intl.formatMessage(messages.personAccessibleName, {
           isYou: person.isEgo ? 'true' : 'false',
-          name: displayName,
+          name: label,
           missing: hasMissingDetails ? 'true' : 'false',
         })}
         selected={selected}

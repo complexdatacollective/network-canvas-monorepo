@@ -1,0 +1,43 @@
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcEdge,
+  type NcNode,
+  type VariableValue,
+} from '@codaco/shared-consts';
+
+import type { PedigreeConfig } from '../model';
+
+export const config: PedigreeConfig = {
+  personType: 'person',
+  nameVariable: 'name',
+  genderIdentityVariable: 'gender',
+  sexAssignedAtBirthVariable: 'sex',
+  egoVariable: 'isEgo',
+  relationshipType: 'family',
+  kindVariable: 'kind',
+  gestationalCarrierVariable: 'carrier',
+  currentPartnerVariable: 'current',
+};
+
+export const person = (
+  id: string,
+  attributes: Record<string, VariableValue> = {},
+): NcNode => ({
+  [entityPrimaryKeyProperty]: id,
+  type: 'person',
+  [entityAttributesProperty]: attributes,
+});
+
+export const link = (
+  from: string,
+  to: string,
+  kind: string,
+  attributes: Record<string, VariableValue> = {},
+): NcEdge => ({
+  [entityPrimaryKeyProperty]: `${from}-${to}-${kind}`,
+  type: 'family',
+  from,
+  to,
+  [entityAttributesProperty]: { kind: [kind], ...attributes },
+});

@@ -1,17 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
 import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcEdge,
-  type NcNode,
-  type VariableValue,
-} from '@codaco/shared-consts';
-
-import {
   type AdditionPlan,
   type Family,
-  type PedigreeConfig,
   fullSiblingsOf,
   missingDetailsFor,
   partnersOf,
@@ -22,40 +13,7 @@ import {
   siblingsOf,
   symbolFor,
 } from '../model';
-
-const config: PedigreeConfig = {
-  personType: 'person',
-  nameVariable: 'name',
-  genderIdentityVariable: 'gender',
-  sexAssignedAtBirthVariable: 'sex',
-  egoVariable: 'isEgo',
-  relationshipType: 'family',
-  kindVariable: 'kind',
-  gestationalCarrierVariable: 'carrier',
-  currentPartnerVariable: 'current',
-};
-
-const person = (
-  id: string,
-  attributes: Record<string, VariableValue> = {},
-): NcNode => ({
-  [entityPrimaryKeyProperty]: id,
-  type: 'person',
-  [entityAttributesProperty]: attributes,
-});
-
-const link = (
-  from: string,
-  to: string,
-  kind: string,
-  attributes: Record<string, VariableValue> = {},
-): NcEdge => ({
-  [entityPrimaryKeyProperty]: `${from}-${to}-${kind}`,
-  type: 'family',
-  from,
-  to,
-  [entityAttributesProperty]: { kind: [kind], ...attributes },
-});
+import { config, link, person } from './fixtures';
 
 /** Ego with two parents and a full sibling; the parents are partners. */
 function nuclearFamily(): Family {
@@ -171,9 +129,13 @@ describe('missingDetailsFor', () => {
     ]);
   });
 
-  test('the participant’s own name is optional', () => {
-    const family = nuclearFamily();
-    expect(missingDetailsFor(family.byId.get('ego')!, [])).toEqual([]);
+  test('a name is never required', () => {
+    const family = readFamily(
+      [person('a', { gender: ['man'], sex: ['male'] })],
+      [],
+      config,
+    );
+    expect(missingDetailsFor(family.byId.get('a')!, [])).toEqual([]);
   });
 
   test('includes required researcher fields that are empty', () => {

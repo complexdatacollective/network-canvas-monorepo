@@ -46,6 +46,7 @@ import PersonForm, {
   type PersonFormResult,
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
+import { formatPersonLabel, labelFamily } from './kinship';
 import { messages } from './messages';
 import {
   missingDetailsFor,
@@ -152,14 +153,31 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     [],
   );
 
+  // A person is shown by name, or by how they are related to the participant
+  // when their name is not known.
+  const labels = useMemo(() => labelFamily(family), [family]);
   const displayName = useCallback(
     (personId: string) => {
-      const person = family.byId.get(personId);
-      if (person?.isEgo) return intl.formatMessage(messages.you);
-      return person?.name ?? intl.formatMessage(messages.unnamedPerson);
+      const label = labels.get(personId);
+      return label
+        ? formatPersonLabel(label, intl)
+        : intl.formatMessage(messages.familyMember);
     },
-    [family.byId, intl],
+    [labels, intl],
   );
+
+  // Announce an addition once the new person is in the family, so they can be
+  // described by how they are related when they have no name.
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!justAddedId || !family.byId.has(justAddedId)) return;
+    setAnnouncement(
+      intl.formatMessage(messages.addedAnnouncement, {
+        name: displayName(justAddedId),
+      }),
+    );
+    setJustAddedId(null);
+  }, [justAddedId, family.byId, displayName, intl]);
 
   const links: PedigreeLink[] = useMemo(
     () =>
@@ -364,10 +382,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
 
     if (!result.request) return;
+    const newPersonId = uuid();
     const plan = planAddRelative({
       family,
       anchorId: mode.anchor.id,
-      newPersonId: uuid(),
+      newPersonId,
       details: result.set,
       request: result.request,
       createId: uuid,
@@ -404,15 +423,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       ).unwrap();
     }
-    const name = result.set[config.nameVariable];
-    setAnnouncement(
-      intl.formatMessage(messages.addedAnnouncement, {
-        name:
-          typeof name === 'string'
-            ? name
-            : intl.formatMessage(messages.unnamedPerson),
-      }),
-    );
+    setJustAddedId(newPersonId);
   };
 
   const handleRemove = async (personId: string) => {
@@ -513,6 +524,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               return (
                 <PersonNode
                   person={person}
+                  label={displayName(personId)}
                   color={nodeColor}
                   selected={personId === selectedId}
                   menuOpen={hasMenu}

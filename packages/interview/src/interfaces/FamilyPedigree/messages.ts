@@ -13,18 +13,38 @@ export const messages = defineMessages({
     description:
       'Label shown beneath the participant’s own symbol in their family tree.',
   },
-  unnamedPerson: {
-    id: 'interview.familyPedigree.unnamedPerson',
-    defaultMessage: 'Unnamed',
+  relativeTerm: {
+    id: 'interview.familyPedigree.relativeTerm',
+    defaultMessage:
+      '{term, select, mother {Mother} father {Father} parent {Parent} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Stepmother} stepfather {Stepfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surrogate} daughter {Daughter} son {Son} child {Child} stepdaughter {Stepdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} partner {Partner} formerPartner {Former partner} other {Relative}}',
     description:
-      'Label shown beneath a family member whose name has not been entered yet.',
+      'Label for a family member whose name is not known, describing how they are related to the participant (for example, the participant’s mother). Display only; nothing here is saved as research data.',
+  },
+  relativeOf: {
+    id: 'interview.familyPedigree.relativeOf',
+    defaultMessage:
+      "{owner}'s {term, select, mother {mother} father {father} parent {parent} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {stepmother} stepfather {stepfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surrogate} daughter {daughter} son {son} child {child} stepdaughter {stepdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {child born through surrogacy} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} partner {partner} formerPartner {former partner} other {relative}}",
+    description:
+      'Label for a family member whose name is not known, described through a relative of theirs: owner is that relative’s name or label (for example “Rob” or “Mother”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Display only.',
+  },
+  numberedRelative: {
+    id: 'interview.familyPedigree.numberedRelative',
+    defaultMessage: '{label} {number, number}',
+    description:
+      'Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added.',
+  },
+  familyMember: {
+    id: 'interview.familyPedigree.familyMember',
+    defaultMessage: 'Family member',
+    description:
+      'Label for a family member whose name is not known and who is not connected to the participant in the family tree.',
   },
   personAccessibleName: {
     id: 'interview.familyPedigree.personAccessibleName',
     defaultMessage:
       '{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}',
     description:
-      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or “Unnamed”. The second part is read out when required details about the person have not been given yet.',
+      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or, when it is not known, how they are related to the participant. The second part is read out when required details about the person have not been given yet.',
   },
   missingDetails: {
     id: 'interview.familyPedigree.missingDetails',
@@ -150,8 +170,9 @@ export const messages = defineMessages({
   },
   nameLabel: {
     id: 'interview.familyPedigree.nameLabel',
-    defaultMessage: 'Name',
-    description: 'Label of the field for a family member’s name.',
+    defaultMessage: 'Name (optional)',
+    description:
+      'Label of the field for a family member’s name, which the participant may not know.',
   },
   yourNameLabel: {
     id: 'interview.familyPedigree.yourNameLabel',
@@ -160,7 +181,8 @@ export const messages = defineMessages({
   },
   nameHint: {
     id: 'interview.familyPedigree.nameHint',
-    defaultMessage: 'A first name or nickname is fine.',
+    defaultMessage:
+      'A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.',
     description: 'Hint beneath the field for a family member’s name.',
   },
   genderIdentityLabel: {
@@ -394,7 +416,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.addedAnnouncement',
     defaultMessage: '{name} added to your family.',
     description:
-      'Screen reader announcement after a family member is added. {name} is their name or “Unnamed”.',
+      'Screen reader announcement after a family member is added. {name} is their name or, when it is not known, how they are related to the participant.',
   },
   savedAnnouncement: {
     id: 'interview.familyPedigree.savedAnnouncement',
@@ -406,6 +428,6 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.removedAnnouncement',
     defaultMessage: '{name} removed from your family.',
     description:
-      'Screen reader announcement after a family member is removed. {name} is their name or “Unnamed”.',
+      'Screen reader announcement after a family member is removed. {name} is their name or, when it is not known, how they are related to the participant.',
   },
 });
