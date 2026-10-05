@@ -13,8 +13,7 @@ describe('extractCustomAttributes', () => {
       extractCustomAttributes({
         name: 'Person',
         biologicalSex: 'female',
-        emptyText: '',
-        emptySelection: [],
+        attributes: { emptyText: '', emptySelection: [] },
       }),
     ).toEqual({ emptyText: '', emptySelection: [] });
   });
@@ -22,15 +21,14 @@ describe('extractCustomAttributes', () => {
   it('rejects the complete custom attribute record when a defined value is invalid', () => {
     expect(() =>
       extractCustomAttributes({
-        valid: 'answer',
-        invalid: { nested: true },
+        attributes: { valid: 'answer', invalid: { nested: true } },
       }),
     ).toThrow('Invalid custom attribute value for "invalid".');
   });
 
   it('converts invalid custom attributes to a failed form submission result', () => {
     const result = runFamilyPedigreeTransform(() => {
-      extractCustomAttributes({ invalid: { nested: true } });
+      extractCustomAttributes({ attributes: { invalid: { nested: true } } });
       return { success: true } as const;
     });
     expect(result.success).toBe(false);
@@ -47,7 +45,39 @@ describe('extractCustomAttributes', () => {
 
   it('omits undefined custom values', () => {
     expect(
-      extractCustomAttributes({ defined: false, cleared: undefined }),
+      extractCustomAttributes({
+        attributes: { defined: false, cleared: undefined },
+      }),
     ).toEqual({ defined: false });
+  });
+
+  it('reads only protocol fields, keeping same-named controls apart', () => {
+    expect(
+      extractCustomAttributes({
+        'name': 'Control name',
+        'is-donor': true,
+        'gestationalCarrier': false,
+        'role': 'adoptive-parent',
+        'stray': 'not a protocol field',
+        'attributes': {
+          'name': 'Protocol name',
+          'is-donor': false,
+          'gestationalCarrier': true,
+          'role': 'protocol role',
+        },
+      }),
+    ).toEqual({
+      'name': 'Protocol name',
+      'is-donor': false,
+      'gestationalCarrier': true,
+      'role': 'protocol role',
+    });
+  });
+
+  it('returns no attributes when the member has no protocol fields', () => {
+    expect(extractCustomAttributes({ name: 'Person' })).toBeUndefined();
+    expect(
+      extractCustomAttributes({ attributes: ['not', 'a record'] }),
+    ).toBeUndefined();
   });
 });

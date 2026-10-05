@@ -373,12 +373,12 @@ export const FirstCousinCreationViaWizard: Story = {
     await setFieldInput('egg-parent.is-donor', false);
     await setFieldInput('egg-parent.name', 'Linda');
     await setFieldInput('egg-parent.gestationalCarrier', true);
-    await setFieldInput('egg-parent.gender_identity', 'woman');
+    await setFieldInput('egg-parent.attributes.gender_identity', 'woman');
     await clickNext();
 
     await setFieldInput('sperm-parent.is-donor', false);
     await setFieldInput('sperm-parent.name', 'Robert');
-    await setFieldInput('sperm-parent.gender_identity', 'man');
+    await setFieldInput('sperm-parent.attributes.gender_identity', 'man');
     await clickNext();
 
     await setFieldInput('hasOtherParents', false);
@@ -426,10 +426,10 @@ export const FirstCousinCreationViaWizard: Story = {
     // defaults true, so those are left at their defaults.
     await setFieldInput('new-egg-source.name', 'Helen');
     await setFieldInput('new-egg-source.biologicalSex', 'female');
-    await setFieldInput('new-egg-source.gender_identity', 'woman');
+    await setFieldInput('new-egg-source.attributes.gender_identity', 'woman');
     await setFieldInput('new-sperm-source.name', 'George');
     await setFieldInput('new-sperm-source.biologicalSex', 'male');
-    await setFieldInput('new-sperm-source.gender_identity', 'man');
+    await setFieldInput('new-sperm-source.attributes.gender_identity', 'man');
     await clickNext(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);
@@ -464,7 +464,7 @@ export const FirstCousinCreationViaWizard: Story = {
 
     await setFieldInput('sibling.name', 'Carol');
     await setFieldInput('sibling.biologicalSex', 'female');
-    await setFieldInput('sibling.gender_identity', 'woman');
+    await setFieldInput('sibling.attributes.gender_identity', 'woman');
     await clickNext(); // Sibling details → BioTriadStep
 
     // George and Helen are pre-offered as Carol's parents; accept the defaults.
@@ -486,7 +486,7 @@ export const FirstCousinCreationViaWizard: Story = {
 
     await setFieldInput('child.name', 'Emma');
     await setFieldInput('child.biologicalSex', 'female');
-    await setFieldInput('child.gender_identity', 'woman');
+    await setFieldInput('child.attributes.gender_identity', 'woman');
     await clickNext(); // Child details → BioTriadStep
 
     // Carol is preselected as the egg source. She has no recorded partner, so

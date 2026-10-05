@@ -29,7 +29,10 @@ import {
   addableParentTypeOptions,
   countGeneticParents,
 } from '../../components/wizards/parentTypeOptions';
-import { readBiologicalSex } from '../../components/wizards/transforms/personAttributes';
+import {
+  readBiologicalSex,
+  readPersonAttributeValues,
+} from '../../components/wizards/transforms/personAttributes';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 import { useFamilyPedigreeDialog } from '../../familyPedigreeDialog';
 import { messages } from '../../messages';
@@ -206,7 +209,7 @@ export default function PedigreeView({
     const name = typeof result.name === 'string' ? result.name : '';
 
     const formPatchResult = formValuesToAttributePatch(
-      result,
+      readPersonAttributeValues(result),
       resolvedFormFields.map((field) => field.variableId),
     );
     if (!formPatchResult.success) {
@@ -322,7 +325,7 @@ export default function PedigreeView({
     const name = typeof result.name === 'string' ? result.name : '';
 
     const formPatchResult = formValuesToAttributePatch(
-      result,
+      readPersonAttributeValues(result),
       resolvedFormFields.map((field) => field.variableId),
     );
     if (!formPatchResult.success) {

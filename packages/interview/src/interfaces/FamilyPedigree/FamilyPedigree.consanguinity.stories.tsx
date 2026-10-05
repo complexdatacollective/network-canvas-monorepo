@@ -458,7 +458,7 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
 
     await setFieldInput('child.name', 'Emma');
     await setFieldInput('child.biologicalSex', 'female');
-    await setFieldInput('child.gender_identity', 'woman');
+    await setFieldInput('child.attributes.gender_identity', 'woman');
     await clickNext(); // Child details → BioTriadStep
 
     await setFieldInput('sperm-source', 'You');
