@@ -52,7 +52,9 @@ const DIFF_EXCERPT_LINES = 60;
 const SCHEMA_WITH_LANGUAGES = 9;
 const UNDETERMINED_LOCALE = 'und';
 const LANGUAGE_TAG = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/;
-const GRAPH_START_TAG = /<graph\b[^>]*>/g;
+// Attribute values are matched whole: the normalizer's own <VOLATILE> mask
+// puts a ">" inside one.
+const GRAPH_START_TAG = /<graph\b(?:[^>"]|"[^"]*")*>/g;
 
 const DATE_IN_NAME =
   /\d{4}-\d{2}-\d{2}(?:[T_ -]?\d{2}[:.-]?\d{2}[:.-]?\d{2})?/g;
@@ -402,6 +404,15 @@ function reconcileGraphml(baselineText, currentText, upgradedProtocols) {
     : { text, differences: [...differences] };
 }
 
+function reconcile(name, baselineText, currentText, upgradedProtocols) {
+  if (name.endsWith('.json'))
+    return reconcileInterviewJson(baselineText, currentText);
+  if (name.endsWith('.csv')) return reconcileCsv(baselineText, currentText);
+  if (name.endsWith('.graphml'))
+    return reconcileGraphml(baselineText, currentText, upgradedProtocols);
+  return null;
+}
+
 function listFiles(dir) {
   const files = [];
   const walk = (current) => {
@@ -480,16 +491,46 @@ function main() {
     onlyInCurrent: current.names.filter((name) => !baselineSet.has(name)),
     identical: [],
     changed: [],
+    reconciled: [],
   };
 
-  for (const name of baseline.names.filter((n) => currentSet.has(n))) {
+  const shared = baseline.names.filter((n) => currentSet.has(n));
+  const read = (side, name) =>
+    readFileSync(join(side.normalizedDir, name), 'utf8');
+  const upgradedProtocols = new Set();
+  for (const name of shared.filter((n) => n.endsWith('.json'))) {
+    try {
+      const upgrade = upgradedProtocol(
+        JSON.parse(read(baseline, name)),
+        JSON.parse(read(current, name)),
+      );
+      if (typeof upgrade?.after.name === 'string')
+        upgradedProtocols.add(upgrade.after.name);
+    } catch {
+      // Not valid JSON: it names no protocol, and is compared as it stands.
+    }
+  }
+
+  for (const name of shared) {
+    const reconciled = reconcile(
+      name,
+      read(baseline, name),
+      read(current, name),
+      upgradedProtocols,
+    );
+    let currentPath = join(current.normalizedDir, name);
+    if (reconciled) {
+      currentPath = join(workRoot, 'current', 'reconciled', name);
+      mkdirSync(join(currentPath, '..'), { recursive: true });
+      writeFileSync(currentPath, reconciled.text);
+      summary.reconciled.push({
+        file: name,
+        differences: reconciled.differences,
+      });
+    }
     const result = spawnSync(
       'diff',
-      [
-        '-u',
-        join(baseline.normalizedDir, name),
-        join(current.normalizedDir, name),
-      ],
+      ['-u', join(baseline.normalizedDir, name), currentPath],
       { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
     if (result.status === 0) {
