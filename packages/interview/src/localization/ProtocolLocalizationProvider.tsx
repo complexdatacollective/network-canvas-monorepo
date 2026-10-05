@@ -15,6 +15,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   type LocaleMetadata,
   type LocaleTag,
+  type LocalizationDeclaration,
   type LocalizedString,
   type ResolvedLocalizedString,
   resolveLocalizedString,
@@ -26,8 +27,6 @@ import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
 } from './messageFormatter';
-
-type LocalizationDeclaration = Parameters<typeof selectProtocolLocale>[1];
 
 type ProtocolLocalizationState = Readonly<{
   locale: LocaleTag;

@@ -213,7 +213,7 @@ describe('the language an interview was held in', () => {
     csvHeaders: [...files]
       .filter(([name]) => name.endsWith('.csv'))
       .map(([name, content]) => [name, content.split('\r\n')[0]])
-      .toSorted(([a], [b]) => String(a).localeCompare(String(b))),
+      .toSorted(([a], [b]) => a.localeCompare(b)),
     graphmlKeys: [...files]
       .filter(([name]) => name.endsWith('.graphml'))
       .map(([name, content]) => [
@@ -224,7 +224,7 @@ describe('the language an interview was held in', () => {
             .getElementsByTagName('key'),
         ).map((key) => [key.getAttribute('id'), key.getAttribute('attr.name')]),
       ])
-      .toSorted(([a], [b]) => String(a).localeCompare(String(b))),
+      .toSorted(([a], [b]) => a.localeCompare(b)),
   });
 
   it('does not change the headers or keys the analysis schema is built from', async () => {
