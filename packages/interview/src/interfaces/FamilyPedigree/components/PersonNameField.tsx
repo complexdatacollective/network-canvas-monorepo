@@ -7,6 +7,7 @@ import { z } from 'zod/mini';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { WizardContext } from '@codaco/fresco-ui/dialogs/useWizard';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { useFieldNamespacePath } from '@codaco/fresco-ui/form/FieldNamespace';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type {
@@ -83,6 +84,7 @@ export default function PersonNameField({
   const baseValidationContext = useStageSelector(getValidationContext);
   const getFormValues = useFormStore((state) => state.getFormValues);
   const wizardContext = useContext(WizardContext);
+  const personPath = useFieldNamespacePath();
 
   const nodeVariables = codebook.node?.[nodeType]?.variables ?? {};
   const validationMetadata = selectValidationMetadataForVariable(
@@ -140,9 +142,18 @@ export default function PersonNameField({
 
   const validationContext = useMemo<ValidationContext>(() => {
     const localIds = new Set(pedigreeNodes.keys());
+    // Comparison rules on the label variable must read the protocol fields'
+    // live answers, which sit under the person's attributes key.
+    const formValueAliases = Object.fromEntries(
+      (nodeForm ?? []).map(({ variable }) => [
+        variable,
+        [...personPath, PERSON_ATTRIBUTES_KEY, variable],
+      ]),
+    );
     return {
       ...baseValidationContext,
       stageSubject: { entity: 'node', type: nodeType },
+      formValueAliases,
       variableLabels: {
         ...formVariableLabels,
         ...buildVariableLabels([{ variable: nodeLabelVariable, label }]),
@@ -163,9 +174,11 @@ export default function PersonNameField({
     currentEntityId,
     formVariableLabels,
     label,
+    nodeForm,
     nodeLabelVariable,
     nodeType,
     pedigreeNodes,
+    personPath,
   ]);
 
   return (

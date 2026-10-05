@@ -272,7 +272,7 @@ describe('FamilyPedigree materialization', () => {
     ).toBe(true);
   });
 
-  it('does not write a form variable that collides with the internal name path', () => {
+  it('writes a form variable named `name` when the label uses another variable', () => {
     if (familyStage.type !== 'FamilyPedigree') {
       throw new Error('expected a FamilyPedigree stage');
     }
@@ -281,7 +281,7 @@ describe('FamilyPedigree materialization', () => {
       nodeConfig: {
         ...familyStage.nodeConfig,
         nodeLabelVariable: 'displayName',
-        form: [{ variable: 'name', prompt: 'This field is reserved.' }],
+        form: [{ variable: 'name', prompt: 'What is their legal name?' }],
       },
     } as unknown as Stage;
     const { network } = generateNetwork({
@@ -293,10 +293,11 @@ describe('FamilyPedigree materialization', () => {
 
     for (const node of network.nodes) {
       const attributes = node[entityAttributesProperty];
-      expect(attributes).not.toHaveProperty('name');
       if (attributes.isEgo === true) {
+        expect(attributes).not.toHaveProperty('name');
         expect(attributes).not.toHaveProperty('displayName');
       } else {
+        expect(typeof attributes.name).toBe('string');
         expect(typeof attributes.displayName).toBe('string');
       }
     }

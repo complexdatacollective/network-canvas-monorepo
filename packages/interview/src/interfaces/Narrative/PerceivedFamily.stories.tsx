@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -159,17 +159,23 @@ export const NarrativeReflection: Story = {
   render: () => <PerceivedFamilyStory step={6} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Maya')).toBeVisible();
-    await expect(await canvas.findByText('Jo')).toBeVisible();
-    await expect(await canvas.findByText('Avery')).toBeVisible();
+    await canvas.findByText('Maya');
+    // The stage mounts at its `initial` opacity of 0 and only reaches the
+    // `animate` variant on a later tick, so visibility has to be polled.
+    await waitFor(async () => {
+      await expect(canvas.getByText('Maya')).toBeVisible();
+      await expect(canvas.getByText('Jo')).toBeVisible();
+      await expect(canvas.getByText('Avery')).toBeVisible();
+    });
   },
 };
 
 export const FullWalkthrough: Story = {
   render: () => <PerceivedFamilyStory step={1} />,
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('Who feels like family to you?'),
-    ).toBeVisible();
+    const heading = await within(canvasElement).findByText(
+      'Who feels like family to you?',
+    );
+    await waitFor(() => expect(heading).toBeVisible());
   },
 };
