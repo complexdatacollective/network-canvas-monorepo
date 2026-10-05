@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { getStageReferenceSite } from '../../schemas/8/stage-reference.ts';
-import { getStageSubjectResolution } from '../../schemas/8/stage-subject-resolution.ts';
-import { stageSchema } from '../../schemas/8/stages/index.ts';
+import { getStageReferenceSite } from '../../schemas/9/stage-reference.ts';
+import { getStageSubjectResolution } from '../../schemas/9/stage-subject-resolution.ts';
+import { stageSchema } from '../../schemas/9/stages/index.ts';
 import {
   collectStageReferences,
   declaredStageReferenceSites,
@@ -112,7 +112,7 @@ describe('declaredStageReferenceSites', () => {
    */
   it('answers for the schema, where the registry alone answers for the imports', async () => {
     vi.resetModules();
-    const registry = await import('../../schemas/8/stage-reference.ts');
+    const registry = await import('../../schemas/9/stage-reference.ts');
     expect(registry.registeredStageReferenceSites()).toEqual([]);
 
     const fresh = await import('../collectEntityAttributeReferences.ts');

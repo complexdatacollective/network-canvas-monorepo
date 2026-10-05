@@ -6,7 +6,7 @@ import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
 } from '../family-pedigree-values.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 
 const booleanPair = {
   boolA: {
@@ -92,7 +92,7 @@ const withEdgePair = () => {
 
 const familyPedigreeProtocol = () => ({
   name: 'Family protocol',
-  schemaVersion: 8 as const,
+  schemaVersion: 9 as const,
   codebook: {
     node: {
       person: {
@@ -245,7 +245,7 @@ describe('shared form stage-effective validation contradictions', () => {
   it.each(cases)(
     'rejects a contradiction made concrete by a $label',
     ({ protocol, expectedPath }) => {
-      const result = ProtocolSchemaV8.safeParse(protocol());
+      const result = ProtocolSchemaV9.safeParse(protocol());
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -275,7 +275,7 @@ describe('shared form stage-effective validation contradictions', () => {
       ],
     };
 
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
 
   it('omits an unrendered variable whose codebook component is overridden by another composer form', () => {
@@ -314,7 +314,7 @@ describe('shared form stage-effective validation contradictions', () => {
       ],
     };
 
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
 
   it('keeps the codebook rendering of a current field even when another composer form overrides it', () => {
@@ -351,7 +351,7 @@ describe('shared form stage-effective validation contradictions', () => {
       ],
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -409,7 +409,7 @@ describe('shared form stage-effective validation contradictions', () => {
       ],
     };
 
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
 
   it('does not duplicate a contradiction already owned by the codebook', () => {
@@ -447,7 +447,7 @@ describe('shared form stage-effective validation contradictions', () => {
       ],
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -501,7 +501,7 @@ describe('shared form stage-effective validation contradictions', () => {
         stages: [stage],
       };
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     },
   );
 });

@@ -163,9 +163,7 @@ export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 export type VariableOption = VariableOptions[number];
 export type VariableOptionValue = VariableOption['value'];
 
-// Variable Schema. The name is the rule from schema 9 on; a version 8
-// document is still held to the narrower `CodebookIdSchema` by the schema-8
-// protocol's own refinement (`../schema.ts`).
+// Variable Schema
 const baseVariableSchema = z.strictObject({
   name: CodebookNameSchema,
   encrypted: z.boolean().optional(),

@@ -33,7 +33,7 @@ const codebook = {
 const subject = { entity: 'node', type: 'person' };
 
 const withStages = (stages: unknown[]) =>
-  ({ schemaVersion: 8, name: 'p', codebook, stages }) as unknown as Protocol<8>;
+  ({ schemaVersion: 9, name: 'p', codebook, stages }) as unknown as Protocol<9>;
 
 const ordinalBinWithSort = (property: string) =>
   withStages([

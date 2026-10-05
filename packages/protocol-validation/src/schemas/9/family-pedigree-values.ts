@@ -1,7 +1,7 @@
 /**
  * Version-local schema contract definitions for the FamilyPedigree interface.
  *
- * These value sets ARE the schema 8 contract: a protocol is admissible only if
+ * These value sets ARE the schema 9 contract: a protocol is admissible only if
  * its interface-owned variables carry exactly these members and labels, and its
  * framing is one of these ids. They live inside the version directory — not in
  * a shared constants package — so that editing shared code can never silently
@@ -18,7 +18,7 @@
  * These are the option values stored on the `relationshipType` edge variable
  * (the discriminant for the pedigree Edge union). Architect locks them onto the
  * categorical edge variable and the interview interface reads and branches on
- * them, so schema 8 pins them here.
+ * them, so schema 9 pins them here.
  */
 export const RELATIONSHIP_TYPES = [
   'biological',

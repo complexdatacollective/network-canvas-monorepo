@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { NodeColorSequence } from '../../color-reference.ts';
-import ProtocolSchemaV8 from '../../schema.ts';
+import ProtocolSchemaV9 from '../../schema.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
 // Minimal valid FamilyPedigree stage (source).
@@ -56,7 +56,7 @@ const makeProtocol = (overrides?: {
   codebook?: unknown;
 }) => ({
   name: 'Test Protocol',
-  schemaVersion: 8 as const,
+  schemaVersion: 9 as const,
   codebook: overrides?.codebook ?? {
     node: {
       person: {
@@ -380,12 +380,12 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
 
 describe('NarrativePedigree protocol-level cross-references', () => {
   it('accepts a valid protocol with FamilyPedigree source + NarrativePedigree', () => {
-    const result = ProtocolSchemaV8.safeParse(makeProtocol());
+    const result = ProtocolSchemaV9.safeParse(makeProtocol());
     expect(result.success).toBe(true);
   });
 
   it('rejects when sourceStageId does not reference any stage', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           validFamilyPedigreeStage,
@@ -410,7 +410,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       title: 'Welcome',
       items: [{ id: 'i1', type: 'text' as const, content: 'Hello' }],
     };
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           informationStage,
@@ -428,7 +428,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   });
 
   it('rejects when a disease variable does not exist on the source node type', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           validFamilyPedigreeStage,
@@ -458,7 +458,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
 
   it('rejects when a disease variable is not a boolean', () => {
     // personBioSex is a 'text' variable; the affection predicate is boolean.
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           validFamilyPedigreeStage,
@@ -487,7 +487,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   });
 
   it('accepts a FamilyPedigree nomination prompt bound to a boolean variable', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           {
@@ -508,7 +508,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   });
 
   it('rejects a FamilyPedigree nomination prompt whose variable is missing from the codebook', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           {
@@ -532,7 +532,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
 
   it('rejects a FamilyPedigree nomination prompt variable that is not a boolean', () => {
     // personRel is a 'text' variable; a nomination writes a boolean flag.
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           {
@@ -555,7 +555,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   });
 
   it('rejects a FamilyPedigree nodeConfig.form field whose variable has no component', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
           {
@@ -579,7 +579,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   });
 
   it('accepts a FamilyPedigree nodeConfig.form field whose variable has a component', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         codebook: {
           node: {

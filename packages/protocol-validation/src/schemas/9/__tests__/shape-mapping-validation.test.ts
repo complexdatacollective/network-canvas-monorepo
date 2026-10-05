@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { asEntityAttributeReference } from '../entity-attribute-reference.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 
 describe('Shape Mapping Validation', () => {
   it('accepts a node definition with only a default shape', () => {
     const protocol = createBaseProtocol();
     protocol.codebook.node.person.shape = { default: 'circle' };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(true);
   });
 
@@ -18,7 +18,7 @@ describe('Shape Mapping Validation', () => {
       const protocol = createBaseProtocol();
       protocol.codebook.node.person.shape = { default: shape };
 
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(true);
     }
   });
@@ -28,7 +28,7 @@ describe('Shape Mapping Validation', () => {
     // Intentionally using an invalid shape to test rejection
     protocol.codebook.node.person.shape = { default: 'hexagon' as 'circle' };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
   });
 
@@ -46,7 +46,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(true);
   });
 
@@ -69,7 +69,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(true);
   });
 
@@ -84,7 +84,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(true);
   });
 
@@ -102,7 +102,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(true);
   });
 
@@ -117,7 +117,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
   });
 
@@ -136,7 +136,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
   });
 
@@ -145,7 +145,7 @@ describe('Shape Mapping Validation', () => {
     const personDef = protocol.codebook.node.person as Record<string, unknown>;
     delete personDef.shape;
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
   });
 
@@ -163,7 +163,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
   });
 
@@ -181,7 +181,7 @@ describe('Shape Mapping Validation', () => {
       },
     };
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
   });
 });

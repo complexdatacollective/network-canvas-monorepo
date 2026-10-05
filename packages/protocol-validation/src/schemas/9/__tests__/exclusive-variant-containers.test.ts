@@ -20,7 +20,7 @@ import {
   schemaRefusesContainer,
   UNREADABLE_STAGE_CONTAINERS,
 } from '../exclusive-variant-containers.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 
 describe('the exclusive-variant containers of a stage document', () => {
   /**
@@ -126,7 +126,7 @@ describe('the exclusive-variant containers of a stage document', () => {
     const base = createBaseProtocol();
     // The protocol these hybrids are made out of, so that a refusal below is
     // the mixture being refused and not the fixture.
-    expect(ProtocolSchemaV8.safeParse(base).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(base).success).toBe(true);
     const hybrid = {
       ...base,
       stages: base.stages.map((stage) =>
@@ -136,12 +136,12 @@ describe('the exclusive-variant containers of a stage document', () => {
       ),
     };
 
-    expect(ProtocolSchemaV8.safeParse(hybrid).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(hybrid).success).toBe(false);
   });
 
   it('refuses a skip-logic destination carrying both variants', () => {
     const base = createBaseProtocol();
-    expect(ProtocolSchemaV8.safeParse(base).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(base).success).toBe(true);
     const hybrid = {
       ...base,
       stages: base.stages.map((stage, index) =>
@@ -166,7 +166,7 @@ describe('the exclusive-variant containers of a stage document', () => {
       ),
     };
 
-    expect(ProtocolSchemaV8.safeParse(hybrid).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(hybrid).success).toBe(false);
   });
 });
 

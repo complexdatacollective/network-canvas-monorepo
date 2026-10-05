@@ -15,7 +15,7 @@ import { sociogramStage } from '../stages/sociogram.ts';
 /**
  * Schema-conformance tests for the stage/codebook/filter/asset schemas owned by
  * this cluster. These exercise the individual schemas directly (not the
- * top-level ProtocolSchemaV8) so they document the structural constraints each
+ * top-level ProtocolSchemaV9) so they document the structural constraints each
  * schema enforces on its own.
  */
 

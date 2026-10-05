@@ -324,7 +324,7 @@ const MONTH_PARAMETERS = {
 /**
  * Every (variable type, validation rule) pair the ego entity may legally
  * declare, per the per-type `.pick()` lists in
- * `protocol-validation/src/schemas/8/variables/variable.ts`. Ego cannot declare
+ * `protocol-validation/src/schemas/9/variables/variable.ts`. Ego cannot declare
  * `unique`, which the node fixtures below cover instead.
  */
 const egoVariables: Variables = {

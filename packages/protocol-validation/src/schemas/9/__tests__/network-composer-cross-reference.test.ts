@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 import { ComponentTypes } from '../variables/types.ts';
 
 const baseStage = {
@@ -44,26 +44,26 @@ const composerProtocol = (stage: Record<string, unknown>) => ({
 
 describe('NetworkComposer cross-reference validation', () => {
   it('accepts a stage whose references all exist (control)', () => {
-    const result = ProtocolSchemaV8.safeParse(composerProtocol(baseStage));
+    const result = ProtocolSchemaV9.safeParse(composerProtocol(baseStage));
     expect(result.success).toBe(true);
   });
 
   it('rejects a quickAdd referencing a missing node variable', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocol({ ...baseStage, quickAdd: 'missing' }),
     );
     expect(result.success).toBe(false);
   });
 
   it('rejects a layoutVariable referencing a missing node variable', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocol({ ...baseStage, layoutVariable: 'missing' }),
     );
     expect(result.success).toBe(false);
   });
 
   it('rejects a node form field referencing a missing node variable', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocol({
         ...baseStage,
         nodeForm: {
@@ -83,7 +83,7 @@ describe('NetworkComposer cross-reference validation', () => {
   it('rejects an edge form field referencing a variable not on that edge type', () => {
     // `age` exists on the person node but NOT on the `knows` edge. If the edge
     // form resolved against the node subject this would wrongly pass.
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocol({
         ...baseStage,
         edges: [
@@ -154,7 +154,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   };
 
   it('rejects a nodeForm field overlay that desyncs a sameAs-joined datetime group, anchored at the field', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithDatetimes({
         ...baseStage,
         nodeForm: {
@@ -184,7 +184,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   });
 
   it('rejects an edge form field overlay that desyncs a sameAs-joined datetime group, anchored at the field', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithDatetimes({
         ...baseStage,
         edges: [
@@ -222,7 +222,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   });
 
   it('accepts a resolution-consistent overlay across both sameAs-joined fields', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithDatetimes({
         ...baseStage,
         nodeForm: {
@@ -251,7 +251,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     // event_b keeps the codebook default (full resolution, no override).
     // event_a's field overlay ALSO renders at full resolution (no `type`
     // set), so nothing has desynced.
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithDatetimes({
         ...baseStage,
         nodeForm: {
@@ -313,7 +313,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   // nothing — the overlay previously wrote `parameters: undefined` over the
   // codebook's, falsely rejecting this protocol.
   it('accepts a nodeForm field that omits parameters, inheriting the codebook resolution', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithCoarseDatetimes({
         ...baseStage,
         nodeForm: {
@@ -330,7 +330,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   });
 
   it('rejects a nodeForm field declaring a resolution that differs from the coarse codebook baseline', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithCoarseDatetimes({
         ...baseStage,
         nodeForm: {
@@ -364,7 +364,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   // codebook's outright, so omitting `type` here really does render at full
   // resolution and desyncs the year-resolution group.
   it('rejects a nodeForm field whose own parameters drop the codebook resolution', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithCoarseDatetimes({
         ...baseStage,
         nodeForm: {
@@ -394,7 +394,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   });
 
   it('rejects a nodeForm field overriding a coarse codebook baseline to full resolution via RelativeDatePicker', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithCoarseDatetimes({
         ...baseStage,
         nodeForm: {
@@ -424,7 +424,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   });
 
   it('accepts a nodeForm field overriding one member to match a coarse codebook baseline', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithCoarseDatetimes({
         ...baseStage,
         nodeForm: {
@@ -488,7 +488,7 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
   // (min = max) windows sit on different days, so the sameAs-joined pair can
   // never actually hold equal values.
   it('rejects fields pinning a sameAs-joined pair to disjoint fixed windows, anchored at the first field', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(sameAsDatetimePair, {
         ...baseStage,
         nodeForm: {
@@ -543,7 +543,7 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
         parameters: { min: '2020-06-01', max: '2020-06-01' },
       },
     };
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(contradictoryCodebookPair, {
         ...baseStage,
         nodeForm: {
@@ -618,7 +618,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   });
 
   it('rejects a DatePicker field for a number variable, anchored at the component', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
@@ -643,7 +643,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   });
 
   it('rejects a Number field for a categorical variable', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
@@ -661,7 +661,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   });
 
   it('rejects a field for a layout variable as non-renderable', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
@@ -679,7 +679,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   });
 
   it('rejects an illegal pairing in an edge form too', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         {},
         {
@@ -723,7 +723,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     ['datetime', ComponentTypes.DatePicker],
     ['datetime', ComponentTypes.RelativeDatePicker],
   ])('accepts a %s variable rendered as %s', (_type, component) => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         { event_a: { name: 'EventA', type: 'datetime' } },
         nodeFormOnly([{ variable: 'event_a', component }]),
@@ -746,7 +746,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   ])(
     'accepts the codebook variable %s rendered as %s',
     (variable, component) => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         composerProtocolWithPersonVariables(
           {},
           nodeFormOnly([{ variable, component }]),
@@ -763,7 +763,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     ['boolean', ComponentTypes.Boolean],
     ['boolean', ComponentTypes.Toggle],
   ])('accepts a %s variable rendered as %s', (_type, component) => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         { is_close: { name: 'IsClose', type: 'boolean' } },
         nodeFormOnly([{ variable: 'is_close', component }]),
@@ -783,7 +783,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   // BooleanField renders with no buttons at all over an empty array) — has to
   // be caught here, where the field's own component is known.
   it('rejects a componentless boolean with empty options rendered as Boolean, anchored at the field', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
         nodeFormOnly([
@@ -807,7 +807,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   });
 
   it('accepts a componentless boolean with empty options rendered as Toggle', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
         nodeFormOnly([
@@ -822,7 +822,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   });
 
   it('accepts a scalar variable rendered as a VisualAnalogScale', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         { warmth: { name: 'Warmth', type: 'scalar' } },
         nodeFormOnly([
@@ -839,7 +839,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   // The entity-attribute reference pass owns the missing-variable error; the
   // component check must skip such a field rather than crash on it.
   it('leaves a field naming a variable absent from the codebook to the reference pass', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
@@ -908,7 +908,7 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
   // Both variables really are stored as 'YYYY' at interview time, so the
   // sameAs is satisfiable and neither stage may be rejected.
   it('accepts sameAs-joined variables rendered at matching resolutions by two different composer stages', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithStages([
         composerStage('nc1', [
           {
@@ -935,7 +935,7 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
   // Both endpoints are rendered by fields of ONE form, so their effective
   // renderings are known together and a genuine mismatch is still reported.
   it('still rejects differing resolutions rendered by one composer form', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithStages([
         composerStage('nc1', [
           {
@@ -962,7 +962,7 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
   // The partner is not overridden by ANY composer field, so its codebook
   // default IS its effective rendering everywhere and the pair stays checked.
   it('still rejects an override against a partner no composer field overrides', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithStages([
         composerStage('nc1', [
           {
@@ -1048,7 +1048,7 @@ describe('NetworkComposer overlay baseline tracks the visible subset', () => {
         },
       ],
     };
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
     if (result.success) return;
     // The record-level check owns the codebook's own contradiction...
@@ -1128,7 +1128,7 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   };
 
   it('rejects an override whose floor breaks a comparator between two non-overridden variables, anchored at the causing field', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(propagationTrio, {
         ...baseStage,
         nodeForm: { fields: [floorField] },
@@ -1158,7 +1158,7 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   });
 
   it('anchors at the first reference-connected field, skipping unrelated fields', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(propagationTrio, {
         ...baseStage,
         nodeForm: {
@@ -1186,7 +1186,7 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   });
 
   it('accepts the same codebook when the field carries no floor override', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(propagationTrio, {
         ...baseStage,
         nodeForm: {
@@ -1208,7 +1208,7 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   // report and the stage must stay silent even though no participant is a
   // field here either.
   it('does not re-report a baseline-present contradiction between non-overridden variables at the stage', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(
         {
           ...propagationTrio,
@@ -1249,7 +1249,7 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   // never judges it either, so the protocol stays accepted).
   it('accepts a latent stage-effective-only pair this form never renders', () => {
     const trueOnly = [{ label: 'Yes', value: true }];
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(
         {
           flag_a: {

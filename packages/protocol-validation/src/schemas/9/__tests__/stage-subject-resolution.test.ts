@@ -8,7 +8,7 @@ import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
 } from '../family-pedigree-values.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { stageSchema } from '../stages/index.ts';
 
@@ -59,7 +59,7 @@ const narrativePedigree = (variable: string): Stage => ({
 
 const protocolWith = (stages: Stage[]) => ({
   name: 'Pedigree protocol',
-  schemaVersion: 8 as const,
+  schemaVersion: 9 as const,
   codebook: {
     node: {
       family_member: {
@@ -107,7 +107,7 @@ const protocolWith = (stages: Stage[]) => ({
 });
 
 const issueMessagesAt = (protocol: unknown, path: (string | number)[]) => {
-  const result = ProtocolSchemaV8.safeParse(protocol);
+  const result = ProtocolSchemaV9.safeParse(protocol);
   if (result.success) return [];
   return result.error.issues
     .filter((issue) => issue.path.join('.') === path.join('.'))
@@ -186,7 +186,7 @@ describe('stage subjects resolve during collection', () => {
       }),
       narrativePedigree('hasConditionX'),
     ]);
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(
       result.success ? [] : result.error.issues.map((issue) => issue.message),
     ).toEqual([]);

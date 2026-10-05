@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 
 /**
  * Cross-reference conformance for refinements that cannot be expressed in the
@@ -38,7 +38,7 @@ describe('Cross-reference conformance', () => {
     };
 
     it('accepts a Narrative background referencing an image asset', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         narrativeProtocol('background-image', {
           'background-image': {
             id: 'background-image',
@@ -52,7 +52,7 @@ describe('Cross-reference conformance', () => {
     });
 
     it('rejects a Narrative background absent from the manifest', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         narrativeProtocol('missing-image'),
       );
       expect(result.success).toBe(false);
@@ -67,7 +67,7 @@ describe('Cross-reference conformance', () => {
     });
 
     it('rejects a Narrative background referencing a non-image asset', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         narrativeProtocol('roster-asset', {
           'roster-asset': {
             id: 'roster-asset',
@@ -122,12 +122,12 @@ describe('Cross-reference conformance', () => {
     };
 
     it('accepts a dataSource referencing a network asset (control)', () => {
-      const result = ProtocolSchemaV8.safeParse(rosterProtocol('networkAsset'));
+      const result = ProtocolSchemaV9.safeParse(rosterProtocol('networkAsset'));
       expect(result.success).toBe(true);
     });
 
     it('rejects dataSource referencing a non-network asset type', () => {
-      const result = ProtocolSchemaV8.safeParse(rosterProtocol('imageAsset'));
+      const result = ProtocolSchemaV9.safeParse(rosterProtocol('imageAsset'));
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(
@@ -137,12 +137,12 @@ describe('Cross-reference conformance', () => {
     });
 
     it("rejects dataSource of 'existing'", () => {
-      const result = ProtocolSchemaV8.safeParse(rosterProtocol('existing'));
+      const result = ProtocolSchemaV9.safeParse(rosterProtocol('existing'));
       expect(result.success).toBe(false);
     });
 
     it('rejects dataSource referencing a missing asset id', () => {
-      const result = ProtocolSchemaV8.safeParse(rosterProtocol('missingId'));
+      const result = ProtocolSchemaV9.safeParse(rosterProtocol('missingId'));
       expect(result.success).toBe(false);
     });
   });
@@ -211,40 +211,40 @@ describe('Cross-reference conformance', () => {
     };
 
     it('accepts correct asset references and a location prompt variable (control)', () => {
-      const result = ProtocolSchemaV8.safeParse(geoProtocol({}));
+      const result = ProtocolSchemaV9.safeParse(geoProtocol({}));
       expect(result.success).toBe(true);
     });
 
     it('rejects tokenAssetId that is missing from the manifest', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         geoProtocol({ tokenAssetId: 'missing' }),
       );
       expect(result.success).toBe(false);
     });
 
     it('rejects tokenAssetId resolving to a non-apikey asset', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         geoProtocol({ tokenAssetId: 'geoAsset' }),
       );
       expect(result.success).toBe(false);
     });
 
     it('rejects dataSourceAssetId that is missing from the manifest', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         geoProtocol({ dataSourceAssetId: 'missing' }),
       );
       expect(result.success).toBe(false);
     });
 
     it('rejects dataSourceAssetId resolving to an apikey asset', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         geoProtocol({ dataSourceAssetId: 'tokenAsset' }),
       );
       expect(result.success).toBe(false);
     });
 
     it('rejects a geospatial prompt variable that is not type location', () => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         geoProtocol({ promptVariable: 'age' }),
       );
       expect(result.success).toBe(false);
@@ -278,7 +278,7 @@ describe('Cross-reference conformance', () => {
           },
         ],
       };
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(true);
     });
 
@@ -303,7 +303,7 @@ describe('Cross-reference conformance', () => {
           },
         ],
       };
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(
@@ -326,7 +326,7 @@ describe('Cross-reference conformance', () => {
           },
         ],
       };
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(true);
     });
 
@@ -344,7 +344,7 @@ describe('Cross-reference conformance', () => {
           },
         ],
       };
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(
@@ -414,7 +414,7 @@ describe('Cross-reference conformance', () => {
     };
 
     it('rejects a numeric operator with a string value in skipLogic.filter', () => {
-      const result = ProtocolSchemaV8.safeParse(stageWith('skipLogic'));
+      const result = ProtocolSchemaV9.safeParse(stageWith('skipLogic'));
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(
@@ -426,7 +426,7 @@ describe('Cross-reference conformance', () => {
     });
 
     it('rejects a numeric operator with a string value in a panel filter', () => {
-      const result = ProtocolSchemaV8.safeParse(stageWith('panel'));
+      const result = ProtocolSchemaV9.safeParse(stageWith('panel'));
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(
@@ -477,12 +477,12 @@ describe('Cross-reference conformance', () => {
     };
 
     it('accepts a node rule in a stage filter (control)', () => {
-      const result = ProtocolSchemaV8.safeParse(stageFilterRule('node'));
+      const result = ProtocolSchemaV9.safeParse(stageFilterRule('node'));
       expect(result.success).toBe(true);
     });
 
     it('rejects an ego rule inside a stage node/edge filter', () => {
-      const result = ProtocolSchemaV8.safeParse(stageFilterRule('ego'));
+      const result = ProtocolSchemaV9.safeParse(stageFilterRule('ego'));
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(
@@ -519,7 +519,7 @@ describe('Cross-reference conformance', () => {
           },
         ],
       };
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(true);
     });
   });
@@ -560,12 +560,12 @@ describe('Cross-reference conformance', () => {
     };
 
     it('accepts an ego attribute-level EXISTS rule in skipLogic (control)', () => {
-      const result = ProtocolSchemaV8.safeParse(egoTypeRuleProtocol(true));
+      const result = ProtocolSchemaV9.safeParse(egoTypeRuleProtocol(true));
       expect(result.success).toBe(true);
     });
 
     it('rejects an attribute-less ego type-level rule', () => {
-      const result = ProtocolSchemaV8.safeParse(egoTypeRuleProtocol(false));
+      const result = ProtocolSchemaV9.safeParse(egoTypeRuleProtocol(false));
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(

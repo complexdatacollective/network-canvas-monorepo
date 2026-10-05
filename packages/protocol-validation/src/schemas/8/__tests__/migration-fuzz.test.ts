@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import { V8OutputSchema } from './v8-output-schema.ts';
 
 /**
  * Seeded property test: any v7 protocol within the generator's contract must
@@ -13,7 +13,7 @@ import ProtocolSchemaV8 from '../schema.ts';
  * `.int()` bounds, unsupported DatePicker keys, below-floor count values,
  * invalid parameter shapes — four separate review findings). This test closes
  * that class mechanically: it fuzzes v7 protocols through the migration and
- * asserts the output parses under `ProtocolSchemaV8`.
+ * asserts the output parses under `V8OutputSchema`.
  *
  * ## Generator contract
  *
@@ -1326,7 +1326,7 @@ const runCase = (
     return result;
   }
   result.migrated = migrated;
-  const parsed = ProtocolSchemaV8.safeParse(migrated);
+  const parsed = V8OutputSchema.safeParse(migrated);
   if (!parsed.success) {
     result.issues = JSON.stringify(parsed.error.issues, null, 2);
   }

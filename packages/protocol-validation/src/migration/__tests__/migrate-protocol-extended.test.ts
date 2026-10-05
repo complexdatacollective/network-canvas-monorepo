@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { CURRENT_SCHEMA_VERSION } from '../../schemas/index.ts';
 import { getProtocolFileErrorKind } from '../../utils/protocolFileErrorKind.ts';
 import {
-  MigrationResultInvalidError,
   SchemaVersionDetectionError,
   ValidationError,
   VersionMismatchError,
@@ -147,7 +146,7 @@ describe('Protocol Migration - Extended Tests', () => {
     it('rejects invalid current-version colors instead of repairing them', () => {
       const invalidDoc = {
         name: 'Invalid color protocol',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {
             person: {
@@ -164,7 +163,7 @@ describe('Protocol Migration - Extended Tests', () => {
       };
 
       expect(() => migrateProtocol(invalidDoc)).toThrow(
-        'Invalid protocol document for version 8',
+        'Invalid protocol document for version 9',
       );
     });
 
@@ -259,12 +258,6 @@ describe('Protocol Migration - Extended Tests', () => {
         name: 'Test Protocol',
       });
       expect(migrated.schemaVersion).toBe(8);
-    });
-
-    it('holds a version 8 result to the names version 8 allows', () => {
-      expect(() =>
-        migrateProtocol(v7Doc('名前'), 8, { name: 'Test Protocol' }),
-      ).toThrow(MigrationResultInvalidError);
     });
 
     it('accepts the same names in a version 9 result', () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 
 const field = (variable: string, prompt: string) => ({ variable, prompt });
@@ -136,7 +136,7 @@ describe('form field variable uniqueness', () => {
   });
 
   it('rejects the duplicate through whole-protocol validation', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       pedigreeProtocol([field('age', 'Age?'), field('age', 'Age again?')]),
     );
     expect(result.success).toBe(false);
@@ -150,7 +150,7 @@ describe('form field variable uniqueness', () => {
 
   it('accepts an AlterForm whose fields are distinct', () => {
     const protocol = createBaseProtocol();
-    const result = ProtocolSchemaV8.safeParse({
+    const result = ProtocolSchemaV9.safeParse({
       ...protocol,
       stages: [
         ...protocol.stages,
@@ -176,7 +176,7 @@ describe('form field variable uniqueness', () => {
     ];
     const protocol = pedigreeProtocol(fields);
 
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     const flaggedBySchema = (result.error?.issues ?? [])
       .filter(
         (issue) =>
@@ -188,7 +188,7 @@ describe('form field variable uniqueness', () => {
 
   it('rejects an AlterForm that repeats a variable', () => {
     const protocol = createBaseProtocol();
-    const result = ProtocolSchemaV8.safeParse({
+    const result = ProtocolSchemaV9.safeParse({
       ...protocol,
       stages: [
         ...protocol.stages,

@@ -1,11 +1,11 @@
-import type { NodeDefinition } from '../schemas/8/codebook/definitions.ts';
+import type { NodeDefinition } from '../schemas/9/codebook/definitions.ts';
 
 /**
  * Creates a base valid protocol for testing variations
  */
 export const createBaseProtocol = () => ({
   name: 'Test Protocol',
-  schemaVersion: 8 as const,
+  schemaVersion: 9 as const,
   codebook: {
     ego: {
       variables: {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 
 const filter = {
   rules: [
@@ -50,7 +50,7 @@ describe('schema 8 skip-logic destinations', () => {
       ],
     };
 
-    expect(ProtocolSchemaV8.safeParse(protocolWithSkipLogic).success).toBe(
+    expect(ProtocolSchemaV9.safeParse(protocolWithSkipLogic).success).toBe(
       true,
     );
   });
@@ -58,7 +58,7 @@ describe('schema 8 skip-logic destinations', () => {
   it.each(['SHOW', 'SKIP'] as const)(
     'accepts a forward stage destination with the %s action',
     (action) => {
-      const result = ProtocolSchemaV8.safeParse(
+      const result = ProtocolSchemaV9.safeParse(
         withDestination(0, { type: 'stage', stageId: 'sociogram1' }, action),
       );
 
@@ -73,7 +73,7 @@ describe('schema 8 skip-logic destinations', () => {
   );
 
   it('accepts an explicit finish destination', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       withDestination(0, { type: 'finish' }, 'SHOW'),
     );
 
@@ -81,7 +81,7 @@ describe('schema 8 skip-logic destinations', () => {
   });
 
   it('rejects a destination that does not reference an existing stage', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       withDestination(0, { type: 'stage', stageId: 'missing-stage' }),
     );
 
@@ -97,7 +97,7 @@ describe('schema 8 skip-logic destinations', () => {
   });
 
   it('rejects a self destination', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       withDestination(0, { type: 'stage', stageId: 'nameGenerator1' }),
     );
 
@@ -114,7 +114,7 @@ describe('schema 8 skip-logic destinations', () => {
   });
 
   it('rejects a backward destination', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       withDestination(1, { type: 'stage', stageId: 'nameGenerator1' }),
     );
 
@@ -129,7 +129,7 @@ describe('schema 8 skip-logic destinations', () => {
   });
 
   it('rejects a stage destination without a stageId at the exact field path', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       withDestination(0, { type: 'stage' }),
     );
 
@@ -144,7 +144,7 @@ describe('schema 8 skip-logic destinations', () => {
   });
 
   it('rejects an unknown destination type at the discriminator path', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       withDestination(0, { type: 'summary' }),
     );
 
@@ -159,7 +159,7 @@ describe('schema 8 skip-logic destinations', () => {
   });
 
   it('rejects properties that do not belong to the finish destination', () => {
-    const result = ProtocolSchemaV8.safeParse(
+    const result = ProtocolSchemaV9.safeParse(
       withDestination(0, { type: 'finish', stageId: 'sociogram1' }),
     );
 

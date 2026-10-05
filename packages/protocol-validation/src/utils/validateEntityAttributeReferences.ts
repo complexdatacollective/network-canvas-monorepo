@@ -1,5 +1,5 @@
-import type { Codebook } from '../schemas/8/schema.ts';
-import { VARIABLE_REFERENCE_VALIDATIONS } from '../schemas/8/variables/validation.ts';
+import type { Codebook } from '../schemas/9/schema.ts';
+import { VARIABLE_REFERENCE_VALIDATIONS } from '../schemas/9/variables/validation.ts';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,

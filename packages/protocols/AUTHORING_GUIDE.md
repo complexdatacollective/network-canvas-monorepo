@@ -2,7 +2,7 @@
 
 A precise, self-contained reference for hand-authoring a **valid** `protocol.json`. Everything
 here was derived directly from the Zod schema in
-`packages/protocol-validation/src/schemas/8/`, which schema 9 shares (`schemas/9/schema.ts`).
+`packages/protocol-validation/src/schemas/9/`.
 Follow it exactly.
 
 ## 0. Success criterion & how to validate

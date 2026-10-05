@@ -1,4 +1,4 @@
-import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference.ts';
+import { asEntityAttributeReference } from './schemas/9/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
   type AssetReferenceHit,
@@ -50,7 +50,23 @@ import validateProtocol, {
   type ProtocolValidationResult,
 } from './validation/validate-protocol.ts';
 
-export { parseAcceptLanguage } from './localization/parseAcceptLanguage.ts';
+export {
+  getLocaleMetadata,
+  type LocaleMetadata,
+} from './localization/localeMetadata.ts';
+export {
+  normalizeLocalePreferences,
+  parseAcceptLanguage,
+  selectProtocolLocale,
+} from './localization/localePreferences.ts';
+export {
+  canonicalizeLocale,
+  type LocaleTag,
+} from './localization/localeTag.ts';
+export {
+  type ResolvedLocalizedString,
+  resolveLocalizedString,
+} from './localization/resolveLocalizedString.ts';
 export {
   MigrationChain,
   type ProtocolMigration as Migration,
@@ -71,9 +87,7 @@ export {
 export * from './schemas/index.ts';
 // Interface-owned value sets that are part of the current schema's contract.
 // They live in the schema version directory, so a host always reads the set
-// the version it targets defines. Schema 9 changed only variable names and
-// builds on the `schemas/8` tree, so these are its sets too; a version that
-// changes one copies the directory rather than sharing it.
+// the version it targets defines.
 export {
   BIOLOGICAL_SEX_OPTIONS,
   BIOLOGICAL_SEX_VALUES,
@@ -86,15 +100,15 @@ export {
   RELATIONSHIP_TYPE_OPTIONS,
   RELATIONSHIP_TYPES,
   type RelationshipType,
-} from './schemas/8/family-pedigree-values.ts';
+} from './schemas/9/family-pedigree-values.ts';
 export {
   INHERITANCE_PATTERNS,
   type InheritancePattern,
-} from './schemas/8/narrative-pedigree-values.ts';
+} from './schemas/9/narrative-pedigree-values.ts';
 export {
   findValidationContradictions,
   type ValidationContradiction,
-} from './schemas/8/variables/validation-contradictions.ts';
+} from './schemas/9/variables/validation-contradictions.ts';
 export {
   collectVariableRoleHits,
   findVariableRoleConflicts,
@@ -112,7 +126,7 @@ export {
   isExclusiveVariantContainer,
   schemaRefusesContainer,
   VARIANT_ROW_SEGMENT,
-} from './schemas/8/exclusive-variant-containers.ts';
+} from './schemas/9/exclusive-variant-containers.ts';
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.

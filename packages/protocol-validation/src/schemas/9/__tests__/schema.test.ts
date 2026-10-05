@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
-import ProtocolSchemaV8 from '../../8/schema.ts';
-import { VersionedProtocolSchema } from '../../index.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 
 type Variables = Record<string, { name: string; [key: string]: unknown }>;
@@ -140,31 +139,21 @@ describe('Schema 9 attribute names', () => {
 });
 
 describe('Schema 8 attribute names', () => {
-  it.each(['名前', 'first name', 'Age (years)'])(
-    'rejects %j on every entity, which only schema 9 accepts',
-    (name) => {
-      const result = ProtocolSchemaV8.safeParse(
-        protocolWithNames(8, {
-          node: { name },
-          edge: { duration: name },
-          ego: { egoName: name },
-        }),
-      );
-      expect(issuePaths(result)).toEqual([
-        'codebook.node.person.variables.name.name',
-        'codebook.edge.knows.variables.duration.name',
-        'codebook.ego.variables.egoName.name',
-      ]);
-    },
-  );
+  it('migrates a version 8 document holding names only schema 9 accepts, and the result validates', () => {
+    const migrated = migrateProtocol(
+      protocolWithNames(8, {
+        node: { name: '名前' },
+        edge: { duration: 'first name' },
+        ego: { egoName: 'Age (years)' },
+      }),
+    );
 
-  it('chooses the rule by the document version', () => {
-    const renames = { node: { name: '名前' } };
-    expect(
-      VersionedProtocolSchema.safeParse(protocolWithNames(8, renames)).success,
-    ).toBe(false);
-    expect(
-      VersionedProtocolSchema.safeParse(protocolWithNames(9, renames)).success,
-    ).toBe(true);
+    expect(migrated.schemaVersion).toBe(9);
+    expect(migrated.codebook.node?.person?.variables?.name?.name).toBe('名前');
+    expect(migrated.codebook.edge?.knows?.variables?.duration?.name).toBe(
+      'first name',
+    );
+    expect(migrated.codebook.ego?.variables?.egoName?.name).toBe('Age (years)');
+    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 });

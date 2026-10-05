@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { NodeDefinition } from '../codebook/definitions.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import ProtocolSchemaV9 from '../schema.ts';
 
 /**
  * Schema-conformance refinements for forms and prompts:
@@ -18,7 +18,7 @@ import ProtocolSchemaV8 from '../schema.ts';
  */
 const createProtocol = (stages: unknown[]) => ({
   name: 'Test Protocol',
-  schemaVersion: 8 as const,
+  schemaVersion: 9 as const,
   codebook: {
     ego: {
       variables: {
@@ -86,7 +86,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects an AlterForm with empty form.fields', () => {
@@ -101,7 +101,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects an AlterEdgeForm with empty form.fields', () => {
@@ -116,7 +116,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects an EgoForm with empty form.fields', () => {
@@ -130,7 +130,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts a NameGenerator with at least one field', () => {
@@ -148,7 +148,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
   });
 
@@ -167,7 +167,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects an AlterForm whose form carries a title', () => {
@@ -185,7 +185,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects an AlterEdgeForm whose form carries a title', () => {
@@ -203,7 +203,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts a title-less EgoForm', () => {
@@ -217,7 +217,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
 
     it('still accepts a NameGenerator form that carries a title', () => {
@@ -235,7 +235,7 @@ describe('Forms & prompts schema conformance', () => {
         },
       ]);
 
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
   });
 
@@ -259,12 +259,12 @@ describe('Forms & prompts schema conformance', () => {
 
     it('rejects an empty-string negativeLabel', () => {
       const protocol = createProtocol([tieStrengthStage('')]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts a non-empty negativeLabel', () => {
       const protocol = createProtocol([tieStrengthStage('Not close')]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
   });
 
@@ -291,7 +291,7 @@ describe('Forms & prompts schema conformance', () => {
           otherOptionLabel: 'Other',
         }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts otherVariable set with otherVariablePrompt present', () => {
@@ -302,26 +302,26 @@ describe('Forms & prompts schema conformance', () => {
           otherVariablePrompt: 'Please specify',
         }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
 
     it('accepts a prompt with no otherVariable at all', () => {
       const protocol = createProtocol([categoricalBinStage({})]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
 
     it('rejects otherOptionLabel set without otherVariable', () => {
       const protocol = createProtocol([
         categoricalBinStage({ otherOptionLabel: 'Other' }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects otherVariablePrompt set without otherVariable', () => {
       const protocol = createProtocol([
         categoricalBinStage({ otherVariablePrompt: 'Please specify' }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects otherVariable set without otherOptionLabel', () => {
@@ -331,7 +331,7 @@ describe('Forms & prompts schema conformance', () => {
           otherVariablePrompt: 'Please specify',
         }),
       ]);
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -345,7 +345,7 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         categoricalBinStage({ otherVariable: '' }),
       ]);
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -359,7 +359,7 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         categoricalBinStage({ otherOptionLabel: '' }),
       ]);
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -377,7 +377,7 @@ describe('Forms & prompts schema conformance', () => {
           otherVariablePrompt: 'Please specify',
         }),
       ]);
-      const result = ProtocolSchemaV8.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(true);
       if (result.success) {
         const stage = result.data.stages[0];
@@ -419,19 +419,19 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         ordinalBinStage({ color: 'ord-color-seq-5' }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
 
     it('rejects a prompt with no color', () => {
       const protocol = createProtocol([ordinalBinStage({})]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects a color outside the ord-color-seq palette', () => {
       const protocol = createProtocol([
         ordinalBinStage({ color: 'not-a-real-color' }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
   });
 
@@ -463,41 +463,41 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         nameGeneratorStage({ minNodes: 5, maxNodes: 3 }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects NameGenerator with maxNodes: 0', () => {
       const protocol = createProtocol([nameGeneratorStage({ maxNodes: 0 })]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects NameGenerator with negative minNodes', () => {
       const protocol = createProtocol([nameGeneratorStage({ minNodes: -1 })]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects NameGeneratorQuickAdd with minNodes > maxNodes', () => {
       const protocol = createProtocol([
         quickAddStage({ minNodes: 5, maxNodes: 3 }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects NameGeneratorQuickAdd with maxNodes: 0', () => {
       const protocol = createProtocol([quickAddStage({ maxNodes: 0 })]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts NameGenerator with consistent minNodes/maxNodes', () => {
       const protocol = createProtocol([
         nameGeneratorStage({ minNodes: 1, maxNodes: 5 }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
 
     it('accepts NameGeneratorQuickAdd with only maxNodes set', () => {
       const protocol = createProtocol([quickAddStage({ maxNodes: 5 })]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
   });
 
@@ -516,12 +516,12 @@ describe('Forms & prompts schema conformance', () => {
 
     it('rejects a prompt with an empty text', () => {
       const protocol = createProtocol([nameGeneratorStage('')]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts a prompt with a non-empty text', () => {
       const protocol = createProtocol([nameGeneratorStage('Who do you know?')]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
   });
 
@@ -540,12 +540,12 @@ describe('Forms & prompts schema conformance', () => {
 
     it('rejects a form field with an empty prompt', () => {
       const protocol = createProtocol([nameGeneratorStage('')]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts a form field with a non-empty prompt', () => {
       const protocol = createProtocol([nameGeneratorStage('Enter name')]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
   });
 
@@ -566,21 +566,21 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         alterFormStage({ title: '', text: 'Some text' }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects an introductionPanel with an empty text', () => {
       const protocol = createProtocol([
         alterFormStage({ title: 'Intro', text: '' }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts an introductionPanel with non-empty title and text', () => {
       const protocol = createProtocol([
         alterFormStage({ title: 'Intro', text: 'Some text' }),
       ]);
-      expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+      expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });
   });
 });

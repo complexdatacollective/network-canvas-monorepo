@@ -2,7 +2,7 @@
  * Version-local schema contract definitions for the NarrativePedigree
  * interface.
  *
- * These values ARE the schema 8 contract: a protocol's disease definitions are
+ * These values ARE the schema 9 contract: a protocol's disease definitions are
  * admissible only if their inheritance patterns come from this set. They live
  * inside the version directory — not in a shared constants package — so that
  * editing shared code can never silently redefine the contract of a schema
@@ -19,7 +19,7 @@
  *
  * These values describe the genetic inheritance pattern of a disease trait.
  * Architect locks them onto the inheritance-pattern field and the interview
- * interface displays and filters on them, so schema 8 pins them here.
+ * interface displays and filters on them, so schema 9 pins them here.
  */
 export const INHERITANCE_PATTERNS = [
   'autosomalDominant',

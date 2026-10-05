@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 // Minimal protocol fixture exercising codebook validation cross-references.
-// The `Protocol<8>` type is structurally complex (all stages are discriminated-
+// The `Protocol<9>` type is structurally complex (all stages are discriminated-
 // union variants with many required fields). Casting through `unknown` once at
 // the fixture boundary avoids verbose inline construction while keeping the
 // actual data shape correct for the paths under test.
@@ -10,7 +10,7 @@ import { collectEntityAttributeReferences } from '../collectEntityAttributeRefer
 import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences.ts';
 
 const protocol = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   name: 'p',
   stages: [],
   codebook: {
@@ -30,7 +30,7 @@ const protocol = {
       },
     },
   },
-} as unknown as Protocol<8>;
+} as unknown as Protocol<9>;
 
 describe('entity-attribute references against the real v8 schema', () => {
   it('extracts a validation cross-reference with the owning-variable subject', () => {
@@ -68,7 +68,7 @@ describe('entity-attribute references against the real v8 schema', () => {
           },
         },
       },
-    } as unknown as Protocol<8>;
+    } as unknown as Protocol<9>;
 
     const issues = validateEntityAttributeReferences(broken);
     expect(issues).toContainEqual({

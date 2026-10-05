@@ -3050,6 +3050,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
+      '@formatjs/intl-localematcher':
+        specifier: 'catalog:'
+        version: 0.9.0
       csvtojson:
         specifier: 'catalog:'
         version: 2.0.14
