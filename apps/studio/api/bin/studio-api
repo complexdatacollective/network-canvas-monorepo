@@ -1,0 +1,63 @@
+#!/bin/sh
+# The studio-api image's entrypoint (#1909). One image, several processes: the
+# first argument picks which, so a compose file names a command rather than a
+# path into the bundle, and moving a file inside the image is not a breaking
+# change for every deployment that runs it.
+#
+# POSIX sh, because node:24-slim has no bash.
+#
+# `exec` in every branch: the process this starts must BE pid 1, or a container
+# stop signals this script and the Node process never sees the SIGTERM its
+# graceful shutdown depends on — a deploy would then cut live sync sessions
+# (#1247) and abandon a job mid-send (#1895).
+set -e
+
+usage() {
+    cat >&2 <<'USAGE'
+Usage: studio-api <command>
+
+  serve            the HTTP, RPC and WebSocket process (the default)
+  worker           background jobs and cron schedules
+  migrate          create this build's schema in an empty database
+  maintenance on   close the instance to users
+  maintenance off  reopen it
+  rotate-secrets   re-encrypt stored secrets under the keyring's current entry
+USAGE
+}
+
+command="${1:-serve}"
+shift 2>/dev/null || true
+
+case "$command" in
+serve)
+    exec node /app/dist/index.js "$@"
+    ;;
+worker)
+    exec node /app/dist/worker.js "$@"
+    ;;
+migrate)
+    exec node /app/dist/migrate.js "$@"
+    ;;
+maintenance)
+    # `command` has been shifted off, so "$@" starts at on|off (and the
+    # reason, for on). The program refuses anything else it is handed; this
+    # branch answers a bare or misspelt subcommand without starting Node.
+    case "${1:-}" in
+    on | off)
+        exec node /app/dist/maintenance.js "$@"
+        ;;
+    *)
+        echo "Usage: studio-api maintenance on [reason ...] | off" >&2
+        exit 64
+        ;;
+    esac
+    ;;
+rotate-secrets)
+    exec node /app/dist/rotate-secrets.js "$@"
+    ;;
+*)
+    echo "studio-api: unknown command '$command'" >&2
+    usage
+    exit 64
+    ;;
+esac

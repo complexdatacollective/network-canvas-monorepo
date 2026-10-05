@@ -1,27 +1,40 @@
-import { z } from 'zod';
+import { Schema } from 'effect';
 
-import { assetSourceSchema } from '@codaco/protocol-validation';
-import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
+import { isSafeAssetSource } from '@codaco/protocol-validation';
+import {
+  parseSectionId,
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
-export const ProtocolIdSchema = z.string().min(1);
+const NonEmptyString = Schema.String.check(Schema.isMinLength(1));
+
+const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
+
+export const ProtocolIdSchema = NonEmptyString;
+
+function isProtocolSectionId(value: string): value is ProtocolSectionId {
+  try {
+    return sectionId(parseSectionId(value)) === value;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * A section id, validated by round-tripping it through the section taxonomy so
  * the branded type reaches callers without a cast.
  */
-export const SectionIdSchema = z.string().transform((value, ctx) => {
-  try {
-    return sectionId(parseSectionId(value));
-  } catch {
-    ctx.addIssue({
-      code: 'custom',
-      message: `not a protocol section id: ${value}`,
-    });
-    return z.NEVER;
-  }
-});
+export const SectionIdSchema = Schema.String.pipe(
+  Schema.refine(isProtocolSectionId, {
+    message: 'not a protocol section id',
+  }),
+);
 
-export const SectionDocumentSchema = z.record(z.string(), z.unknown());
+export const SectionDocumentSchema = Schema.Record(
+  Schema.String,
+  Schema.Unknown,
+);
 
 /**
  * Where a section document sits in the protocol's history: `sequence` orders
@@ -29,19 +42,19 @@ export const SectionDocumentSchema = z.record(z.string(), z.unknown());
  * atomic operation carry the same one), `contentHash` identifies — the same
  * `contentHash` the sectioned store keys documents by.
  */
-export const RevisionSchema = z.object({
-  sequence: z.bigint().nonnegative(),
-  contentHash: z.string().min(1),
+export const RevisionSchema = Schema.Struct({
+  sequence: Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(0n)),
+  contentHash: NonEmptyString,
 });
 
-export type Revision = z.output<typeof RevisionSchema>;
+export type Revision = typeof RevisionSchema.Type;
 
 /**
  * A position in a protocol's event stream. Opaque to the package: it is handed
- * back to `watchProtocol` as `since`, and rides every event as its
- * `withEventMeta` id so oRPC can resend it as `lastEventId` after a drop.
+ * back to `WatchProtocol` as `since`, and rides every replayable event as its
+ * `cursor` so a client can resume from it after a drop.
  */
-export const CursorSchema = z.string().min(1);
+export const CursorSchema = NonEmptyString;
 
 /**
  * Who is in a section, as a read-only editor needs to name them.
@@ -49,105 +62,109 @@ export const CursorSchema = z.string().min(1);
  * Identity is the connection, not the person: two tabs of one researcher are
  * two presences, and the second opens read-only behind the first.
  */
-export const PresenceSchema = z.object({
-  sessionId: z.string().min(1),
-  userId: z.string().min(1),
-  displayName: z.string().min(1),
-  sectionId: SectionIdSchema.optional(),
-  mode: z.enum(['editing', 'viewing']),
+export const PresenceSchema = Schema.Struct({
+  sessionId: NonEmptyString,
+  userId: NonEmptyString,
+  displayName: NonEmptyString,
+  sectionId: Schema.optionalKey(SectionIdSchema),
+  mode: Schema.Literals(['editing', 'viewing']),
 });
 
-export type Presence = z.output<typeof PresenceSchema>;
+export type Presence = typeof PresenceSchema.Type;
 
 /** Where inside a section document something sits, as the schemas report it. */
-const DocumentPathSchema = z.array(z.union([z.string(), z.number()]));
+const DocumentPathSchema = Schema.Array(
+  Schema.Union([Schema.String, Schema.Finite]),
+);
 
-export const SectionIssueSchema = z.object({
+export const SectionIssueSchema = Schema.Struct({
   path: DocumentPathSchema,
-  message: z.string(),
+  message: Schema.String,
 });
 
 /** One place a section names something: a reference, at its path. */
-export const SectionReferenceSchema = z.object({
+export const SectionReferenceSchema = Schema.Struct({
   sectionId: SectionIdSchema,
   path: DocumentPathSchema,
 });
 
-export type SectionReference = z.output<typeof SectionReferenceSchema>;
+export type SectionReference = typeof SectionReferenceSchema.Type;
 
-export const SectionHolderSchema = z.object({
+export const SectionHolderSchema = Schema.Struct({
   sectionId: SectionIdSchema,
-  holder: PresenceSchema.optional(),
+  holder: Schema.optionalKey(PresenceSchema),
 });
 
-export const ProtocolScopedInputSchema = z.object({
+export const ProtocolScopedInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
 });
 
-export const SectionListSchema = z.object({
-  sectionIds: z.array(SectionIdSchema),
+export const SectionListSchema = Schema.Struct({
+  sectionIds: Schema.Array(SectionIdSchema),
 });
 
-export const AcquireLockInputSchema = z.object({
+export const AcquireLockInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   sectionId: SectionIdSchema,
 });
 
-export const AcquireLockResultSchema = z.discriminatedUnion('lock', [
-  z.object({
-    lock: z.literal('held'),
+export const AcquireLockResultSchema = Schema.Union([
+  Schema.Struct({
+    lock: Schema.Literal('held'),
     document: SectionDocumentSchema,
     revision: RevisionSchema,
   }),
-  z.object({
-    lock: z.literal('readOnly'),
+  Schema.Struct({
+    lock: Schema.Literal('readOnly'),
     document: SectionDocumentSchema,
     revision: RevisionSchema,
     holder: PresenceSchema,
   }),
 ]);
 
-export const SectionAtRevisionSchema = z.object({
+export const SectionAtRevisionSchema = Schema.Struct({
   document: SectionDocumentSchema,
   revision: RevisionSchema,
 });
 
-export const WatchProtocolInputSchema = z.object({
+export const WatchProtocolInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
-  since: CursorSchema.optional(),
+  since: Schema.optionalKey(CursorSchema),
 });
 
 /**
  * A section reached a new document, or — when `document` is absent — stopped
  * existing at this revision.
  */
-const RevisionEventSchema = z.object({
-  type: z.literal('revision'),
+const RevisionEventSchema = Schema.Struct({
+  type: Schema.Literal('revision'),
   sectionId: SectionIdSchema,
   revision: RevisionSchema,
-  document: SectionDocumentSchema.optional(),
+  document: Schema.optionalKey(SectionDocumentSchema),
+  cursor: Schema.optionalKey(CursorSchema),
 });
 
-const LockEventSchema = z.object({
-  type: z.literal('lock'),
+const LockEventSchema = Schema.Struct({
+  type: Schema.Literal('lock'),
   sectionId: SectionIdSchema,
-  holder: PresenceSchema.optional(),
+  holder: Schema.optionalKey(PresenceSchema),
+  cursor: Schema.optionalKey(CursorSchema),
 });
 
-const PresenceEventSchema = z.object({
-  type: z.literal('presence'),
-  present: z.array(PresenceSchema),
+const PresenceEventSchema = Schema.Struct({
+  type: Schema.Literal('presence'),
+  present: Schema.Array(PresenceSchema),
 });
 
-export const ProtocolEventSchema = z.discriminatedUnion('type', [
+export const ProtocolEventSchema = Schema.Union([
   RevisionEventSchema,
   LockEventSchema,
   PresenceEventSchema,
 ]);
 
-export type ProtocolEvent = z.output<typeof ProtocolEventSchema>;
+export type ProtocolEvent = typeof ProtocolEventSchema.Type;
 
-export const ResourceContentKindSchema = z.enum([
+export const ResourceContentKindSchema = Schema.Literals([
   'audio',
   'geojson',
   'image',
@@ -155,7 +172,7 @@ export const ResourceContentKindSchema = z.enum([
   'video',
 ]);
 
-export const ResourceKindSchema = z.enum([
+export const ResourceKindSchema = Schema.Literals([
   'audio',
   'geojson',
   'image',
@@ -164,12 +181,12 @@ export const ResourceKindSchema = z.enum([
   'apikey',
 ]);
 
-export const ResourceStatusSchema = z.enum(['committed', 'staged']);
+export const ResourceStatusSchema = Schema.Literals(['committed', 'staged']);
 
-export const ResourceDescriptorSchema = z.object({
-  id: z.string().min(1),
+export const ResourceDescriptorSchema = Schema.Struct({
+  id: NonEmptyString,
   kind: ResourceKindSchema,
-  name: z.string(),
+  name: Schema.String,
   status: ResourceStatusSchema,
   /**
    * The file these bytes are held as: the one the researcher picked while the
@@ -177,14 +194,14 @@ export const ResourceDescriptorSchema = z.object({
    * committed. A host derives the committed one from the content, so two
    * imports of different bytes under one filename stay two assets.
    */
-  source: z.string().optional(),
-  byteLength: z.number().int().nonnegative().optional(),
-  contentType: z.string().optional(),
+  source: Schema.optionalKey(Schema.String),
+  byteLength: Schema.optionalKey(NonNegativeInt),
+  contentType: Schema.optionalKey(Schema.String),
 });
 
-export type ResourceDescriptor = z.output<typeof ResourceDescriptorSchema>;
+export type ResourceDescriptor = typeof ResourceDescriptorSchema.Type;
 
-export const ResourceFailureReasonSchema = z.enum([
+export const ResourceFailureReasonSchema = Schema.Literals([
   'invalid-content',
   'invalid-request',
   'not-found',
@@ -195,7 +212,7 @@ export const ResourceFailureReasonSchema = z.enum([
   'unsupported-kind',
 ]);
 
-const PositionSchema = z.number().int().positive();
+const PositionSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
 
 /**
  * Where a roster holds a character no export can carry, placed the way the
@@ -204,33 +221,33 @@ const PositionSchema = z.number().int().positive();
  * and nodes count from 1 in the order the file lists them. `character` is the
  * code point written as `U+0007`.
  */
-const RosterCharacterProblemSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('columnName'),
+const RosterCharacterProblemSchema = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literal('columnName'),
     column: PositionSchema,
-    character: z.string(),
+    character: Schema.String,
   }),
-  z.object({
-    kind: z.literal('cell'),
+  Schema.Struct({
+    kind: Schema.Literal('cell'),
     row: PositionSchema,
-    column: z.string(),
-    character: z.string(),
+    column: Schema.String,
+    character: Schema.String,
   }),
-  z.object({
-    kind: z.literal('attributeName'),
+  Schema.Struct({
+    kind: Schema.Literal('attributeName'),
     node: PositionSchema,
-    character: z.string(),
+    character: Schema.String,
   }),
-  z.object({
-    kind: z.literal('attributeValue'),
+  Schema.Struct({
+    kind: Schema.Literal('attributeValue'),
     node: PositionSchema,
-    attribute: z.string(),
-    character: z.string(),
+    attribute: Schema.String,
+    character: Schema.String,
   }),
-  z.object({
-    kind: z.literal('line'),
+  Schema.Struct({
+    kind: Schema.Literal('line'),
     line: PositionSchema,
-    character: z.string(),
+    character: Schema.String,
   }),
 ]);
 
@@ -240,29 +257,27 @@ const RosterCharacterProblemSchema = z.discriminatedUnion('kind', [
  * failure's `message` is still there, for a client that does not know the
  * code.
  */
-const ResourceFailureDetailSchema = z.discriminatedUnion('code', [
-  z.object({
-    code: z.literal('roster-characters'),
-    /** The first place in the file, in file order. */
-    problem: RosterCharacterProblemSchema,
-    /** How many places in the file have the problem, the first included. */
-    total: PositionSchema,
-  }),
-]);
-
-export const ResourceGatewayFailureSchema = z.object({
-  reason: ResourceFailureReasonSchema,
-  message: z.string(),
-  retryable: z.boolean(),
-  resourceId: z.string().optional(),
-  detail: ResourceFailureDetailSchema.optional(),
+const ResourceFailureDetailSchema = Schema.Struct({
+  code: Schema.Literal('roster-characters'),
+  /** The first place in the file, in file order. */
+  problem: RosterCharacterProblemSchema,
+  /** How many places in the file have the problem, the first included. */
+  total: PositionSchema,
 });
 
-export function resourceResult<TData extends z.ZodType>(data: TData) {
-  return z.discriminatedUnion('status', [
-    z.object({ status: z.literal('ok'), data }),
-    z.object({
-      status: z.literal('failed'),
+export const ResourceGatewayFailureSchema = Schema.Struct({
+  reason: ResourceFailureReasonSchema,
+  message: Schema.String,
+  retryable: Schema.Boolean,
+  resourceId: Schema.optionalKey(Schema.String),
+  detail: Schema.optionalKey(ResourceFailureDetailSchema),
+});
+
+export function resourceResult<TData extends Schema.Top>(data: TData) {
+  return Schema.Union([
+    Schema.Struct({ status: Schema.Literal('ok'), data }),
+    Schema.Struct({
+      status: Schema.Literal('failed'),
       failure: ResourceGatewayFailureSchema,
     }),
   ]);
@@ -278,7 +293,7 @@ export function resourceResult<TData extends z.ZodType>(data: TData) {
  * to submit, nor its submit promote a file the other imported. An edit also
  * outlives a dropped socket, which a session identity does not.
  */
-const EditIdSchema = z.string().min(1);
+const EditIdSchema = NonEmptyString;
 
 /**
  * An idempotency key: stable across an uncertain retry, so a host makes the
@@ -290,7 +305,7 @@ const EditIdSchema = z.string().min(1);
  * request it is. The bound belongs here, where every host inherits it, rather
  * than in the one host that happens to have a column.
  */
-const RequestIdSchema = z.string().min(1).max(512);
+const RequestIdSchema = Schema.String.check(Schema.isBetweenLength(1, 512));
 
 /**
  * The staged resources a submit commits along with the section naming them.
@@ -309,13 +324,13 @@ const RequestIdSchema = z.string().min(1).max(512);
  * a manifest revision with nothing in it changed. Refused here rather than
  * ignored by each host, so no host can be the one that forgets.
  */
-export const ResourcePromotionRequestSchema = z.object({
+export const ResourcePromotionRequestSchema = Schema.Struct({
   /** The edit these resources were staged for; only its own can be promoted. */
   editId: EditIdSchema,
-  resourceIds: z.array(z.string().min(1)).min(1),
+  resourceIds: Schema.NonEmptyArray(NonEmptyString),
 });
 
-export const SubmitInputSchema = z.object({
+export const SubmitInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   requestId: RequestIdSchema,
   sectionId: SectionIdSchema,
@@ -326,108 +341,109 @@ export const SubmitInputSchema = z.object({
    * host records it so a revision can say what it was derived from.
    */
   revision: RevisionSchema,
-  promote: ResourcePromotionRequestSchema.optional(),
+  promote: Schema.optionalKey(ResourcePromotionRequestSchema),
 });
 
-export const SubmitResultSchema = z.object({
+export const SubmitResultSchema = Schema.Struct({
   revision: RevisionSchema,
   /** What `promote` committed; absent when the submit promoted nothing. */
-  promoted: z.array(ResourceDescriptorSchema).optional(),
+  promoted: Schema.optionalKey(Schema.Array(ResourceDescriptorSchema)),
 });
 
 /** Sections a host mints. The rest of the taxonomy is a protocol's singletons. */
-export const CreatableSectionKindSchema = z.enum([
+export const CreatableSectionKindSchema = Schema.Literals([
   'stage',
   'codebookNode',
   'codebookEdge',
   'codebookEgo',
 ]);
 
-export const CreateInputSchema = z.object({
+export const CreateInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   requestId: RequestIdSchema,
   kind: CreatableSectionKindSchema,
   document: SectionDocumentSchema,
   /** Where a created stage lands in the stage order; appended when absent. */
-  position: z.number().int().nonnegative().optional(),
+  position: Schema.optionalKey(NonNegativeInt),
   /**
    * The staged resources the created section names, on the same terms as a
    * submit's: a stage being ADDED can carry an imported file, and there is no
    * revision of it to submit them with afterwards.
    */
-  promote: ResourcePromotionRequestSchema.optional(),
+  promote: Schema.optionalKey(ResourcePromotionRequestSchema),
 });
 
-export const CreateResultSchema = z.object({
+export const CreateResultSchema = Schema.Struct({
   sectionId: SectionIdSchema,
   revision: RevisionSchema,
   /** What `promote` committed; absent when the create promoted nothing. */
-  promoted: z.array(ResourceDescriptorSchema).optional(),
+  promoted: Schema.optionalKey(Schema.Array(ResourceDescriptorSchema)),
 });
 
-export const CodebookSubjectSchema = z.discriminatedUnion('entity', [
-  z.object({ entity: z.literal('node'), type: z.string().min(1) }),
-  z.object({ entity: z.literal('edge'), type: z.string().min(1) }),
-  z.object({ entity: z.literal('ego') }),
+export const CodebookSubjectSchema = Schema.Union([
+  Schema.Struct({ entity: Schema.Literal('node'), type: NonEmptyString }),
+  Schema.Struct({ entity: Schema.Literal('edge'), type: NonEmptyString }),
+  Schema.Struct({ entity: Schema.Literal('ego') }),
 ]);
 
-export type CodebookSubject = z.output<typeof CodebookSubjectSchema>;
+export type CodebookSubject = typeof CodebookSubjectSchema.Type;
 
-export const DeleteVariableInputSchema = z.object({
+export const DeleteVariableInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   subject: CodebookSubjectSchema,
-  variableId: z.string().min(1),
+  variableId: NonEmptyString,
 });
 
-export const DeleteEntityTypeInputSchema = z.object({
+export const DeleteEntityTypeInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
-  entity: z.enum(['node', 'edge']),
-  typeId: z.string().min(1),
+  entity: Schema.Literals(['node', 'edge']),
+  typeId: NonEmptyString,
 });
 
 /**
- * A stage section's id. Stages are the only sections `delete` removes: a
- * codebook type goes with `refactor.deleteEntityType`, which also sweeps the
+ * A stage section's id. Stages are the only sections `Delete` removes: a
+ * codebook type goes with `RefactorDeleteEntityType`, which also sweeps the
  * references to it, and the rest of the taxonomy is a protocol's singletons.
  */
-export const StageSectionIdSchema = SectionIdSchema.refine(
-  (id) => parseSectionId(id).kind === 'stage',
-  'not a stage section id',
+export const StageSectionIdSchema = SectionIdSchema.check(
+  Schema.makeFilter((id) => parseSectionId(id).kind === 'stage', {
+    message: 'not a stage section id',
+  }),
 );
 
-export const DeleteSectionInputSchema = z.object({
+export const DeleteSectionInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   sectionId: StageSectionIdSchema,
 });
 
 /** What one atomic change wrote, and which sections it wrote. */
-export const SectionChangeResultSchema = z.object({
+export const SectionChangeResultSchema = Schema.Struct({
   revision: RevisionSchema,
-  changedSections: z.array(SectionIdSchema),
+  changedSections: Schema.Array(SectionIdSchema),
 });
 
-export const ResourceListInputSchema = z.object({
+export const ResourceListInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   /** Absent lists only what the protocol has committed. */
-  editId: EditIdSchema.optional(),
-  kinds: z.array(ResourceKindSchema).optional(),
-  status: ResourceStatusSchema.optional(),
+  editId: Schema.optionalKey(EditIdSchema),
+  kinds: Schema.optionalKey(Schema.Array(ResourceKindSchema)),
+  status: Schema.optionalKey(ResourceStatusSchema),
 });
 
-export const ResourceListSchema = z.object({
-  resources: z.array(ResourceDescriptorSchema),
+export const ResourceListSchema = Schema.Struct({
+  resources: Schema.Array(ResourceDescriptorSchema),
 });
 
-export const StageResourceInputSchema = z.object({
+export const StageResourceInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   /** The edit importing the file, which is what holds it until it is used. */
   editId: EditIdSchema,
   requestId: RequestIdSchema,
-  request: z.discriminatedUnion('kind', [
-    z.object({
-      kind: z.literal('content'),
+  request: Schema.Union([
+    Schema.Struct({
+      kind: Schema.Literal('content'),
       contentKind: ResourceContentKindSchema,
-      name: z.string().min(1),
+      name: NonEmptyString,
       /**
        * Filename the manifest will record, refused here on the terms the
        * manifest itself is validated on: a promoted `source` becomes a zip
@@ -435,58 +451,63 @@ export const StageResourceInputSchema = z.object({
        * either escapes the archive or produces a protocol that cannot be
        * published.
        */
-      source: assetSourceSchema,
-      contentType: z.string().min(1),
-      bytes: z.instanceof(Blob),
+      source: Schema.String.check(
+        Schema.makeFilter(isSafeAssetSource, {
+          message:
+            'Asset source must be a filename without path separators or ".."',
+        }),
+      ),
+      contentType: NonEmptyString,
+      bytes: Schema.Uint8Array,
     }),
-    z.object({
-      kind: z.literal('secret'),
-      name: z.string().min(1),
+    Schema.Struct({
+      kind: Schema.Literal('secret'),
+      name: NonEmptyString,
       /**
        * The key itself. A picker holds only the asset id, because that is what
        * a stage field stores — but the value is not hidden from the editor:
        * `inspect` answers with it, and promotion writes it into the asset
        * manifest, which is part of the protocol the researcher sends on.
        */
-      value: z.string().min(1),
+      value: NonEmptyString,
     }),
   ]),
 });
 
-export const StagedResourceSchema = z.object({
+export const StagedResourceSchema = Schema.Struct({
   descriptor: ResourceDescriptorSchema,
 });
 
-export const ResourceDiscardInputSchema = z.object({
+export const ResourceDiscardInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   editId: EditIdSchema,
   /** Absent discards every resource staged in this edit, and only in it. */
-  resourceId: z.string().min(1).optional(),
+  resourceId: Schema.optionalKey(NonEmptyString),
 });
 
 /**
  * A discard has nothing to answer with, so its success is the status alone:
- * `resourceResult(z.undefined())` would put the whole outcome on a `data` key
- * whose only value is `undefined`, which a transport that drops undefined
+ * `resourceResult(Schema.Undefined)` would put the whole outcome on a `data`
+ * key whose only value is `undefined`, which a transport that drops undefined
  * keys — or a schema that requires the key to be present — turns into a
  * result no branch of the union matches.
  */
-export const ResourceDiscardResultSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('ok') }),
-  z.object({
-    status: z.literal('failed'),
+export const ResourceDiscardResultSchema = Schema.Union([
+  Schema.Struct({ status: Schema.Literal('ok') }),
+  Schema.Struct({
+    status: Schema.Literal('failed'),
     failure: ResourceGatewayFailureSchema,
   }),
 ]);
 
-export const ResourceScopedInputSchema = z.object({
+export const ResourceScopedInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
   /** Absent reaches only what the protocol has committed. */
-  editId: EditIdSchema.optional(),
-  resourceId: z.string().min(1),
+  editId: Schema.optionalKey(EditIdSchema),
+  resourceId: NonEmptyString,
 });
 
-export const ResourceInspectionSchema = z.object({
+export const ResourceInspectionSchema = Schema.Struct({
   descriptor: ResourceDescriptorSchema,
   /**
    * An `apikey` resource's own value.
@@ -503,16 +524,20 @@ export const ResourceInspectionSchema = z.object({
    * map. An editor that could not read it could only draw the map the
    * participant will not see.
    */
-  value: z.string().optional(),
-  variableNames: z.array(z.string()).optional(),
-  counts: z.object({ nodes: z.number(), edges: z.number() }).optional(),
-  dimensions: z.object({ width: z.number(), height: z.number() }).optional(),
-  durationSeconds: z.number().optional(),
+  value: Schema.optionalKey(Schema.String),
+  variableNames: Schema.optionalKey(Schema.Array(Schema.String)),
+  counts: Schema.optionalKey(
+    Schema.Struct({ nodes: Schema.Finite, edges: Schema.Finite }),
+  ),
+  dimensions: Schema.optionalKey(
+    Schema.Struct({ width: Schema.Finite, height: Schema.Finite }),
+  ),
+  durationSeconds: Schema.optionalKey(Schema.Finite),
 });
 
-export const ResourcePreviewSchema = z.object({
-  resourceId: z.string().min(1),
-  url: z.string().min(1),
+export const ResourcePreviewSchema = Schema.Struct({
+  resourceId: NonEmptyString,
+  url: NonEmptyString,
   /** Epoch milliseconds after which `url` may stop resolving. */
-  expiresAt: z.number().optional(),
+  expiresAt: Schema.optionalKey(Schema.Finite),
 });

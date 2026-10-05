@@ -1,4 +1,5 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
 
 // Shared fixture for the NarrativePedigree examples: one integrated five-
 // generation family whose six conditions all reach ego's own household, so the
@@ -19,6 +20,7 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 const NAME_VAR = 'name';
 const EGO_VAR = 'isEgo';
 const BIO_SEX_VAR = 'biologicalSex';
+const GENDER_VAR = 'gender';
 const REL_TO_EGO_VAR = 'relationshipToEgo';
 
 const REL_TYPE_VAR = 'relType';
@@ -80,8 +82,8 @@ const BOOL_DEFAULTS = {
  * through the FamilyPedigree onboarding + building interactions (at most one egg
  * contributor per child). Mitochondrial replacement therapy (MRT) — a child
  * conceived from TWO eggs, one donor-tagged to supply the mtDNA — is NOT reachable
- * through that participant interface; it is authorable only via Architect or
- * protocol import. Pass `includeMrtBranch` to add that Architect/import-authored
+ * through that participant interface; it is demonstrated only with seeded or
+ * imported interview data. Pass `includeMrtBranch` to add that seeded/imported
  * contrast: ego's aunt Margaret (also at risk down the maternal line) conceives
  * Chloe by mitochondrial donation (a donor egg supplies the mtDNA), so Chloe
  * escapes the mito condition while still inheriting Margaret's autosomes (she stays
@@ -102,14 +104,14 @@ export function addComprehensivePedigree(
   const nodeType = si.addNodeType({
     name: 'Person',
     shape: {
-      default: 'circle',
+      default: 'diamond',
       dynamic: {
         type: 'discrete',
-        variable: BIO_SEX_VAR,
+        variable: GENDER_VAR,
         map: [
-          { value: 'male', shape: 'square' },
-          { value: 'female', shape: 'circle' },
-          { value: 'other', shape: 'diamond' },
+          { value: 'man', shape: 'square' },
+          { value: 'woman', shape: 'circle' },
+          { value: 'gender_diverse', shape: 'diamond' },
         ],
       },
     },
@@ -121,6 +123,16 @@ export function addComprehensivePedigree(
   const nameVarId = nodeType.addVariable({ name: NAME_VAR, type: 'text' }).id;
   nodeType.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
   nodeType.addVariable({ id: BIO_SEX_VAR, name: BIO_SEX_VAR, type: 'text' });
+  nodeType.addVariable({
+    id: GENDER_VAR,
+    name: 'Gender',
+    type: 'categorical',
+    options: [
+      { value: 'man', label: 'Man' },
+      { value: 'woman', label: 'Woman' },
+      { value: 'gender_diverse', label: 'Gender diverse' },
+    ],
+  });
   nodeType.addVariable({
     id: REL_TO_EGO_VAR,
     name: REL_TO_EGO_VAR,
@@ -135,14 +147,7 @@ export function addComprehensivePedigree(
     id: REL_TYPE_VAR,
     name: REL_TYPE_VAR,
     type: 'categorical',
-    // 'social' and 'donor' are needed by the mitochondrial-donation branch: the
-    // donor egg carries mtDNA, the intended mother's egg carries the nucleus.
-    options: [
-      { label: 'biological', value: 'biological' },
-      { label: 'partner', value: 'partner' },
-      { label: 'social', value: 'social' },
-      { label: 'donor', value: 'donor' },
-    ],
+    options: RELATIONSHIP_TYPE_OPTIONS,
   });
   edgeType.addVariable({
     id: IS_ACTIVE_VAR,
@@ -257,91 +262,145 @@ export function addComprehensivePedigree(
   // --- Gen I: the shared Marsh great-grandparents --------------------------
   // Eleanor founds the mitochondrial line. Arthur + Eleanor are the common
   // ancestors that make ego's parents first cousins (the CF consanguinity).
-  person('ggf', { [nameVarId]: 'Arthur Marsh', [BIO_SEX_VAR]: 'male' });
+  person('ggf', {
+    [nameVarId]: 'Arthur Marsh',
+    [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
+  });
   person('ggm', {
     [nameVarId]: 'Eleanor Marsh',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [MITO_VAR]: true,
   });
 
   // --- Gen II: ego's grandparents (a Marsh sibling pair + married-in spouses)
   // Nancy (Eleanor's daughter) and Frank (Eleanor's son) are siblings; their
   // children Rose and David marry, which is the consanguineous union.
-  person('mgm', { [nameVarId]: 'Nancy Bauer', [BIO_SEX_VAR]: 'female' }); // née Marsh
+  person('mgm', {
+    [nameVarId]: 'Nancy Bauer',
+    [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
+  }); // née Marsh
   person('mgf', {
     [nameVarId]: 'George Bauer',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [HD_VAR]: true,
   });
-  person('pgf', { [nameVarId]: 'Frank Marsh', [BIO_SEX_VAR]: 'male' });
-  person('pgm', { [nameVarId]: 'Irene Marsh', [BIO_SEX_VAR]: 'female' });
+  person('pgf', {
+    [nameVarId]: 'Frank Marsh',
+    [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
+  });
+  person('pgm', {
+    [nameVarId]: 'Irene Marsh',
+    [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
+  });
 
   // --- Gen III: ego's parents (first cousins), aunt, uncle, partner's parents
   person('mother', {
     [nameVarId]: 'Rose Marsh',
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
     [HD_VAR]: true,
   }); // née Bauer
   person('father', {
     [nameVarId]: 'David Marsh',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [XLH_VAR]: true,
   });
   // Ego's maternal aunt Margaret — at risk down the maternal (mito) line. In the
   // MRT branch she conceives Chloe by mitochondrial donation.
-  person('maunt', { [nameVarId]: 'Margaret Nolan', [BIO_SEX_VAR]: 'female' }); // née Bauer
-  person('mhusb', { [nameVarId]: 'Paul Nolan', [BIO_SEX_VAR]: 'male' });
+  person('maunt', {
+    [nameVarId]: 'Margaret Nolan',
+    [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
+  }); // née Bauer
+  person('mhusb', {
+    [nameVarId]: 'Paul Nolan',
+    [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
+  });
   // Ego's maternal uncles Thomas and Robert — two affected haemophiliac brothers,
   // which makes their mother Nancy an OBLIGATE carrier (the classic pattern).
   person('muncle', {
     [nameVarId]: 'Thomas Bauer',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [HAEM_VAR]: true,
   });
   person('muncle2', {
     [nameVarId]: 'Robert Bauer',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [HAEM_VAR]: true,
   });
   // The mitochondrial-egg donor (an unaffected outsider) — MRT branch only.
   if (includeMrtBranch) {
-    person('donor', { [nameVarId]: 'Ivy Brooks', [BIO_SEX_VAR]: 'female' });
+    person('donor', {
+      [nameVarId]: 'Ivy Brooks',
+      [BIO_SEX_VAR]: 'female',
+      [GENDER_VAR]: ['woman'],
+    });
   }
   // Partner's Adler line — Y-linked hearing loss.
   person('pf', {
     [nameVarId]: 'Walter Adler',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [YHL_VAR]: true,
   });
-  person('pm', { [nameVarId]: 'Diane Adler', [BIO_SEX_VAR]: 'female' });
+  person('pm', {
+    [nameVarId]: 'Diane Adler',
+    [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
+  });
 
   // --- Gen IV: ego's household + ego's affected sibling (MRT child below) ---
   person('ego', {
     [nameVarId]: 'You',
     [EGO_VAR]: true,
     [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
   });
   // Ego's brother Sam is affected with cystic fibrosis (autozygous via the
   // cousin union), making Rose & David obligate carriers and ego at-risk.
   person('sib', {
     [nameVarId]: 'Sam Marsh',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [CF_VAR]: true,
   });
   person('partner', {
     [nameVarId]: 'Chris Adler',
     [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
     [YHL_VAR]: true,
   });
   // Chloe — Margaret's daughter by mitochondrial donation (MRT branch only).
   // Nucleus from Margaret, mtDNA from the donor Ivy, sperm from Paul.
   if (includeMrtBranch) {
-    person('mrtchild', { [nameVarId]: 'Chloe Nolan', [BIO_SEX_VAR]: 'female' });
+    person('mrtchild', {
+      [nameVarId]: 'Chloe Nolan',
+      [BIO_SEX_VAR]: 'female',
+      [GENDER_VAR]: ['woman'],
+    });
   }
 
   // --- Gen V: ego's children -----------------------------------------------
-  person('son', { [nameVarId]: 'Noah Adler', [BIO_SEX_VAR]: 'male' });
-  person('daughter', { [nameVarId]: 'Ava Adler', [BIO_SEX_VAR]: 'female' });
+  person('son', {
+    [nameVarId]: 'Noah Adler',
+    [BIO_SEX_VAR]: 'male',
+    [GENDER_VAR]: ['man'],
+  });
+  person('daughter', {
+    [nameVarId]: 'Ava Adler',
+    [BIO_SEX_VAR]: 'female',
+    [GENDER_VAR]: ['woman'],
+  });
 
   // --- Edges ---------------------------------------------------------------
   const bioEdge = (uid: string, from: string, to: string) =>

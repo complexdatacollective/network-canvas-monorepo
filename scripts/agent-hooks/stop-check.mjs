@@ -33,7 +33,9 @@ import {
 } from './lib.mjs';
 
 const manual = process.argv.includes('--manual');
-const input = manual ? {} : readHookInput();
+// Manual runs have no event: the checkout is the one the command runs in,
+// whatever a project-dir variable inherited from the harness points at.
+const input = manual ? { cwd: process.cwd() } : readHookInput();
 const root = resolveRepoRoot(input);
 const changed = changedFiles(root);
 

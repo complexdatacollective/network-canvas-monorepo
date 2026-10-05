@@ -6,6 +6,7 @@ import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import type { FramingId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -19,6 +20,8 @@ import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import type { StageProps } from '../../../types';
+import { useFamilyPedigreeStore } from '../../FamilyPedigree/FamilyPedigreeContext';
+import { FamilyPedigreeProvider } from '../../FamilyPedigree/FamilyPedigreeProvider';
 
 const exportSnapshotMock =
   vi.fn<(element: HTMLElement, filename: string) => Promise<void>>();
@@ -113,6 +116,7 @@ function makeEdge(from: string, to: string): NcEdge {
     [entityAttributesProperty]: {
       [REL_TYPE_VAR]: ['biological'],
       [IS_ACTIVE_VAR]: true,
+      [GAMETE_VAR]: [from === 'mother' || from === 'partner' ? 'egg' : 'sperm'],
     },
   };
 }
@@ -223,27 +227,66 @@ const codebook = {
   ego: { variables: {} },
 };
 
-function makeStore(narrativeStage = makeNarrativeStage()) {
+type FramingOptions = {
+  framing: StageProps<'FamilyPedigree'>['stage']['framing'];
+  selectedFraming?: FramingId;
+};
+
+function makeStore(
+  narrativeStage = makeNarrativeStage(),
+  framingOptions?: FramingOptions,
+) {
   return configureStore({
     reducer: { protocol, session },
     preloadedState: {
       protocol: {
         codebook,
-        stages: [sourceStage, narrativeStage],
+        stages: [
+          { ...sourceStage, framing: framingOptions?.framing },
+          narrativeStage,
+        ],
         assets: [],
       } as never,
       session: {
         id: 'test-session',
-        network: { nodes, edges, ego: { [entityAttributesProperty]: {} } },
-        stageMetadata: {},
+        network: {
+          nodes: framingOptions
+            ? nodes.map((node) => ({
+                ...node,
+                [entityAttributesProperty]: {
+                  ...node[entityAttributesProperty],
+                  [NAME_VAR]: '',
+                },
+              }))
+            : nodes,
+          edges,
+          ego: { [entityAttributesProperty]: {} },
+        },
+        stageMetadata: framingOptions
+          ? {
+              0: {
+                isNetworkCommitted: true,
+                selectedFraming: framingOptions.selectedFraming,
+                nodes: nodes.map((node) => ({
+                  id: node._uid,
+                  label: '',
+                  isEgo: node._uid === 'ego',
+                })),
+              },
+            }
+          : {},
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
   });
 }
 
-function renderView(stage = makeNarrativeStage(), locale = 'en') {
-  const store = makeStore(stage);
+function renderView(
+  stage = makeNarrativeStage(),
+  locale = 'en',
+  framingOptions?: FramingOptions,
+) {
+  const store = makeStore(stage, framingOptions);
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -288,7 +331,78 @@ function viewMarker(selector: string): Element | null {
   );
 }
 
+function FramingProbe() {
+  const framing = useFamilyPedigreeStore((state) => state.framing);
+  return (
+    <output aria-label="Restored framing">{framing ?? 'unselected'}</output>
+  );
+}
+
+describe('source pedigree framing on reopening', () => {
+  it.each([
+    {
+      framing: { mode: 'participantChoice' },
+      selectedFraming: 'gendered',
+      expected: 'gendered',
+    },
+    {
+      framing: { mode: 'participantChoice' },
+      selectedFraming: 'gamete',
+      expected: 'gamete',
+    },
+    {
+      framing: { mode: 'participantChoice' },
+      expected: 'unselected',
+    },
+    {
+      framing: { mode: 'fixed', value: 'gendered' },
+      selectedFraming: 'gamete',
+      expected: 'gendered',
+    },
+  ] satisfies (FramingOptions & { expected: string })[])(
+    'restores $expected for $framing.mode',
+    (options) => {
+      const store = makeStore(makeNarrativeStage(), options);
+      render(
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <FamilyPedigreeProvider nodes={nodes} edges={edges}>
+              <FramingProbe />
+            </FamilyPedigreeProvider>
+          </CurrentStepProvider>
+        </Provider>,
+      );
+      expect(screen.getByLabelText('Restored framing')).toHaveTextContent(
+        options.expected,
+      );
+    },
+  );
+});
+
 describe('NarrativePedigreeView — node mode selection', () => {
+  it.each([
+    {
+      framing: { mode: 'fixed', value: 'gendered' },
+      selectedFraming: 'gamete',
+    },
+    {
+      framing: { mode: 'participantChoice' },
+      selectedFraming: 'gendered',
+    },
+  ] satisfies FramingOptions[])(
+    'preserves gendered labels from source framing $framing.mode',
+    async (framingOptions) => {
+      renderView(makeNarrativeStage(), 'en', framingOptions);
+      await selectCondition('Disease A');
+      expect(
+        await screen.findByRole('button', { name: 'Focus on Mother' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Focus on Father' }),
+      ).toBeInTheDocument();
+    },
+  );
+
   it('reformats selected condition, status, focus and snapshot in place while preserving authored copy and network data', async () => {
     const stage = makeNarrativeStage();
     stage.label = 'Árbol **del estudio**';

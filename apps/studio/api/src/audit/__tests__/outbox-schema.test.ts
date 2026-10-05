@@ -1,0 +1,885 @@
+import { randomBytes, randomUUID } from 'node:crypto';
+
+import { layer } from '@effect/vitest';
+import { Effect, Layer } from 'effect';
+import { describe, expect } from 'vitest';
+
+import {
+  insertTeam,
+  ownerAffected,
+  ownerRows,
+  refusalOf,
+  TestDatabaseLive,
+  testDb,
+  maintenanceAffected,
+  maintenanceRows,
+  ownerInsert,
+  tenantAffected,
+  tenantRows,
+} from '../../__tests__/support/database.ts';
+import {
+  TenantScope,
+  Transaction,
+  unsafeMakeTeamAccess,
+} from '../../db/tenant.ts';
+
+const TEAM_A = 'team-a';
+const TEAM_B = 'team-b';
+
+type Row = Record<string, unknown>;
+
+const hex64 = () => randomBytes(32).toString('hex');
+
+let nextSequence = 0;
+const sequence = () => String(++nextSequence);
+
+type EventIdentity = {
+  id: string;
+  sequence: string;
+  event_type: string;
+  event_version: number;
+};
+
+const READY_COLUMNS = [
+  'handle_hash',
+  'handle_expires_at',
+  'artifact_key',
+  'artifact_row_count',
+  'artifact_byte_count',
+  'completion_event_id',
+  'ready_at',
+] as const;
+
+const eventRow = (overrides: Row = {}): Row => ({
+  id: randomUUID(),
+  team_id: TEAM_A,
+  team_label: 'Team A',
+  sequence: sequence(),
+  event_type: 'audit.export.started',
+  event_version: 1,
+  category: 'data_egress',
+  outcome: 'succeeded',
+  actor_kind: 'user',
+  actor_id: 'user-1',
+  actor_label: 'Researcher',
+  request_id: randomUUID(),
+  details: JSON.stringify({}),
+  ...overrides,
+});
+
+const readyPayload = (): Row => ({
+  status: 'ready',
+  handle_hash: hex64(),
+  handle_expires_at: new Date(),
+  artifact_key: `exports/${randomUUID()}.csv`,
+  artifact_row_count: 10,
+  artifact_byte_count: 2048,
+  completion_event_id: randomUUID(),
+  ready_at: new Date(),
+});
+
+const jobRow = (overrides: Row = {}): Row => ({
+  id: randomUUID(),
+  team_id: TEAM_A,
+  actor_kind: 'user',
+  actor_id: 'user-1',
+  start_event_id: randomUUID(),
+  start_event_sequence: '1',
+  high_water_sequence: '10',
+  filters: JSON.stringify({ category: 'data_egress' }),
+  row_limit: 1000,
+  byte_limit: 1_000_000,
+  preflight_row_count: 10,
+  preflight_byte_count: 2048,
+  ...overrides,
+});
+
+const outboxRow = (event: EventIdentity, overrides: Row = {}): Row => ({
+  id: randomUUID(),
+  team_id: TEAM_A,
+  audit_event_id: event.id,
+  audit_event_sequence: event.sequence,
+  event_type: event.event_type,
+  event_version: event.event_version,
+  alert_policy_key: 'bulk_export',
+  ...overrides,
+});
+
+const newEvent = (overrides: Row = {}) => {
+  const row = eventRow(overrides);
+  return Effect.as(ownerInsert('audit_events', row), {
+    id: row.id as string,
+    sequence: row.sequence as string,
+    event_type: row.event_type as string,
+    event_version: row.event_version as number,
+  } satisfies EventIdentity);
+};
+
+const newJob = (overrides: Row = {}) => {
+  const row = jobRow(overrides);
+  return Effect.as(ownerInsert('audit_export_jobs', row), row.id as string);
+};
+
+const newOutboxRow = Effect.fnUntraced(function* (overrides: Row = {}) {
+  const event = yield* newEvent({
+    team_id: (overrides.team_id as string | undefined) ?? TEAM_A,
+  });
+  const row = outboxRow(event, overrides);
+  yield* ownerInsert('audit_alert_outbox', row);
+  return row.id as string;
+});
+
+const Fixtures = Layer.effectDiscard(
+  Effect.forEach([TEAM_A, TEAM_B], (teamId) => insertTeam(teamId)),
+).pipe(Layer.provideMerge(TestDatabaseLive));
+
+describe.skipIf(!testDb)('audit outbox schema', () => {
+  layer(Fixtures)('over a provisioned schema', (it) => {
+    describe('audit_export_jobs', () => {
+      it.effect('applies the documented defaults', () =>
+        Effect.gen(function* () {
+          const id = yield* newJob();
+
+          const rows = yield* ownerRows(
+            `SELECT status, attempt_count, artifact_key, handle_hash,
+                    handle_consumed_at, completion_event_id, failure_event_id,
+                    ready_at, failed_at, created_at IS NOT NULL AS stamped
+             FROM audit_export_jobs WHERE id = $1`,
+            [id],
+          );
+          expect(rows[0]).toEqual({
+            status: 'pending',
+            attempt_count: 0,
+            artifact_key: null,
+            handle_hash: null,
+            handle_consumed_at: null,
+            completion_event_id: null,
+            failure_event_id: null,
+            ready_at: null,
+            failed_at: null,
+            stamped: true,
+          });
+        }),
+      );
+
+      it.effect.each(READY_COLUMNS)(
+        'refuses a ready job that is missing %s',
+        (column) =>
+          Effect.gen(function* () {
+            const partial = readyPayload();
+            partial[column] = null;
+
+            const refused = yield* refusalOf(
+              ownerInsert('audit_export_jobs', jobRow(partial)),
+            );
+            expect(refused.constraint).toBe(
+              'audit_export_jobs_ready_state_check',
+            );
+          }),
+      );
+
+      it.effect('refuses a complete artifact on a job that is not ready', () =>
+        Effect.gen(function* () {
+          const refused = yield* refusalOf(
+            ownerInsert(
+              'audit_export_jobs',
+              jobRow({ ...readyPayload(), status: 'generating' }),
+            ),
+          );
+          expect(refused.constraint).toBe(
+            'audit_export_jobs_ready_state_check',
+          );
+        }),
+      );
+
+      it.effect('accepts a job that carries the whole ready shape', () =>
+        Effect.gen(function* () {
+          expect(
+            yield* ownerInsert('audit_export_jobs', jobRow(readyPayload())),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect.each<readonly [label: string, overrides: Row]>([
+        [
+          'a failed job with no failure event',
+          { status: 'failed', failed_at: new Date() },
+        ],
+        [
+          'a failed job with no failure timestamp',
+          { status: 'failed', failure_event_id: randomUUID() },
+        ],
+        [
+          'failure evidence on a job that has not failed',
+          { failed_at: new Date(), failure_event_id: randomUUID() },
+        ],
+        [
+          'a failed job that still names an artifact',
+          {
+            status: 'failed',
+            failed_at: new Date(),
+            failure_event_id: randomUUID(),
+            artifact_key: 'exports/partial.csv',
+          },
+        ],
+      ])('refuses %s', ([_label, overrides]) =>
+        Effect.gen(function* () {
+          const refused = yield* refusalOf(
+            ownerInsert('audit_export_jobs', jobRow(overrides)),
+          );
+          expect(refused.constraint).toBe(
+            'audit_export_jobs_failed_state_check',
+          );
+        }),
+      );
+
+      it.effect(
+        'accepts a failure recorded with both halves and no artifact',
+        () =>
+          Effect.gen(function* () {
+            expect(
+              yield* ownerInsert(
+                'audit_export_jobs',
+                jobRow({
+                  status: 'failed',
+                  failed_at: new Date(),
+                  failure_event_id: randomUUID(),
+                  last_error: 'generator crashed',
+                }),
+              ),
+            ).toBe(1);
+          }),
+      );
+
+      it.effect.each<
+        readonly [label: string, overrides: Row, constraint: string]
+      >([
+        [
+          'an unknown status',
+          { status: 'cancelled' },
+          'audit_export_jobs_status_check',
+        ],
+        [
+          'an unknown actor kind',
+          { actor_kind: 'system' },
+          'audit_export_jobs_actor_kind_check',
+        ],
+        [
+          'a zero row budget',
+          { row_limit: 0 },
+          'audit_export_jobs_budgets_check',
+        ],
+        [
+          'a zero byte budget',
+          { byte_limit: 0 },
+          'audit_export_jobs_budgets_check',
+        ],
+        [
+          'a negative preflight count',
+          { preflight_row_count: -1 },
+          'audit_export_jobs_budgets_check',
+        ],
+        [
+          'a negative attempt count',
+          { attempt_count: -1 },
+          'audit_export_jobs_budgets_check',
+        ],
+        [
+          'a start sequence before the first event',
+          { start_event_sequence: '0' },
+          'audit_export_jobs_budgets_check',
+        ],
+        [
+          'a negative high-water mark',
+          { high_water_sequence: '-1' },
+          'audit_export_jobs_budgets_check',
+        ],
+        [
+          'scalar filters',
+          { filters: JSON.stringify('everything') },
+          'audit_export_jobs_filters_object_check',
+        ],
+        [
+          'a malformed handle digest',
+          { ...readyPayload(), handle_hash: 'not-a-digest' },
+          'audit_export_jobs_handle_hash_format_check',
+        ],
+        [
+          'a consumption stamp with no handle',
+          { handle_consumed_at: new Date() },
+          'audit_export_jobs_consumed_check',
+        ],
+        [
+          'a blank actor id',
+          { actor_id: '' },
+          'audit_export_jobs_identifier_lengths_check',
+        ],
+        [
+          'an over-long last error',
+          { last_error: 'e'.repeat(1001) },
+          'audit_export_jobs_identifier_lengths_check',
+        ],
+      ])('refuses %s', ([_label, overrides, constraint]) =>
+        Effect.gen(function* () {
+          const refused = yield* refusalOf(
+            ownerInsert('audit_export_jobs', jobRow(overrides)),
+          );
+          expect(refused.constraint).toBe(constraint);
+        }),
+      );
+
+      it.effect('admits at most one live handle across all jobs', () =>
+        Effect.gen(function* () {
+          const shared = readyPayload();
+          yield* ownerInsert('audit_export_jobs', jobRow(shared));
+
+          const refused = yield* refusalOf(
+            ownerInsert('audit_export_jobs', jobRow(shared)),
+          );
+          expect(refused).toMatchObject({
+            state: '23505',
+            constraint: 'audit_export_jobs_handle_hash_idx',
+          });
+        }),
+      );
+    });
+
+    describe('audit_export_request_immutable', () => {
+      it.effect.each<readonly [label: string, assignment: string]>([
+        ['the owning team', `team_id = '${TEAM_B}'`],
+        ['the requesting actor', `actor_id = 'user-2'`],
+        ['the actor kind', `actor_kind = 'api_token'`],
+        ['the start event', `start_event_id = '${randomUUID()}'`],
+        ['the start sequence', `start_event_sequence = 99`],
+        ['the high-water mark', `high_water_sequence = 99`],
+        ['the filters', `filters = '{"category":"study"}'::jsonb`],
+        ['the row budget', 'row_limit = 1'],
+        ['the byte budget', 'byte_limit = 1'],
+        ['the preflight row count', 'preflight_row_count = 99'],
+        ['the preflight byte count', 'preflight_byte_count = 99'],
+        ['the creation stamp', 'created_at = now()'],
+      ])('refuses to rewrite %s', ([_label, assignment]) =>
+        Effect.gen(function* () {
+          const id = yield* newJob();
+
+          const refused = yield* refusalOf(
+            ownerAffected(
+              `UPDATE audit_export_jobs SET ${assignment} WHERE id = $1`,
+              [id],
+            ),
+          );
+          expect(refused.message).toContain(
+            'audit export request is immutable',
+          );
+        }),
+      );
+
+      it.effect('lets the worker advance generation state', () =>
+        Effect.gen(function* () {
+          const id = yield* newJob();
+
+          const started = yield* ownerAffected(
+            `UPDATE audit_export_jobs
+             SET status = 'generating', attempt_count = attempt_count + 1
+             WHERE id = $1`,
+            [id],
+          );
+          expect(started).toBe(1);
+
+          const completed = yield* ownerAffected(
+            `UPDATE audit_export_jobs
+             SET status = 'ready',
+                 handle_hash = $2, handle_expires_at = now() + interval '1 hour',
+                 artifact_key = $3, artifact_row_count = 10,
+                 artifact_byte_count = 2048, completion_event_id = $4,
+                 ready_at = now()
+             WHERE id = $1`,
+            [id, hex64(), `exports/${id}.csv`, randomUUID()],
+          );
+          expect(completed).toBe(1);
+        }),
+      );
+    });
+
+    describe('audit_export_handle_single_use', () => {
+      it.effect(
+        'admits the first consumption and refuses every later one',
+        () =>
+          Effect.gen(function* () {
+            const id = yield* newJob(readyPayload());
+
+            const consumed = yield* ownerAffected(
+              `UPDATE audit_export_jobs SET handle_consumed_at = now() WHERE id = $1`,
+              [id],
+            );
+            expect(consumed).toBe(1);
+
+            const again = yield* refusalOf(
+              ownerAffected(
+                `UPDATE audit_export_jobs SET handle_consumed_at = now() WHERE id = $1`,
+                [id],
+              ),
+            );
+            expect(again.message).toContain(
+              'audit export handle is single use',
+            );
+            const cleared = yield* refusalOf(
+              ownerAffected(
+                `UPDATE audit_export_jobs SET handle_consumed_at = NULL WHERE id = $1`,
+                [id],
+              ),
+            );
+            expect(cleared.message).toContain(
+              'audit export handle is single use',
+            );
+          }),
+      );
+
+      it.effect(
+        'refuses to re-issue a handle on a job that already published one',
+        () =>
+          Effect.gen(function* () {
+            const id = yield* newJob(readyPayload());
+
+            const refused = yield* refusalOf(
+              ownerAffected(
+                `UPDATE audit_export_jobs SET handle_hash = $2 WHERE id = $1`,
+                [id, hex64()],
+              ),
+            );
+            expect(refused.message).toContain(
+              'audit export handle is single use',
+            );
+          }),
+      );
+    });
+
+    describe('audit_alert_outbox', () => {
+      it.effect('applies the documented defaults', () =>
+        Effect.gen(function* () {
+          const id = yield* newOutboxRow();
+
+          const rows = yield* ownerRows(
+            `SELECT attempt_count, delivered_at, failed_at, suppressed_at,
+                    last_error, created_at IS NOT NULL AS stamped
+             FROM audit_alert_outbox WHERE id = $1`,
+            [id],
+          );
+          expect(rows[0]).toEqual({
+            attempt_count: 0,
+            delivered_at: null,
+            failed_at: null,
+            suppressed_at: null,
+            last_error: null,
+            stamped: true,
+          });
+        }),
+      );
+
+      it.effect('keeps exactly one durable row per committed event', () =>
+        Effect.gen(function* () {
+          const event = yield* newEvent();
+          yield* ownerInsert('audit_alert_outbox', outboxRow(event));
+
+          const refused = yield* refusalOf(
+            ownerInsert('audit_alert_outbox', outboxRow(event)),
+          );
+          expect(refused).toMatchObject({
+            state: '23505',
+            constraint: 'audit_alert_outbox_audit_event_id_idx',
+          });
+        }),
+      );
+
+      it.effect("refuses an alert citing another team's event", () =>
+        Effect.gen(function* () {
+          const theirEvent = yield* newEvent({ team_id: TEAM_B });
+
+          const refused = yield* refusalOf(
+            ownerInsert(
+              'audit_alert_outbox',
+              outboxRow(theirEvent, { team_id: TEAM_A }),
+            ),
+          );
+          expect(refused).toMatchObject({
+            state: '23503',
+            constraint: 'audit_alert_outbox_audit_event_fk',
+          });
+          expect(
+            yield* ownerInsert(
+              'audit_alert_outbox',
+              outboxRow(theirEvent, { team_id: TEAM_B }),
+            ),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect('refuses an alert citing no event at all', () =>
+        Effect.gen(function* () {
+          const refused = yield* refusalOf(
+            ownerInsert(
+              'audit_alert_outbox',
+              outboxRow({
+                id: randomUUID(),
+                sequence: sequence(),
+                event_type: 'audit.export.started',
+                event_version: 1,
+              }),
+            ),
+          );
+          expect(refused).toMatchObject({
+            state: '23503',
+            constraint: 'audit_alert_outbox_audit_event_fk',
+          });
+        }),
+      );
+
+      it.effect.each<readonly [label: string, overrides: Row]>([
+        ['another event’s sequence', { audit_event_sequence: '999999' }],
+        ['another event type', { event_type: 'study.deleted' }],
+        ['another event version', { event_version: 2 }],
+      ])('refuses an alert copying %s', ([_label, overrides]) =>
+        Effect.gen(function* () {
+          const event = yield* newEvent();
+
+          const refused = yield* refusalOf(
+            ownerInsert('audit_alert_outbox', outboxRow(event, overrides)),
+          );
+          expect(refused).toMatchObject({
+            state: '23503',
+            constraint: 'audit_alert_outbox_audit_event_fk',
+            detail: expect.stringContaining(
+              'is not present in table "audit_events"',
+            ),
+          });
+        }),
+      );
+
+      it.effect('accepts the copy the key exists to admit', () =>
+        Effect.gen(function* () {
+          const event = yield* newEvent({
+            event_type: 'participant.erased',
+            event_version: 3,
+            category: 'participant_data',
+          });
+
+          expect(
+            yield* ownerInsert('audit_alert_outbox', outboxRow(event)),
+          ).toBe(1);
+        }),
+      );
+
+      it.effect.each<
+        readonly [label: string, overrides: Row, constraint: string]
+      >([
+        [
+          'a sequence before the first event',
+          { audit_event_sequence: '0' },
+          'audit_alert_outbox_sequence_check',
+        ],
+        [
+          'a zero event version',
+          { event_version: 0 },
+          'audit_alert_outbox_sequence_check',
+        ],
+        [
+          'a negative attempt count',
+          { attempt_count: -1 },
+          'audit_alert_outbox_sequence_check',
+        ],
+        [
+          'a blank event type',
+          { event_type: '' },
+          'audit_alert_outbox_lengths_check',
+        ],
+        [
+          'a blank policy key',
+          { alert_policy_key: '' },
+          'audit_alert_outbox_lengths_check',
+        ],
+        [
+          'an over-long last error',
+          { last_error: 'e'.repeat(1001) },
+          'audit_alert_outbox_lengths_check',
+        ],
+        [
+          'two terminal states at once',
+          { delivered_at: new Date(), suppressed_at: new Date() },
+          'audit_alert_outbox_terminal_state_check',
+        ],
+      ])('refuses %s', ([_label, overrides, constraint]) =>
+        Effect.gen(function* () {
+          const event = yield* newEvent();
+          const refused = yield* refusalOf(
+            ownerInsert('audit_alert_outbox', outboxRow(event, overrides)),
+          );
+          expect(refused.constraint).toBe(constraint);
+        }),
+      );
+    });
+
+    describe('audit_alert_link_immutable', () => {
+      it.effect.each<readonly [label: string, assignment: string]>([
+        ['the owning team', `team_id = '${TEAM_B}'`],
+        ['the event link', `audit_event_id = '${randomUUID()}'`],
+        ['the event sequence', 'audit_event_sequence = 99'],
+        ['the event type', `event_type = 'study.deleted'`],
+        ['the event version', 'event_version = 2'],
+        ['the policy key', `alert_policy_key = 'token_egress'`],
+        ['the creation stamp', 'created_at = now()'],
+      ])('refuses to rewrite %s', ([_label, assignment]) =>
+        Effect.gen(function* () {
+          const id = yield* newOutboxRow();
+
+          const refused = yield* refusalOf(
+            ownerAffected(
+              `UPDATE audit_alert_outbox SET ${assignment} WHERE id = $1`,
+              [id],
+            ),
+          );
+          expect(refused.message).toContain('audit alert link is immutable');
+        }),
+      );
+
+      it.effect('lets the worker advance delivery state', () =>
+        Effect.gen(function* () {
+          const id = yield* newOutboxRow();
+
+          const attempted = yield* maintenanceAffected(
+            `UPDATE audit_alert_outbox
+             SET attempt_count = attempt_count + 1,
+                 last_error = 'channel timeout'
+             WHERE id = $1`,
+            [id],
+          );
+          expect(attempted).toBe(1);
+
+          const delivered = yield* maintenanceAffected(
+            `UPDATE audit_alert_outbox
+             SET delivered_at = now(), last_error = NULL
+             WHERE id = $1`,
+            [id],
+          );
+          expect(delivered).toBe(1);
+        }),
+      );
+    });
+
+    describe('the event and its alert commit together', () => {
+      it.effect(
+        'leaves neither row behind when the transaction rolls back',
+        () =>
+          Effect.gen(function* () {
+            const rolledBackEvent = randomUUID();
+            const rolledBackAlert = randomUUID();
+            const rolledBackSequence = sequence();
+            const failure = new Error(
+              'command failed after enqueueing the alert',
+            );
+
+            const raised = yield* Effect.flip(
+              TenantScope.open(
+                unsafeMakeTeamAccess(TEAM_A, 'owner'),
+                Effect.gen(function* () {
+                  const { sql } = yield* Transaction;
+                  yield* sql.unsafe(
+                    `INSERT INTO audit_events (id, team_id, team_label, sequence,
+                       event_type, event_version, category, outcome, actor_kind,
+                       actor_id, actor_label, request_id, details)
+                     VALUES ($1, $2, 'Team A', $3, 'audit.export.started', 1,
+                       'data_egress', 'succeeded', 'user', 'user-1', 'Researcher',
+                       $4, '{}'::jsonb)`,
+                    [rolledBackEvent, TEAM_A, rolledBackSequence, randomUUID()],
+                  );
+                  yield* sql.unsafe(
+                    `INSERT INTO audit_alert_outbox (id, team_id, audit_event_id,
+                       audit_event_sequence, event_type, event_version, alert_policy_key)
+                     VALUES ($1, $2, $3, $4, 'audit.export.started', 1, 'bulk_export')`,
+                    [
+                      rolledBackAlert,
+                      TEAM_A,
+                      rolledBackEvent,
+                      rolledBackSequence,
+                    ],
+                  );
+                  return yield* Effect.fail(failure);
+                }),
+              ),
+            );
+            expect(raised).toBe(failure);
+
+            const survivors = yield* ownerRows(
+              `SELECT (SELECT count(*)::int FROM audit_events WHERE id = $1) AS events,
+                      (SELECT count(*)::int FROM audit_alert_outbox WHERE id = $2) AS alerts`,
+              [rolledBackEvent, rolledBackAlert],
+            );
+            expect(survivors[0]).toEqual({ events: 0, alerts: 0 });
+          }),
+      );
+
+      it.effect('keeps both rows when it commits', () =>
+        Effect.gen(function* () {
+          const eventId = randomUUID();
+          const alertId = randomUUID();
+          const eventSequence = sequence();
+
+          yield* TenantScope.open(
+            unsafeMakeTeamAccess(TEAM_A, 'owner'),
+            Effect.gen(function* () {
+              const { sql } = yield* Transaction;
+              yield* sql.unsafe(
+                `INSERT INTO audit_events (id, team_id, team_label, sequence,
+                   event_type, event_version, category, outcome, actor_kind,
+                   actor_id, actor_label, request_id, details)
+                 VALUES ($1, $2, 'Team A', $3, 'audit.export.started', 1,
+                   'data_egress', 'succeeded', 'user', 'user-1', 'Researcher',
+                   $4, '{}'::jsonb)`,
+                [eventId, TEAM_A, eventSequence, randomUUID()],
+              );
+              yield* sql.unsafe(
+                `INSERT INTO audit_alert_outbox (id, team_id, audit_event_id,
+                   audit_event_sequence, event_type, event_version, alert_policy_key)
+                 VALUES ($1, $2, $3, $4, 'audit.export.started', 1, 'bulk_export')`,
+                [alertId, TEAM_A, eventId, eventSequence],
+              );
+            }),
+          );
+
+          const survivors = yield* ownerRows(
+            `SELECT (SELECT count(*)::int FROM audit_events WHERE id = $1) AS events,
+                    (SELECT count(*)::int FROM audit_alert_outbox WHERE id = $2) AS alerts`,
+            [eventId, alertId],
+          );
+          expect(survivors[0]).toEqual({ events: 1, alerts: 1 });
+        }),
+      );
+    });
+
+    describe('the deliberate policy divergence', () => {
+      it.effect(
+        'lets maintenance reach alerts of any team but never enumerate history',
+        () =>
+          Effect.gen(function* () {
+            const mine = yield* newOutboxRow();
+            const theirs = yield* newOutboxRow({ team_id: TEAM_B });
+            const events = yield* ownerRows<{ id: string }>(
+              `SELECT e.id FROM audit_events e
+               JOIN audit_alert_outbox o ON o.audit_event_id = e.id
+               WHERE o.id = ANY($1::uuid[])`,
+              [[mine, theirs]],
+            );
+            const eventIds = events.map((row) => row.id);
+            expect(eventIds).toHaveLength(2);
+
+            const claimable = yield* maintenanceRows<{ n: number }>(
+              `SELECT count(*)::int AS n FROM audit_alert_outbox
+               WHERE id = ANY($1::uuid[])`,
+              [[mine, theirs]],
+            );
+            expect(claimable[0]).toEqual({ n: 2 });
+
+            const history = yield* maintenanceRows<{ n: number }>(
+              `SELECT count(*)::int AS n FROM audit_events WHERE id = ANY($1::uuid[])`,
+              [eventIds],
+            );
+            expect(history[0]).toEqual({ n: 0 });
+
+            const actual = yield* ownerRows<{ n: number }>(
+              `SELECT count(*)::int AS n FROM audit_events WHERE id = ANY($1::uuid[])`,
+              [eventIds],
+            );
+            expect(actual[0]).toEqual({ n: 2 });
+          }),
+      );
+
+      it.effect(
+        'still scopes the outbox to one team for the application role',
+        () =>
+          Effect.gen(function* () {
+            const mine = yield* newOutboxRow();
+            const theirs = yield* newOutboxRow({ team_id: TEAM_B });
+
+            const visible = yield* tenantRows(
+              TEAM_A,
+              `SELECT id FROM audit_alert_outbox WHERE id = ANY($1::uuid[])`,
+              [[mine, theirs]],
+            );
+            expect(visible).toEqual([{ id: mine }]);
+          }),
+      );
+    });
+
+    describe('the application role privileges', () => {
+      it.effect('may consume a download handle and change nothing else', () =>
+        Effect.gen(function* () {
+          const id = yield* newJob(readyPayload());
+
+          const consumed = yield* tenantAffected(
+            TEAM_A,
+            `UPDATE audit_export_jobs SET handle_consumed_at = now() WHERE id = $1`,
+            [id],
+          );
+          expect(consumed).toBe(1);
+
+          const lastError = yield* refusalOf(
+            tenantAffected(
+              TEAM_A,
+              `UPDATE audit_export_jobs SET last_error = 'x' WHERE id = $1`,
+              [id],
+            ),
+          );
+          expect(lastError.state).toBe('42501');
+          const status = yield* refusalOf(
+            tenantAffected(
+              TEAM_A,
+              `UPDATE audit_export_jobs SET status = 'failed' WHERE id = $1`,
+              [id],
+            ),
+          );
+          expect(status.state).toBe('42501');
+          const deleted = yield* refusalOf(
+            tenantAffected(
+              TEAM_A,
+              `DELETE FROM audit_export_jobs WHERE id = $1`,
+              [id],
+            ),
+          );
+          expect(deleted.state).toBe('42501');
+        }),
+      );
+
+      it.effect('may enqueue an alert but never advance or retract one', () =>
+        Effect.gen(function* () {
+          const event = yield* newEvent();
+          const alertId = randomUUID();
+
+          const enqueued = yield* tenantAffected(
+            TEAM_A,
+            `INSERT INTO audit_alert_outbox (id, team_id, audit_event_id,
+               audit_event_sequence, event_type, event_version, alert_policy_key)
+             VALUES ($1, $2, $3, $4, 'audit.export.started', 1, 'bulk_export')`,
+            [alertId, TEAM_A, event.id, event.sequence],
+          );
+          expect(enqueued).toBe(1);
+
+          const advanced = yield* refusalOf(
+            tenantAffected(
+              TEAM_A,
+              `UPDATE audit_alert_outbox SET delivered_at = now() WHERE id = $1`,
+              [alertId],
+            ),
+          );
+          expect(advanced.state).toBe('42501');
+          const retracted = yield* refusalOf(
+            tenantAffected(
+              TEAM_A,
+              `DELETE FROM audit_alert_outbox WHERE id = $1`,
+              [alertId],
+            ),
+          );
+          expect(retracted.state).toBe('42501');
+        }),
+      );
+    });
+  });
+});

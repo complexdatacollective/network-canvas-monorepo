@@ -1,45 +1,19 @@
 // Studio's background-job declarations (#1895): which queues exist, how each
-// retries and expires, what a job on it may carry, and what the two database
-// roles may do with the job tables.
-//
-// It lives beside rls.ts for the same reason the roles do — a queue is part of
-// the schema, installed once by apply-schema and verified by every process at
-// boot through the fingerprint — and it imports no pg-boss. pg-boss is a server
-// dependency; this package is also compiled into contexts that never run a job,
-// and the declarations are plain data either way. The server checks them
-// against pg-boss's own `Queue` type at compile time (src/jobs/queues.ts), so
-// the absence of the import costs no safety.
-import { z } from 'zod';
+// retries and expires, when the recurring ones run, and what a job on each may
+// carry.
+import { Predicate, Schema, type SchemaAST } from 'effect';
 
-import { TENANT_ROLES } from './rls.ts';
-
-/** pg-boss owns this schema outright; nothing of Studio's lives in it. */
-export const JOB_SCHEMA = 'pgboss';
-
-/**
- * pg-boss's per-queue options, mirrored rather than imported. Every field is
- * the same name and meaning pg-boss gives it; `src/jobs/queues.ts` in the
- * server fails to compile if that stops being true.
- */
 export type JobQueueOptions = {
-  policy?:
-    | 'standard'
-    | 'short'
-    | 'singleton'
-    | 'stately'
-    | 'exclusive'
-    | 'key_strict_fifo';
+  policy?: 'standard' | 'singleton';
   retryLimit?: number;
   retryDelay?: number;
   retryBackoff?: boolean;
-  /** Only meaningful with `retryBackoff`; pg-boss rejects it otherwise. */
   retryDelayMax?: number;
   expireInSeconds?: number;
   retentionSeconds?: number;
   /** `0` keeps completed jobs forever. */
   deleteAfterSeconds?: number;
   deadLetter?: string;
-  notify?: boolean;
   warningQueueSize?: number;
 };
 
@@ -49,15 +23,8 @@ export type JobQueueDeclaration = {
 };
 
 /**
- * Every queue Studio declares, in the order they must be created: a queue's
- * `deadLetter` is a foreign key to another queue's name, so a target has to
- * exist before the queue that names it. Consumers that land later (#1521,
- * #1291, #1305, #1520, #1268) add theirs here rather than creating queues of
- * their own at run time.
- *
- * `partition` is deliberately absent everywhere: a dedicated table per queue
- * only pays for itself at a volume none of these reach, and it would make a
- * queue's shape a migration rather than a row.
+ * A `deadLetter` must name another queue in this list; the server refuses the
+ * whole list at module load otherwise.
  */
 export const JOB_QUEUES = [
   {
@@ -85,17 +52,15 @@ export const JOB_QUEUES = [
       retryDelayMax: 1800,
       expireInSeconds: 60,
       deadLetter: 'invitation-delivery-dead-letter',
-      notify: true,
     },
   },
   {
     // A sign-in link is useless once it expires, so a failed send is worth two
     // quick retries and nothing more: no dead letter, and both the job and its
     // record are gone within minutes — which holds only because the worker
-    // runs pg-boss's maintenance pass every minute (src/jobs/worker.ts in the
-    // server). Deletion happens on that pass alone, so at pg-boss's own
-    // 24-hour default this row, whose payload is the magic link itself, would
-    // outlive the link by most of a day.
+    // sweeps retention every minute. Deletion happens on that sweep alone, so
+    // at a day-scale retention this row, whose payload is the magic link
+    // itself, would outlive the link by most of a day.
     name: 'sign-in-email',
     options: {
       policy: 'standard',
@@ -106,7 +71,6 @@ export const JOB_QUEUES = [
       expireInSeconds: 30,
       retentionSeconds: 600,
       deleteAfterSeconds: 60,
-      notify: true,
     },
   },
   {
@@ -145,11 +109,6 @@ export type JobSchedule = {
   tz: string;
 };
 
-/**
- * Recurring work, registered by the worker through pg-boss's own cron, which
- * coordinates across worker replicas. Hourly is well inside every retention
- * bound the sweep enforces.
- */
 export const JOB_SCHEDULES = [
   { queue: 'protocol-store-gc', cron: '0 * * * *', tz: 'UTC' },
   // Every minute, because the thing it summarises is a one-minute window: a
@@ -158,28 +117,58 @@ export const JOB_SCHEDULES = [
   { queue: 'denied-attempts-summary', cron: '* * * * *', tz: 'UTC' },
 ] as const satisfies readonly JobSchedule[];
 
+const RowId = Schema.String.check(Schema.isUUID());
+
+/**
+ * Effect 4 ships no string-shaped URL check, and a payload column has to stay a
+ * string.
+ */
+const isUrlString = Schema.makeFilter<string>(
+  (value) => (URL.canParse(value) ? undefined : 'a URL'),
+  { expected: 'a URL' },
+);
+
+const isPlainPrototype = (prototype: unknown): boolean =>
+  prototype === null ||
+  (Predicate.isObject(prototype) && Object.getPrototypeOf(prototype) === null);
+
+/**
+ * An empty `Schema.Struct` admits any non-nullish value and passes keys through,
+ * so a queue that carries nothing has to check for a plain empty object itself.
+ */
+const isEmptyObject = Schema.makeFilter<Schema.Struct<{}>['Type']>(
+  (value) =>
+    Predicate.isObject(value) &&
+    isPlainPrototype(Object.getPrototypeOf(value)) &&
+    Reflect.ownKeys(value).length === 0
+      ? undefined
+      : 'an object with no properties',
+  { expected: 'an object with no properties' },
+);
+
 /** The delivery row's id; the handler loads the address under its own role. */
-export const InvitationDeliveryJobSchema = z.strictObject({
-  deliveryId: z.uuid(),
+export const InvitationDeliveryJobSchema = Schema.Struct({
+  deliveryId: RowId,
 });
-export type InvitationDeliveryJob = z.infer<typeof InvitationDeliveryJobSchema>;
+export type InvitationDeliveryJob = typeof InvitationDeliveryJobSchema.Type;
 
 /** The documented exception to identifiers-only — see JOB_PAYLOAD_POLICY. */
-export const SignInEmailJobSchema = z.strictObject({
-  email: z.string().min(1),
-  url: z.url(),
+export const SignInEmailJobSchema = Schema.Struct({
+  email: Schema.String.check(Schema.isMinLength(1)),
+  url: Schema.String.check(isUrlString),
 });
-export type SignInEmailJob = z.infer<typeof SignInEmailJobSchema>;
+export type SignInEmailJob = typeof SignInEmailJobSchema.Type;
 
 /** The sweep visits every tenant; there is nothing to address it at. */
-export const ProtocolStoreGcJobSchema = z.strictObject({});
-export type ProtocolStoreGcJob = z.infer<typeof ProtocolStoreGcJobSchema>;
+export const ProtocolStoreGcJobSchema = Schema.Struct({}).check(isEmptyObject);
+export type ProtocolStoreGcJob = typeof ProtocolStoreGcJobSchema.Type;
 
 /** The run scans every suppressed window there is; nothing addresses it. */
-export const DeniedAttemptsSummaryJobSchema = z.strictObject({});
-export type DeniedAttemptsSummaryJob = z.infer<
-  typeof DeniedAttemptsSummaryJobSchema
->;
+export const DeniedAttemptsSummaryJobSchema = Schema.Struct({}).check(
+  isEmptyObject,
+);
+export type DeniedAttemptsSummaryJob =
+  typeof DeniedAttemptsSummaryJobSchema.Type;
 
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
@@ -189,11 +178,18 @@ export const JOB_PAYLOAD_SCHEMAS = {
   'sign-in-email': SignInEmailJobSchema,
   'protocol-store-gc': ProtocolStoreGcJobSchema,
   'denied-attempts-summary': DeniedAttemptsSummaryJobSchema,
-} as const satisfies Record<JobQueueName, z.ZodType>;
+} as const satisfies Record<JobQueueName, Schema.Struct<Schema.Struct.Fields>>;
 
-export type JobPayload<Queue extends JobQueueName> = z.infer<
-  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]
->;
+export type JobPayload<Queue extends JobQueueName> =
+  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Type'];
+
+/**
+ * `Schema.Struct` strips an undeclared key by default; a field the policy forbids
+ * must be refused, not silently dropped.
+ */
+export const JOB_PAYLOAD_PARSE_OPTIONS = {
+  onExcessProperty: 'error',
+} as const satisfies SchemaAST.ParseOptions;
 
 export type JobPayloadPolicy =
   | { kind: 'identifiers' }
@@ -220,39 +216,3 @@ export const JOB_PAYLOAD_POLICY = {
   'protocol-store-gc': { kind: 'identifiers' },
   'denied-attempts-summary': { kind: 'identifiers' },
 } as const satisfies Record<JobQueueName, JobPayloadPolicy>;
-
-// Interpolated into DDL, so it is checked rather than trusted: the scratch
-// schemas the suites provision compose this name themselves.
-const SCHEMA_NAME = /^[a-z_][a-z0-9_]*$/;
-
-/**
- * What the two roles may do inside pg-boss's schema.
- *
- * The application may create a job and learn its id, and nothing more — it
- * cannot read a payload, retry, cancel or delete one, which keeps every team's
- * queued work invisible to the role that serves requests. The worker runs as
- * maintenance, which owns the schema's use outright because pg-boss's fetch,
- * completion and supervision paths write to every table in it.
- *
- * The column list on `job_common` is the two columns the insert reads back
- * rather than writes: `id` for its RETURNING, and `start_after` for the notify
- * clause a notify-enabled queue appends. Nothing else needs a SELECT — a
- * column a statement only writes is covered by the INSERT above, and ON
- * CONFLICT arbitration reads the index rather than the column. Hashed into the
- * schema fingerprint, so widening this is a schema change.
- */
-export function jobGrantsSql(schema: string): string {
-  if (!SCHEMA_NAME.test(schema)) {
-    throw new Error(`invalid job schema name: ${JSON.stringify(schema)}`);
-  }
-  const { app, maintenance } = TENANT_ROLES;
-  return [
-    `GRANT USAGE ON SCHEMA ${schema} TO ${app}, ${maintenance};`,
-    `GRANT SELECT ON ${schema}.queue, ${schema}.version TO ${app};`,
-    `GRANT INSERT ON ${schema}.job, ${schema}.job_common TO ${app};`,
-    `GRANT SELECT (id, start_after) ON ${schema}.job_common TO ${app};`,
-    `GRANT ALL ON ALL TABLES IN SCHEMA ${schema} TO ${maintenance};`,
-    `GRANT ALL ON ALL SEQUENCES IN SCHEMA ${schema} TO ${maintenance};`,
-    `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA ${schema} TO ${maintenance};`,
-  ].join('\n');
-}

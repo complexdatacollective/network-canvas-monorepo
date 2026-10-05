@@ -46,6 +46,14 @@ Use TLS. `sslmode=require` encrypts the connection; `sslmode=verify-full`
 also authenticates the server, and is what you want wherever the database is
 not on a private network you control.
 
+Studio's database client verifies the server's certificate and hostname
+whenever TLS is on, whatever the `sslmode` says, against the trust store Node
+uses. It does not read `sslrootcert` from the URL, so a database whose
+certificate comes from a private certificate authority is refused until that
+authority is trusted: put its certificate in the image's trust store, or point
+`NODE_EXTRA_CA_CERTS` at it in the `api`, `worker` and `migrate` services.
+`sslmode=prefer` and `sslmode=allow` are refused at boot.
+
 Then delete the `postgres` service block and the `postgres-data` volume, and
 remove the `depends_on` entries naming `postgres` from `api`, `worker` and
 `migrate`.
@@ -257,8 +265,8 @@ server {
 ```
 
 Check it the way the stack is checked: `/readyz` answers 200 with JSON, `/` is
-the client shell, `/rpc` is a JSON 404 from the API, and with `api` stopped
-`/rpc/status` is the maintenance page with 503 while `/readyz` is the proxy's
+the client shell, `GET /rpc` is a JSON 404 from the API, and with `api` stopped
+`/rpc` is the maintenance page with 503 while `/readyz` is the proxy's
 own gateway error — 502, or 504 where the address stopped answering — and never
 the page.
 

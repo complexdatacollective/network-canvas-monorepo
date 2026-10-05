@@ -73,7 +73,10 @@ function job(name) {
 }
 
 test('full CI runs on PRs to main while merge groups request only quality', () => {
-  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
+  assert.match(
+    workflow,
+    /^  pull_request:\n(?: {4}#.*\n)*    branches: \[main\]$/m,
+  );
   assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
 
   for (const jobName of [
@@ -599,10 +602,7 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm check:changesets/);
   assert.match(support, /pnpm check:compat-protocols/);
   assert.match(support, /pnpm check:mapbox-tokens/);
-  assert.match(
-    support,
-    /pnpm --filter @codaco\/studio-server check:schema-docs/,
-  );
+  assert.match(support, /pnpm --filter @codaco\/studio-api check:schema-docs/);
   // Through turbo, so the guard suite is cached like every other test task.
   assert.match(support, /turbo run \/\/#test:scripts/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);

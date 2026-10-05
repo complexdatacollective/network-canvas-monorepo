@@ -38,7 +38,7 @@ function ResourcePreviewHost({
   );
 
   return (
-    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
       <ResourceClientProvider>
         <main className="mx-auto max-w-2xl p-6">
           <ResourcePreview resourceId={resourceId} kind={kind} name={name} />

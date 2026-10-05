@@ -1,6 +1,6 @@
 ---
-'@codaco/studio-client': major
-'@codaco/studio-server': major
+'@codaco/studio-web': major
+'@codaco/studio-api': major
 ---
 
 Names in a protocol can now be written in any language. In the protocol

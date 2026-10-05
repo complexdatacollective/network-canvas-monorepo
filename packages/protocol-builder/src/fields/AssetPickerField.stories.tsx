@@ -218,7 +218,7 @@ function ResourcePickerHost({
 
   return (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <ResourceClientProvider>
           <StageEditSession target={{ sectionId: host.sectionId }}>
             <main className="mx-auto max-w-6xl p-6">

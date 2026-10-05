@@ -23,8 +23,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// The only combobox on the page; its accessible name follows the language.
-const trigger = () => screen.getByRole('combobox');
+// The search box in the open popover is a combobox too; the trigger is the
+// one outside it. Its accessible name follows the language.
+const trigger = () => {
+  const element = screen
+    .getAllByRole('combobox')
+    .find((combobox) => !combobox.closest('[role="dialog"]'));
+  if (!element) throw new Error('no switcher trigger');
+  return element;
+};
 
 const open = async () => {
   fireEvent.click(trigger());

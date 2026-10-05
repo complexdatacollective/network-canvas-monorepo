@@ -2611,18 +2611,27 @@ export class SyntheticInterview {
    * Insert a pre-defined node directly into the network. Use this when the
    * caller needs full control over node uid and attributes (e.g. seeding a
    * pedigree for NarrativePedigree stories where node identity matters).
+   *
+   * `promptIndices` names the prompts of `stageId` that nominated the node. A
+   * name generator lists only the nodes nominated on its current prompt, so a
+   * node seeded without them exists in the network but is absent from the
+   * generator that "created" it.
    */
   addManualNode(
     stageId: string,
     nodeTypeId: string,
     uid: string,
     attributes: Record<string, unknown>,
+    options?: { promptIndices?: number[] },
   ): void {
     this.nodes.push({
       uid,
       type: nodeTypeId,
       stageId,
       promptIDs: [],
+      ...(options?.promptIndices
+        ? { promptIndices: options.promptIndices }
+        : {}),
       explicitAttributes: attributes,
       manual: true,
     });

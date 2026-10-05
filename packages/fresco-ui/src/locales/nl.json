@@ -225,6 +225,7 @@
   "frescoUi.storageRiskBanner.lowRisk": "Laag risico op gegevensverlies",
   "frescoUi.storageRiskBanner.mediumRisk": "Gemiddeld risico op gegevensverlies",
   "frescoUi.timeAgo.justNow": "zojuist",
+  "frescoUi.toast.moreNotifications": "{count, plural, one {Nog # melding} other {Nog # meldingen}}",
   "frescoUi.toast.notifications": "Meldingen",
   "frescoUi.validation.differentFromError": "Je antwoord moet verschillen van je eerdere antwoord.",
   "frescoUi.validation.differentFromHint": "Moet verschillen van je eerdere antwoord.",

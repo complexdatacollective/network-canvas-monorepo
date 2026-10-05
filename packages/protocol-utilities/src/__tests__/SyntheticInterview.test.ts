@@ -651,6 +651,29 @@ describe('SyntheticInterview', () => {
 
       expect(() => si.getNetwork()).toThrow(/prompt index 5/);
     });
+
+    it('nominates a manual node on the prompts it names', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const stage = si.addStage('NameGenerator', {
+        subject: { entity: 'node', type: nt.id },
+      });
+      stage.addPrompt({ text: 'Prompt 1' });
+      stage.addPrompt({ text: 'Prompt 2' });
+      si.addManualNode(stage.id, nt.id, 'seeded', {}, { promptIndices: [1] });
+      si.addManualNode(stage.id, nt.id, 'unprompted', {});
+
+      const protocol = si.getProtocol();
+      const stageConfig = protocol.stages[0] as { prompts: { id: string }[] };
+      const nodes = new Map(
+        si.getNetwork().nodes.map((n) => [n[entityPrimaryKeyProperty], n]),
+      );
+
+      expect(nodes.get('seeded')?.promptIDs).toEqual([
+        stageConfig.prompts[1]!.id,
+      ]);
+      expect(nodes.get('unprompted')?.promptIDs).toEqual([]);
+    });
   });
 
   describe('NameGeneratorQuickAdd', () => {

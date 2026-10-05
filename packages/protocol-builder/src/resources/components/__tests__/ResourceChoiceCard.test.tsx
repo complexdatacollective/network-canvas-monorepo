@@ -2,8 +2,7 @@ import { isInaccessible, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { ResourceDescriptor } from '../../types.ts';
 import ResourceChoiceCard from '../ResourceChoiceCard.tsx';
 import { flushPendingWork } from './asyncControls.ts';
@@ -11,13 +10,13 @@ import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
 import { createResourceHost, withResourceProcedures } from './resourceHost.ts';
 
 async function stage(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   contentKind: 'image' | 'video',
   name: string,
 ): Promise<ResourceDescriptor> {
   const contentType = contentKind === 'image' ? 'image/png' : 'video/mp4';
-  const staged = await client.resources.stage({
+  const staged = await adapter.rpcCall('ResourcesStage', {
     protocolId,
     editId: TEST_EDIT_ID,
     requestId: `request-${name}`,
@@ -27,7 +26,7 @@ async function stage(
       name,
       source: name,
       contentType,
-      bytes: new Blob([name], { type: contentType }),
+      bytes: new Uint8Array(new TextEncoder().encode(name)),
     },
   });
   if (staged.status !== 'ok') throw new Error(`could not stage ${name}`);
@@ -35,13 +34,13 @@ async function stage(
 }
 
 function renderCard(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   descriptor: ResourceDescriptor,
   onSelect = vi.fn(),
 ) {
   renderInResourceContext(
-    client,
+    adapter,
     protocolId,
     <ResourceChoiceCard
       descriptor={descriptor}
@@ -74,10 +73,10 @@ function expectOnlyNamedBy(control: HTMLElement, name: string) {
 
 describe('ResourceChoiceCard', () => {
   it('is chosen by its name, described by its badges', async () => {
-    const { client, protocolId } = createResourceHost();
-    const descriptor = await stage(client, protocolId, 'image', 'skyline.png');
+    const { adapter, protocolId } = createResourceHost();
+    const descriptor = await stage(adapter, protocolId, 'image', 'skyline.png');
 
-    const onSelect = renderCard(client, protocolId, descriptor);
+    const onSelect = renderCard(adapter, protocolId, descriptor);
 
     await waitFor(() => expect(document.querySelector('img')).not.toBeNull());
     expect(document.querySelector('img')).toHaveAttribute('alt', '');
@@ -92,10 +91,10 @@ describe('ResourceChoiceCard', () => {
   });
 
   it('shows a video as a picture, not a player', async () => {
-    const { client, protocolId } = createResourceHost();
-    const descriptor = await stage(client, protocolId, 'video', 'walk.mp4');
+    const { adapter, protocolId } = createResourceHost();
+    const descriptor = await stage(adapter, protocolId, 'video', 'walk.mp4');
 
-    renderCard(client, protocolId, descriptor);
+    renderCard(adapter, protocolId, descriptor);
 
     await waitFor(() => expect(document.querySelector('video')).not.toBeNull());
     const video = document.querySelector('video');
@@ -108,13 +107,13 @@ describe('ResourceChoiceCard', () => {
   it('leaves the type mark, not a retry, when the preview fails', async () => {
     const host = createResourceHost();
     const descriptor = await stage(
-      host.client,
+      host.adapter,
       host.protocolId,
       'image',
       'skyline.png',
     );
     let asked = 0;
-    const client = withResourceProcedures(host.client, {
+    const adapter = withResourceProcedures(host, {
       preview: async () => {
         asked += 1;
         return {
@@ -128,7 +127,7 @@ describe('ResourceChoiceCard', () => {
       },
     });
 
-    renderCard(client, host.protocolId, descriptor);
+    renderCard(adapter, host.protocolId, descriptor);
 
     await waitFor(() => expect(asked).toBeGreaterThan(0));
     await flushPendingWork();

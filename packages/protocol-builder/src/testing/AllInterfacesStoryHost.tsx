@@ -74,7 +74,7 @@ export function AllInterfacesStoryHost() {
 
   return (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
           <nav aria-label="Interfaces">
             <ul className="flex list-none flex-wrap gap-2 p-0">

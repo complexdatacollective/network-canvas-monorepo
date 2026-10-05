@@ -74,16 +74,14 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/effect-query": "workspace:^",
     "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-builder-core": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
-    "@orpc/client": "catalog:",
-    "@orpc/contract": "catalog:",
-    "@orpc/server": "catalog:",
-    "@orpc/tanstack-query": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "effect": "catalog:",
     "es-toolkit": "catalog:",
     "lucide-react": "catalog:",
     "mapbox-gl": "^3.32.0",
@@ -113,7 +111,6 @@
     "@testing-library/user-event": "^14.6.7",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@types/ws": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
@@ -127,8 +124,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:",
-    "ws": "catalog:"
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@codaco/app-i18n": "workspace:^",

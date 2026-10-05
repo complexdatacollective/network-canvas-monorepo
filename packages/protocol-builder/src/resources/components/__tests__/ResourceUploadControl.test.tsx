@@ -4,7 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ResourceUploadControl from '../ResourceUploadControl.tsx';
 import { renderInResourceContext } from './resourceContext.tsx';
-import { createResourceHost, withResourceProcedures } from './resourceHost.ts';
+import {
+  createResourceHost,
+  withResourceProcedures,
+  type ResourceProcedures,
+} from './resourceHost.ts';
 
 const CHOOSE_FILE = 'Choose a file from your computer';
 const BELL = String.fromCharCode(0x7);
@@ -13,10 +17,12 @@ describe('ResourceUploadControl', () => {
   const chooseRoster = async (contents: string, name: string) => {
     const user = userEvent.setup();
     const host = createResourceHost();
-    const stage = vi.fn(host.client.resources.stage);
+    const stage = vi.fn<NonNullable<ResourceProcedures['stage']>>((input) =>
+      host.adapter.rpcCall('ResourcesStage', input),
+    );
     const onStaged = vi.fn();
     renderInResourceContext(
-      withResourceProcedures(host.client, { stage }),
+      withResourceProcedures(host, { stage }),
       host.protocolId,
       <ResourceUploadControl kind="network" onStaged={onStaged} />,
     );
@@ -28,10 +34,10 @@ describe('ResourceUploadControl', () => {
   };
 
   it('does not look pressable while its input is disabled', async () => {
-    const { client, protocolId } = createResourceHost();
+    const { adapter, protocolId } = createResourceHost();
 
     renderInResourceContext(
-      client,
+      adapter,
       protocolId,
       <ResourceUploadControl kind="image" onStaged={vi.fn()} disabled />,
     );
@@ -107,7 +113,7 @@ describe('ResourceUploadControl', () => {
       }));
       const onStaged = vi.fn();
       renderInResourceContext(
-        withResourceProcedures(host.client, { stage }),
+        withResourceProcedures(host, { stage }),
         host.protocolId,
         <ResourceUploadControl kind="network" onStaged={onStaged} />,
       );

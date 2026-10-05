@@ -1,11 +1,36 @@
 import { createHash } from 'node:crypto';
 
-import { getEventMeta, safe } from '@orpc/client';
-import { createRouterClient } from '@orpc/server';
 import { configureStore } from '@reduxjs/toolkit';
+import {
+  Cause,
+  Context,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  ManagedRuntime,
+  Option,
+  Stream,
+} from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import { makeRpcAdapter } from '@codaco/effect-query/adapter';
+import type { RpcAdapter } from '@codaco/effect-query/types';
+import {
+  ProtocolBuilderGroup,
+  type ProtocolBuilderClient,
+  type ProtocolBuilderRpcs,
+} from '@codaco/protocol-builder-core/contract';
+import {
+  InvalidShape,
+  NotLockHolder,
+  PromotionFailed,
+  ProtocolNotFound,
+  ReferencesRemain,
+  SectionExists,
+  SectionNotFound,
+  SectionsLocked,
+} from '@codaco/protocol-builder-core/contract/errors';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import {
   CurrentProtocolSchema,
@@ -20,11 +45,13 @@ import { rootReducer } from '~/ducks/modules/root';
 import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from '../architectStore.ts';
-import {
-  createArchitectClient,
-  createArchitectRouter,
-} from '../createArchitectRouter.ts';
+import { createArchitectClient } from '../client.ts';
+import { ArchitectHandlers } from '../handlers.ts';
+import { makeInProcessClient } from '../inProcessClient.ts';
+import { ProtocolRevisions } from '../protocolRevisions.ts';
 import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
+import { ArchitectHostClient } from '../runtime.ts';
+import { ArchitectHostSession } from '../session.ts';
 
 /**
  * The bytes an import wrote, standing in for Architect's IndexedDB asset
@@ -62,10 +89,34 @@ const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
+type TestClient = Readonly<{
+  call: RpcAdapter<ProtocolBuilderRpcs>['rpcCall'];
+  runtime: ManagedRuntime.ManagedRuntime<ArchitectHostClient, never>;
+}>;
+
 type OpenProtocol = Readonly<{
   store: ArchitectStore;
-  client: ProtocolBuilderClient;
+  client: TestClient;
 }>;
+
+const runtimes: { dispose: () => Promise<void> }[] = [];
+
+const clientOf = (store: ArchitectStore): TestClient => {
+  const { adapter, runtime } = createArchitectClient(store, OTHER_TAB);
+  runtimes.push(runtime);
+  return { call: adapter.rpcCall, runtime };
+};
+
+async function safe(
+  promise: Promise<unknown>,
+): Promise<Readonly<{ error: unknown; isSuccess: boolean }>> {
+  try {
+    await promise;
+    return { error: undefined, isSuccess: true };
+  } catch (error) {
+    return { error, isSuccess: false };
+  }
+}
 
 const openProtocol = (
   options: Readonly<{ withEgo?: boolean }> = {},
@@ -81,15 +132,15 @@ const openProtocol = (
       options.withEgo === false ? { ...protocol, codebook } : protocol,
     ),
   );
-  return { store, client: createArchitectClient(store, OTHER_TAB) };
+  return { store, client: clientOf(store) };
 };
 
 /** A file imported through the resource lifecycle, as an open edit's own. */
 async function importResource(
-  client: ProtocolBuilderClient,
+  client: TestClient,
   editId: string = EDIT,
 ): Promise<string> {
-  const staged = await client.resources.stage({
+  const staged = await client.call('ResourcesStage', {
     protocolId: PROTOCOL_ID,
     editId,
     requestId: 'import-1',
@@ -99,7 +150,7 @@ async function importResource(
       name: 'A photograph',
       source: 'photo.png',
       contentType: 'image/png',
-      bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      bytes: new Uint8Array([1, 2, 3]),
     },
   });
   if (staged.status !== 'ok') throw new Error('staging failed');
@@ -134,46 +185,41 @@ async function waitFor(
 type Seen = Readonly<{ event: ProtocolEvent; cursor: string | undefined }>;
 
 /**
- * A live `watchProtocol` consumer.
+ * A live `WatchProtocol` consumer.
  *
  * Waits for the presence event the host publishes when a stream attaches, so
  * a write made after `open` resolves cannot land in the gap before the
  * generator has subscribed.
  */
 async function open(
-  client: ProtocolBuilderClient,
+  client: TestClient,
   since?: string,
-  /** What a resumed iterator carries: the cursor this connection reached. */
-  lastEventId?: string,
 ): Promise<Readonly<{ seen: Seen[]; close: () => Promise<void> }>> {
   const seen: Seen[] = [];
-  const controller = new AbortController();
-  const events = await client.watchProtocol(
-    { protocolId: PROTOCOL_ID, ...(since === undefined ? {} : { since }) },
-    {
-      signal: controller.signal,
-      ...(lastEventId === undefined ? {} : { lastEventId }),
-    },
+  const fiber = client.runtime.runFork(
+    Effect.flatMap(ArchitectHostClient, (host) =>
+      Stream.runForEach(
+        host('WatchProtocol', {
+          protocolId: PROTOCOL_ID,
+          ...(since === undefined ? {} : { since }),
+        }),
+        (event) =>
+          Effect.sync(() => {
+            seen.push({
+              event,
+              cursor: event.type === 'presence' ? undefined : event.cursor,
+            });
+          }),
+      ),
+    ),
   );
-  const draining = (async () => {
-    try {
-      for await (const event of events) {
-        seen.push({ event, cursor: getEventMeta(event)?.id });
-      }
-    } catch {
-      // The abort below ends the stream; nothing else can fail it here.
-    }
-  })();
   await waitFor(
     () => seen.some((entry) => entry.event.type === 'presence'),
     'the stream to attach',
   );
   return {
     seen,
-    close: async () => {
-      controller.abort();
-      await draining;
-    },
+    close: () => Effect.runPromise(Fiber.interrupt(fiber)),
   };
 }
 
@@ -190,14 +236,11 @@ const streams: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   for (const close of streams.splice(0)) await close();
+  for (const runtime of runtimes.splice(0)) await runtime.dispose();
 });
 
-const openStream = async (
-  client: ProtocolBuilderClient,
-  since?: string,
-  lastEventId?: string,
-) => {
-  const stream = await open(client, since, lastEventId);
+const openStream = async (client: TestClient, since?: string) => {
+  const stream = await open(client, since);
   streams.push(stream.close);
   return stream;
 };
@@ -207,11 +250,11 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const stream = await openStream(client);
 
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const { revision } = await client.submit({
+    const { revision } = await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -233,13 +276,13 @@ describe("Architect's in-process protocol-builder host", () => {
 
   it('refuses a submit from an editor that never took the lock', async () => {
     const { store, client } = openProtocol();
-    const before = await client.getSection({
+    const before = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      client.submit({
+    const { error, isSuccess } = await safe(
+      client.call('Submit', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
@@ -249,9 +292,9 @@ describe("Architect's in-process protocol-builder host", () => {
     );
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
+    expect(error).toBeInstanceOf(NotLockHolder);
     expect(stageLabel(store, 'information-1')).toBe('Information');
-    const after = await client.getSection({
+    const after = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
@@ -260,13 +303,13 @@ describe("Architect's in-process protocol-builder host", () => {
 
   it('registers a created stage in the stage index at the same revision', async () => {
     const { store, client } = openProtocol();
-    const template = await client.getSection({
+    const template = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
     const { id: _id, ...withoutId } = template.document;
 
-    const created = await client.create({
+    const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
@@ -277,11 +320,11 @@ describe("Architect's in-process protocol-builder host", () => {
     const ref = parseSectionId(created.sectionId);
     expect(ref.kind).toBe('stage');
     const stageId = ref.kind === 'stage' ? ref.stageId : '';
-    const order = await client.getSection({
+    const order = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: STAGE_ORDER_SECTION,
     });
-    const stage = await client.getSection({
+    const stage = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: created.sectionId,
     });
@@ -299,11 +342,11 @@ describe("Architect's in-process protocol-builder host", () => {
     const { client } = openProtocol();
     const first = await openStream(client);
 
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    await client.submit({
+    await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -318,11 +361,11 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(cursor).toBeDefined();
     await first.close();
 
-    const second = await client.acquireLock({
+    const second = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: EGO_FORM,
     });
-    await client.submit({
+    await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: EGO_FORM,
@@ -339,13 +382,9 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(replayed.map((entry) => entry.event.sectionId)).toEqual([EGO_FORM]);
     expect(replayed[0]?.event.document?.label).toBe('After the drop');
 
-    // A transport resuming a dropped iterator re-invokes it with the same
-    // input and the cursor this connection actually reached. Starting from the
-    // input would replay the whole tail again, on every reconnect, so the
-    // resume reads whichever of the two is further on.
     const reached = replayed[0]?.cursor;
     expect(reached).toBeDefined();
-    const again = await openStream(client, cursor, reached);
+    const again = await openStream(client, reached);
     expect(revisionsOf(again.seen)).toEqual([]);
   });
 
@@ -353,11 +392,11 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     expect(undoDepth(store)).toBe(0);
 
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    await client.submit({
+    await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -367,7 +406,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(undoDepth(store)).toBe(1);
 
     const { id: _id, ...withoutId } = held.document;
-    await client.create({
+    await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
@@ -386,12 +425,12 @@ describe("Architect's in-process protocol-builder host", () => {
 
   it('writes a codebook entity type whole, and refactors an unused variable out of it', async () => {
     const { store, client } = openProtocol();
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: PERSON,
     });
     const committed = getProtocol(store.getState())?.codebook.node?.person;
-    await client.submit({
+    await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: PERSON,
@@ -406,7 +445,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     expect(personVariables(store).spare).toBeDefined();
 
-    const result = await client.refactor.deleteVariable({
+    const result = await client.call('RefactorDeleteVariable', {
       protocolId: PROTOCOL_ID,
       subject: { entity: 'node', type: 'person' },
       variableId: 'spare',
@@ -426,17 +465,17 @@ describe("Architect's in-process protocol-builder host", () => {
   it('refuses to delete a referenced codebook variable, naming what still uses it', async () => {
     const { store, client } = openProtocol();
 
-    const { definedError } = await safe(
-      client.refactor.deleteVariable({
+    const { error } = await safe(
+      client.call('RefactorDeleteVariable', {
         protocolId: PROTOCOL_ID,
         subject: { entity: 'node', type: 'person' },
         variableId: 'name',
       }),
     );
 
-    expect(definedError?.code).toBe('REFERENCES_REMAIN');
-    if (definedError?.code !== 'REFERENCES_REMAIN') return;
-    const { remaining } = definedError.data;
+    expect(error).toBeInstanceOf(ReferencesRemain);
+    if (!(error instanceof ReferencesRemain)) return;
+    const { remaining } = error;
     expect(remaining.map((entry) => entry.sectionId)).toContain(
       sectionId({ kind: 'stage', stageId: 'name-generator-1' }),
     );
@@ -446,26 +485,48 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(personVariables(store).name).toBeDefined();
   });
 
-  /**
-   * The lock table and the revision log belong to the router, not to a client
-   * over it — so an open protocol takes one router, however many clients read
-   * it, and two routers over one store would each grant the same lock.
-   */
-  it('holds the lock table on the router rather than on a client', async () => {
+  it('holds the lock table on the handlers rather than on a client', async () => {
     const store = configureStore({ reducer: rootReducer });
     store.dispatch(setActiveProtocolId(PROTOCOL_ID));
     store.dispatch(
       setActiveProtocol(CurrentProtocolSchema.parse(allInterfaces)),
     );
-    const router = createArchitectRouter(store, OTHER_TAB);
-    const reader: ProtocolBuilderClient = createRouterClient(router);
-    const writer: ProtocolBuilderClient = createRouterClient(router);
+    class Reader extends Context.Service<Reader, ProtocolBuilderClient>()(
+      'test/Reader',
+    ) {}
+    class Writer extends Context.Service<Writer, ProtocolBuilderClient>()(
+      'test/Writer',
+    ) {}
+    const runtime = ManagedRuntime.make(
+      Layer.mergeAll(
+        Layer.effect(Reader)(makeInProcessClient(ProtocolBuilderGroup)),
+        Layer.effect(Writer)(makeInProcessClient(ProtocolBuilderGroup)),
+      ).pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            ArchitectHandlers(store, OTHER_TAB),
+            ArchitectHostSession,
+          ),
+        ),
+      ),
+    );
+    runtimes.push(runtime);
+    const reading: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
+      runtime,
+      client: Reader,
+    });
+    const writing: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
+      runtime,
+      client: Writer,
+    });
+    const reader = { call: reading.rpcCall };
+    const writer = { call: writing.rpcCall };
 
-    const held = await reader.acquireLock({
+    const held = await reader.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    await writer.submit({
+    await writer.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -476,9 +537,9 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageLabel(store, 'information-1')).toBe(
       'Written by the second client',
     );
-    const separate = createArchitectClient(store, OTHER_TAB);
-    const { definedError } = await safe(
-      separate.submit({
+    const separate = clientOf(store);
+    const { error } = await safe(
+      separate.call('Submit', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: EGO_FORM,
@@ -486,7 +547,7 @@ describe("Architect's in-process protocol-builder host", () => {
         revision: held.revision,
       }),
     );
-    expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
+    expect(error).toBeInstanceOf(NotLockHolder);
   });
 
   /**
@@ -498,7 +559,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const before = { ...getAssetManifest(store.getState()) };
 
-    const staged = await client.resources.stage({
+    const staged = await client.call('ResourcesStage', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       requestId: 'import-1',
@@ -508,7 +569,7 @@ describe("Architect's in-process protocol-builder host", () => {
         name: 'A photograph',
         source: 'photo.png',
         contentType: 'image/png',
-        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+        bytes: new Uint8Array([1, 2, 3]),
       },
     });
 
@@ -521,7 +582,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(getAssetManifest(store.getState())[id]).toBeDefined();
     expect(storedAssets.has(id)).toBe(true);
 
-    const discarded = await client.resources.discard({
+    const discarded = await client.call('ResourcesDiscard', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
     });
@@ -545,22 +606,22 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
 
-    const listed = await client.resources.list({
+    const listed = await client.call('ResourcesList', {
       protocolId: PROTOCOL_ID,
       editId: OTHER_EDIT,
     });
-    const inspected = await client.resources.inspect({
+    const inspected = await client.call('ResourcesInspect', {
       protocolId: PROTOCOL_ID,
       editId: OTHER_EDIT,
       resourceId: id,
     });
-    const discarded = await client.resources.discard({
+    const discarded = await client.call('ResourcesDiscard', {
       protocolId: PROTOCOL_ID,
       editId: OTHER_EDIT,
       resourceId: id,
     });
     // The other edit's own cancel, which drops everything IT imported.
-    await client.resources.discard({
+    await client.call('ResourcesDiscard', {
       protocolId: PROTOCOL_ID,
       editId: OTHER_EDIT,
     });
@@ -574,7 +635,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(discarded).toMatchObject({ status: 'failed' });
     // Still in the protocol, and still the importing edit's to take back.
     expect(getAssetManifest(store.getState())[id]).toBeDefined();
-    const mine = await client.resources.list({
+    const mine = await client.call('ResourcesList', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       status: 'staged',
@@ -586,13 +647,13 @@ describe("Architect's in-process protocol-builder host", () => {
   it('refuses a promotion naming a resource another edit imported', async () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      client.submit({
+    const { error, isSuccess } = await safe(
+      client.call('Submit', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
@@ -606,13 +667,16 @@ describe("Architect's in-process protocol-builder host", () => {
     // saving over a stage editor must not commit what the editor imported and
     // has not saved.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('PROMOTION_FAILED');
-    expect(definedError?.data).toMatchObject({
+    expect(error).toBeInstanceOf(PromotionFailed);
+    expect(error).toMatchObject({
       failure: { reason: 'not-found', resourceId: id },
     });
     expect(stageLabel(store, 'information-1')).toBe('Information');
     // And the file is still the importing edit's to take back.
-    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
+    await client.call('ResourcesDiscard', {
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+    });
     expect(getAssetManifest(store.getState())[id]).toBeUndefined();
   });
 
@@ -620,7 +684,9 @@ describe("Architect's in-process protocol-builder host", () => {
     const { client } = openProtocol();
     const id = await importResource(client);
 
-    const listed = await client.resources.list({ protocolId: PROTOCOL_ID });
+    const listed = await client.call('ResourcesList', {
+      protocolId: PROTOCOL_ID,
+    });
 
     // A caller that names no edit is asking what the protocol holds, and an
     // import nobody has saved yet is not part of it — however committed the
@@ -649,9 +715,11 @@ describe("Architect's in-process protocol-builder host", () => {
     store.dispatch(setActiveProtocolId('another-protocol'));
 
     const refused = await Promise.all([
-      safe(client.resources.list({ protocolId: PROTOCOL_ID, editId: EDIT })),
       safe(
-        client.resources.stage({
+        client.call('ResourcesList', { protocolId: PROTOCOL_ID, editId: EDIT }),
+      ),
+      safe(
+        client.call('ResourcesStage', {
           protocolId: PROTOCOL_ID,
           editId: EDIT,
           requestId: 'import-after-switch',
@@ -661,20 +729,25 @@ describe("Architect's in-process protocol-builder host", () => {
             name: 'A second photograph',
             source: 'other.png',
             contentType: 'image/png',
-            bytes: new Blob([new Uint8Array([4, 5, 6])], { type: 'image/png' }),
+            bytes: new Uint8Array([4, 5, 6]),
           },
         }),
       ),
-      safe(client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT })),
       safe(
-        client.resources.inspect({
+        client.call('ResourcesDiscard', {
+          protocolId: PROTOCOL_ID,
+          editId: EDIT,
+        }),
+      ),
+      safe(
+        client.call('ResourcesInspect', {
           protocolId: PROTOCOL_ID,
           editId: EDIT,
           resourceId: id,
         }),
       ),
       safe(
-        client.resources.preview({
+        client.call('ResourcesPreview', {
           protocolId: PROTOCOL_ID,
           editId: EDIT,
           resourceId: id,
@@ -682,13 +755,9 @@ describe("Architect's in-process protocol-builder host", () => {
       ),
     ]);
 
-    expect(refused.map((outcome) => outcome.definedError?.code)).toEqual([
-      'PROTOCOL_NOT_FOUND',
-      'PROTOCOL_NOT_FOUND',
-      'PROTOCOL_NOT_FOUND',
-      'PROTOCOL_NOT_FOUND',
-      'PROTOCOL_NOT_FOUND',
-    ]);
+    expect(
+      refused.map((outcome) => outcome.error instanceof ProtocolNotFound),
+    ).toEqual([true, true, true, true, true]);
     // Neither the import nor the discard reached the protocol that is open
     // now: the manifest is exactly what the refused calls found.
     expect(getAssetManifest(store.getState())).toEqual(before);
@@ -703,7 +772,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
-    const staged = await client.resources.stage({
+    const staged = await client.call('ResourcesStage', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       requestId: 'hashed-import',
@@ -713,7 +782,7 @@ describe("Architect's in-process protocol-builder host", () => {
         name: 'Nook',
         source: 'nook.png',
         contentType: 'image/png',
-        bytes: new Blob([bytes], { type: 'image/png' }),
+        bytes,
       },
     });
 
@@ -728,7 +797,7 @@ describe("Architect's in-process protocol-builder host", () => {
       name: 'Nook',
       source,
     });
-    const listed = await client.resources.list({
+    const listed = await client.call('ResourcesList', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       status: 'staged',
@@ -739,11 +808,11 @@ describe("Architect's in-process protocol-builder host", () => {
       expect.objectContaining({ id, name: 'Nook', source: 'nook.png' }),
     );
 
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const written = await client.submit({
+    const written = await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -754,7 +823,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(written.promoted).toEqual([
       expect.objectContaining({ id, status: 'committed', source }),
     ]);
-    const committed = await client.resources.list({
+    const committed = await client.call('ResourcesList', {
       protocolId: PROTOCOL_ID,
       status: 'committed',
     });
@@ -770,7 +839,7 @@ describe("Architect's in-process protocol-builder host", () => {
    */
   it('replays a retried submit and a retried create that promote nothing', async () => {
     const { store, client } = openProtocol();
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
@@ -781,9 +850,9 @@ describe("Architect's in-process protocol-builder host", () => {
       document: { ...held.document, label: 'Saved without a promotion' },
       revision: held.revision,
     };
-    const written = await client.submit(submitted);
+    const written = await client.call('Submit', submitted);
     // The editor closed on the answer it never received, giving the lock back.
-    await client.releaseLock({
+    await client.call('ReleaseLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
@@ -798,12 +867,12 @@ describe("Architect's in-process protocol-builder host", () => {
         items: [],
       },
     };
-    const created = await client.create(creating);
+    const created = await client.call('Create', creating);
     const afterFirst = stageIds(store);
     const stepsAfterFirst = undoDepth(store);
 
-    const retriedSubmit = await client.submit(submitted);
-    const retriedCreate = await client.create(creating);
+    const retriedSubmit = await client.call('Submit', submitted);
+    const retriedCreate = await client.call('Create', creating);
 
     // A second submit would make a revision nothing changed in — and, with the
     // lock given back, be refused outright; a second create would leave the
@@ -820,11 +889,11 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
 
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const written = await client.submit({
+    const written = await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -838,7 +907,10 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(written.promoted?.map((entry) => entry.status)).toEqual([
       'committed',
     ]);
-    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
+    await client.call('ResourcesDiscard', {
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+    });
     expect(getAssetManifest(store.getState())[id]).toBeDefined();
   });
 
@@ -847,12 +919,12 @@ describe("Architect's in-process protocol-builder host", () => {
     const id = await importResource(client);
     const manifest = { ...getAssetManifest(store.getState()) };
 
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const { definedError, isSuccess } = await safe(
-      client.submit({
+    const { error, isSuccess } = await safe(
+      client.call('Submit', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
@@ -864,30 +936,33 @@ describe("Architect's in-process protocol-builder host", () => {
 
     // The section and the resources it names are one revision or nothing.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('PROMOTION_FAILED');
-    expect(definedError?.data).toMatchObject({
+    expect(error).toBeInstanceOf(PromotionFailed);
+    expect(error).toMatchObject({
       sectionId: INFORMATION,
       failure: { reason: 'not-found', resourceId: 'never-staged' },
     });
     expect(stageLabel(store, 'information-1')).toBe('Information');
     expect(getAssetManifest(store.getState())).toEqual(manifest);
     // The resource this edit imported is still the edit's to take back.
-    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
+    await client.call('ResourcesDiscard', {
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+    });
     expect(getAssetManifest(store.getState())[id]).toBeUndefined();
   });
 
   it('replays what a retried promoting submit already wrote', async () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const promote = { editId: EDIT, resourceIds: [id] };
+    const promote = { editId: EDIT, resourceIds: [id] as const };
     // The id the retry repeats: one intent, asked twice, because the answer to
     // the first attempt can be lost on its way back.
     const requestId = nextRequestId();
-    const written = await client.submit({
+    const written = await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId,
       sectionId: INFORMATION,
@@ -896,12 +971,12 @@ describe("Architect's in-process protocol-builder host", () => {
       promote,
     });
     // The editor closed on the answer it never received, giving the lock back.
-    await client.releaseLock({
+    await client.call('ReleaseLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
 
-    const retried = await client.submit({
+    const retried = await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId,
       sectionId: INFORMATION,
@@ -920,13 +995,13 @@ describe("Architect's in-process protocol-builder host", () => {
   it('refuses a create while an editor holds the stage index', async () => {
     const { store, client } = openProtocol();
     const before = stageIds(store);
-    await client.acquireLock({
+    await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: STAGE_ORDER_SECTION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      client.create({
+    const { error, isSuccess } = await safe(
+      client.call('Create', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         kind: 'stage',
@@ -943,8 +1018,8 @@ describe("Architect's in-process protocol-builder host", () => {
     // know about the new stage, and its next submit would take the pointer out
     // while leaving the stage behind — a protocol that cannot be assembled.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
+    expect(error).toBeInstanceOf(SectionsLocked);
+    expect(error).toMatchObject({
       blocked: [{ sectionId: STAGE_ORDER_SECTION }],
     });
     expect(stageIds(store)).toEqual(before);
@@ -953,17 +1028,17 @@ describe("Architect's in-process protocol-builder host", () => {
   it('refuses a promoting submit while an editor holds the asset manifest', async () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
-    await client.acquireLock({
+    await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: ASSETS_SECTION,
     });
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      client.submit({
+    const { error, isSuccess } = await safe(
+      client.call('Submit', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
@@ -974,13 +1049,16 @@ describe("Architect's in-process protocol-builder host", () => {
     );
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
+    expect(error).toBeInstanceOf(SectionsLocked);
+    expect(error).toMatchObject({
       blocked: [{ sectionId: ASSETS_SECTION }],
     });
     expect(stageLabel(store, 'information-1')).toBe('Information');
     // Nothing was promoted, so the resource is still the edit's to take back.
-    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
+    await client.call('ResourcesDiscard', {
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+    });
     expect(getAssetManifest(store.getState())[id]).toBeUndefined();
   });
 
@@ -991,13 +1069,13 @@ describe("Architect's in-process protocol-builder host", () => {
   it('promotes an imported resource with the stage being created', async () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
-    const template = await client.getSection({
+    const template = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
     const { id: _id, ...withoutId } = template.document;
 
-    const created = await client.create({
+    const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
@@ -1008,21 +1086,24 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(created.promoted?.map((entry) => entry.status)).toEqual([
       'committed',
     ]);
-    const stage = await client.getSection({
+    const stage = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: created.sectionId,
     });
     expect(stage.revision.sequence).toBe(created.revision.sequence);
     // The edit that brought the file in has ended in a create, so a later
     // cancel must not take the saved protocol's resource away with it.
-    await client.resources.discard({ protocolId: PROTOCOL_ID, editId: EDIT });
+    await client.call('ResourcesDiscard', {
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+    });
     expect(getAssetManifest(store.getState())[id]).toBeDefined();
   });
 
   it('replays the stage a retried create already made, rather than a second one', async () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
-    const promote = { editId: EDIT, resourceIds: [id] };
+    const promote = { editId: EDIT, resourceIds: [id] as const };
     const document = {
       type: 'Information',
       label: 'Made once',
@@ -1030,7 +1111,7 @@ describe("Architect's in-process protocol-builder host", () => {
       items: [],
     };
     const requestId = nextRequestId();
-    const created = await client.create({
+    const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId,
       kind: 'stage',
@@ -1039,7 +1120,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     const afterFirst = stageIds(store);
 
-    const retried = await client.create({
+    const retried = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId,
       kind: 'stage',
@@ -1058,8 +1139,8 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const before = stageIds(store);
 
-    const { definedError, isSuccess } = await safe(
-      client.create({
+    const { error, isSuccess } = await safe(
+      client.call('Create', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         kind: 'stage',
@@ -1074,30 +1155,32 @@ describe("Architect's in-process protocol-builder host", () => {
     );
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    expect(error).toBeInstanceOf(PromotionFailed);
     // No section id: the host mints one only for a section it will write.
-    expect(definedError?.data).toEqual({
-      failure: {
-        reason: 'not-found',
-        message: 'no such staged resource',
-        retryable: false,
-        resourceId: 'never-staged',
-      },
-    });
+    expect(error).toEqual(
+      new PromotionFailed({
+        failure: {
+          reason: 'not-found',
+          message: 'no such staged resource',
+          retryable: false,
+          resourceId: 'never-staged',
+        },
+      }),
+    );
     expect(stageIds(store)).toEqual(before);
   });
 
   it('removes a stage and its place in the stage index in one revision', async () => {
     const { store, client } = openProtocol();
 
-    const deleted = await client.delete({
+    const deleted = await client.call('Delete', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
 
     expect(stageIds(store)).not.toContain('information-1');
     expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER_SECTION]);
-    const order = await client.getSection({
+    const order = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: STAGE_ORDER_SECTION,
     });
@@ -1105,28 +1188,34 @@ describe("Architect's in-process protocol-builder host", () => {
     // that cannot be assembled at all.
     expect(order.document.stages).toEqual(stageIds(store));
     expect(order.revision.sequence).toBe(deleted.revision.sequence);
-    const { definedError } = await safe(
-      client.getSection({ protocolId: PROTOCOL_ID, sectionId: INFORMATION }),
+    const { error } = await safe(
+      client.call('GetSection', {
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      }),
     );
-    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
+    expect(error).toBeInstanceOf(SectionNotFound);
   });
 
   it('refuses to delete a stage an editor still holds', async () => {
     const { store, client } = openProtocol();
-    await client.acquireLock({
+    await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      client.delete({ protocolId: PROTOCOL_ID, sectionId: INFORMATION }),
+    const { error, isSuccess } = await safe(
+      client.call('Delete', {
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      }),
     );
 
     // The editor holding the stage would put it back with its next submit, so
     // its own session is no more allowed to delete it than anybody else is.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTIONS_LOCKED');
-    expect(definedError?.data).toMatchObject({
+    expect(error).toBeInstanceOf(SectionsLocked);
+    expect(error).toMatchObject({
       blocked: [{ sectionId: INFORMATION }],
     });
     expect(stageIds(store)).toContain('information-1');
@@ -1135,8 +1224,8 @@ describe("Architect's in-process protocol-builder host", () => {
   it('refuses to delete a stage another stage is built on, naming where', async () => {
     const { store, client } = openProtocol();
 
-    const { definedError, isSuccess } = await safe(
-      client.delete({
+    const { error, isSuccess } = await safe(
+      client.call('Delete', {
         protocolId: PROTOCOL_ID,
         sectionId: sectionId({ kind: 'stage', stageId: 'family-pedigree-1' }),
       }),
@@ -1145,18 +1234,20 @@ describe("Architect's in-process protocol-builder host", () => {
     // Naming the section is not enough: the dialog telling the researcher what
     // is in the way points at the field, so the path is part of the refusal.
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('REFERENCES_REMAIN');
-    expect(definedError?.data).toEqual({
-      remaining: [
-        {
-          sectionId: sectionId({
-            kind: 'stage',
-            stageId: 'narrative-pedigree-1',
-          }),
-          path: ['sourceStageId'],
-        },
-      ],
-    });
+    expect(error).toBeInstanceOf(ReferencesRemain);
+    expect(error).toEqual(
+      new ReferencesRemain({
+        remaining: [
+          {
+            sectionId: sectionId({
+              kind: 'stage',
+              stageId: 'narrative-pedigree-1',
+            }),
+            path: ['sourceStageId'],
+          },
+        ],
+      }),
+    );
     expect(stageIds(store)).toContain('family-pedigree-1');
   });
 
@@ -1167,11 +1258,11 @@ describe("Architect's in-process protocol-builder host", () => {
    */
   it('refuses to delete a stage a skip destination points at', async () => {
     const { store, client } = openProtocol();
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    await client.submit({
+    await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -1189,28 +1280,30 @@ describe("Architect's in-process protocol-builder host", () => {
       },
       revision: held.revision,
     });
-    await client.releaseLock({
+    await client.call('ReleaseLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      client.delete({
+    const { error, isSuccess } = await safe(
+      client.call('Delete', {
         protocolId: PROTOCOL_ID,
         sectionId: sectionId({ kind: 'stage', stageId: 'geospatial-1' }),
       }),
     );
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('REFERENCES_REMAIN');
-    expect(definedError?.data).toEqual({
-      remaining: [
-        {
-          sectionId: INFORMATION,
-          path: ['skipLogic', 'destination', 'stageId'],
-        },
-      ],
-    });
+    expect(error).toBeInstanceOf(ReferencesRemain);
+    expect(error).toEqual(
+      new ReferencesRemain({
+        remaining: [
+          {
+            sectionId: INFORMATION,
+            path: ['skipLogic', 'destination', 'stageId'],
+          },
+        ],
+      }),
+    );
     expect(stageIds(store)).toContain('geospatial-1');
   });
 
@@ -1218,7 +1311,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol({ withEgo: false });
     expect(getProtocol(store.getState())?.codebook.ego).toBeUndefined();
 
-    const created = await client.create({
+    const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'codebookEgo',
@@ -1239,13 +1332,13 @@ describe("Architect's in-process protocol-builder host", () => {
 
   it('writes an attribute onto a connection type created moments earlier, and names a list of values too short to hold', async () => {
     const { store, client } = openProtocol();
-    const created = await client.create({
+    const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'codebookEdge',
       document: { name: 'Edge', color: 'edge-color-seq-2', variables: {} },
     });
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: created.sectionId,
     });
@@ -1255,7 +1348,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
 
     const refused = await safe(
-      client.submit({
+      client.call('Submit', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: created.sectionId,
@@ -1264,9 +1357,9 @@ describe("Architect's in-process protocol-builder host", () => {
       }),
     );
     expect(refused.isSuccess).toBe(false);
-    expect(refused.definedError?.code).toBe('INVALID_SHAPE');
+    expect(refused.error).toBeInstanceOf(InvalidShape);
 
-    await client.submit({
+    await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: created.sectionId,
@@ -1287,8 +1380,8 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const before = getProtocol(store.getState())?.codebook.ego;
 
-    const { definedError, isSuccess } = await safe(
-      client.create({
+    const { error, isSuccess } = await safe(
+      client.call('Create', {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         kind: 'codebookEgo',
@@ -1297,8 +1390,8 @@ describe("Architect's in-process protocol-builder host", () => {
     );
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('SECTION_EXISTS');
-    expect(definedError?.data).toMatchObject({
+    expect(error).toBeInstanceOf(SectionExists);
+    expect(error).toMatchObject({
       sectionId: sectionId({ kind: 'codebookEgo' }),
     });
     expect(getProtocol(store.getState())?.codebook.ego).toEqual(before);
@@ -1306,7 +1399,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
   it('keeps a lock when the stream that reported it ends', async () => {
     const { store, client } = openProtocol();
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
@@ -1316,7 +1409,7 @@ describe("Architect's in-process protocol-builder host", () => {
     // new one, and the editor behind it never stopped holding its draft.
     await stream.close();
 
-    const written = await client.submit({
+    const written = await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -1332,7 +1425,9 @@ describe("Architect's in-process protocol-builder host", () => {
   it('lists the committed asset manifest as resources', async () => {
     const { client } = openProtocol();
 
-    const listed = await client.resources.list({ protocolId: PROTOCOL_ID });
+    const listed = await client.call('ResourcesList', {
+      protocolId: PROTOCOL_ID,
+    });
 
     expect(listed.status).toBe('ok');
     if (listed.status !== 'ok') return;
@@ -1356,13 +1451,13 @@ describe("Architect's in-process protocol-builder host", () => {
    */
   it('promotes a staged secret once, and only what the write names', async () => {
     const { store, client } = openProtocol();
-    const named = await client.resources.stage({
+    const named = await client.call('ResourcesStage', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       requestId: 'named-secret',
       request: { kind: 'secret', name: 'Mapbox token', value: 'pk.named' },
     });
-    const unnamed = await client.resources.stage({
+    const unnamed = await client.call('ResourcesStage', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       requestId: 'unnamed-secret',
@@ -1372,11 +1467,11 @@ describe("Architect's in-process protocol-builder host", () => {
       throw new Error('staging failed');
     }
 
-    const held = await client.acquireLock({
+    const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const written = await client.submit({
+    const written = await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -1391,7 +1486,7 @@ describe("Architect's in-process protocol-builder host", () => {
     // The secret the write did not name is still this edit's to take back,
     // which is what stops a cancelled edit leaving a credential behind.
     expect(
-      await client.resources.discard({
+      await client.call('ResourcesDiscard', {
         protocolId: PROTOCOL_ID,
         editId: EDIT,
         resourceId: unnamed.data.descriptor.id,
@@ -1407,7 +1502,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     // And the editor can read the promoted key back, which is how the map
     // preview draws the map the participant will see.
-    const inspected = await client.resources.inspect({
+    const inspected = await client.call('ResourcesInspect', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       resourceId: named.data.descriptor.id,
@@ -1420,7 +1515,7 @@ describe("Architect's in-process protocol-builder host", () => {
     // Held when the researcher goes back to the library — the release names
     // the protocol it was taken in, so once that protocol is closed there is
     // no call left that could give it back.
-    await client.acquireLock({
+    await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: STAGE_ORDER_SECTION,
     });
@@ -1433,12 +1528,12 @@ describe("Architect's in-process protocol-builder host", () => {
       setActiveProtocol(CurrentProtocolSchema.parse(allInterfaces)),
     );
 
-    const template = await client.getSection({
+    const template = await client.call('GetSection', {
       protocolId: next,
       sectionId: INFORMATION,
     });
     const { id: _id, ...withoutId } = template.document;
-    const created = await client.create({
+    const created = await client.call('Create', {
       protocolId: next,
       requestId: nextRequestId(),
       kind: 'stage',
@@ -1469,7 +1564,7 @@ describe("Architect's in-process protocol-builder host", () => {
       });
 
     try {
-      const staged = await client.resources.stage({
+      const staged = await client.call('ResourcesStage', {
         protocolId: PROTOCOL_ID,
         editId: EDIT,
         requestId: 'import-across-a-switch',
@@ -1479,7 +1574,7 @@ describe("Architect's in-process protocol-builder host", () => {
           name: 'A photograph',
           source: 'photo.png',
           contentType: 'image/png',
-          bytes: new Blob([new Uint8Array([7, 7, 7])], { type: 'image/png' }),
+          bytes: new Uint8Array([7, 7, 7]),
         },
       });
       expect(staged).toMatchObject({
@@ -1510,7 +1605,7 @@ describe("Architect's in-process protocol-builder host", () => {
       const { store, client } = openProtocol();
       store.dispatch(setProtocolLockState('open-elsewhere'));
 
-      const opened = await client.acquireLock({
+      const opened = await client.call('AcquireLock', {
         protocolId: PROTOCOL_ID,
         sectionId: INFORMATION,
       });
@@ -1525,14 +1620,14 @@ describe("Architect's in-process protocol-builder host", () => {
 
     it('refuses a submit raised by an editor opened before the demotion', async () => {
       const { store, client } = openProtocol();
-      const held = await client.acquireLock({
+      const held = await client.call('AcquireLock', {
         protocolId: PROTOCOL_ID,
         sectionId: INFORMATION,
       });
       store.dispatch(setProtocolLockState('open-elsewhere'));
 
-      const { definedError, isSuccess } = await safe(
-        client.submit({
+      const { error, isSuccess } = await safe(
+        client.call('Submit', {
           protocolId: PROTOCOL_ID,
           requestId: nextRequestId(),
           sectionId: INFORMATION,
@@ -1542,8 +1637,8 @@ describe("Architect's in-process protocol-builder host", () => {
       );
 
       expect(isSuccess).toBe(false);
-      expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
-      expect(definedError?.data).toMatchObject({
+      expect(error).toBeInstanceOf(NotLockHolder);
+      expect(error).toMatchObject({
         holder: { displayName: OTHER_TAB },
       });
       expect(stageLabel(store, 'information-1')).not.toBe(
@@ -1554,15 +1649,15 @@ describe("Architect's in-process protocol-builder host", () => {
     it('refuses a create, so no stage is added the other tab would never see', async () => {
       const { store, client } = openProtocol();
       const before = stageIds(store);
-      const template = await client.getSection({
+      const template = await client.call('GetSection', {
         protocolId: PROTOCOL_ID,
         sectionId: INFORMATION,
       });
       const { id: _id, ...withoutId } = template.document;
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
-      const { definedError, isSuccess } = await safe(
-        client.create({
+      const { error, isSuccess } = await safe(
+        client.call('Create', {
           protocolId: PROTOCOL_ID,
           requestId: nextRequestId(),
           kind: 'stage',
@@ -1572,8 +1667,8 @@ describe("Architect's in-process protocol-builder host", () => {
       );
 
       expect(isSuccess).toBe(false);
-      expect(definedError?.code).toBe('SECTIONS_LOCKED');
-      expect(definedError?.data).toMatchObject({
+      expect(error).toBeInstanceOf(SectionsLocked);
+      expect(error).toMatchObject({
         blocked: [{ holder: { displayName: OTHER_TAB } }],
       });
       expect(stageIds(store)).toEqual(before);
@@ -1583,12 +1678,15 @@ describe("Architect's in-process protocol-builder host", () => {
       const { store, client } = openProtocol();
       store.dispatch(setProtocolLockState('open-elsewhere'));
 
-      const { definedError, isSuccess } = await safe(
-        client.delete({ protocolId: PROTOCOL_ID, sectionId: INFORMATION }),
+      const { error, isSuccess } = await safe(
+        client.call('Delete', {
+          protocolId: PROTOCOL_ID,
+          sectionId: INFORMATION,
+        }),
       );
 
       expect(isSuccess).toBe(false);
-      expect(definedError?.code).toBe('SECTIONS_LOCKED');
+      expect(error).toBeInstanceOf(SectionsLocked);
       expect(stageIds(store)).toContain('information-1');
     });
 
@@ -1596,8 +1694,8 @@ describe("Architect's in-process protocol-builder host", () => {
       const { store, client } = openProtocol();
       store.dispatch(setProtocolLockState('open-elsewhere'));
 
-      const { definedError, isSuccess } = await safe(
-        client.refactor.deleteVariable({
+      const { error, isSuccess } = await safe(
+        client.call('RefactorDeleteVariable', {
           protocolId: PROTOCOL_ID,
           subject: { entity: 'node', type: 'person' },
           variableId: 'unused-by-any-stage',
@@ -1605,7 +1703,7 @@ describe("Architect's in-process protocol-builder host", () => {
       );
 
       expect(isSuccess).toBe(false);
-      expect(definedError?.code).toBe('SECTIONS_LOCKED');
+      expect(error).toBeInstanceOf(SectionsLocked);
       expect(personVariables(store).name).toBeDefined();
     });
 
@@ -1614,7 +1712,7 @@ describe("Architect's in-process protocol-builder host", () => {
       const before = getAssetManifest(store.getState());
       store.dispatch(setProtocolLockState('open-elsewhere'));
 
-      const staged = await client.resources.stage({
+      const staged = await client.call('ResourcesStage', {
         protocolId: PROTOCOL_ID,
         editId: EDIT,
         requestId: 'import-while-demoted',
@@ -1624,7 +1722,7 @@ describe("Architect's in-process protocol-builder host", () => {
           name: 'A photograph',
           source: 'photo.png',
           contentType: 'image/png',
-          bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+          bytes: new Uint8Array([1, 2, 3]),
         },
       });
 
@@ -1633,6 +1731,147 @@ describe("Architect's in-process protocol-builder host", () => {
         failure: { reason: 'read-only', retryable: false },
       });
       expect(getAssetManifest(store.getState())).toEqual(before);
+    });
+  });
+
+  describe('the in-process client', () => {
+    const run = <A, E>(
+      client: TestClient,
+      call: (host: ProtocolBuilderClient) => Effect.Effect<A, E>,
+    ) =>
+      client.runtime.runPromiseExit(Effect.flatMap(ArchitectHostClient, call));
+
+    it('hands a refusal back as the instance the handler raised, and streams the protocol', async () => {
+      const { client } = openProtocol();
+      const stream = await openStream(client);
+      await client.call('AcquireLock', {
+        protocolId: PROTOCOL_ID,
+        sectionId: STAGE_ORDER_SECTION,
+      });
+
+      const exit = await run(client, (host) =>
+        host('Create', {
+          protocolId: PROTOCOL_ID,
+          requestId: nextRequestId(),
+          kind: 'stage',
+          document: {
+            type: 'Information',
+            label: 'Refused',
+            title: 'Refused',
+            items: [],
+          },
+        }),
+      );
+
+      const refusal = Exit.isFailure(exit)
+        ? Option.getOrUndefined(Cause.findErrorOption(exit.cause))
+        : undefined;
+      expect(refusal).toBeInstanceOf(SectionsLocked);
+      expect(refusal).toMatchObject({
+        _tag: 'SectionsLocked',
+        blocked: [{ sectionId: STAGE_ORDER_SECTION }],
+      });
+      await waitFor(
+        () => stream.seen.some((entry) => entry.event.type === 'lock'),
+        'the lock to reach the stream',
+      );
+      const lock = stream.seen.find((entry) => entry.event.type === 'lock');
+      expect(lock?.event).toMatchObject({ sectionId: STAGE_ORDER_SECTION });
+      expect(lock?.cursor).toEqual(expect.any(String));
+    });
+
+    it('dies, rather than refuses, on a Delete naming a section that is not a stage', async () => {
+      const { store, client } = openProtocol();
+
+      const exit = await run(client, (host) =>
+        host('Delete', { protocolId: PROTOCOL_ID, sectionId: PERSON }),
+      );
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      if (!Exit.isFailure(exit)) return;
+      expect(Cause.hasDies(exit.cause)).toBe(true);
+      expect(Cause.hasFails(exit.cause)).toBe(false);
+      expect(String(Cause.squash(exit.cause))).toContain(
+        'Schema validation failed',
+      );
+      expect(
+        getProtocol(store.getState())?.codebook.node?.person,
+      ).toBeDefined();
+    });
+
+    it('stops listening to the store once its runtime is disposed', async () => {
+      const { store, client } = openProtocol();
+      const subscribe = store.subscribe;
+      const released = vi.fn();
+      const subscribed = vi
+        .spyOn(store, 'subscribe')
+        .mockImplementation((listener) => {
+          const unsubscribe = subscribe(listener);
+          return () => {
+            released();
+            unsubscribe();
+          };
+        });
+
+      await client.call('ListSections', { protocolId: PROTOCOL_ID });
+      expect(subscribed).toHaveBeenCalled();
+      expect(released).not.toHaveBeenCalled();
+
+      await client.runtime.dispose();
+      expect(released).toHaveBeenCalledTimes(subscribed.mock.calls.length);
+    });
+
+    it('fails the stream when the protocol watch it reads from fails', async () => {
+      const watch = vi
+        .spyOn(ProtocolRevisions.prototype, 'watch')
+        // oxlint-disable-next-line require-yield
+        .mockImplementation(async function* () {
+          throw new Error('the watch failed');
+        });
+      const { client } = openProtocol();
+
+      const exit = await run(client, (host) =>
+        Stream.runDrain(
+          host('WatchProtocol', { protocolId: PROTOCOL_ID }),
+        ).pipe(Effect.timeoutOption('2 seconds')),
+      );
+      watch.mockRestore();
+
+      expect(Exit.isFailure(exit)).toBe(true);
+      if (!Exit.isFailure(exit)) return;
+      expect(String(Cause.squash(exit.cause))).toContain('the watch failed');
+    });
+
+    it('keeps a defect on the call that raised it, leaving the stream open', async () => {
+      const { store, client } = openProtocol();
+      const stream = await openStream(client);
+
+      const exit = await run(client, (host) =>
+        host('RefactorDeleteEntityType', {
+          protocolId: PROTOCOL_ID,
+          entity: 'node',
+          typeId: 'no-such-type',
+        }),
+      );
+      expect(Exit.isFailure(exit) && Cause.hasDies(exit.cause)).toBe(true);
+
+      const held = await client.call('AcquireLock', {
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      });
+      await client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: { ...held.document, label: 'Written after a defect' },
+        revision: held.revision,
+      });
+
+      expect(stageLabel(store, 'information-1')).toBe('Written after a defect');
+      await waitFor(
+        () => revisionsOf(stream.seen).length > 0,
+        'the revision to reach the stream',
+      );
     });
   });
 });

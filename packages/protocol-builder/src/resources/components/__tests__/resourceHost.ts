@@ -1,10 +1,15 @@
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import { Effect } from 'effect';
+
+import type { SuccessOf } from '@codaco/effect-query/types';
+import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import {
   createInMemoryHost,
+  type HandlerOverrides,
   type InMemoryHost,
 } from '../../../testing/host/createInMemoryHost.ts';
 import type { ResourceDescriptor, ResourceKind } from '../../types.ts';
@@ -113,55 +118,78 @@ export function createResourceHost(seed: ResourceHostSeed = {}): InMemoryHost {
   });
 }
 
+type Handler<Tag extends keyof HandlerOverrides> = NonNullable<
+  HandlerOverrides[Tag]
+>;
+
+type Procedure<Tag extends keyof HandlerOverrides> = (
+  input: Parameters<Handler<Tag>>[0],
+) => Promise<SuccessOf<ProtocolBuilderRpcs, Tag>>;
+
+export type ResourceProcedures = Readonly<{
+  list?: Procedure<'ResourcesList'>;
+  stage?: Procedure<'ResourcesStage'>;
+  discard?: Procedure<'ResourcesDiscard'>;
+  inspect?: Procedure<'ResourcesInspect'>;
+  preview?: Procedure<'ResourcesPreview'>;
+}>;
+
 /**
- * The same host, with some of its resource procedures answered differently.
- *
  * Every override answers the contract: a host that refuses to stage, one that
  * takes its time, one that reads more out of a file than the in-memory store
  * does. Nothing here is a control being told what to do — the editor calls the
- * same procedures either way and cannot tell which host it is talking to.
+ * same procedures either way and cannot tell which host it is talking to. An
+ * override that rejects is a host that never answered.
  */
+export function resourceProcedures(
+  overrides: ResourceProcedures,
+): HandlerOverrides {
+  const { list, stage, discard, inspect, preview } = overrides;
+  return {
+    ...(list === undefined
+      ? {}
+      : { ResourcesList: (input) => Effect.promise(() => list(input)) }),
+    ...(stage === undefined
+      ? {}
+      : { ResourcesStage: (input) => Effect.promise(() => stage(input)) }),
+    ...(discard === undefined
+      ? {}
+      : { ResourcesDiscard: (input) => Effect.promise(() => discard(input)) }),
+    ...(inspect === undefined
+      ? {}
+      : { ResourcesInspect: (input) => Effect.promise(() => inspect(input)) }),
+    ...(preview === undefined
+      ? {}
+      : { ResourcesPreview: (input) => Effect.promise(() => preview(input)) }),
+  };
+}
+
 export function withResourceProcedures(
-  client: ProtocolBuilderClient,
-  overrides: Partial<ProtocolBuilderClient['resources']>,
-): ProtocolBuilderClient {
-  // Proxied rather than spread: a contract client's procedures are reached
-  // through property access rather than held as own properties, so a spread
-  // copy of one has no procedures on it at all.
-  const overridden = new Map<PropertyKey, unknown>(Object.entries(overrides));
-  const resources = new Proxy(client.resources, {
-    get: (target, property, receiver) =>
-      overridden.get(property) ?? Reflect.get(target, property, receiver),
-  });
-  return new Proxy(client, {
-    get: (target, property, receiver) =>
-      property === 'resources'
-        ? resources
-        : Reflect.get(target, property, receiver),
-  });
+  host: InMemoryHost,
+  overrides: ResourceProcedures,
+): ProtocolBuilderAdapter {
+  return host.adapterWith(resourceProcedures(overrides));
 }
 
 /**
- * The same host, counting the section submits it is asked to make.
- *
  * For a test about a form that must NOT save the stage around it. A submit the
  * host never received is the only proof there is: one it received and refused
  * leaves the protocol looking exactly as it did.
  */
 export function withSubmitsCounted(
-  client: ProtocolBuilderClient,
-): Readonly<{ client: ProtocolBuilderClient; submits: () => number }> {
+  host: InMemoryHost,
+  overrides: HandlerOverrides = {},
+): Readonly<{ adapter: ProtocolBuilderAdapter; submits: () => number }> {
   let submits = 0;
-  const counted = new Proxy(client, {
-    get: (target, property, receiver) => {
-      if (property !== 'submit') return Reflect.get(target, property, receiver);
-      return (...args: Parameters<ProtocolBuilderClient['submit']>) => {
+  const adapter = host.adapterWith({
+    ...overrides,
+    Submit: (input) =>
+      Effect.suspend(() => {
         submits += 1;
-        return client.submit(...args);
-      };
-    },
+        return host.handle.Submit(input);
+      }),
   });
-  return { client: counted, submits: () => submits };
+  return { adapter, submits: () => submits };
 }
 
 /**
@@ -174,11 +202,11 @@ export function withSubmitsCounted(
  * which is what a discard having worked looks like.
  */
 export async function stagedResources(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   editId: string,
 ): Promise<readonly ResourceDescriptor[]> {
-  const listed = await client.resources.list({
+  const listed = await adapter.rpcCall('ResourcesList', {
     protocolId,
     editId,
     status: 'staged',
