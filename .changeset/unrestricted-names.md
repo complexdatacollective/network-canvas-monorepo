@@ -15,8 +15,8 @@ accented letter is stored the same way however it was typed.
 
 Protocols now use schema 9, the protocol version that allows these names. When
 you open a protocol made with an earlier version, Architect creates an upgraded
-copy and leaves the original as it was. The upgrade changes nothing else, and
-existing names are kept exactly as they are. Interviewer and Fresco upgrade
+copy and leaves the original as it was. Existing names are kept exactly as
+they are. Interviewer and Fresco upgrade
 older protocols to schema 9 when they are imported, and Fresco upgrades the
 protocols it already holds when it is updated. Update Interviewer and Fresco to
 this release before you use a schema 9 protocol with them, because earlier
