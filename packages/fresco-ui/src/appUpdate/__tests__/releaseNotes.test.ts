@@ -229,22 +229,11 @@ describe('fetchLatestReleaseNotes', () => {
     });
   });
 
-  it('puts a newer GitHub release above the entries the feed has', async () => {
+  it('falls back to GitHub when the feed has not caught up', async () => {
     vi.stubGlobal('fetch', routedFetch(feedResponse(), githubLatest('8.3.2')));
 
     await expect(
       fetchLatestReleaseNotes('architect', '8.3.0'),
-    ).resolves.toEqual({
-      version: '8.3.2',
-      body: '### 8.3.2\n\ngithub notes\n\n### Architect 8.3.1\n\n- Fixed protocol import.',
-    });
-  });
-
-  it('uses GitHub alone when the feed has nothing newer', async () => {
-    vi.stubGlobal('fetch', routedFetch(feedResponse(), githubLatest('8.3.2')));
-
-    await expect(
-      fetchLatestReleaseNotes('architect', '8.3.1'),
     ).resolves.toEqual({ version: '8.3.2', body: 'github notes' });
   });
 
@@ -309,25 +298,5 @@ describe('fetchReleaseNotesForVersion', () => {
     await expect(
       fetchReleaseNotesForVersion('architect', '8.3.2', '8.3.1'),
     ).resolves.toEqual({ version: '8.3.2', body: 'github 8.3.2' });
-  });
-
-  it('keeps the feed entries since the last version alongside a newer GitHub release', async () => {
-    vi.stubGlobal(
-      'fetch',
-      routedFetch(feedResponse(), {
-        ok: true,
-        json: async () => ({
-          tag_name: '@codaco/architect@8.3.2',
-          body: 'github 8.3.2',
-        }),
-      }),
-    );
-
-    await expect(
-      fetchReleaseNotesForVersion('architect', '8.3.2', '8.3.0'),
-    ).resolves.toEqual({
-      version: '8.3.2',
-      body: '### 8.3.2\n\ngithub 8.3.2\n\n### Architect 8.3.1\n\n- Fixed protocol import.',
-    });
   });
 });

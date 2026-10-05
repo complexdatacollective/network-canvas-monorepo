@@ -218,11 +218,6 @@ jobs:
         env:
           MIRROR_VERSION: ${{ steps.mirror-version.outputs.version }}
         run: node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
-      - name: Refuse a release with no Updates entry
-        env:
-          APP: ${{ inputs.app }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: node .hotfix-lane/scripts/release/check-update-entries.mjs --release "$APP@$VERSION"
 
       - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:

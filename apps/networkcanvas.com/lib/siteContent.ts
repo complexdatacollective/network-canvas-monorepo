@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import csv from 'csvtojson';
 import { z } from 'zod';
 
-import { compareVersions } from '@codaco/fresco-ui/appUpdate/releaseNotes';
 import type { Locale } from '~/lib/i18n/locales';
 import {
   type UpdateAppId,
@@ -41,7 +40,7 @@ export type TeamMember = {
   photo: string;
 };
 
-export type UpdateVersion = { app: UpdateAppId; version: string };
+export type UpdateVersion = { app: UpdateAppId; version?: string };
 
 export type Update = {
   id: string;
@@ -194,8 +193,8 @@ const updateRowSchema = z
       .string()
       .transform((value) =>
         value.split('|').map((entry) => {
-          const [app = '', version = ''] = entry.trim().split('@');
-          return { app, version };
+          const [app = '', version] = entry.trim().split('@');
+          return version ? { app, version } : { app };
         }),
       )
       .pipe(
@@ -207,8 +206,9 @@ const updateRowSchema = z
                 .string()
                 .regex(
                   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/,
-                  'must be an app@version pair',
-                ),
+                  'must be a semver version',
+                )
+                .optional(),
             }),
           )
           .min(1)
@@ -447,37 +447,13 @@ export async function loadSiteContent(
   };
 }
 
-async function readReleasedAppVersions(
-  appsDirectory: string,
-): Promise<Record<UpdateAppId, string>> {
-  const entries = await Promise.all(
-    updateAppIds.map(async (app) => {
-      const manifest = JSON.parse(
-        await readFile(join(appsDirectory, app, 'package.json'), 'utf8'),
-      ) as { version: string };
-      return [app, manifest.version] as const;
-    }),
-  );
-  return Object.fromEntries(entries) as Record<UpdateAppId, string>;
-}
-
 export async function loadUpdates(
   contentDirectory = join(process.cwd(), 'content'),
-  releasedVersions?: Record<UpdateAppId, string>,
 ): Promise<Update[]> {
-  const [rows, released] = await Promise.all([
-    parseCsv(contentDirectory, 'updates.csv', updateRowSchema),
-    releasedVersions ?? readReleasedAppVersions(join(process.cwd(), '..')),
-  ]);
+  const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
 
   return rows
-    .map((row) => ({
-      ...row,
-      versions: row.versions.filter(
-        ({ app, version }) => compareVersions(version, released[app]) <= 0,
-      ),
-    }))
-    .filter((row) => row.versions.length > 0)
+    .filter((row) => row.versions.some(({ version }) => version))
     .map((row) => ({
       id: row.id,
       date: row.date,

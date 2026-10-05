@@ -268,12 +268,6 @@ person,Person Name,Institution,Institución,机构,機構,Institution,Instelling
 describe('loadUpdates', () => {
   let directory: string;
 
-  const released = {
-    architect: '8.3.0',
-    interviewer: '8.3.0',
-    fresco: '4.2.0',
-  } as const;
-
   const header = 'id,date,kind,versions,title,summary,details,link';
 
   async function writeUpdates(rows: string) {
@@ -296,7 +290,7 @@ Newer details",
   });
 
   it('orders updates newest first with their markdown intact', async () => {
-    await expect(loadUpdates(directory, released)).resolves.toEqual([
+    await expect(loadUpdates(directory)).resolves.toEqual([
       {
         id: 'newer',
         date: '2026-03-10',
@@ -323,34 +317,25 @@ Newer details",
     ]);
   });
 
-  it('shows only the versions that have been released', async () => {
-    await writeUpdates(`future,2026-04-01,launch,architect@9.0.0|interviewer@9.0.0,Future launch,Coming soon,,
-partly,2026-04-02,launch,architect@8.2.0|interviewer@8.4.0,Partly released,Out in Architect,,
+  it('leaves out an update none of whose apps has released it yet', async () => {
+    await writeUpdates(`pending,2026-04-01,launch,architect|interviewer,Pending launch,Coming soon,,
+partly,2026-04-02,launch,architect@8.2.0|interviewer,Partly released,Out in Architect,,
 `);
 
-    const updates = await loadUpdates(directory, released);
+    const updates = await loadUpdates(directory);
 
     expect(updates.map((update) => update.id)).toEqual(['partly']);
-    expect(updates[0]).toMatchObject({
-      versions: [{ app: 'architect', version: '8.2.0' }],
-      apps: ['architect'],
-    });
-  });
-
-  it('rejects an app without a version', async () => {
-    await writeUpdates(`pending,2026-04-01,launch,architect,Pending launch,Coming soon,,
-`);
-
-    await expect(loadUpdates(directory, released)).rejects.toThrow(
-      'updates.csv: row 2: versions:',
-    );
+    expect(updates[0]?.versions).toEqual([
+      { app: 'architect', version: '8.2.0' },
+      { app: 'interviewer' },
+    ]);
   });
 
   it('rejects an update without a summary', async () => {
     await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,,,
 `);
 
-    await expect(loadUpdates(directory, released)).rejects.toThrow(
+    await expect(loadUpdates(directory)).rejects.toThrow(
       'updates.csv: row 2: summary:',
     );
   });
@@ -359,7 +344,7 @@ partly,2026-04-02,launch,architect@8.2.0|interviewer@8.4.0,Partly released,Out i
     await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0|studio@1.0.0,Older update,Older summary,,
 `);
 
-    await expect(loadUpdates(directory, released)).rejects.toThrow(
+    await expect(loadUpdates(directory)).rejects.toThrow(
       'updates.csv: row 2: versions:',
     );
   });
@@ -368,7 +353,7 @@ partly,2026-04-02,launch,architect@8.2.0|interviewer@8.4.0,Partly released,Out i
     await writeUpdates(`older,2026-01-05,fix,fresco@4.1,Older update,Older summary,,
 `);
 
-    await expect(loadUpdates(directory, released)).rejects.toThrow(
+    await expect(loadUpdates(directory)).rejects.toThrow(
       'updates.csv: row 2: versions:',
     );
   });
@@ -378,7 +363,7 @@ partly,2026-04-02,launch,architect@8.2.0|interviewer@8.4.0,Partly released,Out i
       await writeUpdates(`older,2026-01-05,fix,fresco@4.1.0,Older update,Older summary,,${link}
 `);
 
-      await expect(loadUpdates(directory, released)).rejects.toThrow(
+      await expect(loadUpdates(directory)).rejects.toThrow(
         'updates.csv: row 2: link:',
       );
     }
@@ -388,7 +373,7 @@ partly,2026-04-02,launch,architect@8.2.0|interviewer@8.4.0,Partly released,Out i
     await writeUpdates(`older,2026-01-05,hotfix,fresco@4.1.0,Older update,Older summary,,
 `);
 
-    await expect(loadUpdates(directory, released)).rejects.toThrow(
+    await expect(loadUpdates(directory)).rejects.toThrow(
       'updates.csv: row 2: kind:',
     );
   });
@@ -397,7 +382,7 @@ partly,2026-04-02,launch,architect@8.2.0|interviewer@8.4.0,Partly released,Out i
     await writeUpdates(`older,05/01/2026,fix,fresco@4.1.0,Older update,Older summary,,
 `);
 
-    await expect(loadUpdates(directory, released)).rejects.toThrow(
+    await expect(loadUpdates(directory)).rejects.toThrow(
       'updates.csv: row 2: date:',
     );
   });

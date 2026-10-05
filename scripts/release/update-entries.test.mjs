@@ -77,13 +77,13 @@ test('round-trips quoted multi-line CSV fields', () => {
   assert.deepEqual(parseCsv(stringifyCsv(rows)), rows);
 });
 
-test('adds a release entry per app and leaves launch rows as written', () => {
+test('adds a release entry per app and fills in pending launch versions', () => {
   const rows = [
     {
       id: 'big-launch',
       date: '2026-10-01',
       kind: 'launch',
-      versions: 'architect@8.4.0|interviewer@8.4.0',
+      versions: 'architect|interviewer',
       title: 'Big launch',
       summary: 'Something new.',
       details: '',
@@ -121,7 +121,7 @@ test('adds a release entry per app and leaves launch rows as written', () => {
   );
   assert.equal(
     result.rows.find(({ id }) => id === 'big-launch')?.versions,
-    'architect@8.4.0|interviewer@8.4.0',
+    'architect@8.3.1|interviewer@8.3.1',
   );
   assert.equal(result.rows[0]?.kind, 'fix');
   assert.equal(result.rows[0]?.versions, 'architect@8.3.1');

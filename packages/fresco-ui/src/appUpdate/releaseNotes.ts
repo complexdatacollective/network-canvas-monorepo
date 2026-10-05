@@ -174,16 +174,6 @@ export async function fetchFeedNotes(
   }
 }
 
-function withGitHubNotes(
-  fromGitHub: ReleaseNotes,
-  fromFeed: ReleaseNotes,
-): ReleaseNotes {
-  return {
-    version: fromGitHub.version,
-    body: `### ${fromGitHub.version}\n\n${fromGitHub.body}\n\n${fromFeed.body}`,
-  };
-}
-
 export async function fetchLatestReleaseNotes(
   app: AppId,
   currentVersion: string,
@@ -192,14 +182,13 @@ export async function fetchLatestReleaseNotes(
     fetchFeedNotes(app, { after: currentVersion }),
     fetchLatestGitHubNotes(app),
   ]);
-  if (!fromFeed) return fromGitHub;
   if (
-    !fromGitHub ||
-    compareVersions(fromFeed.version, fromGitHub.version) >= 0
+    fromFeed &&
+    (!fromGitHub || compareVersions(fromFeed.version, fromGitHub.version) >= 0)
   ) {
     return fromFeed;
   }
-  return withGitHubNotes(fromGitHub, fromFeed);
+  return fromGitHub ?? fromFeed;
 }
 
 export async function fetchReleaseNotesForVersion(
@@ -213,9 +202,7 @@ export async function fetchReleaseNotesForVersion(
       : undefined;
   const fromFeed = await fetchFeedNotes(app, { after, upTo: version });
   if (fromFeed?.version === version) return fromFeed;
-  const fromGitHub = await fetchGitHubNotesForVersion(app, version);
-  if (!fromGitHub) return fromFeed;
-  return fromFeed ? withGitHubNotes(fromGitHub, fromFeed) : fromGitHub;
+  return fetchGitHubNotesForVersion(app, version);
 }
 
 export function readCachedNotes(app: AppId): ReleaseNotes | null {

@@ -173,11 +173,8 @@ first paragraph instead.
 Never edit the generated entries in the Version Packages PR: `changesets/action`
 rebuilds that PR whenever something merges to `main`, which discards hand edits.
 Change the `Update:` line in the changeset instead. Launch entries, the
-illustrated ones, are written by hand in an ordinary PR and name the version
-they ship in (`architect@8.4.0|interviewer@8.4.0`); the website shows each
-version once the app's `package.json` reaches it. A hotfix needs its `fix` row
-added by hand on the hotfix branch: the Hotfix Release workflow refuses a
-version with no entry.
+illustrated ones, are written by hand in an ordinary PR with their versions left
+empty (`architect|interviewer`); the release fills the versions in.
 
 ## Notes
 
