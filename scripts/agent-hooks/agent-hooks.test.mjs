@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -390,6 +391,49 @@ test('resolves the repository root from the hook environment or cwd', () => {
     resolveRepoRoot({ cwd: path.join(repoRoot, 'packages') }, {}),
     repoRoot,
   );
+});
+
+test('the hook event cwd names the checkout to inspect, ahead of the project-dir variables', () => {
+  // In a Claude Code worktree session CLAUDE_PROJECT_DIR is the main checkout
+  // while the session (and the event cwd) is the linked worktree. A hook rooted
+  // at the variable would check another session's uncommitted work.
+  const base = mkdtempSync(path.join(os.tmpdir(), 'agent-hooks-root-'));
+  const checkoutA = path.join(base, 'main-checkout');
+  const worktreeB = path.join(base, 'worktree');
+  mkdirSync(checkoutA);
+  const sh = (args) =>
+    spawnSync('git', args, { cwd: checkoutA, encoding: 'utf8' });
+  sh(['init', '-q', '-b', 'main', '.']);
+  sh(['config', 'user.email', 'a@b']);
+  sh(['config', 'user.name', 't']);
+  sh(['commit', '-q', '--allow-empty', '-m', 'base']);
+  sh(['worktree', 'add', '-q', '-b', 'feature', worktreeB]);
+  const resolvedA = realpathSync(checkoutA);
+  const resolvedB = realpathSync(worktreeB);
+  const envA = { CLAUDE_PROJECT_DIR: checkoutA, CODEX_PROJECT_DIR: checkoutA };
+  try {
+    // Event cwd in the worktree wins over the variables, from a subdirectory too.
+    assert.equal(resolveRepoRoot({ cwd: worktreeB }, envA), resolvedB);
+    mkdirSync(path.join(worktreeB, 'packages'));
+    assert.equal(
+      resolveRepoRoot({ cwd: path.join(worktreeB, 'packages') }, envA),
+      resolvedB,
+    );
+    // No event cwd: the variables decide.
+    assert.equal(resolveRepoRoot({}, envA), resolvedA);
+    assert.equal(
+      resolveRepoRoot({}, { CODEX_PROJECT_DIR: worktreeB }),
+      resolvedB,
+    );
+    // Neither: the process cwd (vitest runs from the repository root).
+    assert.equal(resolveRepoRoot({}, {}), repoRoot);
+    // A cwd outside any repository falls through to the variables.
+    const outside = path.join(base, 'not-a-repo');
+    mkdirSync(outside);
+    assert.equal(resolveRepoRoot({ cwd: outside }, envA), resolvedA);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
 });
 
 test('changedFiles returns absolute paths inside the repository', () => {
