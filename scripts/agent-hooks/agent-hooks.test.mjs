@@ -272,14 +272,14 @@ test('maps real repository paths through the workspace manifests', () => {
   const result = packagesForFiles(
     [
       path.join(repoRoot, 'packages/interview/src/Shell.tsx'),
-      path.join(repoRoot, 'apps/studio/server/src/index.ts'),
+      path.join(repoRoot, 'apps/studio/api/src/index.ts'),
       path.join(repoRoot, 'apps/interviewer-classic/src/index.js'),
     ],
     repoRoot,
   );
   assert.deepEqual(result.packages, [
     '@codaco/interview',
-    '@codaco/studio-server',
+    '@codaco/studio-api',
   ]);
 });
 
@@ -552,7 +552,7 @@ test('modifiedSince keeps files touched at or after the threshold with a small m
 test('workspacePackages reads every named package from the workspace globs', () => {
   const map = workspacePackages(repoRoot);
   assert.ok(map.has('@codaco/interview'));
-  assert.ok(map.has('@codaco/studio-server'), 'nested apps/studio/* glob');
+  assert.ok(map.has('@codaco/studio-api'), 'nested apps/studio/* glob');
   assert.ok(map.has('@codaco/protocols'));
   assert.equal(map.get('@codaco/protocols').manifest.scripts?.test, undefined);
   assert.ok(map.get('@codaco/interview').manifest.scripts.test);
@@ -666,7 +666,7 @@ test('knip runs in place only for the clean checked-out HEAD', () => {
 test('nodeModulesDirs lists the root and every workspace package that has node_modules', () => {
   const dirs = nodeModulesDirs(repoRoot, [
     'packages/interview/package.json',
-    'apps/studio/server/package.json',
+    'apps/studio/api/package.json',
     'nowhere/package.json',
   ]);
   assert.ok(dirs.includes('.'));

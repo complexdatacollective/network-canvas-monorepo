@@ -203,7 +203,7 @@ jobs:
           # the job unrun. The guide is in the list because own-proxy extracts
           # its nginx configuration from it at run time: editing that block
           # changes what the job runs.
-          studio=$(flag @codaco/studio-server)
+          studio=$(flag @codaco/studio-api)
           if [[ "$studio" != "true" && -n "$PREV" ]] \
             && ! git diff --quiet "$PREV" "$CURR" -- \
               apps/studio/Dockerfile \
@@ -575,6 +575,9 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          # Parallel suites drop ~100-table schemas at once; the default of 64
+          # runs out of shared memory.
+          POSTGRES_INITDB_ARGS: --set=max_locks_per_transaction=256
         ports:
           - 54318:5432
         options: >-
@@ -613,7 +616,7 @@ jobs:
       # Seeded on its own first, for the reason the `test` job gives: this
       # suite's assertions are wall-clock budgets, and turbo kills the
       # in-flight tasks when any task in the run fails. On 2026-09-06 a
-      # protocol-builder failure here killed @codaco/studio-server#test
+      # protocol-builder failure here killed @codaco/studio-api#test
       # mid-run, so main's tip seeded no cache entry for it and every PR built
       # on that tip had to execute the suite itself.
       #
@@ -623,7 +626,7 @@ jobs:
       # what motivated splitting it out of `test` in the first place.
       - name: Seed the Studio server suite
         id: studio-server
-        run: pnpm exec turbo run '@codaco/studio-server#test'
+        run: pnpm exec turbo run '@codaco/studio-api#test'
         continue-on-error: true
       # Fresco's `build` script is a bare `next build`, whose env.js validates
       # the full deployment env at config load; this job has no Fresco
@@ -659,7 +662,7 @@ jobs:
       # take > rebases the form once the protocol takes the save`, which
       # failed at 5161 ms and — under the old `--continue=never` default —
       # would have cancelled every other queued suite's cache seed along with
-      # it. Not applied to the `@codaco/studio-server#test` run above:
+      # it. Not applied to the `@codaco/studio-api#test` run above:
       # `--continue` governs how a multi-task run treats one task's failure,
       # and a single-task run has nothing else queued behind it to protect.
       - name: Run tests
@@ -792,7 +795,7 @@ jobs:
       - name: Check the committed Studio schema docs are current
         id: studio-schema-docs
         continue-on-error: true
-        run: pnpm --filter @codaco/studio-server check:schema-docs
+        run: pnpm --filter @codaco/studio-api check:schema-docs
       - name: Check changed public package versions are unoccupied on npm
         id: npm_versions
         continue-on-error: true
@@ -900,6 +903,9 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          # Parallel suites drop ~100-table schemas at once; the default of 64
+          # runs out of shared memory.
+          POSTGRES_INITDB_ARGS: --set=max_locks_per_transaction=256
         ports:
           - 54318:5432
         options: >-
@@ -991,7 +997,7 @@ jobs:
         # `continue-on-error` — as its own job its verdict is its own, and it
         # can no longer hide behind, or be hidden by, the workspace suite's
         # result.
-        run: pnpm exec turbo run '@codaco/studio-server#test'
+        run: pnpm exec turbo run '@codaco/studio-api#test'
 
   # The Studio deployment stack, run the way a self-hoster runs it and once for
   # each documented swap with the swapped element replaced by a stub (#1909).
@@ -1171,7 +1177,7 @@ jobs:
           - shard: 1
           - shard: 2
           # packages/studio-sync's conformance suite is the only workspace
-          # suite outside @codaco/studio-server that needs a database, and it
+          # suite outside @codaco/studio-api that needs a database, and it
           # refuses to skip under CI. Its shard starts one; the others do not
           # pay for it. `services:` cannot be varied per matrix leg, so the
           # container is started by a step instead — measured at 24s of
@@ -1272,7 +1278,7 @@ jobs:
           # affected selector below would run art on every pull request
           # whether or not the diff touched it. Negations subtract from that
           # union, which is the intersection a shard actually wants — the same
-          # mechanism that already kept @codaco/studio-server out. That suite
+          # mechanism that already kept @codaco/studio-api out. That suite
           # is now excluded by simply belonging to no bucket, so every shard
           # negates it and the split cannot be undone by editing one shard.
           #
@@ -1344,11 +1350,11 @@ jobs:
           # pull request that invalidated six packages at once (#2023, run
           # 36858613676, both attempts). Hence job-wide rather than per call.
           #
-          # The `!@codaco/studio-server` negation SHARD_FILTERS carries: that
+          # The `!@codaco/studio-api` negation SHARD_FILTERS carries: that
           # suite runs as its own `test-studio-server` job (see the comment
           # there for why), on its own runner in parallel with these. Without
           # the exclusion both the `--affected` pass and the full-suite
-          # fallback below would still select `@codaco/studio-server#test` as
+          # fallback below would still select `@codaco/studio-api#test` as
           # a cache miss — turbo has no notion that a sibling job already
           # claimed it — and run the wall-clock-budgeted suite again, on a
           # runner it was carved out specifically to avoid sharing.
@@ -3164,10 +3170,10 @@ jobs:
           - product: Studio
             slug: studio
             package_args: >-
-              --package '@codaco/studio-client'
-              --package '@codaco/studio-rpc'
-              --package '@codaco/studio-server'
+              --package '@codaco/studio-api'
+              --package '@codaco/studio-contract'
               --package '@codaco/studio-sync'
+              --package '@codaco/studio-web'
     runs-on: ubuntu-latest
     concurrency:
       group: product-release-pr-${{ matrix.slug }}

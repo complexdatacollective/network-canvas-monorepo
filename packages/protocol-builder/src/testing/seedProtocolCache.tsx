@@ -26,19 +26,18 @@ export type SeedProtocolCacheProps = Readonly<{
  */
 export function SeedProtocolCache({ store, children }: SeedProtocolCacheProps) {
   const queryClient = useQueryClient();
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const seeded = useRef(false);
 
   if (!seeded.current) {
     seeded.current = true;
     const sectionIds = store.sectionIds();
-    queryClient.setQueryData(
-      utils.listSections.queryKey({ input: { protocolId } }),
-      { sectionIds },
-    );
+    queryClient.setQueryData(adapter.rpcKey('ListSections', { protocolId }), {
+      sectionIds,
+    });
     for (const id of sectionIds) {
       queryClient.setQueryData(
-        utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+        adapter.rpcKey('GetSection', { protocolId, sectionId: id }),
         store.read(id),
       );
     }

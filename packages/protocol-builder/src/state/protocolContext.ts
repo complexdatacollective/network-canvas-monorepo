@@ -108,15 +108,15 @@ function reading(
 }
 
 function useReading(): Derivation {
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const { data: list, isError: listFailed } = useQuery(
-    utils.listSections.queryOptions({ input: { protocolId } }),
+    adapter.rpcQuery('ListSections', { protocolId }),
   );
   const ids = list?.sectionIds ?? NO_SECTIONS;
 
   return useQueries({
     queries: ids.map((id) =>
-      utils.getSection.queryOptions({ input: { protocolId, sectionId: id } }),
+      adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
     ),
     combine: (results) =>
       reading(results, ids, { listed: list !== undefined, failed: listFailed }),

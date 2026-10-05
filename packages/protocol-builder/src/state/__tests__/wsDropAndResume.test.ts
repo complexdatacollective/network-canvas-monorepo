@@ -44,12 +44,12 @@ async function until(
   }
 }
 
-describe('an event iterator over a socket that drops mid-stream', () => {
+describe('a protocol stream over a socket that drops mid-stream', () => {
   it('delivers every revision exactly once and in order across the drop', async () => {
     served = await createWebSocketHost({
       sections: sectionsFromProtocol(FIXTURE),
     });
-    const { host, client, dropConnection } = served;
+    const { host, adapter, dropConnection } = served;
 
     const labels: string[] = [];
     const revisions: bigint[] = [];
@@ -61,19 +61,19 @@ describe('an event iterator over a socket that drops mid-stream', () => {
       labels.push(String(event.document?.label));
     };
     const channel = streamProtocolEvents(
-      client,
+      adapter,
       host.protocolId,
       collect,
       controller.signal,
     );
 
     const writer = host.asCollaborator(WRITER);
-    const held = await writer.acquireLock({
+    const held = await writer.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
     const write = async (label: string) => {
-      await writer.submit({
+      await writer.rpcCall('Submit', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
@@ -114,16 +114,16 @@ describe('an event iterator over a socket that drops mid-stream', () => {
     served = await createWebSocketHost({
       sections: sectionsFromProtocol(FIXTURE),
     });
-    const { host, client, dropConnection } = served;
+    const { host, adapter, dropConnection } = served;
 
-    const held = await client.acquireLock({
+    const held = await adapter.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
     const labels: string[] = [];
     const controller = new AbortController();
     const channel = streamProtocolEvents(
-      client,
+      adapter,
       host.protocolId,
       (event) => {
         if (event.type === 'revision')
@@ -135,12 +135,12 @@ describe('an event iterator over a socket that drops mid-stream', () => {
     // Another section, written to tell the channel apart from a channel that
     // is merely quiet: the one under test holds the lock this test is about.
     const writer = host.asCollaborator(WRITER);
-    const other = await writer.acquireLock({
+    const other = await writer.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: EGO_FORM,
     });
     const write = async (label: string) => {
-      await writer.submit({
+      await writer.rpcCall('Submit', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: EGO_FORM,
@@ -160,7 +160,7 @@ describe('an event iterator over a socket that drops mid-stream', () => {
 
     // The watch has been torn down and resumed on a new socket; the editor
     // behind it never stopped holding its draft, so its save is still taken.
-    const written = await client.submit({
+    const written = await adapter.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,

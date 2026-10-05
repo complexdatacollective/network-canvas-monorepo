@@ -27,7 +27,7 @@ type Harness = ReturnType<typeof renderStageEditor>;
 const stagedInTheHost = async (
   harness: Harness,
 ): Promise<readonly Readonly<{ id: string; name: string }>[]> => {
-  const answer = await harness.host.client.resources.list({
+  const answer = await harness.host.adapter.rpcCall('ResourcesList', {
     protocolId: harness.host.protocolId,
     editId: harness.editId,
     status: 'staged',

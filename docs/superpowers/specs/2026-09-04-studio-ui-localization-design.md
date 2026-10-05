@@ -526,7 +526,7 @@ authority on identity-affecting text discipline).
 
 ### 5.1 Registry and provider placement
 
-Studio declares, in `apps/studio/client/src/i18n/locales.ts`:
+Studio declares, in `apps/studio/web/src/i18n/locales.ts`:
 
 ```ts
 export const studioLocales = defineAppLocales([
@@ -574,11 +574,11 @@ to the hand-written `auth-schema.ts` **and** declared to better-auth as
 `input: false` so it is not settable through better-auth's own endpoints —
 only through the RPC). Follows the auth-schema convention: fold in without
 altering existing physical names or types. Schema change means
-`pnpm --filter @codaco/studio-server sync-fingerprint` (fingerprint, ERD,
+`pnpm --filter @codaco/studio-api sync-fingerprint` (fingerprint, ERD,
 README section all regenerate) — skipping it fails boot and CI.
 
 **Contract.** `MeSchema` gains `locale: z.string().nullable()`. A new
-top-level `account` namespace in `packages/studio-rpc/src/contract.ts`:
+top-level `account` namespace in `packages/studio-contract/src/contract.ts`:
 
 ```
 account.updateLocale({ locale: string | null }) -> { locale: string | null }
@@ -652,7 +652,7 @@ data (names, URLs) per the website spec's rule.
 
 ### 5.5 The en-GB catalog
 
-`apps/studio/client/src/locales/en-GB.json` ships with this work: a sparse
+`apps/studio/web/src/locales/en-GB.json` ships with this work: a sparse
 override catalog authored as a machine first pass (British spelling and
 vocabulary divergences only) and human-reviewed in the PR (decision 8). The
 guard enforces subset-plus-token-parity. fresco-ui's catalog participates in
@@ -827,7 +827,7 @@ Format, lint, typecheck, knip, affected tests, and the package builds
 build`) — the dts bundler is only exercised by the real build. Changeset
 lanes: one normal-lane changeset (`@codaco/app-i18n` added,
 `@codaco/fresco-ui` minor), one Studio-lane changeset
-(`@codaco/studio-client`, `@codaco/studio-server`, `@codaco/studio-rpc`).
+(`@codaco/studio-web`, `@codaco/studio-api`, `@codaco/studio-contract`).
 `pnpm check:changesets` enforces the split.
 
 ### 9.5 Lint

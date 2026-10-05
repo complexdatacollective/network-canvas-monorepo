@@ -118,6 +118,53 @@ test('rejects a changed public version that npm already serves', async () => {
   ]);
 });
 
+function releasedRepository() {
+  const repoRoot = mkdtempSync(
+    path.join(tmpdir(), 'npm-version-collision-test-'),
+  );
+  onTestFinished(() => rmSync(repoRoot, { recursive: true, force: true }));
+  git(repoRoot, 'init', '--initial-branch=main');
+  git(repoRoot, 'config', 'user.name', 'CI Test');
+  git(repoRoot, 'config', 'user.email', 'ci@example.com');
+  git(repoRoot, 'config', 'commit.gpgsign', 'false');
+  writeManifest(repoRoot, 'network-exporters', exportersV1);
+  git(repoRoot, 'add', '.');
+  git(repoRoot, 'commit', '-qm', 'release 1.0.0');
+  git(repoRoot, 'tag', '@codaco/network-exporters@1.0.0');
+  return repoRoot;
+}
+
+test('skips a version whose release commit the head merges in', () => {
+  const repoRoot = releasedRepository();
+  const baseRef = git(repoRoot, 'rev-parse', 'HEAD');
+  git(repoRoot, 'checkout', '-q', '-b', 'release');
+  writeManifest(repoRoot, 'network-exporters', exportersV2);
+  git(repoRoot, 'commit', '-qam', 'release 2.0.0');
+  git(repoRoot, 'tag', '@codaco/network-exporters@2.0.0');
+  git(repoRoot, 'checkout', '-q', 'main');
+  git(repoRoot, 'merge', '-q', '--no-ff', '--no-edit', 'release');
+
+  assert.deepEqual(changedPublicPackageVersions({ repoRoot, baseRef }), []);
+});
+
+test('still checks a released version the base already contains', () => {
+  const repoRoot = releasedRepository();
+  writeManifest(repoRoot, 'network-exporters', exportersV2);
+  git(repoRoot, 'commit', '-qam', 'release 2.0.0');
+  const baseRef = git(repoRoot, 'rev-parse', 'HEAD');
+  writeManifest(repoRoot, 'network-exporters', exportersV1);
+  git(repoRoot, 'commit', '-qam', 'back to 1.0.0');
+
+  assert.deepEqual(changedPublicPackageVersions({ repoRoot, baseRef }), [
+    {
+      manifestPath: 'packages/network-exporters/package.json',
+      name: '@codaco/network-exporters',
+      previousVersion: '2.0.0',
+      version: '1.0.0',
+    },
+  ]);
+});
+
 test('checks public packages in tooling workspaces', async () => {
   const { baseRef, repoRoot } = repository(
     {

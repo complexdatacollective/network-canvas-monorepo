@@ -68,7 +68,7 @@ function StageTitleInTheRoute({
               data-testid="editor-column"
             >
               <ProtocolBuilder
-                client={host.client}
+                adapter={host.adapter}
                 protocolId={host.protocolId}
               >
                 <EnclosingHeadingLevel level="h2">

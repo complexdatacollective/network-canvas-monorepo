@@ -1,6 +1,6 @@
 # The `dev:stack` override of the reference stack (#1909).
 #
-#   pnpm --filter @codaco/studio-server dev:stack
+#   pnpm --filter @codaco/studio-api dev:stack
 #
 # which is `docker compose -p studio-stack --env-file .env.local
 # -f docker-compose.yml -f docker-compose.local.yml up -d` followed by

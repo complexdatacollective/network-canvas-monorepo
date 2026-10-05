@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': minor
+'@codaco/studio-web': minor
 ---
 
 Give Studio every destination the application shell design specifies, so the

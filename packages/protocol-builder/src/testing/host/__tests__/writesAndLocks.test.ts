@@ -1,6 +1,9 @@
-import { safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
+import {
+  NotLockHolder,
+  SectionsLocked,
+} from '@codaco/protocol-builder-core/contract/errors';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import {
   sectionId,
@@ -13,7 +16,7 @@ import {
 } from '../createInMemoryHost.ts';
 import type { HostPrincipal } from '../protocolStore.ts';
 import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
-import { procedurePaths } from './contractProcedures.ts';
+import { procedureTags } from './contractProcedures.ts';
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';
@@ -40,15 +43,13 @@ const GRACE: HostPrincipal = {
   displayName: 'Grace',
 };
 
-const IMAGE = () =>
-  new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+const IMAGE = () => new Uint8Array([1, 2, 3]);
 
 /** Where a section can be when a write reaches it. */
 const LOCK_STATES = ['nobody', 'the caller', 'a collaborator'] as const;
 type LockState = (typeof LOCK_STATES)[number];
 
 type Call = Readonly<{
-  /** Dotted path of the contract procedure this exercises. */
   procedure: string;
   name: string;
   host?: () => InMemoryHost;
@@ -108,7 +109,7 @@ function hostWithSpareType(): InMemoryHost {
 }
 
 async function stagePortrait(host: InMemoryHost): Promise<string> {
-  const staged = await host.client.resources.stage({
+  const staged = await host.adapter.rpcCall('ResourcesStage', {
     protocolId: host.protocolId,
     editId: EDIT,
     requestId: 'request-1',
@@ -134,61 +135,68 @@ async function stagePortrait(host: InMemoryHost): Promise<string> {
  */
 const CALLS: readonly Call[] = [
   {
-    procedure: 'acquireLock',
+    procedure: 'AcquireLock',
     name: 'taking a lock',
     run: (host) =>
-      host.client.acquireLock({
+      host.adapter.rpcCall('AcquireLock', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       }),
   },
   {
-    procedure: 'releaseLock',
+    procedure: 'ReleaseLock',
     name: 'giving a lock back',
     prepare: async (host) => {
-      await host.client.acquireLock({
+      await host.adapter.rpcCall('AcquireLock', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       });
     },
     run: (host) =>
-      host.client.releaseLock({
+      host.adapter.rpcCall('ReleaseLock', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       }),
   },
   {
-    procedure: 'getSection',
+    procedure: 'GetSection',
     name: 'reading a section',
     run: (host) =>
-      host.client.getSection({
+      host.adapter.rpcCall('GetSection', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       }),
   },
   {
-    procedure: 'listSections',
+    procedure: 'ListSections',
     name: 'listing the sections',
-    run: (host) => host.client.listSections({ protocolId: host.protocolId }),
+    run: (host) =>
+      host.adapter.rpcCall('ListSections', { protocolId: host.protocolId }),
   },
   {
-    procedure: 'watchProtocol',
+    procedure: 'WatchProtocol',
     name: 'watching the protocol',
     run: async (host) => {
-      const events = await host.client.watchProtocol({
-        protocolId: host.protocolId,
-      });
-      await events.next();
-      await events.return(undefined);
+      const controller = new AbortController();
+      await host.adapter
+        .rpcStream(
+          'WatchProtocol',
+          { protocolId: host.protocolId },
+          () => controller.abort(),
+          controller.signal,
+        )
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted) throw error;
+        });
     },
   },
   {
-    procedure: 'submit',
+    procedure: 'Submit',
     name: 'submitting a stage',
     mayHold: [INFORMATION],
     requires: INFORMATION,
     run: async (host) =>
-      host.client.submit({
+      host.adapter.rpcCall('Submit', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
@@ -200,13 +208,13 @@ const CALLS: readonly Call[] = [
       }),
   },
   {
-    procedure: 'submit',
+    procedure: 'Submit',
     name: 'submitting a stage that promotes a resource',
     mayHold: [INFORMATION],
     requires: INFORMATION,
     run: async (host) => {
       const resourceId = await stagePortrait(host);
-      return host.client.submit({
+      return host.adapter.rpcCall('Submit', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
@@ -217,11 +225,11 @@ const CALLS: readonly Call[] = [
     },
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     name: 'creating a stage',
     run: async (host) => {
       const { id: _id, ...template } = host.store.read(INFORMATION).document;
-      return host.client.create({
+      return host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'stage',
@@ -230,12 +238,12 @@ const CALLS: readonly Call[] = [
     },
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     name: 'creating a stage that promotes a resource',
     run: async (host) => {
       const resourceId = await stagePortrait(host);
       const { id: _id, ...template } = host.store.read(INFORMATION).document;
-      return host.client.create({
+      return host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'stage',
@@ -248,10 +256,10 @@ const CALLS: readonly Call[] = [
     },
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     name: 'creating a node type',
     run: (host) =>
-      host.client.create({
+      host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookNode',
@@ -264,10 +272,10 @@ const CALLS: readonly Call[] = [
       }),
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     name: 'creating an edge type',
     run: (host) =>
-      host.client.create({
+      host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookEdge',
@@ -275,11 +283,11 @@ const CALLS: readonly Call[] = [
       }),
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     name: 'creating the ego codebook',
     host: hostWithoutEgo,
     run: (host) =>
-      host.client.create({
+      host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookEgo',
@@ -291,76 +299,77 @@ const CALLS: readonly Call[] = [
       }),
   },
   {
-    procedure: 'delete',
+    procedure: 'Delete',
     name: 'deleting a stage',
     run: (host) =>
-      host.client.delete({
+      host.adapter.rpcCall('Delete', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       }),
   },
   {
-    procedure: 'refactor.deleteVariable',
+    procedure: 'RefactorDeleteVariable',
     name: 'deleting a codebook variable',
     mayHold: [PERSON],
     run: (host) =>
-      host.client.refactor.deleteVariable({
+      host.adapter.rpcCall('RefactorDeleteVariable', {
         protocolId: host.protocolId,
         subject: { entity: 'node', type: 'person' },
         variableId: 'relationship_to_ego',
       }),
   },
   {
-    procedure: 'refactor.deleteEntityType',
+    procedure: 'RefactorDeleteEntityType',
     name: 'deleting an entity type',
     host: hostWithSpareType,
     mayHold: [SPARE],
     run: (host) =>
-      host.client.refactor.deleteEntityType({
+      host.adapter.rpcCall('RefactorDeleteEntityType', {
         protocolId: host.protocolId,
         entity: 'node',
         typeId: 'spare',
       }),
   },
   {
-    procedure: 'resources.list',
+    procedure: 'ResourcesList',
     name: 'listing resources',
-    run: (host) => host.client.resources.list({ protocolId: host.protocolId }),
+    run: (host) =>
+      host.adapter.rpcCall('ResourcesList', { protocolId: host.protocolId }),
   },
   {
-    procedure: 'resources.stage',
+    procedure: 'ResourcesStage',
     name: 'staging a resource',
     run: async (host) => {
       await stagePortrait(host);
     },
   },
   {
-    procedure: 'resources.discard',
+    procedure: 'ResourcesDiscard',
     name: 'discarding a staged resource',
     prepare: async (host) => {
       await stagePortrait(host);
     },
     run: (host) =>
-      host.client.resources.discard({
+      host.adapter.rpcCall('ResourcesDiscard', {
         protocolId: host.protocolId,
         editId: EDIT,
       }),
   },
   {
-    procedure: 'resources.inspect',
+    procedure: 'ResourcesInspect',
     name: 'inspecting a resource',
     run: (host) =>
-      host.client.resources.inspect({
+      host.adapter.rpcCall('ResourcesInspect', {
         protocolId: host.protocolId,
         editId: EDIT,
         resourceId: 'geo_data',
       }),
   },
   {
-    procedure: 'resources.preview',
+    procedure: 'ResourcesPreview',
     name: 'previewing a resource',
     run: (host) =>
-      host.client.resources.preview({
+      host.adapter.rpcCall('ResourcesPreview', {
         protocolId: host.protocolId,
         editId: EDIT,
         resourceId: 'geo_data',
@@ -373,7 +382,7 @@ describe('every write, against every lock on every section it touches', () => {
     // A procedure nobody exercises escapes the enumeration below entirely, so
     // the contract itself says what the list has to contain.
     expect([...new Set(CALLS.map((call) => call.procedure))].sort()).toEqual(
-      procedurePaths().sort(),
+      procedureTags().sort(),
     );
   });
 
@@ -404,7 +413,7 @@ async function touchedSections(call: Call): Promise<ProtocolSectionId[]> {
   await call.prepare?.(host);
   await holdFor(call, host, undefined);
   const before = snapshot(host);
-  const { isSuccess, error } = await safe(call.run(host));
+  const { isSuccess, error } = await settled(call.run(host));
   if (!isSuccess) {
     throw new Error(`${call.name} was refused with every lock it may hold`, {
       cause: error,
@@ -423,20 +432,20 @@ async function attempt(
   const host = (call.host ?? fixtureHost)();
   await call.prepare?.(host);
   if (held === 'a collaborator') {
-    await host.asCollaborator(GRACE).acquireLock({
+    await host.asCollaborator(GRACE).rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: section,
     });
   }
   if (held === 'the caller') {
-    await host.client.acquireLock({
+    await host.adapter.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: section,
     });
   }
   await holdFor(call, host, held === 'nobody' ? section : undefined);
   const before = snapshot(host);
-  const { isSuccess, error } = await safe(call.run(host));
+  const { isSuccess, error } = await settled(call.run(host));
   const wrote = changed(before, snapshot(host));
   if (isSuccess) return { section, held, outcome: 'taken', wrote };
   const names = holderNamedBy(error);
@@ -463,7 +472,7 @@ async function holdFor(
 ): Promise<void> {
   for (const id of call.mayHold ?? []) {
     if (id === except) continue;
-    await host.client.acquireLock({
+    await host.adapter.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: id,
     });
@@ -500,20 +509,22 @@ function expectedRow(
 
 /** Who a refusal says is holding the section, if it says. */
 function holderNamedBy(error: unknown): string | undefined {
-  const data = (error as { data?: unknown } | null)?.data;
-  if (typeof data !== 'object' || data === null) return undefined;
-  const holder = (data as { holder?: { displayName?: unknown } }).holder;
-  if (typeof holder?.displayName === 'string') return holder.displayName;
-  const blocked = (data as { blocked?: unknown }).blocked;
-  if (!Array.isArray(blocked)) return undefined;
-  const named = blocked
-    .map((entry: unknown) =>
-      typeof entry === 'object' && entry !== null
-        ? (entry as { holder?: { displayName?: unknown } }).holder?.displayName
-        : undefined,
-    )
-    .filter((name): name is string => typeof name === 'string');
-  return named[0];
+  if (error instanceof NotLockHolder) return error.holder?.displayName;
+  if (!(error instanceof SectionsLocked)) return undefined;
+  return error.blocked.flatMap((entry) =>
+    entry.holder === undefined ? [] : [entry.holder.displayName],
+  )[0];
+}
+
+async function settled(
+  run: Promise<unknown>,
+): Promise<Readonly<{ isSuccess: boolean; error: unknown }>> {
+  try {
+    await run;
+    return { isSuccess: true, error: undefined };
+  } catch (error: unknown) {
+    return { isSuccess: false, error };
+  }
 }
 
 /** Every section as it stands, by content, so a write of any kind shows up. */

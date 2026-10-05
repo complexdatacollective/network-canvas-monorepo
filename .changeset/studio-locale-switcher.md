@@ -1,6 +1,6 @@
 ---
-'@codaco/studio-client': minor
-'@codaco/studio-rpc': patch
+'@codaco/studio-web': minor
+'@codaco/studio-contract': patch
 ---
 
 The language Studio speaks to you moves out of the account area and into the

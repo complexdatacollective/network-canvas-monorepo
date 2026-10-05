@@ -159,9 +159,9 @@ test('release lane suites match the workspace dependency graph', () => {
     [NORMAL_RELEASE_REF]: ['@codaco/architect', '@codaco/interviewer'],
     'changeset-release/documentation': ['@codaco/documentation'],
     'changeset-release/studio': [
-      '@codaco/studio-client',
-      '@codaco/studio-rpc',
-      '@codaco/studio-server',
+      '@codaco/studio-web',
+      '@codaco/studio-contract',
+      '@codaco/studio-api',
       '@codaco/studio-sync',
     ],
     'changeset-release/website': ['networkcanvas.com'],
@@ -225,14 +225,8 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
 test('workspace discovery follows nested pnpm workspace patterns', () => {
   const packages = collectWorkspacePackages(REPO_ROOT);
 
-  assert.equal(
-    packages.get('@codaco/studio-client')?.dir,
-    'apps/studio/client',
-  );
-  assert.equal(
-    packages.get('@codaco/studio-server')?.dir,
-    'apps/studio/server',
-  );
+  assert.equal(packages.get('@codaco/studio-web')?.dir, 'apps/studio/web');
+  assert.equal(packages.get('@codaco/studio-api')?.dir, 'apps/studio/api');
 });
 
 test('workspace discovery parses quoted patterns without installed packages', () => {
@@ -251,7 +245,7 @@ test('workspace discovery parses quoted patterns without installed packages', ()
   );
   for (const [directory, name] of [
     ['apps/root', '@example/root'],
-    ['apps/studio/client', '@example/client'],
+    ['apps/studio/web', '@example/client'],
     ['apps/excluded', '@example/excluded'],
   ]) {
     mkdirSync(join(cwd, directory), { recursive: true });
@@ -263,7 +257,7 @@ test('workspace discovery parses quoted patterns without installed packages', ()
 
   const packages = collectWorkspacePackages(cwd);
   assert.equal(packages.get('@example/root')?.dir, 'apps/root');
-  assert.equal(packages.get('@example/client')?.dir, 'apps/studio/client');
+  assert.equal(packages.get('@example/client')?.dir, 'apps/studio/web');
   assert.equal(packages.has('@example/excluded'), false);
 });
 
@@ -688,8 +682,8 @@ test('unit-only and unrelated nested-workspace changes select no E2E suites', ()
     'tooling/vitest/legacy/disable-animations.js',
     'tooling/vitest/package.json',
     'scripts/buildtime/vitest-animation-setup.test.mjs',
-    'apps/studio/client/vitest.config.ts',
-    'apps/studio/client/src/main.tsx',
+    'apps/studio/web/vitest.config.ts',
+    'apps/studio/web/src/main.tsx',
     'apps/architect/vitest.config.ts',
   ]) {
     assert.deepEqual(

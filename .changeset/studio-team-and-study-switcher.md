@@ -1,7 +1,7 @@
 ---
-'@codaco/studio-client': minor
-'@codaco/studio-rpc': minor
-'@codaco/studio-server': minor
+'@codaco/studio-web': minor
+'@codaco/studio-contract': minor
+'@codaco/studio-api': minor
 ---
 
 The header's two bespoke switchers are replaced by the shared
@@ -31,8 +31,8 @@ A study whose team cannot be resolved is named by its identifier and offered
 no siblings, which is what the shell honestly knows about it.
 
 `me` carries the caller's memberships now — every team they belong to, and
-their role in it — which is why `@codaco/studio-rpc` and
-`@codaco/studio-server` are versioned alongside the client. Better Auth's own
+their role in it — which is why `@codaco/studio-contract` and
+`@codaco/studio-api` are versioned alongside the client. Better Auth's own
 team list joins the member table and then returns only the organization, so
 nothing else could tell the switcher what a researcher is in each of their
 teams. The role travels as a plain string rather than the role enum, because

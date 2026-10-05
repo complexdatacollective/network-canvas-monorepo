@@ -76,7 +76,7 @@ const renderDeleting = (
   locale?: string,
 ) => {
   const tree = (
-    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
       <DeleteAttribute variableId={variableId} />
     </ProtocolBuilder>
   );
