@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { createInitialNetwork } from '../../../src/contract/network';
 import type {
   ProtocolPayload,
-  SessionPayload,
+  SessionSnapshot,
 } from '../../../src/contract/types';
 import {
   getFinishCalls,
@@ -18,7 +18,7 @@ const STORAGE_KEY = '__e2e_test_state';
 type InterviewEntry = {
   protocolId: string;
   participantId: string;
-  session: SessionPayload;
+  session: SessionSnapshot;
 };
 
 type SerializableState = {
@@ -113,8 +113,8 @@ export function setAssetUrl(assetId: string, url: string): void {
 }
 
 export type SessionSeed = {
-  network?: SessionPayload['network'];
-  stageMetadata?: SessionPayload['stageMetadata'];
+  network?: SessionSnapshot['network'];
+  stageMetadata?: SessionSnapshot['stageMetadata'];
 };
 
 export function createInterview(
@@ -127,13 +127,15 @@ export function createInterview(
   // Shell owns its state in Redux — getNetworkState reads from that live
   // store, not from this snapshot. The step is NOT part of the session:
   // the host derives it from the URL (?step=) and passes it as a Shell prop.
-  const session: SessionPayload = {
+  const session: SessionSnapshot = {
     id,
     startTime: new Date().toISOString(),
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: seed?.network ?? createInitialNetwork(),
+    localePreference: null,
+    locale: null,
     ...(seed?.stageMetadata != null
       ? { stageMetadata: seed.stageMetadata }
       : {}),
@@ -146,7 +148,7 @@ export function createInterview(
 
 // Reads live state from the running Shell's Redux store. Shell exposes it on
 // window.__interviewStore when flags.isE2E is true.
-function getNetworkState(): SessionPayload['network'] | undefined {
+function getNetworkState(): SessionSnapshot['network'] | undefined {
   return window.__interviewStore?.getState().session.network;
 }
 
@@ -161,14 +163,17 @@ export function getAllowStageNavigation(): boolean {
   return allowStageNavigation;
 }
 
-let requestedLocale: string | readonly string[] | null = null;
+// Stands in for `navigator.languages`, which a real browser host passes. Empty
+// by default so every suite runs in the protocol's default language and
+// English built-in text, whatever locale the browser is launched with.
+let requestedLocales: readonly string[] = [];
 
-export function getRequestedLocale() {
-  return requestedLocale;
+export function getRequestedLocales(): readonly string[] {
+  return requestedLocales;
 }
 
-function setRequestedLocale(locale: string | readonly string[] | null) {
-  requestedLocale = locale;
+function setRequestedLocales(locales: readonly string[]) {
+  requestedLocales = locales;
   notifySubscribers();
 }
 
@@ -180,7 +185,7 @@ function setAllowStageNavigation(enabled: boolean): void {
 function reset(): void {
   state = createEmptyState();
   allowStageNavigation = false;
-  requestedLocale = null;
+  requestedLocales = [];
   resetFinishInstrumentation();
   sessionStorage.removeItem(STORAGE_KEY);
   notifySubscribers();
@@ -203,6 +208,6 @@ export function installTestHooks(): void {
     rejectManualFinish,
     getFinishCalls,
     setAllowStageNavigation,
-    setRequestedLocale,
+    setRequestedLocales,
   };
 }

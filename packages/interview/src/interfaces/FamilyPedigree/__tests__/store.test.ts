@@ -619,6 +619,8 @@ describe('finalizeNetwork', () => {
       finishTime: null,
       exportTime: null,
       lastUpdated: new Date().toISOString(),
+      localePreference: null,
+      locale: null,
       network: {
         ...createInitialNetwork(),
         nodes: preloadedNodes,

@@ -111,16 +111,4 @@ export const navigationMessages = defineMessages({
     description:
       'Accessible name for opening the interview screen navigation drawer.',
   },
-  interfaceLanguage: {
-    id: 'interview.navigation.interfaceLanguage',
-    defaultMessage: 'Interface language',
-    description:
-      "Label for the language of the interview package's built-in controls; protocol text is separate.",
-  },
-  automaticLanguage: {
-    id: 'interview.navigation.automaticLanguage',
-    defaultMessage: 'Automatic',
-    description:
-      "Language option that follows the host's requested interface language.",
-  },
 });

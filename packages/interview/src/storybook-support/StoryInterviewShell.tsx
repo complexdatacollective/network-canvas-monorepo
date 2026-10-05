@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import SuperJSON from 'superjson';
 
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { StageMetadataSchema } from '@codaco/shared-consts';
 
 import {
@@ -31,11 +32,26 @@ type RawSyntheticPayload = {
   currentStep: number;
   stageMetadata?: unknown;
   network: InterviewPayload['session']['network'];
-  protocol: Omit<InterviewPayload['protocol'], 'assets' | 'importedAt'> & {
+  protocol: Omit<
+    InterviewPayload['protocol'],
+    'assets' | 'importedAt' | 'localization'
+  > & {
     importedAt: Date;
     assets: RawAsset[];
+    localization?: InterviewPayload['protocol']['localization'];
   };
 };
+
+// Stories built without translations are written in one language that nobody
+// named.
+const UNSPECIFIED_LOCALIZATION: InterviewPayload['protocol']['localization'] = {
+  defaultLocale: 'und',
+  locales: ['und'],
+};
+
+// Stories render the protocol's default language and the English interface
+// whatever languages the browser running them prefers.
+const NO_REQUESTED_LOCALES: readonly string[] = [];
 
 // Derive the ResolvedAsset.type from the raw asset record. Stories may
 // declare it explicitly via `type:` (preferred), or we fall back to
@@ -82,6 +98,8 @@ function buildPayload(raw: RawSyntheticPayload): {
     }
   }
 
+  const localization = protocol.localization ?? UNSPECIFIED_LOCALIZATION;
+
   // SessionState expects ISO date strings (Redux refuses non-serializable
   // values). SyntheticInterview emits live Date objects, so coerce here.
   const parsedStageMetadata = StageMetadataSchema.safeParse(stageMetadata);
@@ -95,6 +113,11 @@ function buildPayload(raw: RawSyntheticPayload): {
     ...(parsedStageMetadata.success
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),
+    localePreference: null,
+    locale: null,
+    localeOptions: localization.locales.map((locale) =>
+      getLocaleMetadata(locale),
+    ),
   };
 
   return {
@@ -102,6 +125,7 @@ function buildPayload(raw: RawSyntheticPayload): {
       session,
       protocol: {
         ...protocol,
+        localization,
         hash:
           typeof protocol.id === 'string'
             ? `storybook-${protocol.id}`
@@ -159,6 +183,7 @@ const StoryInterviewShell = (props: {
   );
 
   const onSync = useCallback(() => Promise.resolve(), []);
+  const onProtocolLocaleChange = useCallback(() => Promise.resolve(), []);
   const onFinish = useCallback(() => Promise.resolve(), []);
 
   // Wrapping providers (DndStoreProvider, DialogProvider, Toast viewport,
@@ -169,7 +194,9 @@ const StoryInterviewShell = (props: {
       payload={payload}
       currentStep={currentStep}
       onStepChange={onStepChange}
+      requestedLocales={NO_REQUESTED_LOCALES}
       onSync={onSync}
+      onProtocolLocaleChange={onProtocolLocaleChange}
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       flags={{ isDevelopment: props.isDevelopment ?? true }}

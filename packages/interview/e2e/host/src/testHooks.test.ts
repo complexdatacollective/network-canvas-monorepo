@@ -22,6 +22,7 @@ function makeProtocol(overrides?: Partial<ProtocolPayload>): ProtocolPayload {
     description: '',
     lastModified: '2026-01-01T00:00:00.000Z',
     schemaVersion: 9,
+    localization: { defaultLocale: 'und', locales: ['und'] },
     codebook: { node: {}, edge: {}, ego: {} },
     stages: [],
     assets: [],

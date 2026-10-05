@@ -42,6 +42,11 @@ export const getActiveSession = (state: RootState) => {
 
 export const getInterviewId = (state: RootState) => state.session.id;
 
+export const getLocalePreference = (state: RootState) =>
+  state.session.localePreference;
+
+export const getRecordedLocale = (state: RootState) => state.session.locale;
+
 /**
  * The package no longer stores currentStep in Redux, so every selector that
  * needs it must accept it from the caller. Current step should be derived from

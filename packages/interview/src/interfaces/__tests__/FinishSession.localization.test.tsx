@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 
 import { ContractProvider } from '../../contract/context';
 import type { FinishHandler, InterviewPayload } from '../../contract/types';
@@ -20,6 +21,9 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-09-06T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
+    localeOptions: [getLocaleMetadata('und')],
     network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
   },
   protocol: {
@@ -28,6 +32,7 @@ const payload = {
     importedAt: '2026-09-06T00:00:00.000Z',
     name: 'Literal protocol name',
     schemaVersion: 9,
+    localization: { defaultLocale: 'und', locales: ['und'] },
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
     stages: [],
@@ -53,7 +58,10 @@ beforeAll(() => {
 });
 
 function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
-  const store = createStore(payload, { onSync: () => Promise.resolve() });
+  const store = createStore(payload, {
+    onSync: () => Promise.resolve(),
+    onProtocolLocaleChange: () => Promise.resolve(),
+  });
   return (locale: string) => (
     <AnimationProvider disableAnimations reducedMotion="always">
       <InterviewI18nProvider requestedLocale={locale}>

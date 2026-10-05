@@ -138,6 +138,9 @@ catalog:
   eslint-plugin-formatjs: ^8.1.0
   es-toolkit: ^1.52.0
   fuse.js: ^7.5.0
+  # The FormatJS runtime react-intl already pins; the interview formats
+  # protocol-authored ICU messages with it directly, in their source locale.
+  intl-messageformat: ^12.1.2
   # Held on 30.0: 30.1.1 models focus across frames like a browser (focus
   # inside an iframe keeps the <iframe> focused in the outer document, and
   # `frame.blur()` no longer clears it), and fresco-ui's NavDrawer iframe test

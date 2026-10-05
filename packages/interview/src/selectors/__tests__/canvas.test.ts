@@ -80,6 +80,8 @@ describe('Sociogram placement selectors', () => {
           finishTime: null,
           exportTime: null,
           lastUpdated: '2026-08-12T00:00:00.000Z',
+          localePreference: null,
+          locale: null,
           promptIndex: 0,
           network: {
             ego: {

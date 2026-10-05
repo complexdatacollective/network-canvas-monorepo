@@ -1,0 +1,204 @@
+'use client';
+
+import { invariant } from 'es-toolkit';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  type LocaleMetadata,
+  type LocaleTag,
+  type LocalizedString,
+  type ResolvedLocalizedString,
+  resolveLocalizedString,
+  selectProtocolLocale,
+} from '@codaco/protocol-validation';
+
+import { languageMessages } from '../i18n/languageMessages';
+import {
+  createLocalizedMessageFormatter,
+  type LocalizedMessageFormatter,
+} from './messageFormatter';
+
+type LocalizationDeclaration = Parameters<typeof selectProtocolLocale>[1];
+
+type ProtocolLocalizationState = Readonly<{
+  locale: LocaleTag;
+  metadata: LocaleMetadata;
+  options: readonly LocaleMetadata[];
+  setLocale: (locale: LocaleTag) => void;
+  localization: LocalizationDeclaration;
+  format: LocalizedMessageFormatter;
+}>;
+
+const ProtocolLocalizationContext =
+  createContext<ProtocolLocalizationState | null>(null);
+
+const useProtocolLocalizationState = () => {
+  const state = useContext(ProtocolLocalizationContext);
+  invariant(
+    state,
+    'Protocol localization is only available inside a ProtocolLocalizationProvider',
+  );
+  return state;
+};
+
+const UNSPECIFIED_LOCALE = 'und';
+
+function assertOptionsMatchDeclaration(
+  localization: LocalizationDeclaration,
+  localeOptions: readonly LocaleMetadata[],
+) {
+  const matches =
+    localeOptions.length === localization.locales.length &&
+    localeOptions.every(
+      (option, index) => option.locale === localization.locales[index],
+    );
+  if (!matches) {
+    throw new Error(
+      `localeOptions must describe the protocol's declared locales in declaration order (declared: ${localization.locales.join(', ')}; received: ${localeOptions.map((option) => option.locale).join(', ')}). Derive them with getLocaleMetadata.`,
+    );
+  }
+}
+
+/**
+ * Decides which protocol translation the interview shows: the participant's
+ * stated preference when there is one, otherwise the first of the browser's
+ * languages the protocol declares, otherwise the protocol's default. Without a
+ * stated preference the choice is made afresh on every load.
+ *
+ * Labels and directions come from the host's `localeOptions`, never from
+ * `Intl.DisplayNames` here: display names vary between JavaScript runtimes, so
+ * deriving them again would make a server render and its hydration disagree.
+ */
+export function ProtocolLocalizationProvider({
+  localization,
+  localeOptions,
+  requestedLocales,
+  localePreference,
+  recordedLocale,
+  onLocalePreferenceChange,
+  onLocaleRecorded,
+  children,
+}: {
+  localization: LocalizationDeclaration;
+  localeOptions: readonly LocaleMetadata[];
+  requestedLocales: readonly string[];
+  /** The participant's stated preference, or null to follow the browser. */
+  localePreference: LocaleTag | null;
+  /** The locale the session last recorded as shown. */
+  recordedLocale: LocaleTag | null;
+  onLocalePreferenceChange: (locale: LocaleTag) => void;
+  /** Called after render when the locale shown differs from `recordedLocale`. */
+  onLocaleRecorded: (locale: LocaleTag) => void;
+  children: ReactNode;
+}) {
+  const intl = useAppIntl();
+  const unspecifiedLabel = intl.formatMessage(
+    languageMessages.unspecifiedLanguage,
+  );
+
+  const options = useMemo(() => {
+    assertOptionsMatchDeclaration(localization, localeOptions);
+    // `Intl.DisplayNames` names `und` "root", which means nothing to a
+    // participant.
+    return localeOptions.map((option) =>
+      option.locale === UNSPECIFIED_LOCALE
+        ? { ...option, label: unspecifiedLabel }
+        : option,
+    );
+  }, [localization, localeOptions, unspecifiedLabel]);
+
+  // A stated preference is passed as the only request, so a preference the
+  // protocol no longer matches yields its default rather than a browser
+  // language.
+  const locale = useMemo(
+    () =>
+      selectProtocolLocale(
+        localePreference === null ? requestedLocales : [localePreference],
+        localization,
+      ),
+    [localePreference, requestedLocales, localization],
+  );
+
+  const metadata = options.find((option) => option.locale === locale);
+  invariant(metadata, `No locale option describes "${locale}"`);
+
+  useEffect(() => {
+    if (recordedLocale !== locale) onLocaleRecorded(locale);
+  }, [locale, recordedLocale, onLocaleRecorded]);
+
+  const setLocale = useCallback(
+    (next: LocaleTag) => {
+      invariant(
+        localization.locales.includes(next),
+        `"${next}" is not one of the protocol's declared locales`,
+      );
+      onLocalePreferenceChange(next);
+    },
+    [localization, onLocalePreferenceChange],
+  );
+
+  const [format] = useState(createLocalizedMessageFormatter);
+
+  const value = useMemo(
+    () => ({ locale, metadata, options, setLocale, localization, format }),
+    [locale, metadata, options, setLocale, localization, format],
+  );
+
+  return (
+    <ProtocolLocalizationContext.Provider value={value}>
+      {children}
+    </ProtocolLocalizationContext.Provider>
+  );
+}
+
+/**
+ * The protocol translation the interview shows, its presentation metadata,
+ * every declared locale's metadata in declaration order, and a setter that
+ * records the participant's stated preference.
+ */
+export function useProtocolLocale(): Readonly<{
+  locale: LocaleTag;
+  metadata: LocaleMetadata;
+  options: readonly LocaleMetadata[];
+  setLocale: (locale: LocaleTag) => void;
+}> {
+  const { locale, metadata, options, setLocale } =
+    useProtocolLocalizationState();
+  return useMemo(
+    () => ({ locale, metadata, options, setLocale }),
+    [locale, metadata, options, setLocale],
+  );
+}
+
+/**
+ * Resolves protocol-authored strings for the interview locale. `text` is the
+ * formatted message, in the locale the text is actually written in.
+ */
+function useResolveLocalizedString(): (
+  value: LocalizedString,
+) => ResolvedLocalizedString {
+  const { localization, locale, format } = useProtocolLocalizationState();
+  return useCallback(
+    (value: LocalizedString) => {
+      const resolved = resolveLocalizedString(value, localization, locale);
+      return { ...resolved, text: format(resolved.locale, resolved.text) };
+    },
+    [localization, locale, format],
+  );
+}
+
+export function useLocalizedString(
+  value: LocalizedString,
+): ResolvedLocalizedString {
+  const resolve = useResolveLocalizedString();
+  return useMemo(() => resolve(value), [resolve, value]);
+}
