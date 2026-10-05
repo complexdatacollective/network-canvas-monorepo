@@ -8,6 +8,7 @@ header, reachable from every screen. It names the language in use, written in
 that language, and opens a list of every interface language, each written in
 itself. The first entry, Automatic, says which language the browser currently
 resolves to. In a narrow header the name gives way to a globe button.
+A search box at the top of the list finds a language by its name.
 
 Choosing an entry applies at once and closes the list. A choice that could not
 be saved to your account is reported in the list's footer, with a button to
