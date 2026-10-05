@@ -495,6 +495,22 @@ function ExistingRelationshipFields({
 }) {
   const intl = useAppIntl();
   const { partnerships, parents } = existingLinksOf(family, person.id);
+  // Who carried the pregnancy, as the answers stand: one parent at most, so
+  // while one does, the others are not asked and cannot be a surrogate.
+  const linkValues = useFormValue(
+    parents.flatMap((link) => [
+      linkField(link, 'kind'),
+      linkField(link, 'carrier'),
+    ]),
+    'opaque',
+  );
+  const carries = (link: FamilyLink) => {
+    const kind = asString(linkValues[linkField(link, 'kind')]) ?? link.kind;
+    if (kind === 'surrogate') return true;
+    if (kind !== 'biological') return false;
+    const carrier = linkValues[linkField(link, 'carrier')];
+    return carrier === undefined ? link.isGestationalCarrier : carrier === true;
+  };
   if (partnerships.length === 0 && parents.length === 0) return null;
 
   const isYou = (personId: string) =>
@@ -539,6 +555,10 @@ function ExistingRelationshipFields({
         >
           <ParentLinkFields
             link={link}
+            carries={carries(link)}
+            anotherCarries={parents.some(
+              (other) => other.id !== link.id && carries(other),
+            )}
             personIsYou={isYou(person.id)}
             parentIsYou={isYou(link.source)}
             parentName={displayName(link.source)}
@@ -612,11 +632,17 @@ function RemovableRelationship({
 
 function ParentLinkFields({
   link,
+  carries,
+  anotherCarries,
   personIsYou,
   parentIsYou,
   parentName,
 }: {
   link: FamilyLink;
+  /** This parent carried the pregnancy, as the answers stand. */
+  carries: boolean;
+  /** Another of the person's parents did. */
+  anotherCarries: boolean;
   personIsYou: string;
   parentIsYou: string;
   parentName: string;
@@ -640,10 +666,11 @@ function ParentLinkFields({
         options={PARENT_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(PARENT_KIND_LABELS[value]),
+          disabled: value === 'surrogate' && anotherCarries,
         }))}
         initialValue={link.kind}
       />
-      {kind === 'biological' && (
+      {kind === 'biological' && (carries || !anotherCarries) && (
         <Field
           component={BooleanField}
           name={linkField(link, 'carrier')}
@@ -833,6 +860,14 @@ function ParentFields({
     parentKind === 'social';
 
   const existingParents = primaryParentsOf(family, anchor.id);
+  // One person carried the pregnancy at most; once someone has, the new
+  // parent cannot have too.
+  const anchorHasCarrier = family.links.some(
+    (link) =>
+      link.kind !== 'partner' &&
+      link.target === anchor.id &&
+      link.isGestationalCarrier,
+  );
   const siblings = siblingsOf(family, anchor.id);
   const fullSiblings = new Set(fullSiblingsOf(family, anchor.id));
   const partnerChoice = asString(values[ROLE.partnerId]);
@@ -846,10 +881,11 @@ function ParentFields({
         options={PARENT_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(PARENT_KIND_LABELS[value]),
+          disabled: value === 'surrogate' && anchorHasCarrier,
         }))}
         initialValue="biological"
       />
-      {parentKind === 'biological' && (
+      {parentKind === 'biological' && !anchorHasCarrier && (
         <Field
           component={BooleanField}
           name={ROLE.carriedPregnancy}
