@@ -20,8 +20,7 @@ const SERVER_ORIGIN =
 export default defineConfig({
   plugins: [
     // Pre-parses every message at build time — defineMessages defaults via
-    // the oxc-based formatjs transform, imported locale catalogs likewise —
-    // and drops the ICU parser from production bundles.
+    // the oxc-based formatjs transform, imported locale catalogs likewise.
     ...appI18n(),
     react(),
     tailwindcss(),

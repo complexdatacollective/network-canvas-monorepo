@@ -59,7 +59,7 @@ catalog:
   '@formatjs/icu-messageformat-parser': ^3.5.20
   # oxc-based build transform (no babel) compiling defineMessages
   # defaultMessage strings to pre-parsed AST in @codaco/app-i18n's vite
-  # integration, keeping the ICU parser out of production bundles.
+  # integration.
   '@formatjs/unplugin': ^1.2.12
   # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
   # the protocol localization design (§7.1) adopts this same entry when

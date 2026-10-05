@@ -54,7 +54,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    ...appI18n({ build: 'library' }),
+    ...appI18n(),
     dts({
       insertTypesEntry: false,
       // Multi-entry build: strip `src/` so emitted .d.ts files sit alongside
