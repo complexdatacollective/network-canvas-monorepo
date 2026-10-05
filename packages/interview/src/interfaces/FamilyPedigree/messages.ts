@@ -514,7 +514,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.toolsLabel',
     defaultMessage: 'Family tree tools',
     description:
-      'Accessible name of the toolbar above the family tree, which switches between adding or editing people and connecting two people.',
+      'Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people.',
   },
   toolGroupLabel: {
     id: 'interview.familyPedigree.toolGroupLabel',
@@ -600,24 +600,58 @@ export const messages = defineMessages({
     description:
       'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child.',
   },
-  removeRelationship: {
-    id: 'interview.familyPedigree.removeRelationship',
-    defaultMessage:
-      '{otherIsYou, select, true {Remove the connection to you} other {Remove the connection to “{name}”}}',
+  disconnectTool: {
+    id: 'interview.familyPedigree.disconnectTool',
+    defaultMessage: 'Remove a connection',
     description:
-      'Button under a relationship in a family member’s details: takes the connection away when the details are saved. name is the other person’s name or how they are related to the participant.',
+      'Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree.',
   },
-  relationshipWillBeRemoved: {
-    id: 'interview.familyPedigree.relationshipWillBeRemoved',
+  disconnectHint: {
+    id: 'interview.familyPedigree.disconnectHint',
     defaultMessage:
-      '{otherIsYou, select, true {The connection to you will be removed when you save.} other {The connection to “{name}” will be removed when you save.}}',
+      'Select a person, then select someone they are connected to, to remove that connection.',
     description:
-      'Shown in place of a relationship that the participant has chosen to remove, until they save. name is the other person’s name or how they are related to the participant.',
+      'Instruction shown under the toolbar while the tool for removing a connection between two people is on.',
   },
-  undoRemoveRelationship: {
-    id: 'interview.familyPedigree.undoRemoveRelationship',
-    defaultMessage: 'Keep it',
+  disconnectHintLinking: {
+    id: 'interview.familyPedigree.disconnectHintLinking',
+    defaultMessage:
+      '{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from “{name}”.}}',
     description:
-      'Button next to a relationship that will be removed on saving: keeps the relationship instead.',
+      'Instruction shown under the toolbar once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant.',
+  },
+  disconnectNotConnected: {
+    id: 'interview.familyPedigree.disconnectNotConnected',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” are not connected.} other {“{first}” and “{second}” are not connected.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects two people to disconnect who have no connection between them. first and second are their names or how they are related to the participant.',
+  },
+  disconnectConfirmTitle: {
+    id: 'interview.familyPedigree.disconnectConfirmTitle',
+    defaultMessage:
+      '{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}',
+    description:
+      'Title of the confirmation shown before removing the connection between two people. first and second are their names or how they are related to the participant.',
+  },
+  disconnectConfirmDescription: {
+    id: 'interview.familyPedigree.disconnectConfirmDescription',
+    defaultMessage:
+      'Both people stay in your family tree. Only the connection between them is removed.',
+    description:
+      'Explanation in the confirmation shown before removing the connection between two people.',
+  },
+  disconnectConfirm: {
+    id: 'interview.familyPedigree.disconnectConfirm',
+    defaultMessage: 'Remove connection',
+    description:
+      'Button in the confirmation that removes the connection between two people.',
+  },
+  disconnectedAnnouncement: {
+    id: 'interview.familyPedigree.disconnectedAnnouncement',
+    defaultMessage:
+      '{firstIsYou, select, true {The connection between you and “{second}” was removed.} other {The connection between “{first}” and “{second}” was removed.}}',
+    description:
+      'Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant.',
   },
 });

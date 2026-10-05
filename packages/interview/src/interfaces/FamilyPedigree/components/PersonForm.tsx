@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
@@ -62,8 +61,6 @@ export type PersonFormResult = {
   request?: AddRelativeRequest;
   /** Changes to the person's existing relationships (edit only). */
   linkUpdates?: LinkUpdate[];
-  /** Relationships to take away (edit only). */
-  linkRemovals?: string[];
 };
 
 /** The person being added, as the form stands: shown in the family before
@@ -148,17 +145,7 @@ export default function PersonForm({
 }: PersonFormProps) {
   const intl = useAppIntl();
   const person = mode.kind === 'edit' ? mode.person : undefined;
-  // Relationships marked for removal, taken away on saving.
-  const [removedLinks, setRemovedLinks] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const setLinkRemoved = (linkId: string, removed: boolean) =>
-    setRemovedLinks((current) => {
-      const next = new Set(current);
-      if (removed) next.add(linkId);
-      else next.delete(linkId);
-      return next;
-    });
+
   const isEgo = person?.isEgo ?? false;
 
   const initialResearcherValues = useMemo(() => {
@@ -237,12 +224,8 @@ export default function PersonForm({
           : undefined,
       linkUpdates:
         mode.kind === 'edit'
-          ? readLinkUpdates(
-              existingLinksOf(family, mode.person.id),
-              values,
-            ).filter((update) => !removedLinks.has(update.linkId))
+          ? readLinkUpdates(existingLinksOf(family, mode.person.id), values)
           : undefined,
-      linkRemovals: mode.kind === 'edit' ? [...removedLinks] : undefined,
     });
     return { success: true };
   };
@@ -350,8 +333,6 @@ export default function PersonForm({
             person={mode.person}
             family={family}
             displayName={displayName}
-            removedLinks={removedLinks}
-            onLinkRemovedChange={setLinkRemoved}
           />
         )}
         {formFields.length > 0 && (
@@ -486,14 +467,10 @@ function ExistingRelationshipFields({
   person,
   family,
   displayName,
-  removedLinks,
-  onLinkRemovedChange,
 }: {
   person: Person;
   family: Family;
   displayName: (personId: string) => string;
-  removedLinks: ReadonlySet<string>;
-  onLinkRemovedChange: (linkId: string, removed: boolean) => void;
 }) {
   const intl = useAppIntl();
   const { partnerships, parents } = existingLinksOf(family, person.id);
@@ -528,110 +505,35 @@ function ExistingRelationshipFields({
       {partnerships.map((link) => {
         const partnerId = link.source === person.id ? link.target : link.source;
         return (
-          <RemovableRelationship
+          <Field
             key={link.id}
-            otherIsYou={isYou(partnerId)}
-            otherName={displayName(partnerId)}
-            removed={removedLinks.has(link.id)}
-            onRemovedChange={(removed) => onLinkRemovedChange(link.id, removed)}
-          >
-            <Field
-              component={BooleanField}
-              name={linkField(link, 'current')}
-              nameMode="opaque"
-              label={intl.formatMessage(messages.stillTogetherLabel, {
-                personIsYou: isYou(person.id),
-                partnerIsYou: isYou(partnerId),
-                partner: displayName(partnerId),
-              })}
-              initialValue={link.isCurrentPartner}
-            />
-          </RemovableRelationship>
+            component={BooleanField}
+            name={linkField(link, 'current')}
+            nameMode="opaque"
+            label={intl.formatMessage(messages.stillTogetherLabel, {
+              personIsYou: isYou(person.id),
+              partnerIsYou: isYou(partnerId),
+              partner: displayName(partnerId),
+            })}
+            initialValue={link.isCurrentPartner}
+          />
         );
       })}
       {parents.map((link) => (
-        <RemovableRelationship
+        <ParentLinkFields
           key={link.id}
-          otherIsYou={isYou(link.source)}
-          otherName={displayName(link.source)}
-          removed={removedLinks.has(link.id)}
-          onRemovedChange={(removed) => onLinkRemovedChange(link.id, removed)}
-        >
-          <ParentLinkFields
-            link={link}
-            canCarry={canCarry(link)}
-            carries={carries(link)}
-            anotherCarries={parents.some(
-              (other) => other.id !== link.id && carries(other),
-            )}
-            personIsYou={isYou(person.id)}
-            parentIsYou={isYou(link.source)}
-            parentName={displayName(link.source)}
-          />
-        </RemovableRelationship>
+          link={link}
+          canCarry={canCarry(link)}
+          carries={carries(link)}
+          anotherCarries={parents.some(
+            (other) => other.id !== link.id && carries(other),
+          )}
+          personIsYou={isYou(person.id)}
+          parentIsYou={isYou(link.source)}
+          parentName={displayName(link.source)}
+        />
       ))}
     </section>
-  );
-}
-
-/**
- * One of the person's relationships, with a button to take it away on saving.
- * Marked for removal, its questions give way to a note and a button to keep
- * it; focus follows to whichever button replaces the one pressed.
- */
-function RemovableRelationship({
-  otherIsYou,
-  otherName,
-  removed,
-  onRemovedChange,
-  children,
-}: {
-  otherIsYou: string;
-  otherName: string;
-  removed: boolean;
-  onRemovedChange: (removed: boolean) => void;
-  children: React.ReactNode;
-}) {
-  const intl = useAppIntl();
-  const removeRef = useRef<HTMLButtonElement>(null);
-  const keepRef = useRef<HTMLButtonElement>(null);
-  const wasRemoved = useRef(removed);
-  useEffect(() => {
-    if (wasRemoved.current !== removed) {
-      (removed ? keepRef : removeRef).current?.focus();
-    }
-    wasRemoved.current = removed;
-  }, [removed]);
-  const args = { otherIsYou, name: otherName };
-
-  if (removed) {
-    return (
-      <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p>{intl.formatMessage(messages.relationshipWillBeRemoved, args)}</p>
-        <Button
-          ref={keepRef}
-          type="button"
-          variant="link"
-          onClick={() => onRemovedChange(false)}
-        >
-          <AppMessage message={messages.undoRemoveRelationship} />
-        </Button>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col">
-      {children}
-      <Button
-        ref={removeRef}
-        type="button"
-        variant="link"
-        className="mb-6 self-start [--link:var(--destructive)]"
-        onClick={() => onRemovedChange(true)}
-      >
-        {intl.formatMessage(messages.removeRelationship, args)}
-      </Button>
-    </div>
   );
 }
 

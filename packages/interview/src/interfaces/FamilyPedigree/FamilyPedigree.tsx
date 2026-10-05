@@ -1,6 +1,6 @@
 'use client';
 
-import { MousePointer2, Waypoints } from 'lucide-react';
+import { MousePointer2, Unlink, Waypoints } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -97,9 +97,13 @@ import {
 
 /**
  * What selecting a person does: open their details (with their add menu on
- * hover or focus), or pick them as one of two people to connect.
+ * hover or focus), or pick them as one of two people to connect, or to
+ * disconnect.
  */
-type Tool = 'pointer' | 'connect';
+type Tool = 'pointer' | 'connect' | 'disconnect';
+const TOOLS: readonly string[] = ['pointer', 'connect', 'disconnect'];
+const isTool = (value: unknown): value is Tool =>
+  typeof value === 'string' && TOOLS.includes(value);
 
 type PanelState = {
   open: boolean;
@@ -267,20 +271,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ? panel.mode.person.id
       : (panel.ids[0] ?? null);
 
-  // The connect tool links two people already shown: the first person
-  // selected waits (`linkingId`) for the second, and then a menu asks how
-  // the pair are related.
+  // The connect tool links two people already shown, and the disconnect tool
+  // takes such a link away: the first person selected waits (`linkingId`)
+  // for the second, and then a menu asks how the pair are related, or a
+  // confirmation whether to remove their connection.
   const [tool, setTool] = useState<Tool>('pointer');
   const [linkingId, setLinkingId] = useState<string | null>(null);
-  const [connectPair, setConnectPair] = useState<ConnectPair | null>(null);
+  const [chosenPair, setChosenPair] = useState<ConnectPair | null>(null);
   // Why the last selection was refused, shown in place of the instruction.
   const [connectNotice, setConnectNotice] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // No menu while the panel is open: it would offer to add to someone else
-  // mid-way through describing this person. Nor while connecting people.
+  // mid-way through describing this person. Nor while connecting or
+  // disconnecting people.
   const menuPersonId =
-    panel?.open || tool === 'connect' ? null : (hoveredId ?? focusedId);
+    panel?.open || tool !== 'pointer' ? null : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
   const [announcement, setAnnouncement] = useState('');
 
@@ -481,7 +487,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (event.pointerType !== 'mouse') return;
     clearTimeout(hoverLeaveTimer.current);
     // The connector line lets go of a person at once; the add menu waits.
-    if (tool === 'connect') setHoveredId(null);
+    if (tool !== 'pointer') setHoveredId(null);
     else hoverLeaveTimer.current = setTimeout(() => setHoveredId(null), 300);
   };
 
@@ -492,8 +498,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Selecting a person (click, tap, Enter or Space) opens their details. The
   // panel returns focus to them when it closes.
   const handleActivate = (personId: string) => {
-    if (tool === 'connect') {
-      handleConnectSelect(personId);
+    if (tool !== 'pointer') {
+      handlePairSelect(personId);
       return;
     }
     setLastFocusedId(personId);
@@ -621,9 +627,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
-      for (const linkId of result.linkRemovals ?? []) {
-        dispatch(deleteEdge(linkId));
-      }
+
       for (const update of result.linkUpdates ?? []) {
         await dispatch(
           updateEdge({
@@ -689,52 +693,78 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setTool(next);
     setLinkingId(null);
     setConnectNotice(null);
-    setConnectPair(null);
+    setChosenPair(null);
     setHoveredId(null);
     setFocusedId(null);
   };
 
-  const handleConnectSelect = (personId: string) => {
+  // Two people in a sentence, the participant first, as "you and …".
+  const pairArgs = (a: string, b: string) => {
+    const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
+    const [first, second] = isYou(b) ? [b, a] : [a, b];
+    return {
+      firstIsYou: isYou(first) ? 'true' : 'false',
+      first: displayName(first),
+      second: displayName(second),
+    };
+  };
+
+  const refuse = (notice: string) => {
+    setConnectNotice(notice);
+    setAnnouncement(notice);
+  };
+
+  const handlePairSelect = (personId: string) => {
     setLastFocusedId(personId);
     setConnectNotice(null);
-    if (connectPair) return;
-    if (
-      linkingId &&
-      linkingId !== personId &&
-      areConnected(family, linkingId, personId)
-    ) {
-      // A pair has one link at most; the first person stays selected.
-      const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
-      const [first, second] = isYou(personId)
-        ? [personId, linkingId]
-        : [linkingId, personId];
-      const notice = intl.formatMessage(messages.connectAlreadyConnected, {
-        firstIsYou: isYou(first) ? 'true' : 'false',
-        first: displayName(first),
-        second: displayName(second),
-      });
-      setConnectNotice(notice);
-      setAnnouncement(notice);
-      return;
-    }
+    if (chosenPair) return;
     if (!linkingId) {
       setLinkingId(personId);
       setAnnouncement(
-        intl.formatMessage(messages.connectHintLinking, {
-          isYou: family.byId.get(personId)?.isEgo ? 'true' : 'false',
-          name: displayName(personId),
-        }),
+        intl.formatMessage(
+          tool === 'connect'
+            ? messages.connectHintLinking
+            : messages.disconnectHintLinking,
+          {
+            isYou: family.byId.get(personId)?.isEgo ? 'true' : 'false',
+            name: displayName(personId),
+          },
+        ),
       );
-    } else if (linkingId === personId) {
+      return;
+    }
+    if (linkingId === personId) {
       // Selecting the first person again lets them go.
       setLinkingId(null);
-    } else {
-      setConnectPair({ firstId: linkingId, secondId: personId });
+      return;
     }
+    // A pair has one link at most; when the second person cannot be chosen,
+    // the first stays selected.
+    const connected = areConnected(family, linkingId, personId);
+    if (tool === 'connect' && connected) {
+      refuse(
+        intl.formatMessage(
+          messages.connectAlreadyConnected,
+          pairArgs(linkingId, personId),
+        ),
+      );
+      return;
+    }
+    if (tool === 'disconnect' && !connected) {
+      refuse(
+        intl.formatMessage(
+          messages.disconnectNotConnected,
+          pairArgs(linkingId, personId),
+        ),
+      );
+      return;
+    }
+    setChosenPair({ firstId: linkingId, secondId: personId });
+    if (tool === 'disconnect') void handleDisconnect(linkingId, personId);
   };
 
   const endConnecting = () => {
-    setConnectPair(null);
+    setChosenPair(null);
     setLinkingId(null);
   };
 
@@ -754,6 +784,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       if (hasOtherChildren) await clearRelativesAnswers([childId], 'siblings');
     }
     setAnnouncement(description);
+  };
+
+  const handleDisconnect = async (firstId: string, secondId: string) => {
+    const args = pairArgs(firstId, secondId);
+    await confirm({
+      title: intl.formatMessage(messages.disconnectConfirmTitle, args),
+      description: intl.formatMessage(messages.disconnectConfirmDescription),
+      confirmLabel: intl.formatMessage(messages.disconnectConfirm),
+      intent: 'destructive',
+      onConfirm: () => {
+        for (const link of family.links) {
+          if (
+            (link.source === firstId && link.target === secondId) ||
+            (link.source === secondId && link.target === firstId)
+          ) {
+            dispatch(deleteEdge(link.id));
+          }
+        }
+        setAnnouncement(
+          intl.formatMessage(messages.disconnectedAnnouncement, args),
+        );
+      },
+    });
+    endConnecting();
   };
 
   const handleRemove = async (personId: string) => {
@@ -829,15 +883,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const connectorFrom = linkingId
     ? (nodeRefs.current.get(linkingId) ?? null)
     : null;
-  // Someone already connected to the first person is not a target: the line
-  // keeps following the mouse past them.
+  // Connecting, someone already connected to the first person is not a
+  // target, and the line keeps following the mouse past them; disconnecting,
+  // only they are.
   const isConnectTarget = (id: string | null): id is string =>
     id !== null &&
     linkingId !== null &&
     id !== linkingId &&
-    !areConnected(family, linkingId, id);
+    areConnected(family, linkingId, id) === (tool === 'disconnect');
   const connectorTargetId =
-    connectPair?.secondId ??
+    chosenPair?.secondId ??
     [hoveredId, focusedId].find(isConnectTarget) ??
     null;
   const connectorTo = connectorTargetId
@@ -869,7 +924,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             ref={contentRef}
             className="relative flex min-h-full min-w-max items-center justify-center p-40"
           >
-            {connectorFrom && (
+            {connectorFrom && tool === 'connect' && (
               <ConnectorPreview
                 container={contentRef}
                 from={connectorFrom}
@@ -899,7 +954,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     color={nodeColor}
                     selected={personId === selectedId}
                     linking={
-                      tool === 'connect' &&
+                      tool !== 'pointer' &&
                       (personId === linkingId || personId === connectorTargetId)
                     }
                     menuOpen={hasMenu}
@@ -941,20 +996,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           </div>
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4">
-          {tool === 'connect' && (
+          {tool !== 'pointer' && (
             <p
               className="text-sm opacity-80"
               data-testid="pedigree-connect-hint"
             >
               {connectNotice ??
                 (linkingId
-                  ? intl.formatMessage(messages.connectHintLinking, {
-                      isYou: family.byId.get(linkingId)?.isEgo
-                        ? 'true'
-                        : 'false',
-                      name: displayName(linkingId),
-                    })
-                  : intl.formatMessage(messages.connectHint))}
+                  ? intl.formatMessage(
+                      tool === 'connect'
+                        ? messages.connectHintLinking
+                        : messages.disconnectHintLinking,
+                      {
+                        isYou: family.byId.get(linkingId)?.isEgo
+                          ? 'true'
+                          : 'false',
+                        name: displayName(linkingId),
+                      },
+                    )
+                  : intl.formatMessage(
+                      tool === 'connect'
+                        ? messages.connectHint
+                        : messages.disconnectHint,
+                    ))}
             </p>
           )}
           <SegmentedToolbar
@@ -967,7 +1031,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               value={[tool]}
               onValueChange={(value) => {
                 const next = value[0];
-                if (next === 'pointer' || next === 'connect') chooseTool(next);
+                if (isTool(next)) chooseTool(next);
               }}
             >
               <ToolbarIconButton
@@ -981,6 +1045,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 aria-label={intl.formatMessage(messages.connectTool)}
                 icon={<Waypoints />}
                 data-testid="pedigree-tool-connect"
+              />
+              <ToolbarIconButton
+                value="disconnect"
+                aria-label={intl.formatMessage(messages.disconnectTool)}
+                icon={<Unlink />}
+                data-testid="pedigree-tool-disconnect"
               />
             </ToolbarToggleGroup>
             {progress && completeness && <ToolbarSeparator />}
@@ -999,12 +1069,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         </div>
       </div>
       <ConnectMenu
-        pair={connectPair}
+        pair={tool === 'connect' ? chosenPair : null}
         family={family}
         displayName={displayName}
         anchor={
-          connectPair
-            ? (nodeRefs.current.get(connectPair.secondId) ?? null)
+          chosenPair
+            ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
             : null
         }
         onConnect={(connection, description) =>

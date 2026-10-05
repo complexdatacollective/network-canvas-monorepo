@@ -127,6 +127,38 @@
     "defaultMessage": "{relationship} ({kind})",
     "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent)."
   },
+  "interview.familyPedigree.disconnectConfirm": {
+    "defaultMessage": "Remove connection",
+    "description": "Button in the confirmation that removes the connection between two people."
+  },
+  "interview.familyPedigree.disconnectConfirmDescription": {
+    "defaultMessage": "Both people stay in your family tree. Only the connection between them is removed.",
+    "description": "Explanation in the confirmation shown before removing the connection between two people."
+  },
+  "interview.familyPedigree.disconnectConfirmTitle": {
+    "defaultMessage": "{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}",
+    "description": "Title of the confirmation shown before removing the connection between two people. first and second are their names or how they are related to the participant."
+  },
+  "interview.familyPedigree.disconnectHint": {
+    "defaultMessage": "Select a person, then select someone they are connected to, to remove that connection.",
+    "description": "Instruction shown under the toolbar while the tool for removing a connection between two people is on."
+  },
+  "interview.familyPedigree.disconnectHintLinking": {
+    "defaultMessage": "{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from “{name}”.}}",
+    "description": "Instruction shown under the toolbar once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.disconnectNotConnected": {
+    "defaultMessage": "{firstIsYou, select, true {You and “{second}” are not connected.} other {“{first}” and “{second}” are not connected.}}",
+    "description": "Shown under the toolbar, and read out, when the participant selects two people to disconnect who have no connection between them. first and second are their names or how they are related to the participant."
+  },
+  "interview.familyPedigree.disconnectTool": {
+    "defaultMessage": "Remove a connection",
+    "description": "Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree."
+  },
+  "interview.familyPedigree.disconnectedAnnouncement": {
+    "defaultMessage": "{firstIsYou, select, true {The connection between you and “{second}” was removed.} other {The connection between “{first}” and “{second}” was removed.}}",
+    "description": "Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant."
+  },
   "interview.familyPedigree.dontKnow": {
     "defaultMessage": "Don’t know",
     "description": "Answer option for a question about a family member, when the participant does not know."
@@ -295,10 +327,6 @@
     "defaultMessage": "How you are related",
     "description": "Heading above the questions about how a new family member is related to the selected person."
   },
-  "interview.familyPedigree.relationshipWillBeRemoved": {
-    "defaultMessage": "{otherIsYou, select, true {The connection to you will be removed when you save.} other {The connection to “{name}” will be removed when you save.}}",
-    "description": "Shown in place of a relationship that the participant has chosen to remove, until they save. name is the other person’s name or how they are related to the participant."
-  },
   "interview.familyPedigree.relationshipsSection": {
     "defaultMessage": "Relationships",
     "description": "Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details."
@@ -322,10 +350,6 @@
   "interview.familyPedigree.removeConfirmTitle": {
     "defaultMessage": "Remove {name}?",
     "description": "Title of the confirmation shown before removing a family member. {name} is their name or “Unnamed”."
-  },
-  "interview.familyPedigree.removeRelationship": {
-    "defaultMessage": "{otherIsYou, select, true {Remove the connection to you} other {Remove the connection to “{name}”}}",
-    "description": "Button under a relationship in a family member’s details: takes the connection away when the details are saved. name is the other person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.removedAnnouncement": {
     "defaultMessage": "{name} removed from your family.",
@@ -369,7 +393,7 @@
   },
   "interview.familyPedigree.toolsLabel": {
     "defaultMessage": "Family tree tools",
-    "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people and connecting two people."
+    "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people."
   },
   "interview.familyPedigree.trackerComplete": {
     "defaultMessage": "Your family tree has everything needed. You can continue.",
@@ -386,10 +410,6 @@
   "interview.familyPedigree.trackerTitle": {
     "defaultMessage": "Before you continue, please complete the following:",
     "description": "Heading of the list of family members the participant still needs to add before moving on."
-  },
-  "interview.familyPedigree.undoRemoveRelationship": {
-    "defaultMessage": "Keep it",
-    "description": "Button next to a relationship that will be removed on saving: keeps the relationship instead."
   },
   "interview.familyPedigree.yes": {
     "defaultMessage": "Yes",

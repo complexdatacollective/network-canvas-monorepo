@@ -506,19 +506,38 @@ export const ConnectingExistingPeople: Story = {
     await expect(page.queryByRole('menu')).toBeNull();
     await userEvent.keyboard('{Escape}');
 
-    // Removing the partnership from Tom's details lets the pair be connected
-    // again — this time as former partners.
-    await userEvent.click(canvas.getByTestId('pedigree-tool-pointer'));
+    // The disconnect tool takes the partnership away, leaving both people, so
+    // the pair can be connected again — this time as former partners.
+    await userEvent.click(canvas.getByTestId('pedigree-tool-disconnect'));
     await userEvent.click(person('dad'));
+    await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
+      'Now select the person to disconnect from “Tom”.',
+    );
+    await userEvent.click(person('mum'));
+    const dialog = await page.findByRole('dialog', {
+      name: 'Remove the connection between “Tom” and “Rachel”?',
+    });
     await userEvent.click(
-      await page.findByRole('button', {
-        name: 'Remove the connection to “Rachel”',
-      }),
+      within(dialog).getByRole('button', { name: 'Remove connection' }),
     );
-    await userEvent.click(page.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(page.queryByTestId('pedigree-person-panel')).toBeNull(),
+      expect(
+        canvas.getByText(
+          'The connection between “Tom” and “Rachel” was removed.',
+        ),
+      ).toBeInTheDocument(),
     );
+    await expect(person('mum')).toBeInTheDocument();
+    await expect(person('dad')).toBeInTheDocument();
+    // No longer connected, so there is nothing to remove between them.
+    await userEvent.click(person('dad'));
+    await userEvent.click(person('mum'));
+    await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
+      '“Tom” and “Rachel” are not connected.',
+    );
+    await expect(page.queryByRole('dialog')).toBeNull();
+    await userEvent.keyboard('{Escape}');
+
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(person('dad'));
     await userEvent.click(person('mum'));
