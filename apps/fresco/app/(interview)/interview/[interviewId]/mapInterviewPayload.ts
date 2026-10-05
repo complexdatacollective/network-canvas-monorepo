@@ -4,6 +4,7 @@ import {
   type ResolvedAsset,
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
 export function mapInterviewPayload(
@@ -58,6 +59,11 @@ export function mapInterviewPayload(
       lastUpdated: session.lastUpdated.toISOString(),
       network: session.network,
       stageMetadata: session.stageMetadata ?? undefined,
+      localePreference: session.localePreference,
+      locale: session.locale,
+      localeOptions: protocol.localization.locales.map((locale) =>
+        getLocaleMetadata(locale),
+      ),
     },
     protocol: {
       ...protocol,

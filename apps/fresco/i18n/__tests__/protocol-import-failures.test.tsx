@@ -87,6 +87,7 @@ describe('truthful protocol import failure messages', () => {
           lastModified: '2026-09-05T00:00:00.000Z',
           stages: [],
           codebook: { node: {}, edge: {}, ego: {} },
+          localization: { defaultLocale: 'en', locales: ['en'] },
           assetManifest: {},
         }),
       );

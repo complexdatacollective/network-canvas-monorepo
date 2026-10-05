@@ -14,7 +14,11 @@ vi.mock('next/headers', () => ({
   headers: async () => ({ get: request.header }),
 }));
 
-import { getFrescoI18nInitialization, getServerIntl } from '~/i18n/server';
+import {
+  getFrescoI18nInitialization,
+  getRequestedLocales,
+  getServerIntl,
+} from '~/i18n/server';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -31,6 +35,28 @@ describe('Fresco server request initialization', () => {
       userId: null,
       requested: ['en-GB', 'es-MX'],
     });
+  });
+
+  it('hands the interview the browser’s languages in quality order, canonicalised', async () => {
+    request.header.mockReturnValue('fr-ca;q=0.5, *;q=0.9, EN-gb, de;q=0');
+
+    expect(await getRequestedLocales()).toEqual(['en-GB', 'fr-CA']);
+    expect(request.header).toHaveBeenCalledWith('accept-language');
+  });
+
+  it('requests no language when the browser sends no Accept-Language header', async () => {
+    request.header.mockReturnValue(null);
+
+    expect(await getRequestedLocales()).toEqual([]);
+  });
+
+  it('negotiates requested languages without the researcher’s own preference', async () => {
+    request.cookie.mockReturnValue({ value: 'es' });
+    request.session.mockResolvedValue({
+      user: { userId: 'alice', locale: 'es' },
+    });
+
+    expect(await getRequestedLocales()).toEqual(['en-GB', 'es-MX']);
   });
 
   it('keeps each request and account formatter isolated, including Automatic', async () => {

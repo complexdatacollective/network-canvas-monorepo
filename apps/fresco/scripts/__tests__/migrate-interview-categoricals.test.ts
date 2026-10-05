@@ -23,29 +23,33 @@ function makeCodebook(): Codebook {
     node: {
       person: {
         name: 'Person',
+        label: { und: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [CAT_NODE]: {
             name: 'closeness',
+            label: { und: 'Closeness' },
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'Family', value: 'family' },
-              { label: 'Friend', value: 'friend' },
+              { label: { und: 'Family' }, value: 'family' },
+              { label: { und: 'Friend' }, value: 'friend' },
             ],
           },
           [ORD_NODE]: {
             name: 'frequency',
+            label: { und: 'Frequency' },
             type: 'ordinal',
             component: 'LikertScale',
             options: [
-              { label: 'Low', value: 1 },
-              { label: 'High', value: 2 },
+              { label: { und: 'Low' }, value: 1 },
+              { label: { und: 'High' }, value: 2 },
             ],
           },
           [TEXT_NODE]: {
             name: 'nickname',
+            label: { und: 'Nickname' },
             type: 'text',
             component: 'Text',
           },
@@ -55,15 +59,17 @@ function makeCodebook(): Codebook {
     edge: {
       friend: {
         name: 'Friend',
+        label: { und: 'Friend' },
         color: 'edge-color-seq-1',
         variables: {
           [CAT_EDGE]: {
             name: 'context',
+            label: { und: 'Context' },
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [
-              { label: 'Work', value: 'work' },
-              { label: 'School', value: 'school' },
+              { label: { und: 'Work' }, value: 'work' },
+              { label: { und: 'School' }, value: 'school' },
             ],
           },
         },
@@ -73,11 +79,12 @@ function makeCodebook(): Codebook {
       variables: {
         [CAT_EGO]: {
           name: 'identity',
+          label: { und: 'Identity' },
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: 'A', value: 'a' },
-            { label: 'B', value: 'b' },
+            { label: { und: 'A' }, value: 'a' },
+            { label: { und: 'B' }, value: 'b' },
           ],
         },
       },

@@ -28,6 +28,8 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
     stageMetadata: null,
     isSynthetic: false,
     syncRevision: 7,
+    localePreference: null,
+    locale: null,
     protocol: {
       id: 'protocol-1',
       hash: 'abc123',
@@ -37,6 +39,7 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
       importedAt: new Date('2026-01-01T00:00:00.000Z'),
       stages: [],
       codebook: { node: {}, edge: {} },
+      localization: { defaultLocale: 'und', locales: ['und'] },
       experiments: {},
       originalFileKey: null,
       originalFileUrl: null,
@@ -66,6 +69,39 @@ describe('mapInterviewPayload', () => {
     );
 
     expect(initialSyncRevision).toBe(7);
+  });
+
+  it('offers every declared locale in the protocol’s declaration order', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapInterviewPayload({
+      ...source,
+      protocol: {
+        ...source.protocol,
+        localization: { defaultLocale: 'fr', locales: ['fr', 'en', 'ar'] },
+      },
+    });
+
+    expect(payload.session.localeOptions).toEqual([
+      expect.objectContaining({ locale: 'fr', direction: 'ltr' }),
+      expect.objectContaining({ locale: 'en', direction: 'ltr' }),
+      expect.objectContaining({ locale: 'ar', direction: 'rtl' }),
+    ]);
+    expect(payload.protocol.localization).toEqual({
+      defaultLocale: 'fr',
+      locales: ['fr', 'en', 'ar'],
+    });
+  });
+
+  it('carries the stored locale fields into the session', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapInterviewPayload({
+      ...source,
+      localePreference: 'fr',
+      locale: 'en',
+    });
+
+    expect(payload.session.localePreference).toBe('fr');
+    expect(payload.session.locale).toBe('en');
   });
 
   it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {

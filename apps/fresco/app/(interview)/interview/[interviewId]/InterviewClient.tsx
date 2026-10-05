@@ -16,15 +16,16 @@ import {
 import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
-import { useFrescoLocale } from '~/i18n/FrescoI18nProvider';
 
 import { createInterviewSyncHandler } from './createInterviewSyncHandler';
+import { createProtocolLocaleChangeHandler } from './createProtocolLocaleChangeHandler';
 
 type Props = {
   payload: InterviewPayload;
   assetUrls: Record<string, string>;
   initialStep: number;
   initialSyncRevision: number;
+  requestedLocales: readonly string[];
   installationId: string;
   disableAnalytics: boolean;
 };
@@ -34,11 +35,11 @@ export default function InterviewClient({
   assetUrls,
   initialStep,
   initialSyncRevision,
+  requestedLocales,
   installationId,
   disableAnalytics,
 }: Props) {
   const router = useRouter();
-  const { locale } = useFrescoLocale();
   const [currentStep, setCurrentStep] = useQueryState(
     'step',
     parseAsInteger.withDefault(initialStep).withOptions({ history: 'push' }),
@@ -74,6 +75,11 @@ export default function InterviewClient({
         getCurrentStep: () => currentStepRef.current,
       }),
     [payload.session.id, initialSyncRevision],
+  );
+
+  const onProtocolLocaleChange = useMemo(
+    () => createProtocolLocaleChangeHandler(),
+    [],
   );
 
   const [finished, setFinished] = useState(false);
@@ -125,14 +131,12 @@ export default function InterviewClient({
 
   return (
     <Shell
-      // Only the built-in interview controls use this request. The package
-      // negotiates its own catalogs; authored protocol copy remains literal.
-      // Menu choices are temporary and do not change a researcher account.
-      requestedLocale={locale}
+      requestedLocales={requestedLocales}
       payload={payload}
       currentStep={currentStep}
       onStepChange={onStepChange}
       onSync={onSync}
+      onProtocolLocaleChange={onProtocolLocaleChange}
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       flags={flags}

@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import {
   CodebookSchema,
   type CurrentProtocol,
+  CurrentProtocolSchema,
   ExperimentsSchema,
   stageSchema,
 } from '@codaco/protocol-validation';
@@ -102,10 +103,11 @@ const createPrismaClient = () => {
 };
 
 const StagesSchema = stageSchema.array();
+const LocalizationSchema = CurrentProtocolSchema.shape.localization;
 
 /**
  * Result-extension config that structurally parses Protocol's JSON fields
- * (stages, codebook, experiments) into typed values.
+ * (stages, codebook, localization, experiments) into typed values.
  *
  * Each field is validated against its own schema rather than the whole-protocol
  * CurrentProtocolSchema. That whole-protocol schema cross-references the
@@ -142,6 +144,22 @@ function protocolJsonExtensions() {
           edge: {},
           node: {},
         }),
+    },
+    localization: {
+      needs: {
+        localization: true,
+      },
+      compute: ({
+        localization,
+      }: {
+        localization: unknown;
+      }): CurrentProtocol['localization'] =>
+        safeParseField(
+          LocalizationSchema,
+          localization,
+          `${modelName}.localization`,
+          { defaultLocale: 'und', locales: ['und'] },
+        ),
     },
     experiments: {
       needs: {
