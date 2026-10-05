@@ -43,20 +43,18 @@ export const INTERFACE_OWNED_OPTION_SETS: Record<
 };
 
 /**
- * True when a variable's options are exactly the canonical set (same members
- * and labels, order-independent).
+ * True when a variable's options are exactly the canonical set's values
+ * (order-independent). Labels are localized participant copy the interview
+ * never branches on, so a protocol may word them in any language.
  */
 export const optionsMatchInterfaceOwnedSet = (
-  variableOptions: { value: unknown; label?: unknown }[] | undefined,
+  variableOptions: readonly { value: unknown }[] | undefined,
   canonical: readonly InterfaceOwnedOption[],
 ): boolean => {
   if (!variableOptions || variableOptions.length !== canonical.length) {
     return false;
   }
   return canonical.every((expected) =>
-    variableOptions.some(
-      (option) =>
-        option.value === expected.value && option.label === expected.label,
-    ),
+    variableOptions.some((option) => option.value === expected.value),
   );
 };

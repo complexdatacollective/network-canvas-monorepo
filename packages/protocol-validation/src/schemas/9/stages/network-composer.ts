@@ -8,6 +8,7 @@ import {
   uniqueFormFieldVariables,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { localizedString } from '../localized-string.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import {
   datePickerParametersSchema,
@@ -15,8 +16,10 @@ import {
 } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
-// Every input control the form system can render. Layout/location variables
-// have no participant-facing control, so they are intentionally absent.
+// Every input control the form system can render except VisualAnalogScale,
+// whose parameters carry participant copy and so have their own branch below.
+// Layout/location variables have no participant-facing control, so they are
+// intentionally absent.
 const ComposerComponentSchema = z.enum([
   ComponentTypes.Text,
   ComponentTypes.TextArea,
@@ -26,7 +29,6 @@ const ComposerComponentSchema = z.enum([
   ComponentTypes.Boolean,
   ComponentTypes.Toggle,
   ComponentTypes.ToggleButtonGroup,
-  ComponentTypes.VisualAnalogScale,
   ComponentTypes.LikertScale,
   ComponentTypes.DatePicker,
   ComponentTypes.RelativeDatePicker,
@@ -39,21 +41,39 @@ const ComposerComponentSchema = z.enum([
 // this field (see interview/src/selectors/forms.ts). `label` captions the
 // field in the drawer; it is optional — the drawer falls back to the codebook
 // variable's name.
-export const ComposerFormFieldSchema = z
+const composerFormFieldShape = {
+  // Architect assigns a stable id (uuid) on creation so the editor's
+  // OrderedList / motion Reorder keying survives reorder + delete; it is
+  // persisted, so the schema must tolerate it.
+  id: z.string().optional(),
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'validatedAttribute',
+  }),
+  label: localizedString(z.string(), 'markdown').optional(),
+  hint: localizedString(z.string(), 'markdown').optional(),
+  showValidationHints: z.boolean().optional(),
+};
+
+// The scale's end labels are participant copy, so they need a typed path the
+// localization walker can find; any other parameter key stays as permissive as
+// every other control's parameters.
+const ComposerScaleFieldSchema = z.strictObject({
+  ...composerFormFieldShape,
+  component: z.literal(ComponentTypes.VisualAnalogScale),
+  parameters: z
+    .looseObject({
+      minLabel: localizedString(z.string(), 'markdown').optional(),
+      maxLabel: localizedString(z.string(), 'markdown').optional(),
+    })
+    .optional(),
+});
+
+const ComposerControlFieldSchema = z
   .strictObject({
-    // Architect assigns a stable id (uuid) on creation so the editor's
-    // OrderedList / motion Reorder keying survives reorder + delete; it is
-    // persisted, so the schema must tolerate it.
-    id: z.string().optional(),
-    variable: entityAttributeReference({
-      subject: 'stageSubject',
-      usage: 'validatedAttribute',
-    }),
+    ...composerFormFieldShape,
     component: ComposerComponentSchema,
     parameters: z.record(z.string(), z.unknown()).optional(),
-    label: z.string().optional(),
-    hint: z.string().optional(),
-    showValidationHints: z.boolean().optional(),
   })
   .superRefine((field, ctx) => {
     // A DatePicker/RelativeDatePicker field's `parameters` must satisfy the
@@ -81,6 +101,11 @@ export const ComposerFormFieldSchema = z
       });
     }
   });
+
+export const ComposerFormFieldSchema = z.discriminatedUnion('component', [
+  ComposerScaleFieldSchema,
+  ComposerControlFieldSchema,
+]);
 export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
 
 // Title-less, and (unlike TitlelessFormSchema) `fields` is optional / may be

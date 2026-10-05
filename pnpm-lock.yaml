@@ -210,6 +210,9 @@ catalogs:
     fuse.js:
       specifier: ^7.5.0
       version: 7.5.0
+    intl-messageformat:
+      specifier: ^12.1.2
+      version: 12.1.2
     jsdom:
       specifier: ~30.0.1
       version: 30.0.1
@@ -2582,6 +2585,9 @@ importers:
       immer:
         specifier: ^11.1.18
         version: 11.1.18
+      intl-messageformat:
+        specifier: 'catalog:'
+        version: 12.1.2
       lucide-react:
         specifier: 'catalog:'
         version: 1.49.0(@types/react@19.3.0)(react@19.3.0)
@@ -3050,6 +3056,9 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
+      '@formatjs/icu-messageformat-parser':
+        specifier: 'catalog:'
+        version: 3.5.20
       '@formatjs/intl-localematcher':
         specifier: 'catalog:'
         version: 0.9.0

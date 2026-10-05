@@ -2,9 +2,13 @@ import { z } from 'zod';
 
 import { normalizeForComparison } from '@codaco/shared-consts';
 
+import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
+import { messageText } from '../../../localization/messageSyntax.ts';
+import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { type LocalizedString, localizedString } from '../localized-string.ts';
 import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
 import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
@@ -24,49 +28,44 @@ import { baseStageSchema } from './base.ts';
 export const diseaseLabelKey = (label: string): string =>
   normalizeForComparison(label.trim());
 
-export type DiseaseRowDuplicates = {
-  /** Rows whose `variable` repeats an earlier row's. */
-  variableDuplicates: number[];
-  /** Rows whose label repeats an earlier row's, by `diseaseLabelKey`. */
-  labelDuplicates: number[];
-};
+type DuplicateDiseaseLabel = Readonly<{
+  index: number;
+  locale: string;
+  text: string;
+}>;
 
 /**
- * The duplicate rows in a disease list, by the two rules below.
+ * Disease rows whose label, as a participant who selected `locale` would see
+ * it, repeats an earlier row's, for every declared locale.
  *
- * Shared with the repair Architect offers, so the two cannot judge duplicates
- * differently — a repair that disagreed with the schema would either rewrite
- * rows the schema was happy with, or leave a protocol the schema still
- * rejects, asking the researcher to approve a fix that fixes nothing every
- * time they open it. `excluding` names rows the caller is already removing:
- * the repair compares labels only across the rows that SURVIVE its variable
- * dedupe, so a row about to be dropped never forces a rename on one that
- * stays. The schema passes nothing and sees every row.
- *
- * Takes `unknown` rows because the repair works on unvalidated protocol data;
- * a row whose `variable` or `label` is not a string is never a duplicate.
+ * Each label is resolved with the runtime's own fallback before comparing, so
+ * a collision that only appears through fallback (one row translated, another
+ * falling back to the same default text) is caught in the locale it affects.
+ * A label with no declared translation cannot be resolved and is skipped; the
+ * protocol refinement already rejects it.
  */
-export const duplicateDiseaseRows = (
-  diseases: readonly unknown[],
-  excluding: ReadonlySet<number> = new Set(),
-): DiseaseRowDuplicates => {
-  const seenVariables = new Set<string>();
-  const seenLabels = new Set<string>();
-  const variableDuplicates: number[] = [];
-  const labelDuplicates: number[] = [];
-  diseases.forEach((row, index) => {
-    if (typeof row !== 'object' || row === null) return;
-    const { variable, label } = row as { variable?: unknown; label?: unknown };
-    if (typeof variable === 'string') {
-      if (seenVariables.has(variable)) variableDuplicates.push(index);
-      else seenVariables.add(variable);
-    }
-    if (excluding.has(index) || typeof label !== 'string') return;
-    const key = diseaseLabelKey(label);
-    if (seenLabels.has(key)) labelDuplicates.push(index);
-    else seenLabels.add(key);
-  });
-  return { variableDuplicates, labelDuplicates };
+export const findDuplicateDiseaseLabels = (
+  diseases: readonly { label: LocalizedString }[],
+  localization: LocalizationDeclaration,
+): DuplicateDiseaseLabel[] => {
+  const duplicates: DuplicateDiseaseLabel[] = [];
+  for (const locale of localization.locales) {
+    const seen = new Set<string>();
+    diseases.forEach(({ label }, index) => {
+      if (
+        !localization.locales.some((declared) => Object.hasOwn(label, declared))
+      ) {
+        return;
+      }
+      const text = messageText(
+        resolveLocalizedString(label, localization, locale).text,
+      );
+      const key = diseaseLabelKey(text);
+      if (seen.has(key)) duplicates.push({ index, locale, text });
+      else seen.add(key);
+    });
+  }
+  return duplicates;
 };
 
 // A narrative pedigree describes the people of the FamilyPedigree it points
@@ -84,7 +83,7 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: z.string().min(1),
+        label: localizedString(z.string().min(1), 'plain'),
         color: NodeColorReferenceSchema,
         // Tagged as a writer even though this stage only renders: a disease
         // row DECLARES what the variable means ("who is affected by X"), and
@@ -116,25 +115,23 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
       // pattern. Two rows on one variable give the pedigree contradictory
       // answers for a single affected set — the genetics engine resolves one
       // inheritance pattern per variable, and the key rendered to the
-      // participant lists that variable twice under different colours. Labels
-      // are the participant-facing key, so two rows sharing one are
-      // indistinguishable on screen whatever they map to.
-      const { variableDuplicates, labelDuplicates } =
-        duplicateDiseaseRows(diseases);
-      for (const index of variableDuplicates) {
+      // participant lists that variable twice under different colours. Label
+      // uniqueness depends on the protocol's locales, so the protocol-level
+      // refinement checks it (`findDuplicateDiseaseLabels`).
+      diseases.forEach((disease, index) => {
+        if (
+          diseases.findIndex(
+            (candidate) => candidate.variable === disease.variable,
+          ) === index
+        ) {
+          return;
+        }
         ctx.addIssue({
           code: 'custom' as const,
-          message: `Diseases contain duplicate attribute "${diseases[index]?.variable}"`,
+          message: `Diseases contain duplicate attribute "${disease.variable}"`,
           path: [index, 'variable'],
         });
-      }
-      for (const index of labelDuplicates) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Diseases contain duplicate label "${diseases[index]?.label}"`,
-          path: [index, 'label'],
-        });
-      }
+      });
     }),
 });
 

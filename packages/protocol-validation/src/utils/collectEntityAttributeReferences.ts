@@ -372,9 +372,8 @@ const walk = (
       const match = options.find((option) => {
         if (!(option instanceof z.ZodObject)) return false;
         const discField: unknown = option.shape[discriminator];
-        if (!(discField instanceof z.ZodLiteral)) return false;
-        const accepted: ReadonlySet<unknown> = discField.values;
-        return accepted.has(discValue);
+        if (!isZodType(discField)) return false;
+        return literalValuesOf(discField)?.includes(discValue) ?? false;
       });
       return match ? walk(match, value, path, ctx) : [];
     }

@@ -8,6 +8,7 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
+import { localizedString } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 import { nameGeneratorBehavioursSchema } from './name-generator.ts';
 
@@ -42,7 +43,7 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
       additionalProperties: z
         .array(
           z.strictObject({
-            label: z.string(),
+            label: localizedString(z.string(), 'plain'),
             variable: rosterColumnReference(),
           }),
         )
@@ -55,7 +56,7 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
       sortableProperties: z
         .array(
           z.strictObject({
-            label: z.string(),
+            label: localizedString(z.string(), 'plain'),
             variable: rosterColumnReference(),
           }),
         )

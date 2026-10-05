@@ -5,12 +5,13 @@ import { asExclusiveVariants } from '../declared-variants.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
+import { localizedString } from '../localized-string.ts';
 
 export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference.ts';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
-  text: z.string().min(1),
+  text: localizedString(z.string().min(1), 'markdown'),
 });
 
 // Re-parses an already-refined value against a narrowing union so the STATIC
@@ -150,7 +151,7 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
     requireType: ['ordinal'],
     usage: 'unvalidatedAttribute',
   }),
-  negativeLabel: z.string().min(1),
+  negativeLabel: localizedString(z.string().min(1), 'markdown'),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({
@@ -186,8 +187,11 @@ export const categoricalBinPromptSchema = promptSchema
       requireType: ['text'],
       usage: 'validatedAttribute',
     }).optional(),
-    otherVariablePrompt: z.string().optional(),
-    otherOptionLabel: z.string().optional(),
+    otherVariablePrompt: localizedString(
+      z.string().min(1),
+      'markdown',
+    ).optional(),
+    otherOptionLabel: localizedString(z.string().min(1), 'markdown').optional(),
   })
   .superRefine((prompt, ctx) => {
     if (prompt.otherVariable === '') {
@@ -241,8 +245,8 @@ export const categoricalBinPromptSchema = promptSchema
             requireType: ['text'],
             usage: 'validatedAttribute',
           }),
-          otherVariablePrompt: z.string().min(1),
-          otherOptionLabel: z.string().min(1),
+          otherVariablePrompt: localizedString(z.string().min(1), 'markdown'),
+          otherOptionLabel: localizedString(z.string().min(1), 'markdown'),
         }),
         promptSchema.extend({
           ...categoricalBinPromptFields,

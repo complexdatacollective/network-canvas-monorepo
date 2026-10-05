@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import {
+  createBaseProtocol,
+  localized,
+  localizedOptions,
+} from '../../../utils/test-utils.ts';
 import {
   CategoricalColorSequence,
   EdgeColorSequence,
@@ -64,7 +68,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'edgeForm1',
             type: 'AlterEdgeForm',
-            label: 'Edge Form',
+            label: localized('Edge Form'),
             subject: {
               entity: 'edge',
               type: 'nonexistent',
@@ -73,8 +77,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               fields: [],
             },
             introductionPanel: {
-              title: 'Edge Form Intro',
-              text: 'Introduction text for edge form.',
+              title: localized('Edge Form Intro'),
+              text: localized('Introduction text for edge form.'),
             },
           },
         ],
@@ -100,18 +104,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'egoForm1',
             type: 'EgoForm',
-            label: 'Ego Form',
+            label: localized('Ego Form'),
             form: {
               fields: [
                 {
                   variable: 'egoName',
-                  prompt: 'Enter your name',
+                  prompt: localized('Enter your name'),
                 },
               ],
             },
             introductionPanel: {
-              title: 'Ego Form Intro',
-              text: 'Introduction text for ego form.',
+              title: localized('Ego Form Intro'),
+              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -132,18 +136,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'egoForm1',
             type: 'EgoForm',
-            label: 'Ego Form',
+            label: localized('Ego Form'),
             form: {
               fields: [
                 {
                   variable: 'egoName',
-                  prompt: 'Enter your name',
+                  prompt: localized('Enter your name'),
                 },
               ],
             },
             introductionPanel: {
-              title: 'Ego Form Intro',
-              text: 'Introduction text for ego form.',
+              title: localized('Ego Form Intro'),
+              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -169,15 +173,15 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             form: {
-              title: 'Add person',
+              title: localized('Add person'),
               fields: [
                 {
                   variable: 'name',
-                  prompt: 'Enter name',
+                  prompt: localized('Enter name'),
                 },
                 {
                   variable: 'age',
-                  prompt: 'Enter age',
+                  prompt: localized('Enter age'),
                 },
               ],
             },
@@ -196,11 +200,11 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             form: {
-              title: 'Add person',
+              title: localized('Add person'),
               fields: [
                 {
                   variable: 'nonexistentVariable',
-                  prompt: 'Enter something',
+                  prompt: localized('Enter something'),
                 },
               ],
             },
@@ -233,22 +237,22 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'egoForm1',
             type: 'EgoForm',
-            label: 'Ego Form',
+            label: localized('Ego Form'),
             form: {
               fields: [
                 {
                   variable: 'egoName',
-                  prompt: 'Enter your name',
+                  prompt: localized('Enter your name'),
                 },
                 {
                   variable: 'egoAge',
-                  prompt: 'Enter your age',
+                  prompt: localized('Enter your age'),
                 },
               ],
             },
             introductionPanel: {
-              title: 'Ego Form Intro',
-              text: 'Introduction text for ego form.',
+              title: localized('Ego Form Intro'),
+              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -265,18 +269,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'egoForm1',
             type: 'EgoForm',
-            label: 'Ego Form',
+            label: localized('Ego Form'),
             form: {
               fields: [
                 {
                   variable: 'nonexistentEgoVariable',
-                  prompt: 'Enter something',
+                  prompt: localized('Enter something'),
                 },
               ],
             },
             introductionPanel: {
-              title: 'Ego Form Intro',
-              text: 'Introduction text for ego form.',
+              title: localized('Ego Form Intro'),
+              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -307,7 +311,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'edgeForm1',
             type: 'AlterEdgeForm',
-            label: 'Edge Form',
+            label: localized('Edge Form'),
             subject: {
               entity: 'edge',
               type: 'knows',
@@ -316,17 +320,17 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               fields: [
                 {
                   variable: 'closeness',
-                  prompt: 'How close are you?',
+                  prompt: localized('How close are you?'),
                 },
                 {
                   variable: 'duration',
-                  prompt: 'How long have you known them?',
+                  prompt: localized('How long have you known them?'),
                 },
               ],
             },
             introductionPanel: {
-              title: 'Edge Form Intro',
-              text: 'Introduction text for edge form.',
+              title: localized('Edge Form Intro'),
+              text: localized('Introduction text for edge form.'),
             },
           },
         ],
@@ -347,11 +351,11 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'person',
             },
             form: {
-              title: 'Add person',
+              title: localized('Add person'),
               fields: [
                 {
                   variable: 'department', // This variable exists on 'colleague' not 'person'
-                  prompt: 'Enter department',
+                  prompt: localized('Enter department'),
                 },
               ],
             },
@@ -378,7 +382,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           baseValidProtocol.stages[0],
           {
             ...baseValidProtocol.stages[0],
-            label: 'Duplicate Stage', // Different label, same ID
+            label: localized('Duplicate Stage'), // Different label, same ID
           },
         ],
       };
@@ -401,8 +405,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             ...baseValidProtocol.stages[0],
             prompts: [
-              { id: 'prompt1', text: 'First prompt' },
-              { id: 'prompt1', text: 'Duplicate ID prompt' },
+              { id: 'prompt1', text: localized('First prompt') },
+              { id: 'prompt1', text: localized('Duplicate ID prompt') },
             ],
           },
         ],
@@ -427,7 +431,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'ordinalBin1',
             type: 'OrdinalBin',
-            label: 'Ordinal Bin',
+            label: localized('Ordinal Bin'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -435,7 +439,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Sort by strength',
+                text: localized('Sort by strength'),
                 variable: 'strength',
                 color: 'ord-color-seq-1',
               },
@@ -455,7 +459,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'ordinalBin1',
             type: 'OrdinalBin',
-            label: 'Ordinal Bin',
+            label: localized('Ordinal Bin'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -463,7 +467,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Sort by something',
+                text: localized('Sort by something'),
                 variable: 'nonexistentVariable',
                 color: 'ord-color-seq-1',
               },
@@ -498,7 +502,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'categoricalBin1',
             type: 'CategoricalBin',
-            label: 'Categorical Bin',
+            label: localized('Categorical Bin'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -506,11 +510,11 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Sort by category',
+                text: localized('Sort by category'),
                 variable: 'category',
                 otherVariable: 'name',
-                otherOptionLabel: 'Other',
-                otherVariablePrompt: 'Please specify',
+                otherOptionLabel: localized('Other'),
+                otherVariablePrompt: localized('Please specify'),
               },
             ],
           },
@@ -528,7 +532,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'categoricalBin1',
             type: 'CategoricalBin',
-            label: 'Categorical Bin',
+            label: localized('Categorical Bin'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -536,11 +540,11 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Sort by category',
+                text: localized('Sort by category'),
                 variable: 'category',
                 otherVariable: 'category',
-                otherOptionLabel: 'Other',
-                otherVariablePrompt: 'Please specify',
+                otherOptionLabel: localized('Other'),
+                otherVariablePrompt: localized('Please specify'),
               },
             ],
           },
@@ -571,7 +575,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'categoricalBin1',
             type: 'CategoricalBin',
-            label: 'Categorical Bin',
+            label: localized('Categorical Bin'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -579,7 +583,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Sort by category',
+                text: localized('Sort by category'),
                 variable: 'category',
                 otherVariable: 'nonexistentVariable',
               },
@@ -616,7 +620,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'dyadCensus1',
             type: 'DyadCensus',
-            label: 'Dyad Census',
+            label: localized('Dyad Census'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -624,13 +628,15 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Do these people know each other?',
+                text: localized('Do these people know each other?'),
                 createEdge: 'knows',
               },
             ],
             introductionPanel: {
-              title: 'Dyad Census',
-              text: "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
+              title: localized('Dyad Census'),
+              text: localized(
+                "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
+              ),
             },
           },
         ],
@@ -647,7 +653,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'dyadCensus1',
             type: 'DyadCensus',
-            label: 'Dyad Census',
+            label: localized('Dyad Census'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -655,13 +661,15 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Do these people know each other?',
+                text: localized('Do these people know each other?'),
                 createEdge: 'nonexistentEdge',
               },
             ],
             introductionPanel: {
-              title: 'Dyad Census',
-              text: "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
+              title: localized('Dyad Census'),
+              text: localized(
+                "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
+              ),
             },
           },
         ],
@@ -693,7 +701,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'tieStrength1',
             type: 'TieStrengthCensus',
-            label: 'Tie Strength Census',
+            label: localized('Tie Strength Census'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -701,15 +709,17 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'How close are these people?',
+                text: localized('How close are these people?'),
                 createEdge: 'knows',
                 edgeVariable: 'closeness',
-                negativeLabel: 'Not connected',
+                negativeLabel: localized('Not connected'),
               },
             ],
             introductionPanel: {
-              title: 'Tie Strength Census',
-              text: 'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
+              title: localized('Tie Strength Census'),
+              text: localized(
+                'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
+              ),
             },
           },
         ],
@@ -726,7 +736,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'tieStrength1',
             type: 'TieStrengthCensus',
-            label: 'Tie Strength Census',
+            label: localized('Tie Strength Census'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -734,15 +744,17 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'How close are these people?',
+                text: localized('How close are these people?'),
                 createEdge: 'knows',
                 edgeVariable: 'nonexistentVariable',
-                negativeLabel: 'Not connected',
+                negativeLabel: localized('Not connected'),
               },
             ],
             introductionPanel: {
-              title: 'Tie Strength Census',
-              text: 'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
+              title: localized('Tie Strength Census'),
+              text: localized(
+                'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
+              ),
             },
           },
         ],
@@ -774,7 +786,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'tieStrength1',
             type: 'TieStrengthCensus',
-            label: 'Tie Strength Census',
+            label: localized('Tie Strength Census'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -782,15 +794,17 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'How close are these people?',
+                text: localized('How close are these people?'),
                 createEdge: 'knows',
                 edgeVariable: 'duration', // This is a number, not ordinal
-                negativeLabel: 'Not connected',
+                negativeLabel: localized('Not connected'),
               },
             ],
             introductionPanel: {
-              title: 'Tie Strength Census',
-              text: 'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
+              title: localized('Tie Strength Census'),
+              text: localized(
+                'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
+              ),
             },
           },
         ],
@@ -824,7 +838,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'sociogram1',
             type: 'Sociogram',
-            label: 'Sociogram',
+            label: localized('Sociogram'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -835,7 +849,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Position nodes',
+                text: localized('Position nodes'),
                 layout: {
                   layoutVariable: 'layoutPosition',
                 },
@@ -856,7 +870,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'sociogram1',
             type: 'Sociogram',
-            label: 'Sociogram',
+            label: localized('Sociogram'),
             subject: {
               entity: 'node',
               type: 'person',
@@ -867,7 +881,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Position nodes',
+                text: localized('Position nodes'),
                 layout: {
                   layoutVariable: 'nonexistentVariable',
                 },
@@ -908,24 +922,24 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'nameGen1',
             type: 'NameGenerator',
-            label: 'Name Generator',
+            label: localized('Name Generator'),
             subject: {
               entity: 'node',
               type: 'person',
             },
             form: {
-              title: 'Add person',
+              title: localized('Add person'),
               fields: [
                 {
                   variable: 'name',
-                  prompt: 'Enter name',
+                  prompt: localized('Enter name'),
                 },
               ],
             },
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Who do you know?',
+                text: localized('Who do you know?'),
                 additionalAttributes: [
                   { variable: 'age', value: true },
                   { variable: 'category', value: false },
@@ -947,24 +961,24 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'nameGen1',
             type: 'NameGenerator',
-            label: 'Name Generator',
+            label: localized('Name Generator'),
             subject: {
               entity: 'node',
               type: 'person',
             },
             form: {
-              title: 'Add person',
+              title: localized('Add person'),
               fields: [
                 {
                   variable: 'name',
-                  prompt: 'Enter name',
+                  prompt: localized('Enter name'),
                 },
               ],
             },
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Who do you know?',
+                text: localized('Who do you know?'),
                 additionalAttributes: [
                   { variable: 'nonexistentVariable', value: true },
                   { variable: 'anotherNonexistent', value: false },
@@ -1770,6 +1784,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 confirmAge: {
                   name: 'ConfirmAge',
+                  label: localized('ConfirmAge'),
                   type: 'number',
                   validation: {
                     sameAs: 'age',
@@ -1797,6 +1812,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 confirmAge: {
                   name: 'ConfirmAge',
+                  label: localized('ConfirmAge'),
                   type: 'number',
                   validation: {
                     sameAs: 'nonexistentVariable',
@@ -1841,6 +1857,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 uniqueId: {
                   name: 'UniqueID',
+                  label: localized('UniqueID'),
                   type: 'text',
                   validation: {
                     differentFrom: 'name',
@@ -1868,6 +1885,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 uniqueId: {
                   name: 'UniqueID',
+                  label: localized('UniqueID'),
                   type: 'text',
                   validation: {
                     differentFrom: 'nonexistentVariable',
@@ -1912,6 +1930,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
+                  label: localized('MaximumAge'),
                   type: 'number',
                   validation: {
                     greaterThanVariable: 'age',
@@ -1939,6 +1958,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
+                  label: localized('MinimumAge'),
                   type: 'number',
                   validation: {
                     lessThanVariable: 'age',
@@ -1966,6 +1986,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
+                  label: localized('MinimumAge'),
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -1993,6 +2014,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
+                  label: localized('MinimumAge'),
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'nonexistentVariable',
@@ -2037,6 +2059,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
+                  label: localized('MaximumAge'),
                   type: 'number',
                   validation: {
                     lessThanOrEqualToVariable: 'age',
@@ -2064,6 +2087,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
+                  label: localized('MaximumAge'),
                   type: 'number',
                   validation: {
                     lessThanOrEqualToVariable: 'nonexistentVariable',
@@ -2106,6 +2130,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.ego.variables,
               confirmName: {
                 name: 'ConfirmName',
+                label: localized('ConfirmName'),
                 type: 'text',
                 validation: {
                   sameAs: 'egoName',
@@ -2132,6 +2157,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.edge.knows.variables,
                 maxDuration: {
                   name: 'MaximumDuration',
+                  label: localized('MaximumDuration'),
                   type: 'number',
                   validation: {
                     greaterThanVariable: 'duration',
@@ -2157,6 +2183,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.ego.variables,
               invalidRef: {
                 name: 'InvalidReference',
+                label: localized('InvalidReference'),
                 type: 'text',
                 validation: {
                   sameAs: 'nonexistentEgoVar',
@@ -2203,6 +2230,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const minimalProtocol = {
         name: 'Minimal Protocol',
         schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {},
         stages: [],
       };
@@ -2218,13 +2246,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'informationStage',
             type: 'Information',
-            label: 'Information Stage',
-            title: 'Information Stage',
+            label: localized('Information Stage'),
+            title: localized('Information Stage'),
             items: [
               {
                 id: 'item1',
                 type: 'text',
-                content: 'This is information',
+                content: localized('This is information'),
               },
             ],
           },
@@ -2242,13 +2270,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'simpleStage',
             type: 'Information',
-            label: 'Simple Stage',
-            title: 'Simple Stage',
+            label: localized('Simple Stage'),
+            title: localized('Simple Stage'),
             items: [
               {
                 id: 'item1',
                 type: 'text',
-                content: 'Just some content',
+                content: localized('Just some content'),
               },
             ],
           },
@@ -2266,24 +2294,24 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'complex1',
             type: 'NameGenerator',
-            label: 'Complex Stage',
+            label: localized('Complex Stage'),
             subject: {
               entity: 'node',
               type: 'person',
             },
             form: {
-              title: 'Add person',
+              title: localized('Add person'),
               fields: [
                 {
                   variable: 'name',
-                  prompt: 'Enter name',
+                  prompt: localized('Enter name'),
                 },
               ],
             },
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Main prompt',
+                text: localized('Main prompt'),
                 additionalAttributes: [
                   { variable: 'age', value: true },
                   { variable: 'category', value: false },
@@ -2321,24 +2349,24 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           {
             id: 'errorStage',
             type: 'NameGenerator',
-            label: 'Error Stage',
+            label: localized('Error Stage'),
             subject: {
               entity: 'node',
               type: 'nonexistentNodeType', // Error 1: Invalid subject
             },
             form: {
-              title: 'Add person',
+              title: localized('Add person'),
               fields: [
                 {
                   variable: 'nonexistentVariable', // Error 2: Invalid form field variable
-                  prompt: 'Enter something',
+                  prompt: localized('Enter something'),
                 },
               ],
             },
             prompts: [
               {
                 id: 'prompt1',
-                text: 'Main prompt',
+                text: localized('Main prompt'),
                 additionalAttributes: [
                   { variable: 'anotherNonexistent', value: true }, // Error 3: Invalid additional attribute
                 ],
@@ -2385,7 +2413,11 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             ...baseValidProtocol.codebook.node.person,
             variables: {
               ...baseValidProtocol.codebook.node.person.variables,
-              homeLocation: { name: 'Home_Location', type: 'location' },
+              homeLocation: {
+                name: 'Home_Location',
+                label: localized('Home_Location'),
+                type: 'location',
+              },
             },
           },
         },
@@ -2408,7 +2440,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'geospatial1',
           type: 'Geospatial',
-          label: 'Geospatial Stage',
+          label: localized('Geospatial Stage'),
           subject: {
             entity: 'node',
             type: 'person',
@@ -2426,7 +2458,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           prompts: [
             {
               id: 'geoPrompt1',
-              text: 'Select your location',
+              text: localized('Select your location'),
               variable: 'homeLocation',
             },
           ],
@@ -2548,6 +2580,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
+                  label: localized('MinimumAge'),
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2580,6 +2613,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                   baseValidProtocol.codebook.node.person.variables.strength,
                 minAge: {
                   name: 'MinimumAge',
+                  label: localized('MinimumAge'),
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2621,7 +2655,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     const familyPedigreeStage = {
       id: 'fp1',
       type: 'FamilyPedigree' as const,
-      label: 'Family Pedigree',
+      label: localized('Family Pedigree'),
       nodeConfig: {
         type: 'person',
         nodeLabelVariable: 'label',
@@ -2641,7 +2675,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         requireGrandparents: 'off' as const,
         requireChildrenContributors: 'off' as const,
       },
-      censusPrompt: 'Build your family',
+      censusPrompt: localized('Build your family'),
     };
 
     const protocolWithIntroItem = (
@@ -2707,7 +2741,11 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('does not raise an introScreen asset issue for a text item', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithIntroItem({ id: 'i1', type: 'text', content: 'Welcome' }),
+        protocolWithIntroItem({
+          id: 'i1',
+          type: 'text',
+          content: localized('Welcome'),
+        }),
       );
       const introAssetIssue =
         !result.success &&
@@ -2721,30 +2759,40 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     // types with the biological-sex, relationship-type and gamete-role variables
     // present as categorical variables with the supplied option sets.
     const protocolWithLockedVariables = ({
-      biologicalSexOptions = BIOLOGICAL_SEX_OPTIONS,
+      biologicalSexOptions = localizedOptions(BIOLOGICAL_SEX_OPTIONS),
       biologicalSexType = 'categorical',
-      relationshipTypeOptions = RELATIONSHIP_TYPE_OPTIONS,
-      gameteRoleOptions = GAMETE_ROLE_OPTIONS,
+      relationshipTypeOptions = localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
+      gameteRoleOptions = localizedOptions(GAMETE_ROLE_OPTIONS),
     }: {
-      biologicalSexOptions?: { value: string; label: string }[];
+      biologicalSexOptions?: { value: string; label: Record<string, string> }[];
       biologicalSexType?: 'categorical' | 'ordinal';
-      relationshipTypeOptions?: { value: string; label: string }[];
-      gameteRoleOptions?: { value: string; label: string }[];
+      relationshipTypeOptions?: {
+        value: string;
+        label: Record<string, string>;
+      }[];
+      gameteRoleOptions?: { value: string; label: Record<string, string> }[];
     }) => ({
       name: 'Test Protocol',
       schemaVersion: 9 as const,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
         node: {
           person: {
             name: 'Person',
+            label: localized('Person'),
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
-              isEgo: { name: 'IsEgo', type: 'boolean' },
-              label: { name: 'Label', type: 'text' },
-              rel: { name: 'Rel', type: 'text' },
+              isEgo: {
+                name: 'IsEgo',
+                label: localized('IsEgo'),
+                type: 'boolean',
+              },
+              label: { name: 'Label', label: localized('Label'), type: 'text' },
+              rel: { name: 'Rel', label: localized('Rel'), type: 'text' },
               bioSex: {
                 name: 'BioSex',
+                label: localized('BioSex'),
                 type: biologicalSexType,
                 readOnly: true,
                 options: biologicalSexOptions,
@@ -2755,17 +2803,24 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         edge: {
           family: {
             name: 'Family',
+            label: localized('Family'),
             color: 'edge-color-seq-1',
             variables: {
-              isActive: { name: 'IsActive', type: 'boolean' },
-              isGc: { name: 'IsGc', type: 'boolean' },
+              isActive: {
+                name: 'IsActive',
+                label: localized('IsActive'),
+                type: 'boolean',
+              },
+              isGc: { name: 'IsGc', label: localized('IsGc'), type: 'boolean' },
               relType: {
                 name: 'RelType',
+                label: localized('RelType'),
                 type: 'categorical',
                 options: relationshipTypeOptions,
               },
               gameteRole: {
                 name: 'GameteRole',
+                label: localized('GameteRole'),
                 type: 'categorical',
                 options: gameteRoleOptions,
               },
@@ -2777,7 +2832,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'fp1',
           type: 'FamilyPedigree' as const,
-          label: 'Family Pedigree',
+          label: localized('Family Pedigree'),
           nodeConfig: {
             type: 'person',
             nodeLabelVariable: 'label',
@@ -2797,7 +2852,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             requireGrandparents: 'off' as const,
             requireChildrenContributors: 'off' as const,
           },
-          censusPrompt: 'Build your family',
+          censusPrompt: localized('Build your family'),
         },
       ],
     });
@@ -2815,12 +2870,25 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(lockedIssue).toBeFalsy();
     });
 
+    it('accepts locked variables whose option labels are reworded or translated', () => {
+      const result = ProtocolSchemaV9.safeParse({
+        ...protocolWithLockedVariables({
+          biologicalSexOptions: BIOLOGICAL_SEX_OPTIONS.map(({ value }) => ({
+            value,
+            label: { en: `Sex: ${value}`, fr: `Sexe : ${value}` },
+          })),
+        }),
+        localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      });
+      expect(result.success).toBe(true);
+    });
+
     it('rejects a biological-sex variable whose options were edited', () => {
       const result = ProtocolSchemaV9.safeParse(
         protocolWithLockedVariables({
           biologicalSexOptions: [
-            { value: 'female', label: 'Female' },
-            { value: 'male', label: 'Male' },
+            { value: 'female', label: localized('Female') },
+            { value: 'male', label: localized('Male') },
           ],
         }),
       );
@@ -2845,8 +2913,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const result = ProtocolSchemaV9.safeParse(
         protocolWithLockedVariables({
           relationshipTypeOptions: [
-            { value: 'biological', label: 'Biological' },
-            { value: 'made-up', label: 'Made Up' },
+            { value: 'biological', label: localized('Biological') },
+            { value: 'made-up', label: localized('Made Up') },
           ],
         }),
       );
@@ -2872,9 +2940,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const result = ProtocolSchemaV9.safeParse(
         protocolWithLockedVariables({
           gameteRoleOptions: [
-            { value: 'egg', label: 'Egg' },
-            { value: 'sperm', label: 'Sperm' },
-            { value: 'extra', label: 'Extra' },
+            { value: 'egg', label: localized('Egg') },
+            { value: 'sperm', label: localized('Sperm') },
+            { value: 'extra', label: localized('Extra') },
           ],
         }),
       );
@@ -2904,8 +2972,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         protocolWithLockedVariables({
           biologicalSexType: 'ordinal',
           biologicalSexOptions: [
-            { value: 'yes', label: 'Yes' },
-            { value: 'no', label: 'No' },
+            { value: 'yes', label: localized('Yes') },
+            { value: 'no', label: localized('No') },
           ],
         }),
       );

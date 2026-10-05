@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../../utils/test-utils.ts';
 import { NodeColorSequence } from '../../color-reference.ts';
 import ProtocolSchemaV9 from '../../schema.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
@@ -9,7 +10,7 @@ import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 // egoVariable lives on the FamilyPedigree node type and marks which node is ego.
 const validFamilyPedigreeStage = {
   id: 'fp1',
-  label: 'FamilyPedigree',
+  label: localized('FamilyPedigree'),
   type: 'FamilyPedigree' as const,
   nodeConfig: {
     type: 'person',
@@ -25,7 +26,7 @@ const validFamilyPedigreeStage = {
     isGestationalCarrierVariable: 'familyIsGc',
     gameteRoleVariable: 'familyGameteRole',
   },
-  censusPrompt: 'Build your family',
+  censusPrompt: localized('Build your family'),
   framing: { mode: 'fixed' as const, value: 'gamete' as const },
   boundaries: {
     requireGrandparents: 'off' as const,
@@ -36,13 +37,13 @@ const validFamilyPedigreeStage = {
 // Minimal valid NarrativePedigree stage (stage-level shape only)
 const validNarrativePedigreeStageShape = {
   id: 'np1',
-  label: 'Narrative Pedigree',
+  label: localized('Narrative Pedigree'),
   type: 'NarrativePedigree' as const,
   sourceStageId: 'fp1',
   diseases: [
     {
       id: 'disease1',
-      label: 'Breast Cancer',
+      label: localized('Breast Cancer'),
       color: 'node-color-seq-1',
       variable: 'hasBreastCancer',
       inheritancePattern: 'autosomalDominant' as const,
@@ -54,33 +55,81 @@ const validNarrativePedigreeStageShape = {
 const makeProtocol = (overrides?: {
   stages?: unknown[];
   codebook?: unknown;
+  localization?: { defaultLocale: string; locales: string[] };
 }) => ({
   name: 'Test Protocol',
   schemaVersion: 9 as const,
+  localization: overrides?.localization ?? {
+    defaultLocale: 'en',
+    locales: ['en'],
+  },
   codebook: overrides?.codebook ?? {
     node: {
       person: {
         name: 'Person',
+        label: localized('Person'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' as const },
         variables: {
-          egoIsEgo: { name: 'EgoIsEgo', type: 'boolean' },
-          personLabel: { name: 'PersonLabel', type: 'text' },
-          personRel: { name: 'PersonRel', type: 'text' },
-          personBioSex: { name: 'PersonBioSex', type: 'text' },
-          hasBreastCancer: { name: 'HasBreastCancer', type: 'boolean' },
+          egoIsEgo: {
+            name: 'EgoIsEgo',
+            label: localized('EgoIsEgo'),
+            type: 'boolean',
+          },
+          personLabel: {
+            name: 'PersonLabel',
+            label: localized('PersonLabel'),
+            type: 'text',
+          },
+          personRel: {
+            name: 'PersonRel',
+            label: localized('PersonRel'),
+            type: 'text',
+          },
+          personBioSex: {
+            name: 'PersonBioSex',
+            label: localized('PersonBioSex'),
+            type: 'text',
+          },
+          hasBreastCancer: {
+            name: 'HasBreastCancer',
+            label: localized('HasBreastCancer'),
+            type: 'boolean',
+          },
+          hasOvarianCancer: {
+            name: 'HasOvarianCancer',
+            label: localized('HasOvarianCancer'),
+            type: 'boolean',
+          },
         },
       },
     },
     edge: {
       family: {
         name: 'Family',
+        label: localized('Family'),
         color: 'edge-color-seq-1',
         variables: {
-          familyRelType: { name: 'FamilyRelType', type: 'text' },
-          familyIsActive: { name: 'FamilyIsActive', type: 'boolean' },
-          familyIsGc: { name: 'FamilyIsGc', type: 'boolean' },
-          familyGameteRole: { name: 'FamilyGameteRole', type: 'text' },
+          familyRelType: {
+            name: 'FamilyRelType',
+            label: localized('FamilyRelType'),
+            type: 'text',
+          },
+          familyIsActive: {
+            name: 'FamilyIsActive',
+            label: localized('FamilyIsActive'),
+            type: 'boolean',
+          },
+          familyIsGc: {
+            name: 'FamilyIsGc',
+            label: localized('FamilyIsGc'),
+            type: 'boolean',
+          },
+          familyGameteRole: {
+            name: 'FamilyGameteRole',
+            label: localized('FamilyGameteRole'),
+            type: 'text',
+          },
         },
       },
     },
@@ -147,14 +196,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       diseases: [
         {
           id: 'dup',
-          label: 'A',
+          label: localized('A'),
           color: 'node-color-seq-1',
           variable: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'dup',
-          label: 'B',
+          label: localized('B'),
           color: 'node-color-seq-5',
           variable: 'v2',
           inheritancePattern: 'yLinked' as const,
@@ -170,14 +219,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       diseases: [
         {
           id: 'd1',
-          label: 'Condition X',
+          label: localized('Condition X'),
           color: 'node-color-seq-1',
           variable: 'shared',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'd2',
-          label: 'Condition Y',
+          label: localized('Condition Y'),
           color: 'node-color-seq-5',
           variable: 'shared',
           inheritancePattern: 'yLinked' as const,
@@ -192,124 +241,20 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     ]);
   });
 
-  it('rejects two diseases sharing a label, ignoring case and surrounding space', () => {
-    const result = narrativePedigreeStage.safeParse({
-      ...validNarrativePedigreeStageShape,
-      diseases: [
-        {
-          id: 'd1',
-          label: 'Condition X',
-          color: 'node-color-seq-1',
-          variable: 'v1',
-          inheritancePattern: 'autosomalDominant' as const,
-        },
-        {
-          id: 'd2',
-          label: '  condition x ',
-          color: 'node-color-seq-5',
-          variable: 'v2',
-          inheritancePattern: 'yLinked' as const,
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
-      'diseases',
-      1,
-      'label',
-    ]);
-  });
-
-  // Canonical equivalence: `Café` written with U+00E9 and `Cafe` + U+0301 are
-  // the same text, render identically in every font, and are produced
-  // interchangeably by different keyboards and paste sources — so they are one
-  // key in the participant-facing disease legend.
-  it('rejects two diseases whose labels are canonically equivalent spellings', () => {
-    const result = narrativePedigreeStage.safeParse({
-      ...validNarrativePedigreeStageShape,
-      diseases: [
-        {
-          id: 'd1',
-          label: 'Café Coronary',
-          color: 'node-color-seq-1',
-          variable: 'v1',
-          inheritancePattern: 'autosomalDominant' as const,
-        },
-        {
-          id: 'd2',
-          label: 'Café Coronary',
-          color: 'node-color-seq-5',
-          variable: 'v2',
-          inheritancePattern: 'yLinked' as const,
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
-      'diseases',
-      1,
-      'label',
-    ]);
-  });
-
-  // Node offers no way to change the process's default locale from inside a
-  // test, and `toLocaleLowerCase()` with no argument folds by exactly that. So
-  // stand in for a Turkish host: under it `I` lowercases to `ı` rather than
-  // `i`, which is what would let this one protocol be valid on one researcher's
-  // laptop and invalid on another's.
-  const withTurkishHostLocale = (run: () => void) => {
-    const original = String.prototype.toLocaleLowerCase;
-    String.prototype.toLocaleLowerCase = function (this: string) {
-      return original.call(this, 'tr');
-    };
-    try {
-      run();
-    } finally {
-      String.prototype.toLocaleLowerCase = original;
-    }
-  };
-
-  it('gives the same duplicate-label verdict whatever the host locale', () => {
-    const stage = {
-      ...validNarrativePedigreeStageShape,
-      diseases: [
-        {
-          id: 'd1',
-          label: 'Ilk',
-          color: 'node-color-seq-1',
-          variable: 'v1',
-          inheritancePattern: 'autosomalDominant' as const,
-        },
-        {
-          id: 'd2',
-          label: 'ilk',
-          color: 'node-color-seq-5',
-          variable: 'v2',
-          inheritancePattern: 'yLinked' as const,
-        },
-      ],
-    };
-
-    expect(narrativePedigreeStage.safeParse(stage).success).toBe(false);
-    withTurkishHostLocale(() => {
-      expect(narrativePedigreeStage.safeParse(stage).success).toBe(false);
-    });
-  });
-
   it('accepts two diseases with distinct labels and variables', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
       diseases: [
         {
           id: 'd1',
-          label: 'Condition X',
+          label: localized('Condition X'),
           color: 'node-color-seq-1',
           variable: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'd2',
-          label: 'Condition Y',
+          label: localized('Condition Y'),
           color: 'node-color-seq-5',
           variable: 'v2',
           inheritancePattern: 'yLinked' as const,
@@ -323,7 +268,10 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
       diseases: [
-        { ...validNarrativePedigreeStageShape.diseases[0], label: '' },
+        {
+          ...validNarrativePedigreeStageShape.diseases[0],
+          label: localized(''),
+        },
       ],
     });
     expect(result.success).toBe(false);
@@ -368,7 +316,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
       presets: [
         {
           id: 'preset1',
-          label: 'Breast Cancer Focus',
+          label: localized('Breast Cancer Focus'),
           diseases: ['disease1'],
           focal: 'ego',
         },
@@ -381,6 +329,132 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
 describe('NarrativePedigree protocol-level cross-references', () => {
   it('accepts a valid protocol with FamilyPedigree source + NarrativePedigree', () => {
     const result = ProtocolSchemaV9.safeParse(makeProtocol());
+    expect(result.success).toBe(true);
+  });
+
+  const protocolWithDiseaseLabels = (
+    labels: [Record<string, string>, Record<string, string>],
+    localization?: { defaultLocale: string; locales: string[] },
+  ) =>
+    makeProtocol({
+      localization,
+      stages: [
+        validFamilyPedigreeStage,
+        {
+          ...validNarrativePedigreeStageShape,
+          diseases: [
+            {
+              id: 'd1',
+              label: labels[0],
+              color: 'node-color-seq-1',
+              variable: 'hasBreastCancer',
+              inheritancePattern: 'autosomalDominant',
+            },
+            {
+              id: 'd2',
+              label: labels[1],
+              color: 'node-color-seq-5',
+              variable: 'hasOvarianCancer',
+              inheritancePattern: 'yLinked',
+            },
+          ],
+        },
+      ],
+    });
+
+  const duplicateLabelIssues = (protocol: unknown) => {
+    const result = ProtocolSchemaV9.safeParse(protocol);
+    return result.success
+      ? []
+      : result.error.issues.filter((issue) =>
+          issue.message.startsWith('Diseases contain duplicate label'),
+        );
+  };
+
+  it('rejects two diseases sharing a label, ignoring case and surrounding space', () => {
+    const issues = duplicateLabelIssues(
+      protocolWithDiseaseLabels([
+        localized('Condition X'),
+        localized('  condition x '),
+      ]),
+    );
+    expect(issues.map((issue) => issue.path)).toEqual([
+      ['stages', 1, 'diseases', 1, 'label'],
+    ]);
+  });
+
+  // Canonical equivalence: `Café` written with U+00E9 and `Cafe` + U+0301 are
+  // the same text, render identically in every font, and are produced
+  // interchangeably by different keyboards and paste sources — so they are one
+  // key in the participant-facing disease legend.
+  it('rejects two diseases whose labels are canonically equivalent spellings', () => {
+    const issues = duplicateLabelIssues(
+      protocolWithDiseaseLabels([
+        localized('Caf\u00e9 Coronary'),
+        localized('Cafe\u0301 Coronary'),
+      ]),
+    );
+    expect(issues.map((issue) => issue.path)).toEqual([
+      ['stages', 1, 'diseases', 1, 'label'],
+    ]);
+  });
+
+  // Node offers no way to change the process's default locale from inside a
+  // test, and `toLocaleLowerCase()` with no argument folds by exactly that. So
+  // stand in for a Turkish host: under it `I` lowercases to `ı` rather than
+  // `i`, which is what would let this one protocol be valid on one researcher's
+  // laptop and invalid on another's.
+  const withTurkishHostLocale = (run: () => void) => {
+    const original = String.prototype.toLocaleLowerCase;
+    String.prototype.toLocaleLowerCase = function (this: string) {
+      return original.call(this, 'tr');
+    };
+    try {
+      run();
+    } finally {
+      String.prototype.toLocaleLowerCase = original;
+    }
+  };
+
+  it('gives the same duplicate-label verdict whatever the host locale', () => {
+    const protocol = protocolWithDiseaseLabels([
+      localized('Ilk'),
+      localized('ilk'),
+    ]);
+
+    expect(duplicateLabelIssues(protocol)).toHaveLength(1);
+    withTurkishHostLocale(() => {
+      expect(duplicateLabelIssues(protocol)).toHaveLength(1);
+    });
+  });
+
+  // The second row has no French text, so a French participant sees its
+  // English label, which is exactly the first row's French label.
+  it('rejects a collision that only appears through fallback, in the locale it affects', () => {
+    const issues = duplicateLabelIssues(
+      protocolWithDiseaseLabels(
+        [{ en: 'Breast cancer', fr: 'Cancer' }, { en: 'Cancer' }],
+        { defaultLocale: 'en', locales: ['en', 'fr'] },
+      ),
+    );
+    expect(issues).toEqual([
+      expect.objectContaining({
+        message: 'Diseases contain duplicate label "Cancer" (fr)',
+        path: ['stages', 1, 'diseases', 1, 'label'],
+      }),
+    ]);
+  });
+
+  it('accepts labels that are distinct in every declared locale', () => {
+    const result = ProtocolSchemaV9.safeParse(
+      protocolWithDiseaseLabels(
+        [
+          { en: 'Cancer', fr: 'Tumeur' },
+          { en: 'Tumour', fr: 'Cancer du sein' },
+        ],
+        { defaultLocale: 'en', locales: ['en', 'fr'] },
+      ),
+    );
     expect(result.success).toBe(true);
   });
 
@@ -405,10 +479,10 @@ describe('NarrativePedigree protocol-level cross-references', () => {
   it('rejects when sourceStageId references a non-FamilyPedigree stage', () => {
     const informationStage = {
       id: 'info1',
-      label: 'Information',
+      label: localized('Information'),
       type: 'Information' as const,
-      title: 'Welcome',
-      items: [{ id: 'i1', type: 'text' as const, content: 'Hello' }],
+      title: localized('Welcome'),
+      items: [{ id: 'i1', type: 'text' as const, content: localized('Hello') }],
     };
     const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
@@ -437,7 +511,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
             diseases: [
               {
                 id: 'disease1',
-                label: 'Breast Cancer',
+                label: localized('Breast Cancer'),
                 color: 'node-color-seq-1',
                 variable: 'nonexistentVariable',
                 inheritancePattern: 'autosomalDominant',
@@ -467,7 +541,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
             diseases: [
               {
                 id: 'disease1',
-                label: 'Breast Cancer',
+                label: localized('Breast Cancer'),
                 color: 'node-color-seq-1',
                 variable: 'personBioSex',
                 inheritancePattern: 'autosomalDominant',
@@ -495,7 +569,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
             nominationPrompts: [
               {
                 id: 'nom1',
-                text: 'Who is affected?',
+                text: localized('Who is affected?'),
                 variable: 'hasBreastCancer',
               },
             ],
@@ -514,7 +588,11 @@ describe('NarrativePedigree protocol-level cross-references', () => {
           {
             ...validFamilyPedigreeStage,
             nominationPrompts: [
-              { id: 'nom1', text: 'Who is affected?', variable: 'ghostVar' },
+              {
+                id: 'nom1',
+                text: localized('Who is affected?'),
+                variable: 'ghostVar',
+              },
             ],
           },
           validNarrativePedigreeStageShape,
@@ -538,7 +616,11 @@ describe('NarrativePedigree protocol-level cross-references', () => {
           {
             ...validFamilyPedigreeStage,
             nominationPrompts: [
-              { id: 'nom1', text: 'Who is affected?', variable: 'personRel' },
+              {
+                id: 'nom1',
+                text: localized('Who is affected?'),
+                variable: 'personRel',
+              },
             ],
           },
           validNarrativePedigreeStageShape,
@@ -562,7 +644,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
             ...validFamilyPedigreeStage,
             nodeConfig: {
               ...validFamilyPedigreeStage.nodeConfig,
-              form: [{ variable: 'personLabel', prompt: 'Name?' }],
+              form: [{ variable: 'personLabel', prompt: localized('Name?') }],
             },
           },
           validNarrativePedigreeStageShape,
@@ -585,31 +667,63 @@ describe('NarrativePedigree protocol-level cross-references', () => {
           node: {
             person: {
               name: 'Person',
+              label: localized('Person'),
               color: 'node-color-seq-1',
               shape: { default: 'circle' as const },
               variables: {
-                egoIsEgo: { name: 'EgoIsEgo', type: 'boolean' },
+                egoIsEgo: {
+                  name: 'EgoIsEgo',
+                  label: localized('EgoIsEgo'),
+                  type: 'boolean',
+                },
                 personLabel: {
                   name: 'PersonLabel',
+                  label: localized('PersonLabel'),
                   type: 'text',
                   component: 'Text',
                 },
-                personRel: { name: 'PersonRel', type: 'text' },
-                personBioSex: { name: 'PersonBioSex', type: 'text' },
-                hasBreastCancer: { name: 'HasBreastCancer', type: 'boolean' },
+                personRel: {
+                  name: 'PersonRel',
+                  label: localized('PersonRel'),
+                  type: 'text',
+                },
+                personBioSex: {
+                  name: 'PersonBioSex',
+                  label: localized('PersonBioSex'),
+                  type: 'text',
+                },
+                hasBreastCancer: {
+                  name: 'HasBreastCancer',
+                  label: localized('HasBreastCancer'),
+                  type: 'boolean',
+                },
               },
             },
           },
           edge: {
             family: {
               name: 'Family',
+              label: localized('Family'),
               color: 'edge-color-seq-1',
               variables: {
-                familyRelType: { name: 'FamilyRelType', type: 'text' },
-                familyIsActive: { name: 'FamilyIsActive', type: 'boolean' },
-                familyIsGc: { name: 'FamilyIsGc', type: 'boolean' },
+                familyRelType: {
+                  name: 'FamilyRelType',
+                  label: localized('FamilyRelType'),
+                  type: 'text',
+                },
+                familyIsActive: {
+                  name: 'FamilyIsActive',
+                  label: localized('FamilyIsActive'),
+                  type: 'boolean',
+                },
+                familyIsGc: {
+                  name: 'FamilyIsGc',
+                  label: localized('FamilyIsGc'),
+                  type: 'boolean',
+                },
                 familyGameteRole: {
                   name: 'FamilyGameteRole',
+                  label: localized('FamilyGameteRole'),
                   type: 'text',
                 },
               },
@@ -621,7 +735,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
             ...validFamilyPedigreeStage,
             nodeConfig: {
               ...validFamilyPedigreeStage.nodeConfig,
-              form: [{ variable: 'personLabel', prompt: 'Name?' }],
+              form: [{ variable: 'personLabel', prompt: localized('Name?') }],
             },
           },
           validNarrativePedigreeStageShape,

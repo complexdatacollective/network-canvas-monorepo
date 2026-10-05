@@ -1,7 +1,7 @@
 // @ts-nocheck - This test file uses mock data that doesn't conform to strict types
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../test-utils.ts';
+import { createBaseProtocol, localized } from '../test-utils.ts';
 import {
   createValidationMessage,
   entityExists,
@@ -736,12 +736,14 @@ describe('Validation Helpers', () => {
         node: {
           person: {
             name: 'Person',
+            label: localized('Person'),
             color: 'node-color-seq-1',
             variables: {
               // oxlint-disable-next-line typescript/no-explicit-any -- Testing malformed data
               malformed: 'not an object' as any,
               normal: {
                 name: 'Normal Variable',
+                label: localized('Normal Variable'),
                 type: 'text',
               },
             },

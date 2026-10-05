@@ -9,6 +9,7 @@ import {
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { localizedString } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 
 export const narrativeStage = baseStageSchema.extend({
@@ -19,7 +20,7 @@ export const narrativeStage = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: z.string().min(1),
+        label: localizedString(z.string().min(1), 'plain'),
         layoutVariable: entityAttributeReference({
           subject: 'stageSubject',
         }),

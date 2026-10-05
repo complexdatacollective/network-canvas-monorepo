@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
+import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
@@ -16,7 +17,7 @@ type Stage = Record<string, unknown>;
 
 const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
-  label: 'Family Pedigree',
+  label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
   nodeConfig: {
     type: 'family_member',
@@ -32,7 +33,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
     isGestationalCarrierVariable: 'isGestationalCarrier',
     gameteRoleVariable: 'gameteRole',
   },
-  censusPrompt: 'Build your family',
+  censusPrompt: localized('Build your family'),
   framing: { mode: 'fixed', value: 'gamete' },
   boundaries: {
     requireGrandparents: 'off',
@@ -43,13 +44,13 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
 
 const narrativePedigree = (variable: string): Stage => ({
   id: 'np1',
-  label: 'Narrative Pedigree',
+  label: localized('Narrative Pedigree'),
   type: 'NarrativePedigree',
   sourceStageId: 'fp1',
   diseases: [
     {
       id: 'd1',
-      label: 'Condition X',
+      label: localized('Condition X'),
       color: 'node-color-seq-1',
       variable,
       inheritancePattern: 'autosomalDominant',
@@ -60,44 +61,72 @@ const narrativePedigree = (variable: string): Stage => ({
 const protocolWith = (stages: Stage[]) => ({
   name: 'Pedigree protocol',
   schemaVersion: 9 as const,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     node: {
       family_member: {
         name: 'Family member',
+        label: localized('Family member'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' as const },
         variables: {
-          fmName: { name: 'fm_name', type: 'text', component: 'Text' },
-          isEgo: { name: 'is_ego', type: 'boolean' },
-          relationshipToEgo: { name: 'fm_relationship_to_ego', type: 'text' },
+          fmName: {
+            name: 'fm_name',
+            label: localized('fm_name'),
+            type: 'text',
+            component: 'Text',
+          },
+          isEgo: {
+            name: 'is_ego',
+            label: localized('is_ego'),
+            type: 'boolean',
+          },
+          relationshipToEgo: {
+            name: 'fm_relationship_to_ego',
+            label: localized('fm_relationship_to_ego'),
+            type: 'text',
+          },
           biologicalSex: {
             name: 'biologicalSex',
+            label: localized('biologicalSex'),
             type: 'categorical',
-            options: BIOLOGICAL_SEX_OPTIONS,
+            options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
           },
-          hasConditionX: { name: 'hasConditionX', type: 'boolean' },
+          hasConditionX: {
+            name: 'hasConditionX',
+            label: localized('hasConditionX'),
+            type: 'boolean',
+          },
         },
       },
     },
     edge: {
       family_edge: {
         name: 'Family edge',
+        label: localized('Family edge'),
         color: 'edge-color-seq-1',
         variables: {
           relationshipType: {
             name: 'relationshipType',
+            label: localized('relationshipType'),
             type: 'categorical',
-            options: RELATIONSHIP_TYPE_OPTIONS,
+            options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
           },
-          isActive: { name: 'isActive', type: 'boolean' },
+          isActive: {
+            name: 'isActive',
+            label: localized('isActive'),
+            type: 'boolean',
+          },
           isGestationalCarrier: {
             name: 'isGestationalCarrier',
+            label: localized('isGestationalCarrier'),
             type: 'boolean',
           },
           gameteRole: {
             name: 'gameteRole',
+            label: localized('gameteRole'),
             type: 'categorical',
-            options: GAMETE_ROLE_OPTIONS,
+            options: localizedOptions(GAMETE_ROLE_OPTIONS),
           },
         },
       },
@@ -119,7 +148,11 @@ describe('stage subjects resolve during collection', () => {
     const protocol = protocolWith([
       familyPedigree({
         nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'notInCodebook' },
+          {
+            id: 'np',
+            text: localized('Who has this?'),
+            variable: 'notInCodebook',
+          },
         ],
       }),
     ]);
@@ -143,7 +176,9 @@ describe('stage subjects resolve during collection', () => {
           egoVariable: 'isEgo',
           relationshipVariable: 'relationshipToEgo',
           biologicalSexVariable: 'biologicalSex',
-          form: [{ variable: 'notInCodebook', prompt: 'Tell us more' }],
+          form: [
+            { variable: 'notInCodebook', prompt: localized('Tell us more') },
+          ],
         },
       }),
     ]);
@@ -173,7 +208,11 @@ describe('stage subjects resolve during collection', () => {
     const protocol = protocolWith([
       familyPedigree({
         nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'hasConditionX' },
+          {
+            id: 'np',
+            text: localized('Who has this?'),
+            variable: 'hasConditionX',
+          },
         ],
         nodeConfig: {
           type: 'family_member',
@@ -181,7 +220,7 @@ describe('stage subjects resolve during collection', () => {
           egoVariable: 'isEgo',
           relationshipVariable: 'relationshipToEgo',
           biologicalSexVariable: 'biologicalSex',
-          form: [{ variable: 'fmName', prompt: 'Their name' }],
+          form: [{ variable: 'fmName', prompt: localized('Their name') }],
         },
       }),
       narrativePedigree('hasConditionX'),
@@ -196,7 +235,11 @@ describe('stage subjects resolve during collection', () => {
     const protocol = protocolWith([
       familyPedigree({
         nominationPrompts: [
-          { id: 'np', text: 'Who has this?', variable: 'hasConditionX' },
+          {
+            id: 'np',
+            text: localized('Who has this?'),
+            variable: 'hasConditionX',
+          },
         ],
       }),
       narrativePedigree('hasConditionX'),

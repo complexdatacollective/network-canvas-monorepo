@@ -13,6 +13,7 @@ import { egoFormStage } from './ego-form.ts';
 import { familyPedigreeStage } from './family-pedigree.ts';
 import { geospatialStage } from './geospatial.ts';
 import { informationStage } from './information.ts';
+import { languageChooserStage } from './language-chooser.ts';
 import { nameGeneratorQuickAddStage } from './name-generator-quick-add.ts';
 import { nameGeneratorRosterStage } from './name-generator-roster.ts';
 import { nameGeneratorStage } from './name-generator.ts';
@@ -66,6 +67,7 @@ const stageSchemas = [
   familyPedigreeStage,
   geospatialStage,
   narrativePedigreeStage,
+  languageChooserStage,
 ] as const;
 
 // Combine all stage types

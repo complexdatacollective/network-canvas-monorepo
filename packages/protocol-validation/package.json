@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@codaco/shared-consts": "workspace:^",
+    "@formatjs/icu-messageformat-parser": "catalog:",
     "@formatjs/intl-localematcher": "catalog:",
     "csvtojson": "catalog:",
     "jszip": "catalog:",

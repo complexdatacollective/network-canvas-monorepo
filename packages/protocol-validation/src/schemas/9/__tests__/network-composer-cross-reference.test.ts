@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { ComponentTypes } from '../variables/types.ts';
 
 const baseStage = {
   id: 'nc1',
-  label: 'Build the network',
+  label: localized('Build the network'),
   type: 'NetworkComposer',
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
@@ -14,7 +14,11 @@ const baseStage = {
   background: { concentricCircles: 4 },
   nodeForm: {
     fields: [
-      { variable: 'age', component: ComponentTypes.Number, label: 'Age?' },
+      {
+        variable: 'age',
+        component: ComponentTypes.Number,
+        label: localized('Age?'),
+      },
     ],
   },
   edges: [
@@ -29,7 +33,7 @@ const baseStage = {
             // previously paired it with a VisualAnalogScale.
             variable: 'closeness',
             component: ComponentTypes.RadioGroup,
-            label: 'How close?',
+            label: localized('How close?'),
           },
         ],
       },
@@ -71,7 +75,7 @@ describe('NetworkComposer cross-reference validation', () => {
             {
               variable: 'missing',
               component: ComponentTypes.Number,
-              label: 'x',
+              label: localized('x'),
             },
           ],
         },
@@ -95,7 +99,7 @@ describe('NetworkComposer cross-reference validation', () => {
                 {
                   variable: 'age',
                   component: ComponentTypes.Number,
-                  label: 'x',
+                  label: localized('x'),
                 },
               ],
             },
@@ -126,10 +130,15 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
               ...base.codebook.node.person.variables,
               event_a: {
                 name: 'EventA',
+                label: localized('EventA'),
                 type: 'datetime',
                 validation: { sameAs: 'event_b' },
               },
-              event_b: { name: 'EventB', type: 'datetime' },
+              event_b: {
+                name: 'EventB',
+                label: localized('EventB'),
+                type: 'datetime',
+              },
             },
           },
         },
@@ -141,10 +150,15 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
               ...base.codebook.edge.knows.variables,
               edge_event_a: {
                 name: 'EdgeEventA',
+                label: localized('EdgeEventA'),
                 type: 'datetime',
                 validation: { sameAs: 'edge_event_b' },
               },
-              edge_event_b: { name: 'EdgeEventB', type: 'datetime' },
+              edge_event_b: {
+                name: 'EdgeEventB',
+                label: localized('EdgeEventB'),
+                type: 'datetime',
+              },
             },
           },
         },
@@ -286,6 +300,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
               ...base.codebook.node.person.variables,
               event_a: {
                 name: 'EventA',
+                label: localized('EventA'),
                 type: 'datetime',
                 component: ComponentTypes.DatePicker,
                 parameters: { type: 'year' },
@@ -293,6 +308,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
               },
               event_b: {
                 name: 'EventB',
+                label: localized('EventB'),
                 type: 'datetime',
                 component: ComponentTypes.DatePicker,
                 parameters: { type: 'year' },
@@ -476,10 +492,11 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
   const sameAsDatetimePair = {
     event_a: {
       name: 'EventA',
+      label: localized('EventA'),
       type: 'datetime',
       validation: { sameAs: 'event_b' },
     },
-    event_b: { name: 'EventB', type: 'datetime' },
+    event_b: { name: 'EventB', label: localized('EventB'), type: 'datetime' },
   };
 
   // The old check only re-ran the mixed-resolution query on the overlay, so a
@@ -531,6 +548,7 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
     const contradictoryCodebookPair = {
       event_a: {
         name: 'EventA',
+        label: localized('EventA'),
         type: 'datetime',
         component: ComponentTypes.DatePicker,
         parameters: { min: '2020-01-01', max: '2020-01-01' },
@@ -538,6 +556,7 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
       },
       event_b: {
         name: 'EventB',
+        label: localized('EventB'),
         type: 'datetime',
         component: ComponentTypes.DatePicker,
         parameters: { min: '2020-06-01', max: '2020-06-01' },
@@ -725,7 +744,13 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   ])('accepts a %s variable rendered as %s', (_type, component) => {
     const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
-        { event_a: { name: 'EventA', type: 'datetime' } },
+        {
+          event_a: {
+            name: 'EventA',
+            label: localized('EventA'),
+            type: 'datetime',
+          },
+        },
         nodeFormOnly([{ variable: 'event_a', component }]),
       ),
     );
@@ -765,7 +790,13 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   ])('accepts a %s variable rendered as %s', (_type, component) => {
     const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
-        { is_close: { name: 'IsClose', type: 'boolean' } },
+        {
+          is_close: {
+            name: 'IsClose',
+            label: localized('IsClose'),
+            type: 'boolean',
+          },
+        },
         nodeFormOnly([{ variable: 'is_close', component }]),
       ),
     );
@@ -785,7 +816,14 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   it('rejects a componentless boolean with empty options rendered as Boolean, anchored at the field', () => {
     const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
-        { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
+        {
+          is_close: {
+            name: 'IsClose',
+            label: localized('IsClose'),
+            type: 'boolean',
+            options: [],
+          },
+        },
         nodeFormOnly([
           { variable: 'is_close', component: ComponentTypes.Boolean },
         ]),
@@ -809,7 +847,14 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   it('accepts a componentless boolean with empty options rendered as Toggle', () => {
     const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
-        { is_close: { name: 'IsClose', type: 'boolean', options: [] } },
+        {
+          is_close: {
+            name: 'IsClose',
+            label: localized('IsClose'),
+            type: 'boolean',
+            options: [],
+          },
+        },
         nodeFormOnly([
           { variable: 'is_close', component: ComponentTypes.Toggle },
         ]),
@@ -824,7 +869,13 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   it('accepts a scalar variable rendered as a VisualAnalogScale', () => {
     const result = ProtocolSchemaV9.safeParse(
       composerProtocolWithPersonVariables(
-        { warmth: { name: 'Warmth', type: 'scalar' } },
+        {
+          warmth: {
+            name: 'Warmth',
+            label: localized('Warmth'),
+            type: 'scalar',
+          },
+        },
         nodeFormOnly([
           { variable: 'warmth', component: ComponentTypes.VisualAnalogScale },
         ]),
@@ -883,10 +934,15 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
               ...base.codebook.node.person.variables,
               event_a: {
                 name: 'EventA',
+                label: localized('EventA'),
                 type: 'datetime',
                 validation: { sameAs: 'event_b' },
               },
-              event_b: { name: 'EventB', type: 'datetime' },
+              event_b: {
+                name: 'EventB',
+                label: localized('EventB'),
+                type: 'datetime',
+              },
             },
           },
         },
@@ -1009,17 +1065,20 @@ describe('NetworkComposer overlay baseline tracks the visible subset', () => {
               ...base.codebook.node.person.variables,
               event_a: {
                 name: 'EventA',
+                label: localized('EventA'),
                 type: 'datetime',
                 ...pinned('2020-01-01'),
                 validation: { sameAs: 'event_b' },
               },
               event_b: {
                 name: 'EventB',
+                label: localized('EventB'),
                 type: 'datetime',
                 ...pinned('2020-06-01'),
               },
               event_c: {
                 name: 'EventC',
+                label: localized('EventC'),
                 type: 'datetime',
                 validation: { sameAs: 'event_a' },
               },
@@ -1105,16 +1164,19 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   const propagationTrio = {
     event_a: {
       name: 'EventA',
+      label: localized('EventA'),
       type: 'datetime',
       validation: { sameAs: 'event_b' },
     },
     event_b: {
       name: 'EventB',
+      label: localized('EventB'),
       type: 'datetime',
       validation: { lessThanVariable: 'event_c' },
     },
     event_c: {
       name: 'EventC',
+      label: localized('EventC'),
       type: 'datetime',
       component: ComponentTypes.DatePicker,
       parameters: { min: '2020-01-01', max: '2020-01-01' },
@@ -1248,12 +1310,13 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   // baseline and must not be reported at the stage (and record-level mode
   // never judges it either, so the protocol stays accepted).
   it('accepts a latent stage-effective-only pair this form never renders', () => {
-    const trueOnly = [{ label: 'Yes', value: true }];
+    const trueOnly = [{ label: localized('Yes'), value: true }];
     const result = ProtocolSchemaV9.safeParse(
       composerProtocolWith(
         {
           flag_a: {
             name: 'FlagA',
+            label: localized('FlagA'),
             type: 'boolean',
             component: ComponentTypes.Boolean,
             options: trueOnly,
@@ -1261,6 +1324,7 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
           },
           flag_b: {
             name: 'FlagB',
+            label: localized('FlagB'),
             type: 'boolean',
             component: ComponentTypes.Boolean,
             options: trueOnly,

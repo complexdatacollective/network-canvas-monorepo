@@ -6,6 +6,7 @@ import {
   findDuplicateName,
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
+import { localizedString } from '../localized-string.ts';
 import {
   type ComponentType,
   ComponentTypes,
@@ -166,6 +167,7 @@ export type VariableOptionValue = VariableOption['value'];
 // Variable Schema
 const baseVariableSchema = z.strictObject({
   name: CodebookNameSchema,
+  label: localizedString(z.string().min(1), 'plain'),
   encrypted: z.boolean().optional(),
   // Marks a variable whose options an interface owns and the researcher may not
   // edit (e.g. a FamilyPedigree biological-sex/relationship-type/gamete-role
@@ -185,8 +187,8 @@ const scalarVariableSchema = baseVariableSchema.extend({
   component: z.enum(scalarComponents).optional(),
   parameters: z
     .strictObject({
-      minLabel: z.string().optional(),
-      maxLabel: z.string().optional(),
+      minLabel: localizedString(z.string(), 'markdown').optional(),
+      maxLabel: localizedString(z.string(), 'markdown').optional(),
     })
     .optional(),
   validation: z.strictObject(validations).pick(scalarValidations).optional(),
@@ -397,7 +399,7 @@ const textVariableSchema = baseVariableSchema.extend({
 // actually known.
 const booleanOptionsSchema = z.array(
   z.strictObject({
-    label: z.string(),
+    label: localizedString(z.string(), 'markdown'),
     value: z.boolean(),
     negative: z.boolean().optional(),
   }),
@@ -440,7 +442,7 @@ export const MINIMUM_VARIABLE_OPTIONS = 2;
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
-      label: z.string(),
+      label: localizedString(z.string(), 'markdown'),
       value: z.union([z.number().int(), z.string()]),
     }),
   )

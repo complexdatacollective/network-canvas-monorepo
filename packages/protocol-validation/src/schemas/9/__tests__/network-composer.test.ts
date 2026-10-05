@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../utils/test-utils.ts';
 import { stageSchema } from '../stages/index.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
 import { ComponentTypes } from '../variables/types.ts';
 
 const validStage = {
   id: 'nc1',
-  label: 'Build the network',
+  label: localized('Build the network'),
   type: 'NetworkComposer',
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
@@ -86,7 +87,11 @@ describe('networkComposerStage schema', () => {
       ...validStage,
       nodeForm: {
         fields: [
-          { variable: 'age', component: ComponentTypes.Number, label: 'Age?' },
+          {
+            variable: 'age',
+            component: ComponentTypes.Number,
+            label: localized('Age?'),
+          },
         ],
       },
       edges: [
@@ -98,7 +103,7 @@ describe('networkComposerStage schema', () => {
               {
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
-                label: 'How close?',
+                label: localized('How close?'),
               },
             ],
           },
@@ -142,7 +147,7 @@ describe('stage discriminated union', () => {
 const baseStageWithComponent = {
   id: 's1',
   type: 'NetworkComposer' as const,
-  label: 'Compose',
+  label: localized('Compose'),
   subject: { entity: 'node' as const, type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layout',
@@ -190,7 +195,11 @@ describe('ComposerFormFieldSchema', () => {
       ...baseStageWithComponent,
       nodeForm: {
         fields: [
-          { variable: 'age', component: ComponentTypes.Number, prompt: 'Age?' },
+          {
+            variable: 'age',
+            component: ComponentTypes.Number,
+            prompt: localized('Age?'),
+          },
         ],
       },
     });
@@ -209,8 +218,11 @@ describe('ComposerFormFieldSchema', () => {
               {
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
-                parameters: { minLabel: 'Distant', maxLabel: 'Close' },
-                label: 'How close?',
+                parameters: {
+                  minLabel: localized('Distant'),
+                  maxLabel: localized('Close'),
+                },
+                label: localized('How close?'),
               },
             ],
           },
@@ -422,7 +434,11 @@ describe('ComposerFormFieldSchema', () => {
           {
             variable: 'closeness',
             component: ComponentTypes.VisualAnalogScale,
-            parameters: { minLabel: 'Distant', maxLabel: 'Close', extra: true },
+            parameters: {
+              minLabel: localized('Distant'),
+              maxLabel: localized('Close'),
+              extra: true,
+            },
           },
         ],
       },

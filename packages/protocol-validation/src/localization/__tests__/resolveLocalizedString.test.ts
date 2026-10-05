@@ -49,6 +49,23 @@ describe('resolveLocalizedString', () => {
     });
   });
 
+  it('matches a selected Chinese locale by script', () => {
+    const chinese = {
+      defaultLocale: 'en',
+      locales: ['en', 'zh-Hans', 'zh-Hant'],
+    };
+    const value = { 'en': 'Hello', 'zh-Hans': '你好', 'zh-Hant': '妳好' };
+    expect(resolveLocalizedString(value, chinese, 'zh-TW')).toMatchObject({
+      text: '妳好',
+      locale: 'zh-Hant',
+      usedFallback: true,
+    });
+    expect(resolveLocalizedString(value, chinese, 'zh-Hant-TW')).toMatchObject({
+      text: '妳好',
+      locale: 'zh-Hant',
+    });
+  });
+
   it('falls back to the protocol default when the selected locale is missing', () => {
     expect(
       resolveLocalizedString({ en: 'Hello', es: 'Hola' }, trilingual, 'fr'),

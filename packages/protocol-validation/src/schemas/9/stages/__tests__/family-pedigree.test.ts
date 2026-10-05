@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../../utils/test-utils.ts';
 import { familyPedigreeStage } from '../family-pedigree.ts';
 
 /**
@@ -8,7 +9,7 @@ import { familyPedigreeStage } from '../family-pedigree.ts';
  */
 const base = {
   id: 'fp1',
-  label: 'Family Pedigree',
+  label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
   nodeConfig: {
     type: 'person',
@@ -24,7 +25,7 @@ const base = {
     isGestationalCarrierVariable: 'isGc',
     gameteRoleVariable: 'gameteRole',
   },
-  censusPrompt: 'Build your family',
+  censusPrompt: localized('Build your family'),
   framing: { mode: 'fixed' as const, value: 'gamete' as const },
   boundaries: {
     requireGrandparents: 'off' as const,
@@ -93,7 +94,7 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
         },
         introScreen: {
           items: [
-            { id: 'text1', type: 'text', content: 'Welcome' },
+            { id: 'text1', type: 'text', content: localized('Welcome') },
             { id: 'video1', type: 'asset', content: 'assetId1' },
           ],
         },
@@ -105,7 +106,7 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
     expect(
       familyPedigreeStage.safeParse({
         ...base,
-        introScreen: { text: 'Welcome' },
+        introScreen: { text: localized('Welcome') },
       }).success,
     ).toBe(false);
   });
@@ -116,8 +117,8 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
         ...base,
         introScreen: {
           items: [
-            { id: 'dup', type: 'text', content: 'One' },
-            { id: 'dup', type: 'text', content: 'Two' },
+            { id: 'dup', type: 'text', content: localized('One') },
+            { id: 'dup', type: 'text', content: localized('Two') },
           ],
         },
       }).success,
@@ -126,7 +127,8 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
 
   it('rejects an empty censusPrompt', () => {
     expect(
-      familyPedigreeStage.safeParse({ ...base, censusPrompt: '' }).success,
+      familyPedigreeStage.safeParse({ ...base, censusPrompt: localized('') })
+        .success,
     ).toBe(false);
   });
 
@@ -134,7 +136,7 @@ describe('familyPedigreeStage framing/boundaries/introScreen', () => {
     expect(
       familyPedigreeStage.safeParse({
         ...base,
-        censusPrompt: 'Build your family',
+        censusPrompt: localized('Build your family'),
       }).success,
     ).toBe(true);
   });

@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 
-const field = (variable: string, prompt: string) => ({ variable, prompt });
+const field = (variable: string, prompt: string) => ({
+  variable,
+  prompt: localized(prompt),
+});
 
 // Mirrors `narrative-pedigree.test.ts`'s pedigree fixture: FamilyPedigree
 // declares no top-level subject, so `nodeConfig.form` is the one form surface
 // that never passes through FormSchema/TitlelessFormSchema.
-const pedigreeStage = (form?: { variable: string; prompt: string }[]) => ({
+const pedigreeStage = (form?: ReturnType<typeof field>[]) => ({
   id: 'fp1',
-  label: 'Family Pedigree',
+  label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
   nodeConfig: {
     type: 'person',
@@ -29,7 +32,7 @@ const pedigreeStage = (form?: { variable: string; prompt: string }[]) => ({
     isGestationalCarrierVariable: 'isGc',
     gameteRoleVariable: 'gameteRole',
   },
-  censusPrompt: 'Build your family',
+  censusPrompt: localized('Build your family'),
   framing: { mode: 'fixed' as const, value: 'gamete' as const },
   boundaries: {
     requireGrandparents: 'off' as const,
@@ -37,7 +40,7 @@ const pedigreeStage = (form?: { variable: string; prompt: string }[]) => ({
   },
 });
 
-const pedigreeProtocol = (form?: { variable: string; prompt: string }[]) => {
+const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
   const protocol = createBaseProtocol();
   return {
     ...protocol,
@@ -49,9 +52,21 @@ const pedigreeProtocol = (form?: { variable: string; prompt: string }[]) => {
           ...protocol.codebook.node.person,
           variables: {
             ...protocol.codebook.node.person.variables,
-            isEgo: { name: 'IsEgo', type: 'boolean' },
-            relationship: { name: 'Relationship', type: 'text' },
-            bioSex: { name: 'BioSex', type: 'text' },
+            isEgo: {
+              name: 'IsEgo',
+              label: localized('IsEgo'),
+              type: 'boolean',
+            },
+            relationship: {
+              name: 'Relationship',
+              label: localized('Relationship'),
+              type: 'text',
+            },
+            bioSex: {
+              name: 'BioSex',
+              label: localized('BioSex'),
+              type: 'text',
+            },
           },
         },
       },
@@ -61,10 +76,22 @@ const pedigreeProtocol = (form?: { variable: string; prompt: string }[]) => {
           ...protocol.codebook.edge.knows,
           variables: {
             ...protocol.codebook.edge.knows.variables,
-            relType: { name: 'RelType', type: 'text' },
-            isActive: { name: 'IsActive', type: 'boolean' },
-            isGc: { name: 'IsGc', type: 'boolean' },
-            gameteRole: { name: 'GameteRole', type: 'text' },
+            relType: {
+              name: 'RelType',
+              label: localized('RelType'),
+              type: 'text',
+            },
+            isActive: {
+              name: 'IsActive',
+              label: localized('IsActive'),
+              type: 'boolean',
+            },
+            isGc: { name: 'IsGc', label: localized('IsGc'), type: 'boolean' },
+            gameteRole: {
+              name: 'GameteRole',
+              label: localized('GameteRole'),
+              type: 'text',
+            },
           },
         },
       },
@@ -77,7 +104,7 @@ describe('form field variable uniqueness', () => {
   it('accepts a form whose fields each name a different variable', () => {
     expect(
       FormSchema.safeParse({
-        title: 'Add a person',
+        title: localized('Add a person'),
         fields: [field('name', 'Name?'), field('age', 'Age?')],
       }).success,
     ).toBe(true);
@@ -85,7 +112,7 @@ describe('form field variable uniqueness', () => {
 
   it('rejects a FormSchema form that names one variable twice', () => {
     const result = FormSchema.safeParse({
-      title: 'Add a person',
+      title: localized('Add a person'),
       fields: [
         field('name', 'Name?'),
         field('age', 'Age?'),
@@ -157,9 +184,9 @@ describe('form field variable uniqueness', () => {
         {
           id: 'af1',
           type: 'AlterForm',
-          label: 'Alter form',
+          label: localized('Alter form'),
           subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: 'T', text: 'X' },
+          introductionPanel: { title: localized('T'), text: localized('X') },
           form: { fields: [field('name', 'Name?'), field('age', 'Age?')] },
         },
       ],
@@ -195,9 +222,9 @@ describe('form field variable uniqueness', () => {
         {
           id: 'af1',
           type: 'AlterForm',
-          label: 'Alter form',
+          label: localized('Alter form'),
           subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: 'T', text: 'X' },
+          introductionPanel: { title: localized('T'), text: localized('X') },
           form: { fields: [field('name', 'Name?'), field('name', 'Again?')] },
         },
       ],

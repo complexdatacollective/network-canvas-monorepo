@@ -164,6 +164,29 @@ describe('selectProtocolLocale', () => {
     expect(selectProtocolLocale([], unidentified)).toBe('und');
   });
 
+  it('lets an earlier regional preference beat a later exact match', () => {
+    expect(selectProtocolLocale(['es-MX', 'en'], bilingual)).toBe('es');
+  });
+
+  it.each([
+    ['zh-Hant-TW', 'zh-Hant'],
+    ['zh-TW', 'zh-Hant'],
+    ['zh-HK', 'zh-Hant'],
+    ['zh-CN', 'zh-Hans'],
+    ['zh', 'zh-Hans'],
+  ])('matches Chinese %s by script to %s', (requested, expected) => {
+    const chinese = {
+      defaultLocale: 'en',
+      locales: ['en', 'zh-Hans', 'zh-Hant'],
+    };
+    expect(selectProtocolLocale([requested], chinese)).toBe(expected);
+  });
+
+  it('keeps an exactly declared regional Chinese tag', () => {
+    const taiwan = { defaultLocale: 'en', locales: ['en', 'zh-TW', 'zh-Hant'] };
+    expect(selectProtocolLocale(['zh-TW'], taiwan)).toBe('zh-TW');
+  });
+
   it('fails closed to the default when the matcher answers with an undeclared tag', () => {
     expect(
       selectProtocolLocale(['he'], {

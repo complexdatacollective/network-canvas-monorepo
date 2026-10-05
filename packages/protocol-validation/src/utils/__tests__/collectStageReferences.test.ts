@@ -8,6 +8,7 @@ import {
   collectStageReferences,
   declaredStageReferenceSites,
 } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 
 // Walks the REAL protocol schema, so this covers the walker and the
 // `stageReference` tagging of each schema spot together. Stage fixtures are
@@ -23,7 +24,7 @@ const protocol = {
     {
       id: 'skip-to-stage',
       type: 'Information',
-      title: 'About this study',
+      title: localized('About this study'),
       skipLogic: {
         action: 'SHOW',
         filter: { rules: [] },
@@ -33,7 +34,7 @@ const protocol = {
     {
       id: 'skip-to-finish',
       type: 'Information',
-      title: 'Nearly done',
+      title: localized('Nearly done'),
       skipLogic: {
         action: 'SKIP',
         filter: { rules: [] },

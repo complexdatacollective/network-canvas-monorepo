@@ -7,25 +7,29 @@ import { describe, expect, it } from 'vitest';
 // actual data shape correct for the paths under test.
 import type { Protocol } from '../../schemas/index.ts';
 import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences.ts';
 
 const protocol = {
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   name: 'p',
   stages: [],
   codebook: {
     node: {
       person: {
         name: 'Person',
+        label: localized('Person'),
         color: 'node-color-seq-1',
         variables: {
-          age: { name: 'age', type: 'number' },
+          age: { name: 'age', label: localized('age'), type: 'number' },
           end: {
             name: 'end',
+            label: localized('end'),
             type: 'datetime',
             validation: { greaterThanOrEqualToVariable: 'start' },
           },
-          start: { name: 'start', type: 'datetime' },
+          start: { name: 'start', label: localized('start'), type: 'datetime' },
         },
       },
     },

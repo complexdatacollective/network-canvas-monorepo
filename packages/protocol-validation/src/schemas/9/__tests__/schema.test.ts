@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 
 type Variables = Record<string, { name: string; [key: string]: unknown }>;
@@ -128,7 +128,11 @@ describe('Schema 9 attribute names', () => {
             ...person,
             variables: {
               ...person.variables,
-              'nombre completo': { name: 'Nombre completo', type: 'text' },
+              'nombre completo': {
+                name: 'Nombre completo',
+                label: localized('Nombre completo'),
+                type: 'text',
+              },
             },
           },
         },

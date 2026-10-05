@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   AMBIGUOUS_VARIANT_CONTAINERS,
   CONSTRAINED_CONTAINERS,
@@ -48,16 +48,22 @@ describe('the exclusive-variant containers of a stage document', () => {
    *   each of a narrative's panels.
    * - a content item — an Information stage's `items`, a family pedigree's
    *   `introScreen.items` — is text XOR an asset.
+   * - a Network Composer form field — `nodeForm.fields.*` and
+   *   `edges.*.form.fields.*` — is discriminated on `component`: a visual
+   *   analog scale's `parameters` carry its localized end labels, and every
+   *   other control's are an open record.
    * - `prompts.*.highlight` is a sociogram's: highlighting is on and names the
    *   attribute a tap writes, or it is off.
    */
   it('is every choice between object shapes the stage schemas declare', () => {
     expect(EXCLUSIVE_VARIANT_CONTAINERS).toEqual([
       ['background'],
+      ['edges', '*', 'form', 'fields', '*'],
       ['filter', 'rules', '*'],
       ['framing'],
       ['introScreen', 'items', '*'],
       ['items', '*'],
+      ['nodeForm', 'fields', '*'],
       ['panels', '*', 'filter', 'rules', '*'],
       ['prompts', '*', 'highlight'],
       ['skipLogic', 'destination'],
@@ -191,9 +197,6 @@ describe('the jointly constrained containers of a stage document', () => {
    *   `maxNodes` falls below its `minNodes` can never be satisfied.
    * - `filter`, `skipLogic.filter` and `panels.*.filter` are `FilterSchema`:
    *   more than one rule has to say how the rules combine.
-   * - `nodeForm.fields.*` and `edges.*.form.fields.*` are the Network
-   *   Composer's form fields, whose `parameters` have to match the control
-   *   `component` names.
    *
    * The exclusive-variant containers are deliberately absent: the whole
    * container travels there, so nothing is ever assembled to ask about.
@@ -201,9 +204,7 @@ describe('the jointly constrained containers of a stage document', () => {
   it('is every container whose members constrain one another', () => {
     expect(CONSTRAINED_CONTAINERS).toEqual([
       ['behaviours'],
-      ['edges', '*', 'form', 'fields', '*'],
       ['filter'],
-      ['nodeForm', 'fields', '*'],
       ['panels', '*', 'filter'],
       ['prompts', '*'],
       ['skipLogic', 'filter'],
@@ -230,7 +231,7 @@ describe('the jointly constrained containers of a stage document', () => {
   it('refuses a sociogram prompt whose edges set neither member', () => {
     const prompt = (edges: unknown) => ({
       id: 'p1',
-      text: 'Who do you know?',
+      text: localized('Who do you know?'),
       layout: { layoutVariable: 'position' },
       edges,
     });
@@ -259,14 +260,17 @@ describe('the jointly constrained containers of a stage document', () => {
     expect(
       schemaRefusesContainer(['prompts', '*'], {
         id: 'p1',
-        text: 'Who do you know?',
+        text: localized('Who do you know?'),
         additionalAttributes: [{ variable: 'isClose', value: true }],
       }),
     ).toBe(false);
     // A row NO stage type can read is refused, which is the answer that makes
     // the acceptance above a judgement rather than a shrug.
     expect(
-      schemaRefusesContainer(['prompts', '*'], { id: 'p1', text: '' }),
+      schemaRefusesContainer(['prompts', '*'], {
+        id: 'p1',
+        text: localized(''),
+      }),
     ).toBe(true);
   });
 });

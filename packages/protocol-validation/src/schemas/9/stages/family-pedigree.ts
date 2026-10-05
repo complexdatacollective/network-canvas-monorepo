@@ -12,6 +12,7 @@ import {
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { FRAMING_IDS } from '../family-pedigree-values.ts';
+import { localizedString } from '../localized-string.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -37,20 +38,21 @@ export const FAMILY_PEDIGREE_SLOTS = {
 
 // The intro screen reuses the Information stage's text/asset content model, but
 // its own schema: the pedigree intro editor has no item-resizing UI, so — unlike
-// the Information stage — intro asset items carry no `size`.
-const introScreenBaseItem = z.strictObject({
-  id: z.string(),
-  content: z.string(),
-  description: z.string().optional(),
-});
-
+// the Information stage — intro asset items carry no `size`. A text item's
+// `description` is never shown to a participant, so it stays a plain
+// researcher note; an asset item's is the media's alt text.
 const IntroScreenItemSchema = z.discriminatedUnion('type', [
-  introScreenBaseItem.extend({ type: z.literal('text') }),
-  // `content` is the manifest asset id on this branch, and plain rendered text
-  // on the sibling one — so the tag lives here rather than on the shared base.
-  introScreenBaseItem.extend({
+  z.strictObject({
+    id: z.string(),
+    type: z.literal('text'),
+    content: localizedString(z.string(), 'markdown'),
+    description: z.string().optional(),
+  }),
+  z.strictObject({
+    id: z.string(),
     type: z.literal('asset'),
     content: assetReference(),
+    description: localizedString(z.string(), 'plain').optional(),
   }),
 ]);
 
@@ -184,7 +186,7 @@ const familyPedigreeStageShape = baseStageSchema.extend({
     })
     .optional(),
   // Prompt shown during the family building phase
-  censusPrompt: z.string().min(1),
+  censusPrompt: localizedString(z.string().min(1), 'markdown'),
   // Optional attribute nomination steps (e.g. disease nomination)
   nominationPrompts: z
     .array(familyPedigreeNominationPromptSchema)

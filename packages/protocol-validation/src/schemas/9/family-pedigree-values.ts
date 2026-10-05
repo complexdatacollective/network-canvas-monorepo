@@ -2,8 +2,9 @@
  * Version-local schema contract definitions for the FamilyPedigree interface.
  *
  * These value sets ARE the schema 9 contract: a protocol is admissible only if
- * its interface-owned variables carry exactly these members and labels, and its
- * framing is one of these ids. They live inside the version directory — not in
+ * its interface-owned variables carry exactly these members (their labels are
+ * localized copy, and the ones here are only the defaults), and its framing is
+ * one of these ids. They live inside the version directory — not in
  * a shared constants package — so that editing shared code can never silently
  * redefine the contract of a schema version that has already shipped.
  *

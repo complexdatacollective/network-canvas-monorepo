@@ -1,5 +1,7 @@
 import { match } from '@formatjs/intl-localematcher';
 
+import { toScriptMatchingTag } from '@codaco/shared-consts';
+
 import {
   canonicalizeLocale,
   type LocaleTag,
@@ -48,7 +50,37 @@ export function parseAcceptLanguage(
   );
 }
 
+// `match` reports "nothing fitted" by returning its default; a sentinel that
+// is never a declared tag keeps a miss distinguishable from a real fit.
+const NO_FIT = 'no fit';
+
 /**
+ * Best-fits one canonical preference against the declared locales, or returns
+ * undefined when nothing declared is an acceptable fit.
+ *
+ * Chinese is matched by script (see `toScriptMatchingTag`) unless the exact
+ * tag is declared, so zh-TW and zh-Hant-TW both reach a declared zh-Hant.
+ */
+export function matchLocalePreference(
+  preference: LocaleTag,
+  declared: readonly LocaleTag[],
+): LocaleTag | undefined {
+  const matchingTag = declared.includes(preference)
+    ? preference
+    : toScriptMatchingTag(preference);
+  // Best fit can return a tag that is not verbatim in the available list (a
+  // requested `he` against a declared `iw` returns `he`).
+  const fitted = match([matchingTag], [...declared], NO_FIT, {
+    algorithm: 'best fit',
+  });
+  return declared.includes(fitted) ? fitted : undefined;
+}
+
+/**
+ * Preferences are matched one at a time, in order: best fit over the whole
+ * list lets a later exact match beat an earlier regional one, so
+ * ['es-MX', 'en'] would select 'en' when 'es' is declared.
+ *
  * An explicit participant or researcher choice must be passed as the only
  * requested locale: a malformed or unmatched explicit value then yields the
  * protocol default instead of a lower-priority browser preference.
@@ -57,18 +89,9 @@ export function selectProtocolLocale(
   requestedLocales: readonly string[],
   localization: LocalizationDeclaration,
 ): LocaleTag {
-  const requested = normalizeLocalePreferences(requestedLocales);
-  if (requested.length === 0) return localization.defaultLocale;
-
-  // Best fit can return a tag that is not verbatim in the available list (a
-  // requested `he` against a declared `iw` returns `he`).
-  const matched = match(
-    requested,
-    localization.locales,
-    localization.defaultLocale,
-    { algorithm: 'best fit' },
-  );
-  return localization.locales.includes(matched)
-    ? matched
-    : localization.defaultLocale;
+  for (const preference of normalizeLocalePreferences(requestedLocales)) {
+    const matched = matchLocalePreference(preference, localization.locales);
+    if (matched !== undefined) return matched;
+  }
+  return localization.defaultLocale;
 }

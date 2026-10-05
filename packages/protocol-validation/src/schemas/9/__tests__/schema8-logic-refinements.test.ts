@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
 
@@ -31,7 +31,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.node.person,
               variables: {
                 ...base.codebook.node.person.variables,
-                position: { name: 'Position', type: 'layout' },
+                position: {
+                  name: 'Position',
+                  label: localized('Position'),
+                  type: 'layout',
+                },
               },
             },
           },
@@ -40,12 +44,17 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'alterForm1',
             type: 'AlterForm',
-            label: 'Alter Form',
+            label: localized('Alter Form'),
             subject: { entity: 'node', type: 'person' },
             form: {
-              fields: [{ variable: 'position', prompt: 'Place node' }],
+              fields: [
+                { variable: 'position', prompt: localized('Place node') },
+              ],
             },
-            introductionPanel: { title: 'Intro', text: 'text' },
+            introductionPanel: {
+              title: localized('Intro'),
+              text: localized('text'),
+            },
           },
         ],
       };
@@ -77,7 +86,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.node.person,
               variables: {
                 ...base.codebook.node.person.variables,
-                nickname: { name: 'Nickname', type: 'text' },
+                nickname: {
+                  name: 'Nickname',
+                  label: localized('Nickname'),
+                  type: 'text',
+                },
               },
             },
           },
@@ -86,12 +99,17 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'alterForm1',
             type: 'AlterForm',
-            label: 'Alter Form',
+            label: localized('Alter Form'),
             subject: { entity: 'node', type: 'person' },
             form: {
-              fields: [{ variable: 'nickname', prompt: 'Nickname?' }],
+              fields: [
+                { variable: 'nickname', prompt: localized('Nickname?') },
+              ],
             },
-            introductionPanel: { title: 'Intro', text: 'text' },
+            introductionPanel: {
+              title: localized('Intro'),
+              text: localized('text'),
+            },
           },
         ],
       };
@@ -116,10 +134,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'quickAdd1',
             type: 'NameGeneratorQuickAdd',
-            label: 'Quick Add',
+            label: localized('Quick Add'),
             subject: { entity: 'node', type: 'person' },
             quickAdd: 'doesNotExist',
-            prompts: [{ id: 'p1', text: 'Add someone' }],
+            prompts: [{ id: 'p1', text: localized('Add someone') }],
           },
         ],
       };
@@ -142,10 +160,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'quickAdd1',
             type: 'NameGeneratorQuickAdd',
-            label: 'Quick Add',
+            label: localized('Quick Add'),
             subject: { entity: 'node', type: 'person' },
             quickAdd: 'age',
-            prompts: [{ id: 'p1', text: 'Add someone' }],
+            prompts: [{ id: 'p1', text: localized('Add someone') }],
           },
         ],
       };
@@ -168,10 +186,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'quickAdd1',
             type: 'NameGeneratorQuickAdd',
-            label: 'Quick Add',
+            label: localized('Quick Add'),
             subject: { entity: 'node', type: 'person' },
             quickAdd: 'name',
-            prompts: [{ id: 'p1', text: 'Add someone' }],
+            prompts: [{ id: 'p1', text: localized('Add someone') }],
           },
         ],
       };
@@ -190,12 +208,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'catBin1',
             type: 'CategoricalBin',
-            label: 'Categorise',
+            label: localized('Categorise'),
             subject: { entity: 'node', type: 'person' },
             prompts: [
               {
                 id: 'p1',
-                text: 'Categorise',
+                text: localized('Categorise'),
                 variable: 'category',
                 otherVariable: 'name',
               },
@@ -222,16 +240,16 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'catBin1',
             type: 'CategoricalBin',
-            label: 'Categorise',
+            label: localized('Categorise'),
             subject: { entity: 'node', type: 'person' },
             prompts: [
               {
                 id: 'p1',
-                text: 'Categorise',
+                text: localized('Categorise'),
                 variable: 'category',
                 otherVariable: 'name',
-                otherOptionLabel: 'Other',
-                otherVariablePrompt: 'Please specify',
+                otherOptionLabel: localized('Other'),
+                otherVariablePrompt: localized('Please specify'),
               },
             ],
           },
@@ -251,13 +269,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'sociogram1',
             type: 'Sociogram',
-            label: 'Sociogram',
+            label: localized('Sociogram'),
             subject: { entity: 'node', type: 'person' },
             background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
-                text: 'Highlight',
+                text: localized('Highlight'),
                 layout: { layoutVariable: 'layoutPos' },
                 highlight: { allowHighlighting: true, variable: 'age' },
               },
@@ -272,7 +290,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.node.person,
               variables: {
                 ...base.codebook.node.person.variables,
-                layoutPos: { name: 'LayoutPos', type: 'layout' },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  label: localized('LayoutPos'),
+                  type: 'layout',
+                },
               },
             },
           },
@@ -301,9 +323,14 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.node.person,
               variables: {
                 ...base.codebook.node.person.variables,
-                layoutPos: { name: 'LayoutPos', type: 'layout' },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  label: localized('LayoutPos'),
+                  type: 'layout',
+                },
                 flagged: {
                   name: 'Flagged',
+                  label: localized('Flagged'),
                   type: 'boolean',
                   component: 'Boolean',
                 },
@@ -315,13 +342,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'sociogram1',
             type: 'Sociogram',
-            label: 'Sociogram',
+            label: localized('Sociogram'),
             subject: { entity: 'node', type: 'person' },
             background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
-                text: 'Highlight',
+                text: localized('Highlight'),
                 layout: { layoutVariable: 'layoutPos' },
                 highlight: { allowHighlighting: true, variable: 'flagged' },
               },
@@ -344,13 +371,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'sociogram1',
             type: 'Sociogram',
-            label: 'Sociogram',
+            label: localized('Sociogram'),
             subject: { entity: 'node', type: 'person' },
             background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
-                text: 'Position',
+                text: localized('Position'),
                 layout: { layoutVariable: 'age' },
               },
             ],
@@ -380,7 +407,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.node.person,
               variables: {
                 ...base.codebook.node.person.variables,
-                layoutPos: { name: 'LayoutPos', type: 'layout' },
+                layoutPos: {
+                  name: 'LayoutPos',
+                  label: localized('LayoutPos'),
+                  type: 'layout',
+                },
               },
             },
           },
@@ -389,13 +420,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           {
             id: 'sociogram1',
             type: 'Sociogram',
-            label: 'Sociogram',
+            label: localized('Sociogram'),
             subject: { entity: 'node', type: 'person' },
             background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
-                text: 'Position',
+                text: localized('Position'),
                 layout: { layoutVariable: 'layoutPos' },
               },
             ],
@@ -420,6 +451,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.ego.variables,
               when: {
                 name: 'When',
+                label: localized('When'),
                 type: 'datetime',
                 component: 'RelativeDatePicker',
                 parameters,
@@ -540,6 +572,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.ego.variables,
               when: {
                 name: 'When',
+                label: localized('When'),
                 type: 'datetime',
                 component: 'DatePicker',
                 parameters: { type: 'year', min: '0999' },
@@ -578,6 +611,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 rank: {
                   name: 'Rank',
+                  label: localized('Rank'),
                   type: 'ordinal',
                   component: 'LikertScale',
                   options: [],
@@ -603,7 +637,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
      */
     const panelReadingAFileWithAnEdgeRule = {
       id: 'panel1',
-      title: 'From CSV',
+      title: localized('From CSV'),
       dataSource: 'someAssetId',
       filter: {
         rules: [
@@ -619,13 +653,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
     const nameGeneratorWithPanels = (panels: readonly unknown[]) => ({
       id: 'nameGen1',
       type: 'NameGenerator',
-      label: 'Generate',
+      label: localized('Generate'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add person',
-        fields: [{ variable: 'name', prompt: 'Name' }],
+        title: localized('Add person'),
+        fields: [{ variable: 'name', prompt: localized('Name') }],
       },
-      prompts: [{ id: 'p1', text: 'Who?' }],
+      prompts: [{ id: 'p1', text: localized('Who?') }],
       panels,
     });
 
@@ -654,10 +688,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       const result = stageSchema.safeParse({
         id: 'quickAdd1',
         type: 'NameGeneratorQuickAdd',
-        label: 'Generate',
+        label: localized('Generate'),
         subject: { entity: 'node', type: 'person' },
         quickAdd: 'name',
-        prompts: [{ id: 'p1', text: 'Who?' }],
+        prompts: [{ id: 'p1', text: localized('Who?') }],
         panels: [panelReadingAFileWithAnEdgeRule],
       });
 

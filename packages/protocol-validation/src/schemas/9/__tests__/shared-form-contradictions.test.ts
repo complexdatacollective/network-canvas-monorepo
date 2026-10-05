@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import {
+  createBaseProtocol,
+  localized,
+  localizedOptions,
+} from '../../../utils/test-utils.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
@@ -11,27 +15,29 @@ import ProtocolSchemaV9 from '../schema.ts';
 const booleanPair = {
   boolA: {
     name: 'BoolA',
+    label: localized('BoolA'),
     type: 'boolean',
     component: 'Boolean',
-    options: [{ label: 'Yes', value: true }],
+    options: [{ label: localized('Yes'), value: true }],
     validation: { differentFrom: 'boolB' },
   },
   boolB: {
     name: 'BoolB',
+    label: localized('BoolB'),
     type: 'boolean',
     component: 'Boolean',
-    options: [{ label: 'Yes', value: true }],
+    options: [{ label: localized('Yes'), value: true }],
   },
 };
 
 const formFields = [
-  { variable: 'boolA', prompt: 'First?' },
-  { variable: 'boolB', prompt: 'Second?' },
+  { variable: 'boolA', prompt: localized('First?') },
+  { variable: 'boolB', prompt: localized('Second?') },
 ];
 
 const introductionPanel = {
-  title: 'About this form',
-  text: 'Answer the questions.',
+  title: localized('About this form'),
+  text: localized('Answer the questions.'),
 };
 
 const withEgoPair = () => {
@@ -93,20 +99,32 @@ const withEdgePair = () => {
 const familyPedigreeProtocol = () => ({
   name: 'Family protocol',
   schemaVersion: 9 as const,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     node: {
       person: {
         name: 'Person',
+        label: localized('Person'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          label: { name: 'Label', type: 'text', component: 'Text' },
-          isEgo: { name: 'IsEgo', type: 'boolean' },
-          relationship: { name: 'Relationship', type: 'text' },
+          label: {
+            name: 'Label',
+            label: localized('Label'),
+            type: 'text',
+            component: 'Text',
+          },
+          isEgo: { name: 'IsEgo', label: localized('IsEgo'), type: 'boolean' },
+          relationship: {
+            name: 'Relationship',
+            label: localized('Relationship'),
+            type: 'text',
+          },
           biologicalSex: {
             name: 'BiologicalSex',
+            label: localized('BiologicalSex'),
             type: 'categorical',
-            options: BIOLOGICAL_SEX_OPTIONS,
+            options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
           },
           ...booleanPair,
         },
@@ -115,22 +133,30 @@ const familyPedigreeProtocol = () => ({
     edge: {
       family: {
         name: 'Family',
+        label: localized('Family'),
         color: 'edge-color-seq-1',
         variables: {
           relationshipType: {
             name: 'RelationshipType',
+            label: localized('RelationshipType'),
             type: 'categorical',
-            options: RELATIONSHIP_TYPE_OPTIONS,
+            options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
           },
-          isActive: { name: 'IsActive', type: 'boolean' },
+          isActive: {
+            name: 'IsActive',
+            label: localized('IsActive'),
+            type: 'boolean',
+          },
           isGestationalCarrier: {
             name: 'IsGestationalCarrier',
+            label: localized('IsGestationalCarrier'),
             type: 'boolean',
           },
           gameteRole: {
             name: 'GameteRole',
+            label: localized('GameteRole'),
             type: 'categorical',
-            options: GAMETE_ROLE_OPTIONS,
+            options: localizedOptions(GAMETE_ROLE_OPTIONS),
           },
         },
       },
@@ -140,7 +166,7 @@ const familyPedigreeProtocol = () => ({
     {
       id: 'family',
       type: 'FamilyPedigree',
-      label: 'Family',
+      label: localized('Family'),
       nodeConfig: {
         type: 'person',
         nodeLabelVariable: 'label',
@@ -161,7 +187,7 @@ const familyPedigreeProtocol = () => ({
         requireGrandparents: 'off',
         requireChildrenContributors: 'off',
       },
-      censusPrompt: 'Build your family',
+      censusPrompt: localized('Build your family'),
     },
   ],
 });
@@ -176,7 +202,7 @@ describe('shared form stage-effective validation contradictions', () => {
           {
             id: 'ego',
             type: 'EgoForm',
-            label: 'Ego',
+            label: localized('Ego'),
             form: { fields: formFields },
             introductionPanel,
           },
@@ -192,7 +218,7 @@ describe('shared form stage-effective validation contradictions', () => {
           {
             id: 'alter',
             type: 'AlterForm',
-            label: 'Alter',
+            label: localized('Alter'),
             subject: { entity: 'node', type: 'person' },
             form: { fields: formFields },
             introductionPanel,
@@ -209,7 +235,7 @@ describe('shared form stage-effective validation contradictions', () => {
           {
             id: 'edge',
             type: 'AlterEdgeForm',
-            label: 'Edge',
+            label: localized('Edge'),
             subject: { entity: 'edge', type: 'knows' },
             form: { fields: formFields },
             introductionPanel,
@@ -226,10 +252,10 @@ describe('shared form stage-effective validation contradictions', () => {
           {
             id: 'names',
             type: 'NameGenerator',
-            label: 'Names',
+            label: localized('Names'),
             subject: { entity: 'node', type: 'person' },
-            form: { title: 'Add person', fields: formFields },
-            prompts: [{ id: 'prompt', text: 'Who do you know?' }],
+            form: { title: localized('Add person'), fields: formFields },
+            prompts: [{ id: 'prompt', text: localized('Who do you know?') }],
           },
         ],
       }),
@@ -265,10 +291,10 @@ describe('shared form stage-effective validation contradictions', () => {
         {
           id: 'alter',
           type: 'AlterForm',
-          label: 'Alter',
+          label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            fields: [{ variable: 'name', prompt: 'Name?' }],
+            fields: [{ variable: 'name', prompt: localized('Name?') }],
           },
           introductionPanel,
         },
@@ -286,17 +312,17 @@ describe('shared form stage-effective validation contradictions', () => {
         {
           id: 'alter',
           type: 'AlterForm',
-          label: 'Alter',
+          label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            fields: [{ variable: 'boolA', prompt: 'First?' }],
+            fields: [{ variable: 'boolA', prompt: localized('First?') }],
           },
           introductionPanel,
         },
         {
           id: 'composer',
           type: 'NetworkComposer',
-          label: 'Composer',
+          label: localized('Composer'),
           subject: { entity: 'node', type: 'person' },
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
@@ -306,7 +332,7 @@ describe('shared form stage-effective validation contradictions', () => {
               {
                 variable: 'boolB',
                 component: 'Toggle',
-                label: 'Second?',
+                label: localized('Second?'),
               },
             ],
           },
@@ -325,7 +351,7 @@ describe('shared form stage-effective validation contradictions', () => {
         {
           id: 'alter',
           type: 'AlterForm',
-          label: 'Alter',
+          label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: formFields },
           introductionPanel,
@@ -333,7 +359,7 @@ describe('shared form stage-effective validation contradictions', () => {
         {
           id: 'composer',
           type: 'NetworkComposer',
-          label: 'Composer',
+          label: localized('Composer'),
           subject: { entity: 'node', type: 'person' },
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
@@ -343,7 +369,7 @@ describe('shared form stage-effective validation contradictions', () => {
               {
                 variable: 'boolB',
                 component: 'Toggle',
-                label: 'Second?',
+                label: localized('Second?'),
               },
             ],
           },
@@ -384,12 +410,14 @@ describe('shared form stage-effective validation contradictions', () => {
               ...person.variables,
               boolA: {
                 name: 'BoolA',
+                label: localized('BoolA'),
                 type: 'boolean',
                 component: 'Toggle',
                 validation: { differentFrom: 'boolB' },
               },
               boolB: {
                 name: 'BoolB',
+                label: localized('BoolB'),
                 type: 'boolean',
                 component: 'Toggle',
               },
@@ -401,7 +429,7 @@ describe('shared form stage-effective validation contradictions', () => {
         {
           id: 'alter',
           type: 'AlterForm',
-          label: 'Alter',
+          label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: formFields },
           introductionPanel,
@@ -437,10 +465,10 @@ describe('shared form stage-effective validation contradictions', () => {
         {
           id: 'alter',
           type: 'AlterForm',
-          label: 'Alter',
+          label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            fields: [{ variable: 'age', prompt: 'Age?' }],
+            fields: [{ variable: 'age', prompt: localized('Age?') }],
           },
           introductionPanel,
         },
@@ -465,10 +493,10 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'quick',
         type: 'NameGeneratorQuickAdd',
-        label: 'Quick add',
+        label: localized('Quick add'),
         subject: { entity: 'node', type: 'person' },
         quickAdd: 'name',
-        prompts: [{ id: 'prompt', text: 'Who do you know?' }],
+        prompts: [{ id: 'prompt', text: localized('Who do you know?') }],
       },
       assetManifest: undefined,
     },
@@ -477,10 +505,10 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'roster',
         type: 'NameGeneratorRoster',
-        label: 'Roster',
+        label: localized('Roster'),
         subject: { entity: 'node', type: 'person' },
         dataSource: 'roster',
-        prompts: [{ id: 'prompt', text: 'Who do you know?' }],
+        prompts: [{ id: 'prompt', text: localized('Who do you know?') }],
       },
       assetManifest: {
         roster: {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../utils/test-utils.ts';
 import type { NodeDefinition } from '../codebook/definitions.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 
@@ -19,34 +20,52 @@ import ProtocolSchemaV9 from '../schema.ts';
 const createProtocol = (stages: unknown[]) => ({
   name: 'Test Protocol',
   schemaVersion: 9 as const,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     ego: {
       variables: {
-        egoName: { name: 'EgoName', type: 'text', component: 'Text' },
+        egoName: {
+          name: 'EgoName',
+          label: localized('EgoName'),
+          type: 'text',
+          component: 'Text',
+        },
       },
     },
     node: {
       person: {
         name: 'Person',
+        label: localized('Person'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' } as NodeDefinition['shape'],
         variables: {
-          personName: { name: 'Name', type: 'text', component: 'Text' },
-          personOther: { name: 'Other', type: 'text' },
+          personName: {
+            name: 'Name',
+            label: localized('Name'),
+            type: 'text',
+            component: 'Text',
+          },
+          personOther: {
+            name: 'Other',
+            label: localized('Other'),
+            type: 'text',
+          },
           personCategory: {
             name: 'Category',
+            label: localized('Category'),
             type: 'categorical',
             options: [
-              { label: 'Friend', value: 'friend' },
-              { label: 'Family', value: 'family' },
+              { label: localized('Friend'), value: 'friend' },
+              { label: localized('Family'), value: 'family' },
             ],
           },
           personRating: {
             name: 'Rating',
+            label: localized('Rating'),
             type: 'ordinal',
             options: [
-              { label: 'Low', value: 1 },
-              { label: 'High', value: 2 },
+              { label: localized('Low'), value: 1 },
+              { label: localized('High'), value: 2 },
             ],
           },
         },
@@ -55,14 +74,16 @@ const createProtocol = (stages: unknown[]) => ({
     edge: {
       knows: {
         name: 'Knows',
+        label: localized('Knows'),
         color: 'edge-color-seq-1',
         variables: {
           closeness: {
             name: 'Closeness',
+            label: localized('Closeness'),
             type: 'ordinal',
             options: [
-              { label: 'Not Close', value: 1 },
-              { label: 'Very Close', value: 2 },
+              { label: localized('Not Close'), value: 1 },
+              { label: localized('Very Close'), value: 2 },
             ],
           },
         },
@@ -79,10 +100,10 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'ng1',
           type: 'NameGenerator',
-          label: 'Generate Names',
+          label: localized('Generate Names'),
           subject: { entity: 'node', type: 'person' },
-          form: { title: 'Add person', fields: [] },
-          prompts: [{ id: 'p1', text: 'Who do you know?' }],
+          form: { title: localized('Add person'), fields: [] },
+          prompts: [{ id: 'p1', text: localized('Who do you know?') }],
         },
       ]);
 
@@ -94,10 +115,13 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'af1',
           type: 'AlterForm',
-          label: 'Alter Form',
+          label: localized('Alter Form'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: [] },
-          introductionPanel: { title: 'Intro', text: 'text' },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -109,10 +133,13 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'aef1',
           type: 'AlterEdgeForm',
-          label: 'Alter Edge Form',
+          label: localized('Alter Edge Form'),
           subject: { entity: 'edge', type: 'knows' },
           form: { fields: [] },
-          introductionPanel: { title: 'Intro', text: 'text' },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -124,9 +151,12 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'ef1',
           type: 'EgoForm',
-          label: 'Ego Form',
+          label: localized('Ego Form'),
           form: { fields: [] },
-          introductionPanel: { title: 'Intro', text: 'text' },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -138,13 +168,15 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'ng1',
           type: 'NameGenerator',
-          label: 'Generate Names',
+          label: localized('Generate Names'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            title: 'Add person',
-            fields: [{ variable: 'personName', prompt: 'Enter name' }],
+            title: localized('Add person'),
+            fields: [
+              { variable: 'personName', prompt: localized('Enter name') },
+            ],
           },
-          prompts: [{ id: 'p1', text: 'Who do you know?' }],
+          prompts: [{ id: 'p1', text: localized('Who do you know?') }],
         },
       ]);
 
@@ -158,12 +190,15 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'ef1',
           type: 'EgoForm',
-          label: 'Ego Form',
+          label: localized('Ego Form'),
           form: {
-            title: 'Tell us about yourself',
-            fields: [{ variable: 'egoName', prompt: 'Your name?' }],
+            title: localized('Tell us about yourself'),
+            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
           },
-          introductionPanel: { title: 'Intro', text: 'text' },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -175,13 +210,18 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'af1',
           type: 'AlterForm',
-          label: 'Alter Form',
+          label: localized('Alter Form'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            title: 'About this person',
-            fields: [{ variable: 'personName', prompt: 'Their name?' }],
+            title: localized('About this person'),
+            fields: [
+              { variable: 'personName', prompt: localized('Their name?') },
+            ],
           },
-          introductionPanel: { title: 'Intro', text: 'text' },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -193,13 +233,18 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'aef1',
           type: 'AlterEdgeForm',
-          label: 'Alter Edge Form',
+          label: localized('Alter Edge Form'),
           subject: { entity: 'edge', type: 'knows' },
           form: {
-            title: 'About this relationship',
-            fields: [{ variable: 'closeness', prompt: 'How close?' }],
+            title: localized('About this relationship'),
+            fields: [
+              { variable: 'closeness', prompt: localized('How close?') },
+            ],
           },
-          introductionPanel: { title: 'Intro', text: 'text' },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -211,9 +256,14 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'ef1',
           type: 'EgoForm',
-          label: 'Ego Form',
-          form: { fields: [{ variable: 'egoName', prompt: 'Your name?' }] },
-          introductionPanel: { title: 'Intro', text: 'text' },
+          label: localized('Ego Form'),
+          form: {
+            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+          },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -225,13 +275,15 @@ describe('Forms & prompts schema conformance', () => {
         {
           id: 'ng1',
           type: 'NameGenerator',
-          label: 'Generate Names',
+          label: localized('Generate Names'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            title: 'Add a person',
-            fields: [{ variable: 'personName', prompt: 'Enter name' }],
+            title: localized('Add a person'),
+            fields: [
+              { variable: 'personName', prompt: localized('Enter name') },
+            ],
           },
-          prompts: [{ id: 'p1', text: 'Who do you know?' }],
+          prompts: [{ id: 'p1', text: localized('Who do you know?') }],
         },
       ]);
 
@@ -243,16 +295,16 @@ describe('Forms & prompts schema conformance', () => {
     const tieStrengthStage = (negativeLabel: string) => ({
       id: 'tsc1',
       type: 'TieStrengthCensus',
-      label: 'Tie Strength',
+      label: localized('Tie Strength'),
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: { title: 'Intro', text: 'text' },
+      introductionPanel: { title: localized('Intro'), text: localized('text') },
       prompts: [
         {
           id: 'p1',
-          text: 'How close?',
+          text: localized('How close?'),
           createEdge: 'knows',
           edgeVariable: 'closeness',
-          negativeLabel,
+          negativeLabel: localized(negativeLabel),
         },
       ],
     });
@@ -272,12 +324,12 @@ describe('Forms & prompts schema conformance', () => {
     const categoricalBinStage = (prompt: Record<string, unknown>) => ({
       id: 'cb1',
       type: 'CategoricalBin',
-      label: 'Categorical Bin',
+      label: localized('Categorical Bin'),
       subject: { entity: 'node', type: 'person' },
       prompts: [
         {
           id: 'p1',
-          text: 'Pick a category',
+          text: localized('Pick a category'),
           variable: 'personCategory',
           ...prompt,
         },
@@ -288,7 +340,7 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         categoricalBinStage({
           otherVariable: 'personOther',
-          otherOptionLabel: 'Other',
+          otherOptionLabel: localized('Other'),
         }),
       ]);
       expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
@@ -298,8 +350,8 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         categoricalBinStage({
           otherVariable: 'personOther',
-          otherOptionLabel: 'Other',
-          otherVariablePrompt: 'Please specify',
+          otherOptionLabel: localized('Other'),
+          otherVariablePrompt: localized('Please specify'),
         }),
       ]);
       expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
@@ -312,14 +364,16 @@ describe('Forms & prompts schema conformance', () => {
 
     it('rejects otherOptionLabel set without otherVariable', () => {
       const protocol = createProtocol([
-        categoricalBinStage({ otherOptionLabel: 'Other' }),
+        categoricalBinStage({ otherOptionLabel: localized('Other') }),
       ]);
       expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects otherVariablePrompt set without otherVariable', () => {
       const protocol = createProtocol([
-        categoricalBinStage({ otherVariablePrompt: 'Please specify' }),
+        categoricalBinStage({
+          otherVariablePrompt: localized('Please specify'),
+        }),
       ]);
       expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
@@ -328,7 +382,7 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         categoricalBinStage({
           otherVariable: 'personOther',
-          otherVariablePrompt: 'Please specify',
+          otherVariablePrompt: localized('Please specify'),
         }),
       ]);
       const result = ProtocolSchemaV9.safeParse(protocol);
@@ -357,7 +411,7 @@ describe('Forms & prompts schema conformance', () => {
 
     it('rejects an empty-string otherOptionLabel without otherVariable', () => {
       const protocol = createProtocol([
-        categoricalBinStage({ otherOptionLabel: '' }),
+        categoricalBinStage({ otherOptionLabel: localized('') }),
       ]);
       const result = ProtocolSchemaV9.safeParse(protocol);
       expect(result.success).toBe(false);
@@ -373,8 +427,8 @@ describe('Forms & prompts schema conformance', () => {
       const protocol = createProtocol([
         categoricalBinStage({
           otherVariable: 'personOther',
-          otherOptionLabel: 'Other',
-          otherVariablePrompt: 'Please specify',
+          otherOptionLabel: localized('Other'),
+          otherVariablePrompt: localized('Please specify'),
         }),
       ]);
       const result = ProtocolSchemaV9.safeParse(protocol);
@@ -388,10 +442,10 @@ describe('Forms & prompts schema conformance', () => {
         // The pipe narrows the static type: proving otherVariable is set
         // proves the label and follow-up prompt exist, with no cast.
         if (prompt && prompt.otherVariable !== undefined) {
-          const label: string = prompt.otherOptionLabel;
-          const followUp: string = prompt.otherVariablePrompt;
-          expect(label).toBe('Other');
-          expect(followUp).toBe('Please specify');
+          const label: Record<string, string> = prompt.otherOptionLabel;
+          const followUp: Record<string, string> = prompt.otherVariablePrompt;
+          expect(label).toEqual(localized('Other'));
+          expect(followUp).toEqual(localized('Please specify'));
         } else {
           throw new Error('expected the other-option variant');
         }
@@ -403,12 +457,12 @@ describe('Forms & prompts schema conformance', () => {
     const ordinalBinStage = (prompt: Record<string, unknown>) => ({
       id: 'ob1',
       type: 'OrdinalBin',
-      label: 'Ordinal Bin',
+      label: localized('Ordinal Bin'),
       subject: { entity: 'node', type: 'person' },
       prompts: [
         {
           id: 'p1',
-          text: 'Rate this',
+          text: localized('Rate this'),
           variable: 'personRating',
           ...prompt,
         },
@@ -439,23 +493,23 @@ describe('Forms & prompts schema conformance', () => {
     const nameGeneratorStage = (behaviours: Record<string, number>) => ({
       id: 'ng1',
       type: 'NameGenerator',
-      label: 'Generate Names',
+      label: localized('Generate Names'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add person',
-        fields: [{ variable: 'personName', prompt: 'Enter name' }],
+        title: localized('Add person'),
+        fields: [{ variable: 'personName', prompt: localized('Enter name') }],
       },
-      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+      prompts: [{ id: 'p1', text: localized('Who do you know?') }],
       behaviours,
     });
 
     const quickAddStage = (behaviours: Record<string, number>) => ({
       id: 'ngqa1',
       type: 'NameGeneratorQuickAdd',
-      label: 'Quick Add',
+      label: localized('Quick Add'),
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'personName',
-      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+      prompts: [{ id: 'p1', text: localized('Who do you know?') }],
       behaviours,
     });
 
@@ -505,13 +559,13 @@ describe('Forms & prompts schema conformance', () => {
     const nameGeneratorStage = (text: string) => ({
       id: 'ng1',
       type: 'NameGenerator',
-      label: 'Generate Names',
+      label: localized('Generate Names'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add person',
-        fields: [{ variable: 'personName', prompt: 'Enter name' }],
+        title: localized('Add person'),
+        fields: [{ variable: 'personName', prompt: localized('Enter name') }],
       },
-      prompts: [{ id: 'p1', text }],
+      prompts: [{ id: 'p1', text: localized(text) }],
     });
 
     it('rejects a prompt with an empty text', () => {
@@ -529,13 +583,13 @@ describe('Forms & prompts schema conformance', () => {
     const nameGeneratorStage = (prompt: string) => ({
       id: 'ng1',
       type: 'NameGenerator',
-      label: 'Generate Names',
+      label: localized('Generate Names'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add person',
-        fields: [{ variable: 'personName', prompt }],
+        title: localized('Add person'),
+        fields: [{ variable: 'personName', prompt: localized(prompt) }],
       },
-      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+      prompts: [{ id: 'p1', text: localized('Who do you know?') }],
     });
 
     it('rejects a form field with an empty prompt', () => {
@@ -551,34 +605,39 @@ describe('Forms & prompts schema conformance', () => {
 
   describe('introductionPanel title/text non-empty', () => {
     const alterFormStage = (introductionPanel: {
-      title: string;
-      text: string;
+      title: Record<string, string>;
+      text: Record<string, string>;
     }) => ({
       id: 'af1',
       type: 'AlterForm',
-      label: 'Alter Form',
+      label: localized('Alter Form'),
       subject: { entity: 'node', type: 'person' },
-      form: { fields: [{ variable: 'personName', prompt: 'Their name?' }] },
+      form: {
+        fields: [{ variable: 'personName', prompt: localized('Their name?') }],
+      },
       introductionPanel,
     });
 
     it('rejects an introductionPanel with an empty title', () => {
       const protocol = createProtocol([
-        alterFormStage({ title: '', text: 'Some text' }),
+        alterFormStage({ title: localized(''), text: localized('Some text') }),
       ]);
       expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('rejects an introductionPanel with an empty text', () => {
       const protocol = createProtocol([
-        alterFormStage({ title: 'Intro', text: '' }),
+        alterFormStage({ title: localized('Intro'), text: localized('') }),
       ]);
       expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
     });
 
     it('accepts an introductionPanel with non-empty title and text', () => {
       const protocol = createProtocol([
-        alterFormStage({ title: 'Intro', text: 'Some text' }),
+        alterFormStage({
+          title: localized('Intro'),
+          text: localized('Some text'),
+        }),
       ]);
       expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
     });

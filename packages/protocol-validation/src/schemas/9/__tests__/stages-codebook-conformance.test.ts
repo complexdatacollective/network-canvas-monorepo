@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../utils/test-utils.ts';
 import { assetSchema } from '../assets/index.ts';
 import { CodebookSchema } from '../codebook/codebook.ts';
 import { panelSchema } from '../common/panels.ts';
@@ -22,7 +23,7 @@ import { sociogramStage } from '../stages/sociogram.ts';
 describe('FamilyPedigree nomination prompts (#664)', () => {
   const baseStage = {
     id: 'fp1',
-    label: 'Family Pedigree',
+    label: localized('Family Pedigree'),
     type: 'FamilyPedigree' as const,
     nodeConfig: {
       type: 'person',
@@ -38,7 +39,7 @@ describe('FamilyPedigree nomination prompts (#664)', () => {
       isGestationalCarrierVariable: 'isGc',
       gameteRoleVariable: 'gameteRole',
     },
-    censusPrompt: 'Build your family',
+    censusPrompt: localized('Build your family'),
     framing: { mode: 'fixed' as const, value: 'gamete' as const },
     boundaries: {
       requireGrandparents: 'off' as const,
@@ -50,8 +51,8 @@ describe('FamilyPedigree nomination prompts (#664)', () => {
     const result = familyPedigreeStage.safeParse({
       ...baseStage,
       nominationPrompts: [
-        { id: 'p1', text: 'Who has the condition?', variable: 'v1' },
-        { id: 'p2', text: 'Who else?', variable: 'v2' },
+        { id: 'p1', text: localized('Who has the condition?'), variable: 'v1' },
+        { id: 'p2', text: localized('Who else?'), variable: 'v2' },
       ],
     });
     expect(result.success).toBe(true);
@@ -61,7 +62,11 @@ describe('FamilyPedigree nomination prompts (#664)', () => {
     const result = familyPedigreeStage.safeParse({
       ...baseStage,
       nominationPrompts: [
-        { id: 'scaffolding', text: 'Who has the condition?', variable: 'v1' },
+        {
+          id: 'scaffolding',
+          text: localized('Who has the condition?'),
+          variable: 'v1',
+        },
       ],
     });
     expect(result.success).toBe(false);
@@ -77,8 +82,8 @@ describe('FamilyPedigree nomination prompts (#664)', () => {
     const result = familyPedigreeStage.safeParse({
       ...baseStage,
       nominationPrompts: [
-        { id: 'dup', text: 'First', variable: 'v1' },
-        { id: 'dup', text: 'Second', variable: 'v2' },
+        { id: 'dup', text: localized('First'), variable: 'v1' },
+        { id: 'dup', text: localized('Second'), variable: 'v2' },
       ],
     });
     expect(result.success).toBe(false);
@@ -94,7 +99,7 @@ describe('FamilyPedigree nomination prompts (#664)', () => {
 describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
   const baseStage = {
     id: 'soc1',
-    label: 'Sociogram',
+    label: localized('Sociogram'),
     type: 'Sociogram' as const,
     subject: { entity: 'node' as const, type: 'person' },
     background: { concentricCircles: 4 },
@@ -106,7 +111,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: 'p1',
-          text: 'Connect',
+          text: localized('Connect'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
         },
@@ -121,7 +126,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: 'p1',
-          text: 'Highlight',
+          text: localized('Highlight'),
           layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true, variable: 'isClose' },
         },
@@ -136,7 +141,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: 'p1',
-          text: 'Both',
+          text: localized('Both'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
           highlight: { allowHighlighting: true, variable: 'isClose' },
@@ -158,7 +163,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: 'p1',
-          text: 'Create only',
+          text: localized('Create only'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
           highlight: { allowHighlighting: false },
@@ -174,7 +179,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: 'p1',
-          text: 'Highlight',
+          text: localized('Highlight'),
           layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true },
         },
@@ -195,7 +200,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: 'p1',
-          text: 'Edges',
+          text: localized('Edges'),
           layout: { layoutVariable: 'pos' },
           edges: {},
         },
@@ -216,7 +221,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: 'p1',
-          text: 'Edges',
+          text: localized('Edges'),
           layout: { layoutVariable: 'pos' },
           edges: { display: [] },
         },
@@ -234,12 +239,16 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
   it('rejects a background with an empty-string image', () => {
     const result = sociogramStage.safeParse({
       id: 'soc1',
-      label: 'Sociogram',
+      label: localized('Sociogram'),
       type: 'Sociogram' as const,
       subject: { entity: 'node' as const, type: 'person' },
       background: { image: '' },
       prompts: [
-        { id: 'p1', text: 'Position', layout: { layoutVariable: 'pos' } },
+        {
+          id: 'p1',
+          text: localized('Position'),
+          layout: { layoutVariable: 'pos' },
+        },
       ],
     });
     expect(result.success).toBe(false);
@@ -249,10 +258,10 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
 describe('Geospatial targetFeatureProperty (#674)', () => {
   const baseStage = {
     id: 'geo1',
-    label: 'Geospatial',
+    label: localized('Geospatial'),
     type: 'Geospatial' as const,
     subject: { entity: 'node' as const, type: 'person' },
-    prompts: [{ id: 'p1', text: 'Pick a place', variable: 'home' }],
+    prompts: [{ id: 'p1', text: localized('Pick a place'), variable: 'home' }],
   };
 
   const baseMapOptions = {
@@ -306,9 +315,9 @@ describe('apikey asset value (#674)', () => {
 describe('Information size and items (#676)', () => {
   const baseStage = {
     id: 'info1',
-    label: 'Information',
+    label: localized('Information'),
     type: 'Information' as const,
-    title: 'Information',
+    title: localized('Information'),
   };
 
   it('accepts an asset item with an uppercase size enum value', () => {
@@ -338,7 +347,14 @@ describe('Information size and items (#676)', () => {
   it('rejects size on a text item', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'text', content: 'Some text', size: 'SMALL' }],
+      items: [
+        {
+          id: 'i1',
+          type: 'text',
+          content: localized('Some text'),
+          size: 'SMALL',
+        },
+      ],
     });
     expect(result.success).toBe(false);
   });
@@ -346,7 +362,7 @@ describe('Information size and items (#676)', () => {
   it('accepts a text item with no size', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'text', content: 'Some text' }],
+      items: [{ id: 'i1', type: 'text', content: localized('Some text') }],
     });
     expect(result.success).toBe(true);
   });
@@ -355,7 +371,7 @@ describe('Information size and items (#676)', () => {
     const items = Array.from({ length: 50 }, (_, i) => ({
       id: `i${i}`,
       type: 'text' as const,
-      content: `Paragraph ${i}`,
+      content: localized(`Paragraph ${i}`),
     }));
     const result = informationStage.safeParse({ ...baseStage, items });
     expect(result.success).toBe(true);
@@ -365,15 +381,15 @@ describe('Information size and items (#676)', () => {
 describe('Information item content non-empty', () => {
   const baseStage = {
     id: 'info1',
-    label: 'Information',
+    label: localized('Information'),
     type: 'Information' as const,
-    title: 'Information',
+    title: localized('Information'),
   };
 
   it('rejects a text item with empty content', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: 'i1', type: 'text', content: '' }],
+      items: [{ id: 'i1', type: 'text', content: localized('') }],
     });
     expect(result.success).toBe(false);
   });
@@ -390,7 +406,7 @@ describe('Information item content non-empty', () => {
     const result = informationStage.safeParse({
       ...baseStage,
       items: [
-        { id: 'i1', type: 'text', content: 'Some text' },
+        { id: 'i1', type: 'text', content: localized('Some text') },
         { id: 'i2', type: 'asset', content: 'img-1' },
       ],
     });
@@ -401,11 +417,11 @@ describe('Information item content non-empty', () => {
 describe('Anonymisation explanationText non-empty', () => {
   const baseStage = {
     id: 'anon1',
-    label: 'Anonymisation',
+    label: localized('Anonymisation'),
     type: 'Anonymisation' as const,
     explanationText: {
-      title: 'Why we do this',
-      body: 'Your responses are encrypted.',
+      title: localized('Why we do this'),
+      body: localized('Your responses are encrypted.'),
     },
   };
 
@@ -417,7 +433,10 @@ describe('Anonymisation explanationText non-empty', () => {
     expect(
       anonymisationStage.safeParse({
         ...baseStage,
-        explanationText: { title: '', body: 'Your responses are encrypted.' },
+        explanationText: {
+          title: localized(''),
+          body: localized('Your responses are encrypted.'),
+        },
       }).success,
     ).toBe(false);
   });
@@ -426,7 +445,10 @@ describe('Anonymisation explanationText non-empty', () => {
     expect(
       anonymisationStage.safeParse({
         ...baseStage,
-        explanationText: { title: 'Why we do this', body: '' },
+        explanationText: {
+          title: localized('Why we do this'),
+          body: localized(''),
+        },
       }).success,
     ).toBe(false);
   });
@@ -435,7 +457,7 @@ describe('Anonymisation explanationText non-empty', () => {
 describe('Narrative preset label non-empty', () => {
   const baseStage = {
     id: 'narr1',
-    label: 'Narrative',
+    label: localized('Narrative'),
     type: 'Narrative' as const,
     subject: { entity: 'node' as const, type: 'person' },
     background: { concentricCircles: 4 },
@@ -444,7 +466,9 @@ describe('Narrative preset label non-empty', () => {
   it('accepts a preset with a non-empty label', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
-      presets: [{ id: 'preset1', label: 'Overview', layoutVariable: 'pos' }],
+      presets: [
+        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+      ],
     });
     expect(result.success).toBe(true);
   });
@@ -452,7 +476,7 @@ describe('Narrative preset label non-empty', () => {
   it('rejects a preset with an empty label', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
-      presets: [{ id: 'preset1', label: '', layoutVariable: 'pos' }],
+      presets: [{ id: 'preset1', label: localized(''), layoutVariable: 'pos' }],
     });
     expect(result.success).toBe(false);
   });
@@ -461,7 +485,9 @@ describe('Narrative preset label non-empty', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
       background: { image: 'background-image' },
-      presets: [{ id: 'preset1', label: 'Overview', layoutVariable: 'pos' }],
+      presets: [
+        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+      ],
     });
     expect(result.success).toBe(true);
   });
@@ -470,7 +496,9 @@ describe('Narrative preset label non-empty', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
       background: { image: 'background-image', concentricCircles: 4 },
-      presets: [{ id: 'preset1', label: 'Overview', layoutVariable: 'pos' }],
+      presets: [
+        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+      ],
     });
     expect(result.success).toBe(false);
   });
@@ -480,7 +508,7 @@ describe('Side panel title and dataSource non-empty', () => {
   const basePanel = {
     id: 'panel1',
     dataSource: 'existing' as const,
-    title: 'Previous alters',
+    title: localized('Previous alters'),
   };
 
   it('accepts a panel with a non-empty title', () => {
@@ -488,9 +516,9 @@ describe('Side panel title and dataSource non-empty', () => {
   });
 
   it('rejects a panel with an empty title', () => {
-    expect(panelSchema.safeParse({ ...basePanel, title: '' }).success).toBe(
-      false,
-    );
+    expect(
+      panelSchema.safeParse({ ...basePanel, title: localized('') }).success,
+    ).toBe(false);
   });
 
   it('rejects an empty panel dataSource', () => {
@@ -518,11 +546,11 @@ describe('Side panel title and dataSource non-empty', () => {
 describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
   const baseStage = {
     id: 'ngr1',
-    label: 'Roster',
+    label: localized('Roster'),
     type: 'NameGeneratorRoster' as const,
     subject: { entity: 'node' as const, type: 'person' },
     dataSource: 'roster-asset',
-    prompts: [{ id: 'p1', text: 'Pick someone' }],
+    prompts: [{ id: 'p1', text: localized('Pick someone') }],
   };
 
   it('accepts a non-empty dataSource', () => {
@@ -561,15 +589,25 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       node: {
         person: {
           name: 'Person',
+          label: localized('Person'),
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
-          variables: { v1: { name: 'Age', type: 'number' } },
+          variables: {
+            v1: { name: 'Age', label: localized('Age'), type: 'number' },
+          },
         },
       },
       edge: {
         family: {
           name: 'Family',
-          variables: { v2: { name: 'Closeness', type: 'number' } },
+          label: localized('Family'),
+          variables: {
+            v2: {
+              name: 'Closeness',
+              label: localized('Closeness'),
+              type: 'number',
+            },
+          },
         },
       },
     });
@@ -581,15 +619,25 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       node: {
         person: {
           name: 'Person',
+          label: localized('Person'),
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
-          variables: { shared: { name: 'Age', type: 'number' } },
+          variables: {
+            shared: { name: 'Age', label: localized('Age'), type: 'number' },
+          },
         },
       },
       edge: {
         family: {
           name: 'Family',
-          variables: { shared: { name: 'Weight', type: 'text' } },
+          label: localized('Family'),
+          variables: {
+            shared: {
+              name: 'Weight',
+              label: localized('Weight'),
+              type: 'text',
+            },
+          },
         },
       },
     });
@@ -607,15 +655,21 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       node: {
         person: {
           name: 'Person',
+          label: localized('Person'),
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
-          variables: { shared: { name: 'Age', type: 'number' } },
+          variables: {
+            shared: { name: 'Age', label: localized('Age'), type: 'number' },
+          },
         },
         place: {
           name: 'Place',
+          label: localized('Place'),
           color: 'node-color-seq-2',
           shape: { default: 'circle' },
-          variables: { shared: { name: 'Label', type: 'text' } },
+          variables: {
+            shared: { name: 'Label', label: localized('Label'), type: 'text' },
+          },
         },
       },
     });
@@ -627,13 +681,22 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       node: {
         person: {
           name: 'Person',
+          label: localized('Person'),
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
-          variables: { shared: { name: 'Age', type: 'number' } },
+          variables: {
+            shared: { name: 'Age', label: localized('Age'), type: 'number' },
+          },
         },
       },
       ego: {
-        variables: { shared: { name: 'Income', type: 'number' } },
+        variables: {
+          shared: {
+            name: 'Income',
+            label: localized('Income'),
+            type: 'number',
+          },
+        },
       },
     });
     expect(result.success).toBe(false);

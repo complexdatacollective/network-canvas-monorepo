@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 
 /**
@@ -22,13 +22,13 @@ describe('Cross-reference conformance', () => {
           {
             id: 'narrative1',
             type: 'Narrative',
-            label: 'Narrative',
+            label: localized('Narrative'),
             subject: { entity: 'node', type: 'person' },
             background: { image },
             presets: [
               {
                 id: 'preset1',
-                label: 'Overview',
+                label: localized('Overview'),
                 layoutVariable: 'layoutPosition',
               },
             ],
@@ -112,10 +112,10 @@ describe('Cross-reference conformance', () => {
           {
             id: 'roster1',
             type: 'NameGeneratorRoster',
-            label: 'Roster',
+            label: localized('Roster'),
             subject: { entity: 'node', type: 'person' },
             dataSource,
-            prompts: [{ id: 'p1', text: 'Pick someone' }],
+            prompts: [{ id: 'p1', text: localized('Pick someone') }],
           },
         ],
       };
@@ -164,7 +164,11 @@ describe('Cross-reference conformance', () => {
               ...base.codebook.node.person,
               variables: {
                 ...base.codebook.node.person.variables,
-                homeLocation: { name: 'Home', type: 'location' },
+                homeLocation: {
+                  name: 'Home',
+                  label: localized('Home'),
+                  type: 'location',
+                },
               },
             },
           },
@@ -187,7 +191,7 @@ describe('Cross-reference conformance', () => {
           {
             id: 'geo1',
             type: 'Geospatial',
-            label: 'Map',
+            label: localized('Map'),
             subject: { entity: 'node', type: 'person' },
             mapOptions: {
               tokenAssetId: overrides.tokenAssetId ?? 'tokenAsset',
@@ -201,7 +205,7 @@ describe('Cross-reference conformance', () => {
             prompts: [
               {
                 id: 'gp1',
-                text: 'Pick a place',
+                text: localized('Pick a place'),
                 variable: overrides.promptVariable ?? 'homeLocation',
               },
             ],
@@ -265,12 +269,12 @@ describe('Cross-reference conformance', () => {
           {
             id: 'ob1',
             type: 'OrdinalBin',
-            label: 'Ordinal',
+            label: localized('Ordinal'),
             subject: { entity: 'node', type: 'person' },
             prompts: [
               {
                 id: 'p1',
-                text: 'rank',
+                text: localized('rank'),
                 variable: 'strength',
                 color: 'ord-color-seq-1',
               },
@@ -290,12 +294,12 @@ describe('Cross-reference conformance', () => {
           {
             id: 'ob1',
             type: 'OrdinalBin',
-            label: 'Ordinal',
+            label: localized('Ordinal'),
             subject: { entity: 'node', type: 'person' },
             prompts: [
               {
                 id: 'p1',
-                text: 'rank',
+                text: localized('rank'),
                 variable: 'category',
                 color: 'ord-color-seq-1',
               },
@@ -320,9 +324,11 @@ describe('Cross-reference conformance', () => {
           {
             id: 'cb1',
             type: 'CategoricalBin',
-            label: 'Categorical',
+            label: localized('Categorical'),
             subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'group', variable: 'category' }],
+            prompts: [
+              { id: 'p1', text: localized('group'), variable: 'category' },
+            ],
           },
         ],
       };
@@ -338,9 +344,11 @@ describe('Cross-reference conformance', () => {
           {
             id: 'cb1',
             type: 'CategoricalBin',
-            label: 'Categorical',
+            label: localized('Categorical'),
             subject: { entity: 'node', type: 'person' },
-            prompts: [{ id: 'p1', text: 'group', variable: 'strength' }],
+            prompts: [
+              { id: 'p1', text: localized('group'), variable: 'strength' },
+            ],
           },
         ],
       };
@@ -393,17 +401,17 @@ describe('Cross-reference conformance', () => {
           {
             id: 'panelStage',
             type: 'NameGenerator',
-            label: 'Panels',
+            label: localized('Panels'),
             subject: { entity: 'node', type: 'person' },
             form: {
-              title: 'Add person',
-              fields: [{ variable: 'name', prompt: 'Enter name' }],
+              title: localized('Add person'),
+              fields: [{ variable: 'name', prompt: localized('Enter name') }],
             },
-            prompts: [{ id: 'p1', text: 'who' }],
+            prompts: [{ id: 'p1', text: localized('who') }],
             panels: [
               {
                 id: 'panel1',
-                title: 'Panel',
+                title: localized('Panel'),
                 dataSource: 'existing',
                 filter: badFilter,
               },
@@ -447,7 +455,7 @@ describe('Cross-reference conformance', () => {
           {
             id: 'sociogram1',
             type: 'Sociogram',
-            label: 'Sociogram',
+            label: localized('Sociogram'),
             subject: { entity: 'node', type: 'person' },
             background: { concentricCircles: 4 },
             filter: {
@@ -467,7 +475,7 @@ describe('Cross-reference conformance', () => {
             prompts: [
               {
                 id: 'socPrompt1',
-                text: 'Position nodes',
+                text: localized('Position nodes'),
                 layout: { layoutVariable: 'layoutPosition' },
               },
             ],

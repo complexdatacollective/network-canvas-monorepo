@@ -1,5 +1,4 @@
-import { match } from '@formatjs/intl-localematcher';
-
+import { matchLocalePreference } from './localePreferences.ts';
 import {
   canonicalizeLocale,
   type LocaleTag,
@@ -39,12 +38,10 @@ export function resolveLocalizedString(
   const selected = canonicalizeLocale(selectedLocale);
   const matched =
     selected === undefined
-      ? fallback.locale
-      : match(
-          [selected],
+      ? undefined
+      : matchLocalePreference(
+          selected,
           available.map(({ locale }) => locale),
-          fallback.locale,
-          { algorithm: 'best fit' },
         );
   const resolved =
     available.find(({ locale }) => locale === matched) ?? fallback;

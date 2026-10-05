@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../utils/test-utils.ts';
 import { baseStageSchema } from '../stages/base.ts';
 
 /**
@@ -16,7 +17,7 @@ import { baseStageSchema } from '../stages/base.ts';
 describe('baseStageSchema label requirement (#663)', () => {
   const validBase = {
     id: 's1',
-    label: 'Welcome and consent',
+    label: localized('Welcome and consent'),
   };
 
   it('requires label on every stage', () => {
@@ -32,7 +33,10 @@ describe('baseStageSchema label requirement (#663)', () => {
   });
 
   it('rejects an empty label', () => {
-    const result = baseStageSchema.safeParse({ ...validBase, label: '' });
+    const result = baseStageSchema.safeParse({
+      ...validBase,
+      label: localized(''),
+    });
 
     expect(result.success).toBe(false);
     if (!result.success) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { localized } from '../../../utils/test-utils.ts';
 import { FormFieldSchema } from '../common/forms.ts';
 import { ComposerFormFieldSchema } from '../stages/network-composer.ts';
 
@@ -14,7 +15,7 @@ describe('form field id retention', () => {
     const result = FormFieldSchema.safeParse({
       id: 'a-stable-uuid',
       variable: 'personName',
-      prompt: 'What is their name?',
+      prompt: localized('What is their name?'),
     });
 
     expect(result.success).toBe(true);

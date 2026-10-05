@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 
 const hitsFor = (protocol: unknown) =>
   collectEntityAttributeReferences(protocol);
@@ -27,16 +27,16 @@ describe('attribute-writer usage tags', () => {
         {
           id: 'cb1',
           type: 'CategoricalBin',
-          label: 'Bin',
+          label: localized('Bin'),
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
               id: 'p1',
-              text: 'Sort',
+              text: localized('Sort'),
               variable: 'category',
               otherVariable: 'name',
-              otherVariablePrompt: 'What?',
-              otherOptionLabel: 'Other',
+              otherVariablePrompt: localized('What?'),
+              otherOptionLabel: localized('Other'),
             },
           ],
         },
@@ -79,7 +79,7 @@ describe('attribute-writer usage tags', () => {
         {
           id: 'nc1',
           type: 'NetworkComposer',
-          label: 'Composer',
+          label: localized('Composer'),
           subject: { entity: 'node', type: 'person' },
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
@@ -105,7 +105,7 @@ describe('attribute-writer usage tags', () => {
         {
           id: 'family',
           type: 'FamilyPedigree',
-          label: 'Family',
+          label: localized('Family'),
           nodeConfig: {
             type: 'person',
             nodeLabelVariable: 'name',
@@ -125,7 +125,7 @@ describe('attribute-writer usage tags', () => {
             requireGrandparents: 'off',
             requireChildrenContributors: 'off',
           },
-          censusPrompt: 'Build your family',
+          censusPrompt: localized('Build your family'),
         },
       ],
     };
@@ -157,13 +157,13 @@ describe('attribute-writer usage tags', () => {
           {
             id: 'sg1',
             type: 'Sociogram',
-            label: 'Map',
+            label: localized('Map'),
             subject: { entity: 'node', type: 'person' },
             background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
-                text: 'Place them',
+                text: localized('Place them'),
                 layout: { layoutVariable: 'layoutPosition' },
                 highlight: { allowHighlighting, variable: 'strength' },
               },
@@ -188,12 +188,12 @@ describe('attribute-writer usage tags', () => {
         {
           id: 'nar1',
           type: 'Narrative',
-          label: 'Narrative',
+          label: localized('Narrative'),
           subject: { entity: 'node', type: 'person' },
           presets: [
             {
               id: 'preset-1',
-              label: 'Preset',
+              label: localized('Preset'),
               layoutVariable: 'layoutPosition',
               groupVariable: 'category',
               highlight: ['strength'],

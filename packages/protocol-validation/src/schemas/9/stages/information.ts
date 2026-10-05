@@ -2,27 +2,26 @@ import { z } from 'zod';
 
 import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
 import { assetReference } from '../asset-reference.ts';
+import { localizedString } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 
 const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 
-const baseItemSchema = z.strictObject({
+// A text item's `description` is never shown to a participant, so it stays a
+// plain researcher note; an asset item's is the media's alt text.
+const textItemSchema = z.strictObject({
   id: z.string(),
-  content: z.string().min(1),
+  type: z.literal('text'),
+  content: localizedString(z.string().min(1), 'markdown'),
   description: z.string().optional(),
 });
 
-// Text items render plain content and have no asset-sizing treatment.
-const textItemSchema = baseItemSchema.extend({
-  type: z.literal('text'),
-});
-
 // Size is an image/video sizing treatment, so it only applies to asset items.
-// `content` is the manifest asset id on this branch, and plain rendered text
-// on the sibling one — so the tag lives here rather than on the shared base.
-const assetItemSchema = baseItemSchema.extend({
+const assetItemSchema = z.strictObject({
+  id: z.string(),
   type: z.literal('asset'),
   content: assetReference(),
+  description: localizedString(z.string(), 'plain').optional(),
   size: ItemSizeSchema.optional(),
 });
 
@@ -35,6 +34,6 @@ export type Item = z.infer<typeof ItemSchema>;
 
 export const informationStage = baseStageSchema.extend({
   type: z.literal('Information'),
-  title: z.string().min(1),
+  title: localizedString(z.string().min(1), 'plain'),
   items: z.array(ItemSchema).superRefine(duplicateIdRefinement('Items')),
 });

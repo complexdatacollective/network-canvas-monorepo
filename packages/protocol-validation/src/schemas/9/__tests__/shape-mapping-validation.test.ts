@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { asEntityAttributeReference } from '../entity-attribute-reference.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 
@@ -58,6 +58,7 @@ describe('Shape Mapping Validation', () => {
     >;
     variables.is_person = {
       name: 'Is_Person',
+      label: localized('Is_Person'),
       type: 'boolean',
     };
     protocol.codebook.node.person.shape = {

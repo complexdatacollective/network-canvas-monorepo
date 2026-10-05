@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { isCanonicalLocale } from '../../localization/localeTag.ts';
 import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
+import { collectLocalizedStringsFromSchema } from '../../utils/collectLocalizedStrings.ts';
 import {
   findExclusiveVariableConflicts,
   findInterfaceOwnedOptionBindings,
@@ -45,7 +47,9 @@ import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
+import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
+import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   ComponentTypes,
@@ -602,6 +606,7 @@ const ProtocolSchema = z
   .strictObject({
     name: z.string().min(1),
     description: z.string().optional(),
+    localization: ProtocolLocalizationSchema,
     experiments: ExperimentsSchema.optional(),
     lastModified: z.string().datetime().optional(),
     codebook: CodebookSchema,
@@ -630,6 +635,37 @@ const ProtocolSchema = z
     );
     for (const issue of validateReferences(protocol.codebook, hits)) {
       ctx.addIssue(issue);
+    }
+
+    // Translations are checked against the declared languages only once that
+    // declaration is itself valid; otherwise every key would be reported as
+    // undeclared on top of the declaration's own issue.
+    const localization = ProtocolLocalizationSchema.safeParse(
+      protocol.localization,
+    ).success
+      ? protocol.localization
+      : undefined;
+
+    if (localization) {
+      for (const hit of collectLocalizedStringsFromSchema(
+        ProtocolSchema,
+        protocol,
+      )) {
+        for (const locale of Object.keys(hit.value)) {
+          // A malformed tag is already reported by the field's own schema.
+          if (
+            !isCanonicalLocale(locale) ||
+            localization.locales.includes(locale)
+          ) {
+            continue;
+          }
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Text has a translation for "${locale}", which is not one of the protocol's languages.`,
+            path: [...hit.path, locale],
+          });
+        }
+      }
     }
 
     // Interface-owned structural slots: an interface that DERIVES an
@@ -1164,8 +1200,30 @@ const ProtocolSchema = z
       }
 
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
-      // stage; disease variables must resolve on the source node type.
+      // stage; disease variables must resolve on the source node type; disease
+      // labels must differ in every language a participant can see them in.
       if (stage.type === 'NarrativePedigree') {
+        if (localization) {
+          for (const duplicate of findDuplicateDiseaseLabels(
+            stage.diseases,
+            localization,
+          )) {
+            const language =
+              localization.locales.length > 1 ? ` (${duplicate.locale})` : '';
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Diseases contain duplicate label "${duplicate.text}"${language}`,
+              path: [
+                'stages',
+                stageIndex,
+                'diseases',
+                duplicate.index,
+                'label',
+              ],
+            });
+          }
+        }
+
         const sourceStage = protocol.stages.find(
           (s) => s.id === stage.sourceStageId,
         );

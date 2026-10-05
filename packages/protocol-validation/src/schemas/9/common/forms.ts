@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { localizedString } from '../localized-string.ts';
 
 export const FormFieldSchema = z.strictObject({
   // Architect assigns a stable id (uuid) on creation so the editor's
@@ -11,8 +12,8 @@ export const FormFieldSchema = z.strictObject({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
   }),
-  prompt: z.string().min(1),
-  hint: z.string().optional(),
+  prompt: localizedString(z.string().min(1), 'markdown'),
+  hint: localizedString(z.string(), 'markdown').optional(),
   showValidationHints: z.boolean().optional(),
 });
 
@@ -88,7 +89,7 @@ export const FormFieldArraySchema = z
   .superRefine(uniqueFormFieldVariables);
 
 export const FormSchema = z.strictObject({
-  title: z.string().min(1),
+  title: localizedString(z.string().min(1), 'plain'),
   fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
 });
 
