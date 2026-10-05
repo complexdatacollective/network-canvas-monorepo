@@ -1,0 +1,357 @@
+{
+  "name": "Who feels like family? (queer youth discussion prototype)",
+  "description": "Participant-defined family, belonging, support and narrative reflection. Hypothetical prototype for collaborator review, not a validated instrument.",
+  "schemaVersion": 8,
+  "lastModified": "2026-10-05T00:00:00.000Z",
+  "codebook": {
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "relationship_words": {
+            "name": "relationship_words",
+            "type": "text",
+            "component": "TextArea"
+          },
+          "family_categories": {
+            "name": "family_categories",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Family I grew up with",
+                "value": "grew_up"
+              },
+              {
+                "label": "Chosen family",
+                "value": "chosen"
+              },
+              {
+                "label": "Partner or partner's family",
+                "value": "partner"
+              },
+              {
+                "label": "Another kind of family",
+                "value": "another"
+              }
+            ]
+          },
+          "category_words": {
+            "name": "category_words",
+            "type": "text",
+            "component": "Text"
+          },
+          "feels_family": {
+            "name": "feels_family",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "emotional_support": {
+            "name": "emotional_support",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "practical_support": {
+            "name": "practical_support",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "identity_affirming": {
+            "name": "identity_affirming",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "component": "RadioGroup",
+            "options": [
+              {
+                "label": "Not close right now",
+                "value": 1
+              },
+              {
+                "label": "Somewhat close",
+                "value": 2
+              },
+              {
+                "label": "Very close",
+                "value": 3
+              }
+            ]
+          },
+          "family_layout": {
+            "name": "family_layout",
+            "type": "layout"
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1",
+        "variables": {}
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "researcher-notes",
+      "label": "Prototype notes (delete before fielding)",
+      "type": "Information",
+      "title": "For researchers",
+      "items": [
+        {
+          "id": "researcher-notes-text",
+          "type": "text",
+          "content": "## Discussion prototype\n\n_Delete this screen before collecting any data._\n\nCo-design the wording and recruitment with Liz McConnell's group and youth advisers. No participant age range is assumed. If minors are involved, the group will need to establish age-appropriate consent, confidentiality and safeguarding procedures for its setting.\n\nThis protocol starts with perceived family, not biology. It does not ask sex assigned at birth, reproductive history or medical conditions. Add a structural pedigree only if youth advisers find it useful, as a separate optional component; the current pedigree wizard asks about sex recorded at birth and may not fit this research question.\n\nArrange approved consent before this prototype begins. Use participant-selected nicknames; do not infer identities of relatives. Categories may overlap and their absence is not evidence of rejection. Discuss whether prompted identity affirmation fits the study. Narrative drawing is transient and is not exported: capture the conversation only through the approved audio/notes procedure.\n\nDo not share identifiable maps, link family members across interviews or infer genetic risk from perceived-family ties."
+        }
+      ]
+    },
+    {
+      "id": "welcome",
+      "label": "Welcome",
+      "type": "Information",
+      "title": "Who feels like family to you?",
+      "items": [
+        {
+          "id": "welcome-text",
+          "type": "text",
+          "content": "You decide what family means for this conversation. It might include people you grew up with, chosen family, partners, friends, or anyone else. There is no correct kind of family.\n\nYou can use nicknames, leave things out, change your mind, or stop. Tell the interviewer if a question does not fit."
+        }
+      ]
+    },
+    {
+      "id": "name-family",
+      "label": "People who matter",
+      "type": "NameGenerator",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "name",
+            "prompt": "What name or nickname should we use?"
+          },
+          {
+            "variable": "relationship_words",
+            "prompt": "What words do you use for your relationship with this person?",
+            "hint": "Optional. Use your own words."
+          }
+        ],
+        "title": "Name this person"
+      },
+      "prompts": [
+        {
+          "id": "family-now",
+          "text": "Who feels like family to you at the moment?"
+        },
+        {
+          "id": "family-complicated",
+          "text": "Are there people whose place in your family feels complicated, changing, or uncertain? Include them only if you want to."
+        }
+      ],
+      "panels": [
+        {
+          "id": "already-named",
+          "title": "People already mentioned",
+          "dataSource": "existing"
+        }
+      ]
+    },
+    {
+      "id": "family-meanings",
+      "label": "Your words for family",
+      "type": "CategoricalBin",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "family-categories",
+          "text": "Which descriptions fit each person? A person can fit more than one, and you can use your own words.",
+          "variable": "family_categories",
+          "otherVariable": "category_words",
+          "otherVariablePrompt": "What words fit better?",
+          "otherOptionLabel": "My own words"
+        }
+      ]
+    },
+    {
+      "id": "closeness",
+      "label": "Closeness now",
+      "type": "OrdinalBin",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "close-now",
+          "text": "How close do you feel to each person right now?",
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "family-map",
+      "label": "Your family map",
+      "type": "Sociogram",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "place-people",
+          "text": "Place people on the map in a way that makes sense to you. You can put people closer to the centre if they feel closer to you.",
+          "layout": {
+            "layoutVariable": "family_layout"
+          }
+        },
+        {
+          "id": "connections",
+          "text": "Which people know one another? Connect them if you want to.",
+          "layout": {
+            "layoutVariable": "family_layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "feels_family",
+          "text": "Who on this map feels like family to you right now?",
+          "layout": {
+            "layoutVariable": "family_layout"
+          },
+          "highlight": {
+            "variable": "feels_family"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "emotional_support",
+          "text": "Who can you turn to when you need to talk about something personal?",
+          "layout": {
+            "layoutVariable": "family_layout"
+          },
+          "highlight": {
+            "variable": "emotional_support"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "practical_support",
+          "text": "Who helps with everyday needs, such as a place to stay, transport or practical advice?",
+          "layout": {
+            "layoutVariable": "family_layout"
+          },
+          "highlight": {
+            "variable": "practical_support"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "identity_affirming",
+          "text": "Who helps you feel recognised and accepted as you are?",
+          "layout": {
+            "layoutVariable": "family_layout"
+          },
+          "highlight": {
+            "variable": "identity_affirming"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "family-story",
+      "label": "The story of your family",
+      "type": "Narrative",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "freeDraw": true,
+        "allowRepositioning": false,
+        "automaticLayout": false
+      },
+      "presets": [
+        {
+          "id": "everyone",
+          "label": "Everyone on your map",
+          "layoutVariable": "family_layout",
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "belonging",
+          "label": "Belonging and support",
+          "layoutVariable": "family_layout",
+          "groupVariable": "family_categories",
+          "highlight": [
+            "feels_family",
+            "emotional_support",
+            "practical_support",
+            "identity_affirming"
+          ],
+          "edges": {
+            "display": ["knows"]
+          }
+        }
+      ],
+      "interviewScript": "Ask: What makes someone family? Does this map capture your family as you experience it? Who is difficult to place, or missing? Can someone feel like family without offering support? How has this changed? What wording or symbols would you change? Never treat chosen family as an inferior substitute or assume conflict with birth family. Draw only to help discussion; drawings are not exported. Record the qualitative account using the approved procedure."
+    },
+    {
+      "id": "debrief",
+      "label": "Reflection",
+      "type": "Information",
+      "title": "How was making this map?",
+      "items": [
+        {
+          "id": "debrief-text",
+          "type": "text",
+          "content": "What felt easy or difficult? Did any question or picture fail to fit your experience? Is there anything you would change or remove?\n\nPlease tell the interviewer what you would want people studying family to understand."
+        }
+      ]
+    }
+  ]
+}
