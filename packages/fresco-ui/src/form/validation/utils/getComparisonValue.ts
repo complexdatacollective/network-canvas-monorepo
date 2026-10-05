@@ -37,23 +37,30 @@ export function getComparisonValue(
     (context?.formValueNamespace
       ? parseLegacyObjectPath(context.formValueNamespace)
       : []);
-  const namespacedValues = namespace
-    ? getValue(formValues, namespace)
-    : undefined;
   const formAlias =
     context?.formValueAliases &&
     Object.hasOwn(context.formValueAliases, attribute)
       ? context.formValueAliases[attribute]
       : undefined;
-  const formAttribute = formAlias ?? attribute;
+  const aliasPath = Array.isArray(formAlias) ? formAlias : undefined;
+  const containerPath = aliasPath ? aliasPath.slice(0, -1) : namespace;
+  const formKey = aliasPath
+    ? aliasPath.at(-1)
+    : typeof formAlias === 'string'
+      ? formAlias
+      : attribute;
+  const formContainer = containerPath
+    ? getValue(formValues, containerPath)
+    : undefined;
 
   if (
-    isFieldValueRecord(namespacedValues) &&
-    hasSafeOwnProperty(namespacedValues, formAttribute)
+    formKey !== undefined &&
+    isFieldValueRecord(formContainer) &&
+    hasSafeOwnProperty(formContainer, String(formKey))
   ) {
     return {
       present: true,
-      value: namespacedValues[formAttribute],
+      value: formContainer[String(formKey)],
     };
   }
 

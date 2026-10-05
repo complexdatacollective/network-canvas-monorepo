@@ -360,9 +360,12 @@ function relationshipFormFieldsAndActivePartnerEdge(): ScenarioDefinition {
       // (showValidationHints), which the disease field must NOT.
       const diseaseField = pedigreeField(
         fp.dialog,
-        `egg-parent.${diseaseVar.id}`,
+        `egg-parent.attributes.${diseaseVar.id}`,
       );
-      const notesField = pedigreeField(fp.dialog, `egg-parent.${notesVar.id}`);
+      const notesField = pedigreeField(
+        fp.dialog,
+        `egg-parent.attributes.${notesVar.id}`,
+      );
       await expect(
         diseaseField.getByText('Leave blank if unsure'),
       ).toBeVisible();
@@ -376,7 +379,7 @@ function relationshipFormFieldsAndActivePartnerEdge(): ScenarioDefinition {
       await fp.setField('egg-parent.is-donor', false);
       await fp.setField('egg-parent.name', 'Linda');
       await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.setField(`egg-parent.${diseaseVar.id}`, true);
+      await fp.setField(`egg-parent.attributes.${diseaseVar.id}`, true);
       // notes is left blank (minLength tolerates empty), proving the field
       // renders and validates without blocking the wizard.
       await fp.clickWizardNext();
@@ -1265,7 +1268,7 @@ function personEditorRoundTrip(): ScenarioDefinition {
         pedigreeField(fp.dialog, 'name').getByRole('textbox'),
       ).toHaveValue('Linda');
       await fp.setField('name', 'Linda Edited');
-      await fp.setField(conditionVar.id, true);
+      await fp.setField(`attributes.${conditionVar.id}`, true);
       await fp.clickDialogSubmit();
       await expect(fp.dialog).toBeHidden();
 

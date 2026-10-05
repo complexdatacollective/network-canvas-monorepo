@@ -9,8 +9,8 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import usePedigreeNodeForm from '../../../hooks/usePedigreeNodeForm';
 import { messages } from '../../../messages';
+import PedigreeNodeFormFields from '../../PedigreeNodeFormFields';
 import PersonNameField from '../../PersonNameField';
 
 function AdditionalParentFields({ index }: { index: number }) {
@@ -29,8 +29,6 @@ function AdditionalParentFields({ index }: { index: number }) {
       label: intl.formatMessage(messages.raisedThemRole),
     },
   ];
-
-  const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <Surface spacing="sm" shadow="sm">
@@ -52,7 +50,7 @@ function AdditionalParentFields({ index }: { index: number }) {
           label={intl.formatMessage(messages.whatName)}
           autoFocus
         />
-        {fieldComponents}
+        <PedigreeNodeFormFields />
       </FieldNamespace>
     </Surface>
   );

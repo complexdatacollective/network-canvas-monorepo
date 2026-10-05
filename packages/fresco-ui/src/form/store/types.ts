@@ -80,10 +80,12 @@ export type ValidationContext = {
   /** Typed namespace used by the built-in comparison validators. */
   formValueNamespacePath?: ObjectPath;
   /**
-   * Map a codebook variable ID to the form key that currently represents it.
-   * The original ID remains authoritative for codebook and entity lookups.
+   * Map a codebook variable ID to the form field that currently represents it:
+   * a key within the comparing field's own namespace, or an ObjectPath from
+   * the form root for a field outside that namespace. The original ID remains
+   * authoritative for codebook and entity lookups.
    */
-  formValueAliases?: Readonly<Record<string, string>>;
+  formValueAliases?: Readonly<Record<string, string | ObjectPath>>;
   /**
    * Map a codebook variable ID to the participant-facing text that introduces
    * it on this screen — the prompt or label the researcher authored. The

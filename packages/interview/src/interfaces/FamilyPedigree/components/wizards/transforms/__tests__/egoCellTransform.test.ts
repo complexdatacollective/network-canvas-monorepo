@@ -28,9 +28,14 @@ const relTypeOf = (e: {
 describe('egoCellTransform', () => {
   it('fails atomically when a custom attribute has an invalid defined value', () => {
     const values: Record<string, unknown> = {
-      biologicalSex: 'female',
-      validCustomAnswer: 'answer',
-      invalidCustomAnswer: { nested: true },
+      'biologicalSex': 'female',
+      'egg-parent': {
+        name: 'Linda',
+        attributes: {
+          validCustomAnswer: 'answer',
+          invalidCustomAnswer: { nested: true },
+        },
+      },
     };
 
     expect(() => egoCellTransform(values, variableConfig)).toThrow(
@@ -38,16 +43,99 @@ describe('egoCellTransform', () => {
     );
   });
 
+  it('keeps protocol variables named like wizard controls out of pedigree structure', () => {
+    const controlLike = {
+      'is-donor': true,
+      'gestationalCarrier': false,
+      'role': 'adoptive-parent',
+      'biologicalSex': 'male',
+      'parentage': 'protocol parentage',
+    };
+    const { batch } = egoCellTransform(
+      {
+        'biologicalSex': 'female',
+        'egg-parent': {
+          'name': 'Linda',
+          'is-donor': false,
+          'gestationalCarrier': true,
+          'attributes': controlLike,
+        },
+        'sperm-parent': {
+          'name': 'Robert',
+          'is-donor': false,
+          'attributes': controlLike,
+        },
+        'hasOtherParents': true,
+        'otherParentCount': 1,
+        'additional-parent': [
+          { name: 'Sam', role: 'step-parent', attributes: controlLike },
+        ],
+        'hasPartner': true,
+        'partner': { name: 'Alex', attributes: controlLike },
+        'childrenWithPartnerCount': 1,
+        'childWithPartner': [{ name: 'Daniel', attributes: controlLike }],
+      },
+      variableConfig,
+    );
+
+    const nodeAttributes = (tempId: string) =>
+      batch.nodes.find((node) => node.tempId === tempId)?.data.attributes;
+    const edgeTo = (source: string) =>
+      batch.edges.find(
+        (edge) => edge.source === source && edge.target === 'ego',
+      )?.data.attributes;
+
+    // The control answers decide the structure ...
+    expect(
+      relTypeOf({ data: { attributes: edgeTo('egg-parent') ?? {} } }),
+    ).toBe('biological');
+    expect(
+      edgeTo('egg-parent')?.[variableConfig.isGestationalCarrierVariable],
+    ).toBe(true);
+    expect(
+      relTypeOf({ data: { attributes: edgeTo('sperm-parent') ?? {} } }),
+    ).toBe('biological');
+    expect(
+      relTypeOf({ data: { attributes: edgeTo('additional-parent-0') ?? {} } }),
+    ).toBe('social');
+    expect(
+      batch.nodes.some((node) => node.tempId === 'gestational-carrier'),
+    ).toBe(false);
+
+    // ... and the protocol answers are kept as the members' own attributes.
+    for (const [tempId, label] of [
+      ['egg-parent', 'Linda'],
+      ['sperm-parent', 'Robert'],
+      ['additional-parent-0', 'Sam'],
+      ['partner', 'Alex'],
+      ['child-0', 'Daniel'],
+    ] as const) {
+      expect(nodeAttributes(tempId)).toMatchObject({
+        'is-donor': true,
+        'gestationalCarrier': false,
+        'role': 'adoptive-parent',
+        'parentage': 'protocol parentage',
+      });
+      expect(nodeAttributes(tempId)?.[variableConfig.nodeLabelVariable]).toBe(
+        label,
+      );
+    }
+  });
+
   it('preserves dangerous custom variable names as own attributes', () => {
     const prototypeDescriptor = Object.getOwnPropertyDescriptor(
       Object.prototype,
       '__proto__',
     );
-    const eggParent: Record<string, unknown> = { name: 'Linda' };
-    Object.defineProperty(eggParent, '__proto__', {
+    const eggParentAttributes: Record<string, unknown> = {};
+    Object.defineProperty(eggParentAttributes, '__proto__', {
       enumerable: true,
       value: ['parent-value'],
     });
+    const eggParent: Record<string, unknown> = {
+      name: 'Linda',
+      attributes: eggParentAttributes,
+    };
     const values: Record<string, unknown> = {
       'egg-parent': eggParent,
       'hasOtherParents': false,

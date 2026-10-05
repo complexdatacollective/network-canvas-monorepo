@@ -400,15 +400,17 @@ describe('PedigreeView — handleAddPerson routing', () => {
     );
     const nodes = new Map([['ego', makeNode('ego', true)]]);
     const store = makeStore(nodes);
+    const protocolValues: Record<string, unknown> = {};
+    Object.defineProperty(protocolValues, '__proto__', {
+      enumerable: true,
+      value: ['preserved'],
+    });
     const result: Record<string, unknown> = {
       partnerType: 'new',
       name: 'New Partner',
       current: 'current',
+      attributes: protocolValues,
     };
-    Object.defineProperty(result, '__proto__', {
-      enumerable: true,
-      value: ['preserved'],
-    });
     mockOpenDialog.mockResolvedValueOnce(result);
 
     render(
@@ -500,7 +502,7 @@ describe('PedigreeView — person menu actions', () => {
     mockOpenDialog.mockResolvedValueOnce({
       name: 'Edited Person',
       biologicalSex: 'male',
-      partnerships: ['participant-answer'],
+      attributes: { partnerships: ['participant-answer'] },
       __familyPedigreeEdit: {
         partnerships: [{ id: 'partnership', value: 'ex' }],
       },
@@ -548,9 +550,11 @@ describe('PedigreeView — person menu actions', () => {
     mockOpenDialog.mockResolvedValueOnce({
       name: 'Edited Person',
       biologicalSex: undefined,
-      partnerships: undefined,
-      emptyText: '',
-      emptySelection: [],
+      attributes: {
+        partnerships: undefined,
+        emptyText: '',
+        emptySelection: [],
+      },
     });
 
     render(
@@ -595,8 +599,10 @@ describe('PedigreeView — person menu actions', () => {
     mockOpenDialog.mockResolvedValueOnce({
       name: 'Edited Person',
       biologicalSex: 'male',
-      partnerships: { invalid: true },
-      emptyText: 'new value',
+      attributes: {
+        partnerships: { invalid: true },
+        emptyText: 'new value',
+      },
       __familyPedigreeEdit: {
         partnerships: [{ id: 'partnership', value: 'ex' }],
       },
@@ -641,11 +647,15 @@ describe('PedigreeView — person menu actions', () => {
       ['person', makeNode('person')],
     ]);
     const store = makeStore(nodes);
-    const result: Record<string, unknown> = { name: 'Edited Person' };
-    Object.defineProperty(result, '__proto__', {
+    const protocolValues: Record<string, unknown> = {};
+    Object.defineProperty(protocolValues, '__proto__', {
       enumerable: true,
       value: ['preserved'],
     });
+    const result: Record<string, unknown> = {
+      name: 'Edited Person',
+      attributes: protocolValues,
+    };
     mockOpenDialog.mockResolvedValueOnce(result);
 
     render(

@@ -32,6 +32,7 @@ import {
   getNodeLabelVariable,
   getNodeType,
 } from '../utils/nodeUtils';
+import { PERSON_ATTRIBUTES_KEY } from './wizards/transforms/personAttributes';
 
 type PersonNameFieldProps = {
   autoFocus?: boolean;
@@ -52,6 +53,8 @@ function countPendingNames(value: unknown, target: string): number {
   if (typeof value !== 'object' || value === null) return 0;
 
   return Object.entries(value).reduce((count, [key, item]) => {
+    // Protocol fields are keyed by variable ID, which may itself be `name`.
+    if (key === PERSON_ATTRIBUTES_KEY) return count;
     const ownMatch = key === 'name' && item === target ? 1 : 0;
     return count + ownMatch + countPendingNames(item, target);
   }, 0);
