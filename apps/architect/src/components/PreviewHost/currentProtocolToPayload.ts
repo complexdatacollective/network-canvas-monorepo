@@ -27,10 +27,7 @@ export function currentProtocolToPayload(
   return {
     ...rest,
     id: uuid(),
-    hash: hashProtocol({
-      codebook: protocol.codebook,
-      stages: protocol.stages,
-    }),
+    hash: hashProtocol(protocol),
     importedAt: new Date().toISOString(),
     assets,
   };

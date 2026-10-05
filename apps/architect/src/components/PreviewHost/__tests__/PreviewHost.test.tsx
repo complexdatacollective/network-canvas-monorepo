@@ -13,10 +13,9 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
-  type FinishHandler,
   getLastAvailableAuthoredStageIndex,
   InterviewI18nProvider,
-  type InterviewPayload,
+  type SessionSnapshot,
 } from '@codaco/interview';
 import {
   DEFAULT_SYNTHETIC_SEED,
@@ -25,6 +24,7 @@ import {
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
+  getLocaleMetadata,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
@@ -35,7 +35,11 @@ import type { PreviewPayload } from '../messages';
 
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 
-const { shellMock } = vi.hoisted(() => ({ shellMock: vi.fn() }));
+type ShellProps = ComponentProps<typeof import('@codaco/interview').Shell>;
+
+const { shellMock } = vi.hoisted(() => ({
+  shellMock: vi.fn<(props: ShellProps) => void>(),
+}));
 vi.mock('@codaco/interview', async () => {
   const actual =
     await vi.importActual<typeof import('@codaco/interview')>(
@@ -43,11 +47,14 @@ vi.mock('@codaco/interview', async () => {
     );
   return {
     ...actual,
-    Shell: (props: ComponentProps<typeof actual.Shell>) => {
+    Shell: (props: ShellProps) => {
       shellMock(props);
       return (
         <div data-testid="shell-mounted">
-          <actual.InterviewI18nProvider requestedLocale={props.requestedLocale}>
+          <actual.InterviewI18nProvider
+            requestedLocale={props.requestedLocales}
+            localePreference={props.payload.session.localePreference}
+          >
             <span data-testid="shell-finish-description">
               {props.finishConfirmationDescription}
             </span>
@@ -88,15 +95,34 @@ function QueuePreviewConfirmation({
   );
 }
 
-function makeProtocol() {
+const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
+
+function makeProtocol(localization = ENGLISH_ONLY) {
+  const text = (value: string) =>
+    Object.fromEntries(localization.locales.map((locale) => [locale, value]));
   return {
     name: 'T',
     description: '',
     schemaVersion: 9,
-    stages: [{ id: 's1', type: 'Information', label: 'A' }],
+    localization,
+    stages: [
+      {
+        id: 's1',
+        type: 'Information',
+        label: text('A'),
+        title: text('A'),
+        items: [],
+      },
+    ],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
   };
+}
+
+function lastShellProps(): ShellProps {
+  const props = shellMock.mock.calls.at(-1)?.[0];
+  if (!props) throw new Error('The Shell has not rendered.');
+  return props;
 }
 
 // A protocol whose validation rules cannot all be satisfied: minLength exceeds
@@ -107,13 +133,14 @@ function makeUnsatisfiableProtocol() {
     name: 'T',
     description: '',
     schemaVersion: 9,
+    localization: ENGLISH_ONLY,
     stages: [
       {
         id: 's1',
         type: 'NameGenerator',
-        label: 'NG',
+        label: { en: 'NG' },
         subject: { entity: 'node', type: 'node-1' },
-        prompts: [{ id: 'p1', text: 'Add people' }],
+        prompts: [{ id: 'p1', text: { en: 'Add people' } }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       },
     ],
@@ -121,9 +148,11 @@ function makeUnsatisfiableProtocol() {
       node: {
         'node-1': {
           name: 'Person',
+          label: { en: 'Person' },
           variables: {
             'var-code': {
               name: 'Code',
+              label: { en: 'Code' },
               type: 'text',
               validation: { minLength: 24, maxLength: 10 },
             },
@@ -144,7 +173,8 @@ function makeUnbuildableProtocol() {
     name: 'T',
     description: '',
     schemaVersion: 9,
-    stages: [{ id: 'x', type: 'NotAStageType', label: 'X' }],
+    localization: ENGLISH_ONLY,
+    stages: [{ id: 'x', type: 'NotAStageType', label: { en: 'X' } }],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
   };
@@ -155,24 +185,25 @@ function makeConsentRouteProtocol(): CurrentProtocol {
     name: 'Consent route',
     description: '',
     schemaVersion: 9,
+    localization: ENGLISH_ONLY,
     stages: [
       {
         id: 'consent',
         type: 'EgoForm',
-        label: 'Consent',
+        label: { en: 'Consent' },
         introductionPanel: {
-          title: 'Consent',
-          text: 'Review the study information.',
+          title: { en: 'Consent' },
+          text: { en: 'Review the study information.' },
         },
         form: {
           fields: [
             {
               variable: asEntityAttributeReference('screening'),
-              prompt: 'Are you eligible?',
+              prompt: { en: 'Are you eligible?' },
             },
             {
               variable: asEntityAttributeReference('consent'),
-              prompt: 'Do you consent?',
+              prompt: { en: 'Do you consent?' },
             },
           ],
         },
@@ -180,8 +211,8 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'background',
         type: 'Information',
-        label: 'Background',
-        title: 'Background',
+        label: { en: 'Background' },
+        title: { en: 'Background' },
         items: [],
         skipLogic: {
           action: 'SKIP',
@@ -204,16 +235,16 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'people',
         type: 'NameGenerator',
-        label: 'People',
+        label: { en: 'People' },
         subject: { entity: 'node', type: 'person' },
-        prompts: [{ id: 'people-prompt', text: 'Name people' }],
+        prompts: [{ id: 'people-prompt', text: { en: 'Name people' } }],
         behaviours: { minNodes: 4, maxNodes: 4 },
         form: {
-          title: 'About this person',
+          title: { en: 'About this person' },
           fields: [
             {
               variable: asEntityAttributeReference('name'),
-              prompt: 'What is their name?',
+              prompt: { en: 'What is their name?' },
             },
           ],
         },
@@ -221,13 +252,13 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'support',
         type: 'Sociogram',
-        label: 'Exchanges of support',
+        label: { en: 'Exchanges of support' },
         subject: { entity: 'node', type: 'person' },
         background: { concentricCircles: 3 },
         prompts: [
           {
             id: 'support-prompt',
-            text: 'Place people',
+            text: { en: 'Place people' },
             layout: {
               layoutVariable: asEntityAttributeReference('layout'),
             },
@@ -237,8 +268,8 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'following',
         type: 'Information',
-        label: 'Following stage',
-        title: 'Following stage',
+        label: { en: 'Following stage' },
+        title: { en: 'Following stage' },
         items: [],
       },
     ],
@@ -246,19 +277,32 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'Name', type: 'text' },
-            layout: { name: 'Layout', type: 'layout' },
+            name: { name: 'Name', label: { en: 'Name' }, type: 'text' },
+            layout: {
+              name: 'Layout',
+              label: { en: 'Layout' },
+              type: 'layout',
+            },
           },
         },
       },
       edge: {},
       ego: {
         variables: {
-          screening: { name: 'Screening', type: 'boolean' },
-          consent: { name: 'Consent', type: 'boolean' },
+          screening: {
+            name: 'Screening',
+            label: { en: 'Screening' },
+            type: 'boolean',
+          },
+          consent: {
+            name: 'Consent',
+            label: { en: 'Consent' },
+            type: 'boolean',
+          },
         },
       },
     },
@@ -335,11 +379,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload());
 
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-      currentStep: number;
-      onStepChange: (step: number) => void;
-    };
+    const call = lastShellProps();
     expect(call.payload.protocol.name).toBe('T');
     expect(call.payload.session.network.nodes).toEqual([]);
     // Shell goes read-only if currentStep is provided without onStepChange — both must be wired.
@@ -352,9 +392,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload());
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      allowStageNavigation: boolean;
-    };
+    const call = lastShellProps();
     expect(call.allowStageNavigation).toBe(true);
   });
 
@@ -363,9 +401,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload());
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      flags?: { isDevelopment?: boolean };
-    };
+    const call = lastShellProps();
     expect(call.flags?.isDevelopment).toBe(true);
   });
 
@@ -374,7 +410,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload({ startStage: 3 }));
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as { currentStep: number };
+    const call = lastShellProps();
     expect(call.currentStep).toBe(3);
   });
 
@@ -399,10 +435,7 @@ describe('PreviewHost', () => {
     );
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-      initialStageOverrideIndex?: number;
-    };
+    const call = lastShellProps();
     expect(call.initialStageOverrideIndex).toBe(0);
     expect(call.payload.protocol.stages[0]).toHaveProperty('skipLogic');
   });
@@ -412,9 +445,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload({ respectSkipLogic: false }));
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      initialStageOverrideIndex?: number;
-    };
+    const call = lastShellProps();
     expect(call.initialStageOverrideIndex).toBeUndefined();
   });
 
@@ -423,10 +454,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload({ useSyntheticData: true }));
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-      currentStep: number;
-    };
+    const call = lastShellProps();
     expect(call.currentStep).toBe(0);
   });
 
@@ -436,33 +464,38 @@ describe('PreviewHost', () => {
       name: 'T',
       description: '',
       schemaVersion: 9,
+      localization: ENGLISH_ONLY,
       stages: [
         {
           id: 's1',
           type: 'NameGenerator',
-          label: 'NG',
+          label: { en: 'NG' },
           subject: { entity: 'node', type: 'node-1' },
-          prompts: [{ id: 'p1', text: 'Add people' }],
+          prompts: [{ id: 'p1', text: { en: 'Add people' } }],
           behaviours: { minNodes: 4, maxNodes: 8 },
         },
         {
           id: 's2',
           type: 'OrdinalBin',
-          label: 'OB',
+          label: { en: 'OB' },
           subject: { entity: 'node', type: 'node-1' },
-          prompts: [{ id: 'p2', text: 'How close?', variable: 'var-ord' }],
+          prompts: [
+            { id: 'p2', text: { en: 'How close?' }, variable: 'var-ord' },
+          ],
         },
       ],
       codebook: {
         node: {
           'node-1': {
+            label: { en: 'Person' },
             variables: {
               'var-ord': {
                 name: 'Closeness',
+                label: { en: 'Closeness' },
                 type: 'ordinal',
                 options: [
-                  { label: 'Low', value: 1 },
-                  { label: 'High', value: 2 },
+                  { label: { en: 'Low' }, value: 1 },
+                  { label: { en: 'High' }, value: 2 },
                 ],
               },
             },
@@ -479,9 +512,7 @@ describe('PreviewHost', () => {
     );
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-    };
+    const call = lastShellProps();
     const nodes = call.payload.session.network.nodes;
     expect(nodes.length).toBeGreaterThan(0);
     const unplaced = nodes.filter(
@@ -520,11 +551,7 @@ describe('PreviewHost', () => {
       );
 
       await screen.findByTestId('shell-mounted');
-      const call = shellMock.mock.calls.at(-1)?.[0] as {
-        payload: InterviewPayload;
-        currentStep?: number;
-        initialStageOverrideIndex?: number;
-      };
+      const call = lastShellProps();
 
       expect(call.currentStep).toBe(3);
       expect(
@@ -566,10 +593,7 @@ describe('PreviewHost', () => {
       );
 
       await screen.findByTestId('shell-mounted');
-      const call = shellMock.mock.calls.at(-1)?.[0] as {
-        payload: InterviewPayload;
-        initialStageOverrideIndex?: number;
-      };
+      const call = lastShellProps();
 
       expect(
         call.payload.session.network.ego[entityAttributesProperty].consent,
@@ -593,18 +617,19 @@ describe('PreviewHost', () => {
       name: 'T',
       description: '',
       schemaVersion: 9,
+      localization: ENGLISH_ONLY,
       stages: [
         {
           id: 'fp',
           type: 'FamilyPedigree',
-          label: 'Family',
+          label: { en: 'Family' },
           nodeConfig: { type: 'node-1' },
           edgeConfig: { type: 'edge-1' },
         },
       ],
       codebook: {
-        node: { 'node-1': { variables: {} } },
-        edge: { 'edge-1': { variables: {} } },
+        node: { 'node-1': { label: { en: 'Person' }, variables: {} } },
+        edge: { 'edge-1': { label: { en: 'Relationship' }, variables: {} } },
         ego: {},
       },
       assetManifest: {},
@@ -615,9 +640,7 @@ describe('PreviewHost', () => {
     );
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-    };
+    const call = lastShellProps();
     const metadata = call.payload.session.stageMetadata?.['0'] as
       | { isNetworkCommitted?: boolean; nodes?: unknown[]; edges?: unknown[] }
       | undefined;
@@ -897,6 +920,159 @@ describe('PreviewHost', () => {
     }
   });
 
+  describe('preview language', () => {
+    const ENGLISH_AND_FRENCH = { defaultLocale: 'en', locales: ['en', 'fr'] };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    async function openPreview(
+      protocol: unknown,
+      browserLanguages: readonly string[] = ['en-US'],
+      startStage = 0,
+    ) {
+      vi.spyOn(navigator, 'languages', 'get').mockReturnValue(browserLanguages);
+      render(<PreviewHost />);
+      postPayload(openerStub, makePayload({ protocol, startStage }));
+      await screen.findByTestId('shell-mounted');
+      return screen.getByRole('combobox', { name: 'Preview language' });
+    }
+
+    it('lists every language the protocol declares, each named in itself', async () => {
+      const control = await openPreview(
+        makeProtocol({ defaultLocale: 'en', locales: ['en', 'fr', 'und'] }),
+      );
+
+      const options = within(control).getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual([
+        getLocaleMetadata('en').label,
+        getLocaleMetadata('fr').label,
+        'Unspecified language',
+      ]);
+      // An unspecified language has no name of its own, so its option keeps
+      // the page's language.
+      expect(options.map((option) => option.getAttribute('lang'))).toEqual([
+        'en',
+        'fr',
+        null,
+      ]);
+      expect(control).toBeEnabled();
+    });
+
+    it('starts on the language the interview chooses from the browser', async () => {
+      const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH), [
+        'fr-CA',
+        'en-US',
+      ]);
+
+      expect(control).toHaveValue('fr');
+      expect(lastShellProps().requestedLocales).toEqual(['fr-CA', 'en-US']);
+      expect(lastShellProps().payload.session.localePreference).toBeNull();
+    });
+
+    it('names the only language of a single-language protocol without offering a switch', async () => {
+      const control = await openPreview(makeProtocol());
+
+      expect(control).toHaveValue('en');
+      expect(control).toBeDisabled();
+      expect(within(control).getAllByRole('option')).toHaveLength(1);
+    });
+
+    it('states the chosen language to the interview ahead of the browser’s, without restarting it', async () => {
+      const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH));
+      const { payload } = lastShellProps();
+
+      fireEvent.change(control, { target: { value: 'fr' } });
+
+      expect(control).toHaveValue('fr');
+      expect(lastShellProps().requestedLocales).toEqual(['fr', 'en-US']);
+      expect(lastShellProps().payload).toBe(payload);
+    });
+
+    it('follows the language a language chooser stage states', async () => {
+      const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH));
+      const { onProtocolLocaleChange, payload } = lastShellProps();
+
+      await act(() =>
+        onProtocolLocaleChange(payload.session.id, {
+          locale: 'fr',
+          localePreference: 'fr',
+        }),
+      );
+
+      expect(control).toHaveValue('fr');
+    });
+
+    it('re-creates the interview where it is when the toolbar replaces a chooser-stated language', async () => {
+      const control = await openPreview(
+        makeProtocol(ENGLISH_AND_FRENCH),
+        ['en-US'],
+        2,
+      );
+      const { onProtocolLocaleChange, onSync, payload } = lastShellProps();
+      await act(() =>
+        onProtocolLocaleChange(payload.session.id, {
+          locale: 'fr',
+          localePreference: 'fr',
+        }),
+      );
+      const synced: SessionSnapshot = {
+        ...payload.session,
+        promptIndex: 1,
+        localePreference: 'fr',
+        locale: 'fr',
+        network: {
+          ...payload.session.network,
+          ego: {
+            ...payload.session.network.ego,
+            [entityAttributesProperty]: { mood: 'calm' },
+          },
+        },
+      };
+      await act(() =>
+        onSync(payload.session.id, synced, {
+          immediate: false,
+          unloading: false,
+        }),
+      );
+
+      fireEvent.change(control, { target: { value: 'en' } });
+
+      const rebuilt = lastShellProps();
+      expect(control).toHaveValue('en');
+      expect(rebuilt.payload.protocol).toBe(payload.protocol);
+      expect(rebuilt.payload.session).toEqual({
+        ...synced,
+        promptIndex: 0,
+        localePreference: null,
+        localeOptions: payload.session.localeOptions,
+      });
+      expect(rebuilt.currentStep).toBe(2);
+      expect(rebuilt.requestedLocales).toEqual(['en', 'en-US']);
+    });
+
+    it('states an unspecified language through the interview’s own preference', async () => {
+      const control = await openPreview(
+        makeProtocol({ defaultLocale: 'und', locales: ['und', 'fr'] }),
+        ['fr-CA'],
+      );
+      expect(control).toHaveValue('fr');
+      const { payload } = lastShellProps();
+
+      fireEvent.change(control, { target: { value: 'und' } });
+
+      expect(control).toHaveValue('und');
+      expect(lastShellProps().payload.session).toEqual({
+        ...payload.session,
+        promptIndex: 0,
+        localePreference: 'und',
+      });
+      // A requested `und` would set the interview's own wording in English.
+      expect(lastShellProps().requestedLocales).toEqual(['fr-CA']);
+    });
+  });
+
   /**
    * Issue #1398: the Shell was handed a `noopFinish`, so confirming Finish
    * Interview closed the dialog back onto the identical Finish screen — no
@@ -908,13 +1084,6 @@ describe('PreviewHost', () => {
    * afterwards) is `e2e/specs/preview-finish.spec.ts`.
    */
   describe('finishing the preview', () => {
-    const lastShellProps = () =>
-      shellMock.mock.calls.at(-1)?.[0] as {
-        onFinish: FinishHandler;
-        finishConfirmationDescription?: ReactNode;
-        payload: InterviewPayload;
-      };
-
     async function finishInterview() {
       const { onFinish, payload } = lastShellProps();
       await act(async () => {
@@ -974,11 +1143,11 @@ describe('PreviewHost', () => {
       );
     });
 
-    it('passes the active host locale into Shell and formats preview-specific copy inside its isolated catalog', async () => {
+    it('asks the interview for the browser’s languages, never Architect’s, and words the preview copy in the interview’s language', async () => {
       const languages = vi
         .spyOn(navigator, 'languages', 'get')
-        .mockReturnValue(['en-US']);
-      localStorage.removeItem(ARCHITECT_LOCALE_KEY);
+        .mockReturnValue(['es-MX', 'en-US']);
+      localStorage.setItem(ARCHITECT_LOCALE_KEY, 'en-GB');
       try {
         render(
           <ArchitectI18nProvider>
@@ -988,29 +1157,32 @@ describe('PreviewHost', () => {
         postPayload(openerStub, makePayload());
         await screen.findByTestId('shell-mounted');
         const initialPayload = lastShellProps().payload;
-        expect(shellMock.mock.calls.at(-1)?.[0].requestedLocale).toBe('en');
+        expect(lastShellProps().requestedLocales).toEqual(['es-MX', 'en-US']);
+        expect(document.documentElement.lang).toBe('en-GB');
         const description = screen.getByTestId('shell-finish-description');
         expect(description).toHaveTextContent(
-          'This is a preview, so nothing is saved.',
+          'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
         );
+
         act(() => {
-          localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
+          localStorage.setItem(ARCHITECT_LOCALE_KEY, 'de');
           window.dispatchEvent(
             new StorageEvent('storage', {
               key: ARCHITECT_LOCALE_KEY,
-              newValue: 'es',
+              newValue: 'de',
             }),
           );
         });
-        expect(shellMock.mock.calls.at(-1)?.[0].requestedLocale).toBe('es');
+
+        expect(document.documentElement.lang).toBe('de');
+        expect(lastShellProps().requestedLocales).toEqual(['es-MX', 'en-US']);
         expect(lastShellProps().payload).toBe(initialPayload);
         expect(screen.getByTestId('shell-finish-description')).toBe(
           description,
         );
         expect(description).toHaveTextContent(
-          'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
+          'Esto es una vista previa, así que no se guarda nada.',
         );
-        expect(document.documentElement.lang).toBe('es');
       } finally {
         languages.mockRestore();
         localStorage.removeItem(ARCHITECT_LOCALE_KEY);

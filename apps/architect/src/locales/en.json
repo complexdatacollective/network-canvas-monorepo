@@ -1844,8 +1844,8 @@
     "description": "Title of the notice asking the researcher to identify the language of text whose language has not been identified."
   },
   "architect.localization.languageName.unspecified": {
-    "defaultMessage": "Unidentified language",
-    "description": "Name shown for text whose language has not been identified yet, usually text from a protocol made before protocols declared their languages."
+    "defaultMessage": "Unspecified language",
+    "description": "Name shown for a protocol language that has not been identified yet (the \"und\" language tag), usually in a protocol made before protocols declared their languages. Use the same wording as the interview’s name for it."
   },
   "architect.localization.localizationAlert.goToLanguages": {
     "defaultMessage": "Go to Languages",
@@ -2214,6 +2214,10 @@
   "architect.previewHost.previewHost.thisProtocolCanTBePreviewed": {
     "defaultMessage": "This protocol can't be previewed",
     "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewToolbar.previewLanguage": {
+    "defaultMessage": "Preview language",
+    "description": "Label of the menu above an Architect preview that chooses which of the protocol’s languages the interview is shown in. The choice lasts while the preview window is open and is never saved."
   },
   "architect.projectNav.breadcrumb.breadcrumb": {
     "defaultMessage": "Breadcrumb",
