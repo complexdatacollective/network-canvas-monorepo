@@ -72,10 +72,10 @@ function job(name) {
   )?.groups?.body;
 }
 
-test('full CI runs on PRs to main and the Effect 4 integration branch while merge groups request only quality', () => {
+test('full CI runs on PRs to main while merge groups request only quality', () => {
   assert.match(
     workflow,
-    /^  pull_request:\n(?: {4}#.*\n)*    branches: \[main, integration\/studio-effect4\]$/m,
+    /^  pull_request:\n(?: {4}#.*\n)*    branches: \[main\]$/m,
   );
   assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
 

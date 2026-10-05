@@ -4,8 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    # Effect 4 integration branch; its final PR into `main` removes it.
-    branches: [main, integration/studio-effect4]
+    branches: [main]
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
