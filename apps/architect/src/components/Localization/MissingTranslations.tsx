@@ -15,6 +15,7 @@ import {
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
+import { codebookHref } from '~/components/Codebook/codebookLinks';
 import {
   getLocalizationCoverage,
   getMissingTranslationGroups,
@@ -108,11 +109,25 @@ const messages = defineMessages({
   },
 });
 
+type FieldPath = MissingTranslationField['field'];
+
 type PlaceDetails = {
   kind: string;
   name: string;
   href: string | null;
   variableNames: (id: string) => string | undefined;
+  /** Where the string at a field path is edited, if a link can open it. */
+  fieldHref: (field: FieldPath) => string | null;
+};
+
+const variableLabelHref = (field: FieldPath) => {
+  const [root, variable, property] = field;
+  return field.length === 3 &&
+    root === 'variables' &&
+    typeof variable === 'string' &&
+    property === 'label'
+    ? codebookHref({ kind: 'variable', variable })
+    : null;
 };
 
 const describePlace = (
@@ -130,10 +145,16 @@ const describePlace = (
         name: localizedText(stage?.label, localization) || unnamed,
         href: `/protocol/stage/${place.stageId}`,
         variableNames: () => undefined,
+        fieldHref: () => null,
       };
     }
     case 'codebook': {
       const definition = codebook[place.entity]?.[place.entityType];
+      const typeHref = codebookHref({
+        kind: 'type',
+        entity: place.entity,
+        type: place.entityType,
+      });
       return {
         kind: intl.formatMessage(
           place.entity === 'node' ? messages.nodeType : messages.edgeType,
@@ -142,16 +163,21 @@ const describePlace = (
           localizedText(definition?.label, localization) ||
           definition?.name ||
           unnamed,
-        href: '/protocol/codebook',
+        href: typeHref,
         variableNames: (id) => definition?.variables?.[id]?.name,
+        fieldHref: (field) =>
+          field.length === 1 && field[0] === 'label'
+            ? typeHref
+            : variableLabelHref(field),
       };
     }
     case 'ego':
       return {
         kind: intl.formatMessage(messages.ego),
         name: '',
-        href: '/protocol/codebook',
+        href: codebookHref(),
         variableNames: (id) => codebook.ego?.variables?.[id]?.name,
+        fieldHref: variableLabelHref,
       };
     case 'protocol':
       return {
@@ -159,6 +185,7 @@ const describePlace = (
         name: '',
         href: null,
         variableNames: () => undefined,
+        fieldHref: () => null,
       };
   }
 };
@@ -168,7 +195,7 @@ const describePlace = (
  * variable ids replaced by the variable names researchers know them by.
  */
 const formatFieldPath = (
-  field: MissingTranslationField['field'],
+  field: FieldPath,
   variableNames: PlaceDetails['variableNames'],
 ) =>
   field
@@ -293,29 +320,42 @@ const MissingTranslations = ({
                 <li key={key} className="flex flex-col gap-3">
                   <PlaceHeading details={details} />
                   <ul className="divide-outline flex flex-col divide-y">
-                    {fields.map((field) => (
-                      <li
-                        key={field.field.join('.')}
-                        className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2"
-                      >
-                        <code
-                          dir="ltr"
-                          className="font-monospace text-sm break-all"
+                    {fields.map((field) => {
+                      const fieldPath = formatFieldPath(
+                        field.field,
+                        details.variableNames,
+                      );
+                      const fieldHref = details.fieldHref(field.field);
+                      return (
+                        <li
+                          key={field.field.join('.')}
+                          className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2"
                         >
-                          {formatFieldPath(field.field, details.variableNames)}
-                        </code>
-                        <ul className="flex flex-wrap gap-x-4 text-sm">
-                          {field.gaps.map(({ locale, fallbackLocale }) => (
-                            <li key={locale}>
-                              {intl.formatMessage(messages.gap, {
-                                language: languageName(locale),
-                                fallback: languageName(fallbackLocale),
-                              })}
-                            </li>
-                          ))}
-                        </ul>
-                      </li>
-                    ))}
+                          <code
+                            dir="ltr"
+                            className="font-monospace text-sm break-all"
+                          >
+                            {fieldHref ? (
+                              <NativeLink render={<Link href={fieldHref} />}>
+                                {fieldPath}
+                              </NativeLink>
+                            ) : (
+                              fieldPath
+                            )}
+                          </code>
+                          <ul className="flex flex-wrap gap-x-4 text-sm">
+                            {field.gaps.map(({ locale, fallbackLocale }) => (
+                              <li key={locale}>
+                                {intl.formatMessage(messages.gap, {
+                                  language: languageName(locale),
+                                  fallback: languageName(fallbackLocale),
+                                })}
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </li>
               );

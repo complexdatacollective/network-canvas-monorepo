@@ -367,6 +367,10 @@
     "defaultMessage": "Delete attribute",
     "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
   },
+  "architect.chrome.codebook.controlsColumn.editAttributeLabel": {
+    "defaultMessage": "Edit attribute label: {name}",
+    "description": "Accessible name and tooltip of the button that opens the editor for the words participants are shown for an attribute, in each of the protocol’s languages. name is the attribute’s name."
+  },
   "architect.chrome.codebook.controlsColumn.inUseCannotBeDeleted": {
     "defaultMessage": "In use — cannot be deleted",
     "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
@@ -670,6 +674,18 @@
   "architect.codebook.usageColumn.notInUse": {
     "defaultMessage": "not in use",
     "description": "Visible text in components / Codebook / UsageColumn."
+  },
+  "architect.codebook.variableLabelDialog.hint": {
+    "defaultMessage": "The words participants are shown for the attribute “{name}”.",
+    "description": "Hint under the attribute label field. name is the attribute’s name, which the researcher and the exported data use and which stays the same in every language."
+  },
+  "architect.codebook.variableLabelDialog.label": {
+    "defaultMessage": "Attribute label",
+    "description": "Label of the field holding the words participants are shown for an attribute, as opposed to the attribute name the researcher and the exported data use."
+  },
+  "architect.codebook.variableLabelDialog.title": {
+    "defaultMessage": "Edit attribute label",
+    "description": "Title of the dialog that edits the words participants are shown for an attribute (a codebook variable), in each of the protocol’s languages."
   },
   "architect.codebook.variableList.name": {
     "defaultMessage": "Name",
@@ -3398,6 +3414,14 @@
   "architect.typeEditor.typeEditor.typeIdentity": {
     "defaultMessage": "Type identity",
     "description": "The title text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.typeLabel": {
+    "defaultMessage": "{entity, select, node {Node type label} other {Edge type label}}",
+    "description": "Label of the field holding the words participants are shown for this node or edge type, as opposed to the type name the researcher and the exported data use. entity is node or edge."
+  },
+  "architect.typeEditor.typeEditor.typeLabelHint": {
+    "defaultMessage": "{entity, select, node {The words participants are shown for this node type.} other {The words participants are shown for this edge type.}}",
+    "description": "Hint under the node or edge type label field, which sits below the type name field. When the protocol has several languages, a language menu above the field chooses which translation is being written. entity is node or edge."
   },
   "architect.typeEditor.typeEditor.typeName": {
     "defaultMessage": "{entity, select, node {Node} other {Edge}} type name",

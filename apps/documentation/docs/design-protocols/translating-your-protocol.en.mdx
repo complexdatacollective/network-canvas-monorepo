@@ -85,7 +85,7 @@ Architect shows you where they are:
 
 - The **Languages** tab shows a warning icon while some translations are missing.
 - The protocol overview screen shows a notice with the number of missing translations, and a **Go to Languages** link.
-- The **Missing translations** section of the **Languages** tab lists every text that isn't translated into every language. Texts are grouped by where they are: a stage, a node type, an edge type, the ego, or the protocol. A stage's group links to its stage editor, and node type, edge type and ego groups link to the codebook. Each text says which language it is missing in, and which language participants see instead.
+- The **Missing translations** section of the **Languages** tab lists every text that isn't translated into every language. Texts are grouped by where they are: a stage, a node type, an edge type, the ego, or the protocol. A stage's group links to its stage editor. A node type or edge type group opens that type on the **Codebook** page, and the ego group links to the **Codebook** page. A missing label links straight to the place where you translate it. Each text says which language it is missing in, and which language participants see instead.
 
 To see only one language's gaps, choose it under **Show missing translations for**, or click the button next to the language in the **Protocol languages** list, such as **Show 3 missing translations**.
 
@@ -107,7 +107,12 @@ To remove a translation, delete all of its text. A protocol with only one langua
 
 Each node type, edge type and attribute has a label: the words participants are shown for it. The label is kept separate from the name, which your exported data uses, so you can translate the label without changing your data. A new node type, edge type or attribute starts with its name as its label.
 
-A label has a language menu like any other text, in the editors where you create and edit node types, edge types and attributes.
+You edit labels on the **Codebook** page:
+
+- For a node type or edge type, click **Edit entity** on the type. The label is under the type's name.
+- For an attribute, click the label button (a tag icon) next to the attribute. This works for the attributes of node types, edge types and the ego.
+
+When your protocol has more than one language, a label has a language menu like any other text. A label needs text in at least one language. Any language you leave empty counts as a missing translation, just like other text.
 
 ## Identifying the language of an older protocol
 
