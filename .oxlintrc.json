@@ -227,6 +227,10 @@
               {
                 "name": "node:process",
                 "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
+              },
+              {
+                "name": "process",
+                "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
               }
             ]
           }
