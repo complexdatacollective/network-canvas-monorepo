@@ -1,0 +1,75 @@
+---
+title: Language Chooser
+navOrder: 23
+date: 5th October 2026
+---
+
+<InterfaceSummary type="LanguageChooser">
+
+<InterfaceMeta type="Utility" creates="Does not create entities" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+The Language Chooser interface is a screen where participants choose the language for the rest of the interview, from the languages your protocol is written in. It is useful whenever your protocol has more than one language, and you can't be sure that a participant's device or browser is set to the language they want to use.
+
+To set up the languages a participant can choose from, see [Translating Your Protocol](/en/design-protocols/translating-your-protocol).
+
+## What participants see
+
+The screen has the heading "Choose a language", followed by the introduction you wrote, if any, and a list of languages. Network Canvas writes the heading itself, in the same language as the interview's buttons and messages.
+
+The list contains exactly the languages your protocol is written in, in the order they appear on Architect's **Languages** page. Each language is written in its own language and script, so a Spanish speaker sees **Español** and a Japanese speaker sees **日本語**, whatever language the screen is currently in. A protocol made before Network Canvas recorded which language a protocol is written in shows "Unspecified language" instead, until you choose its real language in Architect.
+
+The language the interview is currently shown in is already selected. When the participant picks another one, the change happens straight away: the heading, the introduction and the interview's own buttons and messages switch to that language, and so does every later screen of the interview. The participant can change their mind as often as they like before moving on.
+
+The participant can always move on to the next screen, even if they don't pick a language. If they leave the selected language as it is, the interview keeps choosing its language from the language settings of their device or browser, as it did before this screen. Once they pick a language, the interview keeps it, including when the interview is resumed later.
+
+The interview's own buttons and messages are available in a fixed set of languages. If the participant picks a language that Network Canvas doesn't have, your protocol's text is shown in that language, and the buttons and messages are shown in a language from the participant's device or browser settings if Network Canvas has one, or otherwise in English.
+
+## Configuring the Language Chooser
+
+The stage editor has these sections:
+
+- **Introduction** is optional. Turn it on to write a short message that participants read before they choose a language, such as an explanation of why you are asking. You can translate the introduction like any other text. Turning the introduction off deletes it in every language, so Architect asks you to confirm first.
+- **Languages** shows the languages participants can choose from. You can't change the list here: it always contains every language your protocol is written in. Add or remove languages on the **Languages** page instead.
+- [Skip logic](/en/design-protocols/key-concepts/skip-logic) and interviewer guidance work as they do on other stages.
+
+## Data
+
+The Language Chooser does not create nodes or edges, and it doesn't add anything to the participant's network. The language the interview was shown in is recorded with each interview and included in your exported data. See [Interview language](/en/analyze-data/data-export#interview-language).
+
+### Best Practices
+
+<GoodPractice>
+
+Put the Language Chooser at the very start of your protocol, before any screen with text that participants need to understand.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Translate every text of your protocol into each of its languages before you start collecting data. Architect lists anything that is still missing on the **Languages** page.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Keep the introduction short, and translate it into every language, so that each participant can read it whichever language the screen opens in.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid adding a Language Chooser to a protocol that has only one language. Participants will see a single language to choose, which adds a step without giving them a choice.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid relying on the participant's device to pick the right language when it matters for your study. Devices shared between people, or set up by someone else, may be set to a language the participant doesn't read.
+
+</BadPractice>

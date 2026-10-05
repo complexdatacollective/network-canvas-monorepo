@@ -1,0 +1,152 @@
+---
+title: Translating Your Protocol
+navOrder: 5
+date: 5th October 2026
+---
+
+<Definition>
+  A protocol can be written in more than one language. Participants take the
+  interview in one of your protocol's languages, and see your prompts, labels,
+  options and other text in that language.
+</Definition>
+
+You write your protocol in one language first, and then translate its text into each of the other languages you want to offer. Architect keeps every translation of a text together, and shows you which texts still need translating.
+
+<TipBox>
+
+Translations need [schema 9](/en/get-started/protocol-schema-information#schema-version-9). Build your protocol in Architect, and run it in Fresco 5.0 or later, or Interviewer 9.0 or later. Architect Classic and Interviewer Classic can't open a schema 9 protocol.
+
+</TipBox>
+
+## What can be translated
+
+Every text that participants see can be translated. This includes:
+
+- stage names, which participants see in the interview's list of stages
+- prompts, introduction panels and panel titles
+- form titles, and the questions and hints of form fields
+- the labels of response options, and the labels at each end of a slider
+- the titles, text and resource descriptions of Information screens
+- the text of other interfaces, such as the introduction of a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) or the explanation on an [Anonymisation](/en/design-protocols/interface-documentation/anonymisation) screen
+- the labels of node types, edge types and attributes (see [Labels for node types, edge types and attributes](#labels-for-node-types-edge-types-and-attributes))
+
+Some parts of a protocol are the same in every language:
+
+- **Names and values.** Attribute names, node and edge type names, and option values are what your exported data uses, so they don't change between languages. Only the labels participants see are translated.
+- **Resources.** Images, videos, audio, rosters and maps are the same in every language. If a resource contains words, choose one that works for all of your participants, or explain it in text that you can translate.
+- **The interview's own buttons and messages**, such as navigation, help and validation messages. Network Canvas provides these itself, in a fixed set of languages (see [How participants get their language](#how-participants-get-their-language)).
+
+## Choosing the language you write in
+
+When you create a protocol in Architect, the **Create New Protocol** dialog asks for its **Protocol language**: the language you will write it in. Architect suggests the language its own interface is shown in. This language becomes the protocol's default language.
+
+A protocol you start from a template is already written in a language, so Architect doesn't ask. The templates that come with Architect are written in US English (`en-US`).
+
+## Managing your protocol's languages
+
+Open the **Languages** tab in the protocol's navigation, between **Codebook** and **Summary**. The **Protocol languages** section lists each language your protocol is written in. For each one you can see:
+
+- its name, its name in its own language, and its language code, such as `es` or `pt-BR`
+- a **Default** badge on the default language
+- how many of the protocol's texts are translated into it, such as "12 of 40 texts translated"
+
+### Adding languages
+
+Click **Add languages**, then search for and choose one or more languages in the **Languages** list. If you need a language or regional variant that isn't in the list, enter its language code in **Other language code**, such as `gsw` (Swiss German) or `es-AR` (Spanish as used in Argentina). Click **Add languages** to finish.
+
+A new language starts with no translations. Until you translate a text, participants who use the new language see it in another of your protocol's languages (see [The default language and the order of languages](#the-default-language-and-the-order-of-languages)).
+
+### The default language and the order of languages
+
+The default language is the one participants see when the interview can't use any of their own languages. To change it, click **Make default** next to another language.
+
+The order of the list matters too. When a text has no translation in a participant's language, they see it in the default language. If the text isn't written in the default language either, they see it in the first language in the list that has it. Use the up and down arrows next to each language to change the order.
+
+If your protocol has more than one variant of a language, such as Spanish (`es`) and Mexican Spanish (`es-MX`), a text that has no translation in one variant is shown in the other before the default language.
+
+### Changing a language
+
+**Change language** marks every text written in one language as written in another. Use it when you chose the wrong language or variant, for example if you added Spanish (`es`) but wrote your translations for participants in Argentina (`es-AR`). Nothing is translated or deleted: only the language the text is marked as changes. You can't change a language into one the protocol already has.
+
+### Removing a language
+
+Click **Remove** next to a language to stop offering it. Architect asks you to confirm, because every translation written in that language is deleted, and participants can no longer choose it.
+
+You can't remove:
+
+- the default language. Make another language the default first.
+- a language that some texts are written only in. Translate those texts into another language first, so that participants always have something to read.
+
+## Finding missing translations
+
+Missing translations don't stop you from saving, previewing or using your protocol, because participants see the text in another language instead. They are still worth finishing before you collect data.
+
+Architect shows you where they are:
+
+- The **Languages** tab shows a warning icon while some translations are missing.
+- The protocol overview screen shows a notice with the number of missing translations, and a **Go to Languages** link.
+- The **Missing translations** section of the **Languages** tab lists every text that isn't translated into every language. Texts are grouped by where they are: a stage, a node type, an edge type, the ego, or the protocol. A stage's group links to its stage editor, and node type, edge type and ego groups link to the codebook. Each text says which language it is missing in, and which language participants see instead.
+
+To see only one language's gaps, choose it under **Show missing translations for**, or click the button next to the language in the **Protocol languages** list, such as **Show 3 missing translations**.
+
+## Translating text
+
+You translate a text in the same place where you wrote it, such as the stage editor. When your protocol has more than one language, each text field has a language menu next to it, showing the language you are editing. Choose another language from the menu to write in that language.
+
+All the text fields in an editor switch language together, so you can work through a stage in one language at a time. The editor always opens in the default language, and its previews show the text in the language you are editing.
+
+The language menu tells you how each text is doing:
+
+- each language in the menu is tagged **Default** or **Missing**, where that applies
+- a badge next to the menu counts the languages this text is missing in, such as "2 translations missing"
+- under a text that has no translation in the language you are editing, a note says which language participants will see instead
+
+To remove a translation, delete all of its text. A protocol with only one language doesn't show language menus at all.
+
+### Labels for node types, edge types and attributes
+
+Each node type, edge type and attribute has a label: the words participants are shown for it. The label is kept separate from the name, which your exported data uses, so you can translate the label without changing your data. A new node type, edge type or attribute starts with its name as its label.
+
+A label has a language menu like any other text, in the editors where you create and edit node types, edge types and attributes.
+
+## Identifying the language of an older protocol
+
+Protocols made before Network Canvas recorded which language a protocol is written in have all their text marked as an unspecified language, with the language code `und`. This happens when Architect, Fresco or Interviewer upgrades a protocol to schema 9. Your text isn't changed: Network Canvas just doesn't know which language it's written in.
+
+Architect lists this language as **Unspecified language**, and participants on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) screen see the same name.
+
+Tell Architect which language your text is really written in before you add translations:
+
+1. Open the **Languages** tab. A notice asks "Which language is your text written in?".
+2. Click **Identify language**.
+3. Choose the language from the **Language** list, or enter its code under **Other language code**.
+4. Click **Change language**.
+
+Every text marked as unspecified is now marked as the language you chose. Nothing is translated or deleted. Until you do this, the protocol overview screen shows the notice "Identify the language of your protocol", and interviews run with the protocol record `und` as their language in your exported data.
+
+## Previewing a language
+
+To check your translations as participants will see them, [preview](/en/design-protocols/preview-mode) a stage and choose a language from the **Preview language** menu above it. See [Choosing the preview language](/en/design-protocols/preview-mode#choosing-the-preview-language).
+
+## Printing the summary in a language
+
+The **Summary** tab shows your whole protocol on one page, which you can print with the **Print** button. When your protocol has more than one language, choose which language the summary shows your text in under **Summary language**. It starts in the default language. This is useful for sharing a translation with a colleague or an ethics board, or for checking it on paper.
+
+## How participants get their language
+
+When an interview starts, it uses the first language in the participant's language settings that your protocol is written in. Close regional matches count, so a participant whose browser is set to Mexican Spanish (`es-MX`) is shown your Spanish (`es`) text. If none of the participant's languages is one of your protocol's languages, the interview uses the default language.
+
+Where those settings come from depends on the app:
+
+- **Fresco** uses the languages set in the participant's web browser. The language of the Fresco dashboard doesn't affect interviews.
+- **Interviewer** uses the language settings of the device or browser it runs on. Interviewer's own **App language** setting doesn't affect interviews.
+
+To let participants choose for themselves, add a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage to your protocol. It is the only way for a participant to change the language during an interview. Once they choose, the interview keeps their choice, even when it is resumed later. Until then, the interview picks a language again each time it is opened, so an interview resumed on a different device can appear in a different language.
+
+The interview's own buttons and messages follow the same settings, separately from your protocol's text. They are available in English, English (UK), Spanish, German, French, Italian, Dutch, Brazilian Portuguese, Simplified Chinese and Traditional Chinese. When none of the participant's languages is one of these, they are shown in English.
+
+When the interview is shown in a right-to-left language, such as Arabic or Hebrew, its stages are laid out from right to left.
+
+## Languages in your data
+
+Each interview records the language its text was last shown in, and your exported data includes it. See [Interview language](/en/analyze-data/data-export#interview-language).

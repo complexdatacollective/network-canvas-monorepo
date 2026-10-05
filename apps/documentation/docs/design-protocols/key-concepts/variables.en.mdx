@@ -1,6 +1,7 @@
 ---
 title: Variables
 navOrder: 4
+date: 5th October 2026
 ---
 
 <Definition>
@@ -199,11 +200,11 @@ Architect refuses a name or option in each of these situations:
 
 These are the built-in column names that variables can't use, in any capitalization. Option columns and layout columns can't use them either.
 
-| Variables of | Reserved column names                                                                                                                                                                                                                                                                    |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ego          | `_uid`, `caseId`, `sessionId`, `protocolName`, `sessionStart`, `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`, `label`, `networkCanvasEgoUUID`, `networkCanvasCaseID`, `networkCanvasSessionID`, `networkCanvasProtocolName`, `networkCanvasType`, `networkCanvasUUID` |
-| Nodes        | `_uid`, `nodeID`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`                                                                                                                                                                                              |
-| Edges        | `_uid`, `edgeID`, `from`, `to`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`, `networkCanvasSourceUUID`, `networkCanvasTargetUUID`                                                                                                                          |
+| Variables of | Reserved column names                                                                                                                                                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ego          | `_uid`, `caseId`, `sessionId`, `protocolName`, `sessionStart`, `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`, `label`, `networkCanvasEgoUUID`, `networkCanvasCaseID`, `networkCanvasSessionID`, `networkCanvasProtocolName`, `networkCanvasInterviewLocale`, `networkCanvasType`, `networkCanvasUUID` |
+| Nodes        | `_uid`, `nodeID`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`                                                                                                                                                                                                                              |
+| Edges        | `_uid`, `edgeID`, `from`, `to`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`, `networkCanvasSourceUUID`, `networkCanvasTargetUUID`                                                                                                                                                          |
 
 Protocols created before Architect made these checks open and run as before. If one of them has two variables that write the same column, the export renames one of the columns and warns you. See [Column names that clash](/en/analyze-data/data-export#column-names-that-clash).
 
