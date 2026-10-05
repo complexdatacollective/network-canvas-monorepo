@@ -301,6 +301,20 @@ export type NominationPromptInput = Omit<
   'text'
 > & { text: TextInput };
 
+type FamilyPedigreeFormItemInput = NonNullable<
+  FamilyPedigreeNodeConfigInput['form']
+>[number];
+
+export type FamilyPedigreeNodeConfigEntryInput = Omit<
+  FamilyPedigreeNodeConfigInput,
+  'form'
+> & {
+  form?: (Omit<FamilyPedigreeFormItemInput, 'prompt' | 'hint'> & {
+    prompt: TextInput;
+    hint?: TextInput;
+  })[];
+};
+
 export type StageEntry = {
   id: string;
   type: StageType;
@@ -358,7 +372,7 @@ export type StageEntry = {
   edgeType?: { entity: 'edge'; type: string };
   // FamilyPedigree-specific fields, derived from the protocol-validation schema
   // so they cannot drift from it.
-  nodeConfig?: FamilyPedigreeNodeConfigInput;
+  nodeConfig?: FamilyPedigreeNodeConfigEntryInput;
   edgeConfig?: FamilyPedigreeEdgeConfigInput;
   framing?: FamilyPedigreeFraming;
   // NarrativePedigree-specific fields
@@ -517,7 +531,7 @@ export type AddStageInput = {
   };
   validation?: { minLength?: number; maxLength?: number };
   // FamilyPedigree
-  nodeConfig?: FamilyPedigreeNodeConfigInput;
+  nodeConfig?: FamilyPedigreeNodeConfigEntryInput;
   // Derived from the schema's edge config, but the builder fills the non-core
   // variables when omitted, so they are optional here.
   edgeConfig?: Pick<

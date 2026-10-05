@@ -2643,7 +2643,18 @@ export class SyntheticInterview {
 
     // FamilyPedigree
     if (stage.type === 'FamilyPedigree') {
-      if (stage.nodeConfig) config.nodeConfig = stage.nodeConfig;
+      if (stage.nodeConfig) {
+        config.nodeConfig = {
+          ...stage.nodeConfig,
+          form: (stage.nodeConfig.form ?? []).map((field) => ({
+            ...field,
+            prompt: this.localized(field.prompt),
+            ...(field.hint !== undefined
+              ? { hint: this.localized(field.hint) }
+              : {}),
+          })),
+        };
+      }
       if (stage.edgeConfig) config.edgeConfig = stage.edgeConfig;
       if (stage.censusPrompt) {
         config.censusPrompt = this.localized(stage.censusPrompt);

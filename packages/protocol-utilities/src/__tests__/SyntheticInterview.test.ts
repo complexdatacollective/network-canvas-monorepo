@@ -991,6 +991,48 @@ describe('SyntheticInterview', () => {
       expect(nomPrompts).toHaveLength(1);
       expect(nomPrompts[0]!.text).toEqual({ 'en-US': 'Who has the disease?' });
     });
+
+    it('localizes plain-text node form prompts and hints', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType({ name: 'Person' });
+      const nameVar = nt.addVariable({ type: 'text', name: 'Name' });
+      const ageVar = nt.addVariable({ type: 'number', name: 'Age' });
+      const egoVar = nt.addVariable({ type: 'boolean', name: 'Is Ego' });
+      const relToEgoVar = nt.addVariable({ type: 'text', name: 'Rel to Ego' });
+      const bioSexVar = nt.addVariable({ type: 'text', name: 'Sex' });
+
+      si.addStage('FamilyPedigree', {
+        subject: { entity: 'node', type: nt.id },
+        nodeConfig: {
+          type: nt.id,
+          nodeLabelVariable: nameVar.id,
+          egoVariable: egoVar.id,
+          relationshipVariable: relToEgoVar.id,
+          biologicalSexVariable: bioSexVar.id,
+          form: [
+            {
+              variable: nameVar.id,
+              prompt: 'Their {first} name',
+              hint: 'As they prefer',
+            },
+            { variable: ageVar.id, prompt: { 'en-US': 'Age' } },
+          ],
+        },
+      });
+
+      const built = si.getProtocol().stages[0];
+      if (built?.type !== 'FamilyPedigree') {
+        throw new Error('Expected a FamilyPedigree stage');
+      }
+      expect(built.nodeConfig.form).toEqual([
+        {
+          variable: nameVar.id,
+          prompt: { 'en-US': "Their '{'first'}' name" },
+          hint: { 'en-US': 'As they prefer' },
+        },
+        { variable: ageVar.id, prompt: { 'en-US': 'Age' } },
+      ]);
+    });
   });
 
   describe('edge variable codebook serialization', () => {
