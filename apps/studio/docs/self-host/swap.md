@@ -66,7 +66,8 @@ stack passes.
 
 ## A managed bucket
 
-All five or none: a partial configuration fails fast rather than half-working.
+All five, with `STUDIO_OBJECT_STORE=s3` left as `.env.example` sets it: a
+partial configuration fails fast rather than half-working.
 
 ```
 S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
@@ -189,7 +190,7 @@ replaces the volume copy in [Back up and restore](./backup.md).
 
 As with the other swaps, this is tidying rather than part of the swap: until
 you delete them, the stack's Garage runs empty and `garage-init` sees
-`STUDIO_OBJECT_STORE=azure-blob` and exits without bootstrapping it, so
+that `STUDIO_OBJECT_STORE` is not `s3` and exits without bootstrapping it, so
 `migrate` still runs.
 
 This swap is exercised in CI by `apps/studio/stack-test`, variant

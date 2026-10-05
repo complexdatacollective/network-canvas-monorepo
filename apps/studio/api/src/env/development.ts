@@ -101,6 +101,7 @@ export const DEV_ENVIRONMENT: Partial<Record<VariableName, string>> = {
   STUDIO_TELEMETRY: 'false',
   STUDIO_DEPLOYMENT_MODE: 'managed',
 
+  STUDIO_OBJECT_STORE: 's3',
   S3_ENDPOINT: DEV_S3_ENDPOINT,
   S3_REGION: DEV.s3Region,
   S3_BUCKET: DEV.s3Bucket,

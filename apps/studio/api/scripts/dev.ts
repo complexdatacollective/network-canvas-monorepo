@@ -80,6 +80,7 @@ function composeEnvironment(): Record<string, string> {
     POSTGRES_USER: DEV.pgUser,
     POSTGRES_DB: DEV.pgDatabase,
 
+    STUDIO_OBJECT_STORE: 's3',
     S3_REGION: DEV.s3Region,
     S3_BUCKET: DEV.s3Bucket,
     S3_ACCESS_KEY_ID: DEV.s3AccessKeyId,

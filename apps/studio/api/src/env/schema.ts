@@ -269,10 +269,6 @@ export const EnvironmentSchema = Schema.Struct({
     },
   ),
 
-  /**
-   * Unset resolves to `s3` in `resolve.ts`, which is what keeps every
-   * deployment that predates the variable unchanged (#2077).
-   */
   STUDIO_OBJECT_STORE: variable(
     Schema.Literals(['s3', 'azure-blob']).annotate(
       refuses('must be s3 or azure-blob'),
@@ -282,7 +278,7 @@ export const EnvironmentSchema = Schema.Struct({
       summary:
         'Which provider holds asset bytes: `s3` (any S3-compatible store — Garage, R2, MinIO, AWS S3) or `azure-blob` (Azure Blob Storage).',
       deployment:
-        'Unset ⇒ `s3`. It selects which group of the variables below is read, and setting the other provider’s variables as well is refused at boot. Set explicitly, its own group must be configured: a provider named with nothing to connect to is refused rather than left unconfigured.',
+        'Unset ⇒ no object store: `/storage` answers 503 and `/readyz` has no object-store check. It selects which group of the variables below is read, and that group must be complete; any variable of the other group, or of either group while this is unset, is refused at boot.',
       example: 's3',
     },
   ),
@@ -291,34 +287,34 @@ export const EnvironmentSchema = Schema.Struct({
     group: 'Object storage',
     summary: 'S3-compatible endpoint holding content-addressed asset bytes.',
     deployment:
-      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3` or unset; refused when it is `azure-blob`.',
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
     example: 'https://s3.us-east-1.amazonaws.com',
   }),
   S3_REGION: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Region passed to the S3 client.',
     deployment:
-      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3` or unset; refused when it is `azure-blob`.',
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
     example: 'us-east-1',
   }),
   S3_BUCKET: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Bucket asset objects are written to and read from.',
     deployment:
-      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3` or unset; refused when it is `azure-blob`.',
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
     example: 'studio-assets',
   }),
   S3_ACCESS_KEY_ID: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Access key for the object store.',
     deployment:
-      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3` or unset; refused when it is `azure-blob`.',
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
   }),
   S3_SECRET_ACCESS_KEY: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Secret key for the object store.',
     deployment:
-      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3` or unset; refused when it is `azure-blob`.',
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
   }),
 
   AZURE_STORAGE_ACCOUNT_URL: variable(HttpUrl, {

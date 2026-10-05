@@ -409,23 +409,21 @@ function clearS3(): void {
 }
 
 describe('object storage', () => {
-  it('is undefined when no S3 variable is set', () => {
+  it('is undefined when no provider is named', () => {
     clearS3();
+    vi.stubEnv('STUDIO_OBJECT_STORE', '');
     expect(readEnv().objectStore).toBeUndefined();
   });
 
-  it('defaults to the S3 provider when none is named', () => {
-    expect(readEnv().objectStore?.provider).toBe('s3');
-  });
-
-  it('accepts the S3 provider named explicitly', () => {
-    vi.stubEnv('STUDIO_OBJECT_STORE', 's3');
-    expect(readEnv().objectStore?.provider).toBe('s3');
+  it('refuses S3 variables without the provider named', () => {
+    vi.stubEnv('STUDIO_OBJECT_STORE', '');
+    expect(() => readEnv()).toThrow(
+      /S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY are set, but STUDIO_OBJECT_STORE is not/,
+    );
   });
 
   it('refuses the S3 provider named with nothing to connect to', () => {
     clearS3();
-    vi.stubEnv('STUDIO_OBJECT_STORE', 's3');
     expect(() => readEnv()).toThrow(
       /Incomplete S3 configuration; missing: S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY/,
     );
@@ -554,7 +552,18 @@ describe('object storage', () => {
       );
       vi.stubEnv('S3_BUCKET', 'studio');
       expect(() => readEnv()).toThrow(
-        /STUDIO_OBJECT_STORE is azure-blob, but S3_BUCKET is set as well/,
+        /S3_BUCKET is set, but STUDIO_OBJECT_STORE is azure-blob/,
+      );
+    });
+
+    it('refuses Azure variables beside the S3 provider', () => {
+      vi.stubEnv('STUDIO_OBJECT_STORE', 's3');
+      vi.stubEnv(
+        'AZURE_STORAGE_ACCOUNT_URL',
+        'https://studioassets.blob.core.windows.net',
+      );
+      expect(() => readEnv()).toThrow(
+        /AZURE_STORAGE_ACCOUNT_URL, AZURE_STORAGE_CONTAINER are set, but STUDIO_OBJECT_STORE is s3/,
       );
     });
 
@@ -565,7 +574,7 @@ describe('object storage', () => {
         'UseDevelopmentStorage=true',
       );
       expect(() => readEnv()).toThrow(
-        /AZURE_STORAGE_CONTAINER, AZURE_STORAGE_CONNECTION_STRING are set, but STUDIO_OBJECT_STORE is unset/,
+        /AZURE_STORAGE_CONTAINER, AZURE_STORAGE_CONNECTION_STRING are set, but STUDIO_OBJECT_STORE is not/,
       );
     });
   });
@@ -656,6 +665,7 @@ describe('the refusal a bad environment gets', () => {
     vi.stubEnv('S3_BUCKET', '');
     vi.stubEnv('S3_ACCESS_KEY_ID', '');
     vi.stubEnv('S3_SECRET_ACCESS_KEY', '');
+    vi.stubEnv('STUDIO_OBJECT_STORE', '');
     expect(readEnv().objectStore).toBeUndefined();
   });
 });

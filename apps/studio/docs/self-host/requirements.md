@@ -142,8 +142,8 @@ Each of these replaces one service in the stack. The swap itself is in
 Studio talks to its object store through one small interface, with one
 implementation per kind of store. There are two:
 
-- **Any S3-compatible store** — `STUDIO_OBJECT_STORE=s3`, which is also what
-  leaving it unset means. Garage, Cloudflare R2, MinIO and AWS S3 all work.
+- **Any S3-compatible store** — `STUDIO_OBJECT_STORE=s3`, as `.env.example`
+  ships. Garage, Cloudflare R2, MinIO and AWS S3 all work.
   Google Cloud Storage works through its S3-interoperable XML API, with an
   HMAC key as the access key pair and `https://storage.googleapis.com` as
   `S3_ENDPOINT`; it is not one of the stores this is run against.

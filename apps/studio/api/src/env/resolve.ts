@@ -320,10 +320,7 @@ function namesSet(
   return names.filter((name) => raw[name] !== undefined);
 }
 
-function resolveS3(
-  raw: EnvironmentVariables,
-  selected: boolean,
-): S3Env | undefined {
+function resolveS3(raw: EnvironmentVariables): S3Env {
   const values = {
     endpoint: raw.S3_ENDPOINT,
     region: raw.S3_REGION,
@@ -336,11 +333,9 @@ function resolveS3(
     return { endpoint, region, bucket, accessKeyId, secretAccessKey };
   }
 
-  const missing = S3_VARIABLES.filter((name) => raw[name] === undefined);
-  if (missing.length === S3_VARIABLES.length && !selected) return undefined;
   // Partial configuration is a deployment mistake, not a request for
-  // defaults — fail fast rather than half-configuring a store. So is naming
-  // the provider with nothing to connect to.
+  // defaults — fail fast rather than half-configuring a store.
+  const missing = S3_VARIABLES.filter((name) => raw[name] === undefined);
   throw new Error(
     `Incomplete S3 configuration; missing: ${missing.join(', ')}`,
   );
@@ -383,35 +378,38 @@ function resolveAzureBlob(raw: EnvironmentVariables): AzureBlobEnv {
  * One provider, chosen here and nowhere later (#2077). The other provider's
  * variables are refused rather than ignored: a deployment carrying both says
  * two things about where its assets live, and only one of them can be true.
+ * Unset, there is no object store, and a provider's variables without the
+ * provider named are refused for the same reason.
  */
 function resolveObjectStore(
   raw: EnvironmentVariables,
 ): ObjectStoreEnv | undefined {
-  const provider = raw.STUDIO_OBJECT_STORE ?? 's3';
-  if (provider === 'azure-blob') {
-    const s3 = namesSet(raw, S3_VARIABLES);
-    if (s3.length > 0) {
-      throw new Error(
-        `STUDIO_OBJECT_STORE is azure-blob, but ${s3.join(', ')} ${
-          s3.length === 1 ? 'is' : 'are'
-        } set as well. Those configure the S3 provider; remove them.`,
-      );
-    }
-    return { provider, azureBlob: resolveAzureBlob(raw) };
-  }
-
+  const provider = raw.STUDIO_OBJECT_STORE;
+  const s3 = namesSet(raw, S3_VARIABLES);
   const azure = namesSet(raw, AZURE_BLOB_VARIABLES);
-  if (azure.length > 0) {
+  const stray =
+    provider === 's3'
+      ? azure
+      : provider === 'azure-blob'
+        ? s3
+        : [...s3, ...azure];
+  if (stray.length > 0) {
     throw new Error(
-      `${azure.join(', ')} ${
-        azure.length === 1 ? 'is' : 'are'
-      } set, but STUDIO_OBJECT_STORE is ${
-        raw.STUDIO_OBJECT_STORE ?? 'unset (meaning s3)'
-      }. Set STUDIO_OBJECT_STORE=azure-blob to store assets in Azure Blob Storage, or remove them.`,
+      `${stray.join(', ')} ${stray.length === 1 ? 'is' : 'are'} set, but ${
+        provider === undefined
+          ? 'STUDIO_OBJECT_STORE is not'
+          : `STUDIO_OBJECT_STORE is ${provider}`
+      }. Set STUDIO_OBJECT_STORE to the provider they configure (s3 or azure-blob), and remove the other provider's variables.`,
     );
   }
-  const s3 = resolveS3(raw, raw.STUDIO_OBJECT_STORE !== undefined);
-  return s3 === undefined ? undefined : { provider, s3 };
+  switch (provider) {
+    case 's3':
+      return { provider, s3: resolveS3(raw) };
+    case 'azure-blob':
+      return { provider, azureBlob: resolveAzureBlob(raw) };
+    case undefined:
+      return undefined;
+  }
 }
 
 function resolveMailer(

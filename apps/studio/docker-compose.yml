@@ -104,11 +104,10 @@ x-studio-env: &studio-env
   S3_BUCKET: ${S3_BUCKET}
   S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
   S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
-  # Unset is `s3`, which reads the five above. `azure-blob` reads these
-  # instead: the container, and either the account URL (a managed identity,
-  # optionally the user-assigned one `AZURE_CLIENT_ID` names) or a connection
-  # string.
-  STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE:-}
+  # `s3` reads the five above. `azure-blob` reads these instead: the
+  # container, and either the account URL (a managed identity, optionally the
+  # user-assigned one `AZURE_CLIENT_ID` names) or a connection string.
+  STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE}
   AZURE_STORAGE_ACCOUNT_URL: ${AZURE_STORAGE_ACCOUNT_URL:-}
   AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-}
   AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
@@ -294,7 +293,7 @@ services:
     entrypoint: ['/bin/sh', '/garage-init.sh']
     environment:
       GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
-      STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE:-}
+      STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE}
       S3_BUCKET: ${S3_BUCKET}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
@@ -434,12 +433,12 @@ configs:
       # sits in the document.
       set -eu
 
-      # An Azure Blob deployment empties the S3_* values this would import, and
-      # leaves the stack's Garage holding nothing. Succeeding here keeps that
+      # Any other provider leaves the stack's Garage holding nothing, and
+      # empties the S3_* values this would import. Succeeding here keeps that
       # swap a change to `.env` alone: `migrate` still waits on this one-shot
       # until the Garage services are deleted.
-      if [ "$${STUDIO_OBJECT_STORE:-}" = azure-blob ]; then
-          echo 'garage-init: STUDIO_OBJECT_STORE is azure-blob, so Garage holds nothing; skipping'
+      if [ "$${STUDIO_OBJECT_STORE:-}" != s3 ]; then
+          echo "garage-init: STUDIO_OBJECT_STORE is '$${STUDIO_OBJECT_STORE:-}', not s3, so Garage holds nothing; skipping"
           exit 0
       fi
 

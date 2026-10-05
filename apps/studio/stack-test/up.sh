@@ -74,8 +74,7 @@ fi
 # and empty for the variants that do not use them: each is read as
 # `${VAR:-<the stack's own service>}`, so empty is the reference value. The
 # Azure Blob variables are always present too, and empty everywhere but the
-# variant that selects that provider — which is also what an unset
-# `STUDIO_OBJECT_STORE` means: `s3`.
+# variant that selects that provider; every other variant names `s3`.
 DATABASE_URL=""
 REDIS_URL=""
 S3_ENDPOINT=""
@@ -83,7 +82,7 @@ S3_REGION="garage"
 S3_BUCKET="studio"
 S3_ACCESS_KEY_ID="GK$(hex 12)"
 S3_SECRET_ACCESS_KEY="$(hex 32)"
-STUDIO_OBJECT_STORE=""
+STUDIO_OBJECT_STORE="s3"
 AZURE_STORAGE_ACCOUNT_URL=""
 AZURE_STORAGE_CONTAINER=""
 AZURE_STORAGE_CONNECTION_STRING=""
