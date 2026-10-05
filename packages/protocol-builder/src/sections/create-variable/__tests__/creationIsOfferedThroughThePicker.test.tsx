@@ -215,7 +215,7 @@ const expectNoInventControl = (where: string): void => {
  * sweep from passing by seeing nothing. A row dialog that stopped opening, or
  * a section that stopped mounting its picker, would otherwise leave the
  * criterion checked against an empty page — which is how a guard over
- * nineteen editors comes to guard nothing.
+ * twenty editors comes to guard nothing.
  *
  * These are the pickers a researcher reaches without turning anything on. The
  * optional sections the fixture leaves switched off hold four more — the two
@@ -234,6 +234,7 @@ const PICKERS_REACHED: Readonly<Record<string, number>> = {
   'family-pedigree-1': 9,
   'geospatial-1': 1,
   'information-1': 0,
+  'language-chooser-1': 0,
   'name-generator-1': 1,
   'name-generator-quick-add-1': 1,
   'name-generator-roster-1': 0,

@@ -1,6 +1,5 @@
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import {
-  type ComponentType,
   createElement,
   type FormEvent,
   useCallback,
@@ -33,6 +32,7 @@ import {
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type LocalizedString,
   type VariableOption,
   type VariableType,
   VariableTypes,
@@ -40,9 +40,17 @@ import {
 import { normalizeCodebookName, toCanonicalText } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
-import OptionLabelField from '../../fields/OptionLabelField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedOptionLabelField,
+} from '../../fields/LocalizedStringField.tsx';
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import {
+  useLocalizedText,
+  useProtocolLocalization,
+} from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import {
   variableParametersMessages,
@@ -58,6 +66,7 @@ import {
   type CodebookDraftIssue,
   type CodebookSubject,
   type CodebookVariableDraft,
+  withSeededLabel,
 } from '../editing.ts';
 import {
   type BooleanAnswer,
@@ -132,6 +141,19 @@ const messages = defineMessages({
       'This name is used when referring to the attribute and in exported data.',
     description:
       'Guidance under the attribute name field. Exported data is the file a researcher analyses after the interviews.',
+  },
+  labelLabel: {
+    id: 'protocolBuilder.codebookVariable.labelLabel',
+    defaultMessage: 'Attribute label',
+    description:
+      'Label of the field holding the words participants are shown for this attribute (a codebook variable), as opposed to the attribute name the researcher and the exported data use.',
+  },
+  labelHint: {
+    id: 'protocolBuilder.codebookVariable.labelHint',
+    defaultMessage:
+      'The words participants are shown for this attribute. Left empty, the attribute name is used.',
+    description:
+      'Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute.',
   },
   typeLabel: {
     id: 'protocolBuilder.codebookVariable.typeLabel',
@@ -223,11 +245,7 @@ const messages = defineMessages({
   },
 });
 
-const OptionLabelControl = OptionLabelField as ComponentType<
-  Record<string, unknown>
->;
-
-const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
+const VARIABLE_EDITOR_PROPERTIES = ['name', 'label', 'type'] as const;
 
 /**
  * What the answers surface REPLACES, which is `options` whatever it renders.
@@ -277,7 +295,8 @@ const TYPE_OWNED_PROPERTIES = [
 const PARAMETER_OWNED_PROPERTIES = ['parameters'] as const;
 
 type EditableOption = Readonly<{
-  label: string;
+  /** Absent until the option has words in at least one language. */
+  label?: LocalizedString;
   value: string | number;
 }>;
 
@@ -405,6 +424,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     onCancel,
   } = props;
   const intl = useAppIntl();
+  const localization = useProtocolLocalization();
   const title =
     props.title ??
     intl.formatMessage(
@@ -461,16 +481,19 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     typeChanged,
     parameterShape,
   );
+  // A label left empty is written from the name, as every other way of
+  // creating an attribute writes it.
+  const labelledDraft = withSeededLabel(draft, localization);
   const submittedDraft =
     props.mode === 'create'
       ? draftWithOwnedBlocks(
-          draft,
+          labelledDraft,
           seededDraft.options,
           parameterShape,
           optionsShape,
         )
       : draftOwnedByVariableEditor(
-          draft,
+          labelledDraft,
           seededDraft.options,
           lockedOptions !== null,
           typeChanged,
@@ -742,6 +765,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const labelCell = (index: number) => `${optionKeys[index] ?? index}-label`;
 
   const nameErrors = messagesAt(issues, 'name');
+  const labelErrors = messagesAt(issues, 'label');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
   const answerIssues = booleanAnswerMessages(issues);
@@ -880,6 +904,20 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             showErrors={nameErrors.length > 0}
           />
           <UnconnectedField
+            name="variable-label"
+            label={intl.formatMessage(messages.labelLabel)}
+            hint={intl.formatMessage(messages.labelHint)}
+            component={LocalizedInputField}
+            placeholder={
+              typeof draft.name === 'string' ? draft.name : undefined
+            }
+            value={asLocalizedString(draft.label)}
+            onChange={(label) => replaceProperty('label', label)}
+            readOnly={interactionDisabled}
+            errors={labelErrors}
+            showErrors={labelErrors.length > 0}
+          />
+          <UnconnectedField
             name="variable-type"
             label={intl.formatMessage(messages.typeLabel)}
             component={NativeSelectField}
@@ -938,18 +976,15 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                               // make it a different name.
                               { index: String(index + 1) },
                             )}
-                            component={OptionLabelControl}
+                            component={LocalizedOptionLabelField}
                             value={option.label}
-                            onChange={(label: unknown) => {
-                              const written =
-                                typeof label === 'string' ? label : '';
-                              markEdited(
-                                labelCell(index),
-                                written,
-                                option.label,
-                              );
+                            onChange={(label: LocalizedString | undefined) => {
+                              markEdited(labelCell(index), label, option.label);
                               const next = [...options];
-                              next[index] = { ...option, label: written };
+                              next[index] =
+                                label === undefined
+                                  ? { value: option.value }
+                                  : { ...option, label };
                               replaceOptions(next);
                             }}
                             required
@@ -1019,7 +1054,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         ...current,
                         `new-option-${optionKeySequence.current++}`,
                       ]);
-                      replaceOptions([...options, { label: '', value: '' }]);
+                      replaceOptions([...options, { value: '' }]);
                     }}
                   >
                     {intl.formatMessage(variableValuesMessages.addOption)}
@@ -1342,15 +1377,19 @@ function variableFromDocument(
 
 function readEditableOptions(value: unknown): EditableOption[] {
   if (!Array.isArray(value)) return [];
-  return value.map((option) => ({
-    label:
-      isRecord(option) && typeof option.label === 'string' ? option.label : '',
-    value:
-      isRecord(option) &&
-      (typeof option.value === 'string' || typeof option.value === 'number')
-        ? option.value
-        : '',
-  }));
+  return value.map((option) => {
+    const label = isRecord(option)
+      ? asLocalizedString(option.label)
+      : undefined;
+    return {
+      ...(label === undefined ? {} : { label }),
+      value:
+        isRecord(option) &&
+        (typeof option.value === 'string' || typeof option.value === 'number')
+          ? option.value
+          : '',
+    };
+  });
 }
 
 function parseOptionValue(value: string): string | number {
@@ -1471,12 +1510,13 @@ function LockedOptions({
   caption,
 }: {
   options: readonly Readonly<{
-    label: string;
+    label?: LocalizedString;
     value: string | number | boolean;
   }>[];
   caption: string;
 }) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   return (
     <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
       <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
@@ -1493,12 +1533,17 @@ function LockedOptions({
           </tr>
         </thead>
         <tbody>
-          {options.map((option, index) => (
-            <tr key={`${String(option.value)}-${index}`}>
-              <td className="py-1">{option.label}</td>
-              <td className="font-monospace py-1">{String(option.value)}</td>
-            </tr>
-          ))}
+          {options.map((option, index) => {
+            const label = localize(option.label);
+            return (
+              <tr key={`${String(option.value)}-${index}`}>
+                <td className="py-1" lang={label.lang} dir={label.dir}>
+                  {label.text}
+                </td>
+                <td className="font-monospace py-1">{String(option.value)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

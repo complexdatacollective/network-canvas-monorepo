@@ -17,11 +17,11 @@ import {
   hasValidatedUse,
   interfaceOwnedPickIssue,
 } from '../../../codebook/variableRoles.ts';
+import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
 } from '../../../fields/PromptTextField.tsx';
-import RichTextField from '../../../fields/RichTextField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import {
   crossClassPickIssue,
@@ -34,6 +34,7 @@ import type {
   RowValues,
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useRowValue } from '../../../sections/AttributeCodebookControls.tsx';
 import AttributeValueFields, {
@@ -420,14 +421,14 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
           title={intl.formatMessage(messages.declineTitle)}
           description={intl.formatMessage(messages.declineDescription)}
         >
-          <Field<typeof RichTextField>
+          <Field<typeof LocalizedRichTextField>
             name={DECLINE_FIELD}
-            component={RichTextField}
+            component={LocalizedRichTextField}
             label={intl.formatMessage(messages.declineLabel)}
             hint={intl.formatMessage(messages.declineHint)}
             placeholder={intl.formatMessage(messages.declinePlaceholder)}
             singleLine
-            initialValue={asString(item[DECLINE_FIELD])}
+            initialValue={asLocalizedString(item[DECLINE_FIELD])}
             required={intl.formatMessage(messages.declineRequired)}
           />
         </Section>

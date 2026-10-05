@@ -85,8 +85,8 @@ const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
  * the keys the fixture leaves out filled in here.
  *
  * The cases written out in full below came first and are kept that way: they
- * seed corners the fixture does not have at all. But writing nineteen of them
- * by hand would be nineteen more configurations to keep true, and the fixture
+ * seed corners the fixture does not have at all. But writing twenty of them
+ * by hand would be twenty more configurations to keep true, and the fixture
  * already holds one plausible configuration per interface that Architect's own
  * end-to-end suites drive. So the rest start from it and add only what it is
  * missing — which is a much shorter thing to read, and a much shorter thing to
@@ -112,22 +112,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'Information',
     type: 'Information',
     fields: {
-      label: 'Information',
-      title: 'Welcome',
+      label: { 'en-US': 'Information' },
+      title: { 'en-US': 'Welcome' },
       interviewScript: 'Read this aloud.',
       skipLogic,
       items: [
         {
           id: 'info-item-1',
           type: 'text',
-          content: 'Welcome to this interview.',
+          content: { 'en-US': 'Welcome to this interview.' },
           description: 'The opening line.',
         },
         {
           id: 'info-item-2',
           type: 'asset',
           content: 'geo_data',
-          description: 'A map of the regions.',
+          description: { 'en-US': 'A map of the regions.' },
           size: 'LARGE',
         },
       ],
@@ -138,17 +138,20 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'EgoForm',
     type: 'EgoForm',
     fields: {
-      label: 'Ego Form',
+      label: { 'en-US': 'Ego Form' },
       interviewScript: 'Ask about them.',
       skipLogic,
-      introductionPanel: { title: 'Introduction', text: 'A few questions.' },
+      introductionPanel: {
+        title: { 'en-US': 'Introduction' },
+        text: { 'en-US': 'A few questions.' },
+      },
       form: {
         fields: [
           {
             id: 'field-1',
             variable: 'ego_name',
-            prompt: 'What is your name?',
-            hint: 'Your full name.',
+            prompt: { 'en-US': 'What is your name?' },
+            hint: { 'en-US': 'Your full name.' },
             showValidationHints: true,
           },
         ],
@@ -160,19 +163,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'AlterForm',
     type: 'AlterForm',
     fields: {
-      label: 'Alter Form',
+      label: { 'en-US': 'Alter Form' },
       interviewScript: 'Ask about each person.',
       skipLogic,
       filter: nodeFilter,
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: { title: 'Introduction', text: 'A few questions.' },
+      introductionPanel: {
+        title: { 'en-US': 'Introduction' },
+        text: { 'en-US': 'A few questions.' },
+      },
       form: {
         fields: [
           {
             id: 'field-1',
             variable: 'relationship_to_ego',
-            prompt: 'Relationship?',
-            hint: 'How you know them.',
+            prompt: { 'en-US': 'Relationship?' },
+            hint: { 'en-US': 'How you know them.' },
             showValidationHints: true,
           },
         ],
@@ -184,19 +190,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'AlterEdgeForm',
     type: 'AlterEdgeForm',
     fields: {
-      label: 'Alter Edge Form',
+      label: { 'en-US': 'Alter Edge Form' },
       interviewScript: 'Ask about each relationship.',
       skipLogic,
       filter: edgeFilter,
       subject: { entity: 'edge', type: 'knows' },
-      introductionPanel: { title: 'Introduction', text: 'A few questions.' },
+      introductionPanel: {
+        title: { 'en-US': 'Introduction' },
+        text: { 'en-US': 'A few questions.' },
+      },
       form: {
         fields: [
           {
             id: 'field-1',
             variable: 'edgeNotes',
-            prompt: 'Any notes?',
-            hint: 'Free text.',
+            prompt: { 'en-US': 'Any notes?' },
+            hint: { 'en-US': 'Free text.' },
             showValidationHints: true,
           },
         ],
@@ -208,18 +217,18 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'NameGenerator',
     type: 'NameGenerator',
     fields: {
-      label: 'Name Generator',
+      label: { 'en-US': 'Name Generator' },
       interviewScript: 'Guidance.',
       skipLogic,
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
+        title: { 'en-US': 'Add a person' },
         fields: [
           {
             id: 'field-1',
             variable: 'name',
-            prompt: 'What is their name?',
-            hint: 'Their first name.',
+            prompt: { 'en-US': 'What is their name?' },
+            hint: { 'en-US': 'Their first name.' },
             showValidationHints: true,
           },
         ],
@@ -227,18 +236,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       prompts: [
         {
           id: 'p1',
-          text: 'Who are the people you know?',
+          text: { 'en-US': 'Who are the people you know?' },
           additionalAttributes: [{ variable: 'flagged', value: true }],
         },
       ],
       panels: [
         {
           id: 'panel-1',
-          title: 'People you named earlier',
+          title: { 'en-US': 'People you named earlier' },
           dataSource: 'existing',
           filter: nodeFilter,
         },
-        { id: 'panel-2', title: 'From the roster', dataSource: 'roster_data' },
+        {
+          id: 'panel-2',
+          title: { 'en-US': 'From the roster' },
+          dataSource: 'roster_data',
+        },
       ],
       behaviours: { minNodes: 1, maxNodes: 8 },
     },
@@ -247,11 +260,11 @@ const MAXIMAL_STAGES: MaximalStage[] = [
 ];
 
 /**
- * The other fourteen, from the fixture's own stages plus what they are
+ * The other fifteen, from the fixture's own stages plus what they are
  * missing.
  *
- * The gaps are not evenly spread. `filter` is absent from ten of the nineteen
- * fixture stages and `interviewScript`/`skipLogic` from all of them, so those
+ * The gaps are not evenly spread. `filter` is absent from ten of the fixture
+ * stages and `interviewScript`/`skipLogic` from all of them, so those
  * three are most of what is added here — and they are exactly the keys a
  * shared section owns, which is to say the keys an editor is most likely to
  * leave off its own section list and never notice.
@@ -265,7 +278,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       panels: [
         {
           id: 'quick-add-panel-1',
-          title: 'People you named earlier',
+          title: { 'en-US': 'People you named earlier' },
           dataSource: 'existing',
           filter: nodeFilter,
         },
@@ -277,6 +290,11 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'NameGeneratorRoster',
     type: 'NameGeneratorRoster',
     fields: fixtureMaximal('name-generator-roster-1', EVERY_STAGE),
+  },
+  {
+    interfaceName: 'LanguageChooser',
+    type: 'LanguageChooser',
+    fields: fixtureMaximal('language-chooser-1', EVERY_STAGE),
   },
   {
     interfaceName: 'Sociogram',
@@ -297,8 +315,8 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
             id: 'composer-field-1',
             variable: 'relationship_to_ego',
             component: 'Text',
-            label: 'How you know them',
-            hint: 'In a word or two.',
+            label: { 'en-US': 'How you know them' },
+            hint: { 'en-US': 'In a word or two.' },
             showValidationHints: true,
           },
         ],
@@ -388,7 +406,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           {
             id: 'pedigree-intro-1',
             type: 'text',
-            content: 'We are going to draw your family.',
+            content: { 'en-US': 'We are going to draw your family.' },
           },
         ],
       },

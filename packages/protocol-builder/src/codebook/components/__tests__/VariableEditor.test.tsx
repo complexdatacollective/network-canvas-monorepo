@@ -1,16 +1,18 @@
 import {
   fireEvent,
-  render,
+  render as renderUnwrapped,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
 import { richTextOf } from '../../../testing/text.ts';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
@@ -19,6 +21,20 @@ import VariableEditor, {
   type VariableEditorProps,
 } from '../VariableEditor.tsx';
 
+const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
+
+/** Every editor here edits a protocol written in English. */
+function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <ProtocolLocalizationProvider localization={ENGLISH}>
+      {children}
+    </ProtocolLocalizationProvider>
+  );
+}
+
+const render = (ui: ReactElement) =>
+  renderUnwrapped(ui, { wrapper: InEnglishProtocol });
+
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
@@ -26,6 +42,7 @@ const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   assets: {},
   orderedStages: [],
   issues: [],
+  localization: ENGLISH,
 };
 /**
  * The package's own words for a refused save.
@@ -95,6 +112,7 @@ function personDocument(
 ): SectionDoc {
   return {
     name: 'Person',
+    label: { en: 'Person' },
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables,
@@ -201,10 +219,11 @@ describe('VariableEditor', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
       name: 'preference',
+      label: { en: 'preference' },
       type: 'categorical',
       options: [
-        { label: 'Yes', value: 'yes' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: 'yes' },
+        { label: { en: 'No' }, value: 'no' },
       ],
     });
     // The name as well as the id: a caller that can no longer use what was
@@ -222,6 +241,7 @@ describe('VariableEditor', () => {
         {...createProps({
           initialDraft: {
             name: 'comment',
+            label: { en: 'comment' },
             type: 'text',
             component: 'TextArea',
             validation: { required: true, minLength: 2 },
@@ -236,6 +256,7 @@ describe('VariableEditor', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
       name: 'comment',
+      label: { en: 'comment' },
       type: 'text',
       component: 'TextArea',
       validation: { required: true, minLength: 2 },
@@ -246,10 +267,11 @@ describe('VariableEditor', () => {
     const user = userEvent.setup();
     const existing = {
       name: 'preference',
+      label: { en: 'preference' },
       type: 'categorical',
       options: [
-        { label: 'Low', value: 1 },
-        { label: 'High', value: 2 },
+        { label: { en: 'Low' }, value: 1 },
+        { label: { en: 'High' }, value: 2 },
       ],
     } as const;
     const authoritativeDocument = personDocument({ preference: existing });
@@ -280,6 +302,7 @@ describe('VariableEditor', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument).preference).toEqual({
       name: 'ranking',
+      label: { en: 'preference' },
       type: 'ordinal',
       options: existing.options,
     });
@@ -288,6 +311,7 @@ describe('VariableEditor', () => {
   it('disables and guards an unchanged update whose seed omits unowned fields', () => {
     const existing = {
       name: 'comment',
+      label: { en: 'comment' },
       type: 'text',
       component: 'TextArea',
       validation: { required: true, minLength: 2 },
@@ -321,6 +345,7 @@ describe('VariableEditor', () => {
     const user = userEvent.setup();
     const existing = {
       name: 'birthday',
+      label: { en: 'birthday' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', min: '1900' },
@@ -350,6 +375,7 @@ describe('VariableEditor', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument).birthday).toEqual({
       name: 'birthday',
+      label: { en: 'birthday' },
       type: 'text',
       validation: { required: true },
     });
@@ -359,6 +385,7 @@ describe('VariableEditor', () => {
     const user = userEvent.setup();
     const existing = {
       name: 'secret',
+      label: { en: 'secret' },
       type: 'text',
       encrypted: true,
       component: 'TextArea',
@@ -388,6 +415,7 @@ describe('VariableEditor', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument).secret).toEqual({
       name: 'secret',
+      label: { en: 'secret' },
       type: 'number',
       validation: { required: true },
     });
@@ -397,6 +425,7 @@ describe('VariableEditor', () => {
     const user = userEvent.setup();
     const initialVariable = {
       name: 'comment',
+      label: { en: 'comment' },
       type: 'text',
       component: 'Text',
       validation: { required: true },
@@ -440,6 +469,7 @@ describe('VariableEditor', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument).comment).toEqual({
       name: 'localComment',
+      label: { en: 'comment' },
       type: 'text',
       component: 'TextArea',
       validation: { required: true, minLength: 2 },
@@ -455,15 +485,19 @@ describe('VariableEditor', () => {
   it('shows and persists interface-owned options without editable controls', async () => {
     const user = userEvent.setup();
     const lockedOptions = [
-      { label: 'Woman', value: 'woman' },
-      { label: 'Man', value: 'man' },
+      { label: { en: 'Woman' }, value: 'woman' },
+      { label: { en: 'Man' }, value: 'man' },
     ] as const;
     const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
         {...createProps({
-          initialDraft: { name: 'sex', type: 'categorical' },
+          initialDraft: {
+            name: 'sex',
+            label: { en: 'sex' },
+            type: 'categorical',
+          },
           lockedOptions,
           onSubmitDocument,
         })}
@@ -486,6 +520,7 @@ describe('VariableEditor', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
       name: 'sex',
+      label: { en: 'sex' },
       type: 'categorical',
       options: lockedOptions,
       readOnly: true,
@@ -498,10 +533,11 @@ describe('VariableEditor', () => {
         {...createProps({
           initialDraft: {
             name: 'preference',
+            label: { en: 'preference' },
             type: 'categorical',
             options: [
-              { label: 'Yes', value: 'yes' },
-              { label: 'No', value: 'no' },
+              { label: { en: 'Yes' }, value: 'yes' },
+              { label: { en: 'No' }, value: 'no' },
             ],
           },
           readOnly: true,
@@ -533,6 +569,7 @@ describe('VariableEditor', () => {
         {...createProps({
           initialDraft: {
             name: 'choice',
+            label: { en: 'choice' },
             type: 'categorical',
             options: null,
           },
@@ -578,9 +615,9 @@ describe('VariableEditor', () => {
       <VariableEditor
         {...createProps({
           authoritativeDocument: personDocument({
-            age: { name: 'Age', type: 'number' },
+            age: { name: 'Age', label: { en: 'Age' }, type: 'number' },
           }),
-          initialDraft: { name: 'Age', type: 'text' },
+          initialDraft: { name: 'Age', label: { en: 'Age' }, type: 'text' },
           onSubmitDocument,
         })}
       />,
@@ -614,7 +651,7 @@ describe('VariableEditor', () => {
     render(
       <VariableEditor
         {...createProps({
-          initialDraft: { name: 'quota', type: 'text' },
+          initialDraft: { name: 'quota', label: { en: 'quota' }, type: 'text' },
           onSubmitDocument: () => Promise.reject(new Error(HOST_WORDS)),
         })}
       />,
@@ -645,11 +682,12 @@ describe('VariableEditor', () => {
     const user = userEvent.setup();
     const existing = {
       name: 'preference',
+      label: { en: 'preference' },
       type: 'categorical',
       options: [
-        { label: 'Low', value: 'low' },
-        { label: 'Middle', value: 'middle' },
-        { label: 'High', value: 'high' },
+        { label: { en: 'Low' }, value: 'low' },
+        { label: { en: 'Middle' }, value: 'middle' },
+        { label: { en: 'High' }, value: 'high' },
       ],
       validation: { minSelected: 3 },
     } as const;
@@ -775,10 +813,11 @@ describe('VariableEditor', () => {
           openId: 'first-open',
           initialDraft: {
             name: 'first',
+            label: { en: 'first' },
             type: 'categorical',
             options: [
-              { label: 'Old one', value: 'old-1' },
-              { label: 'Old two', value: 'old-2' },
+              { label: { en: 'Old one' }, value: 'old-1' },
+              { label: { en: 'Old two' }, value: 'old-2' },
             ],
           },
         })}
@@ -793,7 +832,11 @@ describe('VariableEditor', () => {
         {...createProps({
           openId: 'second-open',
           variableId: 'second-variable',
-          initialDraft: { name: 'fresh', type: 'boolean' },
+          initialDraft: {
+            name: 'fresh',
+            label: { en: 'fresh' },
+            type: 'boolean',
+          },
         })}
       />,
     );
@@ -846,7 +889,12 @@ describe('the settings the chosen input control takes', () => {
   it('saves the resolution and the bounds a date attribute accepts', async () => {
     const user = userEvent.setup();
     const onSubmitDocument = submitting();
-    const variable = { name: 'met', type: 'datetime', component: 'DatePicker' };
+    const variable = {
+      name: 'met',
+      label: { en: 'met' },
+      type: 'datetime',
+      component: 'DatePicker',
+    };
     render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     // The resolution the interview assumes when the protocol declares none, so
@@ -865,6 +913,7 @@ describe('the settings the chosen input control takes', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
@@ -884,6 +933,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year' },
@@ -921,6 +971,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', min: '1900', max: '4500' },
@@ -937,6 +988,7 @@ describe('the settings the chosen input control takes', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'firstMet',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', min: '1900', max: '4500' },
@@ -953,6 +1005,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', max: '4500' },
@@ -980,6 +1033,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'month' },
@@ -1008,6 +1062,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'RelativeDatePicker',
     };
@@ -1041,6 +1096,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
@@ -1072,6 +1128,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
@@ -1097,6 +1154,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const variable = {
       name: 'closeness',
+      label: { en: 'closeness' },
       type: 'scalar',
       component: 'VisualAnalogScale',
     };
@@ -1114,8 +1172,41 @@ describe('the settings the chosen input control takes', () => {
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument).parameters).toEqual({
-      minLabel: 'Not at all close',
-      maxLabel: 'Extremely close',
+      minLabel: { en: 'Not at all close' },
+      maxLabel: { en: 'Extremely close' },
+    });
+  });
+
+  it('keeps the other translations of a scale’s end labels when one is rewritten', async () => {
+    const user = userEvent.setup();
+    const onSubmitDocument = submitting();
+    const committed = {
+      name: 'closeness',
+      label: { en: 'closeness', es: 'cercanía' },
+      type: 'scalar',
+      component: 'VisualAnalogScale',
+      parameters: {
+        minLabel: { en: 'Not at all close', es: 'Nada cercano' },
+        maxLabel: { en: 'Extremely close', es: 'Muy cercano' },
+      },
+    };
+    renderUnwrapped(
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en', 'es'] }}
+      >
+        <VariableEditor {...parameterProps(committed, onSubmitDocument)} />
+      </ProtocolLocalizationProvider>,
+    );
+
+    const minimum = screen.getByRole('textbox', { name: 'Minimum label' });
+    await user.clear(minimum);
+    await user.type(minimum, 'Distant');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({
+      minLabel: { en: 'Distant', es: 'Nada cercano' },
+      maxLabel: { en: 'Extremely close', es: 'Muy cercano' },
     });
   });
 
@@ -1129,6 +1220,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const variable = {
       name: 'closeness',
+      label: { en: 'closeness' },
       type: 'scalar',
       component: 'VisualAnalogScale',
     };
@@ -1162,7 +1254,12 @@ describe('the settings the chosen input control takes', () => {
   it('refuses a date range that ends before it starts, against the date that ends it', async () => {
     const user = userEvent.setup();
     const onSubmitDocument = submitting();
-    const variable = { name: 'met', type: 'datetime', component: 'DatePicker' };
+    const variable = {
+      name: 'met',
+      label: { en: 'met' },
+      type: 'datetime',
+      component: 'DatePicker',
+    };
     render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     fireEvent.change(screen.getByLabelText('Earliest date'), {
@@ -1209,6 +1306,7 @@ describe('the settings the chosen input control takes', () => {
           variableId: 'met',
           initialDraft: {
             name: 'met',
+            label: { en: 'met' },
             type: 'datetime',
             component: 'DatePicker',
             // A real month at a resolution the interview renders unpadded, so
@@ -1253,6 +1351,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01' },
@@ -1274,6 +1373,7 @@ describe('the settings the chosen input control takes', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
@@ -1285,6 +1385,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
@@ -1329,6 +1430,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
@@ -1343,6 +1445,7 @@ describe('the settings the chosen input control takes', () => {
     expect(Object.hasOwn(saved, 'parameters')).toBe(false);
     expect(saved).toEqual({
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'RelativeDatePicker',
     });
@@ -1382,11 +1485,12 @@ describe('the settings the chosen input control takes', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument).closeness).toEqual({
       name: 'closeness',
+      label: { en: 'closeness' },
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
-        minLabel: 'Not at all close',
-        maxLabel: 'Extremely close',
+        minLabel: { en: 'Not at all close' },
+        maxLabel: { en: 'Extremely close' },
       },
     });
   });
@@ -1396,6 +1500,7 @@ describe('the settings the chosen input control takes', () => {
     const onSubmitDocument = submitting();
     const variable = {
       name: 'comment',
+      label: { en: 'comment' },
       type: 'text',
       component: 'Text',
       validation: { required: true },
@@ -1414,6 +1519,7 @@ describe('the settings the chosen input control takes', () => {
     // on it.
     expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'note',
+      label: { en: 'comment' },
       type: 'text',
       component: 'Text',
       validation: { required: true },
@@ -1463,7 +1569,12 @@ describe('the two answers a boolean offers', () => {
   it('names the two answers a boolean choice shows, and marks one as negative', async () => {
     const user = userEvent.setup();
     const onSubmitDocument = submitting();
-    const variable = { name: 'flagged', type: 'boolean', component: 'Boolean' };
+    const variable = {
+      name: 'flagged',
+      label: { en: 'flagged' },
+      type: 'boolean',
+      component: 'Boolean',
+    };
     render(<VariableEditor {...booleanProps(variable, onSubmitDocument)} />);
 
     await user.type(
@@ -1485,11 +1596,12 @@ describe('the two answers a boolean offers', () => {
     // where it was switched on.
     expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes, always', value: true },
-        { label: 'No, never', value: false, negative: true },
+        { label: { en: 'Yes, always' }, value: true },
+        { label: { en: 'No, never' }, value: false, negative: true },
       ],
     });
   });
@@ -1499,12 +1611,13 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
-        { label: 'Prefer not to say', value: false, negative: true },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false },
+        { label: { en: 'Prefer not to say' }, value: false, negative: true },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -1524,12 +1637,13 @@ describe('the two answers a boolean offers', () => {
   it('shows the answers of a boolean it cannot edit rather than two of them', () => {
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
-        { label: 'Prefer not to say', value: false, negative: true },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false },
+        { label: { en: 'Prefer not to say' }, value: false, negative: true },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, vi.fn())} />);
@@ -1567,9 +1681,10 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
-      options: [{ label: 'Agreed', value: true }],
+      options: [{ label: { en: 'Agreed' }, value: true }],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
@@ -1608,11 +1723,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Agreed', value: true },
-        { label: 'Agreed, with conditions', value: true },
+        { label: { en: 'Agreed' }, value: true },
+        { label: { en: 'Agreed, with conditions' }, value: true },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -1632,11 +1748,12 @@ describe('the two answers a boolean offers', () => {
   it('shows a pair that does not record both booleans as answers it holds', () => {
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Agreed', value: true },
-        { label: 'Agreed, with conditions', value: true },
+        { label: { en: 'Agreed' }, value: true },
+        { label: { en: 'Agreed, with conditions' }, value: true },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, vi.fn())} />);
@@ -1671,11 +1788,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -1689,15 +1807,20 @@ describe('the two answers a boolean offers', () => {
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument).options).toEqual([
-      { label: 'Yes', value: true },
-      { label: 'Never', value: false },
+      { label: { en: 'Yes' }, value: true },
+      { label: { en: 'Never' }, value: false },
     ]);
   });
 
   it('offers no answers to name for a boolean collected with a toggle', async () => {
     const user = userEvent.setup();
     const onSubmitDocument = submitting();
-    const variable = { name: 'flagged', type: 'boolean', component: 'Toggle' };
+    const variable = {
+      name: 'flagged',
+      label: { en: 'flagged' },
+      type: 'boolean',
+      component: 'Toggle',
+    };
     render(<VariableEditor {...booleanProps(variable, onSubmitDocument)} />);
 
     expect(screen.queryByText('Boolean values')).toBeNull();
@@ -1713,6 +1836,7 @@ describe('the two answers a boolean offers', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'starred',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Toggle',
     });
@@ -1730,11 +1854,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false, negative: true },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false, negative: true },
       ],
     };
     render(
@@ -1759,6 +1884,7 @@ describe('the two answers a boolean offers', () => {
     // an unlabelled Yes/No question.
     expect(saved).toEqual({
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Toggle',
     });
@@ -1777,6 +1903,7 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Toggle',
     };
@@ -1800,11 +1927,12 @@ describe('the two answers a boolean offers', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false },
       ],
     });
   });
@@ -1815,11 +1943,12 @@ describe('the two answers a boolean offers', () => {
         {...booleanProps(
           {
             name: 'flagged',
+            label: { en: 'flagged' },
             type: 'boolean',
             component: 'Boolean',
             options: [
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
+              { label: { en: 'Yes' }, value: true },
+              { label: { en: 'No' }, value: false },
             ],
           },
           async () => APPLIED,
@@ -1838,11 +1967,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false, negative: true },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false, negative: true },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -1881,11 +2011,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Never', value: false, negative: true },
-        { label: 'Always', value: true },
+        { label: { en: 'Never' }, value: false, negative: true },
+        { label: { en: 'Always' }, value: true },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -1914,7 +2045,12 @@ describe('the two answers a boolean offers', () => {
   it('refuses a pair with only one of its answers named', async () => {
     const user = userEvent.setup();
     const onSubmitDocument = submitting();
-    const variable = { name: 'flagged', type: 'boolean', component: 'Boolean' };
+    const variable = {
+      name: 'flagged',
+      label: { en: 'flagged' },
+      type: 'boolean',
+      component: 'Boolean',
+    };
     render(<VariableEditor {...booleanProps(variable, onSubmitDocument)} />);
 
     await user.type(
@@ -1946,11 +2082,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'agrees',
+      label: { en: 'agrees' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -1981,11 +2118,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'agrees',
+      label: { en: 'agrees' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'YES', value: true },
-        { label: 'No', value: false },
+        { label: { en: 'YES' }, value: true },
+        { label: { en: 'No' }, value: false },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -1997,8 +2135,8 @@ describe('the two answers a boolean offers', () => {
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument).options).toEqual([
-      { label: 'YES', value: true },
-      { label: 'yes', value: false },
+      { label: { en: 'YES' }, value: true },
+      { label: { en: 'yes' }, value: false },
     ]);
   });
 
@@ -2013,11 +2151,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -2033,6 +2172,7 @@ describe('the two answers a boolean offers', () => {
     expect(Object.hasOwn(saved, 'options')).toBe(false);
     expect(saved).toEqual({
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
     });
@@ -2052,13 +2192,14 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: '', value: true },
+        { label: { en: '' }, value: true },
         // Whitespace and all: an answer nobody touched is written back as it
         // was authored, and trimming decides only whether it has been named.
-        { label: ' ', value: false },
+        { label: { en: ' ' }, value: false },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -2084,11 +2225,12 @@ describe('the two answers a boolean offers', () => {
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: '', value: true },
-        { label: '', value: false },
+        { label: { en: '' }, value: true },
+        { label: { en: '' }, value: false },
       ],
     };
     render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
@@ -2105,8 +2247,8 @@ describe('the two answers a boolean offers', () => {
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(savedVariable(onSubmitDocument).options).toEqual([
-      { label: 'Always', value: true },
-      { label: 'Never', value: false },
+      { label: { en: 'Always' }, value: true },
+      { label: { en: 'Never' }, value: false },
     ]);
   });
 
@@ -2140,11 +2282,12 @@ describe('the two answers a boolean offers', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument).flagged).toEqual({
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false },
       ],
     });
   });
@@ -2169,11 +2312,12 @@ describe('the two answers a boolean offers', () => {
           variableId: 'flagged',
           initialDraft: {
             name: 'flagged',
+            label: { en: 'flagged' },
             type: 'boolean',
             component: 'Toggle',
             options: [
-              { label: 'Yes', value: true },
-              { label: 'No', value: false, negative: true },
+              { label: { en: 'Yes' }, value: true },
+              { label: { en: 'No' }, value: false, negative: true },
             ],
           },
           onSubmitDocument,
@@ -2192,6 +2336,7 @@ describe('the two answers a boolean offers', () => {
     expect(Object.hasOwn(created, 'options')).toBe(false);
     expect(created).toEqual({
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Toggle',
     });
@@ -2211,11 +2356,12 @@ describe('the two answers a boolean offers', () => {
           variableId: 'flagged',
           initialDraft: {
             name: 'flagged',
+            label: { en: 'flagged' },
             type: 'boolean',
             component: 'Boolean',
             options: [
-              { label: 'Yes', value: true },
-              { label: 'No', value: false, negative: true },
+              { label: { en: 'Yes' }, value: true },
+              { label: { en: 'No' }, value: false, negative: true },
             ],
           },
           onSubmitDocument,
@@ -2231,11 +2377,12 @@ describe('the two answers a boolean offers', () => {
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     expect(submittedVariables(onSubmitDocument).flagged).toEqual({
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes', value: true },
-        { label: 'No', value: false, negative: true },
+        { label: { en: 'Yes' }, value: true },
+        { label: { en: 'No' }, value: false, negative: true },
       ],
     });
   });
@@ -2279,10 +2426,11 @@ describe('the destructive ink on a tinted row', () => {
   it('reaches every option field of a choice, and leaves the fill of the button that removes the option alone', () => {
     const existing = {
       name: 'preference',
+      label: { en: 'preference' },
       type: 'categorical',
       options: [
-        { label: 'Low', value: 'low' },
-        { label: 'High', value: 'high' },
+        { label: { en: 'Low' }, value: 'low' },
+        { label: { en: 'High' }, value: 'high' },
       ],
     } as const;
 
@@ -2322,6 +2470,7 @@ describe('the destructive ink on a tinted row', () => {
   it('reaches the answer fields of a boolean without overriding the destructive fill', () => {
     const variable = {
       name: 'flagged',
+      label: { en: 'flagged' },
       type: 'boolean',
       component: 'Boolean',
     } as const;

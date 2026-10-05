@@ -12,11 +12,11 @@ import BinAttributeField, {
   type BinAttributeSlot,
   binAttributePickIssue,
 } from '../../../fields/BinAttributeField.tsx';
+import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
 } from '../../../fields/PromptTextField.tsx';
-import RichTextField from '../../../fields/RichTextField.tsx';
 import type {
   RowEditorProps,
   RowSaveContext,
@@ -24,6 +24,7 @@ import type {
   RowValues,
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
@@ -315,24 +316,24 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           }
           description={messages.otherValidationDescription}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={OTHER_LABEL_FIELD}
-          component={RichTextField}
+          component={LocalizedRichTextField}
           label={intl.formatMessage(messages.otherBinLabel)}
           hint={intl.formatMessage(messages.otherBinHint)}
           placeholder={intl.formatMessage(messages.otherBinPlaceholder)}
           singleLine
-          initialValue={asString(item[OTHER_LABEL_FIELD])}
+          initialValue={asLocalizedString(item[OTHER_LABEL_FIELD])}
           required={intl.formatMessage(messages.otherBinRequired)}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={OTHER_PROMPT_FIELD}
-          component={RichTextField}
+          component={LocalizedRichTextField}
           label={intl.formatMessage(messages.otherPromptLabel)}
           hint={intl.formatMessage(messages.otherPromptHint)}
           placeholder={intl.formatMessage(messages.otherPromptPlaceholder)}
           singleLine
-          initialValue={asString(item[OTHER_PROMPT_FIELD])}
+          initialValue={asLocalizedString(item[OTHER_PROMPT_FIELD])}
           required={intl.formatMessage(messages.otherPromptRequired)}
         />
       </Section>

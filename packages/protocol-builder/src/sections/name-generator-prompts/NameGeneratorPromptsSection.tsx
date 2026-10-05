@@ -15,7 +15,7 @@ import {
   hasValidatedUse,
 } from '../../codebook/variableRoles.ts';
 import { draftFormFieldVariableIds } from '../../codebook/variableValidation.ts';
-import RichTextField from '../../fields/RichTextField.tsx';
+import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -27,6 +27,8 @@ import AssignAttributes, {
 import type { RowEditorProps, RowPreviewProps } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import PromptsSection from '../PromptsSection.tsx';
@@ -126,9 +128,6 @@ const messages = defineMessages({
 
 const WRITE_THE_QUESTION = createMessageError(messages.textRequired);
 
-const asString = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
-
 const asAttributes = (value: unknown): AttributeValue[] =>
   Array.isArray(value)
     ? value.flatMap((row) =>
@@ -163,13 +162,13 @@ function NameGeneratorPromptEditor({ item }: RowEditorProps) {
         title={intl.formatMessage(messages.promptGroupTitle)}
         description={intl.formatMessage(messages.promptGroupDescription)}
       >
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name="text"
-          component={RichTextField}
+          component={LocalizedRichTextField}
           label={intl.formatMessage(messages.textLabel)}
           placeholder={intl.formatMessage(messages.textPlaceholder)}
           singleLine
-          initialValue={asString(item.text)}
+          initialValue={asLocalizedString(item.text)}
           required={WRITE_THE_QUESTION}
         />
       </Section>
@@ -346,12 +345,15 @@ function AdditionalAttributes({
 /** How one prompt reads in the list when its dialog is closed. */
 function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const text = asString(item.text);
+  const localize = useLocalizedText();
+  const text = localize(item.text);
   const stamps = asAttributes(item.additionalAttributes).length;
 
   return (
     <div className="flex flex-col gap-2">
-      <RenderMarkdown render={<div />}>{text ?? ''}</RenderMarkdown>
+      <RenderMarkdown render={<div lang={text.lang} dir={text.dir} />}>
+        {text.text}
+      </RenderMarkdown>
       {stamps > 0 && (
         <p className="text-sm text-current/70">
           {intl.formatMessage(messages.stampSummary, { count: stamps })}

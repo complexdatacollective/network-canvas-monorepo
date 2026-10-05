@@ -39,7 +39,7 @@ const SKIP_LOGIC: SectionDoc = {
 };
 
 const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
-  label: 'Family Pedigree',
+  label: { 'en-US': 'Family Pedigree' },
   interviewScript: INTERVIEW_SCRIPT,
   skipLogic: SKIP_LOGIC,
   nodeConfig: {
@@ -53,7 +53,9 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     // pedigree's own name control and drops a form field bound to it, so a
     // stage that collected it here would be one no participant ever answers.
     // See `MEMBER_FORM_ATTRIBUTE`.
-    form: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
+    form: [
+      { variable: 'fm_occupation', prompt: { 'en-US': 'What do they do?' } },
+    ],
   },
   edgeConfig: {
     type: 'family_edge',
@@ -72,15 +74,15 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
       {
         id: 'intro-1',
         type: 'text',
-        content: 'We are going to draw your family.',
+        content: { 'en-US': 'We are going to draw your family.' },
       },
     ],
   },
-  censusPrompt: 'Who is in your family?',
+  censusPrompt: { 'en-US': 'Who is in your family?' },
   nominationPrompts: [
     {
       id: 'nomination-1',
-      text: 'Who has been unwell?',
+      text: { 'en-US': 'Who has been unwell?' },
       variable: 'hasConditionX',
     },
   ],
@@ -158,6 +160,7 @@ describe.each(MAXIMAL)(
       });
       addFamilyMemberVariable(harness, MEMBER_FORM_ATTRIBUTE, {
         name: MEMBER_FORM_ATTRIBUTE,
+        label: { 'en-US': MEMBER_FORM_ATTRIBUTE },
         type: 'text',
         component: 'Text',
       });

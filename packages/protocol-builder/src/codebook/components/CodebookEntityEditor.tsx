@@ -39,7 +39,10 @@ import {
 } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
@@ -48,6 +51,7 @@ import {
   documentWithEntityProperties,
   draftRefusalMessage,
   InvalidCodebookDraftError,
+  withSeededLabel,
   type CodebookEntityDraft,
 } from '../editing.ts';
 import {
@@ -131,6 +135,20 @@ const messages = defineMessages({
       '{entity, select, node {Enter a name for this node type...} other {Enter a name for this edge type...}}',
     description:
       'Placeholder in the empty name field of the entity editor. entity is node or edge; the ego has no type name.',
+  },
+  labelLabel: {
+    id: 'protocolBuilder.codebookEntity.labelLabel',
+    defaultMessage:
+      '{entity, select, node {Node type label} other {Edge type label}}',
+    description:
+      'Label of the field holding the words participants are shown for this entity type, as opposed to the type name the researcher and the exported data use. entity is node or edge; the ego has no label.',
+  },
+  labelHint: {
+    id: 'protocolBuilder.codebookEntity.labelHint',
+    defaultMessage:
+      '{entity, select, node {The words participants are shown for this node type. Left empty, the type name is used.} other {The words participants are shown for this edge type. Left empty, the type name is used.}}',
+    description:
+      'Guidance under the entity type label field. The type name is the field above it, holding the researcher’s own name for the type. entity is node or edge.',
   },
   colorLabel: {
     id: 'protocolBuilder.codebookEntity.colorLabel',
@@ -461,6 +479,22 @@ export function CodebookEntityFields({
           errors={errors.name === undefined ? undefined : [errors.name]}
           showErrors
         />
+        <UnconnectedField
+          name="label"
+          label={intl.formatMessage(messages.labelLabel, {
+            entity: subject.entity,
+          })}
+          hint={intl.formatMessage(messages.labelHint, {
+            entity: subject.entity,
+          })}
+          component={LocalizedInputField}
+          placeholder={stringValue(draft.name)}
+          value={asLocalizedString(draft.label)}
+          onChange={(label) =>
+            onChange(replaceDraftProperty(draft, 'label', label))
+          }
+          disabled={disabled}
+        />
       </Section>
 
       <Section title={intl.formatMessage(messages.colorSectionTitle)}>
@@ -637,6 +671,7 @@ export default function CodebookEntityEditor({
   ...modeProps
 }: CodebookEntityEditorProps) {
   const intl = useAppIntl();
+  const localization = useProtocolLocalization();
   // The save lives in the dialog's footer, outside the `<form>` element, so it
   // names the form it submits rather than being inside it.
   const formDomId = useId();
@@ -690,11 +725,17 @@ export default function CodebookEntityEditor({
     try {
       document =
         modeProps.mode === 'create'
-          ? documentForNewEntity({ subject, draft })
+          ? documentForNewEntity({ subject, draft, localization })
           : documentWithEntityProperties({
               subject,
               authoritativeDocument: modeProps.authoritativeDocument,
-              draft,
+              // A label emptied here is written from the name again, as
+              // creating the type wrote it: a node or edge type always has
+              // words for participants.
+              draft:
+                subject.entity === 'ego'
+                  ? draft
+                  : withSeededLabel(draft, localization),
             });
     } catch (error: unknown) {
       // Everything the entity schema refuses past `validateFields` is written

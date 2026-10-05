@@ -266,6 +266,7 @@ describe('making and changing a codebook type from the control that names it', (
       edge: {
         family_member: {
           name: 'kinship',
+          label: { 'en-US': 'kinship' },
           color: 'edge-color-seq-1',
           variables: {},
         },
@@ -396,6 +397,7 @@ describe('making and changing a codebook type from the control that names it', (
 
     collaboratorAddsFamilyMemberVariable(harness, 'shoe_size', {
       name: 'shoe_size',
+      label: { 'en-US': 'shoe_size' },
       type: 'number',
       component: 'Number',
     });

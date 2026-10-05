@@ -94,7 +94,7 @@ const WRITES: readonly KeyedWrite[] = [
         sectionId: INFORMATION,
         document: {
           ...host.store.read(INFORMATION).document,
-          label: 'Renamed by the retry enumeration',
+          label: { 'en-US': 'Renamed by the retry enumeration' },
         },
         revision: host.store.read(INFORMATION).revision,
       }),

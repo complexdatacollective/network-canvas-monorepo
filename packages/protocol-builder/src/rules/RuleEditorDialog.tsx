@@ -28,6 +28,7 @@ import DialogForm, {
   type DialogFormProps,
 } from '../form/DialogForm.tsx';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
+import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import type { RuleOperatorOption } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
@@ -1217,6 +1218,7 @@ function RuleEditorFields({
 }>) {
   const protocolContext = useProtocolContext();
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   const codebook = protocolContext.codebook;
   const values = useFormValue(RULE_CASCADE);
   const target = isRuleTargetType(values[TARGET_FIELD])
@@ -1237,10 +1239,14 @@ function RuleEditorFields({
     return {
       variableOptions: ruleVariableOptions(variables),
       variableType,
-      variableChoices: ruleVariableChoices(variables, attributeId),
+      variableChoices: ruleVariableChoices(
+        variables,
+        attributeId,
+        (label) => localize(label).text,
+      ),
       dateParameters: ruleVariableDateParameters(variables, attributeId),
     };
-  }, [attributeId, codebook, entityTypeId, target]);
+  }, [attributeId, codebook, entityTypeId, localize, target]);
 
   // The operator the rule HOLDS is part of the list, because a stored operator
   // the editor no longer offers has to be visible rather than left showing the

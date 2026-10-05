@@ -121,7 +121,7 @@ describe('what a network composer lets the participant build', () => {
               id: 'field-1',
               variable: 'age',
               component: 'Number',
-              label: 'How old are they?',
+              label: { 'en-US': 'How old are they?' },
             },
           ],
         },
@@ -134,7 +134,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -247,7 +247,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -297,7 +297,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -345,7 +345,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -389,7 +389,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -403,7 +403,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-2',
                   variable: 'isActive',
                   component: 'Boolean',
-                  label: 'Still in touch?',
+                  label: { 'en-US': 'Still in touch?' },
                 },
               ],
             },
@@ -631,7 +631,7 @@ describe('what a network composer lets the participant build', () => {
         id: expect.any(String) as unknown as string,
         variable: 'composerName',
         component: 'TextArea',
-        label: 'Who?',
+        label: { 'en-US': 'Who?' },
       },
     ]);
     // And the codebook is untouched: the same attribute goes on being a single
@@ -656,6 +656,7 @@ describe('what a network composer lets the participant build', () => {
     await switchOnNodeForm(harness);
     addPersonVariable(harness, 'notes', {
       name: 'notes',
+      label: { 'en-US': 'notes' },
       type: 'text',
       component: 'TextArea',
     });
@@ -716,10 +717,11 @@ describe('what a network composer lets the participant build', () => {
     // would leave the case passing whether the grouping was picked or not.
     addPersonVariable(harness, 'circle', {
       name: 'circle',
+      label: { 'en-US': 'circle' },
       type: 'categorical',
       options: [
-        { label: 'Inner', value: 'inner' },
-        { label: 'Outer', value: 'outer' },
+        { label: { 'en-US': 'Inner' }, value: 'inner' },
+        { label: { 'en-US': 'Outer' }, value: 'outer' },
       ],
     });
 
@@ -759,10 +761,11 @@ describe('what a network composer lets the participant build', () => {
     // control with nothing to offer at all.
     addPersonVariable(harness, 'circle', {
       name: 'circle',
+      label: { 'en-US': 'circle' },
       type: 'categorical',
       options: [
-        { label: 'Inner', value: 'inner' },
-        { label: 'Outer', value: 'outer' },
+        { label: { 'en-US': 'Inner' }, value: 'inner' },
+        { label: { 'en-US': 'Outer' }, value: 'outer' },
       ],
     });
 
@@ -906,6 +909,7 @@ describe('what a network composer lets the participant build', () => {
     });
     expect(created[1]).toMatchObject({
       name: 'favouriteFood',
+      label: { 'en-US': 'favouriteFood' },
       type: 'number',
       component: 'Number',
     });
@@ -964,10 +968,10 @@ describe('what a network composer lets the participant build', () => {
       ).toEqual(
         expect.objectContaining({
           options: [
-            { label: 'In person', value: 'in_person' },
-            { label: 'Phone or video call', value: 'call' },
-            { label: 'Text or messaging', value: 'text' },
-            { label: 'Letter', value: 'letter' },
+            { label: { 'en-US': 'In person' }, value: 'in_person' },
+            { label: { 'en-US': 'Phone or video call' }, value: 'call' },
+            { label: { 'en-US': 'Text or messaging' }, value: 'text' },
+            { label: { 'en-US': 'Letter' }, value: 'letter' },
           ],
         }),
       ),
@@ -1031,8 +1035,8 @@ describe('what a network composer lets the participant build', () => {
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Nearby', value: true },
-        { label: 'Further away', value: false },
+        { label: { 'en-US': 'Nearby' }, value: true },
+        { label: { 'en-US': 'Further away' }, value: false },
       ],
     });
   });
@@ -1165,8 +1169,8 @@ describe('what a network composer lets the participant build', () => {
     expect(created?.[1]).toMatchObject({
       type: 'ordinal',
       options: [
-        { label: 'Not at all close', value: 'far' },
-        { label: 'Very close', value: 'near' },
+        { label: { 'en-US': 'Not at all close' }, value: 'far' },
+        { label: { 'en-US': 'Very close' }, value: 'near' },
       ],
     });
 
@@ -1665,6 +1669,7 @@ describe('what a composer field’s control accepts', () => {
     );
     addPersonVariable(harness, DATE_ATTRIBUTE, {
       name: DATE_ATTRIBUTE,
+      label: { 'en-US': DATE_ATTRIBUTE },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full' },
@@ -1774,6 +1779,7 @@ describe('what a composer field’s control accepts', () => {
     );
     addPersonVariable(harness, DATE_ATTRIBUTE, {
       name: DATE_ATTRIBUTE,
+      label: { 'en-US': DATE_ATTRIBUTE },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year' },
@@ -1872,10 +1878,11 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
     // the one the picker is holding, which it goes on offering either way.
     addPersonVariable(harness, 'region', {
       name: 'region',
+      label: { 'en-US': 'region' },
       type: 'categorical',
       options: [
-        { label: 'North', value: 'north' },
-        { label: 'South', value: 'south' },
+        { label: { 'en-US': 'North' }, value: 'north' },
+        { label: { 'en-US': 'South' }, value: 'south' },
       ],
     });
     const grouping = await waitFor(() =>
@@ -2014,11 +2021,13 @@ describe('the rules a composer field authors', () => {
     // through the window this field puts on it.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
+      label: { 'en-US': 'bornOn' },
       type: 'datetime',
       ...YEAR_PICKER('1990', '1995'),
     });
     addPersonVariable(harness, 'metOn', {
       name: 'metOn',
+      label: { 'en-US': 'metOn' },
       type: 'datetime',
       validation: { sameAs: 'bornOn' },
       ...YEAR_PICKER('1990', '1995'),
@@ -2066,12 +2075,14 @@ describe('the rules a composer field authors', () => {
     // question, and a list with neither would answer it by accident.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
+      label: { 'en-US': 'bornOn' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '1990-01-01', max: '1995-12-31' },
     });
     addPersonVariable(harness, 'movedOn', {
       name: 'movedOn',
+      label: { 'en-US': 'movedOn' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2025-12-31' },
@@ -2151,6 +2162,7 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['bornOn', 'metOn', 'movedOn']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: { 'en-US': variableId },
         type: 'datetime',
         ...YEAR_PICKER('2020', '2025'),
       });
@@ -2221,16 +2233,19 @@ describe('the rules a composer field authors', () => {
     // together only by the window the second field renders it with.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
+      label: { 'en-US': 'bornOn' },
       type: 'datetime',
       ...YEAR_PICKER('1990', '1995'),
     });
     addPersonVariable(harness, 'metOn', {
       name: 'metOn',
+      label: { 'en-US': 'metOn' },
       type: 'datetime',
       ...YEAR_PICKER('2020', '2025'),
     });
     addPersonVariable(harness, 'movedOn', {
       name: 'movedOn',
+      label: { 'en-US': 'movedOn' },
       type: 'datetime',
       ...YEAR_PICKER('2020', '2025'),
     });
@@ -2289,6 +2304,7 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['bornOn', 'metOn']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: { 'en-US': variableId },
         type: 'datetime',
         ...YEAR_PICKER('2020', '2025'),
       });
@@ -2360,14 +2376,16 @@ describe('the rules a composer field authors', () => {
     // form chose these controls.
     addPersonVariable(harness, 'isKin', {
       name: 'isKin',
+      label: { 'en-US': 'isKin' },
       type: 'boolean',
-      options: [{ label: 'Yes', value: true }],
+      options: [{ label: { 'en-US': 'Yes' }, value: true }],
       validation: { differentFrom: 'isClose' },
     });
     addPersonVariable(harness, 'isClose', {
       name: 'isClose',
+      label: { 'en-US': 'isClose' },
       type: 'boolean',
-      options: [{ label: 'Yes', value: true }],
+      options: [{ label: { 'en-US': 'Yes' }, value: true }],
     });
 
     // The attribute arrives holding the rule, so its nested Validation section
@@ -2418,9 +2436,10 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['isKin', 'isPinned', 'isClose']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: { 'en-US': variableId },
         type: 'boolean',
         component: 'Boolean',
-        options: [{ label: 'Yes', value: true }],
+        options: [{ label: { 'en-US': 'Yes' }, value: true }],
       });
     }
     // `isKin` is asked for by another composer as well, with a control this
@@ -2482,9 +2501,10 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['isKin', 'isPinned', 'isClose']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: { 'en-US': variableId },
         type: 'boolean',
         component: 'Boolean',
-        options: [{ label: 'Yes', value: true }],
+        options: [{ label: { 'en-US': 'Yes' }, value: true }],
       });
     }
     // `isClose` is asked for by another composer, with a control that offers

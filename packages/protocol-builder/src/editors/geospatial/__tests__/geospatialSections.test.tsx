@@ -1,8 +1,10 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
 import {
   attributeField,
   chooseAttributeById,
@@ -15,7 +17,10 @@ import {
   resetMapboxMock,
 } from '../../../testing/mapboxMock.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../../testing/renderStageEditor.tsx';
 import {
   awaitLayerRead,
   enterCoordinate,
@@ -90,7 +95,7 @@ const addLocationAttribute = (
       ...(typeof person.variables === 'object' && person.variables !== null
         ? person.variables
         : {}),
-      [id]: { name: id, type: 'location' },
+      [id]: { name: id, label: { 'en-US': id }, type: 'location' },
     },
   }));
 };
@@ -113,12 +118,12 @@ const openTwoPromptsOnOneAttribute = () => {
         prompts: [
           {
             id: 'geospatial-prompt-1',
-            text: 'Where do you live?',
+            text: { 'en-US': 'Where do you live?' },
             variable: 'location',
           },
           {
             id: 'geospatial-prompt-2',
-            text: 'Where do you work?',
+            text: { 'en-US': 'Where do you work?' },
             variable: 'location',
           },
         ],
@@ -454,7 +459,7 @@ describe('the places a geospatial stage asks about', () => {
     const prompts = request?.stageDocument.prompts;
     expect(Array.isArray(prompts) ? prompts : []).toHaveLength(2);
     expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
-      text: 'Work?',
+      text: { 'en-US': 'Work?' },
       variable: 'workplace',
     });
   });
@@ -541,8 +546,17 @@ describe('the places a geospatial stage asks about', () => {
         ...(typeof person.variables === 'object' && person.variables !== null
           ? person.variables
           : {}),
-        nickname: { name: 'nickname', type: 'text', component: 'Text' },
-        workplace: { name: 'workplace', type: 'location' },
+        nickname: {
+          name: 'nickname',
+          label: { 'en-US': 'nickname' },
+          type: 'text',
+          component: 'Text',
+        },
+        workplace: {
+          name: 'workplace',
+          label: { 'en-US': 'workplace' },
+          type: 'location',
+        },
       },
     }));
 
@@ -595,7 +609,7 @@ describe('the places a geospatial stage asks about', () => {
           )
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
-          { variable: 'workplace', prompt: 'Where do they work?' },
+          { variable: 'workplace', prompt: { 'en-US': 'Where do they work?' } },
         ],
       },
     }));
@@ -654,7 +668,7 @@ describe('the places a geospatial stage asks about', () => {
           )
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
-          { variable: 'workplace', prompt: 'Where do they work?' },
+          { variable: 'workplace', prompt: { 'en-US': 'Where do they work?' } },
         ],
       },
     }));
@@ -708,8 +722,8 @@ describe('the places a geospatial stage asks about', () => {
           )
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
-          { variable: 'workplace', prompt: 'Where do they work?' },
-          { variable: 'location', prompt: 'Where do they live?' },
+          { variable: 'workplace', prompt: { 'en-US': 'Where do they work?' } },
+          { variable: 'location', prompt: { 'en-US': 'Where do they live?' } },
         ],
       },
     }));
@@ -771,7 +785,7 @@ describe('the places a geospatial stage asks about', () => {
     const request = await harness.submit();
     const prompts = request?.stageDocument.prompts;
     expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
-      text: 'Where were you born?',
+      text: { 'en-US': 'Where were you born?' },
       variable: created,
     });
   });
@@ -792,5 +806,88 @@ describe('the places a geospatial stage asks about', () => {
         'Create at least one prompt. A stage with no prompts asks the participant nothing.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('a prompt written in more than one language', () => {
+  const ENGLISH_AND_SPANISH: ProtocolLocalization = {
+    defaultLocale: 'en-US',
+    locales: ['en-US', 'es'],
+  };
+
+  const openTranslated = (text: LocalizedString) => {
+    const { type, fields } = loadFixtureStage('geospatial-1');
+    return renderStageEditor({
+      stage: {
+        type,
+        fields: {
+          ...fields,
+          prompts: [{ id: 'geospatial-prompt-1', text, variable: 'location' }],
+        },
+      },
+      sections: geospatialSections,
+      localization: ENGLISH_AND_SPANISH,
+    });
+  };
+
+  /** Switches the whole editor to Spanish from inside one prompt's dialog. */
+  const editInSpanish = async (
+    harness: StageEditorHarness,
+    dialog: ReturnType<typeof within>,
+  ): Promise<void> => {
+    await harness.user.click(
+      dialog.getByRole('button', { name: /Editing language/ }),
+    );
+    await harness.user.click(
+      await screen.findByRole('menuitemradio', { name: /^español/ }),
+    );
+  };
+
+  it('writes only the language being edited, and keeps the other', async () => {
+    const harness = openTranslated({
+      'en-US': 'Where do you live?',
+      'es': '¿Dónde vives?',
+    });
+    await harness.opened();
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    await editInSpanish(harness, dialog);
+    const text = dialog.getByRole('textbox', { name: 'Prompt text' });
+    expect(text).toHaveValue('¿Dónde vives?');
+    await harness.user.clear(text);
+    await harness.user.type(text, '¿Dónde trabajas?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.prompts).toEqual([
+      {
+        id: 'geospatial-prompt-1',
+        text: { 'en-US': 'Where do you live?', 'es': '¿Dónde trabajas?' },
+        variable: 'location',
+      },
+    ]);
+  });
+
+  /**
+   * The preview is what a Spanish-speaking participant would read, and with
+   * no Spanish written that is the English — marked as English, so a screen
+   * reader does not pronounce it as Spanish.
+   */
+  it('previews an untranslated prompt in the language it falls back to', async () => {
+    const harness = openTranslated({ 'en-US': 'Where do you live?' });
+    await harness.opened();
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    await editInSpanish(harness, dialog);
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const preview = screen.getByText('Where do you live?');
+    expect(preview.closest('[lang]')).toHaveAttribute('lang', 'en-US');
   });
 });

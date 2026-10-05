@@ -4,6 +4,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
@@ -18,15 +19,17 @@ import { createStageDraftProbe } from './stageDraftProbe.tsx';
  * Neither is a value the protocol schema accepts where it accepts a value at
  * all, and neither is something the researcher wrote.
  */
+const en = (text: string) => ({ 'en-US': text });
+
 describe('a control the researcher emptied', () => {
   it('leaves nothing in the stage', async () => {
     const harness = renderStageEditor({
       stage: {
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'info-item-1', type: 'text', content: 'Hello.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
           interviewScript: 'Read this aloud',
         },
       },
@@ -69,12 +72,12 @@ describe('a control the researcher emptied', () => {
             <Field
               name="introductionPanel.title"
               label="Panel heading"
-              component={InputField}
+              component={LocalizedInputField}
             />
             <Field
               name="introductionPanel.text"
               label="Panel text"
-              component={InputField}
+              component={LocalizedInputField}
             />
           </BuilderSection>
         </>
@@ -89,10 +92,10 @@ describe('a control the researcher emptied', () => {
     );
 
     // The panel is required, so this save is refused either way. What is under
-    // test is what the draft holds after it: an `introductionPanel` of two
-    // empty strings is a panel the researcher did not write, and the schema
-    // reports it as two values that are too short rather than as the panel
-    // simply not being there.
+    // test is what the draft holds after it: an `introductionPanel` with
+    // neither translation map left in it is a panel the researcher did not
+    // write, and the schema reports it as two missing values rather than as
+    // the panel simply not being there.
     expect(await harness.submit()).toBeNull();
 
     expect(Object.hasOwn(draft(), 'introductionPanel')).toBe(false);
@@ -103,9 +106,9 @@ describe('a control the researcher emptied', () => {
       stage: {
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'info-item-1', type: 'text', content: 'Hello.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
         },
       },
       sections: (
@@ -114,7 +117,7 @@ describe('a control the researcher emptied', () => {
             <Field
               name="title"
               label="Page heading"
-              component={InputField}
+              component={LocalizedInputField}
               required
             />
           </BuilderSection>
@@ -145,15 +148,19 @@ describe('a control the researcher emptied', () => {
       stage: {
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'info-item-1', type: 'text', content: 'Hello.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [{ id: 'info-item-1', type: 'text', content: en('Hello.') }],
         },
       },
       sections: (
         <>
           <BuilderSection title="Page content">
-            <Field name="title" label="Page heading" component={InputField} />
+            <Field
+              name="title"
+              label="Page heading"
+              component={LocalizedInputField}
+            />
           </BuilderSection>
         </>
       ),

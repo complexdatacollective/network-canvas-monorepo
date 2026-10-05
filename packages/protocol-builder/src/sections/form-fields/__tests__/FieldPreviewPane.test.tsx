@@ -22,6 +22,8 @@ import {
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
+import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -42,11 +44,13 @@ import type {
 const mocks = vi.hoisted(() => {
   const person = {
     name: 'Person',
+    label: { en: 'Person' },
     color: 'node-color-seq-1' as const,
     shape: { default: 'circle' as const },
     variables: {
       age: {
         name: 'Age',
+        label: { en: 'Age' },
         type: 'number' as const,
         component: 'Number' as const,
       },
@@ -54,17 +58,23 @@ const mocks = vi.hoisted(() => {
       // control alone — the pair a rebound row is told apart by.
       yearsKnown: {
         name: 'Years known',
+        label: { en: 'Years known' },
         type: 'number' as const,
         component: 'Number' as const,
       },
       satisfaction: {
         name: 'Satisfaction',
+        label: { en: 'Satisfaction' },
         type: 'scalar' as const,
         component: 'VisualAnalogScale' as const,
-        parameters: { minLabel: 'Not at all', maxLabel: 'Completely' },
+        parameters: {
+          minLabel: { en: 'Not at all' },
+          maxLabel: { en: 'Completely' },
+        },
       },
       consents: {
         name: 'Consents',
+        label: { en: 'Consents' },
         type: 'boolean' as const,
         component: 'Boolean' as const,
         validation: { required: true },
@@ -96,6 +106,10 @@ const REQUIRED_EN = 'You must answer this question before continuing.';
 const REQUIRED_ES = 'Debes responder a esta pregunta antes de continuar.';
 
 const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+
+const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
+
+const en = (text: string) => ({ en: text });
 
 /** The create sentinel, written out so a change to it has to be made twice. */
 const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
@@ -176,6 +190,7 @@ const renderPreview = (
     mode?: 'form' | 'composer';
     subject?: CodebookSubject | undefined;
     locale?: string;
+    localization?: ProtocolLocalization;
     probe?: boolean;
     onSubmit?: () => { success: true };
     fields?: ReactNode;
@@ -186,15 +201,19 @@ const renderPreview = (
     <LocaleFrame
       {...(options.locale === undefined ? {} : { locale: options.locale })}
     >
-      <Form onSubmit={submitAuthoring}>
-        {options.probe === true && <ParentResponseProbe />}
-        {options.fields}
-        <FieldPreviewPane
-          subject={'subject' in options ? options.subject : PERSON}
-          {...(options.mode === undefined ? {} : { mode: options.mode })}
-          item={item}
-        />
-      </Form>
+      <ProtocolLocalizationProvider
+        localization={options.localization ?? ENGLISH}
+      >
+        <Form onSubmit={submitAuthoring}>
+          {options.probe === true && <ParentResponseProbe />}
+          {options.fields}
+          <FieldPreviewPane
+            subject={'subject' in options ? options.subject : PERSON}
+            {...(options.mode === undefined ? {} : { mode: options.mode })}
+            item={item}
+          />
+        </Form>
+      </ProtocolLocalizationProvider>
     </LocaleFrame>,
   );
   return screen.getByRole('region', {
@@ -282,7 +301,7 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
       _component: 'Text',
-      prompt: 'Research_Question_Á1',
+      prompt: en('Research_Question_Á1'),
     });
 
     expect(
@@ -292,7 +311,7 @@ describe('FieldPreviewPane', () => {
 
   it('names a composer’s field by its label, and stands in when it has none', () => {
     renderPreview(
-      { variable: 'age', component: 'Number', label: 'Research_Label_Á1' },
+      { variable: 'age', component: 'Number', label: en('Research_Label_Á1') },
       { mode: 'composer' },
     );
     expect(
@@ -315,7 +334,7 @@ describe('FieldPreviewPane', () => {
     // deciding whether the researcher wrote anything, so a stray space is not
     // a caption and the participant meets the fallback rather than a blank.
     renderPreview(
-      { variable: 'age', component: 'Number', label: '   ' },
+      { variable: 'age', component: 'Number', label: en('   ') },
       { mode: 'composer' },
     );
     expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
@@ -324,7 +343,7 @@ describe('FieldPreviewPane', () => {
 
     // An emptied box reads the same way, and an authored one still wins.
     renderPreview(
-      { variable: 'age', component: 'Number', label: '' },
+      { variable: 'age', component: 'Number', label: en('') },
       { mode: 'composer' },
     );
     expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
@@ -332,7 +351,7 @@ describe('FieldPreviewPane', () => {
     cleanup();
 
     renderPreview(
-      { variable: 'age', component: 'Number', label: 'Research_Label_Á1' },
+      { variable: 'age', component: 'Number', label: en('Research_Label_Á1') },
       { mode: 'composer' },
     );
     expect(
@@ -342,7 +361,7 @@ describe('FieldPreviewPane', () => {
     cleanup();
 
     // And the form family's question, which is read by the same rule.
-    renderPreview({ variable: 'age', prompt: '  \n  ' });
+    renderPreview({ variable: 'age', prompt: en('  \n  ') });
     expect(
       screen.getByRole('spinbutton', {
         name: 'Your question will appear here.',
@@ -357,7 +376,7 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
       _component: 'Text',
-      prompt: 'Research_Question_Á2',
+      prompt: en('Research_Question_Á2'),
     });
 
     expect(
@@ -373,7 +392,7 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
       _component: 'Number',
-      prompt: 'Research_Question_Á2',
+      prompt: en('Research_Question_Á2'),
     });
 
     expect(
@@ -398,7 +417,7 @@ describe('FieldPreviewPane', () => {
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _component: 'RadioGroup',
-      prompt: 'How often?',
+      prompt: en('How often?'),
     });
 
     const group = screen.getByRole('radiogroup', { name: 'How often?' });
@@ -410,8 +429,8 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'closeness',
       _component: 'VisualAnalogScale',
-      _parameters: { minLabel: 'Not close', maxLabel: 'Very close' },
-      prompt: 'How close are you?',
+      _parameters: { minLabel: en('Not close'), maxLabel: en('Very close') },
+      prompt: en('How close are you?'),
     });
 
     expect(within(pane).getByText('Not close')).toBeVisible();
@@ -424,10 +443,10 @@ describe('FieldPreviewPane', () => {
       _newVariableName: 'frequency',
       _component: 'RadioGroup',
       _options: [
-        { label: 'Daily', value: 'daily' },
-        { label: 'Weekly', value: 'weekly' },
+        { label: en('Daily'), value: 'daily' },
+        { label: en('Weekly'), value: 'weekly' },
       ],
-      prompt: 'How often?',
+      prompt: en('How often?'),
     });
 
     const group = screen.getByRole('radiogroup', { name: 'How often?' });
@@ -445,9 +464,14 @@ describe('FieldPreviewPane', () => {
     // answer typed for the first must not stand under the second's question
     // and be checked against the second's rules.
     const previewOf = (variable: string, prompt: string) => (
-      <Form onSubmit={() => ({ success: true as const })}>
-        <FieldPreviewPane subject={PERSON} item={{ variable, prompt }} />
-      </Form>
+      <ProtocolLocalizationProvider localization={ENGLISH}>
+        <Form onSubmit={() => ({ success: true as const })}>
+          <FieldPreviewPane
+            subject={PERSON}
+            item={{ variable, prompt: en(prompt) }}
+          />
+        </Form>
+      </ProtocolLocalizationProvider>
     );
     const { rerender } = render(previewOf('age', 'Research_Question_Á1'));
 
@@ -497,7 +521,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('runs the attribute’s own rules against a trial answer without touching the draft', async () => {
-    const item = { variable: 'consents', prompt: 'Research_Question_Á1' };
+    const item = { variable: 'consents', prompt: en('Research_Question_Á1') };
     const original = structuredClone(item);
     const submitAuthoring = vi.fn(() => ({ success: true as const }));
     renderPreview(item, { probe: true, onSubmit: submitAuthoring });
@@ -520,8 +544,8 @@ describe('FieldPreviewPane', () => {
   it('reads the pane and the participant’s own field in Spanish, leaving authored words alone', async () => {
     const item = {
       variable: 'consents',
-      prompt: 'Research_Question_Á1',
-      hint: 'Authored_Hint_Á1',
+      prompt: en('Research_Question_Á1'),
+      hint: en('Authored_Hint_Á1'),
     };
     const original = structuredClone(item);
     const submitAuthoring = vi.fn(() => ({ success: true as const }));
@@ -559,7 +583,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('keeps a participant scale’s own popup inside the locale region and the portal boundary', async () => {
-    const item = { variable: 'satisfaction', prompt: 'Research_Scale_Á1' };
+    const item = { variable: 'satisfaction', prompt: en('Research_Scale_Á1') };
     const original = structuredClone(item);
     renderPreview(item, { locale: 'es', probe: true });
 
@@ -602,12 +626,60 @@ describe('FieldPreviewPane', () => {
     // control the row still carries would show a working field the participant
     // will never meet.
     renderPreview(
-      { variable: 'favouriteFood', component: 'Text', label: 'Favourite food' },
+      {
+        variable: 'favouriteFood',
+        component: 'Text',
+        label: en('Favourite food'),
+      },
       { mode: 'composer' },
     );
 
     expect(screen.getByText(EMPTY_STATE)).toBeVisible();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('captions the field in the language being edited, falling back as a participant would', () => {
+    const bilingual: ProtocolLocalization = {
+      defaultLocale: 'es',
+      locales: ['es', 'en'],
+    };
+    renderPreview(
+      {
+        variable: 'age',
+        prompt: { en: 'How old are you?', es: '¿Cuántos años tienes?' },
+      },
+      { localization: bilingual },
+    );
+    expect(
+      screen.getByRole('spinbutton', { name: '¿Cuántos años tienes?' }),
+    ).toBeVisible();
+
+    cleanup();
+
+    renderPreview(
+      { variable: 'age', prompt: en('How old are you?') },
+      { localization: bilingual },
+    );
+    expect(
+      screen.getByRole('spinbutton', { name: 'How old are you?' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('How old are you?').closest('[lang]'),
+    ).toHaveAttribute('lang', 'en');
+  });
+
+  it('offers nothing to answer before the protocol’s languages are known', () => {
+    render(
+      <Form onSubmit={() => ({ success: true as const })}>
+        <FieldPreviewPane
+          subject={PERSON}
+          item={{ variable: 'age', prompt: en('How old are you?') }}
+        />
+      </Form>,
+    );
+
+    expect(screen.getByText(EMPTY_STATE)).toBeVisible();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
   it('previews nothing at all when the section cannot say whose codebook it collects into', () => {

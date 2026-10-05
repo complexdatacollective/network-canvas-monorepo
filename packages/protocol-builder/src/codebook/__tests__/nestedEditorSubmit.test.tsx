@@ -7,6 +7,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
 import type { CodebookWriteOutcome } from '../writes.ts';
@@ -42,12 +43,14 @@ const HALF_TYPED = 'Who else have you spoken to';
 
 const PERSON: SectionDoc = {
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
     [ATTRIBUTE]: {
       name: 'relationshipToEgo',
+      label: { en: 'Relationship to you' },
       type: 'text',
       component: 'Text',
     },
@@ -83,7 +86,11 @@ function StageFormAround({
         <input name="text" defaultValue={HALF_TYPED} />
       </label>
       <Dialog open title="Edit the codebook" closeDialog={() => undefined}>
-        {children}
+        <ProtocolLocalizationProvider
+          localization={{ defaultLocale: 'en', locales: ['en'] }}
+        >
+          {children}
+        </ProtocolLocalizationProvider>
       </Dialog>
     </form>
   );

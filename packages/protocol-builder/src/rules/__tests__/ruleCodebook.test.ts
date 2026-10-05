@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   type Codebook,
+  type LocalizedString,
   type Variables,
   VariableTypesKeys,
 } from '@codaco/protocol-validation';
 
+import { translationText } from '../../localization/localizedText.ts';
 import { enIntl } from '../../testing/i18n.ts';
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import type { OperandOptionProblem } from '../ruleCodebook.ts';
@@ -22,6 +24,8 @@ import {
   ruleVariableType,
 } from '../ruleCodebook.ts';
 import { testCodebook } from './fixtures.ts';
+
+const inEnglish = (label: LocalizedString) => translationText(label, 'en');
 
 const codebook = testCodebook;
 
@@ -134,17 +138,20 @@ describe('the date picker a rule’s operand inherits', () => {
   const variables: Readonly<Variables> = Object.freeze({
     born: {
       name: 'Born',
+      label: { en: 'Born' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', min: '1800', max: '1810' },
     },
     seen: {
       name: 'Seen',
+      label: { en: 'Seen' },
       type: 'datetime',
       component: 'DatePicker',
     },
     met: {
       name: 'Met',
+      label: { en: 'Met' },
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { anchor: '2020-01-01', before: 30, after: 30 },
@@ -153,6 +160,7 @@ describe('the date picker a rule’s operand inherits', () => {
     // is derived from the clock rather than from the codebook.
     called: {
       name: 'Called',
+      label: { en: 'Called' },
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
@@ -162,6 +170,7 @@ describe('the date picker a rule’s operand inherits', () => {
     // the one the control synthesises.
     joined: {
       name: 'Joined',
+      label: { en: 'Joined' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'month' },
@@ -169,11 +178,12 @@ describe('the date picker a rule’s operand inherits', () => {
     // The same, one resolution coarser: a bare year dropdown.
     graduated: {
       name: 'Graduated',
+      label: { en: 'Graduated' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year' },
     },
-    age: { name: 'Age', type: 'number' },
+    age: { name: 'Age', label: { en: 'Age' }, type: 'number' },
   });
 
   it('carries every bound the attribute’s own picker honours', () => {
@@ -434,28 +444,31 @@ describe('codebook entries that are legal but sparse', () => {
     node: {
       blank: {
         name: '',
+        label: { en: '' },
         color: 'node-color-seq-4',
         shape: { default: 'circle' },
         variables: {
-          unnamed: { name: '', type: 'text' },
+          unnamed: { name: '', label: { en: 'Unnamed' }, type: 'text' },
           agrees: {
             name: 'Agrees',
+            label: { en: 'Agrees' },
             type: 'boolean',
             options: [
-              { label: 'Yes', value: true },
-              { label: 'No', value: false },
+              { label: { en: 'Yes' }, value: true },
+              { label: { en: 'No' }, value: false },
             ],
           },
           rank: {
             name: 'Rank',
+            label: { en: 'Rank' },
             type: 'ordinal',
-            options: [{ label: '', value: 1 }],
+            options: [{ label: { en: '' }, value: 1 }],
           },
         },
       },
     },
     // No colour: the schema leaves an edge's colour optional.
-    edge: { plain: { name: '' } },
+    edge: { plain: { name: '', label: { en: '' } } },
   });
 
   it('falls back to the first edge colour when an edge has none', () => {
@@ -485,12 +498,12 @@ describe('codebook entries that are legal but sparse', () => {
     // control prints for true and false — comparing the attribute against the
     // word "Yes" is a rule that matches nothing.
     const variables = ruleVariables(sparseCodebook, 'node', 'blank');
-    expect(ruleVariableChoices(variables, 'agrees')).toBeUndefined();
+    expect(ruleVariableChoices(variables, 'agrees', inEnglish)).toBeUndefined();
   });
 
   it('names an authored option by its value when it has no label', () => {
     const variables = ruleVariables(sparseCodebook, 'node', 'blank');
-    expect(ruleVariableChoices(variables, 'rank')).toEqual([
+    expect(ruleVariableChoices(variables, 'rank', inEnglish)).toEqual([
       { value: 1, label: '1' },
     ]);
   });
@@ -540,11 +553,11 @@ describe('reading the codebook for a rule', () => {
 
   it('keeps option values in the type the codebook authored them with', () => {
     const variables = ruleVariables(codebook, 'node', 'person');
-    expect(ruleVariableChoices(variables, 'mood')).toEqual([
+    expect(ruleVariableChoices(variables, 'mood', inEnglish)).toEqual([
       { value: 'happy', label: 'Happy' },
       { value: 'sad', label: 'Sad' },
     ]);
-    expect(ruleVariableChoices(variables, 'age')).toBeUndefined();
+    expect(ruleVariableChoices(variables, 'age', inEnglish)).toBeUndefined();
   });
 
   it('lists the entity types a rule may be pointed at', () => {
@@ -609,15 +622,17 @@ describe('an operand naming an option the attribute no longer offers', () => {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             strength: {
               name: 'Strength',
+              label: { en: 'Strength' },
               type: 'ordinal',
               options: [
-                { label: 'Weak', value: 1 },
-                { label: 'Strong', value: 2 },
+                { label: { en: 'Weak' }, value: 1 },
+                { label: { en: 'Strong' }, value: 2 },
               ],
             },
           },

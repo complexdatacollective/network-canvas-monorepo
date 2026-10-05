@@ -55,6 +55,7 @@ export const STAGE_TYPE_NAMES: Record<StageType, string> = {
   EgoForm: 'Ego Form',
   Information: 'Information',
   Anonymisation: 'Anonymisation',
+  LanguageChooser: 'Language Chooser',
 };
 
 export function composeStageName(parts: {

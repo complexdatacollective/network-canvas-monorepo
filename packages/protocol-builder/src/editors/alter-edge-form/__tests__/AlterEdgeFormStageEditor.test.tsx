@@ -132,20 +132,22 @@ describe('the editor for a form about each relationship', () => {
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('About each relationship');
+    expect(request?.stageDocument.label).toEqual({
+      'en-US': 'About each relationship',
+    });
     expect(request?.stageDocument.subject).toEqual({
       entity: 'edge',
       type: 'knows',
     });
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About each relationship',
-      text: 'A few questions about each relationship.',
+      title: { 'en-US': 'About each relationship' },
+      text: { 'en-US': 'A few questions about each relationship.' },
     });
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         variable: 'edgeNotes',
-        prompt: 'What do you want to record about this?',
+        prompt: { 'en-US': 'What do you want to record about this?' },
       },
     ]);
   });
@@ -201,11 +203,12 @@ describe('the editor for a form about each relationship', () => {
         knows: knowsDefinition({
           closeness: {
             name: 'closeness',
+            label: { 'en-US': 'closeness' },
             type: 'ordinal',
             options: [
-              { label: 'Very close', value: 3 },
-              { label: 'Somewhat close', value: 2 },
-              { label: 'Not close', value: 1 },
+              { label: { 'en-US': 'Very close' }, value: 3 },
+              { label: { 'en-US': 'Somewhat close' }, value: 2 },
+              { label: { 'en-US': 'Not close' }, value: 1 },
             ],
           },
         }),

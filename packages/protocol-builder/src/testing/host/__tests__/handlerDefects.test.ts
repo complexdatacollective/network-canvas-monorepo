@@ -108,7 +108,10 @@ describe.each(hosts)('a test host %s', (_, serve) => {
       protocolId: host.protocolId,
       requestId: 'write-after-defect',
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written after a defect' },
+      document: {
+        ...held.document,
+        label: { 'en-US': 'Written after a defect' },
+      },
       revision: held.revision,
     });
 
@@ -126,6 +129,6 @@ describe.each(hosts)('a test host %s', (_, serve) => {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    expect(read.document.label).toBe('Written after a defect');
+    expect(read.document.label).toEqual({ 'en-US': 'Written after a defect' });
   });
 });

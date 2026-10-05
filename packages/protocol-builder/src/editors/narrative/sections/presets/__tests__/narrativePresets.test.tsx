@@ -64,7 +64,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(presetsOf(saved?.stageDocument ?? {})).toEqual([
       {
         id: 'narrative-preset-1',
-        label: 'Ties',
+        label: { 'en-US': 'Ties' },
         layoutVariable: 'layout',
         groupVariable: 'contactType',
         edges: { display: ['knows'] },
@@ -96,7 +96,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(rows).toHaveLength(2);
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
-      label: 'All',
+      label: { 'en-US': 'All' },
       layoutVariable: 'layout',
     });
     expect(rows[1]?.id).not.toBe('narrative-preset-1');
@@ -192,7 +192,7 @@ describe('an attribute another interface owns', () => {
     stage: {
       type: 'Narrative' as const,
       fields: {
-        label: 'Family narrative',
+        label: { 'en-US': 'Family narrative' },
         subject: { entity: 'node', type: 'family_member' },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { freeDraw: true, allowRepositioning: true },
@@ -305,7 +305,7 @@ describe('a preset naming what the codebook no longer has', () => {
     const harness = renderStageEditor(
       narrativeHolding({
         id: 'narrative-preset-1',
-        label: 'Default layout',
+        label: { 'en-US': 'Default layout' },
         layoutVariable: 'layout',
         edges: { display: ['knows', LOST_EDGE] },
         highlight: ['flagged', LOST_HIGHLIGHT],
@@ -347,7 +347,7 @@ describe('a preset naming what the codebook no longer has', () => {
     const saved = await harness.submit();
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toEqual({
       id: 'narrative-preset-1',
-      label: 'Default layout',
+      label: { 'en-US': 'Default layout' },
       layoutVariable: 'layout',
       edges: { display: ['knows'] },
       highlight: ['flagged'],
@@ -414,6 +414,7 @@ describe('a codebook change made while a preset dialog is open', () => {
       node: {
         person: personWithVariable(harness, 'seating', {
           name: 'seating',
+          label: { 'en-US': 'seating' },
           type: 'layout',
         }),
       },

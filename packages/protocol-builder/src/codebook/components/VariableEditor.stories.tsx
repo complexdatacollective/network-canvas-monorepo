@@ -7,21 +7,35 @@ import type { VariableOption } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolLocalization } from '../../localization/localizedText.ts';
+import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 import VariableEditor from './VariableEditor.tsx';
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
-const CONTEXT: ProtocolBuilderProtocolContext = {
+
+const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
+
+/** A protocol written in English and translated into Spanish. */
+const ENGLISH_AND_SPANISH: ProtocolLocalization = {
+  defaultLocale: 'en',
+  locales: ['en', 'es'],
+};
+
+const contextIn = (
+  localization: ProtocolLocalization,
+): ProtocolBuilderProtocolContext => ({
   codebook: { node: {}, edge: {} },
   assets: {},
   orderedStages: [],
   issues: [],
-};
+  localization,
+});
 const LOCKED_OPTIONS: readonly VariableOption[] = [
-  { label: 'Woman', value: 'woman' },
-  { label: 'Man', value: 'man' },
-  { label: 'Another identity', value: 'another_identity' },
+  { label: { en: 'Woman' }, value: 'woman' },
+  { label: { en: 'Man' }, value: 'man' },
+  { label: { en: 'Another identity' }, value: 'another_identity' },
 ];
 
 /**
@@ -42,10 +56,11 @@ type SurfaceCase = Readonly<{
 
 const CLOSENESS: SectionDoc = {
   name: 'closeness',
+  label: { en: 'closeness' },
   type: 'ordinal',
   options: [
-    { label: 'Not close', value: 1 },
-    { label: 'Very close', value: 2 },
+    { label: { en: 'Not close' }, value: 1 },
+    { label: { en: 'Very close' }, value: 2 },
   ],
 };
 
@@ -65,20 +80,22 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
+      label: { en: 'consent' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'I agree', value: true },
-        { label: 'I do not agree', value: false, negative: true },
+        { label: { en: 'I agree' }, value: true },
+        { label: { en: 'I do not agree' }, value: false, negative: true },
       ],
     },
     draft: {
       name: 'consent',
+      label: { en: 'consent' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'I agree', value: true },
-        { label: '', value: false, negative: true },
+        { label: { en: 'I agree' }, value: true },
+        { value: false, negative: true },
       ],
     },
   },
@@ -92,22 +109,24 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
+      label: { en: 'consent' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'I agree', value: true },
-        { label: 'I do not agree', value: false, negative: true },
-        { label: 'I would rather not say', value: false },
+        { label: { en: 'I agree' }, value: true },
+        { label: { en: 'I do not agree' }, value: false, negative: true },
+        { label: { en: 'I would rather not say' }, value: false },
       ],
     },
     draft: {
       name: 'consent',
+      label: { en: 'consent' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'I agree', value: true },
-        { label: 'I do not agree', value: false, negative: true },
-        { label: 'I would rather not say', value: false },
+        { label: { en: 'I agree' }, value: true },
+        { label: { en: 'I do not agree' }, value: false, negative: true },
+        { label: { en: 'I would rather not say' }, value: false },
       ],
     },
   },
@@ -121,20 +140,22 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
+      label: { en: 'consent' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'I agree', value: true },
-        { label: 'I agree, with conditions', value: true },
+        { label: { en: 'I agree' }, value: true },
+        { label: { en: 'I agree, with conditions' }, value: true },
       ],
     },
     draft: {
       name: 'consent',
+      label: { en: 'consent' },
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'I agree', value: true },
-        { label: 'I agree, with conditions', value: true },
+        { label: { en: 'I agree' }, value: true },
+        { label: { en: 'I agree, with conditions' }, value: true },
       ],
     },
   },
@@ -143,12 +164,14 @@ const SURFACES = {
     variableId: 'met',
     committed: {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
     },
     draft: {
       name: 'met',
+      label: { en: 'met' },
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2024-01-01', max: '2020-01-01' },
@@ -159,15 +182,23 @@ const SURFACES = {
     variableId: 'rapport',
     committed: {
       name: 'rapport',
+      label: { en: 'rapport' },
       type: 'scalar',
       component: 'VisualAnalogScale',
-      parameters: { minLabel: 'Not at all close', maxLabel: 'Extremely close' },
+      parameters: {
+        minLabel: { en: 'Not at all close' },
+        maxLabel: { en: 'Extremely close' },
+      },
     },
     draft: {
       name: 'rapport',
+      label: { en: 'rapport' },
       type: 'scalar',
       component: 'VisualAnalogScale',
-      parameters: { minLabel: 'Not at all close', maxLabel: '   ' },
+      parameters: {
+        minLabel: { en: 'Not at all close' },
+        maxLabel: { en: '   ' },
+      },
     },
   },
   /**
@@ -184,20 +215,22 @@ const SURFACES = {
     variableId: 'preference',
     committed: {
       name: 'preference',
+      label: { en: 'preference' },
       type: 'categorical',
       options: [
-        { label: 'Low', value: 'low' },
-        { label: 'Middle', value: 'middle' },
-        { label: 'High', value: 'high' },
+        { label: { en: 'Low' }, value: 'low' },
+        { label: { en: 'Middle' }, value: 'middle' },
+        { label: { en: 'High' }, value: 'high' },
       ],
       validation: { minSelected: 3 },
     },
     draft: {
       name: 'preference',
+      label: { en: 'preference' },
       type: 'categorical',
       options: [
-        { label: 'Low', value: 'low' },
-        { label: 'Middle', value: 'middle' },
+        { label: { en: 'Low' }, value: 'low' },
+        { label: { en: 'Middle' }, value: 'middle' },
       ],
       validation: { minSelected: 3 },
     },
@@ -211,14 +244,24 @@ type DemoProps = Readonly<{
   surface: SurfaceName;
   locked: boolean;
   readOnly: boolean;
+  /** Whether the protocol is translated, which puts a language switch on every label. */
+  translated: boolean;
 }>;
 
-function VariableEditorDemo({ mode, surface, locked, readOnly }: DemoProps) {
+function VariableEditorDemo({
+  mode,
+  surface,
+  locked,
+  readOnly,
+  translated,
+}: DemoProps) {
+  const localization = translated ? ENGLISH_AND_SPANISH : ENGLISH;
   const [openId, setOpenId] = useState(1);
   const [completedId, setCompletedId] = useState<string | null>(null);
   const held: SurfaceCase = SURFACES[surface];
   const authoritativeDocument: SectionDoc = {
     name: 'Person',
+    label: { en: 'Person' },
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: mode === 'update' ? { [held.variableId]: held.committed } : {},
@@ -241,46 +284,48 @@ function VariableEditorDemo({ mode, surface, locked, readOnly }: DemoProps) {
   } as const;
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-4">
-        <p role="status" className="text-muted">
-          {completedId === null
-            ? 'No accepted edit yet.'
-            : `Accepted attribute id: ${completedId}`}
-        </p>
-        <Button
-          type="button"
-          color="default"
-          onClick={() => {
-            setCompletedId(null);
-            setOpenId((current) => current + 1);
-          }}
-        >
-          Start a fresh open
-        </Button>
-      </div>
-      {mode === 'create' ? (
-        <VariableEditor
-          {...common}
-          mode="create"
-          variableId="new-attribute"
-          initialDraft={{
-            name: locked ? 'biologicalSex' : '',
-            type: 'categorical',
-            options: [],
-          }}
-          protocolContext={CONTEXT}
-          lockedOptions={locked ? LOCKED_OPTIONS : null}
-        />
-      ) : (
-        <VariableEditor
-          {...common}
-          mode="update"
-          variableId={held.variableId}
-          initialDraft={held.draft}
-        />
-      )}
-    </main>
+    <ProtocolLocalizationProvider localization={localization}>
+      <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
+        <div className="flex items-center justify-between gap-4">
+          <p role="status" className="text-muted">
+            {completedId === null
+              ? 'No accepted edit yet.'
+              : `Accepted attribute id: ${completedId}`}
+          </p>
+          <Button
+            type="button"
+            color="default"
+            onClick={() => {
+              setCompletedId(null);
+              setOpenId((current) => current + 1);
+            }}
+          >
+            Start a fresh open
+          </Button>
+        </div>
+        {mode === 'create' ? (
+          <VariableEditor
+            {...common}
+            mode="create"
+            variableId="new-attribute"
+            initialDraft={{
+              name: locked ? 'biologicalSex' : '',
+              type: 'categorical',
+              options: [],
+            }}
+            protocolContext={contextIn(localization)}
+            lockedOptions={locked ? LOCKED_OPTIONS : null}
+          />
+        ) : (
+          <VariableEditor
+            {...common}
+            mode="update"
+            variableId={held.variableId}
+            initialDraft={held.draft}
+          />
+        )}
+      </main>
+    </ProtocolLocalizationProvider>
   );
 }
 
@@ -296,7 +341,13 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-  args: { mode: 'create', surface: 'options', locked: false, readOnly: false },
+  args: {
+    mode: 'create',
+    surface: 'options',
+    locked: false,
+    readOnly: false,
+    translated: false,
+  },
 } satisfies Meta<typeof VariableEditorDemo>;
 
 export default meta;
@@ -325,6 +376,15 @@ export const InterfaceOwnedOptions: Story = {
 
 export const ReadOnly: Story = {
   args: { mode: 'update', readOnly: true },
+};
+
+/**
+ * An attribute in a protocol written in two languages. Its label and the
+ * labels of its options are written in each, through the language switch each
+ * field carries, and a field with no Spanish yet says so.
+ */
+export const Translated: Story = {
+  args: { mode: 'update', translated: true },
 };
 
 /**
@@ -438,9 +498,10 @@ export const ScaleSettings: Story = {
   ...inEnglish,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // A markdown box rather than an input, so what it holds is its text.
     await expect(
       canvas.getByRole('textbox', { name: 'Minimum label' }),
-    ).toHaveValue('Not at all close');
+    ).toHaveTextContent('Not at all close');
 
     await userEvent.click(
       canvas.getByRole('button', { name: 'Save attribute' }),

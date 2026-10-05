@@ -9,6 +9,7 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import VariableBooleanAnswerFields from '../components/VariableBooleanAnswerFields.tsx';
 import { optionsForShape, validateBooleanAnswers } from '../variableOptions.ts';
 
@@ -24,7 +25,11 @@ const inSpanish = (node: ReactNode) =>
       )}
       manageDocument={false}
     >
-      {node}
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        {node}
+      </ProtocolLocalizationProvider>
     </AppI18nProvider>,
   );
 
@@ -58,16 +63,13 @@ describe('the placeholders on an unnamed yes/no answer', () => {
   it('reads as what the interview will show, in the reader’s language', () => {
     inSpanish(
       <VariableBooleanAnswerFields
-        answers={[
-          { label: '', value: true },
-          { label: '', value: false },
-        ]}
+        answers={[{ value: true }, { value: false }]}
         onChange={() => undefined}
         // Encoded, not formatted: `FieldErrors` decodes it against the
         // provider mounted above, which is the same reading the editor gets.
         issues={validateBooleanAnswers([
-          { label: 'Acepto', value: true },
-          { label: '', value: false },
+          { label: { en: 'Acepto' }, value: true },
+          { value: false },
         ])}
         readOnly={false}
       />,
@@ -118,8 +120,8 @@ describe('the placeholders on an unnamed yes/no answer', () => {
       optionsForShape(
         'boolean',
         [
-          { label: '', value: true },
-          { label: '  ', value: false },
+          { label: { en: '' }, value: true },
+          { label: { en: '  ' }, value: false },
         ],
         // What the attribute stored before the editor opened: a boolean that
         // named no answers at all, which is the case these placeholders are
@@ -138,8 +140,8 @@ describe('the placeholders on an unnamed yes/no answer', () => {
    */
   it('leaves a blank pair the protocol already stored exactly where it was', () => {
     const stored = [
-      { label: '', value: true },
-      { label: '  ', value: false },
+      { label: { en: '' }, value: true },
+      { label: { en: '  ' }, value: false },
     ];
 
     expect(optionsForShape('boolean', stored, stored)).toEqual(stored);
@@ -155,14 +157,14 @@ describe('the placeholders on an unnamed yes/no answer', () => {
       optionsForShape(
         'boolean',
         [
-          { label: 'Agree', value: true },
-          { label: 'Disagree', value: false },
+          { label: { en: 'Agree' }, value: true },
+          { label: { en: 'Disagree' }, value: false },
         ],
         undefined,
       ),
     ).toEqual([
-      { label: 'Agree', value: true },
-      { label: 'Disagree', value: false },
+      { label: { en: 'Agree' }, value: true },
+      { label: { en: 'Disagree' }, value: false },
     ]);
   });
 });

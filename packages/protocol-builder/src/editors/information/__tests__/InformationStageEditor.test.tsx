@@ -119,13 +119,13 @@ describe('the editor for a page of content', () => {
     await screen.findByText('Thank you for taking part.');
 
     const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('Welcome screen');
-    expect(request?.stageDocument.title).toBe('Welcome');
+    expect(request?.stageDocument.label).toEqual({ 'en-US': 'Welcome screen' });
+    expect(request?.stageDocument.title).toEqual({ 'en-US': 'Welcome' });
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         type: 'text',
-        content: 'Thank you for taking part.',
+        content: { 'en-US': 'Thank you for taking part.' },
       },
     ]);
   });

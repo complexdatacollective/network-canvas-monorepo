@@ -43,7 +43,7 @@ export const sociogramHolding = (prompt: Record<string, unknown>) => ({
   stage: {
     type: 'Sociogram' as const,
     fields: {
-      label: 'Sociogram',
+      label: { 'en-US': 'Sociogram' },
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
@@ -121,7 +121,10 @@ export const collectInAForm = (
   const updated: SectionDoc = {
     ...stage,
     form: {
-      fields: [...fields, { variable: variableId, prompt: 'Is this so?' }],
+      fields: [
+        ...fields,
+        { variable: variableId, prompt: { 'en-US': 'Is this so?' } },
+      ],
     },
   };
   act(() => {

@@ -6,12 +6,15 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
+import { fixtureLocalization } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { addPreset, narrativeEditor, presetsOf } from './narrativeFixtures.tsx';
+
+const FIXTURE_LOCALIZATION = fixtureLocalization();
 
 const openFixture = () =>
   renderStageEditor({ stageId: 'narrative-1', editor: narrativeEditor });
@@ -22,7 +25,7 @@ const openNewStage = () =>
     stage: {
       id: 'narrative-new',
       type: 'Narrative',
-      fields: getInterfaceTemplate('Narrative'),
+      fields: getInterfaceTemplate('Narrative', FIXTURE_LOCALIZATION),
     },
     editor: narrativeEditor,
   });
@@ -97,7 +100,7 @@ describe('the narrative stage editor', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
-      label: 'Story',
+      label: { 'en-US': 'Story' },
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4 },
     });
@@ -167,11 +170,15 @@ describe('the narrative stage editor', () => {
       stage: {
         type: 'Narrative',
         fields: {
-          label: 'Story',
+          label: { 'en-US': 'Story' },
           subject: { entity: 'node', type: 'person' },
           behaviours: { automaticLayout: true },
           presets: [
-            { id: 'preset-1', label: 'Default', layoutVariable: 'layout' },
+            {
+              id: 'preset-1',
+              label: { 'en-US': 'Default' },
+              layoutVariable: 'layout',
+            },
           ],
         },
       },

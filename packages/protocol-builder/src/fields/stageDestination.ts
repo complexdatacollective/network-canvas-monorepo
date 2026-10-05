@@ -266,7 +266,7 @@ export const routeDestination = (
  * where a host that appends puts it.
  */
 export function stagePlacement(
-  stages: readonly DestinationStage[],
+  stages: readonly Readonly<{ id: string }>[],
   stageId: string,
   position?: number,
 ): StagePlacement {

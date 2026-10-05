@@ -142,13 +142,13 @@ describe('the questions a one-to-many dyad census asks', () => {
       stage: {
         type: 'OneToManyDyadCensus',
         fields: {
-          label: 'One to Many Dyad Census',
+          label: { 'en-US': 'One to Many Dyad Census' },
           subject: { entity: 'node', type: 'person' },
           behaviours: { removeAfterConsideration: true },
           prompts: [
             {
               id: 'prompt-a',
-              text: 'Who does this person know?',
+              text: { 'en-US': 'Who does this person know?' },
               createEdge: 'knows',
               bucketSortOrder: [{ property: 'name', direction: 'asc' }],
             },

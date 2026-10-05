@@ -26,11 +26,15 @@ const NO_ROLES: VariableRoleMap = Object.freeze({});
 const NO_SLOTS: ExclusiveVariableSlotMap = Object.freeze({});
 
 const VARIABLES: Readonly<Variables> = Object.freeze({
-  is_ego: { name: 'is_ego', type: 'boolean' },
-  hasConditionX: { name: 'hasConditionX', type: 'boolean' },
-  unwell: { name: 'unwell', type: 'boolean' },
-  fm_name: { name: 'fm_name', type: 'text' },
-  kinship: { name: 'kinship', type: 'text' },
+  is_ego: { name: 'is_ego', label: { en: 'is_ego' }, type: 'boolean' },
+  hasConditionX: {
+    name: 'hasConditionX',
+    label: { en: 'hasConditionX' },
+    type: 'boolean',
+  },
+  unwell: { name: 'unwell', label: { en: 'unwell' }, type: 'boolean' },
+  fm_name: { name: 'fm_name', label: { en: 'fm_name' }, type: 'text' },
+  kinship: { name: 'kinship', label: { en: 'kinship' }, type: 'text' },
 });
 
 const optionFor = (value: string): SlotVariableOption => {
@@ -262,8 +266,8 @@ describe('the categorical pool a value-owning slot is handed', () => {
     label: 'gameteRole',
     type: 'categorical',
     options: [
-      { value: 'egg', label: 'Egg' },
-      { value: 'sperm', label: 'Sperm' },
+      { value: 'egg', label: { en: 'Egg' } },
+      { value: 'sperm', label: { en: 'Sperm' } },
     ],
   };
   const edited: SlotVariableOption = {
@@ -271,9 +275,9 @@ describe('the categorical pool a value-owning slot is handed', () => {
     label: 'gameteRole',
     type: 'categorical',
     options: [
-      { value: 'egg', label: 'Egg' },
-      { value: 'sperm', label: 'Sperm' },
-      { value: 'unknown', label: 'Unknown' },
+      { value: 'egg', label: { en: 'Egg' } },
+      { value: 'sperm', label: { en: 'Sperm' } },
+      { value: 'unknown', label: { en: 'Unknown' } },
     ],
   };
   const valueless: SlotVariableOption = {

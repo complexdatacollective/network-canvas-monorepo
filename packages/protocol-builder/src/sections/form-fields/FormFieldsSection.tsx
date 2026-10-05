@@ -17,7 +17,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import FormErrors from '@codaco/fresco-ui/form/FormErrors';
@@ -58,7 +57,10 @@ import {
   variableDisplayName,
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
-import RichTextField from '../../fields/RichTextField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   type CreateOptionOutcome,
   type VariablePickerOption,
@@ -84,6 +86,8 @@ import {
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -472,8 +476,7 @@ const everyFieldComplete = (value: unknown) =>
     (row) =>
       typeof row.variable === 'string' &&
       row.variable !== '' &&
-      typeof row.prompt === 'string' &&
-      row.prompt !== '',
+      asLocalizedString(row.prompt) !== undefined,
   )
     ? undefined
     : INCOMPLETE_FIELD;
@@ -855,9 +858,9 @@ export default function FormFieldsSection({
       {...(capability === undefined ? {} : { capability })}
     >
       {hasTitle && (
-        <Field<typeof InputField>
+        <Field<typeof LocalizedInputField>
           name={TITLE}
-          component={InputField}
+          component={LocalizedInputField}
           label={intl.formatMessage(messages.formTitleLabel)}
           hint={intl.formatMessage(messages.formTitleHint)}
           placeholder={intl.formatMessage(messages.formTitlePlaceholder)}
@@ -1520,24 +1523,24 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         title={intl.formatMessage(messages.questionSectionTitle)}
         description={intl.formatMessage(messages.questionSectionDescription)}
       >
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name="prompt"
-          component={RichTextField}
+          component={LocalizedRichTextField}
           label={intl.formatMessage(messages.promptLabel)}
           hint={intl.formatMessage(messages.promptHint)}
           placeholder={intl.formatMessage(messages.promptPlaceholder)}
           singleLine
-          initialValue={asString(item.prompt)}
+          initialValue={asLocalizedString(item.prompt)}
           required={intl.formatMessage(messages.promptRequired)}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name="hint"
-          component={RichTextField}
+          component={LocalizedRichTextField}
           label={intl.formatMessage(messages.hintLabel)}
           hint={intl.formatMessage(messages.hintHint)}
           placeholder={intl.formatMessage(messages.hintPlaceholder)}
           singleLine
-          initialValue={asString(item.hint)}
+          initialValue={asLocalizedString(item.hint)}
         />
         <Field<typeof ToggleField>
           name="showValidationHints"
@@ -2033,17 +2036,19 @@ function AttributePicker({
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
   const protocolContext = useProtocolContext();
+  const localize = useLocalizedText();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
   const variable =
     subject === undefined
       ? undefined
       : variablesForSubject(protocolContext, subject)[variableId];
+  const prompt = localize(item.prompt);
 
   return (
     <div className="flex flex-col gap-2.5">
-      <RenderMarkdown render={<div />}>
-        {asString(item.prompt) ?? ''}
+      <RenderMarkdown render={<div lang={prompt.lang} dir={prompt.dir} />}>
+        {prompt.text}
       </RenderMarkdown>
       <div>
         <AttributeControlBadge

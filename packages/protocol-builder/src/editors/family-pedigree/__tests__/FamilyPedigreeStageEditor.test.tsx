@@ -11,7 +11,10 @@ import {
   chooseAttributeById,
   inventAttribute,
 } from '../../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureLocalization,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -26,6 +29,8 @@ import {
   shimMarkdownEditorMeasurement,
 } from './editorFixtures.ts';
 
+const FIXTURE_LOCALIZATION = fixtureLocalization();
+
 shimMarkdownEditorMeasurement();
 
 const FAMILY_MEMBER_SECTION = sectionId({
@@ -38,7 +43,7 @@ const INTRO_SCREEN = {
     {
       id: 'intro-1',
       type: 'text',
-      content: 'We are going to draw your family.',
+      content: { 'en-US': 'We are going to draw your family.' },
     },
   ],
 };
@@ -68,7 +73,7 @@ const openNewStage = () =>
     stage: {
       id: 'family-pedigree-new',
       type: 'FamilyPedigree',
-      fields: getInterfaceTemplate('FamilyPedigree'),
+      fields: getInterfaceTemplate('FamilyPedigree', FIXTURE_LOCALIZATION),
     },
     editor: familyPedigreeEditor,
   });
@@ -251,8 +256,8 @@ describe('the family pedigree stage editor', () => {
     expect(request?.stageDocument).toMatchObject({
       id: 'family-pedigree-new',
       type: 'FamilyPedigree',
-      label: 'Family',
-      censusPrompt: 'Who?',
+      label: { 'en-US': 'Family' },
+      censusPrompt: { 'en-US': 'Who?' },
       framing: { mode: 'fixed', value: 'gamete' },
       nodeConfig: {
         type: 'family_member',
@@ -271,7 +276,7 @@ describe('the family pedigree stage editor', () => {
     });
     // The template's own introduction screen survives being created and saved.
     expect(request?.stageDocument.introScreen).toEqual(
-      getInterfaceTemplate('FamilyPedigree').introScreen,
+      getInterfaceTemplate('FamilyPedigree', FIXTURE_LOCALIZATION).introScreen,
     );
   });
 
@@ -343,7 +348,9 @@ describe('the introduction screen a pedigree opens with', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.introScreen).toEqual({
-      items: [{ id: 'intro-1', type: 'text', content: 'Parents.' }],
+      items: [
+        { id: 'intro-1', type: 'text', content: { 'en-US': 'Parents.' } },
+      ],
     });
   });
 
@@ -398,7 +405,11 @@ describe('a codebook that changes while the pedigree is open', () => {
     // empty-state sentence — which would take the dangling pick's own name
     // with it. Never chosen here: what is read below is the reference the
     // deletion left behind.
-    variables.fm_nickname = { name: 'fm_nickname', type: 'text' };
+    variables.fm_nickname = {
+      name: 'fm_nickname',
+      label: { 'en-US': 'fm_nickname' },
+      type: 'text',
+    };
 
     harness.receiveCodebookUpdate({
       node: { family_member: { ...definition, variables } },
@@ -433,7 +444,11 @@ describe('a codebook that changes while the pedigree is open', () => {
           ...definition,
           variables: {
             ...(definition.variables as Record<string, unknown>),
-            fm_nickname: { name: 'fm_nickname', type: 'text' },
+            fm_nickname: {
+              name: 'fm_nickname',
+              label: { 'en-US': 'fm_nickname' },
+              type: 'text',
+            },
           },
         },
       },

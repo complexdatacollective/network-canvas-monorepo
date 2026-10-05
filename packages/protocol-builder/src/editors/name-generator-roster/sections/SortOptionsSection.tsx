@@ -153,7 +153,7 @@ const sortableColumns = (intl: IntlShape): PropertyField[] => [
   },
   {
     fieldName: 'label',
-    control: 'input',
+    control: 'localizedInput',
     label: intl.formatMessage(messages.labelColumn),
     placeholder: intl.formatMessage(messages.labelPlaceholder),
   },

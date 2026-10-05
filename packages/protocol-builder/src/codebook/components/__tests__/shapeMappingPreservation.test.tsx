@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import { documentWithEntityProperties } from '../../editing.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
@@ -30,17 +31,19 @@ const MAPPING = {
 
 const PERSON: SectionDoc = {
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle', dynamic: MAPPING },
   variables: {
     ethnicity: {
       name: 'Ethnicity',
+      label: { en: 'Ethnicity' },
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: 'Asian', value: 'asian' },
-        { label: 'White', value: 'white' },
+        { label: { en: 'Asian' }, value: 'asian' },
+        { label: { en: 'White' }, value: 'white' },
       ],
     },
   },
@@ -55,15 +58,19 @@ type SubmitEntity = (document: SectionDoc) => Promise<CodebookWriteOutcome>;
 
 const renderEditor = (onSubmit: SubmitEntity) =>
   render(
-    <CodebookEntityEditor
-      mode="update"
-      sessionKey="preservation"
-      subject={SUBJECT}
-      initialDraft={PERSON}
-      authoritativeDocument={PERSON}
-      existingEntityNames={[]}
-      onSubmit={onSubmit}
-    />,
+    <ProtocolLocalizationProvider
+      localization={{ defaultLocale: 'en', locales: ['en'] }}
+    >
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="preservation"
+        subject={SUBJECT}
+        initialDraft={PERSON}
+        authoritativeDocument={PERSON}
+        existingEntityNames={[]}
+        onSubmit={onSubmit}
+      />
+    </ProtocolLocalizationProvider>,
   );
 
 describe('a stored shape mapping', () => {

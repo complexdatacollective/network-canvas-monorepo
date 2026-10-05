@@ -70,7 +70,12 @@ const addFreeTextVariable = (
     ...section,
     variables: {
       ...variables,
-      [variableId]: { name: variableId, type: 'text', component: 'Text' },
+      [variableId]: {
+        name: variableId,
+        label: { 'en-US': variableId },
+        type: 'text',
+        component: 'Text',
+      },
     },
   };
   harness.receiveCodebookUpdate({ node: { person: updated } });
@@ -103,7 +108,7 @@ const quickAddHolding = (fields: SectionDoc) => ({
     id: 'name-generator-quick-add-1',
     type: 'NameGeneratorQuickAdd' as const,
     fields: {
-      label: 'Name Generator Quick Add',
+      label: { 'en-US': 'Name Generator Quick Add' },
       subject: { entity: 'node', type: 'person' },
       ...fields,
     },
@@ -131,7 +136,7 @@ describe('what a quick-add generator and its own prompts may not share', () => {
         prompts: [
           {
             id: 'name-generator-quick-add-prompt-1',
-            text: 'Quickly add people you know',
+            text: { 'en-US': 'Quickly add people you know' },
             additionalAttributes: [{ variable: 'nickname', value: true }],
           },
         ],
@@ -168,7 +173,7 @@ describe('what a quick-add generator and its own prompts may not share', () => {
         prompts: [
           {
             id: 'name-generator-quick-add-prompt-1',
-            text: 'Quickly add people you know',
+            text: { 'en-US': 'Quickly add people you know' },
           },
         ],
       }),

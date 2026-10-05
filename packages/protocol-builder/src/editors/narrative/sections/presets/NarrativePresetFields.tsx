@@ -2,16 +2,18 @@ import { type ComponentType, useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 
+import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
 } from '../../../../form/rowDialog.tsx';
+import { asLocalizedString } from '../../../../localization/localizedText.ts';
+import { useLocalizedText } from '../../../../localization/ProtocolLocalization.tsx';
 import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPES,
@@ -184,13 +186,13 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   return (
     <>
       <Section title={intl.formatMessage(messages.presetIdentityTitle)}>
-        <Field<typeof InputField>
+        <Field<typeof LocalizedInputField>
           name={LABEL_FIELD}
           label={intl.formatMessage(messages.presetNameLabel)}
           hint={intl.formatMessage(messages.presetNameHint)}
-          component={InputField}
+          component={LocalizedInputField}
           placeholder={intl.formatMessage(messages.presetNamePlaceholder)}
-          initialValue={asText(item[LABEL_FIELD]) ?? ''}
+          initialValue={asLocalizedString(item[LABEL_FIELD])}
           required={intl.formatMessage(messages.presetNameRequired)}
         />
       </Section>
@@ -258,10 +260,15 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
 /** How one preset reads in the list when its dialog is closed. */
 export function NarrativePresetPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const label = asText(item[LABEL_FIELD]);
-  return (
+  const localize = useLocalizedText();
+  const label = localize(item[LABEL_FIELD]);
+  return label.text === '' ? (
     <span className="py-2">
-      {label ?? intl.formatMessage(messages.presetUnnamedPreview)}
+      {intl.formatMessage(messages.presetUnnamedPreview)}
+    </span>
+  ) : (
+    <span className="py-2" lang={label.lang} dir={label.dir}>
+      {label.text}
     </span>
   );
 }

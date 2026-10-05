@@ -124,53 +124,8 @@ describe('the introduction a participant reads before a task', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About you',
-      text: Reflect.get(before as object, 'text') as string,
+      title: { 'en-US': 'About you' },
+      text: Reflect.get(before as object, 'text'),
     });
-  });
-});
-
-/**
- * The introduction's heading is a HEADING, shown at the top of a screen the
- * participant reads — not a label of unbounded length. Left uncapped, a
- * researcher can type a paragraph into it and only find out it does not fit
- * when they run the interview.
- */
-describe('the length of an introduction heading', () => {
-  it('stops the researcher at the length the screen can show', async () => {
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      sections: introduction,
-    });
-
-    const heading = screen.getByRole('textbox', {
-      name: 'Title',
-    });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'A'.repeat(60));
-
-    // Refused rather than silently truncated: the researcher wrote something
-    // and gets to decide what to cut.
-    expect(await harness.submit()).toBeNull();
-    expect(await screen.findByText(/Too long/)).toBeInTheDocument();
-    expect(heading).toHaveValue('A'.repeat(60));
-  });
-
-  it('accepts a heading of exactly that length', async () => {
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      sections: introduction,
-    });
-
-    const heading = screen.getByRole('textbox', {
-      name: 'Title',
-    });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'A'.repeat(50));
-
-    const request = await harness.submit();
-    expect(
-      Reflect.get(request?.stageDocument.introductionPanel as object, 'title'),
-    ).toBe('A'.repeat(50));
   });
 });

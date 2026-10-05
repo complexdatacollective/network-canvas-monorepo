@@ -16,16 +16,28 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          name: { name: 'Name', type: 'text', component: 'Text' },
-          age: { name: 'Age', type: 'number', component: 'Number' },
+          name: {
+            name: 'Name',
+            label: { en: 'Name' },
+            type: 'text',
+            component: 'Text',
+          },
+          age: {
+            name: 'Age',
+            label: { en: 'Age' },
+            type: 'number',
+            component: 'Number',
+          },
         },
       },
       place: {
         name: 'Place',
+        label: { en: 'Place' },
         color: 'node-color-seq-2',
         icon: 'add-a-place',
         shape: { default: 'square' },
@@ -34,15 +46,20 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
     edge: {
       knows: {
         name: 'Knows',
+        label: { en: 'Knows' },
         color: 'edge-color-seq-1',
         variables: {
-          closeness: { name: 'Closeness', type: 'number' },
+          closeness: {
+            name: 'Closeness',
+            label: { en: 'Closeness' },
+            type: 'number',
+          },
         },
       },
     },
     ego: {
       variables: {
-        consent: { name: 'Consent', type: 'boolean' },
+        consent: { name: 'Consent', label: { en: 'Consent' }, type: 'boolean' },
       },
     },
   },

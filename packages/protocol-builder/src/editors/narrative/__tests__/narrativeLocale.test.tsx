@@ -115,7 +115,7 @@ describe('the narrative sections, read in Spanish', () => {
     const harness = renderStageEditor({
       ...narrativeHolding({
         id: 'narrative-preset-1',
-        label: 'Vista por defecto',
+        label: { 'en-US': 'Vista por defecto' },
         layoutVariable: 'layout',
         highlight: [LOST_HIGHLIGHT],
       }),

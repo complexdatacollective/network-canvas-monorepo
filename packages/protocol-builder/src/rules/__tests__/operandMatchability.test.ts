@@ -32,8 +32,8 @@ import { operandRequirement, operatorsForSubject } from '../operators.ts';
 import { describeRule } from '../ruleDescription.ts';
 
 const OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'high', label: 'High' },
+  { value: 'low', label: { en: 'Low' } },
+  { value: 'high', label: { en: 'High' } },
 ];
 
 /** One attribute of the type under test, on one node type. */
@@ -42,11 +42,13 @@ const codebookFor = (type: VariableType): Codebook =>
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           v: {
             name: 'V',
+            label: { en: 'V' },
             type,
             ...(type === 'categorical' || type === 'ordinal'
               ? { options: OPTIONS }

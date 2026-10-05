@@ -28,6 +28,13 @@ import {
 } from './rowFixtures.tsx';
 
 /**
+ * Copy in the fixture protocol's only language, as schema 9 holds it. The
+ * words are Spanish because this file reads the editor in Spanish; the
+ * protocol's language is a separate thing.
+ */
+const inProtocolLanguage = (text: string) => ({ 'en-US': text });
+
+/**
  * The six areas the shared stage-editor sections add, read in Spanish.
  *
  * The rest of this directory's suite mounts no provider, so every section
@@ -166,10 +173,14 @@ const mediaPage = () => ({
     id: 'information-media-es',
     type: 'Information' as const,
     fields: {
-      label: 'Information',
-      title: 'Bienvenida',
+      label: inProtocolLanguage('Information'),
+      title: inProtocolLanguage('Bienvenida'),
       items: [
-        { id: 'block-text', type: 'text', content: 'Lee esto.' },
+        {
+          id: 'block-text',
+          type: 'text',
+          content: inProtocolLanguage('Lee esto.'),
+        },
         { id: 'block-image', type: 'asset', content: 'welcome_image' },
       ],
     },
@@ -426,8 +437,8 @@ describe('a block a page cannot show, read in Spanish', () => {
       id: 'information-broken-es',
       type: 'Information' as const,
       fields: {
-        label: 'Information',
-        title: 'Bienvenida',
+        label: inProtocolLanguage('Information'),
+        title: inProtocolLanguage('Bienvenida'),
         items: [
           {
             id: 'block-missing',
@@ -516,7 +527,11 @@ describe('the page-content list, read in Spanish', () => {
       stage: {
         id: 'information-empty-es',
         type: 'Information' as const,
-        fields: { label: 'Information', title: 'Bienvenida', items: [] },
+        fields: {
+          label: inProtocolLanguage('Information'),
+          title: inProtocolLanguage('Bienvenida'),
+          items: [],
+        },
       },
       locale: 'es',
       sections: pageOfBlocks,
@@ -549,14 +564,20 @@ describe('the introduction-screen variant, read in Spanish', () => {
       id: 'family-pedigree-intro-es',
       type: 'FamilyPedigree' as const,
       fields: {
-        label: 'Family Pedigree',
+        label: inProtocolLanguage('Family Pedigree'),
         framing: { mode: 'fixed', value: 'gamete' },
         boundaries: {
           requireGrandparents: 'off',
           requireChildrenContributors: 'off',
         },
         introScreen: {
-          items: [{ id: 'intro-text', type: 'text', content: 'Lee esto.' }],
+          items: [
+            {
+              id: 'intro-text',
+              type: 'text',
+              content: inProtocolLanguage('Lee esto.'),
+            },
+          ],
         },
       },
     },
@@ -706,7 +727,7 @@ describe('the prompts section, read in Spanish', () => {
         id: 'name-generator-empty-es',
         type: 'NameGenerator' as const,
         fields: {
-          label: 'Name Generator',
+          label: inProtocolLanguage('Name Generator'),
           subject: { entity: 'node', type: 'person' },
           prompts: [],
         },
@@ -781,14 +802,16 @@ describe('a prompt’s sort rules, read in Spanish', () => {
       id: 'sociogram-sort-es',
       type: 'Sociogram' as const,
       fields: {
-        label: 'Sociograma',
+        label: inProtocolLanguage('Sociograma'),
         subject: { entity: 'node', type: 'person' },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { automaticLayout: true },
         prompts: [
           {
             id: 'sociogram-prompt-1',
-            text: 'Coloca juntas a las personas que se conocen',
+            text: inProtocolLanguage(
+              'Coloca juntas a las personas que se conocen',
+            ),
             layout: { layoutVariable: 'layout' },
             sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
           },

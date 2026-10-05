@@ -3,6 +3,7 @@ import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import { FieldLabel } from '@codaco/fresco-ui/form/FieldLabel';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { EditingLanguageSwitcher } from '../localization/EditingLanguageSwitcher.tsx';
 import { useStageNameField } from '../naming/useStageNameField.ts';
 import StageNameInput from './StageNameInput.tsx';
 
@@ -35,7 +36,8 @@ export default function StageNameField({
   className,
   onBlur,
 }: StageNameFieldProps) {
-  const { id, label, error, containerProps, fieldProps } = useStageNameField();
+  const { id, label, error, translations, containerProps, fieldProps } =
+    useStageNameField();
   const elementIds = fieldElementIds(id);
 
   return (
@@ -44,6 +46,7 @@ export default function StageNameField({
         {label}
       </FieldLabel>
       <StageNameInput {...fieldProps} onFieldBlur={onBlur} />
+      <EditingLanguageSwitcher value={translations} className="mt-1" />
       {/*
         Mounted whether or not it holds anything: the control already describes
         it, and a region that appeared with its message would not be there to

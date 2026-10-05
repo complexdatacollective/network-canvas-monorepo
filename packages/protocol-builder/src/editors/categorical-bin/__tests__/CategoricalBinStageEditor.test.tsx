@@ -70,13 +70,13 @@ describe('creating a categorical bin stage', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'CategoricalBin',
-      label: 'Person Categorical Bin',
+      label: { 'en-US': 'Person Categorical Bin' },
       subject: { entity: 'node', type: 'person' },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
       },
     ]);
@@ -138,11 +138,13 @@ describe('creating a categorical bin stage', () => {
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: 'categorical-bin-prompt-1',
-        text: 'What type of contact do you have most with this person?',
+        text: {
+          'en-US': 'What type of contact do you have most with this person?',
+        },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
-        otherOptionLabel: 'Something else',
-        otherVariablePrompt: 'What kind of contact is it?',
+        otherOptionLabel: { 'en-US': 'Something else' },
+        otherVariablePrompt: { 'en-US': 'What kind of contact is it?' },
       },
     ]);
   });

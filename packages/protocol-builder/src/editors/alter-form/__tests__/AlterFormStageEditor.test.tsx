@@ -172,20 +172,22 @@ describe('the editor for a form about each person', () => {
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('About each person');
+    expect(request?.stageDocument.label).toEqual({
+      'en-US': 'About each person',
+    });
     expect(request?.stageDocument.subject).toEqual({
       entity: 'node',
       type: 'person',
     });
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About each person',
-      text: 'A few more questions about each person.',
+      title: { 'en-US': 'About each person' },
+      text: { 'en-US': 'A few more questions about each person.' },
     });
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         variable: 'relationship_to_ego',
-        prompt: 'How do you know this person?',
+        prompt: { 'en-US': 'How do you know this person?' },
       },
     ]);
   });
@@ -249,10 +251,16 @@ describe('the editor for a form about each person', () => {
         person: personDefinition({
           relationship_to_ego: {
             name: 'how_they_know_each_other',
+            label: { 'en-US': 'how_they_know_each_other' },
             type: 'text',
             component: 'Text',
           },
-          flagged: { name: 'flagged', type: 'boolean', component: 'Boolean' },
+          flagged: {
+            name: 'flagged',
+            label: { 'en-US': 'flagged' },
+            type: 'boolean',
+            component: 'Boolean',
+          },
         }),
       },
     });

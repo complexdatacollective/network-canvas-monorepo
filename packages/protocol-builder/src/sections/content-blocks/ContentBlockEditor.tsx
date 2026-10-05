@@ -5,14 +5,17 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
-import RichTextField from '../../fields/RichTextField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../fields/LocalizedStringField.tsx';
 import type { RowEditorProps } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import {
   CONTENT_BLOCK_SLOTS,
@@ -279,9 +282,9 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
         </Alert>
       )}
       {kind === 'text' && (
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={CONTENT_BLOCK_SLOTS.text}
-          component={RichTextField}
+          component={LocalizedRichTextField}
           label={intl.formatMessage(messages.contentLabel)}
           hint={intl.formatMessage(messages.contentHint, {
             slotType: 'text',
@@ -308,12 +311,12 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
               name and needs neither a slot nor a place in the collapse. An
               empty one is spelled by the key being absent, which the section's
               own normaliser does for every control that holds nothing. */}
-          <Field<typeof InputField>
+          <Field<typeof LocalizedInputField>
             name="description"
-            component={InputField}
+            component={LocalizedInputField}
             label={intl.formatMessage(messages.descriptionLabel)}
             hint={intl.formatMessage(MEDIA_COPY[kind].description)}
-            initialValue={asString(item.description) ?? ''}
+            initialValue={asLocalizedString(item.description)}
           />
         </>
       )}

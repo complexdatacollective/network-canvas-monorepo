@@ -1,5 +1,6 @@
 import { act, screen, within } from '@testing-library/react';
 
+import { escapeMessageText } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -77,7 +78,7 @@ export const composerHolding = (fields: SectionDoc) => ({
   stage: {
     type: 'NetworkComposer' as const,
     fields: {
-      label: 'Network Composer',
+      label: { 'en-US': 'Network Composer' },
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',
@@ -277,7 +278,9 @@ export const collectInAnAlterForm = (
         ...fields,
         ...variableIds.map((variable) => ({
           variable,
-          prompt: `What is this person's ${variable}?`,
+          prompt: {
+            'en-US': escapeMessageText(`What is this person's ${variable}?`),
+          },
         })),
       ],
     },
@@ -332,7 +335,7 @@ export const composerInAnotherStage = (
   const second: SectionDoc = {
     ...composer,
     id,
-    label: 'Second composer',
+    label: { 'en-US': 'Second composer' },
     edges: [],
     nodeForm: { fields: [...fields] },
   };

@@ -12,6 +12,8 @@ import {
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
 
+import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
+import { asLocalizedString } from '../../localization/localizedText.ts';
 import {
   DAY_OFFSET_KEYS,
   dateResolutionOf,
@@ -236,10 +238,11 @@ export default function VariableParameterFields({
           name="parameter-min-label"
           label={intl.formatMessage(messages.minLabelLabel)}
           hint={intl.formatMessage(messages.minLabelHint)}
-          component={InputControl}
+          component={LocalizedRichTextField}
+          singleLine
           placeholder={intl.formatMessage(messages.minLabelPlaceholder)}
-          value={asText(held.minLabel)}
-          onChange={(value: unknown) => onChange('minLabel', value)}
+          value={asLocalizedString(held.minLabel)}
+          onChange={(label) => onChange('minLabel', label)}
           required
           {...fieldProps('minLabel')}
         />
@@ -247,10 +250,11 @@ export default function VariableParameterFields({
           name="parameter-max-label"
           label={intl.formatMessage(messages.maxLabelLabel)}
           hint={intl.formatMessage(messages.maxLabelHint)}
-          component={InputControl}
+          component={LocalizedRichTextField}
+          singleLine
           placeholder={intl.formatMessage(messages.maxLabelPlaceholder)}
-          value={asText(held.maxLabel)}
-          onChange={(value: unknown) => onChange('maxLabel', value)}
+          value={asLocalizedString(held.maxLabel)}
+          onChange={(label) => onChange('maxLabel', label)}
           required
           {...fieldProps('maxLabel')}
         />

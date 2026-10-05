@@ -14,13 +14,13 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
 import type { Asset } from '@codaco/protocol-validation';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../fields/RuleSetField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import {
@@ -36,6 +36,8 @@ import {
   type RowPreviewProps,
 } from '../../form/rowDialog.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import { useStagedResources } from '../../resources/client.tsx';
 import { acceptsResourceKind } from '../../resources/components/resourceKinds.ts';
 import type {
@@ -355,6 +357,11 @@ const ResourcePicker = AssetPickerField as ComponentType<
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const hasTranslatedText = (value: unknown): boolean =>
+  Object.values(asLocalizedString(value) ?? {}).some(
+    (text) => text.trim() !== '',
+  );
+
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
@@ -437,8 +444,7 @@ function usePanelsValidation() {
         (value: unknown) =>
           rowsOf(value).every(
             (panel) =>
-              typeof panel.title === 'string' &&
-              panel.title.trim() !== '' &&
+              hasTranslatedText(panel.title) &&
               typeof panel.dataSource === 'string' &&
               panel.dataSource !== '',
           )
@@ -610,12 +616,12 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
         title={intl.formatMessage(messages.configurationGroupTitle)}
         description={intl.formatMessage(messages.configurationGroupDescription)}
       >
-        <Field<typeof InputField>
+        <Field<typeof LocalizedInputField>
           name="title"
-          component={InputField}
+          component={LocalizedInputField}
           label={intl.formatMessage(messages.panelTitleLabel)}
           hint={intl.formatMessage(messages.panelTitleHint)}
-          initialValue={asString(item.title) ?? ''}
+          initialValue={asLocalizedString(item.title)}
           required={PANEL_TITLE_REQUIRED}
         />
         <Field<typeof ResourcePicker>
@@ -851,6 +857,8 @@ function PanelPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
   const { staged } = useStagedResources();
+  const localize = useLocalizedText();
+  const title = localize(item.title);
   const dataSource = asString(item.dataSource) ?? INTERVIEW_NETWORK;
   const rules = ruleSetRules(item.filter).length;
   // The imported file's own name, which the researcher gave it, or one of two
@@ -866,9 +874,15 @@ function PanelPreview({ item }: RowPreviewProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="m-0 font-bold">
-        {asString(item.title) ?? intl.formatMessage(messages.untitledPanel)}
-      </p>
+      {title.text === '' ? (
+        <p className="m-0 font-bold">
+          {intl.formatMessage(messages.untitledPanel)}
+        </p>
+      ) : (
+        <p className="m-0 font-bold" lang={title.lang} dir={title.dir}>
+          {title.text}
+        </p>
+      )}
       <p className="m-0 text-sm text-current/70">
         {intl.formatMessage(messages.panelSummary, { rules, source })}
       </p>

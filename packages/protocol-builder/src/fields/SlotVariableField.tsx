@@ -7,6 +7,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type {
   InterfaceOwnedOption,
+  VariableOption,
   Variables,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -25,6 +26,8 @@ import {
 import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
+import { localizedFromText } from '../localization/localizedText.ts';
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
@@ -140,10 +143,27 @@ export default function SlotVariableField({
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
   const committedValue: unknown = get(committedFields, name);
+  const localization = useProtocolLocalization();
+  // The canonical set's labels are plain text; an attribute created here holds
+  // them as participant copy in the protocol's default language. Until the
+  // protocol's languages are known they cannot be written, so creating an
+  // attribute for an owned set is not offered.
+  const seededOptions = useMemo<readonly VariableOption[] | undefined>(
+    () =>
+      lockedOptions === undefined || localization === undefined
+        ? undefined
+        : lockedOptions.map((option) => ({
+            value: option.value,
+            label: localizedFromText(localization, option.label),
+          })),
+    [localization, lockedOptions],
+  );
+  const createOffered =
+    lockedOptions === undefined || seededOptions !== undefined;
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType,
-    ...(lockedOptions === undefined ? {} : { lockedOptions }),
+    ...(seededOptions === undefined ? {} : { lockedOptions: seededOptions }),
     title: intl.formatMessage(createLabel),
     onCreated: (variableId) =>
       storeApi.getState().setFieldValue(name, variableId),
@@ -289,7 +309,7 @@ export default function SlotVariableField({
         options={pickerOptions}
         emptyMessage={intl.formatMessage(emptyMessage)}
         custom={crossClassValidation}
-        {...createProps}
+        {...(createOffered ? createProps : {})}
       />
       {editor}
       {offerValidation && (

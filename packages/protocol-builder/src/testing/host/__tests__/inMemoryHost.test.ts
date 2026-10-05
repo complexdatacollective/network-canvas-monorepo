@@ -125,7 +125,7 @@ async function watchCursors(
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label },
+      document: { ...held.document, label: { 'en-US': label } },
       revision: held.revision,
     });
   }
@@ -276,13 +276,16 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...before.document, label: 'Renamed by a non-holder' },
+      document: {
+        ...before.document,
+        label: { 'en-US': 'Renamed by a non-holder' },
+      },
       revision: before.revision,
     });
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('NotLockHolder');
-    expect(subject.store.read(INFORMATION).document.label).toBe(
+    expect(subject.store.read(INFORMATION).document.label).toEqual(
       before.document.label,
     );
   });
@@ -308,7 +311,10 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...readOnly.document, label: 'Renamed by a spectator' },
+      document: {
+        ...readOnly.document,
+        label: { 'en-US': 'Renamed by a spectator' },
+      },
       revision: readOnly.revision,
     });
 
@@ -318,9 +324,9 @@ describe('the in-memory host', () => {
       sectionId: INFORMATION,
       holder: { displayName: 'Grace' },
     });
-    expect(subject.store.read(INFORMATION).document.label).not.toBe(
-      'Renamed by a spectator',
-    );
+    expect(subject.store.read(INFORMATION).document.label).not.toEqual({
+      'en-US': 'Renamed by a spectator',
+    });
   });
 
   it('writes the whole section for the lock holder', async () => {
@@ -333,14 +339,17 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by the holder' },
+      document: {
+        ...held.document,
+        label: { 'en-US': 'Renamed by the holder' },
+      },
       revision: held.revision,
     });
 
     expect(revision.sequence).toBeGreaterThan(held.revision.sequence);
-    expect(subject.store.read(INFORMATION).document.label).toBe(
-      'Renamed by the holder',
-    );
+    expect(subject.store.read(INFORMATION).document.label).toEqual({
+      'en-US': 'Renamed by the holder',
+    });
   });
 
   it('refuses a submit whose document is not shaped like the section', async () => {
@@ -829,7 +838,10 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed beside a bad promotion' },
+      document: {
+        ...held.document,
+        label: { 'en-US': 'Renamed beside a bad promotion' },
+      },
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: ['never-staged'] },
     });
@@ -987,7 +999,12 @@ describe('the in-memory host', () => {
       kind: 'codebookEgo',
       document: {
         variables: {
-          ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+          ego_age: {
+            name: 'ego_age',
+            label: { 'en-US': 'Age' },
+            type: 'number',
+            component: 'Number',
+          },
         },
       },
     });
@@ -1088,13 +1105,16 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Saved after the stream ended' },
+      document: {
+        ...held.document,
+        label: { 'en-US': 'Saved after the stream ended' },
+      },
       revision: held.revision,
     });
     expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
-    expect(subject.store.read(INFORMATION).document.label).toBe(
-      'Saved after the stream ended',
-    );
+    expect(subject.store.read(INFORMATION).document.label).toEqual({
+      'en-US': 'Saved after the stream ended',
+    });
   });
 
   it('refuses a source name the asset manifest could not carry', async () => {

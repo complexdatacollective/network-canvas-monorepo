@@ -9,7 +9,10 @@ import {
 } from '../../protocol-context.ts';
 import { proposeStageLabel } from '../proposeStageLabel.ts';
 
-const informationStage = (id: string, label: string): SectionDoc => ({
+const informationStage = (
+  id: string,
+  label: Readonly<Record<string, string>>,
+): SectionDoc => ({
   id,
   type: 'Information',
   label,
@@ -27,19 +30,34 @@ const contextWith = (
   sections: Readonly<Record<string, SectionDoc>> = {},
 ): ProtocolBuilderProtocolContext =>
   protocolContextFromSections({
+    [sectionId({ kind: 'settings' })]: {
+      localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+    },
     [sectionId({ kind: 'stageOrder' })]: { stages: [] },
     [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        diabetes: { name: 'Diabetes', type: 'boolean' },
-        asthma: { name: 'Asthma', type: 'boolean' },
+        diabetes: {
+          name: 'Diabetes',
+          label: { en: 'Diabetes' },
+          type: 'boolean',
+        },
+        asthma: { name: 'Asthma', label: { en: 'Asthma' }, type: 'boolean' },
       },
     },
     [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
       name: 'Friendship',
-      variables: { closeness: { name: 'Closeness', type: 'scalar' } },
+      label: { en: 'Friendship' },
+      variables: {
+        closeness: {
+          name: 'Closeness',
+          label: { en: 'Closeness' },
+          type: 'scalar',
+        },
+      },
     },
     ...sections,
   });
@@ -101,7 +119,7 @@ describe('proposeStageLabel', () => {
           items: [
             { id: 'item-1', type: 'asset', content: 'asset-video' },
             { id: 'item-2', type: 'asset', content: 'asset-image' },
-            { id: 'item-3', type: 'text', content: 'Some prose' },
+            { id: 'item-3', type: 'text', content: { en: 'Some prose' } },
           ],
         },
         contextWith({
@@ -145,7 +163,42 @@ describe('proposeStageLabel', () => {
     expect(
       proposeStageLabel(
         { id: 'stage-new', type: 'Information' },
-        contextWith(ordered(informationStage('stage-other', 'Information'))),
+        contextWith(
+          ordered(informationStage('stage-other', { en: 'Information' })),
+        ),
+      ),
+    ).toBe('Information #2');
+  });
+
+  /**
+   * A proposal is written as the default-language translation, so only that
+   * translation of another stage's name can collide with it.
+   */
+  it('compares names in the default language only', () => {
+    expect(
+      proposeStageLabel(
+        { id: 'stage-new', type: 'Information' },
+        contextWith(
+          ordered(
+            informationStage('stage-translated', {
+              en: 'About the study',
+              es: 'Information',
+            }),
+          ),
+        ),
+      ),
+    ).toBe('Information');
+    expect(
+      proposeStageLabel(
+        { id: 'stage-new', type: 'Information' },
+        contextWith(
+          ordered(
+            informationStage('stage-other', {
+              en: 'Information',
+              es: 'Información',
+            }),
+          ),
+        ),
       ),
     ).toBe('Information #2');
   });
@@ -161,8 +214,8 @@ describe('proposeStageLabel', () => {
         { id: 'stage-edited', type: 'Information' },
         contextWith(
           ordered(
-            informationStage('stage-other', 'Something else'),
-            informationStage('stage-edited', 'Information'),
+            informationStage('stage-other', { en: 'Something else' }),
+            informationStage('stage-edited', { en: 'Information' }),
           ),
         ),
       ),

@@ -220,6 +220,7 @@ export const personDefinition = (
   variables: Record<string, unknown>,
 ): SectionDoc => ({
   name: 'person',
+  label: { 'en-US': 'person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
@@ -231,6 +232,7 @@ export const knowsDefinition = (
   variables: Record<string, unknown>,
 ): SectionDoc => ({
   name: 'knows',
+  label: { 'en-US': 'knows' },
   color: 'edge-color-seq-2',
   variables,
 });
@@ -348,6 +350,7 @@ const seedCategoricalAttribute = (
         ...asRecord(definition.variables),
         [SEEDED_CATEGORICAL]: {
           name: 'contact_setting',
+          label: { 'en-US': 'contact_setting' },
           type: 'categorical',
           // One of the two controls the schema lets a categorical be collected
           // with. A control belonging to another type — `RadioGroup` is the
@@ -356,8 +359,8 @@ const seedCategoricalAttribute = (
           // this subject's attributes rather than complain about this one.
           component: 'CheckboxGroup',
           options: [
-            { label: 'At home', value: 'home' },
-            { label: 'At work', value: 'work' },
+            { label: { 'en-US': 'At home' }, value: 'home' },
+            { label: { 'en-US': 'At work' }, value: 'work' },
           ],
         },
       },
@@ -401,9 +404,9 @@ export const authorsValuesFromField = async (
     expect(
       asRecord(codebookVariables(harness, subject)[categoricalId]).options,
     ).toEqual([
-      { label: 'At home', value: 'home' },
-      { label: 'At work', value: 'work' },
-      { label: 'Somewhere else', value: 'elsewhere' },
+      { label: { 'en-US': 'At home' }, value: 'home' },
+      { label: { 'en-US': 'At work' }, value: 'work' },
+      { label: { 'en-US': 'Somewhere else' }, value: 'elsewhere' },
     ]),
   );
 };
@@ -447,6 +450,7 @@ export const authorsDateSettingsFromField = async (
   // on the form field, which holds only its question.
   expect(asRecord(codebookVariables(harness, subject)[dateId])).toMatchObject({
     name: 'met_on',
+    label: { 'en-US': 'met_on' },
     type: 'datetime',
     component: 'DatePicker',
   });

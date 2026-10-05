@@ -49,7 +49,11 @@ describe('the pedigrees a narrative pedigree may read', () => {
     // Numbered as the researcher will see it in the interview, because two
     // pedigrees may carry the same name.
     expect(options).toEqual([
-      { value: 'family-pedigree-1', label: 'Family Pedigree', position: 3 },
+      {
+        value: 'family-pedigree-1',
+        label: { 'en-US': 'Family Pedigree' },
+        position: 3,
+      },
     ]);
     expect(problem).toBeNull();
   });

@@ -1,21 +1,17 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import RichTextField from '../../fields/RichTextField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import BuilderSection from '../BuilderSection.tsx';
 
 /** The schema keeps a stage's introduction in one object with two parts. */
 const TITLE_FIELD = 'introductionPanel.title';
 const TEXT_FIELD = 'introductionPanel.text';
-
-/**
- * The introduction is a screen the participant reads before the task starts,
- * so its heading is a heading rather than a label of unbounded length.
- */
-const TITLE_LIMIT = 50;
 
 const messages = defineMessages({
   title: {
@@ -66,16 +62,15 @@ export default function IntroductionSection() {
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
     >
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
-        component={InputField}
+        component={LocalizedInputField}
         label={intl.formatMessage(messages.headingLabel)}
         required={REQUIRED}
-        maxLength={TITLE_LIMIT}
       />
-      <Field<typeof RichTextField>
+      <Field<typeof LocalizedRichTextField>
         name={TEXT_FIELD}
-        component={RichTextField}
+        component={LocalizedRichTextField}
         label={intl.formatMessage(messages.textLabel)}
         required={REQUIRED}
       />

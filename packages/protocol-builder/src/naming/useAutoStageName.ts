@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import {
   stageNameOwnership,
@@ -35,6 +36,7 @@ export type AutoStageName = Readonly<{
 export function useAutoStageName(): AutoStageName {
   const { storeApi, creation, readOnly } = useStageEditorForm();
   const isNewStage = creation !== undefined;
+  const languagesKnown = useProtocolLocalization() !== undefined;
   const liveLabel = useLiveStageLabel();
   const proposal = useProposedStageLabel();
   const write = useStageNameWriter();
@@ -50,8 +52,10 @@ export function useAutoStageName(): AutoStageName {
     // Nothing proposed into a stage this session may not write, and no
     // refusal reported for it: nobody asked for this write, and a create still
     // waiting on its acquire would meet a banner about a name nobody typed.
-    // The effect re-runs when the acquire settles.
-    if (readOnly) return;
+    // The effect re-runs when the acquire settles. Likewise before the
+    // protocol's languages are known: there is no default language to name
+    // the stage in yet.
+    if (readOnly || !languagesKnown) return;
     const ownership = stageNameOwnership(storeApi);
     const update = computeAutoNameUpdate({
       isNewStage,
@@ -64,7 +68,15 @@ export function useAutoStageName(): AutoStageName {
     if (update.label !== undefined) {
       write(update.label, 'proposed');
     }
-  }, [isNewStage, liveLabel, proposal, readOnly, storeApi, write]);
+  }, [
+    isNewStage,
+    languagesKnown,
+    liveLabel,
+    proposal,
+    readOnly,
+    storeApi,
+    write,
+  ]);
 
   const onBlur = useCallback(() => {
     if (!isNewStage || readOnly) return;

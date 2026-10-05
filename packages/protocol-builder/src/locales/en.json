@@ -895,6 +895,14 @@
     "defaultMessage": "Some codebook data could not be displayed",
     "description": "Heading of the warning listing parts of the stored codebook this page could not read."
   },
+  "protocolBuilder.codebookEntity.labelHint": {
+    "defaultMessage": "{entity, select, node {The words participants are shown for this node type. Left empty, the type name is used.} other {The words participants are shown for this edge type. Left empty, the type name is used.}}",
+    "description": "Guidance under the entity type label field. The type name is the field above it, holding the researcher’s own name for the type. entity is node or edge."
+  },
+  "protocolBuilder.codebookEntity.labelLabel": {
+    "defaultMessage": "{entity, select, node {Node type label} other {Edge type label}}",
+    "description": "Label of the field holding the words participants are shown for this entity type, as opposed to the type name the researcher and the exported data use. entity is node or edge; the ego has no label."
+  },
   "protocolBuilder.codebookEntity.manageEgoAttributes": {
     "defaultMessage": "Manage attributes",
     "description": "Button on the ego card that opens its attribute list. The ego — the interview participant themselves — has attributes but no type properties, so the button offers those rather than editing a type."
@@ -1126,6 +1134,14 @@
   "protocolBuilder.codebookVariable.interfaceOwnedPick": {
     "defaultMessage": "This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.",
     "description": "Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is the name of that step, which is the researcher’s own or a built-in interface name and is not translated here."
+  },
+  "protocolBuilder.codebookVariable.labelHint": {
+    "defaultMessage": "The words participants are shown for this attribute. Left empty, the attribute name is used.",
+    "description": "Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute."
+  },
+  "protocolBuilder.codebookVariable.labelLabel": {
+    "defaultMessage": "Attribute label",
+    "description": "Label of the field holding the words participants are shown for this attribute (a codebook variable), as opposed to the attribute name the researcher and the exported data use."
   },
   "protocolBuilder.codebookVariable.lockedOptionLabelHeader": {
     "defaultMessage": "Label",
@@ -2243,6 +2259,10 @@
     "defaultMessage": "Information",
     "description": "Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label."
   },
+  "protocolBuilder.interface.languageChooser": {
+    "defaultMessage": "Language Chooser",
+    "description": "Researcher-facing interface name. Interface where the participant chooses which of the protocol languages the rest of the interview is shown in. Not a protocol-authored stage label."
+  },
   "protocolBuilder.interface.nameGenerator": {
     "defaultMessage": "Name Generator (using forms)",
     "description": "Researcher-facing interface name. Interface for naming network members using forms. Not a protocol-authored stage label."
@@ -2326,6 +2346,70 @@
   "protocolBuilder.introduction.title": {
     "defaultMessage": "Task introduction",
     "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
+  },
+  "protocolBuilder.languageChooser.clearIntroductionConfirm": {
+    "defaultMessage": "Remove introduction",
+    "description": "Action that confirms switching the introduction off and deleting its text."
+  },
+  "protocolBuilder.languageChooser.clearIntroductionDescription": {
+    "defaultMessage": "The introduction will be deleted in every language. Do you want to continue?",
+    "description": "Body of the confirmation asked before switching the introduction off, which deletes the introduction text in every protocol language."
+  },
+  "protocolBuilder.languageChooser.clearIntroductionTitle": {
+    "defaultMessage": "Remove the introduction?",
+    "description": "Title of the confirmation asked before switching the introduction off, which deletes the introduction text in every protocol language."
+  },
+  "protocolBuilder.languageChooser.introductionDescription": {
+    "defaultMessage": "Write a short message participants read before they choose a language.",
+    "description": "Description of the optional introduction section on the language-choice stage."
+  },
+  "protocolBuilder.languageChooser.introductionLabel": {
+    "defaultMessage": "Introduction text",
+    "description": "Label of the rich-text field holding the message a participant reads above the list of languages."
+  },
+  "protocolBuilder.languageChooser.introductionTitle": {
+    "defaultMessage": "Introduction",
+    "description": "Heading of the optional section where a researcher writes text a participant reads above the list of languages on the screen where they choose the language of their interview."
+  },
+  "protocolBuilder.languageChooser.languagesDescription": {
+    "defaultMessage": "Participants choose from every language this protocol is written in. Add or remove languages in the protocol's settings.",
+    "description": "Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages set for the whole protocol."
+  },
+  "protocolBuilder.languageChooser.languagesListLabel": {
+    "defaultMessage": "Languages participants can choose",
+    "description": "Accessible name of the list of languages a participant can choose between on this stage."
+  },
+  "protocolBuilder.languageChooser.languagesTitle": {
+    "defaultMessage": "Languages",
+    "description": "Heading of the section listing the languages a participant can choose between on this stage."
+  },
+  "protocolBuilder.languageChooser.singleLanguage": {
+    "defaultMessage": "This protocol is written in one language, so participants will see it as their only choice.",
+    "description": "Shown under the list of languages when the protocol has only one language, so this stage offers participants a single option."
+  },
+  "protocolBuilder.localization.defaultLanguage": {
+    "defaultMessage": "Default",
+    "description": "Tag beside the protocol language participants see when their own language has no translation."
+  },
+  "protocolBuilder.localization.editingLanguage": {
+    "defaultMessage": "Editing language",
+    "description": "Accessible name of the menu that chooses which of the protocol languages the researcher is writing text in."
+  },
+  "protocolBuilder.localization.missingCount": {
+    "defaultMessage": "{count, plural, one {# translation missing} other {# translations missing}}",
+    "description": "Shown beside the language menu of a text field: how many of the protocol languages this text has no translation in."
+  },
+  "protocolBuilder.localization.missingTranslation": {
+    "defaultMessage": "Missing",
+    "description": "Tag beside a protocol language in the language menu when the text being edited has no translation in that language."
+  },
+  "protocolBuilder.localization.notTranslated": {
+    "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text.",
+    "description": "Shown under a text field when the text has no translation in the language being edited. language is the language being edited; fallback is the language participants are shown instead. Both are language names written in their own language."
+  },
+  "protocolBuilder.localization.unspecifiedLanguage": {
+    "defaultMessage": "Unspecified language",
+    "description": "Name shown for a protocol language that has not been identified yet (the \"und\" language tag), for example a protocol upgraded from an older version."
   },
   "protocolBuilder.multiSelect.emptyState": {
     "defaultMessage": "No items available.",

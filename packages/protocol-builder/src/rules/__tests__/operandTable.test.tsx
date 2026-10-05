@@ -51,41 +51,65 @@ const ATTRIBUTES: Readonly<Record<VariableType, string>> = Object.freeze({
 });
 
 const personVariables: SectionDoc['variables'] = {
-  flag: { name: 'Flag', type: 'boolean', component: 'Boolean' },
-  note: { name: 'Note', type: 'text', component: 'Text' },
-  age: { name: 'Age', type: 'number', component: 'Number' },
+  flag: {
+    name: 'Flag',
+    label: { en: 'Flag' },
+    type: 'boolean',
+    component: 'Boolean',
+  },
+  note: {
+    name: 'Note',
+    label: { en: 'Note' },
+    type: 'text',
+    component: 'Text',
+  },
+  age: {
+    name: 'Age',
+    label: { en: 'Age' },
+    type: 'number',
+    component: 'Number',
+  },
   closeness: {
     name: 'Closeness',
+    label: { en: 'Closeness' },
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
-  born: { name: 'Born', type: 'datetime', component: 'DatePicker' },
+  born: {
+    name: 'Born',
+    label: { en: 'Born' },
+    type: 'datetime',
+    component: 'DatePicker',
+  },
   band: {
     name: 'Band',
+    label: { en: 'Band' },
     type: 'ordinal',
     component: 'RadioGroup',
     options: [
-      { label: 'Low', value: 1 },
-      { label: 'High', value: 2 },
+      { label: { en: 'Low' }, value: 1 },
+      { label: { en: 'High' }, value: 2 },
     ],
   },
   mood: {
     name: 'Mood',
+    label: { en: 'Mood' },
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: 'Happy', value: 'happy' },
-      { label: 'Sad', value: 'sad' },
+      { label: { en: 'Happy' }, value: 'happy' },
+      { label: { en: 'Sad' }, value: 'sad' },
     ],
   },
   // The two the schema calls non-renderable: they are recorded by the stage
   // that captures them rather than by a form control, so they carry none.
-  place: { name: 'Place', type: 'location' },
-  spot: { name: 'Spot', type: 'layout' },
+  place: { name: 'Place', label: { en: 'Place' }, type: 'location' },
+  spot: { name: 'Spot', label: { en: 'Spot' }, type: 'layout' },
 };
 
 const personDefinition = {
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-2',
   shape: { default: 'square' },
   variables: personVariables,
@@ -96,14 +120,21 @@ const stageOrderSection = sectionId({ kind: 'stageOrder' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 const stageFields: SectionDoc = {
-  label: 'Details',
+  label: { en: 'Details' },
   subject: { entity: 'node', type: 'person' },
-  form: { fields: [{ variable: 'age', prompt: 'How old are they?' }] },
-  introductionPanel: { title: 'About them', text: 'A few questions.' },
+  form: { fields: [{ variable: 'age', prompt: { en: 'How old are they?' } }] },
+  introductionPanel: {
+    title: { en: 'About them' },
+    text: { en: 'A few questions.' },
+  },
 };
 
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Operand table', schemaVersion: 9 },
+  [settingsSection]: {
+    name: 'Operand table',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  },
   [stageOrderSection]: { stages: ['stage-1'] },
   [STAGE_SECTION]: { id: 'stage-1', type: 'AlterForm', ...stageFields },
   [personSection]: personDefinition,
@@ -256,6 +287,7 @@ const buildRule = async (
 const protocolWith = (rule: RuleDraft): unknown => ({
   name: 'Operand table',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook,
   stages: [
     {

@@ -10,26 +10,37 @@ const context: ProtocolBuilderProtocolContext = {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          age: { name: 'Age', type: 'number', component: 'Number' },
+          age: {
+            name: 'Age',
+            label: { en: 'Age' },
+            type: 'number',
+            component: 'Number',
+          },
         },
       },
     },
     edge: {
       knows: {
         name: 'Knows',
+        label: { en: 'Knows' },
         color: 'edge-color-seq-1',
         variables: {
-          closeness: { name: 'Closeness', type: 'number' },
+          closeness: {
+            name: 'Closeness',
+            label: { en: 'Closeness' },
+            type: 'number',
+          },
         },
       },
     },
     ego: {
       variables: {
-        consent: { name: 'Consent', type: 'boolean' },
+        consent: { name: 'Consent', label: { en: 'Consent' }, type: 'boolean' },
       },
     },
   },

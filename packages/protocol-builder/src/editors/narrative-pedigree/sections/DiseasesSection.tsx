@@ -5,7 +5,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { diseaseLabelKey } from '@codaco/protocol-validation';
+import {
+  findDuplicateDiseaseLabels,
+  type LocalizedString,
+} from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../../../form/absentValues.ts';
 import {
@@ -20,6 +23,11 @@ import {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
+import {
+  useLocalizedText,
+  useProtocolLocalization,
+} from '../../../localization/ProtocolLocalization.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
@@ -57,6 +65,12 @@ const NOTHING_UNRECORDED = JSON.stringify([]);
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** A row's label, where it holds one, in the shape the schema compares. */
+const labelled = (row: unknown): { label: LocalizedString }[] => {
+  const label = isRecord(row) ? asLocalizedString(row.label) : undefined;
+  return label === undefined ? [] : [{ label }];
+};
+
 /**
  * The conditions this stage draws on the family it reads.
  *
@@ -68,11 +82,14 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * - one attribute per disease. Two rows on one attribute give the pedigree
  *   contradictory answers for a single affected set, and the genetics engine
  *   resolves one inheritance pattern per attribute.
- * - one name per disease. The name is the key the participant reads, so two
- *   rows sharing one are indistinguishable on screen whatever they map.
+ * - one name per disease, in every language. The name is the key the
+ *   participant reads, so two rows sharing one are indistinguishable on screen
+ *   whatever they map.
  *
- * Names are compared by the schema's own key, so a name this editor accepts is
- * one the saved protocol is still valid under on every device it is opened on.
+ * Names are compared by the schema's own check, as a participant in each
+ * declared language would read them after fallback, so a name this editor
+ * accepts is one the saved protocol is still valid under on every device it is
+ * opened on.
  *
  * Everything else a row's attribute has to be is `diseasePickIssue`, which the
  * picker in the dialog is built from as well — so the two cannot disagree
@@ -85,6 +102,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 export default function DiseasesSection() {
   const intl = useAppIntl();
+  const localization = useProtocolLocalization();
+  const localize = useLocalizedText();
   const { savedFields, storeApi } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const { roleMap, slotMap } = useDiseaseVariableIndexes();
@@ -151,17 +170,20 @@ export default function DiseasesSection() {
           });
       if (pickIssue !== undefined) fieldErrors.variable = [pickIssue];
 
-      const key = diseaseLabelKey(
-        typeof row.label === 'string' ? row.label : '',
-      );
+      // The row goes last, so any collision it is part of is reported at its
+      // own index whichever sibling it repeats.
+      const candidate = labelled(row);
+      const compared = [
+        ...liveRows
+          .filter((_, index) => index !== context.editIndex)
+          .flatMap(labelled),
+        ...candidate,
+      ];
       if (
-        key !== '' &&
-        liveRows.some(
-          (sibling, index) =>
-            index !== context.editIndex &&
-            isRecord(sibling) &&
-            typeof sibling.label === 'string' &&
-            diseaseLabelKey(sibling.label) === key,
+        localization !== undefined &&
+        candidate.length > 0 &&
+        findDuplicateDiseaseLabels(compared, localization).some(
+          (duplicate) => duplicate.index === compared.length - 1,
         )
       ) {
         fieldErrors.label = [
@@ -178,6 +200,7 @@ export default function DiseasesSection() {
     },
     [
       savedVariableFor,
+      localization,
       protocolContext,
       roleMap,
       rows,
@@ -198,9 +221,13 @@ export default function DiseasesSection() {
    */
   const recordedRef = useRef(recorded);
   recordedRef.current = recorded;
+  // The editing language, read the same way and for the same reason.
+  const localizeRef = useRef(localize);
+  localizeRef.current = localize;
 
   /**
-   * The rows nothing would ever mark, by the name the researcher gave them.
+   * The rows nothing would ever mark, by the name the researcher gave them in
+   * the editing language.
    *
    * A row with no name of its own is named by the same stand-in its collapsed
    * row shows, carried as a nested message error so the whole refusal is
@@ -209,19 +236,19 @@ export default function DiseasesSection() {
   const unrecordedNames = useCallback(
     (value: unknown): (string | Readonly<{ messageError: string }>)[] => {
       if (!Array.isArray(value)) return [];
-      return value.flatMap((row: unknown) =>
-        diseaseMarksNobody(row, recordedRef.current)
-          ? [
-              isRecord(row) && typeof row.label === 'string' && row.label !== ''
-                ? row.label
-                : {
-                    messageError: createMessageError(
-                      narrativePedigreeMessages.diseaseUnnamed,
-                    ),
-                  },
-            ]
-          : [],
-      );
+      return value.flatMap((row: unknown) => {
+        if (!diseaseMarksNobody(row, recordedRef.current)) return [];
+        const name = isRecord(row) ? localizeRef.current(row.label).text : '';
+        return [
+          name === ''
+            ? {
+                messageError: createMessageError(
+                  narrativePedigreeMessages.diseaseUnnamed,
+                ),
+              }
+            : name,
+        ];
+      });
     },
     [],
   );

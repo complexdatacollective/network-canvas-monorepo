@@ -10,7 +10,6 @@ import {
 import {
   CodebookNameSchema,
   type ExportColumnVariable,
-  hasDuplicateOptionLabels,
   normalizeCodebookName,
   normalizeForComparison,
 } from '@codaco/shared-consts';
@@ -21,6 +20,16 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { exportColumnRefusals } from '../fields/variableNameRules.ts';
+import {
+  hasDuplicateLocalizedOptionLabels,
+  isOptionLabelEmpty,
+  isOptionValueEmpty,
+} from '../form/arrayFields/optionCompleteness.ts';
+import {
+  asLocalizedString,
+  localizedFromText,
+  type ProtocolLocalization,
+} from '../localization/localizedText.ts';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -193,6 +202,8 @@ export class MissingVariableError extends Error {
 export type CreateEntityEditInput = Readonly<{
   subject: CodebookSubject;
   draft: CodebookEntityDraft;
+  /** The protocol's languages, which a label seeded from the name is written in. */
+  localization: ProtocolLocalization | undefined;
 }>;
 
 export type UpdateEntityEditInput = Readonly<{
@@ -367,10 +378,36 @@ const withNormalizedEntityName = (document: SectionDoc): SectionDoc => {
   return document;
 };
 
+/**
+ * `draft` with a label written from its name where it holds none.
+ *
+ * A node type, edge type or attribute needs participant-facing wording beside
+ * its name, but the researcher names it first and may never word it
+ * separately, so the name stands in — in the protocol's default language —
+ * until they do. Until the protocol's languages are known nothing can be
+ * written, and the schema refuses the missing label.
+ */
+export const withSeededLabel = <
+  Draft extends Readonly<Record<string, unknown>>,
+>(
+  draft: Draft,
+  localization: ProtocolLocalization | undefined,
+): Draft => {
+  if (localization === undefined) return draft;
+  if (asLocalizedString(draft.label) !== undefined) return draft;
+  const name =
+    typeof draft.name === 'string' ? normalizeCodebookName(draft.name) : '';
+  return name === ''
+    ? draft
+    : { ...draft, label: localizedFromText(localization, name) };
+};
+
 const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
   const normalized = withNormalizedVariableNames(cloneDocument(draft));
   const tooFew = tooFewOptionsIssue(normalized);
   if (tooFew !== null) throw researcherIssue(tooFew);
+  const incomplete = incompleteOptionsIssue(normalized);
+  if (incomplete !== null) throw researcherIssue(incomplete);
   const result = VariableSchema.safeParse(normalized);
   if (!result.success) {
     throw invalidDraft('the variable draft is invalid', result.error.issues);
@@ -394,22 +431,38 @@ const tooFewOptionsIssue = (
   });
 };
 
+/**
+ * An option with no label in any language, or no value.
+ *
+ * Asked before the schema parses the draft, because an option that has lost
+ * its last translation holds no label at all, and the schema's own refusal of
+ * a missing key names a path rather than the half of the option to fill in.
+ */
+const incompleteOptionsIssue = (
+  draft: Readonly<Record<string, unknown>>,
+): CodebookDraftIssue | null => {
+  if (typeof draft.type !== 'string' || !isOptionType(draft.type)) return null;
+  const { options } = draft;
+  if (!Array.isArray(options)) return null;
+  const incomplete = options.some(
+    (option: unknown) =>
+      !isRecord(option) ||
+      isOptionLabelEmpty(option.label) ||
+      isOptionValueEmpty(option.value),
+  );
+  return incomplete
+    ? Object.freeze({
+        path: Object.freeze(['options']),
+        message: createMessageError(messages.optionsIncomplete),
+      })
+    : null;
+};
+
 const categoricalOptionIssue = (
   variable: Variable,
 ): CodebookDraftIssue | null => {
   if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
     return null;
-  }
-
-  if (
-    variable.options.some(
-      ({ label, value }) => label.trim() === '' || value === '',
-    )
-  ) {
-    return Object.freeze({
-      path: Object.freeze(['options']),
-      message: createMessageError(messages.optionsIncomplete),
-    });
   }
 
   const seen = new Set<string>();
@@ -430,11 +483,11 @@ const categoricalOptionIssue = (
   // The write's own reading of the same question the row cell asks while the
   // researcher is typing. Not the same code — the cell compares one row
   // against its siblings (`isDuplicatedInColumn`), this compares a whole list
-  // — and they agree for every label a protocol can hold, which is what makes
-  // the refusal here the one the row already showed rather than a second
-  // surprise. Asked here as well as there because a caller writing straight to
-  // the codebook never met the cell.
-  if (hasDuplicateOptionLabels(variable.options)) {
+  // — and they agree for every label a protocol can hold, language by
+  // language, which is what makes the refusal here the one the row already
+  // showed rather than a second surprise. Asked here as well as there because
+  // a caller writing straight to the codebook never met the cell.
+  if (hasDuplicateLocalizedOptionLabels(variable.options)) {
     return Object.freeze({
       path: Object.freeze(['options']),
       message: createMessageError(messages.optionsDuplicateLabel),
@@ -475,7 +528,13 @@ const variablesFromDocument = (
 
 /** The whole section document a new node, edge or ego type is created from. */
 export function documentForNewEntity(input: CreateEntityEditInput): SectionDoc {
-  const document = withNormalizedEntityName(cloneDocument(input.draft));
+  const document = withNormalizedEntityName(
+    cloneDocument(
+      input.subject.entity === 'ego'
+        ? input.draft
+        : withSeededLabel(input.draft, input.localization),
+    ),
+  );
   if (!Object.hasOwn(document, 'variables')) {
     document.variables = Object.create(null);
   }
@@ -659,7 +718,9 @@ export function documentWithCreatedVariable(
   if (Object.hasOwn(variables, input.variableId)) {
     throw new DuplicateVariableIdError(input.variableId);
   }
-  const variable = validateVariableDraft(input.draft);
+  const variable = validateVariableDraft(
+    withSeededLabel(input.draft, input.protocolContext.localization),
+  );
   assertVariableNameAvailable(variables, variable);
   assertNoExportColumnConflict(input.subject, variables, variable);
   defineOwn(variables, input.variableId, cloneValue(variable));

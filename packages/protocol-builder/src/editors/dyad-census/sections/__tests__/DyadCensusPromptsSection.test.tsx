@@ -99,14 +99,21 @@ describe('the questions a dyad census asks about a pair', () => {
       stage: {
         type: 'DyadCensus',
         fields: {
-          label: 'Dyad Census',
+          label: { 'en-US': 'Dyad Census' },
           subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: 'Pairs', text: 'Two at a time.' },
+          introductionPanel: {
+            title: { 'en-US': 'Pairs' },
+            text: { 'en-US': 'Two at a time.' },
+          },
           prompts: [
-            { id: 'prompt-a', text: 'Know each other?', createEdge: 'knows' },
+            {
+              id: 'prompt-a',
+              text: { 'en-US': 'Know each other?' },
+              createEdge: 'knows',
+            },
             {
               id: 'prompt-b',
-              text: 'Worked together?',
+              text: { 'en-US': 'Worked together?' },
               createEdge: 'family_edge',
             },
           ],

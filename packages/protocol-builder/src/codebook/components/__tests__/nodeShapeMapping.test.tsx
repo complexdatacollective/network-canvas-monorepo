@@ -15,6 +15,7 @@ import {
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import {
   attributeField,
   chooseAttribute,
@@ -45,39 +46,54 @@ const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const VARIABLES: Record<string, unknown> = {
   ethnicity: {
     name: 'Ethnicity',
+    label: { en: 'Ethnicity' },
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: 'Asian', value: 'asian' },
-      { label: 'White', value: 'white' },
+      { label: { en: 'Asian' }, value: 'asian' },
+      { label: { en: 'White' }, value: 'white' },
     ],
   },
   contact: {
     name: 'Contact',
+    label: { en: 'Contact' },
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: 'a.b [1]', value: 'a.b [1]' },
-      { label: '友人', value: '友人' },
+      { label: { en: 'a.b [1]' }, value: 'a.b [1]' },
+      { label: { en: '友人' }, value: '友人' },
     ],
   },
-  alive: { name: 'Alive', type: 'boolean', component: 'Toggle' },
+  alive: {
+    name: 'Alive',
+    label: { en: 'Alive' },
+    type: 'boolean',
+    component: 'Toggle',
+  },
   age: {
     name: 'Age',
+    label: { en: 'Age' },
     type: 'number',
     component: 'Number',
     validation: { minValue: 0, maxValue: 120 },
   },
   closeness: {
     name: 'Closeness',
+    label: { en: 'Closeness' },
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
-  notes: { name: 'Notes', type: 'text', component: 'Text' },
+  notes: {
+    name: 'Notes',
+    label: { en: 'Notes' },
+    type: 'text',
+    component: 'Text',
+  },
 };
 
 const person = (shape: Record<string, unknown>): SectionDoc => ({
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape,
@@ -98,15 +114,19 @@ const renderEditor = (
   document: SectionDoc = PERSON,
 ) => {
   render(
-    <CodebookEntityEditor
-      mode="update"
-      sessionKey="mapping"
-      subject={SUBJECT}
-      initialDraft={document}
-      authoritativeDocument={document}
-      existingEntityNames={[]}
-      onSubmit={onSubmit}
-    />,
+    <ProtocolLocalizationProvider
+      localization={{ defaultLocale: 'en', locales: ['en'] }}
+    >
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="mapping"
+        subject={SUBJECT}
+        initialDraft={document}
+        authoritativeDocument={document}
+        existingEntityNames={[]}
+        onSubmit={onSubmit}
+      />
+    </ProtocolLocalizationProvider>,
   );
   return userEvent.setup();
 };

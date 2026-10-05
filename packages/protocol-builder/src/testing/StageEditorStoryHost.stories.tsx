@@ -78,7 +78,7 @@ export const Editing: Story = {
     });
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"label": "Welcome screen"');
+    ).toHaveTextContent('"label": { "en-US": "Welcome screen" }');
   },
 };
 
@@ -174,6 +174,7 @@ export const ACollaboratorRevisesTheCodebook: Story = {
         variables: {
           ego_name: {
             name: 'given_name',
+            label: { 'en-US': 'given_name' },
             type: 'text',
             component: 'TextArea',
           },

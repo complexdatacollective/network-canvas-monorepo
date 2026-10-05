@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
 import {
@@ -24,29 +25,47 @@ import {
 const NODE: CodebookSubject = { entity: 'node', type: 'person' };
 const EGO: CodebookSubject = { entity: 'ego' };
 
+const LOCALIZATION: ProtocolLocalization = {
+  defaultLocale: 'en',
+  locales: ['en'],
+};
+
 const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: {},
   assets: {},
   orderedStages: [],
   issues: [],
+  localization: LOCALIZATION,
 };
 
 const categorical = (name: string, values: readonly string[]) => ({
   name,
   type: 'categorical',
   component: 'CheckboxGroup',
-  options: values.map((value) => ({ label: value, value })),
+  options: values.map((value) => ({ label: { en: value }, value })),
 });
 
 const text = (name: string) => ({ name, type: 'text', component: 'Text' });
 
 const layout = (name: string) => ({ name, type: 'layout' });
 
-const sectionOf = (variables: Record<string, unknown>): SectionDoc => ({
+/**
+ * A section as the codebook stores it. The attributes are built as drafts, which
+ * the write labels on creation, so a stored one is given its label here.
+ */
+const sectionOf = (
+  variables: Record<string, Record<string, unknown>>,
+): SectionDoc => ({
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
-  variables,
+  variables: Object.fromEntries(
+    Object.entries(variables).map(([id, variable]) => [
+      id,
+      { label: { en: String(variable.name) }, ...variable },
+    ]),
+  ),
 });
 
 /** What a write refused with, as the researcher would read it. */
@@ -178,11 +197,12 @@ describe('creating an attribute', () => {
     expect(() =>
       create(section, {
         name: 'foo',
+        label: { en: 'foo' },
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
-          { label: 'Bar', value: 'bar' },
-          { label: 'Baz', value: 'baz' },
+          { label: { en: 'Bar' }, value: 'bar' },
+          { label: { en: 'Baz' }, value: 'baz' },
         ],
       }),
     ).not.toThrow();
@@ -247,8 +267,8 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
           {
             options: [
-              { label: 'Bar', value: 'bar' },
-              { label: 'Qux', value: 'qux' },
+              { label: { en: 'Bar' }, value: 'bar' },
+              { label: { en: 'Qux' }, value: 'qux' },
             ],
           },
           ['options'],
@@ -272,8 +292,8 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
           {
             options: [
-              { label: 'Bar', value: 'bar' },
-              { label: 'Baz', value: 'qux' },
+              { label: { en: 'Bar' }, value: 'bar' },
+              { label: { en: 'Baz' }, value: 'qux' },
             ],
           },
           ['options'],
@@ -296,8 +316,8 @@ describe('changing an attribute that is already in the codebook', () => {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'Bar', value: 'bar' },
-              { label: 'Baz', value: 'baz' },
+              { label: { en: 'Bar' }, value: 'bar' },
+              { label: { en: 'Baz' }, value: 'baz' },
             ],
           },
           ['type', 'component', 'options'],
@@ -326,8 +346,8 @@ describe('changing an attribute that is already in the codebook', () => {
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: 'Bar', value: 'bar' },
-            { label: 'Qux', value: 'qux' },
+            { label: { en: 'Bar' }, value: 'bar' },
+            { label: { en: 'Qux' }, value: 'qux' },
           ],
         },
         ['type', 'component', 'options'],
@@ -344,8 +364,8 @@ describe('changing an attribute that is already in the codebook', () => {
         'foo',
         {
           options: [
-            { label: 'Bar', value: 'bar' },
-            { label: 'Z', value: 'z' },
+            { label: { en: 'Bar' }, value: 'bar' },
+            { label: { en: 'Z' }, value: 'z' },
           ],
         },
         ['options'],
@@ -370,9 +390,9 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
           {
             options: [
-              { label: 'Bar', value: 'bar' },
-              { label: 'Baz', value: 'baz' },
-              { label: 'Qux', value: 'qux' },
+              { label: { en: 'Bar' }, value: 'bar' },
+              { label: { en: 'Baz' }, value: 'baz' },
+              { label: { en: 'Qux' }, value: 'qux' },
             ],
           },
           ['options'],
@@ -418,6 +438,7 @@ describe('the names the write stores', () => {
     const written = create(sectionOf({}), text('  first_name  '));
     expect(storedVariable(written, 'new-variable')).toMatchObject({
       name: 'first_name',
+      label: { en: 'first_name' },
     });
   });
 
@@ -436,8 +457,8 @@ describe('the names the write stores', () => {
         'foo',
         {
           options: [
-            { label: 'First', value },
-            { label: 'Second', value: 'baz' },
+            { label: { en: 'First' }, value },
+            { label: { en: 'Second' }, value: 'baz' },
           ],
         },
         ['options'],
@@ -454,8 +475,11 @@ describe('the names the write stores', () => {
       'foo',
       {
         options: [
-          { label: 'First', value: `  ${'Collègue'.normalize('NFD')}  ` },
-          { label: 'Second', value: 'baz' },
+          {
+            label: { en: 'First' },
+            value: `  ${'Collègue'.normalize('NFD')}  `,
+          },
+          { label: { en: 'Second' }, value: 'baz' },
         ],
       },
       ['options'],
@@ -476,8 +500,8 @@ describe('the names the write stores', () => {
         'foo',
         {
           options: [
-            { label: 'First', value },
-            { label: 'Second', value: 'baz' },
+            { label: { en: 'First' }, value },
+            { label: { en: 'Second' }, value: 'baz' },
           ],
         },
         ['options'],
@@ -492,8 +516,8 @@ describe('the names the write stores', () => {
         'foo',
         {
           options: [
-            { label: 'First', value: 'yes\tplease' },
-            { label: 'Second', value: 'baz' },
+            { label: { en: 'First' }, value: 'yes\tplease' },
+            { label: { en: 'Second' }, value: 'baz' },
           ],
         },
         ['options'],
@@ -520,7 +544,11 @@ describe('the name of an entity type', () => {
     'stores the name %j as typed',
     (name) => {
       expect(
-        documentForNewEntity({ subject: NODE, draft: { ...draft, name } }).name,
+        documentForNewEntity({
+          subject: NODE,
+          draft: { ...draft, name },
+          localization: LOCALIZATION,
+        }).name,
       ).toBe(name);
     },
   );
@@ -530,6 +558,7 @@ describe('the name of an entity type', () => {
       documentForNewEntity({
         subject: NODE,
         draft: { ...draft, name: `  ${'Collègue'.normalize('NFD')} ` },
+        localization: LOCALIZATION,
       }).name,
     ).toBe('Collègue');
     expect(

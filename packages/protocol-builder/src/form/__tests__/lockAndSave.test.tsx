@@ -13,6 +13,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { translationText } from '../../localization/localizedText.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {
   ResourceClientProvider,
@@ -36,6 +37,8 @@ import StageEditorShell from '../StageEditorShell.tsx';
 
 const STAGE_ID = 'information-1';
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
+
+const en = (text: string) => ({ 'en-US': text });
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
 /**
@@ -124,7 +127,7 @@ describe('what a save writes', () => {
       ...seeded.fields,
       id: STAGE_ID,
       type: seeded.type,
-      label: 'A renamed page',
+      label: en('A renamed page'),
     });
     // And nothing the form invented on the way through.
     expect(Object.keys(written?.stageDocument ?? {}).toSorted()).toEqual(
@@ -194,7 +197,7 @@ describe('a save whose answer is lost on the way back', () => {
       before + 1n,
     );
     expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
-      label: 'Saved through a dropped socket',
+      label: en('Saved through a dropped socket'),
     });
   });
 
@@ -222,7 +225,7 @@ describe('a save whose answer is lost on the way back', () => {
       before + 2n,
     );
     expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
-      label: 'Saved again',
+      label: en('Saved again'),
     });
   });
 
@@ -314,11 +317,11 @@ describe('a save the protocol refuses because the lock has gone', () => {
       ),
     ).toBeInTheDocument();
     // The draft is gone: the control is back to what the protocol holds.
-    const savedLabel = seeded.fields.label;
-    expect(typeof savedLabel).toBe('string');
+    const savedLabel = translationText(seeded.fields.label, 'en-US');
+    expect(savedLabel).not.toBe('');
     await waitFor(() => {
       expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-        String(savedLabel),
+        savedLabel,
       );
     });
     expect(harness.protocolSections()[STAGE_SECTION]).toEqual({

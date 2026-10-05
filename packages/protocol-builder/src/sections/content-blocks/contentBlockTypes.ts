@@ -80,17 +80,18 @@ const messages = defineMessages({
   },
 });
 
+import { asLocalizedString } from '../../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
 /**
  * The editor slot each kind of block keeps its draft in.
  *
  * A saved block has ONE `content` key whose meaning depends on its `type`:
- * prose for a text block, a resource id for every other kind. Edited through a
- * single control, changing the kind has to destroy the value — and until it
- * does, the incoming kind's control is showing the outgoing kind's value: a
- * resource id sitting in a rich text editor, one save away from becoming what
- * a participant reads.
+ * prose in each of the protocol's languages for a text block, a resource id
+ * for every other kind. Edited through a single control, changing the kind has
+ * to destroy the value — and until it does, the incoming kind's control is
+ * showing the outgoing kind's value: a resource id sitting in a rich text
+ * editor, one save away from becoming what a participant reads.
  *
  * So each kind gets a slot of its own. Only the chosen kind's control is
  * mounted; the rest are parked in the dialog's store, so switching back and
@@ -100,7 +101,8 @@ import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
  *
  * Flat names rather than `content.text` paths: the row merge writes each
  * dormant entry with a lodash-style `set`, which reads a dot as a path and
- * would replace the committed `content` STRING with an object.
+ * would write the slot INTO the committed `content` — a translation map, or a
+ * resource id — rather than beside it.
  */
 export const CONTENT_BLOCK_SLOTS = Object.freeze({
   text: 'contentText',
@@ -275,14 +277,18 @@ function collapseContentBlock(value: unknown, stageType: StageType): unknown {
   // The chosen kind's slot is the only authority on `content`. The row still
   // carries what it was opened with, so promoting the slot — rather than
   // leaving that value in place — is what stops a resource id being saved as
-  // the text a participant reads. A slot present but empty clears `content`.
+  // the text a participant reads. A slot present but empty clears `content`,
+  // and so does one holding the other kind's shape: a text block's content is
+  // its translations, every other block's is a resource id.
   const slot = isContentBlockKind(value.type)
     ? CONTENT_BLOCK_SLOTS[value.type]
     : undefined;
   if (slot !== undefined && Object.hasOwn(value, slot)) {
     const draft = value[slot];
-    if (typeof draft === 'string') collapsed.content = draft;
-    else delete collapsed.content;
+    const content =
+      value.type === 'text' ? asLocalizedString(draft) : asString(draft);
+    if (content === undefined) delete collapsed.content;
+    else collapsed.content = content;
   }
 
   if (

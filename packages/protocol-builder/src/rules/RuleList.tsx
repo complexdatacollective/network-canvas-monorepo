@@ -20,6 +20,7 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import type { Codebook } from '@codaco/protocol-validation';
 
+import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
 import { describeRule, duplicateRuleIds } from './ruleDescription.ts';
@@ -87,6 +88,7 @@ function RuleListItem({
 }: RuleListItemProps) {
   const rule = asRule(item);
   const intl = useAppIntl();
+  const { localization, locale } = useEditingLanguage();
   const textId = useId();
   const editActionId = useId();
   const deleteActionId = useId();
@@ -99,8 +101,10 @@ function RuleListItem({
         targets: allowedTargets,
         duplicateIds,
         intl,
+        localization,
+        locale,
       }),
-    [allowedTargets, codebook, duplicateIds, intl, rule],
+    [allowedTargets, codebook, duplicateIds, intl, locale, localization, rule],
   );
 
   // External editors own the active row while their dialog is open. Hiding it

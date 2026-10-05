@@ -14,11 +14,13 @@ import { readMessage } from '../testing/i18n.ts';
 const FIRST_STAGE = 'stage-first';
 const SECOND_STAGE = 'stage-second';
 
+const text = (value: string) => ({ 'en-US': value });
+
 const informationStage = (id: string, label: string): SectionDoc => ({
   id,
   type: 'Information',
-  label,
-  title: label,
+  label: text(label),
+  title: text(label),
   items: [],
 });
 
@@ -32,28 +34,37 @@ const protocolSections = (): Record<string, SectionDoc> => ({
     SECOND_STAGE,
     'Second',
   ),
+  [sectionId({ kind: 'settings' })]: {
+    localization: { defaultLocale: 'en-US', locales: ['en-US'] },
+  },
   [sectionId({ kind: 'stageOrder' })]: {
     stages: [SECOND_STAGE, FIRST_STAGE],
   },
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
     name: 'Person',
+    label: text('Person'),
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: {
-      age: { name: 'Age', type: 'number' },
-      nickname: { name: 'Nickname', type: 'text' },
+      age: { name: 'Age', label: text('Age'), type: 'number' },
+      nickname: { name: 'Nickname', label: text('Nickname'), type: 'text' },
     },
   },
   [sectionId({ kind: 'codebookEdge', typeId: 'knows' })]: {
     name: 'Knows',
+    label: text('Knows'),
     color: 'edge-color-seq-1',
     variables: {
-      strength: { name: 'Strength', type: 'number' },
+      strength: { name: 'Strength', label: text('Strength'), type: 'number' },
     },
   },
   [sectionId({ kind: 'codebookEgo' })]: {
     variables: {
-      consented: { name: 'Consented', type: 'boolean' },
+      consented: {
+        name: 'Consented',
+        label: text('Consented'),
+        type: 'boolean',
+      },
     },
   },
 });
@@ -63,6 +74,10 @@ describe('protocolContextFromSections', () => {
     const context = protocolContextFromSections(protocolSections());
 
     expect(context.issues).toEqual([]);
+    expect(context.localization).toEqual({
+      defaultLocale: 'en-US',
+      locales: ['en-US'],
+    });
     expect(context.orderedStages.map(({ id }) => id)).toEqual([
       SECOND_STAGE,
       FIRST_STAGE,
@@ -84,7 +99,7 @@ describe('protocolContextFromSections', () => {
     sections[nodeId] = {
       ...sections[nodeId],
       variables: {
-        nickname: { name: 'Nickname', type: 'text' },
+        nickname: { name: 'Nickname', label: text('Nickname'), type: 'text' },
       },
     };
 
@@ -130,12 +145,16 @@ describe('protocolContextFromSections', () => {
     sections[edgeId] = {
       ...sections[edgeId],
       variables: {
-        age: { name: 'RelationshipAge', type: 'number' },
+        age: {
+          name: 'RelationshipAge',
+          label: text('RelationshipAge'),
+          type: 'number',
+        },
       },
     };
     sections[egoId] = {
       variables: {
-        age: { name: 'EgoAge', type: 'number' },
+        age: { name: 'EgoAge', label: text('EgoAge'), type: 'number' },
       },
     };
 
@@ -206,14 +225,17 @@ describe('protocolContextFromSections', () => {
     sections[stageSectionId] = {
       id: FIRST_STAGE,
       type: 'NameGenerator',
-      label: 'First',
+      label: text('First'),
       subject: { entity: 'node', type: 'person' },
-      form: { title: 'Add', fields: [{ variable: 'name', prompt: 'Name' }] },
-      prompts: [{ id: 'p1', text: 'Who?' }],
+      form: {
+        title: text('Add'),
+        fields: [{ variable: 'name', prompt: text('Name') }],
+      },
+      prompts: [{ id: 'p1', text: text('Who?') }],
       panels: [
         {
           id: 'panel-1',
-          title: 'From a file',
+          title: text('From a file'),
           dataSource: 'roster-asset',
           filter: {
             rules: [
@@ -267,6 +289,7 @@ describe('protocolContextFromSections', () => {
     const sections = protocolSections();
     sections[sectionId({ kind: 'codebookNode', typeId: '__proto__' })] = {
       name: 'Prototype',
+      label: text('Prototype'),
       color: 'node-color-seq-2',
       shape: { default: 'square' },
     };

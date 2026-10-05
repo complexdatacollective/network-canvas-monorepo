@@ -5,9 +5,9 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { StageType } from '@codaco/protocol-validation';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import { REQUIRED } from '../../form/requiredField.ts';
 import {
@@ -452,9 +452,9 @@ export default function PageContentSection({
       {...(capability === undefined ? {} : { capability })}
     >
       {placement.titleField !== undefined && (
-        <Field<typeof InputField>
+        <Field<typeof LocalizedInputField>
           name={placement.titleField}
-          component={InputField}
+          component={LocalizedInputField}
           label={intl.formatMessage(messages.headingLabel)}
           hint={intl.formatMessage(messages.headingHint)}
           placeholder={intl.formatMessage(messages.headingPlaceholder)}

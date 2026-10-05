@@ -17,6 +17,8 @@ import {
 } from '../../testing/renderStageEditor.tsx';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 
+const en = (text: string) => ({ 'en-US': text });
+
 /** A row editor's own queries, scoped to the dialog it opened. */
 const openFormField = async (harness: StageEditorHarness) => {
   await harness.user.click(screen.getByRole('button', { name: 'Edit field' }));
@@ -113,7 +115,7 @@ const withAnExtraPoint = (
   ...held,
   options: [
     ...(Array.isArray(held.options) ? held.options : []),
-    { label: 'Inseparable', value: 4 },
+    { label: en('Inseparable'), value: 4 },
   ],
 });
 
@@ -175,10 +177,10 @@ describe('the answers a prompt writes back to its attribute', () => {
     // The save was about the prompt's wording. The other researcher's fourth
     // point is still there.
     expect(scale(harness).options).toEqual([
-      { label: 'Very close', value: 3 },
-      { label: 'Somewhat close', value: 2 },
-      { label: 'Not close', value: 1 },
-      { label: 'Inseparable', value: 4 },
+      { label: en('Very close'), value: 3 },
+      { label: en('Somewhat close'), value: 2 },
+      { label: en('Not close'), value: 1 },
+      { label: en('Inseparable'), value: 4 },
     ]);
   });
 
@@ -224,9 +226,9 @@ describe('the answers a prompt writes back to its attribute', () => {
 
     await waitFor(() =>
       expect(scale(harness).options).toEqual([
-        { label: 'Inseparable', value: 3 },
-        { label: 'Somewhat close', value: 2 },
-        { label: 'Not close', value: 1 },
+        { label: en('Inseparable'), value: 3 },
+        { label: en('Somewhat close'), value: 2 },
+        { label: en('Not close'), value: 1 },
       ]),
     );
     expect(scale(harness).name).toBe('tieStrength');
@@ -244,7 +246,7 @@ const FORM_COLLECTING_A_CHOICE = {
     ...loadFixtureStage('alter-form-1').fields,
     form: {
       fields: [
-        { variable: CHOICE_VARIABLE, prompt: 'How do you keep in touch?' },
+        { variable: CHOICE_VARIABLE, prompt: en('How do you keep in touch?') },
       ],
     },
   },
@@ -305,7 +307,7 @@ const withAnExtraAnswer = (
   ...held,
   options: [
     ...(Array.isArray(held.options) ? held.options : []),
-    { label: 'Letters', value: 'letters' },
+    { label: en('Letters'), value: 'letters' },
   ],
 });
 
@@ -379,10 +381,10 @@ describe('the answers a form field writes back to its attribute', () => {
     );
 
     expect(collectedAttribute(harness).options).toEqual([
-      { label: 'In person', value: 'in_person' },
-      { label: 'Phone or video call', value: 'call' },
-      { label: 'Text or messaging', value: 'text' },
-      { label: 'Letters', value: 'letters' },
+      { label: en('In person'), value: 'in_person' },
+      { label: en('Phone or video call'), value: 'call' },
+      { label: en('Text or messaging'), value: 'text' },
+      { label: en('Letters'), value: 'letters' },
     ]);
   });
 });
@@ -400,12 +402,13 @@ describe('the answers shown after the row is pointed somewhere else', () => {
   /** A second attribute of the same kind, for the row to be moved onto. */
   const MOOD = {
     name: 'mood',
+    label: en('mood'),
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: 'Happy', value: 'happy' },
-      { label: 'Sad', value: 'sad' },
-      { label: 'Neither', value: 'neither' },
+      { label: en('Happy'), value: 'happy' },
+      { label: en('Sad'), value: 'sad' },
+      { label: en('Neither'), value: 'neither' },
     ],
   };
 
@@ -514,7 +517,7 @@ describe('the answers shown after the row is pointed somewhere else', () => {
     // choices the row was showing a moment ago.
     const held = personVariable(harness, 'flagged').options;
     expect(Array.isArray(held) ? held : []).not.toEqual(
-      expect.arrayContaining([{ label: 'In person', value: 'in_person' }]),
+      expect.arrayContaining([{ label: en('In person'), value: 'in_person' }]),
     );
     expect(Array.isArray(held) ? held.length : 0).toBeLessThanOrEqual(2);
   });

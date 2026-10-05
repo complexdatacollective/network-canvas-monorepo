@@ -19,7 +19,6 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -60,6 +59,7 @@ import {
 import ComposerParametersField, {
   type ComposerParameters,
 } from '../../fields/ComposerParametersField.tsx';
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   createdUnassigned,
   type CreateOptionOutcome,
@@ -84,6 +84,8 @@ import {
 } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import {
   type CodebookSubject,
   variablesForSubject,
@@ -1221,21 +1223,21 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
           />
         </RevealWhenChosen>
       )}
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={LABEL_FIELD}
-        component={InputField}
+        component={LocalizedInputField}
         label={intl.formatMessage(messages.questionLabel)}
         hint={intl.formatMessage(messages.questionHint)}
         placeholder={intl.formatMessage(messages.questionPlaceholder)}
-        initialValue={asText(item[LABEL_FIELD])}
+        initialValue={asLocalizedString(item[LABEL_FIELD])}
       />
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={HINT_FIELD}
-        component={InputField}
+        component={LocalizedInputField}
         label={intl.formatMessage(messages.helpLabel)}
         hint={intl.formatMessage(messages.helpHint)}
         placeholder={intl.formatMessage(messages.helpPlaceholder)}
-        initialValue={asText(item[HINT_FIELD])}
+        initialValue={asLocalizedString(item[HINT_FIELD])}
       />
       <Field<typeof ToggleField>
         name={VALIDATION_HINTS_FIELD}
@@ -1279,7 +1281,9 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
 function ComposerFormFieldPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
+  const localize = useLocalizedText();
   const { subject } = useComposerFormScope();
+  const label = localize(item[LABEL_FIELD]);
   const variableId = asText(item[VARIABLE_FIELD]);
   const attribute =
     subject === undefined || variableId === undefined
@@ -1297,15 +1301,20 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
         resolve: "Empty field" said the row asked for nothing, when what it
         asks for is a reference only the researcher can repair.
       */}
-      <span>
-        {asText(item[LABEL_FIELD]) ??
-          attribute?.name ??
-          (variableId === undefined
-            ? intl.formatMessage(messages.emptyPreview)
-            : intl.formatMessage(messages.missingAttribute, {
-                attributeId: variableId,
-              }))}
-      </span>
+      {label.text === '' ? (
+        <span>
+          {attribute?.name ??
+            (variableId === undefined
+              ? intl.formatMessage(messages.emptyPreview)
+              : intl.formatMessage(messages.missingAttribute, {
+                  attributeId: variableId,
+                }))}
+        </span>
+      ) : (
+        <span lang={label.lang} dir={label.dir}>
+          {label.text}
+        </span>
+      )}
       {(attribute !== undefined || control !== undefined) && (
         <div className="flex flex-wrap gap-2.5">
           {/* A whole sentence rather than an assembled fragment: what reads
