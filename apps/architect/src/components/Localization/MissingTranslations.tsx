@@ -1,4 +1,4 @@
-import { type RefObject, useId } from 'react';
+import { createElement, type RefObject, useId } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
@@ -8,6 +8,10 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { Label } from '@codaco/fresco-ui/Label';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
+import {
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
@@ -176,6 +180,30 @@ const formatFieldPath = (
     })
     .join('');
 
+// Rendered inside the Section, so its element sits one level below the
+// Section's title; `level` only sets its size.
+const PlaceHeading = ({ details }: { details: PlaceDetails }) => {
+  const enclosingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingLevel === null ? 'h4' : headingTagBelow(enclosingLevel);
+  return (
+    <Heading level="h3" margin="none" render={createElement(headingTag)}>
+      {details.name && (
+        <span className="block text-sm font-normal text-current/70">
+          {details.kind}
+        </span>
+      )}
+      {details.href ? (
+        <NativeLink render={<Link href={details.href} />}>
+          {details.name || details.kind}
+        </NativeLink>
+      ) : (
+        details.name || details.kind
+      )}
+    </Heading>
+  );
+};
+
 type MissingTranslationsProps = {
   filter: LocaleTag | typeof ALL_LANGUAGES;
   onFilterChange: (filter: LocaleTag | typeof ALL_LANGUAGES) => void;
@@ -263,20 +291,7 @@ const MissingTranslations = ({
               const details = describePlace(intl, protocol, place);
               return (
                 <li key={key} className="flex flex-col gap-3">
-                  <Heading level="h3" margin="none">
-                    {details.name && (
-                      <span className="block text-sm font-normal text-current/70">
-                        {details.kind}
-                      </span>
-                    )}
-                    {details.href ? (
-                      <NativeLink render={<Link href={details.href} />}>
-                        {details.name || details.kind}
-                      </NativeLink>
-                    ) : (
-                      details.name || details.kind
-                    )}
-                  </Heading>
+                  <PlaceHeading details={details} />
                   <ul className="divide-outline flex flex-col divide-y">
                     {fields.map((field) => (
                       <li
