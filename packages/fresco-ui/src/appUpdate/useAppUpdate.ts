@@ -45,23 +45,18 @@ export const FRESH_LOAD_AUTO_APPLY_MS = 20_000;
 // Records the current version and reports whether the previous launch ran a
 // different one. Called once (guarded by a ref) so the write happens exactly
 // once per mount.
-function detectJustUpdated(
-  app: AppId,
-  currentVersion: string,
-): { justUpdated: boolean; previousVersion?: string } {
+function detectJustUpdated(app: AppId, currentVersion: string): boolean {
   try {
     const previous = localStorage.getItem(lastVersionKey(app));
-    const pending = localStorage.getItem(pendingUpdateKey(app));
+    const requestedUpdate =
+      localStorage.getItem(pendingUpdateKey(app)) !== null;
     localStorage.removeItem(pendingUpdateKey(app));
     localStorage.setItem(lastVersionKey(app), currentVersion);
-    const previousVersion = previous ?? pending ?? undefined;
-    return {
-      justUpdated:
-        pending !== null || (previous !== null && previous !== currentVersion),
-      ...(previousVersion ? { previousVersion } : {}),
-    };
+    return (
+      requestedUpdate || (previous !== null && previous !== currentVersion)
+    );
   } catch {
-    return { justUpdated: false };
+    return false;
   }
 }
 
@@ -72,7 +67,6 @@ export default function useAppUpdate({
   installUpdate,
 }: UseAppUpdateOptions): UseAppUpdateResult {
   const [justUpdated, setJustUpdated] = useState(false);
-  const [previousVersion, setPreviousVersion] = useState<string | undefined>();
   const [releaseNotes, setReleaseNotes] = useState<
     ReleaseNotes | 'loading' | null
   >(() => readCachedNotes(app));
@@ -86,9 +80,7 @@ export default function useAppUpdate({
   useEffect(() => {
     if (detectedRef.current) return;
     detectedRef.current = true;
-    const detected = detectJustUpdated(app, currentVersion);
-    setJustUpdated(detected.justUpdated);
-    setPreviousVersion(detected.previousVersion);
+    setJustUpdated(detectJustUpdated(app, currentVersion));
   }, [app, currentVersion]);
 
   // An available update means we just completed an online SW check — fetch the
@@ -100,7 +92,7 @@ export default function useAppUpdate({
     if (!needRefresh) return undefined;
     let active = true;
     setReleaseNotes((prev) => (prev && prev !== 'loading' ? prev : 'loading'));
-    void fetchLatestReleaseNotes(app, currentVersion).then((notes) => {
+    void fetchLatestReleaseNotes(app).then((notes) => {
       if (!active) return undefined;
       if (!notes) {
         // Fetch failed (offline / rate-limited / release not yet published):
@@ -117,7 +109,7 @@ export default function useAppUpdate({
     return () => {
       active = false;
     };
-  }, [needRefresh, app, currentVersion]);
+  }, [needRefresh, app]);
 
   // On a "just updated" load, prefer the cached notes for the running version
   // (written when it was "available"); otherwise fetch them by tag. Both
@@ -132,22 +124,20 @@ export default function useAppUpdate({
     }
     let active = true;
     setReleaseNotes('loading');
-    void fetchReleaseNotesForVersion(app, currentVersion, previousVersion).then(
-      (notes) => {
-        if (!active) return undefined;
-        if (!notes) {
-          setReleaseNotes((prev) => (prev === 'loading' ? null : prev));
-          return undefined;
-        }
-        writeCachedNotes(app, notes);
-        setReleaseNotes(notes);
+    void fetchReleaseNotesForVersion(app, currentVersion).then((notes) => {
+      if (!active) return undefined;
+      if (!notes) {
+        setReleaseNotes((prev) => (prev === 'loading' ? null : prev));
         return undefined;
-      },
-    );
+      }
+      writeCachedNotes(app, notes);
+      setReleaseNotes(notes);
+      return undefined;
+    });
     return () => {
       active = false;
     };
-  }, [justUpdated, app, currentVersion, previousVersion]);
+  }, [justUpdated, app, currentVersion]);
 
   const status: UpdateStatus = needRefresh
     ? 'available'

@@ -12,52 +12,6 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('version-change detection', () => {
-  it('shows every update since the version last opened after updating', async () => {
-    localStorage.setItem('nc:lastLaunchedVersion:architect', '1.0.0');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          schemaVersion: 1,
-          updates: [
-            {
-              versions: { architect: '2.0.0' },
-              title: 'Architect 2.0.0',
-              summary: 'Second.',
-            },
-            {
-              versions: { architect: '1.1.0' },
-              title: 'Architect 1.1.0',
-              summary: 'Skipped.',
-            },
-            {
-              versions: { architect: '1.0.0' },
-              title: 'Architect 1.0.0',
-              summary: 'Already seen.',
-            },
-          ],
-        }),
-      }),
-    );
-
-    const { result } = renderHook(() =>
-      useAppUpdate({
-        app: 'architect',
-        currentVersion: '2.0.0',
-        needRefresh: false,
-        installUpdate: vi.fn().mockResolvedValue(true),
-      }),
-    );
-
-    await waitFor(() =>
-      expect(result.current.releaseNotes).toEqual({
-        version: '2.0.0',
-        body: '### Architect 2.0.0\n\nSecond.\n\n### Architect 1.1.0\n\nSkipped.',
-      }),
-    );
-  });
-
   it('reports "updated" when the stored version differs from the current one', async () => {
     localStorage.setItem('nc:lastLaunchedVersion:architect', '1.0.0');
     const { result } = renderHook(() =>

@@ -10,11 +10,6 @@ NODE_OPTIONS = "--max-old-space-size=4096"
 [functions]
 deno_import_map = "apps/networkcanvas.com/netlify/import-map.json"
 
-[[headers]]
-for = "/api/*"
-[headers.values]
-Access-Control-Allow-Origin = "*"
-
 # The gallery is served from its own domain alias of this site. Its exported
 # routes stay in the publish directory as the rewrite target, so a plain
 # redirect would lose to the real file — these have to be forced. Only the

@@ -79,7 +79,6 @@
     "./appUpdate/AppUpdateIndicator": "./src/appUpdate/AppUpdateIndicator.tsx",
     "./appUpdate/applyFreshLoadServiceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
     "./appUpdate/registerPwaBuildLease": "./src/appUpdate/registerPwaBuildLease.ts",
-    "./appUpdate/releaseNotes": "./src/appUpdate/releaseNotes.ts",
     "./appUpdate/serviceWorkerUpdate": "./src/appUpdate/applyFreshLoadServiceWorkerUpdate.ts",
     "./appUpdate/useAppUpdate": "./src/appUpdate/useAppUpdate.ts",
     "./collection/components/Collection": "./src/collection/components/Collection.tsx",
@@ -456,10 +455,6 @@
       "./appUpdate/registerPwaBuildLease": {
         "types": "./dist/appUpdate/registerPwaBuildLease.d.ts",
         "default": "./dist/appUpdate/registerPwaBuildLease.js"
-      },
-      "./appUpdate/releaseNotes": {
-        "types": "./dist/appUpdate/releaseNotes.d.ts",
-        "default": "./dist/appUpdate/releaseNotes.js"
       },
       "./appUpdate/serviceWorkerUpdate": {
         "types": "./dist/appUpdate/applyFreshLoadServiceWorkerUpdate.d.ts",

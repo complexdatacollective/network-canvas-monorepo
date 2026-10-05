@@ -5,12 +5,7 @@ import csv from 'csvtojson';
 import { z } from 'zod';
 
 import type { Locale } from '~/lib/i18n/locales';
-import {
-  type UpdateAppId,
-  updateAppIds,
-  type UpdateKind,
-  updateKinds,
-} from '~/lib/updateApps';
+import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
 
 export type NewsItem = { id: string; title: string; href: string };
 
@@ -40,13 +35,9 @@ export type TeamMember = {
   photo: string;
 };
 
-export type UpdateVersion = { app: UpdateAppId; version?: string };
-
 export type Update = {
   id: string;
   date: string;
-  kind: UpdateKind;
-  versions: UpdateVersion[];
   apps: UpdateAppId[];
   title: string;
   summary: string;
@@ -188,33 +179,15 @@ const updateRowSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
     date: isoDate,
-    kind: z.enum(updateKinds),
-    versions: z
+    apps: z
       .string()
-      .transform((value) =>
-        value.split('|').map((entry) => {
-          const [app = '', version] = entry.trim().split('@');
-          return version ? { app, version } : { app };
-        }),
-      )
+      .transform((value) => value.split('|').map((app) => app.trim()))
       .pipe(
         z
-          .array(
-            z.object({
-              app: z.enum(updateAppIds),
-              version: z
-                .string()
-                .regex(
-                  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/,
-                  'must be a semver version',
-                )
-                .optional(),
-            }),
-          )
+          .array(z.enum(updateAppIds))
           .min(1)
           .refine(
-            (versions) =>
-              new Set(versions.map(({ app }) => app)).size === versions.length,
+            (apps) => new Set(apps).size === apps.length,
             'must not repeat an app',
           ),
       ),
@@ -455,13 +428,10 @@ export async function loadUpdates(
   const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
 
   return rows
-    .filter((row) => row.versions.some(({ version }) => version))
     .map((row) => ({
       id: row.id,
       date: row.date,
-      kind: row.kind,
-      versions: row.versions,
-      apps: row.versions.map(({ app }) => app),
+      apps: row.apps,
       title: row.title,
       summary: row.summary,
       ...(row.details ? { details: row.details } : {}),

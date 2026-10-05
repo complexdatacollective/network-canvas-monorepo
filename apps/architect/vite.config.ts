@@ -38,7 +38,7 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self' data:",
   "img-src 'self' data: blob:",
   "media-src 'self' blob:",
-  "connect-src 'self' data: blob: https://networkcanvas.com https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com",
+  "connect-src 'self' data: blob: https://api.github.com https://api.mapbox.com https://events.mapbox.com https://ph-relay.networkcanvas.com",
   "worker-src 'self' blob:",
   "frame-src 'self'",
   "base-uri 'none'",

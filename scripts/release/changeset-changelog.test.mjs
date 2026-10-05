@@ -54,14 +54,3 @@ test('retains the standard formatter for direct release notes', () => {
     '- 1111111: Describe the direct change.',
   );
 });
-
-test('leaves the Update line out of the changelog', () => {
-  assert.equal(
-    changelog.getReleaseLine({
-      commit: firstCommit,
-      summary:
-        'Describe the direct change.\n\nUpdate: A sentence for the Updates page.',
-    }),
-    '- 1111111: Describe the direct change.',
-  );
-});

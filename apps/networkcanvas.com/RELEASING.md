@@ -15,29 +15,6 @@ deploys authenticate with `NETLIFY_AUTH_TOKEN`, target the site in
 `NETLIFY_SITE_ID_WEBSITE`, and run only when the Website release PR changes the
 site's stable version on `main`.
 
-## Updates entries and the release that follows each app release
-
-`content/updates.csv` drives the Updates page and `/api/updates.json`, the feed
-Architect, Interviewer and Fresco read their release notes from. Each row is a
-`launch` (written by hand, with an illustration), or a generated `feature`
-(a minor or major version) or `fix` (a patch version).
-`versions` lists `app@version` pairs; an entry none of whose apps has a version
-yet is hidden until it ships.
-
-When the Version Packages PR is generated, `scripts/release/version-packages.mjs`
-adds a `feature` or `fix` row for every app version it bumps, from the changesets'
-`Update:` lines, fills in the versions of any pending launch row, and adds a
-`networkcanvas.com` patch changeset. Merging the Version Packages PR therefore
-opens a Release Website PR: merge it straight away, so the feed has the new
-entries within minutes of the apps going live. Until it does, the apps show the
-GitHub release text. That merge also ships any other website change waiting on
-`main`.
-
-The feed is a static file: `app/api/updates.json/route.ts` is prerendered at
-build time, and `netlify.toml` lets the apps fetch it from their own origins.
-Its `schemaVersion` changes only with a change the apps cannot read; installed
-apps ignore a feed in a schema they do not know and fall back to GitHub.
-
 ## The protocol gallery subdomain
 
 `protocolgallery.networkcanvas.com` is a Netlify **domain alias** of this site,
