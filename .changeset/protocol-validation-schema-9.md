@@ -81,8 +81,8 @@ Localization:
 - A new `LanguageChooser` stage lets the participant choose among the
   protocol's languages. It takes an optional localized markdown
   `introduction`.
-- Disease labels in a family pedigree stage must be unique in every declared
-  language.
+- Disease labels in a Narrative Pedigree stage must be unique in every
+  declared language.
 - New exports: the `LocalizedString`, `LocalizedStringFormat`, `LocaleTag`,
   `LocalizationDeclaration`, `LocaleMetadata`, `ResolvedLocalizedString`,
   `ProtocolLocalizationWarning` and `LocalizedStringHit` types;
@@ -91,9 +91,8 @@ Localization:
   `selectProtocolLocale` and `normalizeLocalePreferences` (choose a protocol
   language from a list of preferences, in order, matching Chinese by script);
   `canonicalizeLocale`; `getLocaleMetadata` (a language's own name and text
-  direction); `analyzeProtocolLocalization` (missing translations and an
-  unspecified language); `collectLocalizedStrings`; `escapeMessageText` and
-  `messageText`.
+  direction); `analyzeProtocolLocalization` (missing translations);
+  `collectLocalizedStrings`; `escapeMessageText` and `messageText`.
 - A Network Composer form field is now a union on `component`, so its scale
   end labels are localized fields of their own.
 
