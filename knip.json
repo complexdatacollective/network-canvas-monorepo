@@ -84,7 +84,11 @@
       "ignoreDependencies": [
         "@playwright/test",
         // Resolved by @posthog/plugin-utils and spawned by path at build time.
-        "@posthog/cli"
+        "@posthog/cli",
+        // Netlify's edge bundler resolves npm imports from the base directory's
+        // node_modules only, so networkcanvas.com's locale edge function needs
+        // it installed at the repository root.
+        "@formatjs/intl-localematcher"
       ]
     },
     "apps/networkcanvas.com": {
