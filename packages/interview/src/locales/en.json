@@ -87,6 +87,10 @@
     "defaultMessage": "Is this child…",
     "description": "Question in the side panel for adding a child: how the child is related to their parents. Followed by the options below."
   },
+  "interview.familyPedigree.connectAlreadyConnected": {
+    "defaultMessage": "{firstIsYou, select, true {You and “{second}” are already connected.} other {“{first}” and “{second}” are already connected.}}",
+    "description": "Shown under the toolbar, and read out, when the participant selects two people to connect who are already connected. first and second are their names or how they are related to the participant."
+  },
   "interview.familyPedigree.connectBack": {
     "defaultMessage": "Back",
     "description": "Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships."
@@ -350,10 +354,6 @@
   "interview.familyPedigree.toolsLabel": {
     "defaultMessage": "Family tree tools",
     "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people and connecting two people."
-  },
-  "interview.familyPedigree.trackerClose": {
-    "defaultMessage": "Hide this list",
-    "description": "Accessible name of the button that shrinks the list of family members still needed back to its progress indicator."
   },
   "interview.familyPedigree.trackerComplete": {
     "defaultMessage": "Your family tree has everything needed. You can continue.",

@@ -2,6 +2,11 @@
 
 import { type RefObject, useEffect, useState } from 'react';
 
+import {
+  DASHED_PATTERN,
+  EDGE_WIDTH,
+} from '../pedigree-layout/components/EdgeRenderer';
+
 type Point = { x: number; y: number };
 
 type ConnectorPreviewProps = {
@@ -12,6 +17,8 @@ type ConnectorPreviewProps = {
   /** The person the line ends on — hovered, focused or chosen — or null to
    * follow the mouse. */
   to: HTMLElement | null;
+  /** The family's connector colour. */
+  color: string;
 };
 
 const centreOf = (element: HTMLElement): Point => {
@@ -20,7 +27,7 @@ const centreOf = (element: HTMLElement): Point => {
 };
 
 /**
- * A dashed line from the first person selected for connecting to the mouse,
+ * A line drawn like the family's own connectors, but dashed, from the first person selected for connecting to the mouse,
  * or to the person it is over. It follows the mouse itself, so moving it does
  * not re-render the family.
  */
@@ -28,6 +35,7 @@ export default function ConnectorPreview({
   container,
   from,
   to,
+  color,
 }: ConnectorPreviewProps) {
   const [pointer, setPointer] = useState<Point | null>(null);
   // Scrolling moves the people under a still mouse.
@@ -63,10 +71,9 @@ export default function ConnectorPreview({
         y1={start.y - box.top}
         x2={end.x - box.left}
         y2={end.y - box.top}
-        strokeWidth={3}
-        strokeDasharray="8 6"
-        strokeLinecap="round"
-        className="stroke-primary"
+        stroke={color}
+        strokeWidth={EDGE_WIDTH}
+        strokeDasharray={DASHED_PATTERN}
       />
     </svg>
   );

@@ -30,6 +30,8 @@ type PersonNodeProps = {
   selected: boolean;
   /** Their add menu is showing (focus or the mouse is on them). */
   menuOpen: boolean;
+  /** One of the two people being connected with the connect tool. */
+  linking: boolean;
   hasMissingDetails: boolean;
   onActivate: () => void;
   /** 0 for the family's single tab stop, -1 for everyone else. */
@@ -55,6 +57,7 @@ export default function PersonNode({
   color,
   selected,
   menuOpen,
+  linking,
   hasMissingDetails,
   onActivate,
   tabIndex,
@@ -94,6 +97,7 @@ export default function PersonNode({
           missing: hasMissingDetails ? 'true' : 'false',
         })}
         selected={selected}
+        linking={linking}
         onClick={onActivate}
         tabIndex={tabIndex}
         onKeyDown={onKeyDown}

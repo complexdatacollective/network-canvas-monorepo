@@ -481,33 +481,30 @@ function isAncestor(family: Family, ancestorId: string, personId: string) {
   return false;
 }
 
-const isParentLinkBetween = (family: Family, a: string, b: string) =>
-  family.links.some(
+/** Whether two people are already linked, as partners or parent and child.
+ * A pair has at most one link, so they cannot be connected again. */
+export function areConnected(family: Family, a: string, b: string): boolean {
+  return family.links.some(
     (link) =>
-      link.kind !== 'partner' &&
-      ((link.source === a && link.target === b) ||
-        (link.source === b && link.target === a)),
+      (link.source === a && link.target === b) ||
+      (link.source === b && link.target === a),
   );
+}
 
-/** Two people can be made partners unless they already are, or one is the
- * other's parent. */
+/** Two people can be made partners unless they are already linked. */
 export function canConnectPartners(
   family: Family,
   firstId: string,
   secondId: string,
 ): boolean {
-  return (
-    firstId !== secondId &&
-    !partnersOf(family, firstId).includes(secondId) &&
-    !isParentLinkBetween(family, firstId, secondId)
-  );
+  return firstId !== secondId && !areConnected(family, firstId, secondId);
 }
 
 /**
  * The kinds of parent one person can be made of another. None when they are
- * already parent and child, or when the would-be parent descends from the
- * child. A person has at most two genetic parents (biological or donor) and
- * one surrogate.
+ * already linked, or when the would-be parent descends from the child. A
+ * person has at most two genetic parents (biological or donor) and one
+ * surrogate.
  */
 export function availableParentKinds(
   family: Family,
@@ -516,7 +513,7 @@ export function availableParentKinds(
 ): PedigreeParentKind[] {
   if (
     parentId === childId ||
-    isParentLinkBetween(family, parentId, childId) ||
+    areConnected(family, parentId, childId) ||
     isAncestor(family, childId, parentId)
   ) {
     return [];

@@ -438,12 +438,6 @@ export const messages = defineMessages({
     description:
       'Shown in the list of family members still needed once nothing more is needed.',
   },
-  trackerClose: {
-    id: 'interview.familyPedigree.trackerClose',
-    defaultMessage: 'Hide this list',
-    description:
-      'Accessible name of the button that shrinks the list of family members still needed back to its progress indicator.',
-  },
   itemParents: {
     id: 'interview.familyPedigree.itemParents',
     defaultMessage:
@@ -585,5 +579,12 @@ export const messages = defineMessages({
     defaultMessage: 'Back',
     description:
       'Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships.',
+  },
+  connectAlreadyConnected: {
+    id: 'interview.familyPedigree.connectAlreadyConnected',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” are already connected.} other {“{first}” and “{second}” are already connected.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects two people to connect who are already connected. first and second are their names or how they are related to the participant.',
   },
 });

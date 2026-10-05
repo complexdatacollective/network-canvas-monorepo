@@ -32,6 +32,8 @@ type PedigreeLayoutProps = {
   rowGapRatio?: number;
   columnGapRatio?: number;
   renderNode: (nodeId: string) => ReactNode;
+  /** A CSS colour for every connector. */
+  edgeColor?: string;
   highlightedNodeIds?: Set<string>;
   highlightedEdgeKeys?: Set<string>;
 };
@@ -45,6 +47,7 @@ export default function PedigreeLayout({
   rowGapRatio,
   columnGapRatio,
   renderNode,
+  edgeColor = 'var(--edge-1)',
   highlightedNodeIds,
   highlightedEdgeKeys,
 }: PedigreeLayoutProps) {
@@ -125,8 +128,6 @@ export default function PedigreeLayout({
 
   totalWidth += diamondInset * 2;
   totalHeight += diamondInset * 2 + routedConnectorInset;
-
-  const edgeColor = 'var(--edge-1)';
 
   // Nodes are emitted generation by generation, left to right, so the
   // document order — and therefore keyboard and screen-reader order — follows

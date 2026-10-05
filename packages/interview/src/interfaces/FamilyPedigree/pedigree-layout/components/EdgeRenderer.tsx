@@ -11,8 +11,8 @@ import type {
   ParentGroupConnector,
 } from '../types';
 
-const EDGE_WIDTH = 5;
-const DASHED_PATTERN = '8 8';
+export const EDGE_WIDTH = 5;
+export const DASHED_PATTERN = '8 8';
 
 function renderLine(
   seg: LineSegment,

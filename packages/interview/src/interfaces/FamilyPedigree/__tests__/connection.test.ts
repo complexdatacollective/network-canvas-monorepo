@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import {
+  areConnected,
   availableParentKinds,
   canConnectPartners,
   planConnection,
@@ -18,6 +19,16 @@ const people = ['ego', 'mum', 'dad', 'nan', 'other'].map((id) =>
 );
 
 describe('connecting two people', () => {
+  test('people already linked in any way are connected', () => {
+    const f = family(people, [
+      link('mum', 'dad', 'partner'),
+      link('mum', 'ego', 'social'),
+    ]);
+    expect(areConnected(f, 'dad', 'mum')).toBe(true);
+    expect(areConnected(f, 'ego', 'mum')).toBe(true);
+    expect(areConnected(f, 'ego', 'dad')).toBe(false);
+  });
+
   test('partners: not when already partners, or parent and child', () => {
     const f = family(people, [
       link('mum', 'dad', 'partner'),
@@ -40,10 +51,14 @@ describe('connecting two people', () => {
     ]);
   });
 
-  test('parents: none when already parent and child, either way round', () => {
-    const f = family(people, [link('mum', 'ego', 'adoptive')]);
+  test('parents: none when already linked, either way round', () => {
+    const f = family(people, [
+      link('mum', 'ego', 'adoptive'),
+      link('mum', 'dad', 'partner'),
+    ]);
     expect(availableParentKinds(f, 'mum', 'ego')).toEqual([]);
     expect(availableParentKinds(f, 'ego', 'mum')).toEqual([]);
+    expect(availableParentKinds(f, 'dad', 'mum')).toEqual([]);
   });
 
   test('parents: none that would make someone their own ancestor', () => {

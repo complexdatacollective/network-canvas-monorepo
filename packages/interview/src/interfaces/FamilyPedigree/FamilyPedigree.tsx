@@ -21,6 +21,7 @@ import Node from '@codaco/fresco-ui/Node';
 import {
   SegmentedToolbar,
   ToolbarIconButton,
+  ToolbarSeparator,
   ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
@@ -32,6 +33,7 @@ import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
+  getEdgeColorForType,
   getNetworkEdges,
   getNetworkNodes,
   getNodeColorSelector,
@@ -66,6 +68,7 @@ import PersonNode from './components/PersonNode';
 import { formatPersonLabel, labelFamily } from './kinship';
 import { messages } from './messages';
 import {
+  areConnected,
   type Connection,
   missingDetailsFor,
   pedigreeConfigFromStage,
@@ -114,6 +117,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     [nodes, edges, config],
   );
   const nodeColor = useStageSelector(getNodeColorSelector);
+  // Connectors, and the preview of a new one, take the codebook's colour for
+  // the relationship type ('edge-color-seq-N' is the CSS variable --edge-N).
+  const edgeColorSelector = useMemo(
+    () => getEdgeColorForType(config.relationshipType),
+    [config.relationshipType],
+  );
+  const edgeColorName = useSelector(edgeColorSelector);
+  const edgeColor = `var(--edge-${edgeColorName.replace('edge-color-seq-', '')})`;
   const codebook = useSelector(getCodebook);
 
   const requiredFormVariables = useMemo(() => {
@@ -171,6 +182,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const [tool, setTool] = useState<Tool>('pointer');
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [connectPair, setConnectPair] = useState<ConnectPair | null>(null);
+  // Why the last selection was refused, shown in place of the instruction.
+  const [connectNotice, setConnectNotice] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // No menu while the panel is open: it would offer to add to someone else
@@ -289,10 +302,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Next is held back, with the list of what is still needed shown, until
   // the family is complete. A recommendation lets the participant through on
   // pressing Next again with the list already open.
+  // (Pressing Next closes the list, as a press outside it, before this runs;
+  // so a recommendation remembers that it has been shown instead.)
+  const shownBeforeNext = useRef(false);
   useBeforeNext((direction) => {
     if (direction !== 'forwards' || !progress || !completeness) return true;
     if (progress.items.length === 0) return true;
-    if (completeness.enforcement === 'recommended' && trackerOpen) return true;
+    if (completeness.enforcement === 'recommended' && shownBeforeNext.current) {
+      return true;
+    }
+    shownBeforeNext.current = true;
     setTrackerOpen(true);
     return false;
   });
@@ -422,6 +441,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       setFocusedId(null);
       setHoveredId(null);
       setLinkingId(null);
+      setConnectNotice(null);
     }
   };
 
@@ -567,6 +587,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const chooseTool = (next: Tool) => {
     setTool(next);
     setLinkingId(null);
+    setConnectNotice(null);
     setConnectPair(null);
     setHoveredId(null);
     setFocusedId(null);
@@ -574,7 +595,27 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const handleConnectSelect = (personId: string) => {
     setLastFocusedId(personId);
+    setConnectNotice(null);
     if (connectPair) return;
+    if (
+      linkingId &&
+      linkingId !== personId &&
+      areConnected(family, linkingId, personId)
+    ) {
+      // A pair has one link at most; the first person stays selected.
+      const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
+      const [first, second] = isYou(personId)
+        ? [personId, linkingId]
+        : [linkingId, personId];
+      const notice = intl.formatMessage(messages.connectAlreadyConnected, {
+        firstIsYou: isYou(first) ? 'true' : 'false',
+        first: displayName(first),
+        second: displayName(second),
+      });
+      setConnectNotice(notice);
+      setAnnouncement(notice);
+      return;
+    }
     if (!linkingId) {
       setLinkingId(personId);
       setAnnouncement(
@@ -687,9 +728,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const connectorFrom = linkingId
     ? (nodeRefs.current.get(linkingId) ?? null)
     : null;
+  // Someone already connected to the first person is not a target: the line
+  // keeps following the mouse past them.
+  const isConnectTarget = (id: string | null): id is string =>
+    id !== null &&
+    linkingId !== null &&
+    id !== linkingId &&
+    !areConnected(family, linkingId, id);
   const connectorTargetId =
     connectPair?.secondId ??
-    [hoveredId, focusedId].find((id) => id !== null && id !== linkingId) ??
+    [hoveredId, focusedId].find(isConnectTarget) ??
     null;
   const connectorTo = connectorTargetId
     ? (nodeRefs.current.get(connectorTargetId) ?? null)
@@ -708,47 +756,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       </div>
       {measurementContainer}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex flex-col items-center gap-2 px-4">
-          <SegmentedToolbar
-            aria-label={intl.formatMessage(messages.toolsLabel)}
-            className="pointer-events-auto"
-          >
-            <ToolbarToggleGroup
-              aria-label={intl.formatMessage(messages.toolGroupLabel)}
-              value={[tool]}
-              onValueChange={(value) => {
-                const next = value[0];
-                if (next === 'pointer' || next === 'connect') chooseTool(next);
-              }}
-            >
-              <ToolbarIconButton
-                value="pointer"
-                aria-label={intl.formatMessage(messages.pointerTool)}
-                icon={<MousePointer2 />}
-                data-testid="pedigree-tool-pointer"
-              />
-              <ToolbarIconButton
-                value="connect"
-                aria-label={intl.formatMessage(messages.connectTool)}
-                icon={<Waypoints />}
-                data-testid="pedigree-tool-connect"
-              />
-            </ToolbarToggleGroup>
-          </SegmentedToolbar>
-          {tool === 'connect' && (
-            <p
-              className="text-sm opacity-80"
-              data-testid="pedigree-connect-hint"
-            >
-              {linkingId
-                ? intl.formatMessage(messages.connectHintLinking, {
-                    isYou: family.byId.get(linkingId)?.isEgo ? 'true' : 'false',
-                    name: displayName(linkingId),
-                  })
-                : intl.formatMessage(messages.connectHint)}
-            </p>
-          )}
-        </div>
         <div
           role="region"
           aria-label={intl.formatMessage(messages.canvasLabel)}
@@ -766,10 +773,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 container={contentRef}
                 from={connectorFrom}
                 to={connectorTo}
+                color={edgeColor}
               />
             )}
             <PedigreeLayout
               nodeIds={nodeIds}
+              edgeColor={edgeColor}
               links={links}
               nodeNames={nodeNames}
               nodeWidth={nodeWidth}
@@ -787,11 +796,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     person={person}
                     label={displayName(personId)}
                     color={nodeColor}
-                    selected={
-                      tool === 'connect'
-                        ? personId === linkingId ||
-                          personId === connectPair?.secondId
-                        : personId === selectedId
+                    selected={personId === selectedId}
+                    linking={
+                      tool === 'connect' &&
+                      (personId === linkingId || personId === connectorTargetId)
                     }
                     menuOpen={hasMenu}
                     hasMissingDetails={
@@ -824,6 +832,63 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             />
           </div>
         </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4">
+          {tool === 'connect' && (
+            <p
+              className="text-sm opacity-80"
+              data-testid="pedigree-connect-hint"
+            >
+              {connectNotice ??
+                (linkingId
+                  ? intl.formatMessage(messages.connectHintLinking, {
+                      isYou: family.byId.get(linkingId)?.isEgo
+                        ? 'true'
+                        : 'false',
+                      name: displayName(linkingId),
+                    })
+                  : intl.formatMessage(messages.connectHint))}
+            </p>
+          )}
+          <SegmentedToolbar
+            aria-label={intl.formatMessage(messages.toolsLabel)}
+            size="lg"
+            className="pointer-events-auto"
+          >
+            <ToolbarToggleGroup
+              aria-label={intl.formatMessage(messages.toolGroupLabel)}
+              value={[tool]}
+              onValueChange={(value) => {
+                const next = value[0];
+                if (next === 'pointer' || next === 'connect') chooseTool(next);
+              }}
+            >
+              <ToolbarIconButton
+                value="pointer"
+                aria-label={intl.formatMessage(messages.pointerTool)}
+                icon={<MousePointer2 />}
+                data-testid="pedigree-tool-pointer"
+              />
+              <ToolbarIconButton
+                value="connect"
+                aria-label={intl.formatMessage(messages.connectTool)}
+                icon={<Waypoints />}
+                data-testid="pedigree-tool-connect"
+              />
+            </ToolbarToggleGroup>
+            {progress && completeness && <ToolbarSeparator />}
+            {progress && completeness && (
+              <CompletenessTracker
+                progress={progress}
+                enforcement={completeness.enforcement}
+                open={trackerOpen}
+                onOpenChange={setTrackerOpen}
+                family={family}
+                displayName={displayName}
+                onItemSelect={handleTrackerItem}
+              />
+            )}
+          </SegmentedToolbar>
+        </div>
       </div>
       <ConnectMenu
         pair={connectPair}
@@ -839,17 +904,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }
         onClose={endConnecting}
       />
-      {progress && completeness && (
-        <CompletenessTracker
-          progress={progress}
-          enforcement={completeness.enforcement}
-          open={trackerOpen}
-          onOpenChange={setTrackerOpen}
-          family={family}
-          displayName={displayName}
-          onItemSelect={handleTrackerItem}
-        />
-      )}
       <div aria-live="polite" className="sr-only">
         {announcement}
       </div>

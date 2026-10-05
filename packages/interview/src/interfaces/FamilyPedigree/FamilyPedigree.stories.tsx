@@ -488,14 +488,18 @@ export const ConnectingExistingPeople: Story = {
         canvas.getByText('“Tom” and “Rachel” are partners'),
       ).toBeInTheDocument(),
     );
-    // Already partners, so that choice is no longer offered.
+    // Already connected, so no second link: the menu does not open, and the
+    // already-connected person does not join the linking state.
     await userEvent.click(person('mum'));
-    await userEvent.click(person('dad'));
+    await userEvent.hover(person('dad'));
     await expect(
-      await page.findByRole('menuitem', {
-        name: '“Rachel” and “Tom” are partners',
-      }),
-    ).toHaveAttribute('aria-disabled', 'true');
+      canvasElement.querySelector('[data-person-id="dad"] [data-node-linking]'),
+    ).toBeNull();
+    await userEvent.click(person('dad'));
+    await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
+      '“Rachel” and “Tom” are already connected.',
+    );
+    await expect(page.queryByRole('menu')).toBeNull();
     await userEvent.keyboard('{Escape}');
   },
 };
