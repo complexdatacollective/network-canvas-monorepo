@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   familyPedigreeStage,
   PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -25,7 +26,9 @@ import {
 } from './editorFixtures.ts';
 import {
   addFamilyMemberVariable,
+  addFamilyMemberVariables,
   FAMILY_MEMBER_SECTION,
+  RELATIVES_NOT_RECORDED_VARIABLE,
   familyPedigreeStageWith,
 } from './pedigreeFixtures.ts';
 
@@ -35,6 +38,7 @@ const SECTIONS = [
   'Node setup',
   'Person attributes',
   'Relationships',
+  'Completeness',
   'Prompt',
   'Additional person fields',
   'Skip logic',
@@ -338,5 +342,154 @@ describe('the attribute slots', () => {
     ]) {
       expect(offered).not.toContain(bound);
     }
+  });
+});
+
+describe('the completeness requirement', () => {
+  const switchOn = async (harness: StageEditorHarness) => {
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Completeness' }),
+    );
+  };
+
+  it('is off by default, and a stage saved that way holds no completeness', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(
+      await screen.findByRole('switch', { name: 'Completeness' }),
+    ).not.toBeChecked();
+    expect(screen.queryByText('Relatives to record')).toBeNull();
+    const request = await harness.submit();
+    expect(request?.stageDocument).not.toHaveProperty('completeness');
+  });
+
+  it('offers both biological parents, required, when switched on', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    addFamilyMemberVariables(harness, {
+      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+    });
+
+    await switchOn(harness);
+    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+
+    expect(
+      await screen.findByRole('option', { name: /Both biological parents/ }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('option', { name: /Required/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      completeness: {
+        scope: 'parents',
+        enforcement: 'required',
+        relativesNotRecordedVariable: 'relativesNotRecorded',
+      },
+    });
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('saves the scope and enforcement the researcher chooses', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    addFamilyMemberVariables(harness, {
+      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+    });
+
+    await switchOn(harness);
+    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    await harness.user.click(
+      await screen.findByRole('option', {
+        name: /Three generations, to first cousins/,
+      }),
+    );
+    await harness.user.click(
+      screen.getByRole('option', { name: /Recommended/ }),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      completeness: { scope: 'thirdDegree', enforcement: 'recommended' },
+    });
+  });
+
+  it('refuses a switched-on requirement with no attribute for the answers', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    await switchOn(harness);
+    await screen.findByText('Relatives not recorded', { selector: 'label' });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      harness.outline().find((section) => section.title === 'Completeness')
+        ?.state,
+    ).toBe('Has a problem');
+  });
+
+  it('seeds a new attribute with the owned options, locked', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    await switchOn(harness);
+    await screen.findByText('Relatives not recorded', { selector: 'label' });
+    await inventAttribute(
+      harness.user,
+      attributeField('Relatives not recorded'),
+      'not_recorded',
+    );
+
+    const table = await screen.findByRole('table', {
+      name: /automatically configured by the interface and cannot be modified/i,
+    });
+    expect(
+      [...table.querySelectorAll('tbody tr')].map((row) =>
+        [...row.querySelectorAll('td')].map(
+          (cell) => cell.textContent?.trim() ?? '',
+        ),
+      ),
+    ).toEqual(
+      PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map((option) => [
+        option.label,
+        option.value,
+      ]),
+    );
+  });
+
+  it('removes the whole requirement when switched off again', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        completeness: {
+          scope: 'firstDegree',
+          enforcement: 'required',
+          relativesNotRecordedVariable: 'relativesNotRecorded',
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariables(harness, {
+      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+    });
+    await harness.opened();
+
+    const toggle = await screen.findByRole('switch', { name: 'Completeness' });
+    expect(toggle).toBeChecked();
+    expect(
+      await screen.findByRole('option', {
+        name: /Parents, siblings and children/,
+      }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await harness.user.click(toggle);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove the requirement' }),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).not.toHaveProperty('completeness');
   });
 });

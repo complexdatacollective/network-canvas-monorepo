@@ -55,6 +55,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Node setup',
       'Person attributes',
       'Relationships',
+      'Completeness',
       'Prompt',
       'Additional person fields',
       'Skip logic',

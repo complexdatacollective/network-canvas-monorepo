@@ -9,7 +9,10 @@ import {
   familyPedigreeEditor,
   shimMarkdownEditorMeasurement,
 } from '../family-pedigree/__tests__/editorFixtures.ts';
-import { addFamilyMemberVariable } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
+import {
+  addFamilyMemberVariables,
+  RELATIVES_NOT_RECORDED_VARIABLE,
+} from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
 shimMarkdownEditorMeasurement();
@@ -38,6 +41,9 @@ const SKIP_LOGIC: SectionDoc = {
   destination: { type: 'finish' },
 };
 
+/** Not in the fixture protocol, so it is added to the person type as well. */
+const RELATIVES_NOT_RECORDED_ATTRIBUTE = 'relativesNotRecorded';
+
 const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: 'Family Pedigree',
   interviewScript: INTERVIEW_SCRIPT,
@@ -55,6 +61,11 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     kindVariable: 'relationshipKind',
     gestationalCarrierVariable: 'isGestationalCarrier',
     currentPartnerVariable: 'isCurrentPartner',
+  },
+  completeness: {
+    scope: 'thirdDegree',
+    enforcement: 'recommended',
+    relativesNotRecordedVariable: RELATIVES_NOT_RECORDED_ATTRIBUTE,
   },
   // NOT one of the person attributes: the interface already collects those
   // itself, so the extra fields may not. See `MEMBER_FORM_ATTRIBUTE`.
@@ -128,10 +139,13 @@ describe.each(MAXIMAL)(
         stage: { type: stageType, fields },
         editor,
       });
-      addFamilyMemberVariable(harness, MEMBER_FORM_ATTRIBUTE, {
-        name: MEMBER_FORM_ATTRIBUTE,
-        type: 'text',
-        component: 'Text',
+      addFamilyMemberVariables(harness, {
+        [MEMBER_FORM_ATTRIBUTE]: {
+          name: MEMBER_FORM_ATTRIBUTE,
+          type: 'text',
+          component: 'Text',
+        },
+        [RELATIVES_NOT_RECORDED_ATTRIBUTE]: RELATIVES_NOT_RECORDED_VARIABLE,
       });
 
       await harness.roundTrip({ unowned: [] });

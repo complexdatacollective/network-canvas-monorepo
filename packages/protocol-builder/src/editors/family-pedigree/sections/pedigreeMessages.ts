@@ -203,6 +203,170 @@ export const familyPedigreeMessages = defineMessages({
       'Button that confirms changing a Family Pedigree’s relationship edge type and discarding the attributes chosen for the previous one.',
   },
 
+  completenessTitle: {
+    id: 'protocolBuilder.pedigree.completenessTitle',
+    defaultMessage: 'Completeness',
+    description:
+      'Heading of the optional section where a researcher chooses how much of the family a Family Pedigree participant must record before they can continue.',
+  },
+  completenessDescription: {
+    id: 'protocolBuilder.pedigree.completenessDescription',
+    defaultMessage:
+      'Require participants to record a minimum part of their family before they continue. Switched off, they can continue with whatever family they have drawn.',
+    description:
+      'Description of the completeness section. The participant is the person being interviewed.',
+  },
+  completenessWaiting: {
+    id: 'protocolBuilder.pedigree.completenessWaiting',
+    defaultMessage:
+      'Choose the node type before choosing how complete the family must be.',
+    description:
+      'Shown in place of the completeness section’s description while no node type has been chosen for the stage.',
+  },
+  completenessScopeLabel: {
+    id: 'protocolBuilder.pedigree.completenessScopeLabel',
+    defaultMessage: 'Relatives to record',
+    description:
+      'Label of the control choosing which relatives of the participant must be recorded. Each choice includes the ones before it.',
+  },
+  completenessScopeHint: {
+    id: 'protocolBuilder.pedigree.completenessScopeHint',
+    defaultMessage:
+      'Each choice includes the ones before it. A participant can satisfy siblings and children by saying they have none or do not know. Biological parents are the people who contributed the egg or sperm, so donors count.',
+    description:
+      'Guidance under the control choosing which relatives must be recorded. Biological parents are the genetic parents of a person; a gestational carrier who did not contribute the egg is not one.',
+  },
+  completenessScopeParents: {
+    id: 'protocolBuilder.pedigree.completenessScopeParents',
+    defaultMessage: 'Both biological parents',
+    description:
+      'Name of the least demanding completeness choice: the participant’s two biological parents must be recorded.',
+  },
+  completenessScopeParentsDescription: {
+    id: 'protocolBuilder.pedigree.completenessScopeParentsDescription',
+    defaultMessage:
+      'Every person has two biological parents, so an unknown parent is still added to the family.',
+    description:
+      'Says what the both-biological-parents choice requires, and why an unknown parent is still recorded.',
+  },
+  completenessScopeFirstDegree: {
+    id: 'protocolBuilder.pedigree.completenessScopeFirstDegree',
+    defaultMessage: 'Parents, siblings and children',
+    description:
+      'Name of the completeness choice that requires the participant’s parents, siblings and children.',
+  },
+  completenessScopeFirstDegreeDescription: {
+    id: 'protocolBuilder.pedigree.completenessScopeFirstDegreeDescription',
+    defaultMessage: 'First-degree relatives.',
+    description:
+      'Says what the parents-siblings-and-children choice requires. First-degree relatives are a person’s parents, siblings and children.',
+  },
+  completenessScopeGrandparents: {
+    id: 'protocolBuilder.pedigree.completenessScopeGrandparents',
+    defaultMessage: 'Three generations',
+    description:
+      'Name of the completeness choice that requires three generations of the participant’s family: themselves, their parents and their grandparents.',
+  },
+  completenessScopeGrandparentsDescription: {
+    id: 'protocolBuilder.pedigree.completenessScopeGrandparentsDescription',
+    defaultMessage: 'Adds grandparents, and aunts and uncles on both sides.',
+    description:
+      'Says what the three-generations choice adds to first-degree relatives. Both sides means the mother’s and the father’s family.',
+  },
+  completenessScopeSecondDegree: {
+    id: 'protocolBuilder.pedigree.completenessScopeSecondDegree',
+    defaultMessage: 'All second-degree relatives',
+    description:
+      'Name of the completeness choice that requires every second-degree relative of the participant.',
+  },
+  completenessScopeSecondDegreeDescription: {
+    id: 'protocolBuilder.pedigree.completenessScopeSecondDegreeDescription',
+    defaultMessage: 'Adds nieces, nephews and grandchildren.',
+    description:
+      'Says what the all-second-degree-relatives choice adds to three generations.',
+  },
+  completenessScopeThirdDegree: {
+    id: 'protocolBuilder.pedigree.completenessScopeThirdDegree',
+    defaultMessage: 'Three generations, to first cousins',
+    description:
+      'Name of the most demanding completeness choice: three generations including the participant’s first cousins.',
+  },
+  completenessScopeThirdDegreeDescription: {
+    id: 'protocolBuilder.pedigree.completenessScopeThirdDegreeDescription',
+    defaultMessage:
+      'Adds first cousins: the clinical three-generation pedigree.',
+    description:
+      'Says what the to-first-cousins choice adds. A clinical pedigree is the family tree health professionals draw to assess inherited conditions.',
+  },
+  completenessEnforcementLabel: {
+    id: 'protocolBuilder.pedigree.completenessEnforcementLabel',
+    defaultMessage: 'When the family is incomplete',
+    description:
+      'Label of the control choosing whether a participant may continue while the required relatives are not all recorded.',
+  },
+  completenessEnforcementRequired: {
+    id: 'protocolBuilder.pedigree.completenessEnforcementRequired',
+    defaultMessage: 'Required',
+    description:
+      'Name of the choice that stops a participant continuing until the required relatives are recorded.',
+  },
+  completenessEnforcementRequiredDescription: {
+    id: 'protocolBuilder.pedigree.completenessEnforcementRequiredDescription',
+    defaultMessage: 'Participants cannot continue until it is complete.',
+    description:
+      'Says what the required choice does. It refers to the family the participant has drawn.',
+  },
+  completenessEnforcementRecommended: {
+    id: 'protocolBuilder.pedigree.completenessEnforcementRecommended',
+    defaultMessage: 'Recommended',
+    description:
+      'Name of the choice that shows a participant what is missing but lets them continue.',
+  },
+  completenessEnforcementRecommendedDescription: {
+    id: 'protocolBuilder.pedigree.completenessEnforcementRecommendedDescription',
+    defaultMessage: 'Participants are shown what is missing but may continue.',
+    description:
+      'Says what the recommended choice does. It refers to the relatives the participant has not recorded.',
+  },
+  relativesNotRecordedLabel: {
+    id: 'protocolBuilder.pedigree.relativesNotRecordedLabel',
+    defaultMessage: 'Relatives not recorded',
+    description:
+      'Label of the control choosing the categorical attribute that holds a participant’s answers that a family member has no siblings or children, or that they do not know.',
+  },
+  relativesNotRecordedHint: {
+    id: 'protocolBuilder.pedigree.relativesNotRecordedHint',
+    defaultMessage:
+      'Where “no siblings”, “no children” and “don’t know” answers are stored, on the person they are about. The interface sets the options this attribute offers, and nothing else in the protocol may write it.',
+    description:
+      'Guidance under the relatives-not-recorded attribute control. The options are a fixed list the interface owns.',
+  },
+  relativesNotRecordedCreateLabel: {
+    id: 'protocolBuilder.pedigree.relativesNotRecordedCreateLabel',
+    defaultMessage: 'Create a new relatives not recorded attribute',
+    description:
+      'Title of the dialog that creates a new categorical attribute for relatives not recorded, seeded with the fixed options the interface owns.',
+  },
+  completenessClearTitle: {
+    id: 'protocolBuilder.pedigree.completenessClearTitle',
+    defaultMessage: 'Remove the completeness requirement?',
+    description:
+      'Title of the confirmation shown before a researcher switches off the requirement that a participant records a minimum part of their family.',
+  },
+  completenessClearDescription: {
+    id: 'protocolBuilder.pedigree.completenessClearDescription',
+    defaultMessage:
+      'The relatives and enforcement you chose will be removed, and participants will be able to continue with any family they have drawn.',
+    description:
+      'Body of the confirmation shown before the completeness requirement is switched off, saying what is lost.',
+  },
+  completenessClearConfirm: {
+    id: 'protocolBuilder.pedigree.completenessClearConfirm',
+    defaultMessage: 'Remove the requirement',
+    description:
+      'Button that confirms switching off the completeness requirement and discarding it.',
+  },
+
   promptTitle: {
     id: 'protocolBuilder.pedigree.promptTitle',
     defaultMessage: 'Prompt',

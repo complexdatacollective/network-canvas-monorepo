@@ -25,20 +25,20 @@ export type CompletenessGap = {
 const isBiologicalLink = (kind: string) =>
   kind === 'biological' || kind === 'donor';
 
-export function biologicalParentsOf(family: Family, personId: string) {
+function biologicalParentsOf(family: Family, personId: string) {
   return family.links
     .filter((link) => link.target === personId && isBiologicalLink(link.kind))
     .map((link) => link.source);
 }
 
-export function biologicalChildrenOf(family: Family, personId: string) {
+function biologicalChildrenOf(family: Family, personId: string) {
   return family.links
     .filter((link) => link.source === personId && isBiologicalLink(link.kind))
     .map((link) => link.target);
 }
 
 /** Everyone who shares a biological parent with the person, half or full. */
-export function biologicalSiblingsOf(family: Family, personId: string) {
+function biologicalSiblingsOf(family: Family, personId: string) {
   const parents = new Set(biologicalParentsOf(family, personId));
   if (parents.size === 0) return [];
   return family.people

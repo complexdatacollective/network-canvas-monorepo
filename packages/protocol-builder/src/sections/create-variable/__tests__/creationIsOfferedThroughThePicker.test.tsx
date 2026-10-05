@@ -106,6 +106,7 @@ const SLOT_INVENT_LABEL_IDS = [
   'protocolBuilder.pedigree.gestationalCarrierCreateLabel',
   'protocolBuilder.pedigree.kindCreateLabel',
   'protocolBuilder.pedigree.nameCreateLabel',
+  'protocolBuilder.pedigree.relativesNotRecordedCreateLabel',
   'protocolBuilder.pedigree.sexAssignedAtBirthCreateLabel',
 ] as const;
 

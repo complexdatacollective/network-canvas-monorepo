@@ -1,4 +1,5 @@
 import type { StageSection } from '../../defineStageEditor.tsx';
+import CompletenessSection from './CompletenessSection.tsx';
 import PedigreePromptSection from './PedigreePromptSection.tsx';
 import PersonAttributesSection from './PersonAttributesSection.tsx';
 import PersonFormFieldsSection from './PersonFormFieldsSection.tsx';
@@ -21,3 +22,6 @@ export const pedigreePrompt = (): StageSection => () => (
 export const personFormFields = (): StageSection => () => (
   <PersonFormFieldsSection />
 );
+
+/** How much of the family the participant must record before continuing. */
+export const completeness = (): StageSection => () => <CompletenessSection />;

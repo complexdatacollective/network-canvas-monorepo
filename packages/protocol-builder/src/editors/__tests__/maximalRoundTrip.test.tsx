@@ -13,7 +13,10 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { addFamilyMemberVariable } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
+import {
+  addFamilyMemberVariables,
+  RELATIVES_NOT_RECORDED_VARIABLE,
+} from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
@@ -392,15 +395,23 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       form: {
         fields: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
       },
+      completeness: {
+        scope: 'thirdDegree',
+        enforcement: 'recommended',
+        relativesNotRecordedVariable: 'relativesNotRecorded',
+      },
     }),
     // Every attribute the fixture's person type carries is bound to one of the
     // pedigree's own slots, so the attribute its extra field collects arrives
     // the way a collaborator's would.
     prepare: (harness) =>
-      addFamilyMemberVariable(harness, 'fm_occupation', {
-        name: 'fm_occupation',
-        type: 'text',
-        component: 'Text',
+      addFamilyMemberVariables(harness, {
+        fm_occupation: {
+          name: 'fm_occupation',
+          type: 'text',
+          component: 'Text',
+        },
+        relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
       }),
   },
   {

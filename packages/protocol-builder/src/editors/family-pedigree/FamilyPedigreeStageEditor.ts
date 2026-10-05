@@ -3,6 +3,7 @@ import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import {
+  completeness,
   pedigreePrompt,
   personAttributes,
   personFormFields,
@@ -23,6 +24,7 @@ export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
   subjectPicker({ entity: 'node' }),
   personAttributes(),
   relationships(),
+  completeness(),
   pedigreePrompt(),
   personFormFields(),
   skipLogic(),
