@@ -550,23 +550,26 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                   boundaries={boundaries}
                 />
               )}
-              {showResetOption && (
-                <div className="absolute bottom-4 flex flex-col items-center gap-2">
-                  <Paragraph emphasis="muted" margin="none">
-                    <AppMessage message={messages.finalized} />
-                  </Paragraph>
-                  <Button
-                    size="sm"
-                    color="destructive"
-                    onClick={() => void handleResetPedigree()}
-                  >
-                    <AppMessage message={messages.resetPedigree} />
-                  </Button>
-                </div>
-              )}
             </>
           )}
         </div>
+        {/* Below the canvas rather than floating over it: a pedigree tall
+            enough to reach the bottom of the stage would otherwise have its
+            last generation covered by this notice. */}
+        {showResetOption && (
+          <div className="flex shrink-0 flex-col items-center gap-2 pb-4">
+            <Paragraph emphasis="muted" margin="none">
+              <AppMessage message={messages.finalized} />
+            </Paragraph>
+            <Button
+              size="sm"
+              color="destructive"
+              onClick={() => void handleResetPedigree()}
+            >
+              <AppMessage message={messages.resetPedigree} />
+            </Button>
+          </div>
+        )}
         {showQuickStart && (
           <EgoCellWizard
             egoId={egoId}

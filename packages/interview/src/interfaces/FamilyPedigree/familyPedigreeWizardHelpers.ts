@@ -168,6 +168,27 @@ export async function selectEgoSex(value = 'female') {
   await clickNext();
 }
 
+/**
+ * Assert the quick-start wizard finished and drew the family: the wizard has
+ * closed and every listed person is a node on the pedigree canvas. A scenario
+ * whose last step fails validation leaves the wizard open on that step, and
+ * without this check its play function still passes while the story shows the
+ * validation error instead of a pedigree.
+ */
+export async function expectQuickStartComplete(people: string[]) {
+  if (people.length === 0) {
+    throw new Error('expectQuickStartComplete needs at least one person');
+  }
+  await waitFor(() => {
+    if (screen.queryByTestId('wizard-next')) {
+      throw new Error('The quick-start wizard is still open');
+    }
+  }, WIZARD_TIMEOUT);
+  for (const name of people) {
+    await screen.findByRole('button', { name }, WIZARD_TIMEOUT);
+  }
+}
+
 /** Choose a framing option (`gamete` / `gendered`) on the FramingSelectionStep. */
 export async function selectFraming(value: 'gamete' | 'gendered') {
   const dialog = await getDialog();
