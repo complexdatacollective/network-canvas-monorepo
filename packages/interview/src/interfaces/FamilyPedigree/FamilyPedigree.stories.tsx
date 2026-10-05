@@ -210,8 +210,9 @@ export const FirstVisit: Story = {
 };
 
 /**
- * A family under way: separated parents, a brother, and a partner whose name
- * and sex assigned at birth are still missing, so they carry a warning.
+ * A family under way: separated parents, a brother, and a daughter whose other
+ * parent was added as someone not shown yet — so that partner has no details
+ * and carries a warning.
  */
 export const FamilyInProgress: Story = {
   args: { requirement: 'firstDegree', enforcement: 'required' },
@@ -230,7 +231,8 @@ export const FamilyInProgress: Story = {
           { id: 'julie', name: 'Julie', gender: 'woman', sex: 'female' },
           { id: 'rob', name: 'Rob', gender: 'man', sex: 'male' },
           { id: 'joshua', name: 'Joshua', gender: 'man', sex: 'male' },
-          { id: 'partner', gender: 'nonBinary' },
+          { id: 'mia', name: 'Mia', gender: 'woman', sex: 'female' },
+          { id: 'partner' },
         ],
         links: [
           { from: 'julie', to: 'rob', kind: 'partner', current: false },
@@ -239,12 +241,14 @@ export const FamilyInProgress: Story = {
           { from: 'julie', to: 'joshua', kind: 'biological', carrier: true },
           { from: 'rob', to: 'joshua', kind: 'biological' },
           { from: 'ego', to: 'partner', kind: 'partner' },
+          { from: 'ego', to: 'mia', kind: 'biological', carrier: true },
+          { from: 'partner', to: 'mia', kind: 'biological' },
         ],
       }}
     />
   ),
   play: async (context) => {
-    await expectPeople(5)(context);
+    await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
         name: /^Partner, some details missing/,
