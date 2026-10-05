@@ -1,3 +1,10 @@
+import { Predicate } from 'effect';
+
+import {
+  CurrentProtocolSchema,
+  type LocalizationDeclaration,
+  messageText,
+} from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -67,6 +74,38 @@ function stringField(doc: SectionDoc, key: string): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+export function localizationOf(
+  settings: SectionDoc | undefined,
+): LocalizationDeclaration | undefined {
+  const result = CurrentProtocolSchema.shape.localization.safeParse(
+    settings?.localization,
+  );
+  return result.success ? result.data : undefined;
+}
+
+/**
+ * A label as plain text for a researcher: a localized label in the protocol's
+ * default language, else in the first declared language that has text. A
+ * plain-string label, which stored versions before schema 9 hold, is shown as
+ * it is.
+ */
+export function displayLabel(
+  label: unknown,
+  localization: LocalizationDeclaration | undefined,
+): string | undefined {
+  if (Predicate.isString(label)) return label;
+  if (!Predicate.isObject(label) || localization === undefined) {
+    return undefined;
+  }
+  for (const locale of [localization.defaultLocale, ...localization.locales]) {
+    const message = Object.hasOwn(label, locale) ? label[locale] : undefined;
+    if (!Predicate.isString(message)) continue;
+    const text = messageText(message);
+    if (text.trim() !== '') return text;
+  }
+  return undefined;
+}
+
 function stageOrderOf(doc: SectionDoc | undefined): string[] {
   const order = doc?.stages;
   return Array.isArray(order)
@@ -98,9 +137,8 @@ function diffBody(a: SectionDoc, b: SectionDoc): FieldChange[] {
 function promptsById(prompts: unknown[]): Map<string, SectionDoc> {
   const byId = new Map<string, SectionDoc>();
   for (const prompt of prompts) {
-    if (typeof prompt === 'object' && prompt !== null && 'id' in prompt) {
-      const { id } = prompt as SectionDoc;
-      if (typeof id === 'string') byId.set(id, prompt as SectionDoc);
+    if (Predicate.isObject(prompt) && Predicate.isString(prompt.id)) {
+      byId.set(prompt.id, prompt);
     }
   }
   return byId;
@@ -146,8 +184,12 @@ function diffPrompts(a: unknown[], b: unknown[]): FieldChange[] {
 
 function variablesOf(doc: SectionDoc): Record<string, SectionDoc> {
   const variables = doc.variables;
-  if (typeof variables !== 'object' || variables === null) return {};
-  return variables as Record<string, SectionDoc>;
+  if (!Predicate.isObject(variables)) return {};
+  return Object.fromEntries(
+    Object.entries(variables).filter((entry): entry is [string, SectionDoc] =>
+      Predicate.isObject(entry[1]),
+    ),
+  );
 }
 
 function diffVariables(a: SectionDoc, b: SectionDoc): VariableChange[] {
@@ -248,6 +290,16 @@ export function diffProtocolSections(
     bOrderHash === undefined ? undefined : getDoc(bOrderHash),
   );
 
+  const settingsId = sectionId({ kind: 'settings' });
+  const aSettingsHash = a[settingsId];
+  const bSettingsHash = b[settingsId];
+  const aLocalization = localizationOf(
+    aSettingsHash === undefined ? undefined : getDoc(aSettingsHash),
+  );
+  const bLocalization = localizationOf(
+    bSettingsHash === undefined ? undefined : getDoc(bSettingsHash),
+  );
+
   const ids = new Set([...Object.keys(a), ...Object.keys(b)]);
   for (const id of ids) {
     if (id === orderId) continue;
@@ -263,7 +315,7 @@ export function diffProtocolSections(
             kind: 'stage-added',
             stageId: ref.stageId,
             stageType: stringField(doc, 'type') ?? 'unknown',
-            label: stringField(doc, 'label'),
+            label: displayLabel(doc.label, bLocalization),
             index: bOrder.indexOf(ref.stageId),
           });
         } else if (bHash === undefined && aHash !== undefined) {
@@ -272,7 +324,7 @@ export function diffProtocolSections(
             kind: 'stage-removed',
             stageId: ref.stageId,
             stageType: stringField(doc, 'type') ?? 'unknown',
-            label: stringField(doc, 'label'),
+            label: displayLabel(doc.label, aLocalization),
           });
         } else if (
           aHash !== undefined &&

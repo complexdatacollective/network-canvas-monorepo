@@ -1,19 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  escapeMessageText,
+} from '@codaco/protocol-validation';
 import { type SectionDoc, contentHash } from '@codaco/studio-sync/apply';
 
 import { type SectionSet, diffProtocolSections } from '../diff.ts';
 import { sectionizeProtocol } from '../sectionize.ts';
 import { baseProtocol } from './helpers.ts';
 
-function sectionSet(protocol: CurrentProtocol): {
+type Stage = CurrentProtocol['stages'][number];
+type Variable = NonNullable<
+  NonNullable<CurrentProtocol['codebook']['node']>[string]['variables']
+>[string];
+type Asset = NonNullable<CurrentProtocol['assetManifest']>[string];
+
+function sectionSetOf(sections: Record<string, SectionDoc>): {
   set: SectionSet;
   docs: Map<string, SectionDoc>;
 } {
   const set: SectionSet = {};
   const docs = new Map<string, SectionDoc>();
-  for (const [id, doc] of Object.entries(sectionizeProtocol(protocol))) {
+  for (const [id, doc] of Object.entries(sections)) {
     const hash = contentHash(doc);
     set[id] = hash;
     docs.set(hash, doc);
@@ -21,9 +30,12 @@ function sectionSet(protocol: CurrentProtocol): {
   return { set, docs };
 }
 
-function diff(a: CurrentProtocol, b: CurrentProtocol) {
-  const left = sectionSet(a);
-  const right = sectionSet(b);
+function diffSections(
+  a: Record<string, SectionDoc>,
+  b: Record<string, SectionDoc>,
+) {
+  const left = sectionSetOf(a);
+  const right = sectionSetOf(b);
   return diffProtocolSections(left.set, right.set, (hash) => {
     const doc = left.docs.get(hash) ?? right.docs.get(hash);
     if (doc === undefined) throw new Error(`no doc for ${hash}`);
@@ -31,11 +43,27 @@ function diff(a: CurrentProtocol, b: CurrentProtocol) {
   });
 }
 
-type MutableProtocol = CurrentProtocol & {
-  stages: (CurrentProtocol['stages'][number] & {
-    prompts?: { id: string; text: string }[];
-  })[];
-};
+function diff(a: CurrentProtocol, b: CurrentProtocol) {
+  return diffSections(sectionizeProtocol(a), sectionizeProtocol(b));
+}
+
+function nameGenerator(protocol: CurrentProtocol) {
+  const stage = protocol.stages[0];
+  if (stage?.type !== 'NameGenerator') {
+    throw new Error('the base protocol opens with its name generator');
+  }
+  return stage;
+}
+
+function informationStage(label: Stage['label']): Stage {
+  return {
+    id: 'info1',
+    type: 'Information',
+    label,
+    title: { en: 'About this study' },
+    items: [{ id: 'item1', type: 'text', content: { en: 'Welcome.' } }],
+  };
+}
 
 describe('diffProtocolSections', () => {
   it('reports nothing for identical content', () => {
@@ -44,13 +72,19 @@ describe('diffProtocolSections', () => {
 
   it('produces the canonical example: prompt text changed, variable added', () => {
     const before = baseProtocol();
-    const after = baseProtocol() as MutableProtocol;
-    after.stages[0]!.prompts![0]!.text = 'Who do you spend time with?';
+    const after = baseProtocol();
+    nameGenerator(after).prompts[0]!.text = {
+      en: 'Who do you spend time with?',
+    };
     const person = after.codebook.node!.person!;
     person.variables = {
       ...person.variables,
-      close_friend: { name: 'close_friend', type: 'boolean' },
-    } as typeof person.variables;
+      close_friend: {
+        name: 'close_friend',
+        label: { en: 'Close friend' },
+        type: 'boolean',
+      },
+    };
 
     const changes = diff(before, after);
     expect(changes).toHaveLength(2);
@@ -80,16 +114,10 @@ describe('diffProtocolSections', () => {
 
   it('reports stage add and remove with position and identity', () => {
     const before = baseProtocol();
-    const after = baseProtocol() as MutableProtocol;
+    const after = baseProtocol();
     after.stages = [
       after.stages[0]!,
-      {
-        id: 'info1',
-        type: 'Information',
-        label: 'About this study',
-        title: 'About this study',
-        items: [{ id: 'item1', type: 'text', content: 'Welcome.' }],
-      } as unknown as MutableProtocol['stages'][number],
+      informationStage({ en: 'About this study' }),
       after.stages[1]!,
     ];
 
@@ -115,9 +143,87 @@ describe('diffProtocolSections', () => {
     ]);
   });
 
+  it('shows a localized stage label as plain text in the default language', () => {
+    const localization = { defaultLocale: 'fr', locales: ['en', 'fr'] };
+    const before = baseProtocol();
+    before.localization = localization;
+    const after = baseProtocol();
+    after.localization = localization;
+    after.stages = [
+      ...after.stages,
+      informationStage({
+        en: 'About this study',
+        fr: escapeMessageText("L'étude {pilote}"),
+      }),
+    ];
+
+    expect(diff(before, after)).toEqual([
+      {
+        kind: 'stage-added',
+        stageId: 'info1',
+        stageType: 'Information',
+        label: "L'étude {pilote}",
+        index: 2,
+      },
+    ]);
+    expect(diff(after, before)).toEqual([
+      {
+        kind: 'stage-removed',
+        stageId: 'info1',
+        stageType: 'Information',
+        label: "L'étude {pilote}",
+      },
+    ]);
+  });
+
+  it('falls back to the first declared language that has text', () => {
+    const localization = { defaultLocale: 'fr', locales: ['de', 'en', 'fr'] };
+    const before = baseProtocol();
+    before.localization = localization;
+    const after = baseProtocol();
+    after.localization = localization;
+    after.stages = [
+      ...after.stages,
+      informationStage({ de: ' ', en: 'About this study' }),
+    ];
+
+    expect(diff(before, after)).toMatchObject([
+      { kind: 'stage-added', label: 'About this study' },
+    ]);
+  });
+
+  it('shows a plain-string label from a stored schema-8 version as it is', () => {
+    const settings = { name: 'Legacy', schemaVersion: 8 };
+    const before = {
+      settings,
+      stageOrder: { stages: [] },
+    };
+    const after = {
+      'settings': settings,
+      'stageOrder': { stages: ['info1'] },
+      'stage:info1': {
+        id: 'info1',
+        type: 'Information',
+        label: 'About this study',
+        title: 'About this study',
+        items: [],
+      },
+    };
+
+    expect(diffSections(before, after)).toEqual([
+      {
+        kind: 'stage-added',
+        stageId: 'info1',
+        stageType: 'Information',
+        label: 'About this study',
+        index: 0,
+      },
+    ]);
+  });
+
   it('reports a pure reorder as exactly one stage-moved', () => {
     const before = baseProtocol();
-    const after = baseProtocol() as MutableProtocol;
+    const after = baseProtocol();
     after.stages = [after.stages[1]!, after.stages[0]!];
 
     const changes = diff(before, after);
@@ -126,15 +232,15 @@ describe('diffProtocolSections', () => {
   });
 
   it('reports a prompt reorder that leaves every prompt unchanged', () => {
-    const before = baseProtocol() as MutableProtocol;
-    before.stages[0]!.prompts = [
-      { id: 'prompt1', text: 'Who do you know?' },
-      { id: 'prompt2', text: 'Anyone else?' },
+    const before = baseProtocol();
+    nameGenerator(before).prompts = [
+      { id: 'prompt1', text: { en: 'Who do you know?' } },
+      { id: 'prompt2', text: { en: 'Anyone else?' } },
     ];
-    const after = baseProtocol() as MutableProtocol;
-    after.stages[0]!.prompts = [
-      { id: 'prompt2', text: 'Anyone else?' },
-      { id: 'prompt1', text: 'Who do you know?' },
+    const after = baseProtocol();
+    nameGenerator(after).prompts = [
+      { id: 'prompt2', text: { en: 'Anyone else?' } },
+      { id: 'prompt1', text: { en: 'Who do you know?' } },
     ];
 
     const changes = diff(before, after);
@@ -152,10 +258,14 @@ describe('diffProtocolSections', () => {
     const before = baseProtocol();
     const after = baseProtocol();
     const person = after.codebook.node!.person!;
-    person.variables = {
-      ...person.variables,
-      constructor: { name: 'constructor', type: 'boolean' },
-    } as typeof person.variables;
+    // Annotated apart: a literal key named `constructor` is not contextually
+    // typed by the record it is assigned to.
+    const variable: Variable = {
+      name: 'constructor',
+      label: { en: 'Constructor' },
+      type: 'boolean',
+    };
+    person.variables = { ...person.variables, constructor: variable };
 
     const changes = diff(before, after);
     expect(changes).toEqual([
@@ -175,14 +285,13 @@ describe('diffProtocolSections', () => {
   it('classifies an asset named after a prototype member', () => {
     const before = baseProtocol();
     const after = baseProtocol();
-    after.assetManifest = {
-      constructor: {
-        id: 'constructor',
-        type: 'image',
-        name: 'a.png',
-        source: 'a.png',
-      },
-    } as CurrentProtocol['assetManifest'];
+    const asset: Asset = {
+      id: 'constructor',
+      type: 'image',
+      name: 'a.png',
+      source: 'a.png',
+    };
+    after.assetManifest = { constructor: asset };
 
     expect(diff(before, after)).toEqual([
       {
@@ -195,16 +304,10 @@ describe('diffProtocolSections', () => {
   });
 
   it('describes a full reversal with the endpoints that moved', () => {
-    const before = baseProtocol() as MutableProtocol;
-    const third = {
-      id: 'info1',
-      type: 'Information',
-      label: 'About this study',
-      title: 'About this study',
-      items: [{ id: 'item1', type: 'text', content: 'Welcome.' }],
-    } as unknown as MutableProtocol['stages'][number];
+    const before = baseProtocol();
+    const third = informationStage({ en: 'About this study' });
     before.stages = [before.stages[0]!, before.stages[1]!, third];
-    const after = baseProtocol() as MutableProtocol;
+    const after = baseProtocol();
     after.stages = [third, before.stages[1]!, before.stages[0]!];
 
     const changes = diff(before, after);
@@ -223,7 +326,7 @@ describe('diffProtocolSections', () => {
         name: 'a.png',
         source: 'a.png',
       },
-    } as CurrentProtocol['assetManifest'];
+    };
 
     const after = baseProtocol();
     after.description = 'Updated description';
@@ -234,7 +337,7 @@ describe('diffProtocolSections', () => {
         name: 'b.png',
         source: 'b.png',
       },
-    } as CurrentProtocol['assetManifest'];
+    };
 
     const changes = diff(before, after);
     expect(changes).toContainEqual({
@@ -247,5 +350,18 @@ describe('diffProtocolSections', () => {
       removed: ['asset1'],
       changed: [],
     });
+  });
+
+  it('reports a change to the declared languages as a settings change', () => {
+    const before = baseProtocol();
+    const after = baseProtocol();
+    after.localization = { defaultLocale: 'en', locales: ['en', 'fr'] };
+
+    expect(diff(before, after)).toEqual([
+      {
+        kind: 'settings-changed',
+        changes: [{ path: ['localization'], change: 'changed' }],
+      },
+    ]);
   });
 });

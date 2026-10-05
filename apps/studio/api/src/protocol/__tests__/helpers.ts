@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { Cause, Duration, Effect, Exit } from 'effect';
 import type { SqlError } from 'effect/sql';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  CurrentProtocolSchema,
+} from '@codaco/protocol-validation';
 import {
   forceExpire,
   makeSyncServer,
@@ -150,24 +153,29 @@ export const FIXTURES = [
   '@codaco/protocols/development',
 ] as const;
 
+// A schema parse rather than a cast: the reference fields are branded.
 export function baseProtocol(): CurrentProtocol {
-  return {
+  return CurrentProtocolSchema.parse({
     name: 'Test Protocol',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             personName: {
               name: 'Name',
+              label: { en: 'Name' },
               type: 'text',
               component: 'Text',
             },
             layoutPosition: {
               name: 'Layout_Position',
+              label: { en: 'Layout position' },
               type: 'layout',
             },
           },
@@ -176,6 +184,7 @@ export function baseProtocol(): CurrentProtocol {
       edge: {
         knows: {
           name: 'Knows',
+          label: { en: 'Knows' },
           color: 'edge-color-seq-1',
         },
       },
@@ -184,31 +193,30 @@ export function baseProtocol(): CurrentProtocol {
       {
         id: 'nameGenerator1',
         type: 'NameGenerator',
-        label: 'Generate Names',
+        label: { en: 'Generate Names' },
         subject: { entity: 'node', type: 'person' },
         form: {
-          title: 'Add person',
-          fields: [{ variable: 'personName', prompt: 'Enter name' }],
+          title: { en: 'Add person' },
+          fields: [{ variable: 'personName', prompt: { en: 'Enter name' } }],
         },
-        prompts: [{ id: 'prompt1', text: 'Who do you know?' }],
+        prompts: [{ id: 'prompt1', text: { en: 'Who do you know?' } }],
       },
       {
         id: 'sociogram1',
         type: 'Sociogram',
-        label: 'Sociogram',
+        label: { en: 'Sociogram' },
         subject: { entity: 'node', type: 'person' },
         background: { concentricCircles: 4 },
         prompts: [
           {
             id: 'socPrompt1',
-            text: 'Position nodes',
+            text: { en: 'Position nodes' },
             layout: { layoutVariable: 'layoutPosition' },
           },
         ],
       },
     ],
-    // Branded reference fields make this literal uncastable directly.
-  } as unknown as CurrentProtocol;
+  });
 }
 
 export const waitForLockWait = Effect.fnUntraced(function* () {

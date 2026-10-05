@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { escapeMessageText } from '@codaco/protocol-validation';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type {
   Forbidden,
@@ -21,10 +22,13 @@ import { requireProtocol } from '../rpc/team-scope.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { lockActor } from '../team/store.ts';
+import { localizationOf } from './diff.ts';
 import {
   addStage,
   type DraftRevisionConflict,
-  type DraftStructureError,
+  DraftStructureError,
+  loadDoc,
+  lockDraftHead,
   moveStage,
 } from './draft-structure.ts';
 import { PROTOCOL_TABLES } from './schema.ts';
@@ -245,13 +249,33 @@ export const addAuditedInformationStage: (
         protocolId: input.protocolId,
         draftId: input.draftId,
       });
+      // The head lock first, so the languages read here are the ones the
+      // stage is committed against.
+      const head = yield* lockDraftHead(access.teamId, input.draftId);
+      const settingsHash = head.sectionHashes[sectionId({ kind: 'settings' })];
+      const localization = localizationOf(
+        settingsHash === undefined
+          ? undefined
+          : yield* loadDoc(access.teamId, settingsHash),
+      );
+      if (localization === undefined) {
+        return yield* new DraftStructureError({
+          reason: `draft ${input.draftId} declares no valid localization`,
+        });
+      }
+      const untitled = Object.fromEntries(
+        localization.locales.map((locale) => [
+          locale,
+          escapeMessageText('Untitled screen'),
+        ]),
+      );
       const result = yield* addStage(access.teamId, {
         draftId: input.draftId,
         stage: {
           id: input.stageId,
           type: 'Information',
-          label: 'Untitled screen',
-          title: 'Untitled screen',
+          label: untitled,
+          title: untitled,
           items: [],
         },
       });

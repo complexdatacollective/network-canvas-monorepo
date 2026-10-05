@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  type VersionedProtocol,
-  validateProtocol,
-} from '@codaco/protocol-validation';
+import { validateProtocol } from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { validateSection } from '@codaco/studio-sync/section-validation';
@@ -29,9 +26,7 @@ describe('sectionize/assemble round trip', () => {
       const assembled = assembleProtocolSections(sections);
       expect(assembled).toEqual(protocol);
 
-      const revalidated = await validateProtocol(
-        assembled as VersionedProtocol,
-      );
+      const revalidated = await validateProtocol(assembled);
       expect(
         revalidated.success,
         JSON.stringify(revalidated.error?.issues ?? [], null, 2),
@@ -60,7 +55,7 @@ describe('sectionize/assemble round trip', () => {
 
   it('rejects an empty stage id instead of emitting an unaddressable section', () => {
     const protocol = baseProtocol();
-    (protocol.stages[0] as { id: string }).id = '';
+    protocol.stages[0]!.id = '';
     expect(() => sectionizeProtocol(protocol)).toThrow(/non-empty/);
   });
 });
@@ -68,6 +63,7 @@ describe('sectionize/assemble round trip', () => {
 describe('golden hashes', () => {
   // Pinned digests: a change to canonical serialization, the taxonomy, or the
   // version-hash recipe fails here before it invalidates stored content hashes.
+  // They are digests of baseProtocol(), so editing that fixture moves them too.
   it('section and version hashes are stable', () => {
     const sections = sectionizeProtocol(baseProtocol());
     const sectionHashes = Object.fromEntries(
@@ -76,16 +72,16 @@ describe('golden hashes', () => {
     expect(sectionHashes).toMatchInlineSnapshot(`
       {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-        "codebook:edge:knows": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
-        "codebook:node:person": "5b62bc580a031a23de667d9f7c0005e797a1f97b8e375362b9c5cd7c21375372",
-        "settings": "07552feca4541e7412a3c7c85ce17db2ac8888a65126530aed4edd173f760f54",
-        "stage:nameGenerator1": "1265ee53d3b674bfade2198f10f9eade5de22d0fbd8252dc4ba151556ff3d1e3",
-        "stage:sociogram1": "d0bb5c8d94f3b1cc558bd85a5905ca79e38713c8c145a924f0bf1a36f618b6c9",
+        "codebook:edge:knows": "96ba2dfdd02dc597536433e6debfbdaec16f3ffc1738b0377515198ddaa30193",
+        "codebook:node:person": "d1a5f3b18ded42c5777f69897579003fe661e62a19796ad61fa56966a81576f6",
+        "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
+        "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
+        "stage:sociogram1": "f20a610875c24d940f59bd6d68d52e3b0453fe778d1a4af9a3a09a7926b0e3a9",
         "stageOrder": "491ca26e923314c49ae7caba154c45712202c684d50a7f6b959267bd75e3a400",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"f86b9bf3551144471e24e6461f870b901f86068831f88056ee22e35e5aae6509"`,
+      `"0b9c4f4b5fccc2992c30c03124ef384279b5e6b3696a6b816f21c62f6d5f7bb4"`,
     );
   });
 });
