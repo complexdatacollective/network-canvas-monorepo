@@ -178,21 +178,29 @@
     {
       "id": "family-meanings",
       "label": "Your words for family",
-      "type": "CategoricalBin",
+      "type": "AlterForm",
       "subject": {
         "entity": "node",
         "type": "person"
       },
-      "prompts": [
-        {
-          "id": "family-categories",
-          "text": "Which descriptions fit each person? A person can fit more than one, and you can use your own words.",
-          "variable": "family_categories",
-          "otherVariable": "category_words",
-          "otherVariablePrompt": "What words fit better?",
-          "otherOptionLabel": "My own words"
-        }
-      ]
+      "introductionPanel": {
+        "title": "Your words for family",
+        "text": "Which descriptions fit each person? A person can fit more than one, and you can use your own words. You can also leave these questions blank."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "family_categories",
+            "prompt": "Which descriptions fit this person?",
+            "hint": "Optional. Select all that fit."
+          },
+          {
+            "variable": "category_words",
+            "prompt": "What other words would you use?",
+            "hint": "Optional. Your own words can sit alongside any categories you selected."
+          }
+        ]
+      }
     },
     {
       "id": "closeness",
@@ -249,6 +257,7 @@
             "layoutVariable": "family_layout"
           },
           "highlight": {
+            "allowHighlighting": true,
             "variable": "feels_family"
           },
           "edges": {
@@ -262,6 +271,7 @@
             "layoutVariable": "family_layout"
           },
           "highlight": {
+            "allowHighlighting": true,
             "variable": "emotional_support"
           },
           "edges": {
@@ -275,6 +285,7 @@
             "layoutVariable": "family_layout"
           },
           "highlight": {
+            "allowHighlighting": true,
             "variable": "practical_support"
           },
           "edges": {
@@ -288,6 +299,7 @@
             "layoutVariable": "family_layout"
           },
           "highlight": {
+            "allowHighlighting": true,
             "variable": "identity_affirming"
           },
           "edges": {
