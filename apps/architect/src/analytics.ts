@@ -1,4 +1,4 @@
-import posthog from 'posthog-js';
+import posthog from 'posthog-js/dist/module.full.no-external';
 
 import {
   buildAppSuperProperties,
@@ -45,6 +45,9 @@ export function initializeAnalytics({
     capture_pageview: true,
     capture_pageleave: true,
     capture_exceptions: true,
+    // Keep every executable analytics extension in this app's own bundle.
+    // The relay is a data endpoint only and must never become a script origin.
+    disable_external_dependency_loading: true,
     // Architect edits IRB-sensitive study text (stage/prompt/variable/option
     // labels) and can render a plaintext Mapbox API key on screen. Autocapture
     // would send element text as $el_text, and session recording would capture

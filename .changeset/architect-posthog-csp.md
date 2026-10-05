@@ -3,4 +3,4 @@
 '@codaco/interviewer': patch
 ---
 
-Architect and Interviewer now load analytics and automatic error-reporting modules through the Network Canvas relay without Content Security Policy errors.
+Architect and Interviewer now bundle automatic error reporting locally and prevent the analytics relay from supplying executable scripts.

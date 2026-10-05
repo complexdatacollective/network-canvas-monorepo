@@ -10,7 +10,7 @@ const { init, register, identify } = vi.hoisted(() => ({
   identify: vi.fn(),
 }));
 
-vi.mock('posthog-js', () => ({
+vi.mock('posthog-js/dist/module.full.no-external', () => ({
   default: { identify, init, register },
 }));
 
@@ -34,6 +34,7 @@ describe('initializeAnalytics', () => {
       POSTHOG_API_KEY,
       expect.objectContaining({
         api_host: POSTHOG_HOST,
+        disable_external_dependency_loading: true,
         person_profiles: 'identified_only',
       }),
     );

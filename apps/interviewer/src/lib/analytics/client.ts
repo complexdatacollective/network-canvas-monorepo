@@ -21,7 +21,10 @@ async function initClient(): Promise<PostHog | null> {
     return null;
   }
   try {
-    const { default: posthog } = await import('posthog-js');
+    const { default: posthog } =
+      await import('posthog-js/dist/module.full.no-external');
+    // The full and default builds expose the same client API, but PostHog's
+    // declarations give their private class members incompatible identities.
     return posthog.init(
       POSTHOG_API_KEY,
       {
@@ -37,6 +40,9 @@ async function initClient(): Promise<PostHog | null> {
         // tracking. These carry stack traces only, never network/participant
         // data.
         capture_exceptions: true,
+        // Keep every executable analytics extension in this app's own bundle.
+        // The relay is a data endpoint only and must never become a script origin.
+        disable_external_dependency_loading: true,
         // Persist opt-in/opt-out state across launches.
         persistence: 'localStorage',
         // Respect the stored preference: start opted out and let the
@@ -44,7 +50,7 @@ async function initClient(): Promise<PostHog | null> {
         opt_out_capturing_by_default: true,
       },
       POSTHOG_INSTANCE_NAME,
-    );
+    ) as unknown as PostHog;
   } catch {
     // Telemetry must never break the app. Swallow and run without analytics.
     return null;

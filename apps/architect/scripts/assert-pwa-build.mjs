@@ -71,10 +71,11 @@ if (strayMaps.length > 0) {
 // The entry module (referenced by index.html) boots the app; it must be
 // precached for an offline start. Derive it rather than hardcode the hash.
 const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
-if (
-  !html.includes('script-src &#39;self&#39; https://ph-relay.networkcanvas.com')
-) {
-  fail('PostHog relay missing from the script-src CSP directive');
+if (!html.includes('script-src &#39;self&#39;')) {
+  fail('self-only script-src CSP directive missing');
+}
+if (/script-src[^;]*ph-relay\.networkcanvas\.com/.test(html)) {
+  fail('PostHog relay must not be allowed as a script source');
 }
 const entry = (html.match(/assets\/[^"']+\.js/) || [])[0];
 if (!entry) fail('no entry chunk referenced in dist/index.html');
