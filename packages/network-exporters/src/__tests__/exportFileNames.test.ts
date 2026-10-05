@@ -77,6 +77,7 @@ const interview: InterviewExportInput = {
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
+  locale: null,
   network: {
     nodes: nodeIds.map((id) => ({
       [entityPrimaryKeyProperty]: `node-${id}`,

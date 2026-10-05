@@ -50,6 +50,7 @@ const session: InterviewExportInput = {
     ego: { _uid: 'ego-1', attributes: {} },
   },
   protocolHash: 'hash-1',
+  locale: null,
 };
 
 describe('runPipelineWithData with an answer GraphML cannot store', () => {

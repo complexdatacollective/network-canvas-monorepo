@@ -95,6 +95,22 @@ describe('buildGraphML', () => {
     expect(graphElement?.getAttribute('edgedefault')).toEqual('undirected');
   });
 
+  it('writes the interview locale as a graph attribute', () => {
+    const graphElement = xml.getElementsByTagName('graph')[0];
+    expect(graphElement?.getAttribute('nc:interviewLocale')).toEqual('en-US');
+  });
+
+  it('omits the interview locale attribute when none was reported', async () => {
+    const withoutLocale = processMockNetworks([mockNetwork, mockNetwork2])[
+      'protocol-uid-1'
+    ]?.[1];
+    if (!withoutLocale) throw new Error('No second session');
+    const result = await buildXML(withoutLocale, codebook, exportOptions);
+
+    const graphElement = result.getElementsByTagName('graph')[0];
+    expect(graphElement?.hasAttribute('nc:interviewLocale')).toBe(false);
+  });
+
   it('adds nodes', () => {
     expect(xml.getElementsByTagName('node')).toHaveLength(4);
   });
