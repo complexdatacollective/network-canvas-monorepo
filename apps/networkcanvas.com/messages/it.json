@@ -113,7 +113,6 @@
       "placeholder": "Cerca tra le novità",
       "clear": "Cancella la ricerca",
       "results": "{count} di {total, plural, =1 {# novità} many {# di novità} other {# novità}}",
-      "clearAll": "Rimuovi tutti i filtri",
       "emptyHeading": "Nessuna novità trovata",
       "emptyDescription": "Prova con un’altra ricerca."
     },
@@ -125,20 +124,7 @@
     "readMore": "Leggi l’annuncio completo",
     "filter": {
       "label": "Filtra per app",
-      "all": "Tutte",
-      "appHeading": "App",
-      "kindHeading": "Tipo",
-      "kindLabel": "Filtra per tipo",
-      "kinds": {
-        "launch": "Lanci",
-        "feature": "Nuove funzionalità",
-        "fix": "Correzioni di bug"
-      }
-    },
-    "kinds": {
-      "launch": "Lancio",
-      "feature": "Nuove funzionalità",
-      "fix": "Correzioni di bug"
+      "all": "Tutte"
     }
   },
   "Team": {

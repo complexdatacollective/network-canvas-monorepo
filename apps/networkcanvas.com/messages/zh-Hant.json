@@ -113,7 +113,6 @@
       "placeholder": "搜尋更新",
       "clear": "清除搜尋",
       "results": "顯示 {count} 則，共 {total, plural, =1 {# 則更新} other {# 則更新}}",
-      "clearAll": "全部清除",
       "emptyHeading": "找不到更新",
       "emptyDescription": "請嘗試其他搜尋字詞。"
     },
@@ -125,20 +124,7 @@
     "readMore": "閱讀完整公告",
     "filter": {
       "label": "依應用程式篩選",
-      "all": "全部",
-      "appHeading": "應用程式",
-      "kindHeading": "類型",
-      "kindLabel": "依類型篩選",
-      "kinds": {
-        "launch": "重大發布",
-        "feature": "功能更新",
-        "fix": "錯誤修正"
-      }
-    },
-    "kinds": {
-      "launch": "重大發布",
-      "feature": "功能更新",
-      "fix": "錯誤修正"
+      "all": "全部"
     }
   },
   "Team": {

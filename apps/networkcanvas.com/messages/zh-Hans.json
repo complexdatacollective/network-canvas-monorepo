@@ -113,7 +113,6 @@
       "placeholder": "搜索更新",
       "clear": "清除搜索",
       "results": "{count} / {total, plural, =1 {# 条更新} other {# 条更新}}",
-      "clearAll": "全部清除",
       "emptyHeading": "未找到更新",
       "emptyDescription": "请尝试其他搜索词。"
     },
@@ -125,20 +124,7 @@
     "readMore": "阅读完整公告",
     "filter": {
       "label": "按应用筛选",
-      "all": "全部",
-      "appHeading": "应用",
-      "kindHeading": "类型",
-      "kindLabel": "按类型筛选",
-      "kinds": {
-        "launch": "重大发布",
-        "feature": "功能更新",
-        "fix": "错误修复"
-      }
-    },
-    "kinds": {
-      "launch": "重大发布",
-      "feature": "功能更新",
-      "fix": "错误修复"
+      "all": "全部"
     }
   },
   "Team": {

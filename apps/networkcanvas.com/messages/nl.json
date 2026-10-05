@@ -113,7 +113,6 @@
       "placeholder": "Updates zoeken",
       "clear": "Zoekopdracht wissen",
       "results": "{count} van {total, plural, =1 {# update} other {# updates}}",
-      "clearAll": "Alles wissen",
       "emptyHeading": "Geen updates gevonden",
       "emptyDescription": "Probeer een andere zoekopdracht."
     },
@@ -125,20 +124,7 @@
     "readMore": "Lees de volledige aankondiging",
     "filter": {
       "label": "Filteren op app",
-      "all": "Alle",
-      "appHeading": "App",
-      "kindHeading": "Type",
-      "kindLabel": "Filteren op type",
-      "kinds": {
-        "launch": "Lanceringen",
-        "feature": "Functie-updates",
-        "fix": "Bugfixes"
-      }
-    },
-    "kinds": {
-      "launch": "Lancering",
-      "feature": "Functie-update",
-      "fix": "Bugfixes"
+      "all": "Alle"
     }
   },
   "Team": {

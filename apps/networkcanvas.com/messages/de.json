@@ -113,7 +113,6 @@
       "placeholder": "Updates durchsuchen",
       "clear": "Suche löschen",
       "results": "{count} von {total, plural, =1 {# Update} other {# Updates}}",
-      "clearAll": "Alle zurücksetzen",
       "emptyHeading": "Keine Updates gefunden",
       "emptyDescription": "Versuchen Sie es mit einer anderen Suche."
     },
@@ -125,20 +124,7 @@
     "readMore": "Vollständige Ankündigung lesen",
     "filter": {
       "label": "Nach App filtern",
-      "all": "Alle",
-      "appHeading": "App",
-      "kindHeading": "Typ",
-      "kindLabel": "Nach Typ filtern",
-      "kinds": {
-        "launch": "Launches",
-        "feature": "Funktionsupdates",
-        "fix": "Fehlerbehebungen"
-      }
-    },
-    "kinds": {
-      "launch": "Launch",
-      "feature": "Funktionsupdate",
-      "fix": "Fehlerbehebungen"
+      "all": "Alle"
     }
   },
   "Team": {
