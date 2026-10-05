@@ -6,6 +6,7 @@ import {
   type Item,
   PEDIGREE_GENDER_IDENTITY_OPTIONS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   type Stage,
   type StageType,
@@ -268,6 +269,9 @@ type FamilyPedigreeHandle = StageHandleBase & {
   kind: string;
   gestationalCarrier: string;
   currentPartner: string;
+  /** The relatives-not-recorded variable id, when the stage has a
+   * completeness requirement. */
+  relativesNotRecorded: string | undefined;
   /** Appends a researcher-defined person field to the stage's `form`. */
   addFormField: (opts: AddFormFieldOpts) => void;
 };
@@ -721,6 +725,16 @@ export class SyntheticInterview {
         }),
       };
 
+      if (opts?.completeness) {
+        entry.completeness = {
+          ...opts.completeness,
+          relativesNotRecordedVariable: personVariable('relativesNotRecorded', {
+            type: 'categorical',
+            options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+          }),
+        };
+      }
+
       entry.prompt =
         opts?.prompt ?? this.valueGen.generatePromptText('FamilyPedigree');
     }
@@ -1079,6 +1093,8 @@ export class SyntheticInterview {
           kind: relationship.kindVariable,
           gestationalCarrier: relationship.gestationalCarrierVariable,
           currentPartner: relationship.currentPartnerVariable,
+          relativesNotRecorded:
+            entry.completeness?.relativesNotRecordedVariable,
           addFormField: (opts: AddFormFieldOpts) => {
             const field = this.resolveFormField(
               {
@@ -2499,6 +2515,7 @@ export class SyntheticInterview {
       config.prompt = stage.prompt;
       config.personAttributes = stage.personAttributes;
       config.relationship = stage.relationship;
+      if (stage.completeness) config.completeness = stage.completeness;
     }
 
     // Geospatial

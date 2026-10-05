@@ -6,6 +6,7 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
+import { PEDIGREE_COMPLETENESS_SCOPES } from '../family-pedigree-values.ts';
 import { baseStageSchema } from './base.ts';
 
 /**
@@ -20,6 +21,8 @@ export const FAMILY_PEDIGREE_SLOTS = {
   gestationalCarrierVariable:
     'familyPedigree.relationship.gestationalCarrierVariable',
   currentPartnerVariable: 'familyPedigree.relationship.currentPartnerVariable',
+  relativesNotRecordedVariable:
+    'familyPedigree.completeness.relativesNotRecordedVariable',
 } as const;
 
 /**
@@ -103,6 +106,29 @@ export const RelationshipConfigSchema = z.strictObject({
 });
 
 /**
+ * How much of the family the participant must record before continuing.
+ * `recommended` lets them continue after being shown what is missing;
+ * `required` does not.
+ */
+export const CompletenessSchema = z.strictObject({
+  scope: z.enum(PEDIGREE_COMPLETENESS_SCOPES),
+  enforcement: z.enum(['required', 'recommended']),
+  // Categorical attribute on a person recording that they have no siblings
+  // or children, or that the participant does not know of any.
+  relativesNotRecordedVariable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+    requireType: ['categorical'],
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.relativesNotRecordedVariable,
+      owner:
+        'the Family Pedigree interface, which records relatives a participant says are not in their family',
+    },
+    ownedOptions: 'pedigreeRelativesNotRecorded',
+  }),
+});
+
+/**
  * The stage a participant draws their family on.
  *
  * The canvas opens on the participant. Selecting anyone offers to add their
@@ -116,6 +142,8 @@ export const familyPedigreeStage = baseStageSchema.extend({
   prompt: z.string().min(1),
   personAttributes: PersonAttributesSchema,
   relationship: RelationshipConfigSchema,
+  // Absent: the participant may continue with any family they have drawn.
+  completeness: CompletenessSchema.optional(),
   // Researcher-defined person fields, asked after the interface's own.
   form: TitlelessFormSchema.optional(),
 });
@@ -127,3 +155,4 @@ export type FamilyPedigreePersonAttributes = z.infer<
 export type FamilyPedigreeRelationshipConfig = z.infer<
   typeof RelationshipConfigSchema
 >;
+export type FamilyPedigreeCompleteness = z.infer<typeof CompletenessSchema>;

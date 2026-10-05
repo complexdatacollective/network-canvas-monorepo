@@ -412,6 +412,117 @@ export const messages = defineMessages({
     description:
       'Explanation in the confirmation shown before removing a family member.',
   },
+  completenessTitle: {
+    id: 'interview.familyPedigree.completenessTitle',
+    defaultMessage: 'Before you continue',
+    description:
+      'Title of the side panel listing the family members the participant still needs to add (or answer about) before moving on.',
+  },
+  completenessRequiredIntro: {
+    id: 'interview.familyPedigree.completenessRequiredIntro',
+    defaultMessage:
+      'A few more people are needed before you can continue. If you don’t know who someone is, add them anyway and leave out what you don’t know.',
+    description:
+      'Introduction in the side panel when the study requires these family members before the participant can continue.',
+  },
+  completenessRecommendedIntro: {
+    id: 'interview.familyPedigree.completenessRecommendedIntro',
+    defaultMessage:
+      'These would make your family tree more complete. You can add them now, or continue without them.',
+    description:
+      'Introduction in the side panel when the study recommends, but does not require, these family members.',
+  },
+  completenessDone: {
+    id: 'interview.familyPedigree.completenessDone',
+    defaultMessage: 'That’s everyone needed. You can continue.',
+    description:
+      'Shown in the side panel once the participant has added or answered about every family member that was needed.',
+  },
+  gapParents: {
+    id: 'interview.familyPedigree.gapParents',
+    defaultMessage:
+      '{isYou, select, true {Your biological parents} other {The biological parents of {name}}}',
+    description:
+      'One item in the list of family members still needed: this person needs both biological parents added. name is the person’s name or how they are related to the participant.',
+  },
+  gapParentsHint: {
+    id: 'interview.familyPedigree.gapParentsHint',
+    defaultMessage:
+      'Everyone has two, including an egg or sperm donor if there was one.',
+    description:
+      'Explanation beneath the item asking for both biological parents of a person.',
+  },
+  gapSiblings: {
+    id: 'interview.familyPedigree.gapSiblings',
+    defaultMessage:
+      '{isYou, select, true {Do you have any brothers or sisters?} other {Does {name} have any brothers or sisters?}}',
+    description:
+      'One item in the list of family members still needed: whether this person has siblings. name is the person’s name or how they are related to the participant.',
+  },
+  gapSiblingsHint: {
+    id: 'interview.familyPedigree.gapSiblingsHint',
+    defaultMessage: 'Include half-siblings who share one biological parent.',
+    description:
+      'Explanation beneath the item asking about a person’s siblings.',
+  },
+  gapChildren: {
+    id: 'interview.familyPedigree.gapChildren',
+    defaultMessage:
+      '{isYou, select, true {Do you have any children?} other {Does {name} have any children?}}',
+    description:
+      'One item in the list of family members still needed: whether this person has children. name is the person’s name or how they are related to the participant.',
+  },
+  gapChildrenHint: {
+    id: 'interview.familyPedigree.gapChildrenHint',
+    defaultMessage:
+      '{isYou, select, true {Only count children you are a biological parent of.} other {Only count children they are a biological parent of.}}',
+    description:
+      'Explanation beneath the item asking about a person’s children: adopted and step-children do not answer this question.',
+  },
+  addParentAction: {
+    id: 'interview.familyPedigree.addParentAction',
+    defaultMessage: 'Add a parent',
+    description: 'Button in the list of family members still needed.',
+  },
+  addSiblingAction: {
+    id: 'interview.familyPedigree.addSiblingAction',
+    defaultMessage: 'Add a sibling',
+    description: 'Button in the list of family members still needed.',
+  },
+  addChildAction: {
+    id: 'interview.familyPedigree.addChildAction',
+    defaultMessage: 'Add a child',
+    description: 'Button in the list of family members still needed.',
+  },
+  answerNone: {
+    id: 'interview.familyPedigree.answerNone',
+    defaultMessage: 'No',
+    description:
+      'Answers a question in the list of family members still needed, such as “Do you have any children?”, with no.',
+  },
+  answerUnknown: {
+    id: 'interview.familyPedigree.answerUnknown',
+    defaultMessage: 'I don’t know',
+    description:
+      'Answers a question in the list of family members still needed, such as “Do you have any children?”, with “I don’t know”.',
+  },
+  keepEditing: {
+    id: 'interview.familyPedigree.keepEditing',
+    defaultMessage: 'Keep editing',
+    description: 'Closes the list of family members still needed.',
+  },
+  continueAnyway: {
+    id: 'interview.familyPedigree.continueAnyway',
+    defaultMessage: 'Continue anyway',
+    description:
+      'Moves on to the next part of the interview without adding the recommended family members.',
+  },
+  continue: {
+    id: 'interview.familyPedigree.continue',
+    defaultMessage: 'Continue',
+    description:
+      'Moves on to the next part of the interview once every needed family member has been added.',
+  },
   addedAnnouncement: {
     id: 'interview.familyPedigree.addedAnnouncement',
     defaultMessage: '{name} added to your family.',

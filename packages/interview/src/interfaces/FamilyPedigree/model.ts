@@ -1,11 +1,13 @@
 import {
   PEDIGREE_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_RELATIVES_NOT_RECORDED,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FamilyPedigreeStageDefinition,
   type PedigreeGenderIdentity,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
+  type PedigreeRelativesNotRecorded,
   type PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
 import {
@@ -30,12 +32,14 @@ export type PedigreeConfig = {
   kindVariable: string;
   gestationalCarrierVariable: string;
   currentPartnerVariable: string;
+  /** Set when the stage has a completeness requirement. */
+  relativesNotRecordedVariable: string | undefined;
 };
 
 export function pedigreeConfigFromStage(
   stage: Pick<
     FamilyPedigreeStageDefinition,
-    'subject' | 'personAttributes' | 'relationship'
+    'subject' | 'personAttributes' | 'relationship' | 'completeness'
   >,
 ): PedigreeConfig {
   return {
@@ -49,6 +53,8 @@ export function pedigreeConfigFromStage(
     kindVariable: stage.relationship.kindVariable,
     gestationalCarrierVariable: stage.relationship.gestationalCarrierVariable,
     currentPartnerVariable: stage.relationship.currentPartnerVariable,
+    relativesNotRecordedVariable:
+      stage.completeness?.relativesNotRecordedVariable,
   };
 }
 
@@ -58,6 +64,9 @@ export type Person = {
   name: string | undefined;
   genderIdentity: PedigreeGenderIdentity | undefined;
   sexAssignedAtBirth: PedigreeSexAssignedAtBirth | undefined;
+  /** Siblings or children the participant has said there are none of, or
+   * doesn't know about. */
+  relativesNotRecorded: PedigreeRelativesNotRecorded[];
   attributes: NcNode[typeof entityAttributesProperty];
 };
 
@@ -89,6 +98,15 @@ function readCategorical<T extends string>(
   return allowed.find((member) => member === candidate);
 }
 
+/** Every known member of a multi-valued categorical value. */
+function readCategoricalSet<T extends string>(
+  value: VariableValue | undefined,
+  allowed: readonly T[],
+): T[] {
+  const values: unknown[] = Array.isArray(value) ? value : [];
+  return allowed.filter((member) => values.includes(member));
+}
+
 export function readFamily(
   nodes: readonly NcNode[],
   edges: readonly NcEdge[],
@@ -110,6 +128,12 @@ export function readFamily(
         sexAssignedAtBirth: readCategorical(
           attributes[config.sexAssignedAtBirthVariable],
           PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+        ),
+        relativesNotRecorded: readCategoricalSet(
+          config.relativesNotRecordedVariable
+            ? attributes[config.relativesNotRecordedVariable]
+            : undefined,
+          PEDIGREE_RELATIVES_NOT_RECORDED,
         ),
         attributes,
       };

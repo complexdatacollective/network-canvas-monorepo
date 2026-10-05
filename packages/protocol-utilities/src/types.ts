@@ -6,6 +6,7 @@ import type {
   Item,
   NodeColorReference,
   OrdinalColorReference,
+  PedigreeCompletenessScope,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -301,6 +302,7 @@ export type StageEntry = {
   prompt?: string;
   personAttributes?: FamilyPedigreePersonAttributesEntry;
   relationship?: FamilyPedigreeRelationshipEntry;
+  completeness?: FamilyPedigreeCompletenessEntry;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -316,6 +318,13 @@ export type FamilyPedigreePersonAttributesEntry = {
   genderIdentityVariable: string;
   sexAssignedAtBirthVariable: string;
   egoVariable: string;
+};
+
+/** A FamilyPedigree stage's completeness requirement. */
+export type FamilyPedigreeCompletenessEntry = {
+  scope: PedigreeCompletenessScope;
+  enforcement: 'required' | 'recommended';
+  relativesNotRecordedVariable: string;
 };
 
 /** The family edge type and edge variable ids a FamilyPedigree stage binds. */
@@ -462,6 +471,11 @@ export type AddStageInput = {
   // created on those types.
   prompt?: string;
   relationshipType?: string;
+  /** Creates the relatives-not-recorded variable when set. */
+  completeness?: Omit<
+    FamilyPedigreeCompletenessEntry,
+    'relativesNotRecordedVariable'
+  >;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)

@@ -5,6 +5,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type {
+  PedigreeCompletenessScope,
   PedigreeGenderIdentity,
   PedigreeRelationshipKind,
   PedigreeSexAssignedAtBirth,
@@ -35,14 +36,23 @@ type SeedLink = {
 
 type Family = { people: SeedPerson[]; links: SeedLink[] };
 
+type Completeness = {
+  scope: PedigreeCompletenessScope;
+  enforcement: 'required' | 'recommended';
+};
+
 /**
  * An interview whose pedigree stage opens on a seeded family, between two
  * information screens. With no family, only the participant is shown.
  */
-function buildInterview(family?: Family, withFormFields = false) {
+function buildInterview(
+  family?: Family,
+  withFormFields = false,
+  completeness?: Completeness,
+) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
-  const stage = si.addStage('FamilyPedigree', { prompt: PROMPT });
+  const stage = si.addStage('FamilyPedigree', { prompt: PROMPT, completeness });
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
     stage.addFormField({
@@ -82,18 +92,22 @@ function buildInterview(family?: Family, withFormFields = false) {
 function PedigreeStory({
   family,
   withFormFields,
+  completeness,
 }: {
   family?: Family;
   withFormFields?: boolean;
+  completeness?: Completeness;
 }) {
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(
-        buildInterview(family, withFormFields).getInterviewPayload({
-          currentStep: 1,
-        }),
+        buildInterview(
+          family,
+          withFormFields,
+          completeness,
+        ).getInterviewPayload({ currentStep: 1 }),
       ),
-    [family, withFormFields],
+    [family, withFormFields, completeness],
   );
 
   return (
@@ -514,4 +528,113 @@ export const MultiplePartners: Story = {
     />
   ),
   play: expectPeople(7),
+};
+
+// ---------------------------------------------------------------------------
+// Unnamed relatives and completeness requirements
+// ---------------------------------------------------------------------------
+
+/**
+ * Nobody's name is known, so each person is shown by how they are related to
+ * the participant, described through the nearest named person where there is
+ * one ("Rob's mother").
+ */
+export const UnnamedRelatives: Story = {
+  render: () => (
+    <PedigreeStory
+      family={{
+        people: [
+          { id: 'ego', ego: true, gender: 'woman', sex: 'female' },
+          { id: 'mum', gender: 'woman', sex: 'female' },
+          { id: 'dad', name: 'Rob', gender: 'man', sex: 'male' },
+          { id: 'nan', gender: 'woman', sex: 'female' },
+          { id: 'robsMum', gender: 'woman', sex: 'female' },
+          { id: 'aunt', gender: 'woman', sex: 'female' },
+          { id: 'cousin', gender: 'nonBinary', sex: 'unknown' },
+          { id: 'half', gender: 'man', sex: 'male' },
+          { id: 'stepmum', gender: 'woman', sex: 'female' },
+          { id: 'kid1', gender: 'unknown', sex: 'unknown' },
+          { id: 'kid2', gender: 'unknown', sex: 'unknown' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner', current: false },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+          { from: 'nan', to: 'mum', kind: 'biological', carrier: true },
+          { from: 'nan', to: 'aunt', kind: 'biological', carrier: true },
+          { from: 'aunt', to: 'cousin', kind: 'biological', carrier: true },
+          { from: 'robsMum', to: 'dad', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'stepmum', kind: 'partner' },
+          { from: 'dad', to: 'half', kind: 'biological' },
+          { from: 'stepmum', to: 'half', kind: 'biological', carrier: true },
+          { from: 'ego', to: 'kid1', kind: 'biological', carrier: true },
+          { from: 'ego', to: 'kid2', kind: 'biological', carrier: true },
+        ],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(11)(context);
+    const canvas = within(context.canvasElement);
+    for (const name of [
+      'Mother',
+      "Mother's mother",
+      "Rob's mother",
+      "Mother's sister",
+      'Half-brother',
+      'Child 1',
+    ]) {
+      await expect(
+        canvas.getByRole('button', { name: new RegExp(`^${name}`) }),
+      ).toBeVisible();
+    }
+  },
+};
+
+/**
+ * The study requires both biological parents. Pressing Next opens a panel
+ * listing what is still needed, with a button to add each.
+ */
+export const RequiresBothParents: Story = {
+  render: () => (
+    <PedigreeStory
+      completeness={{ scope: 'parents', enforcement: 'required' }}
+    />
+  ),
+  play: expectPeople(1),
+};
+
+/**
+ * The study recommends three generations. The participant has added their
+ * parents and a brother; pressing Next lists their children, and each
+ * parent's parents and siblings, with a choice to continue anyway.
+ */
+export const RecommendsThreeGenerations: Story = {
+  render: () => (
+    <PedigreeStory
+      completeness={{ scope: 'grandparents', enforcement: 'recommended' }}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Sarietha',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Julie', gender: 'woman', sex: 'female' },
+          { id: 'dad', name: 'Rob', gender: 'man', sex: 'male' },
+          { id: 'bro', name: 'Joshua', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+          { from: 'mum', to: 'bro', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'bro', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: expectPeople(4),
 };

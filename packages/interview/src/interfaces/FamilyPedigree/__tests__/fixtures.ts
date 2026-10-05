@@ -18,6 +18,7 @@ export const config: PedigreeConfig = {
   kindVariable: 'kind',
   gestationalCarrierVariable: 'carrier',
   currentPartnerVariable: 'current',
+  relativesNotRecordedVariable: 'notRecorded',
 };
 
 export const person = (

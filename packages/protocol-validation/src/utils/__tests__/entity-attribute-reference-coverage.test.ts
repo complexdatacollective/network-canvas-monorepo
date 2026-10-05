@@ -41,7 +41,8 @@ const countTagged = (
 // Update this number deliberately when adding/removing a tagged field.
 // Merged total: main's NetworkComposer reference fields, plus the pedigree's
 // person attributes (name, gender identity, sex assigned at birth, ego) and
-// relationship attributes (kind, gestational carrier, current partner), plus
+// relationship attributes (kind, gestational carrier, current partner) and
+// completeness attribute (relatives not recorded), plus
 // the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
 // #1392's four existence-unchecked sites: the shared sort rule `property`
 // (SortRuleSchema, reached by every prompt-level sort order and the roster's
@@ -49,13 +50,14 @@ const countTagged = (
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 37;
+const EXPECTED_TAGGED_FIELD_COUNT = 38;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns. Both drive protocol-level rules and Architect's pickers/option
 // editors, so adding a structural slot without listing it here — or listing
 // one that no longer exists — fails.
 const EXPECTED_EXCLUSIVE_SLOTS = [
+  'familyPedigree.completeness.relativesNotRecordedVariable',
   'familyPedigree.person.egoVariable',
   'familyPedigree.relationship.currentPartnerVariable',
   'familyPedigree.relationship.gestationalCarrierVariable',
@@ -65,6 +67,7 @@ const EXPECTED_EXCLUSIVE_SLOTS = [
 const EXPECTED_OWNED_OPTION_SETS = [
   'pedigreeGenderIdentity',
   'pedigreeRelationship',
+  'pedigreeRelativesNotRecorded',
   'pedigreeSexAssignedAtBirth',
 ];
 

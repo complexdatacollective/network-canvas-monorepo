@@ -2,6 +2,7 @@ import type { InterfaceOwnedOptionSetKey } from './entity-attribute-reference.ts
 import {
   PEDIGREE_GENDER_IDENTITY_OPTIONS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from './family-pedigree-values.ts';
 
@@ -39,6 +40,10 @@ export const INTERFACE_OWNED_OPTION_SETS: Record<
   pedigreeRelationship: {
     label: 'family relationship kind',
     options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  },
+  pedigreeRelativesNotRecorded: {
+    label: 'relatives not recorded',
+    options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   },
 };
 

@@ -50,7 +50,8 @@ export type ExclusiveSlotDescriptor = {
 export type InterfaceOwnedOptionSetKey =
   | 'pedigreeGenderIdentity'
   | 'pedigreeSexAssignedAtBirth'
-  | 'pedigreeRelationship';
+  | 'pedigreeRelationship'
+  | 'pedigreeRelativesNotRecorded';
 
 /**
  * Whether the value at this site is GUARANTEED to name a codebook attribute.

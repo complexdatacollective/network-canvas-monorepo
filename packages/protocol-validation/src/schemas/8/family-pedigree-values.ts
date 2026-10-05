@@ -109,3 +109,72 @@ export const PEDIGREE_RELATIONSHIP_KIND_OPTIONS: {
   value,
   label: RELATIONSHIP_KIND_LABELS[value],
 }));
+
+/**
+ * Relatives a participant has said are not in their family, or that they do
+ * not know about. Recorded on the person they are relatives of, so that "has
+ * no siblings" and "siblings not known" are kept distinct from a question
+ * never answered. Siblings and children are the only open-ended groups: every
+ * person has exactly two biological parents, so missing parents are added as
+ * people (who may be entirely unknown) rather than recorded here.
+ */
+export const PEDIGREE_RELATIVES_NOT_RECORDED = [
+  'noSiblings',
+  'siblingsUnknown',
+  'noChildren',
+  'childrenUnknown',
+] as const;
+
+export type PedigreeRelativesNotRecorded =
+  (typeof PEDIGREE_RELATIVES_NOT_RECORDED)[number];
+
+const RELATIVES_NOT_RECORDED_LABELS: Record<
+  PedigreeRelativesNotRecorded,
+  string
+> = {
+  noSiblings: 'Has no siblings',
+  siblingsUnknown: 'Siblings not known',
+  noChildren: 'Has no children',
+  childrenUnknown: 'Children not known',
+};
+
+export const PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS: {
+  value: PedigreeRelativesNotRecorded;
+  label: string;
+}[] = PEDIGREE_RELATIVES_NOT_RECORDED.map((value) => ({
+  value,
+  label: RELATIVES_NOT_RECORDED_LABELS[value],
+}));
+
+/**
+ * How much of the family a participant must record before continuing. Each
+ * scope includes the ones before it; "biological" parents are those who gave
+ * genes, so a gamete donor counts and a gestational carrier does not.
+ *
+ * - `parents`: both of the participant's biological parents (Bennett et al.
+ *   2008 — every person descends from two, so an unknown parent is still
+ *   drawn).
+ * - `firstDegree`: adds the participant's siblings and children (first-degree
+ *   relatives; the minimum for risk assessment in NCCN and ACOG guidance).
+ * - `grandparents`: adds both biological parents of each of the participant's
+ *   biological parents, and those parents' siblings — three generations on
+ *   both sides, the scope of Family Healthware and MeTree.
+ * - `secondDegree`: adds nieces and nephews (children of siblings) and
+ *   grandchildren, completing the second-degree relatives.
+ * - `thirdDegree`: adds first cousins (children of aunts and uncles) — the
+ *   three-generation pedigree to third degree that Bennett recommends as the
+ *   clinical standard.
+ *
+ * Siblings and children are satisfied by recording at least one, or by the
+ * participant saying there are none or that they do not know.
+ */
+export const PEDIGREE_COMPLETENESS_SCOPES = [
+  'parents',
+  'firstDegree',
+  'grandparents',
+  'secondDegree',
+  'thirdDegree',
+] as const;
+
+export type PedigreeCompletenessScope =
+  (typeof PEDIGREE_COMPLETENESS_SCOPES)[number];

@@ -15,6 +15,10 @@
     "defaultMessage": "Child",
     "description": "Short button label next to a selected family member: adds a child of that person."
   },
+  "interview.familyPedigree.addChildAction": {
+    "defaultMessage": "Add a child",
+    "description": "Button in the list of family members still needed."
+  },
   "interview.familyPedigree.addChildTitle": {
     "defaultMessage": "{isYou, select, true {Add your child} other {Add a child of {name}}}",
     "description": "Title of the side panel used to add a child of a family member. {name} is that family member’s name or “Unnamed”."
@@ -22,6 +26,10 @@
   "interview.familyPedigree.addParent": {
     "defaultMessage": "Parent",
     "description": "Short button label next to a selected family member: adds a parent of that person."
+  },
+  "interview.familyPedigree.addParentAction": {
+    "defaultMessage": "Add a parent",
+    "description": "Button in the list of family members still needed."
   },
   "interview.familyPedigree.addParentTitle": {
     "defaultMessage": "{isYou, select, true {Add your parent} other {Add a parent of {name}}}",
@@ -39,17 +47,29 @@
     "defaultMessage": "Sibling",
     "description": "Short button label next to a selected family member: adds a brother, sister or sibling of that person."
   },
+  "interview.familyPedigree.addSiblingAction": {
+    "defaultMessage": "Add a sibling",
+    "description": "Button in the list of family members still needed."
+  },
   "interview.familyPedigree.addSiblingTitle": {
     "defaultMessage": "{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}",
     "description": "Title of the side panel used to add a sibling of a family member. {name} is that family member’s name or “Unnamed”."
   },
   "interview.familyPedigree.addedAnnouncement": {
     "defaultMessage": "{name} added to your family.",
-    "description": "Screen reader announcement after a family member is added. {name} is their name or “Unnamed”."
+    "description": "Screen reader announcement after a family member is added. {name} is their name or, when it is not known, how they are related to the participant."
   },
   "interview.familyPedigree.alsoParentOfLabel": {
     "defaultMessage": "Are they also the parent of…",
     "description": "Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names."
+  },
+  "interview.familyPedigree.answerNone": {
+    "defaultMessage": "No",
+    "description": "Answers a question in the list of family members still needed, such as “Do you have any children?”, with no."
+  },
+  "interview.familyPedigree.answerUnknown": {
+    "defaultMessage": "I don’t know",
+    "description": "Answers a question in the list of family members still needed, such as “Do you have any children?”, with “I don’t know”."
   },
   "interview.familyPedigree.cancel": {
     "defaultMessage": "Cancel",
@@ -87,6 +107,30 @@
     "defaultMessage": "Is this child…",
     "description": "Question in the side panel for adding a child: how the child is related to their parents. Followed by the options below."
   },
+  "interview.familyPedigree.completenessDone": {
+    "defaultMessage": "That’s everyone needed. You can continue.",
+    "description": "Shown in the side panel once the participant has added or answered about every family member that was needed."
+  },
+  "interview.familyPedigree.completenessRecommendedIntro": {
+    "defaultMessage": "These would make your family tree more complete. You can add them now, or continue without them.",
+    "description": "Introduction in the side panel when the study recommends, but does not require, these family members."
+  },
+  "interview.familyPedigree.completenessRequiredIntro": {
+    "defaultMessage": "A few more people are needed before you can continue. If you don’t know who someone is, add them anyway and leave out what you don’t know.",
+    "description": "Introduction in the side panel when the study requires these family members before the participant can continue."
+  },
+  "interview.familyPedigree.completenessTitle": {
+    "defaultMessage": "Before you continue",
+    "description": "Title of the side panel listing the family members the participant still needs to add (or answer about) before moving on."
+  },
+  "interview.familyPedigree.continue": {
+    "defaultMessage": "Continue",
+    "description": "Moves on to the next part of the interview once every needed family member has been added."
+  },
+  "interview.familyPedigree.continueAnyway": {
+    "defaultMessage": "Continue anyway",
+    "description": "Moves on to the next part of the interview without adding the recommended family members."
+  },
   "interview.familyPedigree.dontKnow": {
     "defaultMessage": "Don’t know",
     "description": "Answer option for a question about a family member, when the participant does not know."
@@ -94,6 +138,34 @@
   "interview.familyPedigree.editTitle": {
     "defaultMessage": "{isYou, select, true {About you} other {About {name}}}",
     "description": "Title of the side panel showing the details about a family member. {name} is that family member’s name or “Unnamed”."
+  },
+  "interview.familyPedigree.familyMember": {
+    "defaultMessage": "Family member",
+    "description": "Label for a family member whose name is not known and who is not connected to the participant in the family tree."
+  },
+  "interview.familyPedigree.gapChildren": {
+    "defaultMessage": "{isYou, select, true {Do you have any children?} other {Does {name} have any children?}}",
+    "description": "One item in the list of family members still needed: whether this person has children. name is the person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.gapChildrenHint": {
+    "defaultMessage": "{isYou, select, true {Only count children you are a biological parent of.} other {Only count children they are a biological parent of.}}",
+    "description": "Explanation beneath the item asking about a person’s children: adopted and step-children do not answer this question."
+  },
+  "interview.familyPedigree.gapParents": {
+    "defaultMessage": "{isYou, select, true {Your biological parents} other {The biological parents of {name}}}",
+    "description": "One item in the list of family members still needed: this person needs both biological parents added. name is the person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.gapParentsHint": {
+    "defaultMessage": "Everyone has two, including an egg or sperm donor if there was one.",
+    "description": "Explanation beneath the item asking for both biological parents of a person."
+  },
+  "interview.familyPedigree.gapSiblings": {
+    "defaultMessage": "{isYou, select, true {Do you have any brothers or sisters?} other {Does {name} have any brothers or sisters?}}",
+    "description": "One item in the list of family members still needed: whether this person has siblings. name is the person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.gapSiblingsHint": {
+    "defaultMessage": "Include half-siblings who share one biological parent.",
+    "description": "Explanation beneath the item asking about a person’s siblings."
   },
   "interview.familyPedigree.gender.differentIdentity": {
     "defaultMessage": "A different identity",
@@ -115,6 +187,10 @@
     "defaultMessage": "Gender identity",
     "description": "Label of the question about a family member’s gender."
   },
+  "interview.familyPedigree.keepEditing": {
+    "defaultMessage": "Keep editing",
+    "description": "Closes the list of family members still needed."
+  },
   "interview.familyPedigree.missingDetails": {
     "defaultMessage": "Some details are missing",
     "description": "Tooltip on the warning icon next to a family member whose required details have not been given yet."
@@ -128,16 +204,20 @@
     "description": "Heading above the study’s own additional questions about a family member."
   },
   "interview.familyPedigree.nameHint": {
-    "defaultMessage": "A first name or nickname is fine.",
+    "defaultMessage": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.",
     "description": "Hint beneath the field for a family member’s name."
   },
   "interview.familyPedigree.nameLabel": {
-    "defaultMessage": "Name",
-    "description": "Label of the field for a family member’s name."
+    "defaultMessage": "Name (optional)",
+    "description": "Label of the field for a family member’s name, which the participant may not know."
   },
   "interview.familyPedigree.no": {
     "defaultMessage": "No",
     "description": "Answer to a yes/no question."
+  },
+  "interview.familyPedigree.numberedRelative": {
+    "defaultMessage": "{label} {number, number}",
+    "description": "Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added."
   },
   "interview.familyPedigree.otherParentLabel": {
     "defaultMessage": "Who is the child’s other parent?",
@@ -193,7 +273,7 @@
   },
   "interview.familyPedigree.personAccessibleName": {
     "defaultMessage": "{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}",
-    "description": "Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or “Unnamed”. The second part is read out when required details about the person have not been given yet."
+    "description": "Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or, when it is not known, how they are related to the participant. The second part is read out when required details about the person have not been given yet."
   },
   "interview.familyPedigree.placeholderParentsNote": {
     "defaultMessage": "Two parents will be added for you to fill in later, so the family tree can show these siblings together.",
@@ -211,6 +291,14 @@
     "defaultMessage": "Relationships",
     "description": "Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details."
   },
+  "interview.familyPedigree.relativeOf": {
+    "defaultMessage": "{owner}'s {term, select, mother {mother} father {father} parent {parent} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {stepmother} stepfather {stepfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surrogate} daughter {daughter} son {son} child {child} stepdaughter {stepdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {child born through surrogacy} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} partner {partner} formerPartner {former partner} other {relative}}",
+    "description": "Label for a family member whose name is not known, described through a relative of theirs: owner is that relative’s name or label (for example “Rob” or “Mother”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Display only."
+  },
+  "interview.familyPedigree.relativeTerm": {
+    "defaultMessage": "{term, select, mother {Mother} father {Father} parent {Parent} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Stepmother} stepfather {Stepfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surrogate} daughter {Daughter} son {Son} child {Child} stepdaughter {Stepdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} partner {Partner} formerPartner {Former partner} other {Relative}}",
+    "description": "Label for a family member whose name is not known, describing how they are related to the participant (for example, the participant’s mother). Display only; nothing here is saved as research data."
+  },
   "interview.familyPedigree.remove": {
     "defaultMessage": "Remove from family",
     "description": "Button in the side panel that removes a family member from the family tree."
@@ -225,7 +313,7 @@
   },
   "interview.familyPedigree.removedAnnouncement": {
     "defaultMessage": "{name} removed from your family.",
-    "description": "Screen reader announcement after a family member is removed. {name} is their name or “Unnamed”."
+    "description": "Screen reader announcement after a family member is removed. {name} is their name or, when it is not known, how they are related to the participant."
   },
   "interview.familyPedigree.save": {
     "defaultMessage": "Save",
@@ -258,10 +346,6 @@
   "interview.familyPedigree.stillTogetherLabel": {
     "defaultMessage": "{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}",
     "description": "Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or “Unnamed”."
-  },
-  "interview.familyPedigree.unnamedPerson": {
-    "defaultMessage": "Unnamed",
-    "description": "Label shown beneath a family member whose name has not been entered yet."
   },
   "interview.familyPedigree.yes": {
     "defaultMessage": "Yes",
