@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, type Exit, Option } from 'effect';
+import { Effect, Exit, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -231,6 +231,27 @@ describe.skipIf(!testDb)(
       );
 
       await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
+    });
+
+    it('lists only what the role committed while the request is in flight can see', async () => {
+      const study = await createStudy('Demoted lister study');
+      const demoted = await addResearcher('demoted-lister', 'admin', 'admin');
+
+      const exit = await withChangeInFlight(
+        {
+          statement: `UPDATE team_members SET role = 'member' WHERE id = $1`,
+          params: [demoted.memberId],
+        },
+        () =>
+          demoted.client.callExit(
+            demoted.client.rpc('protocols.list', { teamId: TEAM_ID }),
+          ),
+      );
+
+      if (Exit.isFailure(exit)) throw new Error('the list was refused');
+      expect(exit.value.map((protocol) => protocol.id)).not.toContain(
+        study.protocolId,
+      );
     });
 
     it('refuses an edit through a grant revoked while the request is in flight', async () => {

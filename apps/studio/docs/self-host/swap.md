@@ -47,12 +47,13 @@ also authenticates the server, and is what you want wherever the database is
 not on a private network you control.
 
 Studio's database client verifies the server's certificate and hostname
-whenever TLS is on, whatever the `sslmode` says, against the trust store Node
-uses. It does not read `sslrootcert` from the URL, so a database whose
-certificate comes from a private certificate authority is refused until that
-authority is trusted: put its certificate in the image's trust store, or point
-`NODE_EXTRA_CA_CERTS` at it in the `api`, `worker` and `migrate` services.
-`sslmode=prefer` and `sslmode=allow` are refused at boot.
+whenever TLS is on, whatever the `sslmode` says. For a database whose
+certificate comes from a private certificate authority, name that authority's
+certificate in the URL — `sslmode=verify-full&sslrootcert=/run/secrets/db-ca.crt`
+— and mount the file into the `api`, `worker` and `migrate` services; a client
+certificate goes in `sslcert` and `sslkey` the same way. `sslmode=prefer` and
+`sslmode=allow` are refused at boot, because either can connect without TLS
+when the server declines it.
 
 Then delete the `postgres` service block and the `postgres-data` volume, and
 remove the `depends_on` entries naming `postgres` from `api`, `worker` and

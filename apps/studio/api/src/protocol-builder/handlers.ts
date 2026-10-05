@@ -19,6 +19,8 @@ import {
   SectionsLocked,
 } from '@codaco/protocol-builder-core/contract/errors';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId as makeSectionId,
   parseSectionId,
@@ -30,14 +32,17 @@ import { TenantScope } from '../db/tenant.ts';
 import { openAssetKey } from '../protocol/asset-keys.ts';
 import { type RateLimiter } from '../rate-limit/limiter.ts';
 import type { StudioServices } from '../rpc/deps.ts';
+import { requireProtocol } from '../rpc/team-scope.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
 import {
   acquireLock,
+  authorizeCaller,
   create,
   deleteEntityType,
   deleteStage,
   deleteVariable,
+  headSection,
   listSectionIds,
   readSection,
   releaseConnection,
@@ -197,30 +202,38 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         yield* publish(session, released.events);
       }).pipe(Effect.provideService(Database, database));
 
-    const withCommittedAssetKey = Effect.fnUntraced(function* (
+    const inspectWithCommittedKey = (
       session: ProtocolBuilderSession,
       resourceId: string,
-      outcome: ResourceOutcome<Inspection>,
-    ) {
-      if (outcome.status !== 'ok') return outcome;
-      if (outcome.data.descriptor.kind !== 'apikey') return outcome;
-      if (outcome.data.value !== undefined) return outcome;
-      const value = yield* Effect.orDie(
+      inspect: (assets: SectionDoc) => ResourceOutcome<Inspection>,
+    ) =>
+      command(
+        session.protocolId,
         TenantScope.open(
           session.access,
-          openAssetKey(session.cipher, {
-            teamId: session.access.teamId,
-            protocolId: session.protocolId,
-            assetId: resourceId,
-          }),
+          Effect.gen(function* () {
+            yield* requireProtocol(session.access, session.protocolId);
+            const assets = yield* headSection(
+              session,
+              makeSectionId({ kind: 'assets' }),
+            );
+            const outcome = inspect(assets?.document ?? {});
+            if (outcome.status !== 'ok') return outcome;
+            if (outcome.data.descriptor.kind !== 'apikey') return outcome;
+            if (outcome.data.value !== undefined) return outcome;
+            const value = yield* openAssetKey(session.cipher, {
+              teamId: session.access.teamId,
+              protocolId: session.protocolId,
+              assetId: resourceId,
+            });
+            if (value === undefined) return outcome;
+            return {
+              status: 'ok' as const,
+              data: { ...outcome.data, value },
+            };
+          }).pipe(Effect.provideService(Principal)(session.principal)),
         ),
       );
-      if (value === undefined) return outcome;
-      return {
-        status: 'ok' as const,
-        data: { ...outcome.data, value },
-      };
-    });
 
     return ProtocolBuilderGroup.of({
       AcquireLock: Effect.fn('protocolBuilder.AcquireLock')(function* ({
@@ -325,6 +338,21 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             // Subscribed before the backlog is read, so an event committed
             // between the two is queued rather than lost.
             const live = yield* events.subscribe(session.draftId);
+            const from = since === undefined ? undefined : BigInt(since);
+            const backlog = yield* command(
+              protocolId,
+              TenantScope.open(
+                session.access,
+                Effect.andThen(
+                  requireProtocol(session.access, session.protocolId),
+                  readProtocolEvents(
+                    session.access.teamId,
+                    session.draftId,
+                    from,
+                  ),
+                ).pipe(Effect.provideService(Principal)(session.principal)),
+              ),
+            );
             yield* leases.connect(
               sessionOwner(session),
               session.draftId,
@@ -338,17 +366,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               sessionPresence(session, 'viewing'),
             );
             yield* publishPresence(session);
-            const from = since === undefined ? undefined : BigInt(since);
-            const backlog = yield* Effect.orDie(
-              TenantScope.open(
-                session.access,
-                readProtocolEvents(
-                  session.access.teamId,
-                  session.draftId,
-                  from,
-                ),
-              ),
-            );
             const lastBacklog = backlog.at(-1)?.cursor;
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);
             let authorizedAt = yield* Clock.currentTimeMillis;
@@ -361,7 +378,10 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                   const at = yield* Clock.currentTimeMillis;
                   if (at - authorizedAt >= REAUTHORIZE_MS) {
                     yield* stillSignedIn(headers);
-                    yield* openSession(protocolId);
+                    yield* command(
+                      protocolId,
+                      authorizeCaller(yield* openSession(protocolId)),
+                    );
                     authorizedAt = at;
                   }
                   // Presence is not replayable, so it never moves the cursor.
@@ -398,13 +418,17 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         const session = yield* openSession(protocolId);
         // Asked before planning: the first attempt already took the staged
         // resources a new plan would need.
-        const already = yield* Effect.orDie(
+        const already = yield* command(
+          protocolId,
           TenantScope.open(
             session.access,
-            readWriteReceipt(
-              session.access.teamId,
-              writeKey(session, 'submit', requestId),
-            ),
+            Effect.andThen(
+              requireProtocol(session.access, session.protocolId),
+              readWriteReceipt(
+                session.access.teamId,
+                writeKey(session, 'submit', requestId),
+              ),
+            ).pipe(Effect.provideService(Principal)(session.principal)),
           ),
         );
         if (already !== undefined) return submitted(already);
@@ -481,13 +505,17 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         promote,
       }) {
         const session = yield* openSession(protocolId);
-        const already = yield* Effect.orDie(
+        const already = yield* command(
+          protocolId,
           TenantScope.open(
             session.access,
-            readWriteReceipt(
-              session.access.teamId,
-              writeKey(session, 'create', requestId),
-            ),
+            Effect.andThen(
+              requireProtocol(session.access, session.protocolId),
+              readWriteReceipt(
+                session.access.teamId,
+                writeKey(session, 'create', requestId),
+              ),
+            ).pipe(Effect.provideService(Principal)(session.principal)),
           ),
         );
         if (already !== undefined) return yield* created(already);
@@ -645,6 +673,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         request,
       }) {
         const session = yield* openSession(protocolId);
+        yield* command(protocolId, authorizeCaller(session));
         const store = yield* stagingFor(session, editId);
         return store.stage(requestId, request);
       }),
@@ -652,6 +681,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
       ResourcesDiscard: Effect.fn('protocolBuilder.ResourcesDiscard')(
         function* ({ protocolId, editId, resourceId }) {
           const session = yield* openSession(protocolId);
+          yield* command(protocolId, authorizeCaller(session));
           const store = yield* stagingFor(session, editId);
           return store.discard(resourceId);
         },
@@ -660,16 +690,18 @@ export const ProtocolBuilderHandlers: Layer.Layer<
       ResourcesInspect: Effect.fn('protocolBuilder.ResourcesInspect')(
         function* ({ protocolId, editId, resourceId }) {
           const session = yield* openSession(protocolId);
-          const assets = yield* assetsDocument(session);
           const store =
             editId === undefined
               ? undefined
               : yield* staged.opened(stagingKey(session, editId));
-          const inspection =
-            store === undefined
-              ? committedInspection(assets, resourceId)
-              : store.inspect(assets, resourceId);
-          return yield* withCommittedAssetKey(session, resourceId, inspection);
+          return yield* inspectWithCommittedKey(
+            session,
+            resourceId,
+            (assets) =>
+              store === undefined
+                ? committedInspection(assets, resourceId)
+                : store.inspect(assets, resourceId),
+          );
         },
       ),
 

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import type { ConnectionOptions } from 'node:tls';
+
 import { PgClient } from '@effect/sql-pg';
 import {
   DefaultServices,
@@ -51,6 +54,40 @@ const passwordFrom = (passwordFile: string) =>
 
 const CONNECT_TIMEOUT = '10 seconds';
 
+const TLS_FILES = [
+  ['sslrootcert', 'ca'],
+  ['sslcert', 'cert'],
+  ['sslkey', 'key'],
+] as const;
+
+function readTlsFile(parameter: string, path: string): string {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch (error) {
+    throw new Error(
+      `DATABASE_URL names ${path} in \`${parameter}\`, which could not be read: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error },
+    );
+  }
+}
+
+/** `@effect/sql-pg` does not read the certificate files a `DATABASE_URL` names. */
+export function tlsOptionsFrom(url: string): ConnectionOptions | undefined {
+  const params = new URL(url).searchParams;
+  const sslmode = params.get('sslmode');
+  if (sslmode === null || sslmode === 'disable') return undefined;
+  const options: ConnectionOptions = {};
+  for (const [parameter, option] of TLS_FILES) {
+    const path = params.get(parameter);
+    if (path === null || path === '') continue;
+    if (parameter === 'sslrootcert' && path === 'system') continue;
+    options[option] = readTlsFile(parameter, path);
+  }
+  return Object.keys(options).length === 0 ? undefined : options;
+}
+
 const makeService = (
   identity: DatabaseIdentity,
   config: DatabaseConfig,
@@ -58,8 +95,10 @@ const makeService = (
 ) =>
   Effect.gen(function* () {
     const role = roleFor(identity);
+    const tls = yield* Effect.sync(() => tlsOptionsFrom(config.url));
     const sql = yield* PgClient.make({
       url: Redacted.make(config.url),
+      ...(tls === undefined ? {} : { ssl: tls }),
       ...(config.passwordFile === undefined
         ? {}
         : { password: passwordFrom(config.passwordFile) }),

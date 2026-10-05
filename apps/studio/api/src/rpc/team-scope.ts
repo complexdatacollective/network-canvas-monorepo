@@ -85,15 +85,11 @@ export const resolveStudy = Effect.fnUntraced(function* (
   return resolved;
 });
 
-/**
- * A caller that also locks the membership row `FOR UPDATE` must take that lock
- * first, or two concurrent calls can deadlock.
- */
-export const requireProtocol = Effect.fnUntraced(function* (
+/** A caller that also locks the membership row `FOR UPDATE` must take that lock first, or concurrent calls deadlock. */
+export const requireLockedRole = Effect.fnUntraced(function* (
   access: TeamAccess,
-  protocolId: string,
 ): Effect.fn.Return<
-  void,
+  string,
   Forbidden | SqlError.SqlError,
   Transaction | Principal
 > {
@@ -113,7 +109,20 @@ export const requireProtocol = Effect.fnUntraced(function* (
   );
   const member = members[0];
   if (member === undefined) return yield* new Forbidden({});
-  const seesEveryStudy = seesEveryTeamStudy(member.role);
+  return member.role;
+});
+
+export const requireProtocol = Effect.fnUntraced(function* (
+  access: TeamAccess,
+  protocolId: string,
+): Effect.fn.Return<
+  void,
+  Forbidden | SqlError.SqlError,
+  Transaction | Principal
+> {
+  const principal = yield* Principal;
+  const { tx } = yield* Transaction;
+  const seesEveryStudy = seesEveryTeamStudy(yield* requireLockedRole(access));
   if (!seesEveryStudy) {
     yield* sqlErrorsOnly(
       tx

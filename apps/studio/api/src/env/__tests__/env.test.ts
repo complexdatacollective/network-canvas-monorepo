@@ -634,7 +634,7 @@ describe('the pinned role', () => {
     }
   });
 
-  it('refuses an sslmode the server’s database client does not accept', () => {
+  it('refuses an sslmode that can fall back to plaintext', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', '');
     vi.stubEnv('DATABASE_URL', 'postgres://u@db.example/studio?sslmode=prefer');

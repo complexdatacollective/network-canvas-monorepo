@@ -181,6 +181,7 @@ export async function createProtocolBuilderClient(
     readonly objectStore?: ObjectStore['Service'];
     readonly leases?: Layer.Layer<Leases>;
     readonly events?: Layer.Layer<ProtocolEvents>;
+    readonly staged?: Layer.Layer<StagedImports>;
     readonly layer?: Layer.Layer<never>;
   } = {},
 ): Promise<ProtocolBuilderTestClient> {
@@ -189,7 +190,7 @@ export async function createProtocolBuilderClient(
     options.leases ?? Leases.layer,
     Presence.layer,
     options.events ?? ProtocolEvents.layer,
-    StagedImports.layer,
+    options.staged ?? StagedImports.layer,
   );
   const withAuth = Layer.merge(
     studioServices(studio),

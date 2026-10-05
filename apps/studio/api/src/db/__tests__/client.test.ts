@@ -17,7 +17,11 @@ import {
   testDb,
 } from '../../__tests__/support/database.ts';
 import { readEnv } from '../../env.ts';
-import { type DatabaseConfig, OwnerDatabase } from '../client.ts';
+import {
+  type DatabaseConfig,
+  OwnerDatabase,
+  tlsOptionsFrom,
+} from '../client.ts';
 import { isMissingRole, sqlState } from '../errors.ts';
 import {
   MaintenanceScope,
@@ -223,5 +227,60 @@ describe('a DATABASE_URL that carries pg options', () => {
   test('is accepted without it', () => {
     vi.stubEnv('DATABASE_URL', BASE);
     expect(readEnv().db?.url).toStrictEqual(BASE);
+  });
+});
+
+describe('the TLS options a DATABASE_URL names', () => {
+  const BASE = 'postgres://studio@db.example.test:5432/studio';
+  const dir = mkdtempSync(join(tmpdir(), 'studio-tls-'));
+  const file = (name: string, contents: string) => {
+    const path = join(dir, name);
+    writeFileSync(path, contents);
+    return path;
+  };
+  const ca = file('root.crt', 'the private CA');
+  const cert = file('client.crt', 'the client certificate');
+  const key = file('client.key', 'the client key');
+
+  test.each(['require', 'verify-ca', 'verify-full'])(
+    'hands sslmode=%s the certificate authority sslrootcert names',
+    (mode) => {
+      expect(
+        tlsOptionsFrom(
+          `${BASE}?sslmode=${mode}&sslrootcert=${encodeURIComponent(ca)}`,
+        ),
+      ).toStrictEqual({ ca: 'the private CA' });
+    },
+  );
+
+  test('hands over a client certificate and key', () => {
+    expect(
+      tlsOptionsFrom(
+        `${BASE}?sslmode=verify-full&sslcert=${encodeURIComponent(cert)}&sslkey=${encodeURIComponent(key)}`,
+      ),
+    ).toStrictEqual({
+      cert: 'the client certificate',
+      key: 'the client key',
+    });
+  });
+
+  test('leaves the driver to its own defaults when nothing is named', () => {
+    expect(tlsOptionsFrom(`${BASE}?sslmode=verify-full`)).toBeUndefined();
+    expect(
+      tlsOptionsFrom(`${BASE}?sslmode=verify-full&sslrootcert=system`),
+    ).toBeUndefined();
+    expect(tlsOptionsFrom(BASE)).toBeUndefined();
+  });
+
+  test('reads nothing for a connection without TLS', () => {
+    expect(
+      tlsOptionsFrom(`${BASE}?sslmode=disable&sslrootcert=/no/such/file`),
+    ).toBeUndefined();
+  });
+
+  test('names a certificate file it cannot read', () => {
+    expect(() =>
+      tlsOptionsFrom(`${BASE}?sslmode=verify-full&sslrootcert=/no/such/file`),
+    ).toThrow(/`sslrootcert`, which could not be read/);
   });
 });
