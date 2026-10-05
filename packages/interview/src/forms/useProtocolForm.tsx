@@ -53,10 +53,6 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
  *                    avoid collisions when multiple instances share a form store.
  * @param formValueAliases - Maps codebook variable IDs to interface-owned form
  *                    keys while preserving the original ID for metadata lookup.
- * @param deferRequired - Let a required field be left empty on submit. For
- *                    interfaces that save incomplete entities and flag the
- *                    missing answers themselves (FamilyPedigree's warnings).
- *                    Every other validation rule still applies.
  */
 export default function useProtocolForm({
   fields,
@@ -66,7 +62,6 @@ export default function useProtocolForm({
   namespace,
   currentEntityId,
   formValueAliases,
-  deferRequired = false,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -75,7 +70,6 @@ export default function useProtocolForm({
   namespace?: string;
   currentEntityId?: string;
   formValueAliases?: Readonly<Record<string, string>>;
-  deferRequired?: boolean;
 }) {
   const baseValidationContext = useStageSelector(
     getValidationContext,
@@ -211,23 +205,10 @@ export default function useProtocolForm({
         ? initialValues[field.variable]
         : undefined;
 
-    const validation = 'validation' in field ? field.validation : undefined;
-    const renderedField =
-      deferRequired && validation && 'required' in validation
-        ? {
-            ...field,
-            validation: Object.fromEntries(
-              Object.entries(validation).filter(
-                ([rule]) => rule !== 'required',
-              ),
-            ),
-          }
-        : field;
-
     return (
       <ProtocolField
         key={index}
-        field={renderedField}
+        field={field}
         initialValue={initialValue}
         autoFocus={autoFocus && index === 0}
         validationContext={validationContext ?? undefined}

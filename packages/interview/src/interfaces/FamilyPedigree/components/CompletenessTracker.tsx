@@ -1,11 +1,12 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, type Transition, useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
@@ -31,22 +32,34 @@ const ITEM_MESSAGES = {
 
 const SPRING = { type: 'spring', stiffness: 500, damping: 40 } as const;
 
-/** A ring that fills as the family nears completion. */
+/**
+ * A ring that fills as the family nears completion, with the percentage in
+ * its middle. The ring keeps one layout identity as it moves between the
+ * collapsed indicator and the list's header, so it glides and resizes rather
+ * than jumping.
+ */
 function ProgressRing({
   fraction,
   size,
+  layoutId,
+  transition,
 }: {
   fraction: number;
   size: 'sm' | 'lg';
+  layoutId: string;
+  transition: Transition;
 }) {
-  const radius = 16;
+  const intl = useAppIntl();
+  const radius = 17;
   const circumference = 2 * Math.PI * radius;
   const complete = fraction >= 1;
   return (
-    <span
+    <motion.span
+      layoutId={layoutId}
+      transition={transition}
       className={cx(
         'relative inline-flex shrink-0 items-center justify-center',
-        size === 'lg' ? 'size-16' : 'size-10',
+        size === 'lg' ? 'size-24' : 'size-16',
       )}
     >
       <svg viewBox="0 0 40 40" className="size-full -rotate-90" aria-hidden>
@@ -55,7 +68,7 @@ function ProgressRing({
           cy="20"
           r={radius}
           fill="none"
-          strokeWidth="4"
+          strokeWidth="3.5"
           className="stroke-current opacity-20"
         />
         <circle
@@ -63,7 +76,7 @@ function ProgressRing({
           cy="20"
           r={radius}
           fill="none"
-          strokeWidth="4"
+          strokeWidth="3.5"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - fraction)}
@@ -73,16 +86,31 @@ function ProgressRing({
           )}
         />
       </svg>
-      {complete && (
+      {complete ? (
         <Check
           aria-hidden
           className={cx(
-            'text-success absolute',
-            size === 'lg' ? 'size-7' : 'size-5',
+            'text-success absolute stroke-[4px]',
+            size === 'lg' ? 'size-10' : 'size-7',
           )}
         />
+      ) : (
+        <motion.span
+          layout="position"
+          transition={transition}
+          aria-hidden
+          className={cx(
+            'absolute font-semibold tabular-nums',
+            size === 'lg' ? 'text-lg' : 'text-sm',
+          )}
+        >
+          {intl.formatNumber(fraction, {
+            style: 'percent',
+            maximumFractionDigits: 0,
+          })}
+        </motion.span>
       )}
-    </span>
+    </motion.span>
   );
 }
 
@@ -105,6 +133,7 @@ export default function CompletenessTracker({
   const reduceMotion = useReducedMotion();
   const titleId = useId();
   const listId = useId();
+  const ringLayoutId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(open);
@@ -204,17 +233,22 @@ export default function CompletenessTracker({
             }
           }}
         >
-          <ProgressRing fraction={fraction} size={expanded ? 'sm' : 'lg'} />
+          <ProgressRing
+            fraction={fraction}
+            size={expanded ? 'sm' : 'lg'}
+            layoutId={ringLayoutId}
+            transition={transition}
+          />
         </motion.button>
         {expanded && (
           <>
-            <p id={titleId} className="flex-1 font-semibold">
+            <Heading id={titleId} level="h4" margin="none" className="flex-1">
               <AppMessage
                 message={
                   complete ? messages.trackerComplete : messages.trackerTitle
                 }
               />
-            </p>
+            </Heading>
             <CloseButton
               title={intl.formatMessage(messages.trackerClose)}
               onClick={close}
@@ -233,7 +267,7 @@ export default function CompletenessTracker({
           className="flex flex-col gap-3 px-4 pb-4 outline-none"
         >
           {!complete && (
-            <ul className="ml-14 flex flex-col gap-2">
+            <ul className="ml-20 flex flex-col gap-2">
               {progress.items.map((item) => (
                 <li
                   key={`${item.kind}:${item.personId}`}
@@ -261,7 +295,7 @@ export default function CompletenessTracker({
             </ul>
           )}
           {!complete && enforcement === 'recommended' && (
-            <p className="ml-14 text-sm opacity-80">
+            <p className="ml-20 text-sm opacity-80">
               <AppMessage message={messages.trackerRecommendedNote} />
             </p>
           )}

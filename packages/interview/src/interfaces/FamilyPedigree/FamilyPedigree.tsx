@@ -23,6 +23,7 @@ import Prompts from '../../components/Prompts/Prompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
+import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getNetworkEdges,
@@ -249,6 +250,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     [family, completeness, requiredFormVariables],
   );
   const [trackerOpen, setTrackerOpen] = useState(false);
+
+  // A complete checklist tells the interview the stage is ready, which marks
+  // the Next button.
+  const { updateReady } = useReadyForNextStage();
+  const checklistComplete = progress !== null && progress.items.length === 0;
+  useEffect(() => {
+    updateReady(checklistComplete);
+  }, [updateReady, checklistComplete]);
 
   // Next is held back, with the list of what is still needed shown, until
   // the family is complete. A recommendation lets the participant through on

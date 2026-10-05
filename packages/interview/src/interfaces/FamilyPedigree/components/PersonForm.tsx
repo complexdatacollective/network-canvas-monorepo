@@ -152,9 +152,6 @@ export default function PersonForm({
     subject: { entity: 'node', type: config.personType },
     initialValues: initialResearcherValues,
     currentEntityId: person?.id,
-    // A participant may not know everything about a relative: a required
-    // answer left empty is flagged on the family tree instead of blocking.
-    deferRequired: true,
   });
 
   const handleSubmit: FormSubmitHandler = (values) => {
@@ -283,6 +280,7 @@ export default function PersonForm({
             nameMode="opaque"
             label={intl.formatMessage(messages.genderIdentityLabel)}
             options={genderOptions}
+            required
             initialValue={person?.genderIdentity}
           />
           <Field
@@ -291,6 +289,7 @@ export default function PersonForm({
             nameMode="opaque"
             label={intl.formatMessage(messages.sexAssignedAtBirthLabel)}
             options={sexOptions}
+            required
             initialValue={person?.sexAssignedAtBirth}
           />
         </section>
