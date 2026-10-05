@@ -33,7 +33,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
         return synth;
       },
       // currentStep 1 === protocolStages.length: the engine-appended finish
-      // stage. It has no schema-8 definition — nothing here is authorable,
+      // stage. It has no schema definition — nothing here is authorable,
       // so this scenario just proves the (hardcoded) render + terminal nav.
       currentStep: 1,
       run: async ({ page, interview }) => {

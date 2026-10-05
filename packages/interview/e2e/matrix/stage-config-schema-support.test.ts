@@ -19,7 +19,7 @@ import { sharedSuiteClaims } from './shared-claims.js';
  * for the suite's interfaceType, then re-parse that config — unmodified, then
  * with a minimal skipLogic, then with a minimal filter — against the matching
  * member of the `stageSchema` discriminated union. Non-authorable interface
- * types (engine-appended stages with no schema-8 definition, e.g. FinishSession,
+ * types (engine-appended stages with no schema definition, e.g. FinishSession,
  * and the synthetic CrossCutting suite) carry neither key by construction.
  */
 
@@ -239,7 +239,7 @@ describe('stage config schema support (skipLogic / filter)', () => {
   it('non-authorable interface types carry neither skipLogic nor filter', () => {
     const nonAuthorable = matrix.filter((r) => !r.authorable);
     // FinishSession (engine-appended) and CrossCutting (synthetic suite) have
-    // no schema-8 stage definition, so an author cannot attach either key.
+    // no schema stage definition, so an author cannot attach either key.
     expect(nonAuthorable.map((r) => r.interfaceType).toSorted()).toEqual([
       'CrossCutting',
       'FinishSession',

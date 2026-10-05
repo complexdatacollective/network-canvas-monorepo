@@ -83,10 +83,8 @@ export const egoFormScenarios: InterfaceScenarios = {
             text: '## Section\n- item one',
           },
         });
-        // Auto-created variables would take the prompt as their codebook name,
-        // which violates the schema-8 name rule, CodebookIdSchema (no
-        // spaces/`?`), so give each field an explicit variable with a clean
-        // name.
+        // Give each field an explicit variable with a clean name rather than
+        // one derived from its prompt.
         const nameVar = synth.addEgoVariable({
           type: 'text',
           component: 'Text',

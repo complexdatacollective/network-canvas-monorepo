@@ -457,7 +457,8 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'nominationPrompts[].id',
   ],
   FinishSession: [
-    // Synthetic, engine-appended stage — not schema-8, not protocol-authorable.
+    // Synthetic, engine-appended stage — not in the protocol schema, not
+    // protocol-authorable.
     'stage.type',
     'stage.id',
     'confirm-dialog.copy',
@@ -473,7 +474,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'stagesMenu-exclusion',
     'back-navigation-network-intact',
     'analytics.interview_finished', // dead e2e: host sets disableAnalytics=true
-    // NOTE: no `skipLogic` — FinishSession is engine-appended, has no schema-8
+    // NOTE: no `skipLogic` — FinishSession is engine-appended, has no schema
     // definition, and is absent from the stageSchema union, so an author cannot
     // attach skipLogic to it (and semantically you cannot skip the finish).
     // stage-config-schema-support.test.ts enforces this.
