@@ -154,6 +154,9 @@ export default defineConfig({
             'cva',
             'cva/config',
             'jszip',
+            // The app's own analytics entrypoints, plus the default
+            // entrypoint that @codaco/interview's resolveClient imports.
+            'posthog-js',
             'posthog-js/dist/exception-autocapture',
             'posthog-js/dist/module.no-external',
             'redux-logger',
