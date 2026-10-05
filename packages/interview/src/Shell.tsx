@@ -4,7 +4,6 @@
 import { Toast } from '@base-ui/react/toast';
 import type { Store } from '@reduxjs/toolkit';
 import { AnimatePresence, motion } from 'motion/react';
-import type { PostHog } from 'posthog-js';
 import {
   type CSSProperties,
   type ReactNode,
@@ -23,7 +22,11 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { AnalyticsProvider } from './analytics/AnalyticsProvider';
-import { NULL_TRACKER, type Tracker } from './analytics/tracker';
+import {
+  type AnalyticsClient,
+  NULL_TRACKER,
+  type Tracker,
+} from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
 import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
@@ -332,7 +335,7 @@ type ShellProps = {
   onStepChange?: StepChangeHandler;
   flags?: InterviewerFlags;
   analytics: InterviewAnalyticsMetadata;
-  posthogClient?: PostHog;
+  posthogClient?: AnalyticsClient;
   disableAnalytics?: boolean;
   /**
    * Host-specific explanation shown in the finish confirmation dialog.

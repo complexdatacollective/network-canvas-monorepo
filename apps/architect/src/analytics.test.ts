@@ -4,13 +4,19 @@ import { POSTHOG_API_KEY, POSTHOG_HOST } from '@codaco/shared-consts';
 
 import { appVersion } from './utils/appVersion';
 
-const { init, register, identify } = vi.hoisted(() => ({
+const { init, register, identify, exceptionAutocapture } = vi.hoisted(() => ({
   init: vi.fn(),
   register: vi.fn(),
   identify: vi.fn(),
+  exceptionAutocapture: { loaded: false },
 }));
 
-vi.mock('posthog-js', () => ({
+vi.mock('posthog-js/dist/exception-autocapture', () => {
+  exceptionAutocapture.loaded = true;
+  return {};
+});
+
+vi.mock('posthog-js/dist/module.no-external', () => ({
   default: { identify, init, register },
 }));
 
@@ -34,6 +40,7 @@ describe('initializeAnalytics', () => {
       POSTHOG_API_KEY,
       expect.objectContaining({
         api_host: POSTHOG_HOST,
+        disable_external_dependency_loading: true,
         person_profiles: 'identified_only',
       }),
     );
@@ -57,6 +64,20 @@ describe('initializeAnalytics', () => {
 
     expect(init).toHaveBeenCalledOnce();
     expect(init.mock.calls[0]?.[0]).toBe(POSTHOG_API_KEY);
+  });
+
+  // The no-external build cannot fetch extensions, so `capture_exceptions`
+  // only does anything if exception autocapture is bundled alongside it and
+  // has registered itself before init runs.
+  it('bundles exception autocapture for the no-external build', () => {
+    expect(exceptionAutocapture.loaded).toBe(true);
+
+    initializeAnalytics({ disabled: false, isDevelopment: false });
+
+    expect(init).toHaveBeenCalledWith(
+      POSTHOG_API_KEY,
+      expect.objectContaining({ capture_exceptions: true }),
+    );
   });
 
   it.each([
