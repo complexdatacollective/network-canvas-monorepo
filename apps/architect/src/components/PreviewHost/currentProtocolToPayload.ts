@@ -1,8 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
 import type { ProtocolPayload, ResolvedAsset } from '@codaco/interview';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { hashProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  hashProtocol,
+} from '@codaco/protocol-validation';
 
 export function currentProtocolToPayload(
   protocol: CurrentProtocol,

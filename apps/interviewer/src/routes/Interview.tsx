@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useSearch } from 'wouter';
+import { useLocation, useRoute, useSearch } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppI18nProvider,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -8,6 +14,7 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  createDebouncedSyncHandler,
   type FinishHandler,
   type InterviewPayload,
   type SessionPayload,
@@ -16,7 +23,10 @@ import {
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { InterviewComplete } from '~/components/InterviewComplete';
+import { useInterviewerLocale } from '~/i18n/InterviewerI18nProvider';
+import { interviewerLocales } from '~/i18n/locales';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
 import { APP_VERSION } from '~/lib/appVersion';
@@ -36,6 +46,55 @@ import {
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
+import { interviewerCatalogs } from '~/locales/catalogs';
+
+const messages = defineMessages({
+  finishConfirmationDescription: {
+    id: 'interviewer.interview.finishConfirmationDescription',
+    defaultMessage:
+      'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
+    description:
+      'Participant confirmation explaining that finishing closes the interview now, while Interviewer allows a researcher to reopen it later.',
+  },
+  interviewUnavailable: {
+    id: 'interviewer.interview.interviewUnavailable',
+    defaultMessage: 'Interview unavailable',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  theProtocolThisInterviewUsesCouldNot: {
+    id: 'interviewer.interview.theProtocolThisInterviewUsesCouldNot',
+    defaultMessage:
+      'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  returnHome: {
+    id: 'interviewer.interview.returnHome',
+    defaultMessage: 'Return home',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  interviewNotFound: {
+    id: 'interviewer.interview.interviewNotFound',
+    defaultMessage: 'Interview not found',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  thisInterviewMayHaveBeenDeletedOr: {
+    id: 'interviewer.interview.thisInterviewMayHaveBeenDeletedOr',
+    defaultMessage:
+      'This interview may have been deleted, or the protocol it used is no longer installed.',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  readOnlyReview: {
+    id: 'interviewer.interview.readOnlyReview',
+    defaultMessage: 'Read-only review',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  changesMadeWhileReviewingThisInterviewWill: {
+    id: 'interviewer.interview.changesMadeWhileReviewingThisInterviewWill',
+    defaultMessage:
+      'Changes made while reviewing this interview will not be saved.',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+});
 
 // Inset the vertical navigation rail past the top device safe area so, on an
 // installed PWA, its buttons stay clear of the status bar / iPadOS window
@@ -49,9 +108,31 @@ const NAVIGATION_SAFE_AREA_CLASSNAMES = {
   vertical: 'pt-[calc(0.75rem_+_env(safe-area-inset-top))]',
 } as const;
 
+// Zero: this host never holds an answer on a timer. Anything held is an answer
+// that only the vault's encryption key can write, and the key is cleared on
+// idle lock — a wait here is a window in which answers can be lost.
+//
+// The wrapper still earns its place at zero, because collapsing does not come
+// from the wait. Writes go through its queue one at a time, and a change
+// arriving while one is on the wire replaces the pending snapshot rather than
+// queueing another write. An automatic-layout settle dispatches an update per
+// node, so a twenty-alter sociogram becomes two writes instead of twenty
+// re-encryptions of the whole network. The only unwritten window is the
+// duration of a write already in progress — exactly what writing eagerly
+// would leave, and no more.
+//
+// Zero is also load-bearing for the idle lock. `whenSessionWritesSettle` waits
+// on the database queue, and an answer held here is not in that queue yet — it
+// enters it on a zero-delay timer when the write in front lands, which the
+// drain yields one macrotask to catch. Raise this and the drain stops covering
+// the handler's buffer, and a lock can clear the key out from under a held
+// answer. `lockDrainsWrites.test.tsx` fails if it is raised.
+const SYNC_BATCH_MS = 0;
+
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
+  | { kind: 'incompatible' }
   | {
       kind: 'ready';
       payload: InterviewPayload;
@@ -64,6 +145,8 @@ const discardSessionChanges: SyncHandler = () => Promise.resolve();
 const discardFinish: FinishHandler = () => Promise.resolve();
 
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
+  const intl = useAppIntl();
+  const { preference, setPreference } = useInterviewerLocale();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -73,6 +156,17 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
   } = useStepUpAuth();
+  // App.tsx's AnimatePresence page transition keeps this route mounted — with
+  // live context subscriptions and effects — while its exit fade plays after
+  // navigation away. The load effect must treat that window as inert:
+  // re-running the enter gate there raises a step-up prompt over Home that
+  // nothing ever resolves, and re-writing the entry authorization re-arms what
+  // the gated exit just cleared.
+  const [interviewRouteMatches, interviewRouteParams] = useRoute(
+    '/interview/:sessionId',
+  );
+  const isLiveRoute =
+    interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
   const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
@@ -133,6 +227,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   }, [requireFreshUnlock, goHome, setAuthorizedInterviewId]);
 
   useEffect(() => {
+    // Exit-fade window (see isLiveRoute above): do nothing at all — no gate,
+    // no authorization write, no state update.
+    if (!isLiveRoute) return undefined;
     let active = true;
     const load = async () => {
       const settings = await getSettings();
@@ -164,6 +261,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       const protocol = await getProtocolByHash(session.protocolHash);
       if (!protocol) {
         if (active) setState({ kind: 'missing' });
+        return;
+      }
+      // The launch-time sweep migrates stored protocols before routes render,
+      // so a row still below the runtime's schema version is one that could
+      // not be migrated. Refuse to run rather than hand the runtime a document
+      // it cannot execute.
+      if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+        if (active) setState({ kind: 'incompatible' });
         return;
       }
       const assets = await buildResolvedAssets(session.protocolHash);
@@ -223,6 +328,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     getAuthorizedInterviewId,
     setAuthorizedInterviewId,
     reviewRequested,
+    isLiveRoute,
   ]);
 
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
@@ -241,18 +347,36 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   // `finishedAt` is written solely by markSessionFinished (via handleFinish).
   // The engine never sets session.finishTime for an in-progress session, so a
-  // trailing debounced sync landing after finish would otherwise rewrite it
-  // back to null and un-finish the interview.
-  const handleSync = useCallback(
-    async (id: string, session: SessionPayload) => {
-      await updateSession(id, {
-        network: session.network,
-        currentStep: currentStepRef.current,
-        stageMetadata: session.stageMetadata,
-      });
-    },
-    [],
-  );
+  // sync landing after finish would otherwise rewrite it back to null and
+  // un-finish the interview.
+  //
+  // Writes go to a local encrypted database and are never deferred — see
+  // SYNC_BATCH_MS. The wrapper is here to collapse the bursts the engine emits
+  // in one gesture, not to delay anything.
+  const handleSync = useMemo<SyncHandler>(() => {
+    // One handler batches for one interview: it holds a single pending
+    // snapshot, so a handler reused across two would let the second replace the
+    // first while both sets of waiters were attached, resolving the first's
+    // promise with a write that discarded its state. This route re-renders
+    // rather than remounting when the id changes, so the handler is rebuilt for
+    // each session and refuses anything else outright.
+    const ownerId = sessionId;
+    return createDebouncedSyncHandler(
+      async (id, session) => {
+        if (id !== ownerId) {
+          throw new Error(
+            `Sync for interview ${id} reached the handler for ${ownerId}`,
+          );
+        }
+        await updateSession(id, {
+          network: session.network,
+          currentStep: currentStepRef.current,
+          stageMetadata: session.stageMetadata,
+        });
+      },
+      { waitMs: SYNC_BATCH_MS },
+    );
+  }, [sessionId]);
 
   const handleFinish = useCallback(async (id: string) => {
     await markSessionFinished(id);
@@ -288,6 +412,34 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     );
   }
 
+  if (state.kind === 'incompatible') {
+    return (
+      <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
+        <Surface
+          floating
+          spacing="lg"
+          shadow="lg"
+          className="flex flex-col items-center gap-4 text-center"
+        >
+          <Heading level="h1">
+            {intl.formatMessage(messages.interviewUnavailable)}
+          </Heading>
+          <Paragraph>
+            {intl.formatMessage(messages.theProtocolThisInterviewUsesCouldNot)}
+          </Paragraph>
+          <Button
+            onClick={() => {
+              setAuthorizedInterviewId(null);
+              goHome();
+            }}
+          >
+            {intl.formatMessage(messages.returnHome)}
+          </Button>
+        </Surface>
+      </div>
+    );
+  }
+
   if (state.kind === 'missing') {
     return (
       <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
@@ -297,10 +449,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           shadow="lg"
           className="flex flex-col items-center gap-4 text-center"
         >
-          <Heading level="h1">Interview not found</Heading>
+          <Heading level="h1">
+            {intl.formatMessage(messages.interviewNotFound)}
+          </Heading>
           <Paragraph>
-            This interview may have been deleted, or the protocol it used is no
-            longer installed.
+            {intl.formatMessage(messages.thisInterviewMayHaveBeenDeletedOr)}
           </Paragraph>
           <Button
             onClick={() => {
@@ -311,7 +464,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
               goHome();
             }}
           >
-            Return home
+            {intl.formatMessage(messages.returnHome)}
           </Button>
         </Surface>
       </div>
@@ -331,13 +484,18 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           density="compact"
           className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 z-50 m-0! w-[min(32rem,calc(100%-2rem))] -translate-x-1/2"
         >
-          <AlertTitle>Read-only review</AlertTitle>
+          <AlertTitle>{intl.formatMessage(messages.readOnlyReview)}</AlertTitle>
           <AlertDescription>
-            Changes made while reviewing this interview will not be saved.
+            {intl.formatMessage(
+              messages.changesMadeWhileReviewingThisInterviewWill,
+            )}
           </AlertDescription>
         </Alert>
       )}
       <Shell
+        requestedLocale={intl.locale}
+        localePreference={preference}
+        onLocaleChange={setPreference}
         payload={state.payload}
         currentStep={currentStep}
         onStepChange={handleStepChange}
@@ -349,7 +507,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         disableAnalytics={readOnly || !analyticsEnabled}
         reviewMode={readOnly}
         initialStageOverrideIndex={state.initialStageOverrideIndex}
-        finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
+        finishConfirmationDescription={<InterviewFinishDescription />}
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
         allowUserScaling
@@ -358,6 +516,28 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
       />
     </div>
+  );
+}
+
+// This queued host-specific message renders beneath Shell's package-owned
+// provider. Subscribe to the host preference explicitly so an already-open
+// confirmation follows changes without importing host catalogs into Shell.
+function InterviewFinishDescription() {
+  const { locale } = useInterviewerLocale();
+  const direction =
+    interviewerLocales.find((entry) => entry.locale === locale)?.direction ??
+    'ltr';
+  return (
+    <AppI18nProvider
+      locale={locale}
+      locales={interviewerLocales}
+      messages={interviewerCatalogs[locale]}
+      manageDocument={false}
+    >
+      <span lang={locale} dir={direction}>
+        <AppMessage message={messages.finishConfirmationDescription} />
+      </span>
+    </AppI18nProvider>
   );
 }
 

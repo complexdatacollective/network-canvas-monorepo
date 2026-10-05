@@ -126,6 +126,30 @@ describe('Protocol Migration - Extended Tests', () => {
       }
     });
 
+    it('rejects invalid current-version colors instead of repairing them', () => {
+      const invalidDoc = {
+        name: 'Invalid color protocol',
+        schemaVersion: 8,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: '#cc0000',
+              shape: { default: 'circle' },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+        assetManifest: {},
+      };
+
+      expect(() => migrateProtocol(invalidDoc)).toThrow(
+        'Invalid protocol document for version 8',
+      );
+    });
+
     it('should preserve data types during migration', () => {
       const v7Doc = {
         schemaVersion: 7,

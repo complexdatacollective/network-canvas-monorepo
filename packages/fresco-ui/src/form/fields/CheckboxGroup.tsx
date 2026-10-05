@@ -1,4 +1,6 @@
-import { useId } from 'react';
+'use client';
+
+import { type ReactNode, useId } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -11,23 +13,28 @@ import {
   orientationVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import Checkbox from './Checkbox';
 
+const checkboxGroupOwnVariants = cva({
+  base: 'items-start',
+});
+
 // Compose fieldset wrapper variants
-const checkboxGroupComposedVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  interactiveStateVariants,
-  orientationVariants,
-  cva({
-    base: 'items-start',
-  }),
-);
+const checkboxGroupComposedVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    interactiveStateVariants,
+    orientationVariants,
+    checkboxGroupOwnVariants,
+  ],
+});
 
 type CheckboxOption = {
   value: string | number;
@@ -40,6 +47,16 @@ type CheckboxGroupProps = CreateFormFieldProps<
   'fieldset',
   {
     options: CheckboxOption[];
+    /**
+     * Shown inside the group when there are no options to tick.
+     *
+     * Inside it, rather than in place of it: the group is what the field's
+     * label names (`aria-labelledby`) and what its hint describes, and a
+     * caller that swapped the `<fieldset>` for a paragraph would drop both —
+     * leaving the field with no accessible name at the moment it most needs
+     * to say which list has nothing in it.
+     */
+    emptyState?: ReactNode;
     defaultValue?: (string | number)[];
     orientation?: 'horizontal' | 'vertical';
     size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -54,6 +71,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
     className,
     name,
     options,
+    emptyState,
     value,
     defaultValue,
     onChange,
@@ -67,7 +85,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
 
   const handleChange = (optionValue: string | number, checked: boolean) => {
     if (readOnly) return;
-    const currentValues = value ?? [];
+    const currentValues = Array.isArray(value) ? value : [];
     const newValues = checked
       ? [...currentValues, optionValue]
       : currentValues.filter((v) => v !== optionValue);
@@ -76,7 +94,8 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
 
   // Determine if this is controlled or uncontrolled
   const isControlled = value !== undefined;
-  const currentValues = isControlled ? value : (defaultValue ?? []);
+  const suppliedValues = isControlled ? value : (defaultValue ?? []);
+  const currentValues = Array.isArray(suppliedValues) ? suppliedValues : [];
 
   const optionIdPrefix = useId();
 
@@ -84,7 +103,12 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
     <div className="@container w-full">
       <fieldset
         id={id}
-        {...fieldsetProps}
+        // A `<fieldset>` is `role="group"`, which allows neither
+        // `aria-readonly` nor `aria-required`. Each checkbox below carries the
+        // read-only state; the group's required-ness stays with the label's
+        // marker and the "Required" element named in `aria-describedby`,
+        // because it is the answer that is required, not any one checkbox.
+        {...omitWidgetOnlyAria(fieldsetProps)}
         className={checkboxGroupComposedVariants({
           size,
           orientation,
@@ -94,6 +118,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
         })}
         disabled={disabled}
       >
+        {options.length === 0 && emptyState}
         {options.map((option) => {
           const isOptionDisabled =
             Boolean(disabled) || Boolean(option.disabled);

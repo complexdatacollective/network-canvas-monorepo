@@ -3,6 +3,7 @@
 import { Effect } from 'effect';
 import { type z } from 'zod';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { hashProtocol } from '@codaco/protocol-validation';
 import { addEvent, addEvents } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
@@ -13,6 +14,35 @@ import { selectUnreferencedKeys } from '~/lib/protocol/selectUnreferencedKeys';
 import { getStorageLayer } from '~/lib/storage/layers/StorageLayer';
 import { AssetStorage } from '~/lib/storage/services/AssetStorage';
 import { type protocolInsertSchema } from '~/schemas/protocol';
+
+const messages = defineMessages({
+  copyFailedToDeleteProtocols: {
+    id: 'fresco.actions.protocols.copyFailedToDeleteProtocols',
+    defaultMessage: 'Failed to delete protocols',
+    description:
+      'Researcher-facing actions / protocols: Failed to delete protocols',
+  },
+  copyFailedToCleanUpUploadedFiles: {
+    id: 'fresco.actions.protocols.copyFailedToCleanUpUploadedFiles',
+    defaultMessage: 'Failed to clean up uploaded files',
+    description:
+      'Researcher-facing actions / protocols: Failed to clean up uploaded files',
+  },
+  copyTheProtocolYouAttemptedToAddAlready: {
+    id: 'fresco.actions.protocols.copyTheProtocolYouAttemptedToAddAlready',
+    defaultMessage:
+      'The protocol you attempted to add already exists in the database. Please remove it and try again.',
+    description:
+      'Researcher-facing actions / protocols: The protocol you attempted to add already exists in the database. Please remove it and try again.',
+  },
+  copyThereWasAnErrorAddingYourProtocol: {
+    id: 'fresco.actions.protocols.copyThereWasAnErrorAddingYourProtocol',
+    defaultMessage:
+      'There was an error adding your protocol to the database. See the error details for more information.',
+    description:
+      'Researcher-facing actions / protocols: There was an error adding your protocol to the database. See the error details for more information.',
+  },
+});
 
 /**
  * Check if a protocol with the given hash already exists.
@@ -122,6 +152,10 @@ export async function deleteProtocols(hashes: string[]) {
       protocolsToBeDeleted.map((p) => ({
         type: 'Protocol Uninstalled',
         message: `User ${session.user.username} uninstalled protocol "${p.name}"`,
+        localization: {
+          kind: 'protocolUninstalled',
+          values: { username: session.user.username, protocol: p.name },
+        },
       })),
     );
 
@@ -135,7 +169,7 @@ export async function deleteProtocols(hashes: string[]) {
     // eslint-disable-next-line no-console
     console.log('delete protocols error: ', error);
     return {
-      error: 'Failed to delete protocols',
+      error: createMessageError(messages.copyFailedToDeleteProtocols),
       deletedProtocols: null,
     };
   }
@@ -184,7 +218,10 @@ export async function cleanupUploadedFiles(keys: string[]) {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.log('Error cleaning up uploaded files after failed import:', error);
-    return { error: 'Failed to clean up uploaded files', deletedCount: 0 };
+    return {
+      error: createMessageError(messages.copyFailedToCleanUpUploadedFiles),
+      deletedCount: 0,
+    };
   }
 }
 
@@ -242,6 +279,10 @@ export async function insertProtocol(
     void addEvent(
       'Protocol Installed',
       `User ${session.user.username} installed protocol "${protocolName}"`,
+      {
+        kind: 'protocolInstalled',
+        values: { username: session.user.username, protocol: protocolName },
+      },
     );
 
     safeUpdateTag('getProtocols');
@@ -258,16 +299,18 @@ export async function insertProtocol(
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       if (e.code === 'P2002') {
         return {
-          error:
-            'The protocol you attempted to add already exists in the database. Please remove it and try again.',
+          error: createMessageError(
+            messages.copyTheProtocolYouAttemptedToAddAlready,
+          ),
           success: false,
           errorDetails: e,
         };
       }
 
       return {
-        error:
-          'There was an error adding your protocol to the database. See the error details for more information.',
+        error: createMessageError(
+          messages.copyThereWasAnErrorAddingYourProtocol,
+        ),
         success: false,
         errorDetails: e,
       };

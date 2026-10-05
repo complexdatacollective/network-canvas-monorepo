@@ -12,7 +12,6 @@ import {
   importAssetAsync,
 } from '~/ducks/modules/protocol/assetManifest';
 import { timelineOptions } from '~/ducks/modules/root';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 vi.mock('~/utils/protocols/assetTools', () => ({
   validateAsset: vi.fn(),
@@ -24,10 +23,26 @@ vi.mock('~/utils/protocols/importAsset', () => ({
 
 vi.mock('~/utils/assetUtils', () => ({
   saveAssetWithFallback: vi.fn(() => Promise.resolve({ persisted: true })),
+  deleteStoredAsset: vi.fn(() => Promise.resolve()),
+}));
+
+// Refusals are driven from here rather than from lock state, so a test can put
+// the refusal exactly where it needs it — the post-write check is the one whose
+// blob has to be rolled back.
+const refusedCommitMessage = vi.fn(() => null as string | null);
+vi.mock('~/utils/protocolLockMessages', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/protocolLockMessages')>()),
+  refusedCommitMessage: () => refusedCommitMessage(),
 }));
 
 const { validateAsset } = await import('~/utils/protocols/assetTools');
 const mockedValidateAsset = vi.mocked(validateAsset);
+const { saveAssetWithFallback, deleteStoredAsset } =
+  await import('~/utils/assetUtils');
+const mockedSaveAsset = vi.mocked(saveAssetWithFallback);
+const mockedDeleteStoredAsset = vi.mocked(deleteStoredAsset);
+const { getSupportedAssetType } = await import('~/utils/protocols/importAsset');
+const mockedGetSupportedAssetType = vi.mocked(getSupportedAssetType);
 
 /**
  * The protocol timeline as the app actually builds it — `activeProtocol`
@@ -40,7 +55,6 @@ const makeStore = () =>
     reducer: combineReducers({
       app,
       activeProtocol: createTimeline(activeProtocol, timelineOptions),
-      stageEditorDraft,
     }),
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -82,8 +96,105 @@ describe('a refused resource import and the protocol timeline', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // `mockReturnValue` survives `clearAllMocks`, and one test makes this
+    // refuse — without resetting it, every later import in the file is refused.
+    refusedCommitMessage.mockReset().mockReturnValue(null);
     store = makeStore();
     store.dispatch(setActiveProtocol(protocol()));
+  });
+
+  it('removes a repair’s bytes when the protocol is taken mid-write', async () => {
+    store.dispatch(
+      setActiveProtocol(
+        protocol({
+          'photo-1': { type: 'image', name: 'Portrait', source: 'old.png' },
+        } as CurrentProtocol['assetManifest']),
+      ),
+    );
+    mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+    mockedGetSupportedAssetType.mockReturnValue('image');
+    // Owned on entry and before the write; taken by the time the blob has
+    // landed and the manifest is about to be committed.
+    refusedCommitMessage
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce(null)
+      .mockReturnValue('Another tab has this protocol');
+
+    const result = await store.dispatch(
+      importAssetAsync({
+        file: new File(['bytes'], 'new.png'),
+        name: 'Portrait',
+        replaceAssetId: 'photo-1',
+        expectedType: 'image',
+      }),
+    );
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/rejected');
+    // A repair writes under an id the manifest already carries, so the blob is
+    // referenced and the durable save path never collects it. Left behind, the
+    // resource reads as resolved while the entry still names the old file.
+    expect(mockedDeleteStoredAsset).toHaveBeenCalledWith('photo-1');
+    const entry = manifestOf(store)?.['photo-1'];
+    expect(entry && 'source' in entry ? entry.source : null).toBe('old.png');
+  });
+
+  it('does not record a repair as an undo step', async () => {
+    store.dispatch(
+      setActiveProtocol(
+        protocol({
+          'photo-1': { type: 'image', name: 'Portrait', source: 'old.png' },
+        } as CurrentProtocol['assetManifest']),
+      ),
+    );
+    mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+    mockedGetSupportedAssetType.mockReturnValue('image');
+    const before = history(store);
+
+    const result = await store.dispatch(
+      importAssetAsync({
+        file: new File(['bytes'], 'new.png'),
+        name: 'Portrait',
+        replaceAssetId: 'photo-1',
+        expectedType: 'image',
+      }),
+    );
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/fulfilled');
+    const repaired = manifestOf(store)?.['photo-1'];
+    expect(repaired && 'source' in repaired ? repaired.source : null).toBe(
+      'new.png',
+    );
+
+    // Supplying a missing file writes a blob that no undo can un-write, and
+    // the entry keeps its id, so the blob stays referenced and is never
+    // collected. An undo step here would restore a manifest describing the old
+    // file on top of bytes that are the new one — and for a network resource
+    // that is not cosmetic, because .csv and .json are both `network` and the
+    // reader picks its parser from the extension.
+    expect(history(store)).toEqual(before);
+  });
+
+  it('writes no bytes when a replacement is the wrong kind of resource', async () => {
+    // The picker's `accept` filter is advisory — a researcher can choose any
+    // file — so this has to hold on the write path, not just in the dialog.
+    mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+    mockedGetSupportedAssetType.mockReturnValue('network');
+
+    const result = await store.dispatch(
+      importAssetAsync({
+        file: new File(['a,b'], 'roster.csv'),
+        replaceAssetId: 'photo-1',
+        expectedType: 'image',
+      }),
+    );
+
+    expect(result.type).toBe('assetManifest/importAssetAsync/rejected');
+    // Writing first and checking after stored the wrong bytes under an id the
+    // manifest still describes as an image: the resource then counts as
+    // resolved, the GC keeps it because the id is referenced, and the protocol
+    // previews and exports a CSV as its image.
+    expect(mockedSaveAsset).not.toHaveBeenCalled();
+    expect(manifestOf(store)).toEqual({});
   });
 
   it('records nothing when the import is refused', async () => {
@@ -92,7 +203,7 @@ describe('a refused resource import and the protocol timeline', () => {
     const manifestBefore = manifestOf(store);
 
     const result = await store.dispatch(
-      importAssetAsync(new File(['{"a":1}'], 'rubbish.json')),
+      importAssetAsync({ file: new File(['{"a":1}'], 'rubbish.json') }),
     );
 
     expect(result.type).toBe('assetManifest/importAssetAsync/rejected');
@@ -104,7 +215,9 @@ describe('a refused resource import and the protocol timeline', () => {
     // A refusal used to clear `future` before pushing its own past entry, so
     // it destroyed redoable work as well as inventing an undo step.
     mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
-    await store.dispatch(importAssetAsync(new File(['a,b'], 'people.csv')));
+    await store.dispatch(
+      importAssetAsync({ file: new File(['a,b'], 'people.csv') }),
+    );
     expect(history(store).past).toBe(1);
 
     store.dispatch({ type: 'timeline/undo' });
@@ -112,7 +225,7 @@ describe('a refused resource import and the protocol timeline', () => {
 
     mockedValidateAsset.mockRejectedValue(new Error('NETWORK_EMPTY'));
     await store.dispatch(
-      importAssetAsync(new File(['{"a":1}'], 'rubbish.json')),
+      importAssetAsync({ file: new File(['{"a":1}'], 'rubbish.json') }),
     );
 
     expect(history(store).future).toBe(1);

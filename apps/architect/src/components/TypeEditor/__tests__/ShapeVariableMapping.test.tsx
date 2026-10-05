@@ -1,9 +1,13 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
+import { ARCHITECT_LOCALE_KEY } from '~/i18n/preference';
+
+afterEach(() => localStorage.removeItem(ARCHITECT_LOCALE_KEY));
 
 vi.mock('../ShapePicker', () => ({
   ShapePickerControl: ({
@@ -83,6 +87,46 @@ const THRESHOLD_MAPPING = {
   type: 'breakpoints',
   thresholds: [{ value: 5, shape: 'square' }],
 } as ShapeMappingDraft;
+
+it('formats a threshold value in the active locale without rounding or changing the numeric input', () => {
+  localStorage.setItem(ARCHITECT_LOCALE_KEY, 'en');
+  const initialMapping = {
+    variable: 'weight',
+    type: 'breakpoints',
+    thresholds: [{ value: 12345.678901234, shape: 'square' }],
+  } as ShapeMappingDraft;
+  render(
+    <ArchitectI18nProvider>
+      <Form onSubmit={() => ({ success: true })}>
+        <ShapeVariableMapping
+          variables={THRESHOLD_VARIABLES}
+          initialMapping={initialMapping}
+        />
+      </Form>
+    </ArchitectI18nProvider>,
+  );
+  expect
+    .soft(screen.queryByLabelText('Shape at threshold 12,345.678901234'))
+    .toBeInTheDocument();
+  act(() => {
+    localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: ARCHITECT_LOCALE_KEY }),
+    );
+  });
+  expect(
+    screen.getByLabelText('Forma en el umbral 12.345,678901234'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('spinbutton', { name: 'Valor del umbral 1' }),
+  ).toHaveValue(12345.678901234);
+  expect(initialMapping).toEqual({
+    variable: 'weight',
+    type: 'breakpoints',
+    thresholds: [{ value: 12345.678901234, shape: 'square' }],
+  });
+  localStorage.removeItem(ARCHITECT_LOCALE_KEY);
+});
 
 const setup = ({
   variables = THRESHOLD_VARIABLES,

@@ -178,7 +178,7 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
     end: (rawHandle) => {
       const { handle, sinkFiber } = rawHandle as {
         handle: ZipStreamHandle;
-        sinkFiber: Fiber.RuntimeFiber<OutputResult, OutputError>;
+        sinkFiber: Fiber.Fiber<OutputResult, OutputError>;
       };
       return Effect.tryPromise({
         try: () => handle.finalize(),
@@ -189,7 +189,7 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
       }).pipe(
         Effect.flatMap(() =>
           Fiber.join(sinkFiber).pipe(
-            Effect.catchAll((cause) =>
+            Effect.catch((cause) =>
               cause instanceof OutputError
                 ? Effect.fail(cause)
                 : Effect.fail(new OutputError({ cause })),
@@ -206,10 +206,10 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
     abort: (rawHandle) => {
       const { handle, sinkFiber } = rawHandle as {
         handle: ZipStreamHandle;
-        sinkFiber: Fiber.RuntimeFiber<OutputResult, OutputError>;
+        sinkFiber: Fiber.Fiber<OutputResult, OutputError>;
       };
       return Effect.sync(() =>
         handle.abort(new Error('Export was cancelled')),
-      ).pipe(Effect.zipRight(Fiber.interrupt(sinkFiber)), Effect.asVoid);
+      ).pipe(Effect.andThen(Fiber.interrupt(sinkFiber)), Effect.asVoid);
     },
   });

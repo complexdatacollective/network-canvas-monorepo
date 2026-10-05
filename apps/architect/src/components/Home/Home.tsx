@@ -6,9 +6,11 @@ import {
   Upload,
   Users,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -19,6 +21,7 @@ import type {
 } from '@codaco/protocol-validation';
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
+import NavLink from '~/components/ProjectNav/NavLink';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
@@ -30,6 +33,7 @@ import {
   openLocalNetcanvas,
   type ProtocolOpenResult,
 } from '~/ducks/modules/userActions/userActions';
+import { formatConfig } from '~/i18n/formatConfig';
 import {
   BUNDLED_TEMPLATES,
   type BundledTemplate,
@@ -39,6 +43,7 @@ import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { documentationLinks } from '~/utils/documentationLinks';
 import {
   describeImportFailure,
+  getImportFailureKind,
   TEMPLATE_OPEN_FAILURE_MESSAGE,
 } from '~/utils/protocolImportErrors';
 import { reportError } from '~/utils/reportError';
@@ -47,15 +52,80 @@ import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderActionSpan = (chunks: ReactNode[]) => (
+  <span className="text-action">{chunks}</span>
+);
+
+const renderCode = (chunks: ReactNode[]) => (
+  <code className="code">{chunks}</code>
+);
+
+const configMessages = defineMessages({
+  docs: {
+    id: 'architect.home.home.config.docs',
+    defaultMessage: 'Docs',
+    description:
+      'Presentation label or description in components/Home/Home.tsx. Identifiers are not translated.',
+  },
+  community: {
+    id: 'architect.home.home.config.community',
+    defaultMessage: 'Community',
+    description:
+      'Presentation label or description in components/Home/Home.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  protocolImportError: {
+    id: 'architect.home.home.protocolImportError',
+    defaultMessage: 'Protocol Import Error',
+    description: 'The title text in components / Home / Home.',
+  },
+  nameYourProtocol: {
+    id: 'architect.home.home.nameYourProtocol',
+    defaultMessage: 'Name your protocol',
+    description: 'The title text in components / Home / Home.',
+  },
+  welcomeToArchitect: {
+    id: 'architect.home.home.welcomeToArchitect',
+    defaultMessage: 'Welcome to <span>Architect</span>',
+    description: 'Visible text in components / Home / Home.',
+  },
+  architectIsTheProtocolDesignerFor: {
+    id: 'architect.home.home.architectIsTheProtocolDesignerFor',
+    defaultMessage:
+      'Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and categorical data, map connections, and explore narratives.',
+    description: 'Visible text in components / Home / Home.',
+  },
+  createANewProtocol: {
+    id: 'architect.home.home.createANewProtocol',
+    defaultMessage: 'Create a new protocol',
+    description: 'Visible text in components / Home / Home.',
+  },
+  openExistingProtocol: {
+    id: 'architect.home.home.openExistingProtocol',
+    defaultMessage: 'Open existing protocol',
+    description: 'Visible text in components / Home / Home.',
+  },
+  orDropANetcanvasFileAnywhere: {
+    id: 'architect.home.home.orDropANetcanvasFileAnywhere',
+    defaultMessage:
+      'Or drop a <code>.netcanvas</code> file anywhere on this page',
+    description: 'Visible text in components / Home / Home.',
+  },
+});
+
 const NAV_LINKS = [
   {
     href: documentationLinks.home,
-    label: 'Docs',
+    label: configMessages.docs,
     Icon: BookOpen,
   },
   {
     href: 'https://community.networkcanvas.com',
-    label: 'Community',
+    label: configMessages.community,
     Icon: Users,
   },
   {
@@ -65,6 +135,7 @@ const NAV_LINKS = [
   },
 ];
 const Home = () => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const [isLoading, setIsLoading] = useState(false);
@@ -103,36 +174,34 @@ const Home = () => {
     },
     [dispatch, runAction],
   );
-  // A .netcanvas can need BOTH an upgrade and a configuration repair, and each
-  // approval has to carry the earlier one forward — re-opening the file with
-  // only the newest flag would ask for the upgrade all over again. Each
-  // approval callback is offered only while its own flag is still unset, so an
-  // approval always advances and can never re-present the dialog it came from.
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
-      const open = async (approvals: {
-        migrationApproved?: boolean;
-        repairApproved?: boolean;
-      }): Promise<void> => {
+      const open = async (migrationApproved = false): Promise<void> => {
         const result = await runAction(() =>
-          dispatch(openLocalNetcanvas({ file, ...approvals })).unwrap(),
+          dispatch(openLocalNetcanvas({ file, migrationApproved })).unwrap(),
         );
         await showProtocolOpenResultDialog({
           result,
           openDialog,
-          onApproveMigration: approvals.migrationApproved
-            ? undefined
-            : () => open({ ...approvals, migrationApproved: true }),
-          onApproveRepair: approvals.repairApproved
-            ? undefined
-            : () => open({ ...approvals, repairApproved: true }),
+          onApproveMigration: migrationApproved ? undefined : () => open(true),
         });
       };
-      await open({});
+      await open();
     },
     [dispatch, openDialog, runAction],
   );
-  const onDrop = (files: File[]) => {
+  const onDrop = (files: File[], fileRejections: readonly FileRejection[]) => {
+    // With `multiple: false`, react-dropzone accepts the first file of a
+    // multi-file drop and rejects the rest as too-many-files. Which file came
+    // "first" is arbitrary to the researcher, so a multi-file drop opens nothing.
+    const tooManyFilesCode: string = ErrorCode.TooManyFiles;
+    if (
+      fileRejections.some(({ errors }) =>
+        errors.some(({ code }) => code === tooManyFilesCode),
+      )
+    ) {
+      return;
+    }
     const file = files[0];
     if (file) {
       void handleOpenLocalFile(file);
@@ -208,7 +277,12 @@ const Home = () => {
             ).unwrap();
           });
         } catch (error) {
-          reportError(error);
+          // Only report what Architect cannot describe. A storage failure is
+          // reachable here and is a fact about the researcher's device, not a
+          // defect; sending it to exception tracking buries the ones that are.
+          if (getImportFailureKind(error) === null) {
+            reportError(error);
+          }
           // This branch is the template's own asset loading and the thunk's
           // rejection — never an archive — so the default talks about the
           // template. `describeImportFailure` still runs first because a
@@ -216,7 +290,7 @@ const Home = () => {
           await showProtocolOpenResultDialog({
             result: {
               status: 'error',
-              title: 'Protocol Import Error',
+              title: createMessageError(messages.protocolImportError),
               ...describeImportFailure(error, TEMPLATE_OPEN_FAILURE_MESSAGE),
             },
             openDialog,
@@ -234,21 +308,7 @@ const Home = () => {
         const result = await runAction(() =>
           dispatch(openLibraryProtocol({ id })).unwrap(),
         );
-        await showProtocolOpenResultDialog({
-          result,
-          openDialog,
-          onApproveRepair: async () => {
-            const repairedResult = await runAction(() =>
-              dispatch(
-                openLibraryProtocol({ id, repairApproved: true }),
-              ).unwrap(),
-            );
-            await showProtocolOpenResultDialog({
-              result: repairedResult,
-              openDialog,
-            });
-          },
-        });
+        await showProtocolOpenResultDialog({ result, openDialog });
       })();
     },
     [dispatch, openDialog, runAction],
@@ -267,7 +327,7 @@ const Home = () => {
           if (!open) setPendingTemplate(null);
         }}
         onSubmit={handleConfirmTemplate}
-        title="Name your protocol"
+        title={intl.formatMessage(messages.nameYourProtocol)}
         initialName={pendingTemplate?.defaultName}
       />
 
@@ -275,7 +335,7 @@ const Home = () => {
         {...getRootProps()}
         className="flex h-full min-w-0 flex-col overflow-x-hidden"
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} aria-hidden="true" tabIndex={-1} />
 
         {/* Dropzone */}
         {isDragActive && (
@@ -286,83 +346,87 @@ const Home = () => {
         )}
 
         <NavShell
-          trailing={
-            <>
-              {NAV_LINKS.map(({ href, label, Icon }) => (
-                <a
-                  key={href}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-action relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors"
-                >
-                  <span className="relative inline-flex items-center gap-2">
-                    <Icon className="size-4 shrink-0" aria-hidden />
-                    {label}
-                  </span>
-                </a>
-              ))}
-              <AppUpdatePill />
-            </>
-          }
+          items={formatConfig(NAV_LINKS, intl).map(({ href, label, Icon }) => (
+            <NavLink
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="relative inline-flex items-center gap-2">
+                <Icon className="size-4 shrink-0" aria-hidden />
+                {label}
+              </span>
+            </NavLink>
+          ))}
+          end={<AppUpdatePill />}
         />
 
         {/* Hero section */}
 
-        <main className="laptop:px-0 mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-8 pb-8">
-          <div className="tablet-portrait:flex-row laptop:gap-4 flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-6">
+        <main className="laptop:px-0 mx-auto mt-8 flex min-h-0 w-full max-w-7xl flex-1 flex-col overflow-x-hidden overflow-y-auto px-8 pb-8">
+          <div className="tablet-landscape:flex-row laptop:gap-4 flex min-h-0 w-full min-w-0 flex-1 flex-col items-stretch gap-6">
             <div
               aria-hidden
-              className="tablet-portrait:block tablet-portrait:w-1/2 laptop:w-[48%] pointer-events-none hidden h-full shrink-0"
+              className="tablet-landscape:block desktop:w-1/2 pointer-events-none hidden h-full w-2/5 shrink-0"
             >
-              <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
+              <TransitMap
+                stops={formatConfig(TIMELINE_SCRIPT, intl)}
+                count={visibleCount}
+              />
             </div>
 
-            <div className="short:justify-start short:gap-3 laptop:gap-8 flex min-w-0 flex-1 flex-col items-start justify-center gap-6 text-left">
-              <div className="short:gap-2 @container flex w-full flex-col items-start gap-4">
-                <div>
+            <div className="short:gap-3 laptop:gap-8 @container-size flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-6 text-left">
+              <div className="flex w-full flex-col items-start gap-8">
+                <div className="flex w-full flex-col items-start gap-4">
                   <Heading
                     level="h1"
+                    variant="display-heading"
                     margin="none"
-                    className="laptop:text-[clamp(3rem,9vh,6rem)] mb-3 text-[clamp(2.75rem,8vh,4.5rem)] leading-[0.95] tracking-tight"
+                    className="leading-[0.92] font-black tracking-tight"
                     {...routeFocusTargetProps}
                   >
-                    Welcome to <span className="text-action">Architect</span>
+                    {intl.formatMessage(messages.welcomeToArchitect, {
+                      span: renderActionSpan,
+                    })}
                   </Heading>
                   <Paragraph
                     intent="lead"
+                    emphasis="muted"
                     margin="none"
-                    className="text-muted short:hidden max-w-xl"
+                    className="hidden max-w-xl [@container_(height>760px)]:block"
                   >
-                    Architect is the protocol designer for Network Canvas.
-                    Compose name generators, capture ordinal and categorical
-                    data, map connections, and explore narratives.
+                    {intl.formatMessage(
+                      messages.architectIsTheProtocolDesignerFor,
+                    )}
                   </Paragraph>
                 </div>
 
-                <div className="flex w-full flex-col items-start gap-3 @min-[40rem]:flex-row @min-[40rem]:flex-nowrap">
+                <div className="flex w-full flex-col items-start gap-3 @min-md:flex-row @min-md:flex-nowrap">
                   <Button
-                    size="md"
                     color="primary"
                     onClick={() => setShowNewDialog(true)}
+                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
                     <FilePlus />
-                    Create a new protocol
+                    {intl.formatMessage(messages.createANewProtocol)}
                   </Button>
                   <Button
-                    size="md"
-                    className="focus:outline-accent [--component-bg:var(--accent-contrast)] [--component-text:var(--accent)]"
+                    color="default"
+                    variant="glass"
                     onClick={openFileDialog}
+                    className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
                     <FolderOpen />
-                    Open existing protocol
+                    {intl.formatMessage(messages.openExistingProtocol)}
                   </Button>
                 </div>
 
-                <Paragraph className="hint my-0 flex items-center gap-1.5">
+                <Paragraph className="hint my-0 hidden items-center gap-1.5 [@container_(height>760px)]:flex">
                   <Upload className="h-3.5 w-3.5" />
-                  Or drop a <code className="code">.netcanvas</code> file
-                  anywhere on this page
+                  {intl.formatMessage(messages.orDropANetcanvasFileAnywhere, {
+                    code: renderCode,
+                  })}
                 </Paragraph>
               </div>
 

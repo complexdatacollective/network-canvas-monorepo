@@ -65,7 +65,7 @@ describe('AppErrorBoundary', () => {
       </AppErrorBoundary>,
     );
     expect(
-      screen.getByRole('dialog', { name: 'Something went wrong' }),
+      screen.getByRole('dialog', { name: 'Something went wrong.' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
     expect(

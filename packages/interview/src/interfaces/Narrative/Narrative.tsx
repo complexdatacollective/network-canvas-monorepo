@@ -210,33 +210,6 @@ const Narrative = ({ stage }: NarrativeProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeIdsKey, layoutVariable, store]);
 
-  // Narrative shares Sociogram's full automatic-layout anneal (hot start + slow
-  // cool so nodes escape local minima) and charge-driven spread; it additionally
-  // applies group cohesion so same-group nodes cluster into their convex hulls.
-  // The upward bias lifts the composition clear of the bottom-center preset
-  // panel. Memoized so the layout does not re-seed on every render.
-  //
-  // charge/bias are now FIXED SIM-SPACE constants (the sim runs in px / canvas
-  // height, coordinates ~0..aspect), so the layout SHAPE is screen-independent.
-  // These are reasoned STARTING values for the new ~0..1.x coordinate scale and
-  // need a visual tuning pass: the old px charge was -3000 at ~800px tall, which
-  // does not translate linearly. Group-cohesion strength is internal to the
-  // engine (shared across interfaces); supplying convexHullVariable below is
-  // what switches it on. Tune visually.
-  const layoutOptions = useMemo(
-    () => ({
-      charge: -0.006,
-      startAlpha: 1,
-      alphaMin: 0.025,
-      alphaDecay: 1 - 0.001 ** (1 / 500),
-      biasXStrength: 0.13,
-      biasXFraction: 0.5,
-      biasYStrength: 0.13,
-      biasYFraction: 0.5,
-    }),
-    [],
-  );
-
   // Read-only but fully interactive layout. persist:false makes syncToRedux
   // unreachable, so a node's layoutVariable is never written — but the layout is
   // otherwise as interactive as the Sociogram's: it runs continuously (settling
@@ -258,7 +231,6 @@ const Narrative = ({ stage }: NarrativeProps) => {
     persist: false,
     runMode: 'continuous',
     mockLayout: 'identity',
-    layoutOptions,
   });
 
   // Get categorical options for convex hulls. Use useStageSelector (which

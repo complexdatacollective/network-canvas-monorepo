@@ -8,7 +8,7 @@ import {
   type RuleSpec,
 } from './rule-builder.js';
 
-// SkipLogic section (sections/SkipLogic.tsx, `Section title="Skip Logic"`,
+// SkipLogic section (sections/SkipLogic.tsx, `Section title="Skip logic"`,
 // toggleable, collapsed on a fresh stage, never subject-gated). Facts
 // verified against source:
 // - Toggling ON writes nothing; the action radios ('Show this stage' /
@@ -34,8 +34,10 @@ export async function configureSkipLogic(
   },
 ): Promise<void> {
   assertJoinMatchesRules(opts.rules, opts.join);
-  const section = editor.section('Skip Logic');
-  await section.getByRole('switch', { name: 'Skip Logic' }).click();
+  const section = editor.section('Skip logic');
+  await section
+    .getByRole('switch', { name: 'Skip logic', exact: true })
+    .click();
   await editor
     .field('skipLogic.action')
     .getByRole('radio', { name: opts.action, exact: true })

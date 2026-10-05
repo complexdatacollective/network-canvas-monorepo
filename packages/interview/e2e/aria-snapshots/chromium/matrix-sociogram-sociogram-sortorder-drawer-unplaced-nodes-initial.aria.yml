@@ -1,5 +1,5 @@
 - main:
-  - application "Sociogram Canvas"
+  - application "Placement area"
   - button "Collapse drawer" [expanded]: 4 unplaced
   - button "Dave"
   - button "Carol"
@@ -9,6 +9,7 @@
   - status:
     - heading "Unplaced people, sorted by name descending." [level=4]
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

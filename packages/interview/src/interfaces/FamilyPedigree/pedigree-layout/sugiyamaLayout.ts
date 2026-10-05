@@ -1,4 +1,4 @@
-import type { RelationshipType } from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/protocol-validation';
 
 import { kindepth } from './kindepth';
 import type { ParentConnection, PedigreeInput, PedigreeLayout } from './types';

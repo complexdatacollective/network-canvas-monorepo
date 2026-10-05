@@ -1,11 +1,13 @@
+import { AppMessage } from '@codaco/app-i18n/react';
+import type { FramingId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
-  type FramingId,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
 
 import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
+import { messages } from '../../messages';
 import type { CommitBatch, VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import { inferGameteProviders } from '../../utils/inferGameteProviders';
@@ -114,15 +116,15 @@ export async function openAddChildWizard(
 
   const result = await openDialog({
     type: 'wizard',
-    title: 'Add child',
+    title: <AppMessage message={messages.addChild} />,
     progress: null,
     steps: [
       {
-        title: 'Child details',
+        title: <AppMessage message={messages.childDetails} />,
         content: () => <PersonFields namespace="child" />,
       },
       {
-        title: 'Biological parents',
+        title: <AppMessage message={messages.biologicalParents} />,
         content: () => (
           <BioTriadConfigProvider value={bioTriadConfig}>
             <BioTriadStep />
@@ -130,16 +132,16 @@ export async function openAddChildWizard(
         ),
       },
       {
-        title: 'Other parents',
+        title: <AppMessage message={messages.otherParents} />,
         content: GenericOtherParentsStep,
       },
       {
-        title: 'Additional parents',
+        title: <AppMessage message={messages.additionalParents} />,
         content: GenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {
-        title: 'Parent partnerships',
+        title: <AppMessage message={messages.parentPartnerships} />,
         content: () => (
           <BioTriadConfigProvider value={bioTriadConfig}>
             <NewParentPartnershipsStep />

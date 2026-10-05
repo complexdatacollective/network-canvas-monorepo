@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { messageText } from '~/test/messageText';
+
 import validateEntityType, { SHAPE_MAPPING_FIELD } from '../validateEntityType';
 
 describe('validateEntityType()', () => {
@@ -43,7 +45,9 @@ describe('validateEntityType()', () => {
     const errors = validateEntityType({
       shape: { default: 'circle', dynamic: {} },
     });
-    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/Select an attribute/);
+    expect(messageText(errors[SHAPE_MAPPING_FIELD])).toMatch(
+      /Select an attribute/,
+    );
   });
 
   it('flags a breakpoints mapping with no thresholds', () => {
@@ -53,7 +57,9 @@ describe('validateEntityType()', () => {
         dynamic: { variable: 'var-1', type: 'breakpoints', thresholds: [] },
       },
     });
-    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/at least one threshold/);
+    expect(messageText(errors[SHAPE_MAPPING_FIELD])).toMatch(
+      /at least one threshold/,
+    );
   });
 
   it('flags duplicate threshold values', () => {
@@ -70,7 +76,9 @@ describe('validateEntityType()', () => {
         },
       },
     });
-    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/increase in value/);
+    expect(messageText(errors[SHAPE_MAPPING_FIELD])).toMatch(
+      /increase in value/,
+    );
   });
 
   it('flags descending threshold values', () => {
@@ -87,6 +95,8 @@ describe('validateEntityType()', () => {
         },
       },
     });
-    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/increase in value/);
+    expect(messageText(errors[SHAPE_MAPPING_FIELD])).toMatch(
+      /increase in value/,
+    );
   });
 });

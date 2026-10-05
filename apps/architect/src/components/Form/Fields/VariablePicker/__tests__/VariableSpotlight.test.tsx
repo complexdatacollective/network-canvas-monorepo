@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { noop } from 'es-toolkit/compat';
 import { Provider } from 'react-redux';
 import { createStore } from 'redux';
@@ -74,5 +74,71 @@ describe('VariableSpotlight', () => {
     );
     expect(items[1]).toHaveTextContent('Name');
     expect(items[1]?.querySelector('.icon')).toBeInTheDocument();
+  });
+
+  it('keeps focus leaving the portalled popup from blurring its owning field', () => {
+    const onOwnerBlur = vi.fn();
+    render(
+      <div onBlur={onOwnerBlur}>
+        <Provider store={mockStore}>
+          <VariableSpotlight
+            open={true}
+            onOpenChange={noop}
+            onSelect={noop}
+            entity=""
+            type=""
+            onCreateOption={noop}
+            options={[]}
+          />
+        </Provider>
+      </div>,
+    );
+
+    const search = screen.getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    search.focus();
+    onOwnerBlur.mockClear();
+
+    // Base UI removes the focused popup content after an answered selection.
+    // React portal events otherwise bubble through the owner component tree,
+    // making the form believe focus left the field.
+    fireEvent.blur(search, { relatedTarget: document.body });
+
+    expect(onOwnerBlur).not.toHaveBeenCalled();
+  });
+
+  it('lets a completed direct-field pick blur its owning field', () => {
+    const onOwnerBlur = vi.fn();
+    const shouldPropagateBlur = vi
+      .fn()
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false);
+    render(
+      <div onBlur={onOwnerBlur}>
+        <Provider store={mockStore}>
+          <VariableSpotlight
+            open={true}
+            onOpenChange={noop}
+            onSelect={noop}
+            entity=""
+            type=""
+            onCreateOption={noop}
+            options={[]}
+            shouldPropagateBlur={shouldPropagateBlur}
+          />
+        </Provider>
+      </div>,
+    );
+
+    const search = screen.getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    search.focus();
+    onOwnerBlur.mockClear();
+    fireEvent.blur(search, { relatedTarget: document.body });
+
+    expect(onOwnerBlur).toHaveBeenCalled();
+    expect(shouldPropagateBlur).toHaveBeenCalled();
   });
 });

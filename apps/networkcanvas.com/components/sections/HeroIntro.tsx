@@ -3,6 +3,7 @@
 import { motion, useAnimationControls, useReducedMotion } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
 
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import { Header } from '~/components/layout/Header';
 import { Hero } from '~/components/sections/Hero';
 import { useHeroScrollDeparture } from '~/components/ui/useHeroScrollDeparture';
@@ -53,6 +54,7 @@ export function HeroIntro({ newsItems, onEntranceStart }: HeroIntroProps) {
       >
         <Header activeItemId="home" entranceVariants={entrance.itemVariants} />
         <Hero
+          id={SITE_NAVIGATION_SKIP_TARGET_ID}
           backdropItemVariants={entrance.backdropItemVariants}
           containerVariants={entrance.heroVariants}
           itemVariants={entrance.itemVariants}

@@ -620,7 +620,14 @@
         "requireGrandparents": "off",
         "requireChildrenContributors": "off"
       },
-      "censusPrompt": "Who is in your family?"
+      "censusPrompt": "Who is in your family?",
+      "nominationPrompts": [
+        {
+          "id": "nomination-1",
+          "text": "Who in your family has been diagnosed with condition X?",
+          "variable": "hasConditionX"
+        }
+      ]
     },
     {
       "id": "narrative-pedigree-1",
@@ -631,7 +638,7 @@
         {
           "id": "disease-1",
           "label": "Condition X",
-          "color": "#cc0000",
+          "color": "node-color-seq-1",
           "variable": "hasConditionX",
           "inheritancePattern": "autosomalDominant"
         }
@@ -665,7 +672,7 @@
         "center": [-74.0, 40.7],
         "initialZoom": 10,
         "dataSourceAssetId": "geo_data",
-        "color": "#3399ff",
+        "color": "ord-color-seq-6",
         "targetFeatureProperty": "name"
       },
       "prompts": [
@@ -681,7 +688,7 @@
     "mapbox_token": {
       "name": "Mapbox Token",
       "type": "apikey",
-      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbTZmaDJ0cTcwNTVpMmtvbDZhcXJneG1hIn0.wI5ooUHDWwFsH4jLXo3CVw"
+      "value": "pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbXRqdnd4dnowY2M5MnlzZWNqYjNlZG5rIn0.KH3OS_O2Hk6gAbDjKGPAJg"
     },
     "geo_data": {
       "name": "Regions",

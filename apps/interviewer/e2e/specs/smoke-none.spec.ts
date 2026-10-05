@@ -18,5 +18,13 @@ test.describe('none-mode smoke', () => {
     await expect(
       page.getByRole('heading', { name: 'Welcome back' }),
     ).toHaveCount(0);
+
+    // Regression: the footer must state "Not encrypted" even though no vault
+    // has ever been configured — this state stores data unencrypted exactly
+    // like an enrolled 'none' vault, and previously showed no encryption
+    // statement at all.
+    const encryptionChip = page.getByTestId('encryption-status-trigger');
+    await expect(encryptionChip).toBeVisible();
+    await expect(encryptionChip).toContainText('Not encrypted');
   });
 });

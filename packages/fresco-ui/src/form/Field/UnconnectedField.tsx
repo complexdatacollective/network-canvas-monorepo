@@ -23,7 +23,7 @@ type ManagedKeys = 'id' | 'aria-required' | 'aria-describedby';
  */
 type FieldOwnProps<C extends ValidFieldComponent> = {
   name: string;
-  label: string;
+  label: ReactNode;
   /**
    * Visually hide the label while keeping it as the control's accessible name.
    * Use when a surrounding heading already names the field.

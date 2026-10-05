@@ -19,6 +19,7 @@ import { mockFinish, mockSync } from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
   getAllowStageNavigation,
+  getRequestedLocale,
   getTestState,
   installProtocol as installProtocolHook,
   installTestHooks,
@@ -69,7 +70,9 @@ function useTestState() {
       // and passes it to Shell). Without it useSyncExternalStore would bail out.
       `${Array.from(getTestState().interviews.entries())
         .map(([id]) => id)
-        .join(',')}|${getAllowStageNavigation()}`,
+        .join(
+          ',',
+        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}`,
     () => '',
   );
 }
@@ -80,17 +83,25 @@ function getStepFromUrl(): number | undefined {
   return step !== null ? Number(step) : undefined;
 }
 
+// The URL is a synchronous source, so an interview named in it is the initial
+// state rather than something an effect assigns on a second render. Only the
+// `?bootstrap=` path is asynchronous, and that one keeps its effect below.
+function getInterviewIdFromUrl(): string | null {
+  return new URLSearchParams(window.location.search).get('interviewId') || null;
+}
+
 export default function App() {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<number | undefined>(undefined);
+  const [activeId, setActiveId] = useState<string | null>(
+    getInterviewIdFromUrl,
+  );
+  const [currentStep, setCurrentStep] = useState<number | undefined>(() =>
+    getInterviewIdFromUrl() !== null ? getStepFromUrl() : undefined,
+  );
   useTestState();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const existingId = params.get('interviewId');
-    if (existingId) {
-      setActiveId(existingId);
-      setCurrentStep(getStepFromUrl());
+    if (params.get('interviewId')) {
       return;
     }
     const bootstrapSlug = params.get('bootstrap');
@@ -152,6 +163,7 @@ export default function App() {
     <AnimationProvider disableAnimations reducedMotion="always">
       <Shell
         payload={payload}
+        requestedLocale={getRequestedLocale()}
         onSync={mockSync}
         onFinish={mockFinish}
         onRequestAsset={mockAssetReq}

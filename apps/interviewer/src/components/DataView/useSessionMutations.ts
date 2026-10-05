@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
-import { stageMessages } from '@codaco/network-exporters/events';
+import type { ExportEvent } from '@codaco/network-exporters/events';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
@@ -16,6 +19,85 @@ import type { StoredSessionLite } from '~/lib/db/types';
 import { buildExportOptions, runExport } from '~/lib/export/exportSessions';
 import { saveBlob } from '~/lib/files/download';
 
+const messages = defineMessages({
+  zipArchive: {
+    id: 'interviewer.sessionMutations.zipArchive',
+    defaultMessage: 'ZIP archive',
+    description:
+      'File type description in the native Save As picker for an exported interview archive. ZIP is the file format name.',
+  },
+  exportComplete: {
+    id: 'interviewer.sessionMutations.exportComplete',
+    defaultMessage: 'Export complete',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  exportFailed: {
+    id: 'interviewer.sessionMutations.exportFailed',
+    defaultMessage: 'Export failed',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  deleteFailed: {
+    id: 'interviewer.sessionMutations.deleteFailed',
+    defaultMessage: 'Delete failed',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  markUnfinished: {
+    id: 'interviewer.sessionMutations.markUnfinished',
+    defaultMessage: 'Mark unfinished?',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  thisInterviewWillBecomeEditableAndCan: {
+    id: 'interviewer.sessionMutations.thisInterviewWillBecomeEditableAndCan',
+    defaultMessage:
+      'This interview will become editable and can be resumed. Its existing responses and export history will be kept.',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  markUnfinished2: {
+    id: 'interviewer.sessionMutations.markUnfinished2',
+    defaultMessage: 'Mark unfinished',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  interviewMarkedUnfinished: {
+    id: 'interviewer.sessionMutations.interviewMarkedUnfinished',
+    defaultMessage: 'Interview marked unfinished',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  couldNotMarkInterviewUnfinished: {
+    id: 'interviewer.sessionMutations.couldNotMarkInterviewUnfinished',
+    defaultMessage: 'Could not mark interview unfinished',
+    description: 'User-facing message in Interviewer Session Mutations.',
+  },
+  deleteSelected: {
+    id: 'interviewer.sessionMutations.deleteSelected',
+    defaultMessage:
+      '{count, plural, one {Delete # interview?} other {Delete # interviews?}}',
+    description: 'Administration text in Interviewer useSessionMutations.',
+  },
+  deleteDescription: {
+    id: 'interviewer.sessionMutations.deleteDescription',
+    defaultMessage:
+      '{count, plural, one {This record will be permanently removed from this device. This cannot be undone.} other {These records will be permanently removed from this device. This cannot be undone.}}',
+    description: 'Administration text in Interviewer useSessionMutations.',
+  },
+  deleted: {
+    id: 'interviewer.sessionMutations.deleted',
+    defaultMessage:
+      '{count, plural, one {Deleted # interview} other {Deleted # interviews}}',
+    description: 'Administration text in Interviewer useSessionMutations.',
+  },
+  resumable: {
+    id: 'interviewer.sessionMutations.resumable',
+    defaultMessage: '{caseId} can now be resumed.',
+    description: 'Administration text in Interviewer useSessionMutations.',
+  },
+  operationFailed: {
+    id: 'interviewer.sessionMutations.operationFailed',
+    defaultMessage:
+      'The operation could not be completed. Your interview data remains on this device. Please try again.',
+    description: 'Administration text in Interviewer useSessionMutations.',
+  },
+});
+
 // The export flow drives ExportDialog end-to-end. `ready` holds the built
 // archive awaiting a fresh user gesture to save it (Web Share must be invoked
 // within a user activation the long archive build would otherwise have
@@ -27,7 +109,7 @@ export type ExportFlow =
   | {
       phase: 'building';
       sessionCount: number;
-      stageMessage: string;
+      stage: ExportEvent['stage'];
       // null until the current stage emits a progress event with a total
       // (indeterminate); reset on every stage transition so a finished
       // stage's bar never bleeds into the next stage.
@@ -66,6 +148,7 @@ export function useSessionMutations({
   onReload: () => Promise<void>;
   reloadData: () => Promise<void>;
 }) {
+  const intl = useAppIntl();
   const toast = useToast();
   const dialog = useDialog();
   const analytics = useAnalytics();
@@ -123,7 +206,7 @@ export function useSessionMutations({
       setExportFlow({
         phase: 'building',
         sessionCount: ids.length,
-        stageMessage: stageMessages.fetching,
+        stage: 'fetching',
         current: null,
         total: null,
       });
@@ -150,7 +233,7 @@ export function useSessionMutations({
               // forward would show a full bar for work that hasn't started.
               return {
                 ...current,
-                stageMessage: event.message,
+                stage: event.stage,
                 current: null,
                 total: null,
               };
@@ -253,7 +336,11 @@ export function useSessionMutations({
     } = exportFlow;
     setExportFlow({ ...exportFlow, phase: 'saving' });
     try {
-      const outcome = await saveBlob(blob, fileName);
+      const outcome = await saveBlob(
+        blob,
+        fileName,
+        intl.formatMessage(messages.zipArchive),
+      );
       if (!outcome.saved) {
         // The archive is retained and the dialog stays open in the ready
         // state — that is the retry affordance; sessions are NOT marked
@@ -272,7 +359,7 @@ export function useSessionMutations({
       setExportFlow({ phase: 'idle' });
       clearSelection();
       toast.add({
-        title: 'Export complete',
+        title: createElement(AppMessage, { message: messages.exportComplete }),
         description: fileName,
         variant: 'success',
       });
@@ -282,8 +369,10 @@ export function useSessionMutations({
       analytics.captureException(cause, { feature: 'export' });
       setExportFlow({ ...exportFlow, phase: 'ready' });
       toast.add({
-        title: 'Export failed',
-        description: cause instanceof Error ? cause.message : String(cause),
+        title: createElement(AppMessage, { message: messages.exportFailed }),
+        description: createElement(AppMessage, {
+          message: messages.operationFailed,
+        }),
         variant: 'destructive',
       });
       return;
@@ -299,7 +388,15 @@ export function useSessionMutations({
     } catch (cause) {
       analytics.captureException(cause, { feature: 'export' });
     }
-  }, [analytics, clearSelection, exportFlow, onReload, reloadData, toast]);
+  }, [
+    analytics,
+    clearSelection,
+    exportFlow,
+    intl,
+    onReload,
+    reloadData,
+    toast,
+  ]);
 
   const handleDelete = useCallback(async () => {
     // Also guarded against the export flow: the toolbar disables Delete while
@@ -312,15 +409,30 @@ export function useSessionMutations({
     ) {
       return;
     }
-    const noun = selectedCount === 1 ? 'interview' : 'interviews';
     const confirmed = await dialog.openDialog({
       type: 'choice',
-      title: `Delete ${selectedCount} ${noun}?`,
-      description: `${selectedCount === 1 ? 'This record' : 'These records'} will be permanently removed from this device. This cannot be undone.`,
+      title: createElement(AppMessage, {
+        message: messages.deleteSelected,
+        values: {
+          count: selectedCount,
+        },
+      }),
+      description: createElement(AppMessage, {
+        message: messages.deleteDescription,
+        values: {
+          count: selectedCount,
+        },
+      }),
       intent: 'destructive',
       actions: {
-        primary: { label: 'Delete', value: true },
-        cancel: { label: 'Cancel', value: false },
+        primary: {
+          label: createElement(AppMessage, { message: commonMessages.delete }),
+          value: true,
+        },
+        cancel: {
+          label: createElement(AppMessage, { message: commonMessages.cancel }),
+          value: false,
+        },
       },
     });
     if (confirmed !== true) return;
@@ -330,15 +442,20 @@ export function useSessionMutations({
       if (ids.length === 0) return;
       await deleteSessions(ids);
       toast.add({
-        title: `Deleted ${ids.length} ${ids.length === 1 ? 'interview' : 'interviews'}`,
+        title: createElement(AppMessage, {
+          message: messages.deleted,
+          values: { count: ids.length },
+        }),
         variant: 'success',
       });
       clearSelection();
       await Promise.all([onReload(), reloadData()]);
     } catch (cause) {
       toast.add({
-        title: 'Delete failed',
-        description: cause instanceof Error ? cause.message : String(cause),
+        title: createElement(AppMessage, { message: messages.deleteFailed }),
+        description: createElement(AppMessage, {
+          message: messages.operationFailed,
+        }),
         variant: 'destructive',
       });
     } finally {
@@ -373,13 +490,24 @@ export function useSessionMutations({
       }
       const confirmed = await dialog.openDialog({
         type: 'choice',
-        title: 'Mark unfinished?',
-        description:
-          'This interview will become editable and can be resumed. Its existing responses and export history will be kept.',
+        title: createElement(AppMessage, { message: messages.markUnfinished }),
+        description: createElement(AppMessage, {
+          message: messages.thisInterviewWillBecomeEditableAndCan,
+        }),
         intent: 'warning',
         actions: {
-          primary: { label: 'Mark unfinished', value: true },
-          cancel: { label: 'Cancel', value: false },
+          primary: {
+            label: createElement(AppMessage, {
+              message: messages.markUnfinished2,
+            }),
+            value: true,
+          },
+          cancel: {
+            label: createElement(AppMessage, {
+              message: commonMessages.cancel,
+            }),
+            value: false,
+          },
         },
       });
       if (confirmed !== true) return;
@@ -387,15 +515,26 @@ export function useSessionMutations({
       try {
         await markSessionUnfinished(session.id, stages);
         toast.add({
-          title: 'Interview marked unfinished',
-          description: `${session.caseId} can now be resumed.`,
+          title: createElement(AppMessage, {
+            message: messages.interviewMarkedUnfinished,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.resumable,
+            values: {
+              caseId: session.caseId,
+            },
+          }),
           variant: 'success',
         });
         await Promise.all([onReload(), reloadData()]);
       } catch (cause) {
         toast.add({
-          title: 'Could not mark interview unfinished',
-          description: cause instanceof Error ? cause.message : String(cause),
+          title: createElement(AppMessage, {
+            message: messages.couldNotMarkInterviewUnfinished,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.operationFailed,
+          }),
           variant: 'destructive',
         });
       } finally {

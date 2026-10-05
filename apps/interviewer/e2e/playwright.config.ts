@@ -41,7 +41,8 @@ export default defineConfig({
     // resolution bug — don't "simplify" this back, it reintroduces the type error.
     contextOptions: { reducedMotion: 'reduce' },
     // Block the service worker: deterministic tests, page.route works, no
-    // SW-cache bleed between contexts. SW/offline behaviour is out of scope.
+    // SW-cache bleed between contexts. The dedicated offline locale scenario
+    // opts in to a real service worker for its fresh browser context.
     serviceWorkers: 'block',
   },
 

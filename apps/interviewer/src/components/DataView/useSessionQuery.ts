@@ -5,6 +5,7 @@ import type {
 } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { querySessions } from '~/lib/db/api';
 import type {
   SessionQueryParams,
@@ -51,6 +52,7 @@ export function useSessionQuery({
   // synthetic-data generation/deletion in Settings) so the table re-queries.
   refreshKey?: number;
 }) {
+  const intl = useAppIntl();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -75,6 +77,7 @@ export function useSessionQuery({
     const statuses = readStatusArray(filterValue('progress'));
     const exported = readBoolean(filterValue('exportedAt'));
     return {
+      locale: intl.locale,
       search: search.length > 0 ? search : undefined,
       caseId: caseId.length > 0 ? caseId : undefined,
       protocolNames: protocolNames.length > 0 ? protocolNames : undefined,
@@ -86,7 +89,7 @@ export function useSessionQuery({
       page: pagination.pageIndex,
       pageSize: pagination.pageSize,
     };
-  }, [columnFilters, globalFilter, sorting, pagination]);
+  }, [intl.locale, columnFilters, globalFilter, sorting, pagination]);
 
   // The hash captures every filter (search/case/protocol/dates/status/export)
   // so consumers can react when the row set semantically shifts. Sort and

@@ -10,19 +10,23 @@ import {
   smallSizeVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, type VariantProps } from '../../utils/cva';
+import { cva, type VariantProps } from '../../utils/cva';
 import { getInputState } from '../utils/getInputState';
 
-const checkboxRootVariants = compose(
-  smallSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  inertReadOnlyVariants,
-  cva({
-    base: 'focusable flex aspect-square shrink-0 items-center justify-center rounded-[0.15em]',
-  }),
-);
+const checkboxRootOwnVariants = cva({
+  base: 'focusable flex aspect-square shrink-0 items-center justify-center rounded-[0.15em]',
+});
+
+const checkboxRootVariants = cva({
+  composes: [
+    smallSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    inertReadOnlyVariants,
+    checkboxRootOwnVariants,
+  ],
+});
 
 const checkboxIndicatorVariants = cva({
   base: 'text-primary flex p-[0.1em]',

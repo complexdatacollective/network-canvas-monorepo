@@ -1,11 +1,14 @@
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 
 import type { Status } from '../genetics/status';
+import { messages } from '../messages';
 import { Sticker } from './Sticker';
 
 type NotationKeyEntry = {
   status: Status;
-  label: string;
+  label: MessageDescriptor;
   // At-risk (probabilistic) markers are only listed when the stage option is on.
   atRisk?: boolean;
 };
@@ -13,21 +16,21 @@ type NotationKeyEntry = {
 // Participant-facing wording for each glyph. Kept as whole strings (never
 // concatenated) so they read naturally and stay translatable. These describe
 // what each marker means in plain language rather than reusing the clinical
-// STATUS_LABELS verbatim. Each maps to a distinct Bennett-2022 glyph drawn by
+// getStatusLabel verbatim. Each maps to a distinct Bennett-2022 glyph drawn by
 // the Sticker: affected = filled, will-develop (obligate/presymptomatic) =
 // vertical line, carrier = horizontal line-fill; the at-risk variants reuse the
 // certain glyph plus a "?".
 const NOTATION_KEY_ENTRIES: NotationKeyEntry[] = [
-  { status: 'affected', label: 'Has this condition' },
-  { status: 'obligateAffected', label: 'Will develop this condition' },
-  { status: 'obligateCarrier', label: 'Carries this condition' },
+  { status: 'affected', label: messages.hasCondition },
+  { status: 'obligateAffected', label: messages.willDevelop },
+  { status: 'obligateCarrier', label: messages.carries },
   {
     status: 'atRiskAffected',
-    label: 'May develop this condition',
+    label: messages.mayDevelop,
     atRisk: true,
   },
-  { status: 'atRiskCarrier', label: 'May carry this condition', atRisk: true },
-  { status: 'unknown', label: 'Not known' },
+  { status: 'atRiskCarrier', label: messages.mayCarry, atRisk: true },
+  { status: 'unknown', label: messages.notKnown },
 ];
 
 type NotationKeyProps = {
@@ -63,7 +66,7 @@ export function NotationKey({
           <span aria-hidden className="flex shrink-0">
             <Sticker status={entry.status} color={glyphColour} shape={shape} />
           </span>
-          {entry.label}
+          <AppMessage message={entry.label} />
         </div>
       ))}
     </>

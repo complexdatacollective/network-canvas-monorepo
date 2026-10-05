@@ -1,21 +1,107 @@
-import type { Column, ColumnDef } from '@tanstack/react-table';
+import type { Column, RowData } from '@tanstack/react-table';
 import { ArrowDown, Eye, Play, RotateCcw } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useMemo } from 'react';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
+import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
+import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import { updateSettings } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
 
-function SortHeader<TData>({
+const messages = defineMessages({
+  selectAllInterviewsOnThisPage: {
+    id: 'interviewer.dataViewColumns.selectAllInterviewsOnThisPage',
+    defaultMessage: 'Select all interviews on this page',
+    description: 'The aria-label label in Interviewer Data View Columns.',
+  },
+  caseID: {
+    id: 'interviewer.dataViewColumns.caseID',
+    defaultMessage: 'Case ID',
+    description: 'The title label in Interviewer Data View Columns.',
+  },
+  protocol: {
+    id: 'interviewer.dataViewColumns.protocol',
+    defaultMessage: 'Protocol',
+    description: 'The title label in Interviewer Data View Columns.',
+  },
+  started: {
+    id: 'interviewer.dataViewColumns.started',
+    defaultMessage: 'Started',
+    description: 'The title label in Interviewer Data View Columns.',
+  },
+  updated: {
+    id: 'interviewer.dataViewColumns.updated',
+    defaultMessage: 'Updated',
+    description: 'The title label in Interviewer Data View Columns.',
+  },
+  progress: {
+    id: 'interviewer.dataViewColumns.progress',
+    defaultMessage: 'Progress',
+    description: 'The title label in Interviewer Data View Columns.',
+  },
+  exportStatus: {
+    id: 'interviewer.dataViewColumns.exportStatus',
+    defaultMessage: 'Export status',
+    description: 'The title label in Interviewer Data View Columns.',
+  },
+  notExported: {
+    id: 'interviewer.dataViewColumns.notExported',
+    defaultMessage: 'Not exported',
+    description: 'Visible copy in Interviewer Data View Columns.',
+  },
+  interviewActions: {
+    id: 'interviewer.dataViewColumns.interviewActions',
+    defaultMessage: 'Interview actions',
+    description: 'Visible copy in Interviewer Data View Columns.',
+  },
+  review: {
+    id: 'interviewer.dataViewColumns.review',
+    defaultMessage: 'Review',
+    description:
+      'Row action that opens a finished interview without saving changes.',
+  },
+  markUnfinished: {
+    id: 'interviewer.dataViewColumns.markUnfinished',
+    defaultMessage: 'Mark unfinished',
+    description: 'Row action that makes a finished interview editable again.',
+  },
+  resume: {
+    id: 'interviewer.dataViewColumns.resume',
+    defaultMessage: 'Resume',
+    description:
+      'Row action that opens an unfinished interview for further data collection.',
+  },
+  selectCase: {
+    id: 'interviewer.dataViewColumns.selectCase',
+    defaultMessage: 'Select {caseId}',
+    description: 'Administration text in Interviewer useDataViewColumns.',
+  },
+  stepProgress: {
+    id: 'interviewer.dataViewColumns.stepProgress',
+    defaultMessage:
+      '{hasTotal, select, true {step {step, number} of {total, number}} other {step {step, number} of ?}}',
+    description:
+      'Accessible progress label on an interview data row. step and total are stage counts; hasTotal is false only when the protocol is unavailable, represented by the invariant question mark.',
+  },
+  markCaseUnfinished: {
+    id: 'interviewer.dataViewColumns.markCaseUnfinished',
+    defaultMessage: 'Mark {caseId} unfinished',
+    description: 'Administration text in Interviewer useDataViewColumns.',
+  },
+});
+
+function SortHeader<TData extends RowData>({
   column,
   title,
 }: {
-  column: Column<TData>;
+  column: Column<DataTableFeatures, TData>;
   title: string;
 }) {
   const sortDir = column.getIsSorted();
@@ -74,9 +160,10 @@ export function useDataViewColumns({
   mutationsBusy: boolean;
   onMarkUnfinished: (session: StoredSessionLite) => void;
 }) {
+  const intl = useAppIntl();
   const [, navigate] = useLocation();
 
-  return useMemo<ColumnDef<StoredSessionLite>[]>(
+  return useMemo<DataTableColumnDef<StoredSessionLite>[]>(
     () => [
       {
         id: 'select',
@@ -86,7 +173,9 @@ export function useDataViewColumns({
         header: () => (
           <Checkbox
             size="sm"
-            aria-label="Select all interviews on this page"
+            aria-label={intl.formatMessage(
+              messages.selectAllInterviewsOnThisPage,
+            )}
             checked={allOnPageSelected}
             indeterminate={someOnPageSelected}
             onCheckedChange={togglePageSelected}
@@ -97,7 +186,9 @@ export function useDataViewColumns({
           return (
             <Checkbox
               size="sm"
-              aria-label={`Select ${row.original.caseId}`}
+              aria-label={intl.formatMessage(messages.selectCase, {
+                caseId: row.original.caseId,
+              })}
               checked={isSelected(id)}
               onCheckedChange={() => {
                 toggleRowSelected(id);
@@ -109,7 +200,12 @@ export function useDataViewColumns({
       {
         id: 'caseId',
         accessorKey: 'caseId',
-        header: ({ column }) => <SortHeader column={column} title="Case ID" />,
+        header: ({ column }) => (
+          <SortHeader
+            column={column}
+            title={intl.formatMessage(messages.caseID)}
+          />
+        ),
         enableSorting: true,
         cell: ({ getValue }) => (
           <span className="font-monospace text-xs font-bold">
@@ -120,7 +216,12 @@ export function useDataViewColumns({
       {
         id: 'protocolName',
         accessorKey: 'protocolName',
-        header: ({ column }) => <SortHeader column={column} title="Protocol" />,
+        header: ({ column }) => (
+          <SortHeader
+            column={column}
+            title={intl.formatMessage(messages.protocol)}
+          />
+        ),
         enableSorting: true,
         cell: ({ getValue }) => (
           <span className="inline-flex items-center gap-2">
@@ -137,20 +238,35 @@ export function useDataViewColumns({
       {
         id: 'startedAt',
         accessorKey: 'startedAt',
-        header: ({ column }) => <SortHeader column={column} title="Started" />,
+        header: ({ column }) => (
+          <SortHeader
+            column={column}
+            title={intl.formatMessage(messages.started)}
+          />
+        ),
         enableSorting: true,
         cell: ({ getValue }) => <TimeAgo date={getValue<string>()} />,
       },
       {
         id: 'updatedAt',
         accessorKey: 'lastUpdatedAt',
-        header: ({ column }) => <SortHeader column={column} title="Updated" />,
+        header: ({ column }) => (
+          <SortHeader
+            column={column}
+            title={intl.formatMessage(messages.updated)}
+          />
+        ),
         enableSorting: true,
         cell: ({ getValue }) => <TimeAgo date={getValue<string>()} />,
       },
       {
         id: 'progress',
-        header: ({ column }) => <SortHeader column={column} title="Progress" />,
+        header: ({ column }) => (
+          <SortHeader
+            column={column}
+            title={intl.formatMessage(messages.progress)}
+          />
+        ),
         enableSorting: true,
         cell: ({ row }) => {
           const session = row.original;
@@ -163,11 +279,15 @@ export function useDataViewColumns({
                   nudge={false}
                   orientation="horizontal"
                   percentProgress={percent}
-                  label={`step ${session.currentStep + 1} of ${totalSteps || '?'}`}
+                  label={intl.formatMessage(messages.stepProgress, {
+                    step: session.currentStep + 1,
+                    total: totalSteps,
+                    hasTotal: String(totalSteps > 0),
+                  })}
                 />
               </div>
               <span className="font-monospace text-text/60 text-xs tabular-nums">
-                {Math.round(percent)}%
+                {intl.formatNumber(percent / 100, { style: 'percent' })}
               </span>
             </div>
           );
@@ -177,7 +297,10 @@ export function useDataViewColumns({
         id: 'exportedAt',
         accessorKey: 'exportedAt',
         header: ({ column }) => (
-          <SortHeader column={column} title="Export status" />
+          <SortHeader
+            column={column}
+            title={intl.formatMessage(messages.exportStatus)}
+          />
         ),
         enableSorting: true,
         cell: ({ getValue }) => {
@@ -185,7 +308,9 @@ export function useDataViewColumns({
           return value ? (
             <TimeAgo date={value} />
           ) : (
-            <span className="text-text/60 text-xs">Not exported</span>
+            <span className="text-text/60 text-xs">
+              {intl.formatMessage(messages.notExported)}
+            </span>
           );
         },
       },
@@ -194,7 +319,11 @@ export function useDataViewColumns({
         enableSorting: false,
         enableColumnFilter: false,
         enableGlobalFilter: false,
-        header: () => <span className="sr-only">Interview actions</span>,
+        header: () => (
+          <span className="sr-only">
+            {intl.formatMessage(messages.interviewActions)}
+          </span>
+        ),
         cell: ({ row }) => {
           const session = row.original;
           if (session.statusKind === 'complete') {
@@ -210,20 +339,22 @@ export function useDataViewColumns({
                   }
                   data-testid="data-review"
                 >
-                  Review
+                  {intl.formatMessage(messages.review)}
                 </Button>
                 <Button
                   size="sm"
                   variant="text"
                   color="dynamic"
                   icon={<RotateCcw aria-hidden />}
-                  aria-label={`Mark ${session.caseId} unfinished`}
+                  aria-label={intl.formatMessage(messages.markCaseUnfinished, {
+                    caseId: session.caseId,
+                  })}
                   disabled={markingUnfinishedId !== null || mutationsBusy}
                   onClick={() => onMarkUnfinished(session)}
                   className="min-w-max"
                   data-testid="data-mark-unfinished"
                 >
-                  Mark unfinished
+                  {intl.formatMessage(messages.markUnfinished)}
                 </Button>
               </div>
             );
@@ -242,13 +373,14 @@ export function useDataViewColumns({
               }}
               data-testid="data-resume"
             >
-              Resume
+              {intl.formatMessage(messages.resume)}
             </Button>
           );
         },
       },
     ],
     [
+      intl,
       allOnPageSelected,
       someOnPageSelected,
       isSelected,

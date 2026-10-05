@@ -1,7 +1,6 @@
 'use client';
 
 import { Moon, Sun, SunMoon } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 import { Button, IconButton } from '../Button';
 import {
@@ -11,6 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../DropdownMenu';
+import useHasHydrated from '../hooks/useHasHydrated';
 
 const themeOptions = [
   { id: 'light', icon: Sun },
@@ -51,9 +51,7 @@ export default function ThemeSwitcher({
   theme,
   view,
 }: ThemeSwitcherProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useHasHydrated();
 
   // Keep the server and first client render identical. The host's theme
   // provider can restore a persisted preference after hydration, at which

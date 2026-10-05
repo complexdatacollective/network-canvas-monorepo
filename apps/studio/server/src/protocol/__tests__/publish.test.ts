@@ -1,23 +1,27 @@
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SyncServer } from '@codaco/studio-sync/server';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
+import { openAssetKey, stripAssetKeyValues } from '../asset-keys.ts';
 import { ProtocolStore } from '../store.ts';
 import {
   FIXTURES,
+  TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
+  makeTestSyncServer,
   readFixtureProtocol,
   storeDb,
 } from './helpers.ts';
 
 async function setDescription(
-  db: pg.Pool,
+  db: TenantDb,
   draftId: string,
   description: string,
 ) {
-  const sync = new SyncServer(db);
+  const sync = makeTestSyncServer(db);
   const owner = `tab-${description}`;
   const lease = await sync.acquire(draftId, 'settings', owner);
   await sync.commit({
@@ -32,12 +36,13 @@ async function setDescription(
 
 describe.skipIf(!storeDb)('publishDraft', () => {
   let db: pg.Pool;
+  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(db);
+    ({ db, tenantDb, dispose } = await makeStoreSchema());
+    store = new ProtocolStore(tenantDb, testCipher());
   });
   afterAll(async () => {
     await dispose();
@@ -103,7 +108,7 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(
       draftId,
       'stage:nameGenerator1',
@@ -148,7 +153,7 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const first = await store.publishDraft({ draftId });
     if (first.status !== 'published') throw new Error(first.status);
 
-    await setDescription(db, draftId, 'second edition');
+    await setDescription(tenantDb, draftId, 'second edition');
     const second = await store.publishDraft({ draftId });
     if (second.status !== 'published') throw new Error(second.status);
     expect(second.versionNumber).toBe(first.versionNumber + 1);
@@ -188,8 +193,8 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       store.createDraftFromVersion({ versionId: base.versionId }),
       store.createDraftFromVersion({ versionId: base.versionId }),
     ]);
-    await setDescription(db, a.draftId, 'variant a');
-    await setDescription(db, b.draftId, 'variant b');
+    await setDescription(tenantDb, a.draftId, 'variant a');
+    await setDescription(tenantDb, b.draftId, 'variant b');
 
     const results = await Promise.all([
       store.publishDraft({ draftId: a.draftId }),
@@ -238,9 +243,9 @@ describe.skipIf(!storeDb)('publishDraft', () => {
 
     await expect(
       db.query(
-        `INSERT INTO version_sections (version_id, section_id, section_hash)
-         VALUES ($1, 'stage:smuggled', $2)`,
-        [result.versionId, pinnedHash],
+        `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
+         VALUES ($1, $2, 'stage:smuggled', $3)`,
+        [result.versionId, TEST_TEAM_ID, pinnedHash],
       ),
     ).rejects.toThrow(/immutable/);
   });
@@ -248,9 +253,9 @@ describe.skipIf(!storeDb)('publishDraft', () => {
   // Every other case here runs on the trimmed baseProtocol; these cover a real
   // protocol's shape, and a document that has to survive jsonb.
   for (const fixture of FIXTURES) {
-    it(`publishes ${fixture} and reads it back byte-identical`, async () => {
+    it(`publishes ${fixture} and reads it back unchanged but for its sealed API keys`, async () => {
       const protocol = readFixtureProtocol(fixture);
-      const { draftId } = await store.createProtocol({ protocol });
+      const { protocolId, draftId } = await store.createProtocol({ protocol });
       const sectionCount = Object.keys(
         (await store.getDraftSections(draftId)).sections,
       ).length;
@@ -258,9 +263,30 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       const result = await store.publishDraft({ draftId });
       if (result.status !== 'published') throw new Error(result.status);
 
-      expect(await store.getVersionDocument(result.versionId)).toEqual(
-        protocol,
+      // A published document is what was imported, except that an API key's
+      // value has been sealed out of it (#1900): the manifest keeps the entry
+      // naming the asset, and the value lives in `protocol_asset_keys`. Two of
+      // these fixtures carry a real Mapbox token, so this is the round trip
+      // over a protocol that actually exercises it.
+      const manifest = (protocol as unknown as Record<string, unknown>)
+        .assetManifest;
+      const { doc: redacted, values: keys } = stripAssetKeyValues(
+        (manifest ?? {}) as Record<string, unknown>,
       );
+      const expected =
+        keys.size === 0 ? protocol : { ...protocol, assetManifest: redacted };
+      expect(await store.getVersionDocument(result.versionId)).toEqual(
+        expected,
+      );
+      for (const [assetId, value] of keys) {
+        await expect(
+          openAssetKey(tenantDb, testCipher(), {
+            teamId: TEST_TEAM_ID,
+            protocolId,
+            assetId,
+          }),
+        ).resolves.toBe(value);
+      }
       const pins = await db.query<{ pins: number }>(
         `SELECT count(*)::int AS pins FROM version_sections WHERE version_id = $1`,
         [result.versionId],

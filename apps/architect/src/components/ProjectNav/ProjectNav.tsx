@@ -11,17 +11,83 @@ import { motion } from 'motion/react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
+import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 import {
   getHasUnusedAssets,
   getHasUnusedVariables,
   getHasVariableRoleConflicts,
 } from '~/selectors/issues';
 import { getProtocolName } from '~/selectors/protocol';
-import { cx } from '~/utils/cva';
 
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
+import NavLink from './NavLink';
 import NavShell from './NavShell';
+const chromeMessages = defineMessages({
+  untitledProtocol: {
+    id: 'architect.chrome.projectNav.projectNav.untitledProtocol',
+    defaultMessage: 'Untitled protocol',
+    description: 'The label text in components / ProjectNav / ProjectNav.',
+  },
+});
+const configMessages = defineMessages({
+  stages: {
+    id: 'architect.projectNav.projectNav.config.stages',
+    defaultMessage: 'Stages',
+    description:
+      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+  },
+  resources: {
+    id: 'architect.projectNav.projectNav.config.resources',
+    defaultMessage: 'Resources',
+    description:
+      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+  },
+  codebook: {
+    id: 'architect.projectNav.projectNav.config.codebook',
+    defaultMessage: 'Codebook',
+    description:
+      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+  },
+  summary: {
+    id: 'architect.projectNav.projectNav.config.summary',
+    defaultMessage: 'Summary',
+    description:
+      'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  warning: {
+    id: 'architect.presentation.warning',
+    defaultMessage: ' ({warning})',
+    description:
+      'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
+  },
+  readOnly: {
+    id: 'architect.projectNav.projectNav.readOnly',
+    defaultMessage: 'Read only',
+    description: 'Visible text in components / ProjectNav / ProjectNav.',
+  },
+});
+const finalMessages = defineMessages({
+  roleWarning: {
+    id: 'architect.final.components.ProjectNav.ProjectNav.roleWarning',
+    defaultMessage: 'has attributes written both with and without validation',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  assetsWarning: {
+    id: 'architect.final.components.ProjectNav.ProjectNav.assetsWarning',
+    defaultMessage: 'has unused resources',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  attributesWarning: {
+    id: 'architect.final.components.ProjectNav.ProjectNav.attributesWarning',
+    defaultMessage: 'has unused attributes',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 type Tab = {
   href: string;
@@ -29,14 +95,23 @@ type Tab = {
   Icon: LucideIcon;
 };
 
-const TABS: Tab[] = [
-  { href: '/protocol', label: 'Stages', Icon: Timeline },
-  { href: '/protocol/assets', label: 'Resources', Icon: FileImage },
-  { href: '/protocol/codebook', label: 'Codebook', Icon: BookOpenText },
-  { href: '/protocol/summary', label: 'Summary', Icon: Printer },
+const TABS: MessageConfig<Tab>[] = [
+  { href: '/protocol', label: configMessages.stages, Icon: Timeline },
+  {
+    href: '/protocol/assets',
+    label: configMessages.resources,
+    Icon: FileImage,
+  },
+  {
+    href: '/protocol/codebook',
+    label: configMessages.codebook,
+    Icon: BookOpenText,
+  },
+  { href: '/protocol/summary', label: configMessages.summary, Icon: Printer },
 ];
 
 const ProjectNav = () => {
+  const intl = useAppIntl();
   const [location] = useLocation();
   const accessMode = useProtocolAccessMode();
   const protocolName = useSelector(getProtocolName);
@@ -48,30 +123,32 @@ const ProjectNav = () => {
   // warning indicator on that tab and provides its screen-reader label.
   const tabWarnings: Record<string, string | undefined> = {
     '/protocol': hasVariableRoleConflicts
-      ? 'has attributes written both with and without validation'
+      ? intl.formatMessage(finalMessages.roleWarning)
       : undefined,
-    '/protocol/assets': hasUnusedAssets ? 'has unused resources' : undefined,
+    '/protocol/assets': hasUnusedAssets
+      ? intl.formatMessage(finalMessages.assetsWarning)
+      : undefined,
     '/protocol/codebook': hasUnusedVariables
-      ? 'has unused attributes'
+      ? intl.formatMessage(finalMessages.attributesWarning)
       : undefined,
   };
 
   const breadcrumbItems: BreadcrumbItem[] = [
-    { label: protocolName ?? 'Untitled protocol' },
+    {
+      label:
+        protocolName ?? intl.formatMessage(chromeMessages.untitledProtocol),
+    },
   ];
 
-  const tabs = TABS.map(({ href, label, Icon }) => {
+  const tabs = formatConfig(TABS, intl).map(({ href, label, Icon }) => {
     const isActive = location === href;
     const warning = tabWarnings[href];
     return (
-      <Link
+      <NavLink
         key={href}
         href={href}
-        aria-current={isActive ? 'page' : undefined}
-        className={cx(
-          'relative cursor-pointer text-base leading-none font-semibold text-current no-underline transition-colors',
-          !isActive && 'hover:text-action',
-        )}
+        active={isActive}
+        render={<Link href={href} />}
       >
         {isActive && (
           <motion.span
@@ -92,9 +169,13 @@ const ProjectNav = () => {
             )}
           </span>
           {label}
-          {warning && <span className="sr-only"> ({warning})</span>}
+          {warning && (
+            <span className="sr-only">
+              {intl.formatMessage(messages.warning, { warning })}
+            </span>
+          )}
         </span>
-      </Link>
+      </NavLink>
     );
   });
 
@@ -102,21 +183,21 @@ const ProjectNav = () => {
   // it is on, so these tabs would push history entries and change nothing. A
   // control that is visibly live and does nothing is the defect this guard was
   // written to remove, so they are replaced by a statement of the state.
-  const trailing =
-    accessMode === 'read-only' ? (
-      <span className="inline-flex items-center gap-2 text-base leading-none font-semibold">
-        <Eye className="size-4 shrink-0" aria-hidden />
-        Read only
-      </span>
-    ) : (
-      tabs
-    );
+  const items =
+    accessMode === 'read-only'
+      ? [
+          <span
+            key="read-only"
+            className="inline-flex items-center gap-2 text-base leading-none font-semibold"
+          >
+            <Eye className="size-4 shrink-0" aria-hidden />
+            {intl.formatMessage(messages.readOnly)}
+          </span>,
+        ]
+      : tabs;
 
   return (
-    <NavShell
-      leading={<Breadcrumb items={breadcrumbItems} />}
-      trailing={trailing}
-    />
+    <NavShell leading={<Breadcrumb items={breadcrumbItems} />} items={items} />
   );
 };
 

@@ -8,7 +8,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { VariableEntry } from '../types';
+import type { VariableEntry } from '../types.ts';
 import {
   claimFixedValues,
   definedAttributesOf,
@@ -16,28 +16,28 @@ import {
   releaseRosterValues,
   reserveRosterValues,
   rosterRowIsDrawable,
-} from './attributes';
-import type { GenerationConfig } from './config';
-import { dateValueResolution, stepsBetween } from './constraints/dateWindow';
+} from './attributes.ts';
+import type { GenerationConfig } from './config.ts';
+import { dateValueResolution, stepsBetween } from './constraints/dateWindow.ts';
 import {
   completionCheckFor,
   type EntityScopeRef,
-} from './constraints/generateEntityAttributes';
+} from './constraints/generateEntityAttributes.ts';
 import {
   declaresNodeCollection,
   nodeVariablesWrittenOnCreation,
   withRuleTiedVariables,
-} from './constraints/stageWrites';
+} from './constraints/stageWrites.ts';
 import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
   type ConstrainedVariable,
   type EntityConstraints,
-} from './constraints/types';
-import { valueKey } from './constraints/uniqueRegistry';
-import { distinctOptionValues } from './constraints/valueSpace';
-import type { GenerationContext, StageOfType } from './context';
-import { getSubjectType } from './subject';
+} from './constraints/types.ts';
+import { valueKey } from './constraints/uniqueRegistry.ts';
+import { distinctOptionValues } from './constraints/valueSpace.ts';
+import type { GenerationContext, StageOfType } from './context.ts';
+import { getSubjectType } from './subject.ts';
 
 /**
  * Node-subject stages that fabricate nodes: the three name-generator variants

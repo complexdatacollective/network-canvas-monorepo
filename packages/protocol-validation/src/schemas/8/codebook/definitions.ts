@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import {
+  EdgeColorReferenceSchema,
+  NodeColorReferenceSchema,
+  type EdgeColorReference,
+  type NodeColorReference,
+} from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import {
   EdgeVariablesSchema,
@@ -7,18 +13,7 @@ import {
   VariablesSchema,
 } from '../variables/index.ts';
 
-export const NodeColorSequence = [
-  'node-color-seq-1',
-  'node-color-seq-2',
-  'node-color-seq-3',
-  'node-color-seq-4',
-  'node-color-seq-5',
-  'node-color-seq-6',
-  'node-color-seq-7',
-  'node-color-seq-8',
-] as const;
-
-export type NodeColor = (typeof NodeColorSequence)[number];
+export type NodeColor = NodeColorReference;
 
 export const NodeShapes = ['circle', 'square', 'diamond'] as const;
 export type NodeShape = (typeof NodeShapes)[number];
@@ -82,29 +77,18 @@ const NodeDefinitionSchema = z.strictObject({
   name: z.string(),
   icon: z.string().optional(),
   variables: VariablesSchema.optional(),
-  color: z.union(NodeColorSequence.map((color) => z.literal(color))),
+  color: NodeColorReferenceSchema,
   shape: ShapeSchema,
 });
 
 export { NodeDefinitionSchema };
 export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
 
-export const EdgeColorSequence = [
-  'edge-color-seq-1',
-  'edge-color-seq-2',
-  'edge-color-seq-3',
-  'edge-color-seq-4',
-  'edge-color-seq-5',
-  'edge-color-seq-6',
-  'edge-color-seq-7',
-  'edge-color-seq-8',
-] as const;
-
-export type EdgeColor = (typeof EdgeColorSequence)[number];
+export type EdgeColor = EdgeColorReference;
 
 const EdgeDefinitionSchema = z.strictObject({
   name: z.string(),
-  color: z.union(EdgeColorSequence.map((color) => z.literal(color))).optional(),
+  color: EdgeColorReferenceSchema.optional(),
   variables: EdgeVariablesSchema.optional(),
 });
 

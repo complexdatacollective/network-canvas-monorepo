@@ -8,8 +8,8 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../generateNetwork';
-import type { EntityConstraints } from '../constraints/types';
+import { generateNetwork } from '../../generateNetwork.ts';
+import type { EntityConstraints } from '../constraints/types.ts';
 
 /**
  * How many assignments the completability check has been asked about — one per
@@ -18,9 +18,9 @@ import type { EntityConstraints } from '../constraints/types';
  */
 const completability = { checks: 0 };
 
-vi.mock('../constraints/generateEntityAttributes', async () => {
+vi.mock('../constraints/generateEntityAttributes.ts', async () => {
   const actual = await vi.importActual<
-    typeof import('../constraints/generateEntityAttributes')
+    typeof import('../constraints/generateEntityAttributes.ts')
   >('../constraints/generateEntityAttributes');
 
   return {

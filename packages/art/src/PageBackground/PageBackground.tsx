@@ -279,12 +279,26 @@ export function PageBackgroundProvider({
     };
   }, [motionMode, target, waitForTarget]);
 
-  useLayoutEffect(() => {
-    if (waitForTarget && target) return;
-
-    setResolved(false);
-    setConvergence(fallbackConvergence);
-  }, [fallbackConvergence, target, waitForTarget]);
+  // With nothing to measure against, the weave converges on the fallback. This
+  // is adjusted during render rather than in a layout effect: the measurement
+  // effect above owns the state whenever there IS a target, and this reset has
+  // to have happened by the time it next runs.
+  const [resetInputs, setResetInputs] = useState({
+    target,
+    waitForTarget,
+    fallbackConvergence,
+  });
+  if (
+    resetInputs.target !== target ||
+    resetInputs.waitForTarget !== waitForTarget ||
+    resetInputs.fallbackConvergence !== fallbackConvergence
+  ) {
+    setResetInputs({ target, waitForTarget, fallbackConvergence });
+    if (!waitForTarget || !target) {
+      setResolved(false);
+      setConvergence(fallbackConvergence);
+    }
+  }
 
   return (
     <>
@@ -348,6 +362,10 @@ function useConvergenceReveal(
   const convergenceRef = useRef(convergence);
   convergenceRef.current = convergence;
 
+  // Drives the reveal tween. `masked` is not derived from `resolved`: it is
+  // one end of the animation this effect starts and stops on the Motion value
+  // above, and it is cleared by the tween's own completion, so it can only be
+  // set from where that animation is controlled.
   useLayoutEffect(() => {
     if (resolved === undefined) {
       hasRevealedRef.current = false;
@@ -456,6 +474,10 @@ export function PageBackground({
       interpolateScrollFlare(progress, scrollFlareStart, scrollFlareEnd),
     );
   });
+  // Re-reads the scroll progress when the range it is interpolated against
+  // changes. The progress lives in a Motion value, not in React, and it does
+  // not emit a 'change' just because the range moved, so the current position
+  // has to be pulled from it — an external store read, not a derivation.
   useLayoutEffect(() => {
     setScrollFlare(
       interpolateScrollFlare(

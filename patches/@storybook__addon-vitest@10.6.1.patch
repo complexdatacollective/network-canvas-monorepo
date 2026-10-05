@@ -1,0 +1,13 @@
+diff --git a/dist/vitest-plugin/test-utils.js b/dist/vitest-plugin/test-utils.js
+index 9048740b2c8fba5a813a5541180dbd8bc2ec5984..1b8715d0bdbfa79784667e2354b3ff44a3662ac4 100644
+--- a/dist/vitest-plugin/test-utils.js
++++ b/dist/vitest-plugin/test-utils.js
+@@ -51,7 +51,7 @@ var DEFAULT_VIEWPORT_DIMENSIONS = {
+ }, setViewport = async (parameters = {}, globals = {}) => {
+   let defaultViewport, viewportsParam = parameters.viewport ?? {}, viewportsGlobal = globals.viewport ?? {}, isDisabled = viewportsParam.disable || viewportsParam.disabled;
+   viewportsGlobal.value && !isDisabled ? defaultViewport = viewportsGlobal.value : isDisabled || (defaultViewport = viewportsParam.defaultViewport);
+-  let { page } = await import("@vitest/browser/context").catch(() => ({
++  let { page } = await import("vitest/browser").catch(() => ({
+     page: null
+   }));
+   if (!page || !globalThis.__vitest_browser__)

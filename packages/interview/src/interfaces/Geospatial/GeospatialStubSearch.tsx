@@ -4,10 +4,14 @@ import { Toggle } from '@base-ui/react';
 import { Search, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+
+import { interfaceMessages } from '../messages';
 
 const STUB_SUGGESTIONS = [
   { id: 'stub-1', name: 'Stub Suggestion 1', place: 'Test City, Test State' },
@@ -20,6 +24,7 @@ type Props = {
 };
 
 export default function GeospatialStubSearch({ className }: Props) {
+  const intl = useAppIntl();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -75,7 +80,11 @@ export default function GeospatialStubSearch({ className }: Props) {
             ref={buttonRef}
             icon={<Search />}
             color={isOpen ? 'secondary' : 'dynamic'}
-            aria-label={isOpen ? 'Close search' : 'Search location'}
+            aria-label={
+              isOpen
+                ? intl.formatMessage(interfaceMessages.closeSearch)
+                : intl.formatMessage(interfaceMessages.searchLocation)
+            }
             aria-expanded={isOpen}
             data-testid="geospatial-search-toggle"
             size="lg"
@@ -94,7 +103,7 @@ export default function GeospatialStubSearch({ className }: Props) {
             <InputField
               type="text"
               autoFocus
-              placeholder="Search for a place..."
+              placeholder={intl.formatMessage(interfaceMessages.searchPlace)}
               value={query}
               onChange={handleQueryChange}
               onKeyDown={(e) => {
@@ -104,7 +113,7 @@ export default function GeospatialStubSearch({ className }: Props) {
               }}
               data-testid="geospatial-search-input"
               role="combobox"
-              aria-label="Search"
+              aria-label={intl.formatMessage(commonMessages.search)}
               aria-expanded={showSuggestions}
               aria-autocomplete="list"
               aria-haspopup="listbox"
@@ -115,7 +124,9 @@ export default function GeospatialStubSearch({ className }: Props) {
                     variant="text"
                     size="sm"
                     onClick={handleClear}
-                    aria-label="Clear search"
+                    aria-label={intl.formatMessage(
+                      interfaceMessages.clearSearch,
+                    )}
                     data-testid="geospatial-search-clear"
                     tabIndex={-1}
                   />
@@ -134,7 +145,9 @@ export default function GeospatialStubSearch({ className }: Props) {
             >
               <div
                 role="listbox"
-                aria-label="Search suggestions"
+                aria-label={intl.formatMessage(
+                  interfaceMessages.searchSuggestions,
+                )}
                 className="flex flex-col p-1"
               >
                 {STUB_SUGGESTIONS.map((s) => (

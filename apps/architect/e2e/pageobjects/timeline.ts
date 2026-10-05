@@ -1,4 +1,4 @@
-import { type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 // The timeline's real DOM, as every locator below reads it (verified from
 // Timeline.tsx / TimelineStageRow.tsx):
@@ -150,13 +150,46 @@ export class Timeline {
     // practice) reliably brings both rows' centers on-screen for any `to`
     // within a couple of rows below `from`.
     await fromCard.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    // The install banner and sticky navigation vary with copy and viewport.
+    // Move the requested origin below the real header before measuring it;
+    // scrolling its whole card to the top alone can press the navigation.
+    await from.evaluate((element) => {
+      const origin = element.getBoundingClientRect();
+      const headerBottom =
+        document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
+      const clearance = headerBottom + 8 - origin.top;
+      if (clearance <= 0) return;
+      let ancestor = element.parentElement;
+      while (ancestor) {
+        if (
+          ancestor.scrollHeight > ancestor.clientHeight &&
+          /auto|scroll/.test(getComputedStyle(ancestor).overflowY)
+        ) {
+          ancestor.scrollBy(0, -clearance);
+          return;
+        }
+        ancestor = ancestor.parentElement;
+      }
+      window.scrollBy(0, -clearance);
+    });
     const fromBox = await from.boundingBox();
     const toBox = await to.boundingBox();
     if (!fromBox || !toBox) throw new Error('stage row not found');
-    await this.page.mouse.move(
-      fromBox.x + fromBox.width / 2,
-      fromBox.y + fromBox.height / 2,
-    );
+    const origin = {
+      x: fromBox.x + fromBox.width / 2,
+      y: fromBox.y + fromBox.height - Math.min(8, fromBox.height / 4),
+    };
+    // A successful drag must start on the requested heading, preview or card.
+    // This positive check prevents a hidden origin from becoming a timeout in
+    // the unrelated persisted-order assertion below.
+    expect(
+      await from.evaluate(
+        (element, point) =>
+          element.contains(document.elementFromPoint(point.x, point.y)),
+        origin,
+      ),
+    ).toBe(true);
+    await this.page.mouse.move(origin.x, origin.y);
     await this.page.mouse.down();
     // Several steps so motion registers a drag (didDrag), not a click.
     await this.page.mouse.move(

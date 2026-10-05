@@ -1,4 +1,4 @@
-import type { InheritancePattern } from '@codaco/shared-consts';
+import type { InheritancePattern } from '@codaco/protocol-validation';
 
 import type { AnnotatedParent, GeneticGraph } from './genetics/geneticGraph';
 import type { Status } from './genetics/status';

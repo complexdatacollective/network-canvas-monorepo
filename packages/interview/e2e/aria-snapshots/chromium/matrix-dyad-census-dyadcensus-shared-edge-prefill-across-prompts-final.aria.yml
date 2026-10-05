@@ -1,13 +1,14 @@
 - main:
-  - text: Mohammad Crist and Clinton Leffler
-  - button "Mohammad Crist"
-  - button "Clinton Leffler"
+  - text: Nikita Crist and Collin Leffler
+  - button "Nikita Crist"
+  - button "Collin Leffler"
   - status:
     - 'heading "Prompt 2: know each other?" [level=2]'
-  - 'radiogroup "Mohammad Crist and Clinton Leffler Prompt 2: know each other?"':
+  - 'radiogroup "Nikita Crist and Collin Leffler Prompt 2: know each other?"':
     - radio "Yes"
     - radio "No"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

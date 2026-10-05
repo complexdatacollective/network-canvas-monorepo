@@ -8,31 +8,39 @@ import {
   placeholderVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
-const textareaWrapperVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  interactiveStateVariants,
-  cva({
-    base: 'h-auto w-full',
-  }),
-);
+const textareaWrapperOwnVariants = cva({
+  base: 'h-auto w-full',
+});
 
-const textareaVariants = compose(
-  placeholderVariants,
-  multilineContentVariants,
-  cva({
-    base: cx(
-      'size-full resize-y',
-      'border-none bg-transparent outline-none focus:ring-0',
-      'cursor-[inherit]',
-    ),
-  }),
-);
+const textareaWrapperVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    interactiveStateVariants,
+    textareaWrapperOwnVariants,
+  ],
+});
+
+const textareaOwnVariants = cva({
+  base: cx(
+    'size-full resize-y',
+    'border-none bg-transparent outline-none focus:ring-0',
+    'cursor-[inherit]',
+  ),
+});
+
+const textareaVariants = cva({
+  composes: [
+    placeholderVariants,
+    multilineContentVariants,
+    textareaOwnVariants,
+  ],
+});
 
 type TextAreaFieldProps = CreateFormFieldProps<string, 'textarea'> &
   VariantProps<typeof textareaWrapperVariants>;

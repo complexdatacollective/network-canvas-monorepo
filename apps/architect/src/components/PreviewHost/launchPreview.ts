@@ -1,3 +1,18 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+const errors = defineMessages({
+  missing: {
+    id: 'architect.preview.launch.missing',
+    defaultMessage:
+      'No active protocol to preview. Open or save a protocol first.',
+    description: 'Preview launch refusal before opening a window.',
+  },
+  timeout: {
+    id: 'architect.preview.launch.timeout',
+    defaultMessage:
+      'Preview window did not load in time. Close it and try again.',
+    description: 'Actionable preview handoff timeout.',
+  },
+});
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
@@ -9,7 +24,12 @@ import {
   type PreviewPayload,
 } from './messages';
 
-const HANDSHAKE_TIMEOUT_MS = 10_000;
+// preview-main can spend up to 3 seconds finding the registration, 3 seconds
+// discovering an update, 20 seconds waiting for its installation, and another
+// 20 seconds activating it before PreviewHost mounts and announces readiness.
+// Keep a buffer above that 46-second pre-render handoff so the opener never
+// gives up on a healthy preview waiting for its matching controller.
+const HANDSHAKE_TIMEOUT_MS = 55_000;
 const POPUP_CLOSED_POLL_MS = 1_000;
 
 type LaunchOptions = {
@@ -32,11 +52,7 @@ export function launchPreview({
 }: LaunchOptions): Promise<LaunchPreviewResult> {
   const protocolId = getActiveProtocolScope();
   if (!protocolId) {
-    return Promise.reject(
-      new Error(
-        'No active protocol to preview. Open or save a protocol first.',
-      ),
-    );
+    return Promise.reject(new Error(createMessageError(errors.missing)));
   }
 
   // Trailing slash is required: a bare '/preview' hits Vite's SPA html fallback
@@ -110,11 +126,7 @@ export function launchPreview({
     const initialTimeoutId = setTimeout(() => {
       if (initialDelivered) return;
       cleanup();
-      reject(
-        new Error(
-          "Preview window didn't load in time. Close it and try again.",
-        ),
-      );
+      reject(new Error(createMessageError(errors.timeout)));
     }, HANDSHAKE_TIMEOUT_MS);
 
     const closedPollId = setInterval(() => {

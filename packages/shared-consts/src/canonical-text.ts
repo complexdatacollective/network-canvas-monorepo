@@ -46,3 +46,55 @@ export const toCanonicalText = (value: string): string =>
  */
 export const normalizeForComparison = (value: string): string =>
   toCanonicalText(value).toLowerCase();
+
+/**
+ * Whether a label nobody has written yet — absent, not text, or nothing but
+ * whitespace. A participant cannot read any of them, so none of them is an
+ * answer that clashes with another.
+ */
+const isUnwrittenLabel = (label: unknown): boolean =>
+  typeof label !== 'string' || label.trim() === '';
+
+/**
+ * Whether two of these options would read the same way to a participant.
+ *
+ * Two choices nothing distinguishes is a question that cannot be answered, so
+ * the same refusal is made in four places that must never disagree: the row
+ * cell that says so where the researcher is typing, the form rule that refuses
+ * the save, the codebook write that refuses it again on the way to the
+ * protocol, and Architect's own option list. It lives here for the reason
+ * `normalizeForComparison` above does — and it is asked THROUGH it, so case
+ * and Unicode canonical equivalence are settled once: `Café` typed with a
+ * precomposed `é` and `Café` typed as `e` plus a combining accent are the same
+ * two words on screen, and so the same answer here.
+ *
+ * Takes the options rather than their labels so no caller can reach a
+ * different reading of what an option's label IS.
+ *
+ * Trimming settles one question only, and it is not the comparison: whether
+ * anybody has WRITTEN this label. A label of nothing but spaces is a choice a
+ * participant cannot read rather than one they cannot tell from another, so it
+ * is passed over here and left to the rules about an unfinished list. Every
+ * label that IS written is then compared as it was typed, padding and all —
+ * `Close` and `Close ` are two options as far as this rule is concerned. That
+ * is deliberate, and `canonical-text.test.ts` says why: the rule is asked by
+ * four surfaces at once, one of them the row cell that tells the researcher
+ * WHICH two options clash, and a rule that trimmed only here would refuse a
+ * save with nothing on screen saying what to fix.
+ */
+export const hasDuplicateOptionLabels = (options: unknown): boolean => {
+  const seen = new Set<string>();
+
+  return (Array.isArray(options) ? options : []).some((option) => {
+    const label =
+      typeof option === 'object' && option !== null
+        ? Reflect.get(option, 'label')
+        : undefined;
+    if (isUnwrittenLabel(label)) return false;
+
+    const comparable = normalizeForComparison(String(label));
+    if (seen.has(comparable)) return true;
+    seen.add(comparable);
+    return false;
+  });
+};

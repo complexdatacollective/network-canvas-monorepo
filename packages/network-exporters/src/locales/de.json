@@ -1,0 +1,6 @@
+{
+  "networkExporters.stage.fetching": "Interviewdaten werden abgerufen…",
+  "networkExporters.stage.formatting": "Sitzungen werden formatiert…",
+  "networkExporters.stage.generating": "Dateien werden erstellt…",
+  "networkExporters.stage.outputting": "Ausgabe wird geschrieben…"
+}

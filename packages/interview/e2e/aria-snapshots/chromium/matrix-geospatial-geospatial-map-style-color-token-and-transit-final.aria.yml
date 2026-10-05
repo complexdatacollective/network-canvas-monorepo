@@ -4,13 +4,14 @@
   - button "Recenter Map"
   - status:
     - heading "Where does this person currently live?" [level=4]
-  - button "Mohammad Crist"
+  - button "Nikita Crist"
   - button "Outside Selectable Areas"
   - region "Map"
   - button "Toggle attribution"
   - link "Mapbox homepage":
     - /url: https://www.mapbox.com/
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

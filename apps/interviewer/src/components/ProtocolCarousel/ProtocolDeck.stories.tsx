@@ -31,7 +31,9 @@ function makeProtocol(name: string, description: string): ProtocolWithCounts {
 }
 
 async function uploadProtocolFile(canvas: ReturnType<typeof within>) {
-  const fileInput = canvas.getByLabelText('Choose a .netcanvas protocol file');
+  const fileInput = await canvas.findByLabelText(
+    'Choose a .netcanvas protocol file',
+  );
   if (!(fileInput instanceof HTMLInputElement)) {
     throw new Error('protocol import file input not found');
   }
@@ -261,6 +263,10 @@ export const KeyboardNavigation: Story = {
     const canvas = within(canvasElement);
     const dots = await canvas.findAllByLabelText(/Go to card/);
     await expect(dots).toHaveLength(4);
+
+    // The navigation renders before ResizeObserver gives the deck its first
+    // nonzero height. Wait for the real import card before activating it.
+    await canvas.findByLabelText('Choose a .netcanvas protocol file');
 
     await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
     await waitFor(() =>

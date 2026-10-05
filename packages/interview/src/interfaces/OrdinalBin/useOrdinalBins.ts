@@ -1,3 +1,5 @@
+'use client';
+
 import { invariant, isNil } from 'es-toolkit';
 
 import type { Stage } from '@codaco/protocol-validation';

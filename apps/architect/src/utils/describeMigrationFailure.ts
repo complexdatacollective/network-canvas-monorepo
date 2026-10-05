@@ -1,3 +1,36 @@
+import {
+  type IntlShape,
+  createAppIntl,
+  createMessageError,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+
+const utilityMessages = defineMessages({
+  twoAttributesShareAName: {
+    id: 'architect.utility.utils.describeMigrationFailure.twoAttributesShareAName',
+    defaultMessage: 'Two attributes share a name',
+    description: 'The title text in utils / describeMigrationFailure.',
+  },
+  thatWasAllowedWhen: {
+    id: 'architect.utility.utils.describeMigrationFailure.thatWasAllowedWhen',
+    defaultMessage:
+      '{location, select, ego {Two attributes on the interviewee are both named "{name}".} named {Two attributes on "{ownerLabel}" are both named "{name}".} other {Two attributes are both named "{name}".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.',
+    description: 'The message text in utils / describeMigrationFailure.',
+  },
+  failedToOpenProtocol: {
+    id: 'architect.utility.utils.describeMigrationFailure.failedToOpenProtocol',
+    defaultMessage: 'Failed to Open Protocol',
+    description: 'The title text in utils / describeMigrationFailure.',
+  },
+  thisProtocolCouldNotBeBrought: {
+    id: 'architect.utility.utils.describeMigrationFailure.thisProtocolCouldNotBeBrought',
+    defaultMessage:
+      'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
+    description: 'The message text in utils / describeMigrationFailure.',
+  },
+});
+
+const defaultIntl = createAppIntl({ locale: 'en' });
 /**
  * Turns a thrown migration failure into something a researcher can act on.
  *
@@ -52,11 +85,11 @@ const countNamed = (owner: unknown, name: string): number => {
 const locateCollision = (
   protocol: unknown,
   name: string,
-): string | undefined => {
+): { location: 'ego' | 'named'; ownerLabel?: string } | undefined => {
   const codebook = isRecord(protocol) ? protocol.codebook : undefined;
   if (!isRecord(codebook)) return undefined;
 
-  if (countNamed(codebook.ego, name) > 1) return 'the interviewee';
+  if (countNamed(codebook.ego, name) > 1) return { location: 'ego' };
 
   for (const entity of ['node', 'edge'] as const) {
     const types = codebook[entity];
@@ -65,7 +98,7 @@ const locateCollision = (
       if (countNamed(type, name) > 1) {
         const label =
           isRecord(type) && typeof type.name === 'string' ? type.name : entity;
-        return `"${label}"`;
+        return { location: 'named', ownerLabel: label };
       }
     }
   }
@@ -75,31 +108,33 @@ const locateCollision = (
 /**
  * A researcher-facing title and message for a migration that threw.
  *
- * Falls back to the underlying reason rather than a generic sentence: even an
- * unrecognised failure is more actionable when it says what the check objected
- * to.
+ * Unknown failures receive complete actionable guidance. The original reason
+ * is retained separately for the labelled technical disclosure.
  */
 export const describeMigrationFailure = (
   error: Error,
   protocol: unknown,
-): { title: string; message: string } => {
+  _intl: IntlShape = defaultIntl,
+): { title: string; message: string; detail?: string } => {
   const duplicate = DUPLICATE_NAME.exec(error.message);
 
   if (duplicate?.[1]) {
     const name = duplicate[1];
     const where = locateCollision(protocol, name);
-    const subject = where
-      ? `Two attributes on ${where} are both named "${name}"`
-      : `Two attributes are both named "${name}"`;
-
     return {
-      title: 'Two attributes share a name',
-      message: `${subject}. That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.`,
+      title: createMessageError(utilityMessages.twoAttributesShareAName),
+      message: createMessageError(utilityMessages.thatWasAllowedWhen, {
+        location: where?.location ?? 'unknown',
+        ownerLabel: where?.ownerLabel ?? '',
+        name,
+      }),
+      detail: error.message,
     };
   }
 
   return {
-    title: 'Failed to Open Protocol',
-    message: `This protocol could not be brought up to date. ${error.message}`,
+    title: createMessageError(utilityMessages.failedToOpenProtocol),
+    message: createMessageError(utilityMessages.thisProtocolCouldNotBeBrought),
+    detail: error.message,
   };
 };

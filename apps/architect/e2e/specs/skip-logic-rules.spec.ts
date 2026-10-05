@@ -20,10 +20,12 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
  * of the accessible-name algorithm rather than of the DOM.
  */
 
+// The rule builder's own description of a card, which is what its Edit
+// control is named after.
 const FLAGGED_RULE =
-  'person where boolean attribute flagged is exactly equal to true';
+  'person where flagged (attribute type: boolean) is exactly equal to true';
 const HIGHLIGHTED_RULE =
-  'person where boolean attribute highlighted is exactly equal to true';
+  'person where highlighted (attribute type: boolean) is exactly equal to true';
 
 test('skip-logic rule cards carry valid, distinct semantics', async ({
   architectPage,
@@ -55,22 +57,39 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
     join: 'Any rule',
   });
 
-  const section = editor.section('Skip Logic');
+  const section = editor.section('Skip logic');
   const rules = editor.field('skipLogic.filter');
 
-  // The rule builder is the required group targeted by the visible field
-  // label; the label used to point at nothing at all.
+  // The rule builder is the group targeted by the visible field label; the
+  // label used to point at nothing at all. `group` is not a role that may
+  // carry `aria-required` (axe reports it as `aria-allowed-attr`), so the
+  // requirement has to be announced by the description the group names.
   expect(
     await rules.evaluate((element) => {
       const label = element.querySelector('label');
       const target = label && document.getElementById(label.htmlFor);
+      const description = (target?.getAttribute('aria-describedby') ?? '')
+        .split(' ')
+        .filter(Boolean)
+        .map((id) => document.getElementById(id)?.textContent ?? '')
+        .join(' ');
       return {
         role: target?.getAttribute('role') ?? null,
         required: target?.getAttribute('aria-required') ?? null,
+        describedAsRequired: /Required/.test(description),
       };
     }),
-  ).toEqual({ role: 'group', required: 'true' });
-  await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(2);
+  ).toEqual({ role: 'group', required: null, describedAsRequired: true });
+  const ruleItems = rules.getByRole('list').getByRole('listitem');
+  await expect(ruleItems).toHaveCount(2);
+
+  for (const item of await ruleItems.all()) {
+    await expect(item.getByText('or', { exact: true })).toHaveCount(0);
+    await expect(item.getByText('and', { exact: true })).toHaveCount(0);
+  }
+  await expect(
+    section.getByRole('radio', { name: 'Any rule can match', exact: true }),
+  ).toBeChecked();
 
   for (const sentence of [FLAGGED_RULE, HIGHLIGHTED_RULE]) {
     await expect(
@@ -125,7 +144,7 @@ test('network-filter rules use the same editable-list workflow', async ({
     ],
   });
 
-  const section = editor.section('Filter');
+  const section = editor.section('Stage filter');
   const rules = editor.field('filter');
 
   await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(1);

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../../generateNetwork';
-import { collectBinOnlyVariables } from '../binOnlyVariables';
-import { SyntheticDataConstraintError } from '../error';
+import { generateNetwork } from '../../../generateNetwork.ts';
+import { collectBinOnlyVariables } from '../binOnlyVariables.ts';
+import { SyntheticDataConstraintError } from '../error.ts';
 
 /** Three people, so a two-value `unique` space is one short of the count. */
 const nameGenerator = {

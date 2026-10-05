@@ -18,6 +18,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   build:
     strategy:
@@ -35,7 +40,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -75,16 +80,16 @@ jobs:
       # appear (macOS/Linux; Windows runs the sweep only). Either check would
       # have blocked the broken 6.6.0 releases, where `files` exclusions
       # stripped runtime modules from the asar and the apps crashed at
-      # launch. See scripts/verify-packaged-app.mjs.
+      # launch. See scripts/release/verify-packaged-app.mjs.
       - name: Verify packaged app
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/${{ matrix.app }}
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/${{ matrix.app }}
           else
-            node scripts/verify-packaged-app.mjs --app apps/${{ matrix.app }}
+            node scripts/release/verify-packaged-app.mjs --app apps/${{ matrix.app }}
           fi
       # Upload only the distributable installers + autoupdate metadata, NOT
       # electron-builder's unpacked app directories (mac/, mac-arm64/,

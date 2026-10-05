@@ -1,244 +1,143 @@
-import type * as React from 'react';
+import { type useRender as UseRender, useRender } from '@base-ui/react';
+import * as React from 'react';
 
-import { cva, cx, type VariantProps } from './utils/cva';
-
-const BADGE_BASE_CLASSES =
-  'inline-flex shrink items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors';
-
-type ThemeColorStyle = {
-  color: string;
-  contrast: string;
-  label?: string;
-};
+import { type PaletteColor, paletteColorStyles } from './styles/palette';
+import { cva, type VariantProps } from './utils/cva';
 
 const badgeVariants = cva({
-  base: BADGE_BASE_CLASSES,
+  base: 'inline-flex shrink items-center rounded-full border font-semibold',
   variants: {
-    variant: {
-      default:
-        'bg-primary text-primary-contrast hover:bg-primary/80 border-transparent',
-      secondary:
-        'bg-secondary text-secondary-contrast hover:bg-secondary/80 border-transparent',
-      destructive:
-        'bg-destructive text-destructive-contrast hover:bg-destructive/80 border-transparent',
-      outline: 'text-current',
+    size: {
+      sm: 'text-2xs gap-1 px-2 py-0.5',
+      md: 'gap-1.5 px-2.5 py-0.5 text-xs',
+      lg: 'gap-2 px-3 py-1.5 text-sm',
+    },
+    tone: {
+      neutral: '[--badge-color:var(--neutral)]',
+      primary: '[--badge-color:var(--primary)]',
+      secondary: '[--badge-color:var(--secondary)]',
+      accent: '[--badge-color:var(--accent)]',
+      info: '[--badge-color:var(--info)]',
+      success: '[--badge-color:var(--success)]',
+      warning: '[--badge-color:var(--warning)]',
+      destructive: '[--badge-color:var(--destructive)]',
+    },
+    appearance: {
+      filled:
+        'border-transparent bg-(--badge-color) text-(--badge-contrast,contrast-color(var(--badge-color)))',
+      outline: '',
+    },
+    colored: {
+      true: '',
+      false: '',
+    },
+    mono: {
+      true: 'font-monospace',
+      false: '',
+    },
+    uppercase: {
+      true: 'uppercase',
+      false: '',
     },
   },
+  compoundVariants: [
+    { appearance: 'outline', colored: false, className: 'text-current' },
+    {
+      appearance: 'outline',
+      colored: true,
+      className:
+        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--published-text)',
+    },
+    { uppercase: true, size: 'sm', className: 'tracking-wide' },
+    { uppercase: true, size: ['md', 'lg'], className: 'tracking-widest' },
+  ],
   defaultVariants: {
-    variant: 'default',
+    size: 'md',
+    tone: 'primary',
+    appearance: 'filled',
+    colored: false,
+    mono: false,
+    uppercase: false,
   },
 });
 
-const themeColorStyles = {
-  'white': {
-    color: 'var(--color-white)',
-    contrast: 'var(--text)',
-    label: 'var(--text)',
-  },
-  'black': {
-    color: 'var(--color-black)',
-    contrast: 'var(--color-white)',
-  },
-  'neon-coral': {
-    color: 'var(--color-neon-coral)',
-    contrast: 'var(--color-white)',
-  },
-  'neon-coral-dark': {
-    color: 'var(--color-neon-coral-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'sea-green': {
-    color: 'var(--color-sea-green)',
-    contrast: 'var(--color-white)',
-  },
-  'sea-green-dark': {
-    color: 'var(--color-sea-green-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'slate-blue': {
-    color: 'var(--color-slate-blue)',
-    contrast: 'var(--color-white)',
-  },
-  'slate-blue-dark': {
-    color: 'var(--color-slate-blue-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'navy-taupe': {
-    color: 'var(--color-navy-taupe)',
-    contrast: 'var(--color-white)',
-  },
-  'navy-taupe-dark': {
-    color: 'var(--color-navy-taupe-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'cyber-grape': {
-    color: 'var(--color-cyber-grape)',
-    contrast: 'var(--color-white)',
-  },
-  'cyber-grape-dark': {
-    color: 'var(--color-cyber-grape-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'mustard': {
-    color: 'var(--color-mustard)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'mustard-dark': {
-    color: 'var(--color-mustard-dark)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'rich-black': {
-    color: 'var(--color-rich-black)',
-    contrast: 'var(--color-white)',
-  },
-  'rich-black-dark': {
-    color: 'var(--color-rich-black-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'charcoal': {
-    color: 'var(--color-charcoal)',
-    contrast: 'var(--color-white)',
-  },
-  'charcoal-dark': {
-    color: 'var(--color-charcoal-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'platinum': {
-    color: 'var(--color-platinum)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'platinum-dark': {
-    color: 'var(--color-platinum-dark)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'sea-serpent': {
-    color: 'var(--color-sea-serpent)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'sea-serpent-dark': {
-    color: 'var(--color-sea-serpent-dark)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'purple-pizazz': {
-    color: 'var(--color-purple-pizazz)',
-    contrast: 'var(--color-white)',
-  },
-  'purple-pizazz-dark': {
-    color: 'var(--color-purple-pizazz-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'paradise-pink': {
-    color: 'var(--color-paradise-pink)',
-    contrast: 'var(--color-white)',
-  },
-  'paradise-pink-dark': {
-    color: 'var(--color-paradise-pink-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'cerulean-blue': {
-    color: 'var(--color-cerulean-blue)',
-    contrast: 'var(--color-white)',
-  },
-  'cerulean-blue-dark': {
-    color: 'var(--color-cerulean-blue-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'kiwi': {
-    color: 'var(--color-kiwi)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'kiwi-dark': {
-    color: 'var(--color-kiwi-dark)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'neon-carrot': {
-    color: 'var(--color-neon-carrot)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'neon-carrot-dark': {
-    color: 'var(--color-neon-carrot-dark)',
-    contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
-  },
-  'barbie-pink': {
-    color: 'var(--color-barbie-pink)',
-    contrast: 'var(--color-white)',
-  },
-  'barbie-pink-dark': {
-    color: 'var(--color-barbie-pink-dark)',
-    contrast: 'var(--color-white)',
-  },
-  'tomato': {
-    color: 'var(--color-tomato)',
-    contrast: 'var(--color-white)',
-  },
-  'tomato-dark': {
-    color: 'var(--color-tomato-dark)',
-    contrast: 'var(--color-white)',
-  },
-} satisfies Record<string, ThemeColorStyle>;
+type BadgeVariantProps = VariantProps<typeof badgeVariants>;
 
-type BadgeColor = keyof typeof themeColorStyles;
+type BadgeTone = NonNullable<BadgeVariantProps['tone']>;
+type BadgeAppearance = NonNullable<BadgeVariantProps['appearance']>;
+type BadgeSize = NonNullable<BadgeVariantProps['size']>;
+type BadgeColor = PaletteColor;
+
+const BADGE_COLORS = Object.keys(paletteColorStyles) as readonly BadgeColor[];
 
 type BadgeStyle = React.CSSProperties & {
   '--badge-color'?: string;
-  '--badge-contrast'?: string;
-  '--badge-label'?: string;
 };
 
-type BadgeProps = object &
-  Omit<React.HTMLAttributes<HTMLDivElement>, 'color'> &
-  VariantProps<typeof badgeVariants> & {
-    color?: BadgeColor;
-  };
+type BadgeProps = Omit<React.HTMLAttributes<HTMLElement>, 'color'> & {
+  tone?: BadgeTone;
+  appearance?: BadgeAppearance;
+  size?: BadgeSize;
+  mono?: boolean;
+  uppercase?: boolean;
+  icon?: React.ReactNode;
+  color?: BadgeColor;
+  render?: UseRender.RenderProp;
+};
 
-const themedBadgeVariants = cva({
-  base: BADGE_BASE_CLASSES,
-  variants: {
-    variant: {
-      filled:
-        'border-transparent bg-(--badge-color) text-(--badge-contrast) hover:bg-[color-mix(in_oklab,var(--badge-color)_85%,var(--color-black)_15%)]',
-      outline:
-        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--badge-label) hover:bg-[color-mix(in_oklab,var(--badge-color)_24%,transparent)]',
-    },
+const Badge = React.forwardRef<HTMLElement, BadgeProps>(function Badge(
+  {
+    tone,
+    appearance,
+    size,
+    mono,
+    uppercase,
+    icon,
+    color,
+    render,
+    className,
+    style,
+    children,
+    ...props
   },
-});
-
-function Badge({ className, color, variant, style, ...props }: BadgeProps) {
-  const colorVariant = variant === 'outline' ? 'outline' : 'filled';
-  const colorStyle: ThemeColorStyle | null = color
-    ? themeColorStyles[color]
-    : null;
-  const badgeStyle: BadgeStyle | undefined = colorStyle
-    ? {
-        ...style,
-        '--badge-color': colorStyle.color,
-        '--badge-contrast': colorStyle.contrast,
-        '--badge-label': colorStyle.label ?? colorStyle.color,
-      }
+  ref,
+) {
+  const badgeStyle: BadgeStyle | undefined = color
+    ? { ...style, '--badge-color': paletteColorStyles[color].color }
     : style;
 
-  return (
-    <div
-      className={cx(
-        color
-          ? themedBadgeVariants({ variant: colorVariant })
-          : badgeVariants({ variant }),
+  return useRender({
+    render,
+    ref,
+    props: {
+      className: badgeVariants({
+        tone,
+        appearance,
+        colored: color !== undefined || tone !== undefined,
+        size,
+        mono,
+        uppercase,
         className,
-      )}
-      style={badgeStyle}
-      {...props}
-    />
-  );
-}
+      }),
+      style: badgeStyle,
+      children: (
+        <>
+          {icon}
+          {children}
+        </>
+      ),
+      ...props,
+    },
+    defaultTagName: 'div',
+  });
+});
 
-export { Badge, type BadgeColor };
+export {
+  Badge,
+  BADGE_COLORS,
+  type BadgeAppearance,
+  type BadgeColor,
+  type BadgeProps,
+  type BadgeSize,
+  type BadgeTone,
+};

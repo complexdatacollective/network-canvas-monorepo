@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { InheritancePattern } from '@codaco/shared-consts';
+import type { InheritancePattern } from '@codaco/protocol-validation';
 
 import { buildComprehensivePedigree } from '../comprehensivePedigreeFixture';
 import { computeStatuses } from '../genetics/computeStatuses';

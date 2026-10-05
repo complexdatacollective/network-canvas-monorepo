@@ -6,6 +6,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
+import {
+  closeStageDraft,
+  publishStageDraft,
+  readStageDraft,
+} from '~/components/StageEditor/stageDraftBeacon';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
@@ -16,12 +21,6 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft, {
-  draftTimelineActions,
-  setLiveValues,
-  type StageEditorDraftPresent,
-} from '~/ducks/modules/stageEditorDraft';
-import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import type { ProtocolTabLock } from '~/utils/protocolTabLock';
 
 import { useProtocolTabLock } from '../useProtocolTabLock';
@@ -98,14 +97,12 @@ const savedProtocol: CurrentProtocol = {
 
 const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
 
-// The draft as the stage editor opens it: the committed stage plus the editor's
-// private copy of the codebook it opened on (#1382).
-const draftPresent: StageEditorDraftPresent = {
-  stage,
-  codebook: protocol.codebook,
-};
-
 const editedStage = { ...stage, label: 'A, edited' } as Stage;
+
+/** What the stage editor's chrome publishes while it is open and untouched. */
+const openPristineStageDraft = () => {
+  publishStageDraft(stage, { label: 'A' }, { label: 'A' });
+};
 
 const createTestStore = () =>
   configureStore({
@@ -113,7 +110,6 @@ const createTestStore = () =>
       app,
       protocols,
       protocolValidation,
-      stageEditorDraft,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });
@@ -129,11 +125,10 @@ const makeRefresh = () =>
     return 'restored';
   });
 
-// Opens a stage editor draft and puts a real edit into it, the way the stage
-// form bridge does: seed the baseline, then mirror changed form values.
-const openDirtyStageDraft = (store: TestStore) => {
-  store.dispatch(draftTimelineActions.reset(draftPresent));
-  store.dispatch(setLiveValues(editedStage));
+// A stage editor with a real edit in it, exactly as its own chrome publishes
+// one: the document on screen, against the document it opened on.
+const openDirtyStageDraft = () => {
+  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
 };
 
 // A nested editor — a new-variable window, an entity-type dialog, an array-row
@@ -173,6 +168,7 @@ describe('useProtocolTabLock', () => {
   beforeEach(() => {
     mockLocation.mockReturnValue('/protocol');
     mockBrowserNavigate.mockClear();
+    closeStageDraft();
   });
 
   it('claims the active protocol while on a /protocol route', () => {
@@ -322,12 +318,12 @@ describe('useProtocolTabLock', () => {
       store.dispatch(setActiveProtocol(protocol));
     });
     act(() => {
-      openDirtyStageDraft(store);
+      openDirtyStageDraft();
     });
     act(() => {
       fake.fireExclusivity(false);
     });
-    expect(getLiveStageDraftDirty(store.getState())).toBe(true);
+    expect(readStageDraft().dirty).toBe(true);
 
     await act(async () => {
       fake.fireExclusivity(true);
@@ -336,8 +332,8 @@ describe('useProtocolTabLock', () => {
 
     // The draft is still there, and still dirty: nothing was decided for the
     // researcher.
-    expect(store.getState().stageEditorDraft.history.present).not.toBeNull();
-    expect(getLiveStageDraftDirty(store.getState())).toBe(true);
+    expect(readStageDraft().open).toBe(true);
+    expect(readStageDraft().dirty).toBe(true);
     expect(refreshActiveProtocol).not.toHaveBeenCalled();
   });
 
@@ -354,7 +350,7 @@ describe('useProtocolTabLock', () => {
       store.dispatch(setActiveProtocol(protocol));
     });
     act(() => {
-      openDirtyStageDraft(store);
+      openDirtyStageDraft();
     });
     act(() => {
       fake.fireExclusivity(false);
@@ -386,7 +382,7 @@ describe('useProtocolTabLock', () => {
       store.dispatch(setActiveProtocol(protocol));
     });
     act(() => {
-      openDirtyStageDraft(store);
+      openDirtyStageDraft();
     });
     act(() => {
       fake.fireExclusivity(false);
@@ -398,7 +394,8 @@ describe('useProtocolTabLock', () => {
     expect(refreshActiveProtocol).not.toHaveBeenCalled();
 
     await act(async () => {
-      store.dispatch(draftTimelineActions.reset(null));
+      // The editor unmounting is what takes the draft away.
+      closeStageDraft();
       await Promise.resolve();
     });
 
@@ -409,10 +406,10 @@ describe('useProtocolTabLock', () => {
     );
   });
 
-  // A pristine editor has nothing to weigh against the saved copy, but it still
-  // cannot survive the reload: replacing the buffer empties the draft's
-  // baseline, leaving a mounted form that reports itself unchanged and can
-  // never be saved. Close it and return to the stage list instead.
+  // A pristine editor has nothing to weigh against the saved copy, but it
+  // still cannot survive the reload: the stage it opened on is replaced
+  // underneath it, leaving a form seeded from a version of the protocol that
+  // is gone. Close it and return to the stage list instead.
   it('closes a pristine stage editor rather than reloading underneath it', async () => {
     const fake = makeFakeLock();
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
@@ -423,13 +420,13 @@ describe('useProtocolTabLock', () => {
       store.dispatch(setActiveProtocol(protocol));
     });
     act(() => {
-      // Seeded, never typed into.
-      store.dispatch(draftTimelineActions.reset(draftPresent));
+      // Open, never typed into.
+      openPristineStageDraft();
     });
     act(() => {
       fake.fireExclusivity(false);
     });
-    expect(getLiveStageDraftDirty(store.getState())).toBe(false);
+    expect(readStageDraft().dirty).toBe(false);
 
     await act(async () => {
       fake.fireExclusivity(true);
@@ -437,7 +434,8 @@ describe('useProtocolTabLock', () => {
     });
 
     expect(refreshActiveProtocol).toHaveBeenCalledTimes(1);
-    expect(store.getState().stageEditorDraft.history.present).toBeNull();
+    // Leaving the route IS closing the editor: the draft lives in that form
+    // and nowhere else, so there is nothing else to clear.
     expect(mockBrowserNavigate).toHaveBeenCalledWith('/protocol', {
       replace: true,
     });
@@ -458,7 +456,7 @@ describe('useProtocolTabLock', () => {
       store.dispatch(setActiveProtocol(protocol));
     });
     act(() => {
-      openDirtyStageDraft(store);
+      openDirtyStageDraft();
     });
     act(() => {
       fake.fireExclusivity(false);
@@ -470,13 +468,13 @@ describe('useProtocolTabLock', () => {
     expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
 
     await act(async () => {
-      // The undo itself: the form is back at the values it opened on, so the
-      // bridge mirrors those. The draft session is still open.
-      store.dispatch(setLiveValues(stage));
+      // The undo itself: the form is back at the values it opened on, and the
+      // editor publishes those. It is still open.
+      openPristineStageDraft();
       await Promise.resolve();
     });
 
-    expect(getLiveStageDraftDirty(store.getState())).toBe(false);
+    expect(readStageDraft().dirty).toBe(false);
     expect(refreshActiveProtocol).toHaveBeenCalledTimes(1);
     expect(getProtocolLockState(store.getState())).toBe('owned');
   });
@@ -564,14 +562,14 @@ describe('useProtocolTabLock', () => {
     act(() => {
       store.dispatch(setActiveProtocolId('p1'));
       store.dispatch(setActiveProtocol(protocol));
-      // Seeded, never typed into: the stage form itself has nothing to lose.
-      store.dispatch(draftTimelineActions.reset(draftPresent));
+      // Open, never typed into: the stage form itself has nothing to lose.
+      openPristineStageDraft();
     });
     openNestedEditor();
     act(() => {
       fake.fireExclusivity(false);
     });
-    expect(getLiveStageDraftDirty(store.getState())).toBe(false);
+    expect(readStageDraft().dirty).toBe(false);
 
     await act(async () => {
       fake.fireExclusivity(true);
@@ -579,7 +577,7 @@ describe('useProtocolTabLock', () => {
     });
 
     expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
-    expect(store.getState().stageEditorDraft.history.present).not.toBeNull();
+    expect(readStageDraft().open).toBe(true);
     expect(mockBrowserNavigate).not.toHaveBeenCalled();
     expect(refreshActiveProtocol).not.toHaveBeenCalled();
   });

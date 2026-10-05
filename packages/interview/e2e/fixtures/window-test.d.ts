@@ -5,7 +5,6 @@ import type { FinishBehavior } from '../host/src/mockCallbacks.js';
 declare global {
   // `interface` is required (not `type`) so this declaration MERGES with
   // the global Window from lib.dom.d.ts.
-  // biome-ignore lint/style/useConsistentTypeDefinitions: declaration merging
   interface Window {
     __test: {
       installProtocol(protocol: ProtocolPayload): void;
@@ -25,6 +24,7 @@ declare global {
       rejectManualFinish(message: string): void;
       getFinishCalls(): { interviewId: string; aborted: boolean }[];
       setAllowStageNavigation(enabled: boolean): void;
+      setRequestedLocale(locale: string | readonly string[] | null): void;
     };
     __e2eMap?: {
       getSource(id: string): unknown;

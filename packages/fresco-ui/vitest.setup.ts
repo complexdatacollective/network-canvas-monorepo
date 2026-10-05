@@ -111,6 +111,43 @@ class ResizeObserverMock implements ResizeObserver {
 global.ResizeObserver = ResizeObserverMock;
 
 // ---------------------------------------------------------------------------
+// Range measurement and hit testing
+// ---------------------------------------------------------------------------
+// jsdom lays nothing out, so it can answer neither where a Range is nor what
+// sits under a point. The rich text editor asks both after every document
+// change, to keep the caret in view. Left unanswered the question throws out
+// of the editor's own transaction, and a test that types watches the
+// keystrokes land in the DOM while the value never changes — a failure that
+// reads as the field being broken rather than as a missing shim. Answered by
+// borrowing the element measurement jsdom does implement: nothing reads the
+// numbers, what matters is that asking succeeds.
+function bodyClientRects(this: Range) {
+  return document.body.getClientRects();
+}
+
+function bodyBoundingClientRect(this: Range) {
+  return document.body.getBoundingClientRect();
+}
+
+// Nothing is under the point, and in a document with no layout that is a
+// truthful answer.
+function nothingAtPoint() {
+  return null;
+}
+
+if (typeof Range.prototype.getClientRects !== 'function') {
+  Range.prototype.getClientRects = bodyClientRects;
+}
+
+if (typeof Range.prototype.getBoundingClientRect !== 'function') {
+  Range.prototype.getBoundingClientRect = bodyBoundingClientRect;
+}
+
+if (typeof document.elementFromPoint !== 'function') {
+  document.elementFromPoint = nothingAtPoint;
+}
+
+// ---------------------------------------------------------------------------
 // Element.scrollTo polyfill
 // ---------------------------------------------------------------------------
 // jsdom doesn't implement Element.scrollTo — polyfill as a no-op so code

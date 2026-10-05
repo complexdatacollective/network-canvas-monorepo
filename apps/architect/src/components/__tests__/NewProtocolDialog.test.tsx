@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import {
   PROTOCOL_NAME_MAX_LENGTH,
-  PROTOCOL_NAME_TOO_LONG_MESSAGE,
+  PROTOCOL_NAME_TOO_LONG_MESSAGE as protocolNameTooLongDescriptor,
 } from '~/config';
 
 import NewProtocolDialog from '../NewProtocolDialog';
@@ -128,4 +129,10 @@ describe('NewProtocolDialog', () => {
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
+});
+
+const PROTOCOL_NAME_TOO_LONG_MESSAGE = createAppIntl({
+  locale: 'en',
+}).formatMessage(protocolNameTooLongDescriptor, {
+  max: PROTOCOL_NAME_MAX_LENGTH,
 });

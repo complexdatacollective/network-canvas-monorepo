@@ -1,5 +1,10 @@
+'use client';
+
 import { Minus, Plus } from 'lucide-react';
 import { forwardRef, type ReactNode, useCallback, useRef } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { IconButton } from '../../Button';
 import {
@@ -14,7 +19,7 @@ import {
   textSizeVariants,
   wrapperPaddingVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import { useFieldController } from '../Field/FieldController';
 import type { CreateFormFieldProps, FieldSlotController } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
@@ -32,79 +37,130 @@ type InputFieldSlot = ReactNode | ((field: FieldSlotController) => ReactNode);
  * retain different semantics while presenting as a field (for example, a
  * search-dialog trigger).
  */
-export const inputFieldControlVariants = compose(
-  heightVariants,
-  textSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  inlineSpacingVariants,
-  wrapperPaddingVariants,
-  proportionalLucideIconVariants,
-  stateVariants,
-  interactiveStateVariants,
-  cva({
-    base: cx(
-      'max-w-full min-w-0',
-      // `controlVariants` sets `min-w-fit` (sensible for buttons whose
-      // label should never be clipped), but combined with
-      // `field-sizing-content` on the inner `<input>` that produces a
-      // wrapper whose min-width is the input's entire content width —
-      // so pasting e.g. an UploadThing API token (~200 chars, no
-      // whitespace) causes the whole settings field to overflow its
-      // container. `min-w-0` lets flex shrink the wrapper below its
-      // intrinsic content size; combined with `min-w-0` on the inner
-      // `<input>` (see `inputVariants` below), text is clipped inside
-      // a container-sized field instead of blowing out the layout.
-      'w-auto shrink-0',
-      // Focus indication is one ring per focused element: the wrapper's
-      // `focus-styles` ring (from the composed `interactiveStateVariants`) is
-      // the inner <input>'s proxy — the input sets `focus:ring-0` and has none
-      // of its own. Slot controls render their own design-system focus ring
-      // (`Button`/`IconButton` use `focusable`), so the wrapper deliberately
-      // does NOT add a second ring on slot focus, which would double-ring.
-      //
-      // The wrapper clips to its rounded corners (`overflow-hidden` from
-      // `controlVariants`, needed for child backgrounds such as the number
-      // steppers). A focused slot button's outward offset ring (outline-offset-3
-      // + outline-2 = 5px) exceeds the ~4px vertical clearance and would be
-      // clipped, so un-clip while a slot control is focus-visible — the ring
-      // then paints in full. Number steppers instead paint an INSET ring (see
-      // `stepperButtonVariants`) so they stay fully visible without depending on
-      // this un-clip, and number fields keep their clipped corners.
-      'has-[button:focus-visible]:overflow-visible',
-      // Child buttons should have reduced height, but their icons should stay the same size
-      '[&_button]:h-10',
-    ),
-  }),
-);
+const messages = defineMessages({
+  decrease: {
+    id: 'frescoUi.inputField.decrease',
+    defaultMessage: 'Decrease value',
+    description:
+      'Accessible name of a number field’s decrement stepper, when the caller supplied none.',
+  },
+  increase: {
+    id: 'frescoUi.inputField.increase',
+    defaultMessage: 'Increase value',
+    description:
+      'Accessible name of a number field’s increment stepper, when the caller supplied none.',
+  },
+});
+
+const inputFieldOwnVariants = cva({
+  base: cx(
+    'max-w-full min-w-0',
+    // `controlVariants` sets `min-w-fit` (sensible for buttons whose
+    // label should never be clipped), but combined with
+    // `field-sizing-content` on the inner `<input>` that produces a
+    // wrapper whose min-width is the input's entire content width —
+    // so pasting e.g. an UploadThing API token (~200 chars, no
+    // whitespace) causes the whole settings field to overflow its
+    // container. `min-w-0` lets flex shrink the wrapper below its
+    // intrinsic content size; combined with `min-w-0` on the inner
+    // `<input>` (see `inputVariants` below), text is clipped inside
+    // a container-sized field instead of blowing out the layout.
+    'w-auto shrink-0',
+    // Focus indication is one ring per focused element: the wrapper's
+    // `focus-styles` ring (from the composed `interactiveStateVariants`) is
+    // the inner <input>'s proxy — the input sets `focus:ring-0` and has none
+    // of its own. Slot controls render their own design-system focus ring
+    // (`Button`/`IconButton` use `focusable`), so the wrapper deliberately
+    // does NOT add a second ring on slot focus, which would double-ring.
+    //
+    // The wrapper clips to its rounded corners (`overflow-hidden` from
+    // `controlVariants`, needed for child backgrounds such as the number
+    // steppers). A focused slot button's outward offset ring (outline-offset-3
+    // + outline-2 = 5px) exceeds the ~4px vertical clearance and would be
+    // clipped, so un-clip while a slot control is focus-visible — the ring
+    // then paints in full. Number steppers instead paint an INSET ring (see
+    // `stepperButtonVariants`) so they stay fully visible without depending on
+    // this un-clip, and number fields keep their clipped corners.
+    'has-[button:focus-visible]:overflow-visible',
+    // Child buttons should have reduced height, but their icons should stay the same size
+    '[&_button]:h-10',
+  ),
+});
+
+export const inputFieldControlVariants = cva({
+  composes: [
+    heightVariants,
+    textSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    inlineSpacingVariants,
+    wrapperPaddingVariants,
+    proportionalLucideIconVariants,
+    stateVariants,
+    interactiveStateVariants,
+    inputFieldOwnVariants,
+  ],
+});
+
+const inputOwnVariants = cva({
+  base: cx(
+    'cursor-[inherit]',
+    '[font-size:inherit]', // Ensure input inherits text size from wrapper
+    'p-0',
+    // `field-sizing-content` sets the intrinsic width to the content,
+    // so very long single-token values (e.g. an UploadThing API token)
+    // would blow out the flex parent unless we let flex shrink the
+    // input. `min-w-0` + default `shrink: 1` lets it collapse to fit
+    // the container; `grow basis-0` makes it expand to fill any
+    // remaining space when the content is short.
+    'field-sizing-content min-w-0 grow basis-0',
+    'border-none bg-transparent outline-none focus:ring-0',
+    'transition-none',
+    // Hide browser's native clear button on search inputs (we provide our own)
+    '[&::-webkit-search-cancel-button]:hidden',
+    '[&::-webkit-search-decoration]:hidden',
+    // Hide browser's native spinner on number inputs (we provide our own)
+    '[&::-webkit-outer-spin-button]:appearance-none',
+    '[&::-webkit-inner-spin-button]:appearance-none',
+    '[appearance:textfield]',
+  ),
+});
 
 // Input element when used with wrapper (prefix/suffix)
-const inputVariants = compose(
-  placeholderVariants,
-  cva({
-    base: cx(
-      'cursor-[inherit]',
-      '[font-size:inherit]', // Ensure input inherits text size from wrapper
-      'p-0',
-      // `field-sizing-content` sets the intrinsic width to the content,
-      // so very long single-token values (e.g. an UploadThing API token)
-      // would blow out the flex parent unless we let flex shrink the
-      // input. `min-w-0` + default `shrink: 1` lets it collapse to fit
-      // the container; `grow basis-0` makes it expand to fill any
-      // remaining space when the content is short.
-      'field-sizing-content min-w-0 grow basis-0',
-      'border-none bg-transparent outline-none focus:ring-0',
-      'transition-none',
-      // Hide browser's native clear button on search inputs (we provide our own)
-      '[&::-webkit-search-cancel-button]:hidden',
-      '[&::-webkit-search-decoration]:hidden',
-      // Hide browser's native spinner on number inputs (we provide our own)
-      '[&::-webkit-outer-spin-button]:appearance-none',
-      '[&::-webkit-inner-spin-button]:appearance-none',
-      '[appearance:textfield]',
-    ),
-  }),
+const inputVariants = cva({
+  composes: [placeholderVariants, inputOwnVariants],
+});
+
+// Native <input type="date"> doesn't expose its empty-state format hint via
+// ::placeholder, and :placeholder-shown doesn't match an empty date input. The
+// input itself handles Firefox's hint styling; Chromium/Safari expose their
+// native date text through ::-webkit-datetime-edit. Safari additionally
+// repaints the empty day/month/year fields with its own contrast-adjusted color
+// unless -webkit-text-fill-color pins them. Keep this on the actual <input>:
+// InputField's public className belongs to the wrapper and cannot match an
+// input-only pseudo-element.
+const emptyDateInputClass = cx(
+  'text-input-contrast/50 italic',
+  '[&::-webkit-datetime-edit]:text-input-contrast/50',
+  '[&::-webkit-datetime-edit]:italic',
+  // The Tailwind theme is inline, so --color-input-contrast is compiled away;
+  // --input-contrast is the theme-scope variable that exists at runtime.
+  '[&::-webkit-datetime-edit]:[-webkit-text-fill-color:color-mix(in_oklab,var(--input-contrast)_50%,transparent)]',
 );
+
+// The width each field size's stepper needs to stay square: the wrapper's
+// heightVariants step minus its 2px border on each edge (sm h-10 → 36px,
+// md h-12 → 44px, lg h-16 → 60px, xl h-20 → 76px). Stated outright rather
+// than left to `aspect-square` × `h-full`, both because shipped Safari
+// computes a ratio-derived flex-item width as zero and because IconButton
+// now carries its own explicit size width, which would otherwise win here.
+// Change these together with heightVariants.
+const stepperWidthBySize = {
+  sm: 'w-9!',
+  md: 'w-11!',
+  lg: 'w-15!',
+  xl: 'w-19!',
+} as const;
 
 const stepperButtonVariants = cx(
   // Steppers keep their square footprint; they must never compress when the
@@ -135,6 +191,11 @@ type InputFieldProps = CreateFormFieldProps<
     // (it reads event.nativeEvent.inputType), while InputField's own
     // onChange only passes the string value.
     nativeOnChange?: React.ChangeEventHandler<HTMLInputElement>;
+    /**
+     * Classes for the native input itself. `className` styles the surrounding
+     * control container; use this for input-only pseudo-elements or properties.
+     */
+    inputClassName?: string;
     // Fires after a stepper button or arrow key settles on a new value, in
     // addition to `onChange`. A stepped value is always complete, so callers
     // that defer committing until blur can commit these immediately — clicking
@@ -145,11 +206,16 @@ type InputFieldProps = CreateFormFieldProps<
     // "Decrease value", which are ambiguous once a screen has more than one
     // numeric field.
     stepperLabels?: { increase: string; decrease: string };
+    // Allows a controlled number field to disable only the stepper that has
+    // reached its application-defined bound while leaving the opposite
+    // direction available.
+    stepperDisabled?: { increase?: boolean; decrease?: boolean };
   }
 >;
 
 const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
   function InputField(props, ref) {
+    const intl = useAppIntl();
     const {
       prefixComponent,
       suffixComponent,
@@ -158,8 +224,10 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       value,
       onChange,
       nativeOnChange,
+      inputClassName,
       onStep,
       stepperLabels,
+      stepperDisabled,
       onKeyDown,
       type = 'text',
       inputMode,
@@ -226,7 +294,12 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           // The caller's `className` styles the wrapper (the control container),
           // not the inner input — otherwise a background/backdrop passed to the
           // field (e.g. the glass treatment) would double-apply onto the input.
-          className={inputVariants()}
+          className={inputVariants({
+            className: cx(
+              type === 'date' && !value && emptyDateInputClass,
+              inputClassName,
+            ),
+          })}
           type={type}
           inputMode={inputMode ?? (isNumber ? 'decimal' : undefined)}
           {...inputProps}
@@ -267,12 +340,14 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!canStep}
+          disabled={!canStep || stepperDisabled?.decrease}
           onClick={() => handleStep('down')}
-          aria-label={stepperLabels?.decrease ?? 'Decrease value'}
+          aria-label={
+            stepperLabels?.decrease ?? intl.formatMessage(messages.decrease)
+          }
           tabIndex={-1}
           icon={<Minus />}
-          className={stepperButtonVariants}
+          className={cx(stepperButtonVariants, stepperWidthBySize[size])}
         />
         <div
           className={cx(
@@ -290,12 +365,14 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         <IconButton
           size={size}
           color="default"
-          disabled={!canStep}
+          disabled={!canStep || stepperDisabled?.increase}
           onClick={() => handleStep('up')}
-          aria-label={stepperLabels?.increase ?? 'Increase value'}
+          aria-label={
+            stepperLabels?.increase ?? intl.formatMessage(messages.increase)
+          }
           tabIndex={-1}
           icon={<Plus />}
-          className={stepperButtonVariants}
+          className={cx(stepperButtonVariants, stepperWidthBySize[size])}
         />
       </>
     ) : (

@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+import { clickWhenDeckSettles } from '../helpers/deck.js';
+
 // Drives the real protocol-import UI: sets the hidden dropzone file input, then
 // waits for the deck card to appear. Deletion goes through the confirm dialog.
 export class ProtocolFixture {
@@ -46,9 +48,10 @@ export class ProtocolFixture {
     // both with and without reduced-motion, both mid-animation and fully
     // settled after a reload) always lands on and activates the intended
     // button. force bypasses only that pre-check, not the real click.
-    await this.page
-      .getByRole('button', { name: 'Delete Protocol' })
-      .click({ force: true });
+    await clickWhenDeckSettles(
+      this.page.getByRole('button', { name: 'Delete Protocol' }),
+      { force: true },
+    );
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await dialog.getByTestId('dialog-primary').click();

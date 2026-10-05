@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
-import { Layout } from '~/components/EditorLayout';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import PageHeading from '~/components/ProjectNav/PageHeading';
+import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
 import Codebook from '~/lib/ProtocolSummary/components/Codebook';
 import Contents from '~/lib/ProtocolSummary/components/Contents';
@@ -11,7 +13,23 @@ import Stages from '~/lib/ProtocolSummary/components/Stages';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import { getCodebookIndex } from '~/lib/ProtocolSummary/helpers';
 import { getProtocol, getProtocolName } from '~/selectors/protocol';
+import { cx } from '~/utils/cva';
+const messages = defineMessages({
+  protocolSummary: {
+    id: 'architect.pages.summaryPage.protocolSummary',
+    defaultMessage: 'Protocol Summary',
+    description: 'The title text in components / pages / SummaryPage.',
+  },
+  belowIsAComprehensiveSummaryOf: {
+    id: 'architect.pages.summaryPage.belowIsAComprehensiveSummaryOf',
+    defaultMessage:
+      'Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.',
+    description: 'The description text in components / pages / SummaryPage.',
+  },
+});
+
 const SummaryPage = () => {
+  const intl = useAppIntl();
   // Toggle a document-level class so global stylesheets can switch <html>
   // and <body> into the summary "paged" layout. The class name avoids
   // `print` because Tailwind's `print:` variant makes that token noisy to
@@ -41,21 +59,25 @@ const SummaryPage = () => {
         index,
       }}
     >
-      <Layout>
-        <div className="w-full print:hidden">
+      <div className="w-full">
+        <div className={cx(pageInsetClasses, 'w-full print:hidden')}>
           <PageHeading
-            title="Protocol Summary"
-            description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
+            title={intl.formatMessage(messages.protocolSummary)}
+            description={intl.formatMessage(
+              messages.belowIsAComprehensiveSummaryOf,
+            )}
           />
         </div>
-        <div className="protocol-summary-surface [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
+        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}
+          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook */}
           <div className="page-break-marker flex flex-col gap-6">
             <Cover />
           </div>
 
+          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- see above. */}
           <div className="page-break-marker flex break-before-page flex-col gap-6">
             <Contents />
           </div>
@@ -64,7 +86,7 @@ const SummaryPage = () => {
           <Codebook />
           <AssetManifest />
         </div>
-      </Layout>
+      </div>
     </SummaryContext.Provider>
   );
 };

@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useRef } from 'react';
 
 // Does not fire the onClick if the target moves over 5px (or whatever is passed in)

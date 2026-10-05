@@ -1,12 +1,16 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { NcEdge, NcNetwork, NcNode } from '@codaco/shared-consts';
+import {
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+  type NcEdge,
+  type NcNetwork,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { FamilyPedigreeFixture } from '../fixtures/family-pedigree-fixture.js';

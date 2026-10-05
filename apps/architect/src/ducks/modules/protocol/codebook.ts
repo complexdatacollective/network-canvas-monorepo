@@ -1,3 +1,50 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+const errorMessages = defineMessages({
+  missingName: {
+    id: 'architect.codebook.error.missingName',
+    defaultMessage: 'Enter a name for this attribute.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  missingType: {
+    id: 'architect.codebook.error.missingType',
+    defaultMessage: 'Choose a type for this attribute.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  invalidName: {
+    id: 'architect.codebook.error.invalidName',
+    defaultMessage: 'Attribute name contains no valid characters',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  duplicateName: {
+    id: 'architect.codebook.error.duplicateName',
+    defaultMessage: 'Attribute with name "{name}" already exists',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  missingAttribute: {
+    id: 'architect.codebook.error.missingAttribute',
+    defaultMessage: 'Attribute "{id}" does not exist',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  attributeInUse: {
+    id: 'architect.codebook.error.attributeInUse',
+    defaultMessage:
+      'This attribute is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+  typeInUse: {
+    id: 'architect.codebook.error.typeInUse',
+    defaultMessage:
+      'This type is in use and cannot be deleted. Remove it from the stages listed under "used in" first.',
+    description:
+      'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
+  },
+});
 import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
 import { find, get, has, isEmpty, omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
@@ -19,33 +66,13 @@ import {
 import { getIsUsed } from '~/selectors/codebook/isUsed';
 import { getEdgeIndex, getNodeIndex, utils } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
-import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 import prune from '~/utils/prune';
 import safeName from '~/utils/safeName';
 
-import { commitStageEditorDraft } from './commitStageEditorDraft';
 import { deleteStage } from './deleteStage';
-import { stageEditorCodebookMeta } from './stageEditorCodebookMeta';
 import { getNextCategoryColor } from './utils/helpers';
 
 type Entity = 'node' | 'edge' | 'ego';
-
-/**
- * Stamps a codebook slice action for the stage editor's draft copy whenever a
- * codebook transaction is open, so nothing a nested field or variable editor
- * writes reaches the canonical protocol before the stage is committed (#1382).
- *
- * Routing here rather than at each of the ~11 UI call sites keeps the decision
- * in one place, and means a new call site is transactional by default rather
- * than by remembering to opt in.
- */
-const routeCodebookAction = <T extends { type: string }>(
-  action: T,
-  state: RootState,
-): T =>
-  getStageEditorCodebookTransactionOpen(state)
-    ? { ...action, meta: stageEditorCodebookMeta }
-    : action;
 
 type CreateTypePayload<T extends EntityDefinition = EntityDefinition> = {
   entity: Entity;
@@ -101,7 +128,7 @@ export const createTypeAsync = createAppAsyncThunk(
       entity,
       configuration,
     }: { entity: Entity; configuration: Partial<EntityDefinition> },
-    { dispatch, getState },
+    { dispatch },
   ) => {
     const type = uuid();
     const payload: CreateTypePayload = {
@@ -113,12 +140,7 @@ export const createTypeAsync = createAppAsyncThunk(
       },
     };
 
-    dispatch(
-      routeCodebookAction(
-        codebookSlice.actions.createType(payload),
-        getState(),
-      ),
-    );
+    dispatch(codebookSlice.actions.createType(payload));
     return { type, entity };
   },
 );
@@ -135,15 +157,10 @@ export const updateTypeAsync = createAppAsyncThunk(
       type: string;
       configuration: Partial<EntityDefinition>;
     },
-    { dispatch, getState },
+    { dispatch },
   ) => {
     const payload: UpdateTypePayload = { entity, type, configuration };
-    dispatch(
-      routeCodebookAction(
-        codebookSlice.actions.updateType(payload),
-        getState(),
-      ),
-    );
+    dispatch(codebookSlice.actions.updateType(payload));
     return { type, entity };
   },
 );
@@ -153,8 +170,6 @@ export const createEdgeAsync = createAppAsyncThunk(
   async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
     const entity: Entity = 'edge';
     const state = getState();
-    // Draft-aware, so a colour picked inside an open stage editor accounts for
-    // edge types created earlier in the same (uncommitted) session.
     const protocol = getProtocol(state);
     const colorFromHelper = protocol
       ? getNextCategoryColor(protocol, entity)
@@ -172,9 +187,7 @@ export const createEdgeAsync = createAppAsyncThunk(
       payload.configuration.color = color as EdgeColor;
     }
 
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.createType(payload), state),
-    );
+    dispatch(codebookSlice.actions.createType(payload));
     return { type, entity };
   },
 );
@@ -190,11 +203,11 @@ export const createVariableAsync = createAppAsyncThunk(
     { dispatch, getState },
   ) => {
     if (!configuration.name) {
-      throw new Error('Cannot create a new attribute without a name');
+      throw new Error(createMessageError(errorMessages.missingName));
     }
 
     if (!configuration.type) {
-      throw new Error('Cannot create a new attribute without a type');
+      throw new Error(createMessageError(errorMessages.missingType));
     }
 
     const safeConfiguration = prune({
@@ -203,7 +216,7 @@ export const createVariableAsync = createAppAsyncThunk(
     }) as Variable;
 
     if (isEmpty(safeConfiguration.name)) {
-      throw new Error('Attribute name contains no valid characters');
+      throw new Error(createMessageError(errorMessages.invalidName));
     }
 
     const state = getState();
@@ -215,7 +228,9 @@ export const createVariableAsync = createAppAsyncThunk(
     // We can't use same variable name twice.
     if (variableNameExists) {
       throw new Error(
-        `Attribute with name "${safeConfiguration.name}" already exists`,
+        createMessageError(errorMessages.duplicateName, {
+          name: safeConfiguration.name,
+        }),
       );
     }
 
@@ -227,14 +242,12 @@ export const createVariableAsync = createAppAsyncThunk(
       configuration: safeConfiguration,
     };
 
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.createVariable(payload), state),
-    );
+    dispatch(codebookSlice.actions.createVariable(payload));
     return { entity, type, variable };
   },
 );
 
-export const updateVariableAsync = createAppAsyncThunk(
+const updateVariableAsync = createAppAsyncThunk(
   'codebook/updateVariableAsync',
   async (
     {
@@ -253,7 +266,9 @@ export const updateVariableAsync = createAppAsyncThunk(
     { dispatch, getState },
   ) => {
     if (!variable) {
-      throw new Error('No variable provided to updateVariable()!');
+      throw new Error(
+        createMessageError(errorMessages.missingAttribute, { id: variable }),
+      );
     }
 
     const state = getState();
@@ -266,7 +281,9 @@ export const updateVariableAsync = createAppAsyncThunk(
       );
 
       if (!variableExists) {
-        throw new Error(`Variable "${variable}" does not exist`);
+        throw new Error(
+          createMessageError(errorMessages.missingAttribute, { id: variable }),
+        );
       }
     }
 
@@ -276,9 +293,7 @@ export const updateVariableAsync = createAppAsyncThunk(
       replaceProperties,
     };
 
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.updateVariable(payload), state),
-    );
+    dispatch(codebookSlice.actions.updateVariable(payload));
     return payload;
   },
 );
@@ -302,15 +317,11 @@ export const deleteVariableAsync = createAppAsyncThunk(
     // there (#1392). The message is researcher-facing: it is rendered verbatim
     // in the confirm dialog's error paragraph.
     if (get(isUsed, variable, false)) {
-      throw new Error(
-        'This attribute is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
-      );
+      throw new Error(createMessageError(errorMessages.attributeInUse));
     }
 
     const payload: DeleteVariablePayload = { entity, type, variable };
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.deleteVariable(payload), state),
-    );
+    dispatch(codebookSlice.actions.deleteVariable(payload));
   },
 );
 
@@ -350,15 +361,11 @@ export const deleteTypeAsync = createAppAsyncThunk(
     // researcher-facing: it is rendered verbatim in the confirm dialog's error
     // paragraph.
     if (getEntityTypeIsUsed(state, entity, type)) {
-      throw new Error(
-        'This type is in use and cannot be deleted. Remove it from the stages listed under "used in" first.',
-      );
+      throw new Error(createMessageError(errorMessages.typeInUse));
     }
 
     const payload: DeleteTypePayload = { entity, type };
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.deleteType(payload), state),
-    );
+    dispatch(codebookSlice.actions.deleteType(payload));
   },
 );
 
@@ -508,25 +515,15 @@ const codebookSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder
-      .addCase(deleteStage, (state, action) => {
-        if (!action.payload.clearEncryptedVariables) return;
+    builder.addCase(deleteStage, (state, action) => {
+      if (!action.payload.clearEncryptedVariables) return;
 
-        for (const nodeType of Object.values(state.node ?? {})) {
-          for (const variable of Object.values(nodeType.variables ?? {})) {
-            delete variable.encrypted;
-          }
+      for (const nodeType of Object.values(state.node ?? {})) {
+        for (const variable of Object.values(nodeType.variables ?? {})) {
+          delete variable.encrypted;
         }
-      })
-      // Promoting the stage editor's draft codebook. Replacing wholesale is
-      // what makes discard total: a variable the editor created exists only in
-      // the draft, and every property it changed (name, component, options,
-      // parameters, validation) is carried by the same object — so there is no
-      // per-property merge to get wrong in either direction.
-      .addCase(
-        commitStageEditorDraft,
-        (state, action) => action.payload.codebook ?? state,
-      );
+      }
+    });
   },
 });
 

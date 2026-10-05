@@ -12,70 +12,76 @@ import {
   interactiveStateVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
+
+const toggleButtonGroupOwnVariants = cva({
+  base: 'w-full flex-wrap items-start justify-center',
+});
 
 // Compose fieldset wrapper variants
-const toggleButtonGroupComposedVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  interactiveStateVariants,
-  cva({
-    base: 'w-full flex-wrap items-start justify-center',
-  }),
-);
+const toggleButtonGroupComposedVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    interactiveStateVariants,
+    toggleButtonGroupOwnVariants,
+  ],
+});
+
+const toggleButtonOwnVariants = cva({
+  base: cx(
+    'relative isolate inline-flex items-center justify-center',
+    'shrink-0 cursor-pointer rounded-full',
+    'overflow-hidden text-center font-medium',
+    'border-4 bg-transparent',
+    'focusable',
+    'disabled:cursor-not-allowed disabled:opacity-50',
+    'elevation-low',
+  ),
+  variants: {
+    selected: {
+      true: 'text-white',
+      false: 'text-current',
+    },
+    catColor: {
+      1: 'border-cat-1 focus-visible:outline-cat-1',
+      2: 'border-cat-2 focus-visible:outline-cat-2',
+      3: 'border-cat-3 focus-visible:outline-cat-3',
+      4: 'border-cat-4 focus-visible:outline-cat-4',
+      5: 'border-cat-5 focus-visible:outline-cat-5',
+      6: 'border-cat-6 focus-visible:outline-cat-6',
+      7: 'border-cat-7 focus-visible:outline-cat-7',
+      8: 'border-cat-8 focus-visible:outline-cat-8',
+      9: 'border-cat-9 focus-visible:outline-cat-9',
+      10: 'border-cat-10 focus-visible:outline-cat-10',
+    },
+    size: {
+      sm: 'size-24 p-2 text-xs',
+      md: 'size-36 p-3 text-sm',
+      lg: 'size-48 p-4 text-base',
+      xl: 'size-60 p-5 text-lg',
+    },
+  },
+  defaultVariants: {
+    selected: false,
+    catColor: 1,
+    size: 'md',
+  },
+});
 
 // Individual toggle button variants. Composes `inertReadOnlyVariants` (via a
 // `state` prop, distinct from the `disabled`/`catColor`/`size` variants below)
 // rather than `stateVariants`, since toggle buttons don't want stateVariants'
 // disabled background/invalid border — the native `disabled` attribute and
 // `disabled:` pseudo-classes already cover the disabled treatment.
-const toggleButtonVariants = compose(
-  inertReadOnlyVariants,
-  cva({
-    base: cx(
-      'relative isolate inline-flex items-center justify-center',
-      'shrink-0 cursor-pointer rounded-full',
-      'overflow-hidden text-center font-medium',
-      'border-4 bg-transparent',
-      'focusable',
-      'disabled:cursor-not-allowed disabled:opacity-50',
-      'elevation-low',
-    ),
-    variants: {
-      selected: {
-        true: 'text-white',
-        false: 'text-current',
-      },
-      catColor: {
-        1: 'border-cat-1 focus-visible:outline-cat-1',
-        2: 'border-cat-2 focus-visible:outline-cat-2',
-        3: 'border-cat-3 focus-visible:outline-cat-3',
-        4: 'border-cat-4 focus-visible:outline-cat-4',
-        5: 'border-cat-5 focus-visible:outline-cat-5',
-        6: 'border-cat-6 focus-visible:outline-cat-6',
-        7: 'border-cat-7 focus-visible:outline-cat-7',
-        8: 'border-cat-8 focus-visible:outline-cat-8',
-        9: 'border-cat-9 focus-visible:outline-cat-9',
-        10: 'border-cat-10 focus-visible:outline-cat-10',
-      },
-      size: {
-        sm: 'size-24 p-2 text-xs',
-        md: 'size-36 p-3 text-sm',
-        lg: 'size-48 p-4 text-base',
-        xl: 'size-60 p-5 text-lg',
-      },
-    },
-    defaultVariants: {
-      selected: false,
-      catColor: 1,
-      size: 'md',
-    },
-  }),
-);
+const toggleButtonVariants = cva({
+  composes: [inertReadOnlyVariants, toggleButtonOwnVariants],
+});
 
 // Fill indicator variants for the animated background
 const fillIndicatorVariants = cva({
@@ -143,7 +149,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   const handleToggleOption = (optionValue: string | number) => {
     if (readOnly) return;
     if (onChange) {
-      const currentValues = value ?? [];
+      const currentValues = Array.isArray(value) ? value : [];
       const isSelected = currentValues.includes(optionValue);
       const newValues = isSelected
         ? currentValues.filter((v) => v !== optionValue)
@@ -154,7 +160,8 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
 
   // Determine if this is controlled or uncontrolled
   const isControlled = value !== undefined;
-  const currentValues = isControlled ? value : (defaultValue ?? []);
+  const suppliedValues = isControlled ? value : (defaultValue ?? []);
+  const currentValues = Array.isArray(suppliedValues) ? suppliedValues : [];
 
   const getCatColorIndex = (index: number) => {
     return ((index % 10) + 1) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
@@ -163,13 +170,17 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   return (
     <fieldset
       id={id}
-      {...fieldsetProps}
+      // A `<fieldset>` is `role="group"`, which allows neither `aria-readonly`
+      // nor `aria-required`. Each toggle below carries the read-only state;
+      // the group's required-ness stays with the label's marker and the
+      // "Required" element named in `aria-describedby`, because it is the
+      // answer that is required, not any one toggle.
+      {...omitWidgetOnlyAria(fieldsetProps)}
       className={toggleButtonGroupComposedVariants({
         state: getInputState(props),
         className,
       })}
       disabled={disabled}
-      aria-readonly={readOnly || undefined}
       {...(fieldsetProps['aria-labelledby']
         ? { 'aria-labelledby': fieldsetProps['aria-labelledby'] }
         : {})}

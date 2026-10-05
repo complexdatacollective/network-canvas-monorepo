@@ -6,7 +6,7 @@ import {
   getSingleRuleFunction,
   type RuleFunctionWithMetadata,
   type SingleEdgeRule,
-} from './rules';
+} from './rules.ts';
 
 type FilterTypeNotExists = 'node_not_exists' | 'edge_not_exists';
 

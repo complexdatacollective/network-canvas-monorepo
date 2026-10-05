@@ -28,6 +28,7 @@
     - button "Jack" [pressed]
     - button "Kim"
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

@@ -6,7 +6,12 @@ import { ZodToJsonSchemaConverter } from '@orpc/zod';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
-import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
+import {
+  type AuthCapabilities,
+  type DeploymentStatus,
+  getInstanceStatus,
+  type InstallationReader,
+} from './domain.ts';
 
 // The public data API (#1248): resource-shaped REST for researchers and
 // external tools, with the normative OpenAPI 3.1 document served from within
@@ -24,6 +29,10 @@ const StatusSchema = z
   })
   // Named spec components come from Zod's registry via `.meta({ id })`.
   .meta({ id: 'Status' });
+
+// The generator defaults to OpenAPI 3.2 and downgrades to the version asked
+// for; #1248 makes 3.1 normative for this surface.
+const OPENAPI_VERSION = '3.1.2';
 
 const apiContract = {
   status: oc
@@ -48,17 +57,61 @@ const STATUS_TITLES: Record<number, string> = {
 
 const ERROR_STATUS_MAP: Record<string, number> = COMMON_ERROR_STATUS_MAP;
 
+type ConvertArgs = Parameters<ZodToJsonSchemaConverter['convert']>;
+type ConvertResult = ReturnType<ZodToJsonSchemaConverter['convert']>;
+
+// @orpc/zod stopped lifting a `.meta({ id })` schema at the root of a
+// procedure's input or output into `$defs`, so such a schema is inlined and
+// never reaches `components.schemas`, which the generator fills from root
+// `$defs`. Named models are part of the published document external tools
+// generate clients from, so lift it here instead.
+class NamedRootSchemaConverter extends ZodToJsonSchemaConverter {
+  override convert(
+    schema: ConvertArgs[0],
+    direction: ConvertArgs[1],
+  ): ConvertResult {
+    const [jsonSchema, optional] = super.convert(schema, direction);
+    const id =
+      schema === undefined
+        ? undefined
+        : z.globalRegistry.get(schema as z.ZodType)?.id;
+    if (
+      id === undefined ||
+      typeof jsonSchema !== 'object' ||
+      jsonSchema.$ref !== undefined
+    ) {
+      return [jsonSchema, optional];
+    }
+    const { $defs, ...body } = jsonSchema;
+    return [
+      {
+        $ref: `#/$defs/${id.replaceAll('~', '~0').replaceAll('/', '~1')}`,
+        $defs: { ...$defs, [id]: body },
+      },
+      optional,
+    ];
+  }
+}
+
 const generator = new OpenAPIGenerator({
-  converters: [new ZodToJsonSchemaConverter()],
+  converters: [new NamedRootSchemaConverter()],
 });
 
-export function createApiV1(auth: AuthCapabilities) {
-  // The domain's status includes auth capabilities for the SPA; this
-  // surface's Status schema deliberately does not name them, so they are
-  // stripped from the published API (output schemas are the serialization
-  // allowlist).
+export function createApiV1(
+  auth: AuthCapabilities,
+  deployment: DeploymentStatus,
+  readInstallation: InstallationReader,
+) {
+  // The domain's status includes auth capabilities, the deployment block and
+  // the first-run setup flag for the SPA; this surface's Status schema
+  // deliberately names none of them, so all three are stripped from the
+  // published API (output schemas are the serialization allowlist). The
+  // instance's own name is not stripped: it is what this surface has always
+  // reported, and first-run setup only changes where it comes from.
   const apiRouter = {
-    status: os.status.handler(() => getInstanceStatus(auth)),
+    status: os.status.handler(async () =>
+      getInstanceStatus(auth, deployment, await readInstallation()),
+    ),
   };
 
   const handler = new OpenAPIHandler(apiRouter, {
@@ -76,9 +129,10 @@ export function createApiV1(auth: AuthCapabilities) {
 
   const api = new Hono();
 
-  let doc: OpenAPIDocument | undefined;
+  let doc: OpenAPIDocument<typeof OPENAPI_VERSION> | undefined;
   api.get('/openapi.json', async (c) => {
     doc ??= await generator.generate(apiRouter, {
+      version: OPENAPI_VERSION,
       base: {
         info: {
           title: 'Network Canvas Studio API',

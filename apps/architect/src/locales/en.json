@@ -1,0 +1,3386 @@
+{
+  "architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet": {
+    "defaultMessage": "No options have been added yet.",
+    "description": "The emptyStateMessage text in components / Form / arrayFields / Options."
+  },
+  "architect.additional.form.autoFileDrop.ifYouBelieveYouAreSeeing": {
+    "defaultMessage": "If you believe you are seeing this message in error, please help us to troubleshoot this issue by creating a topic on our <ExternalLink> community website </ExternalLink> with further details.",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.additional.form.autoFileDrop.pleaseSeeOurDocumentationPageOn": {
+    "defaultMessage": "Please see our <ExternalLink> documentation page </ExternalLink> on using external data by clicking the button below.",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.additional.form.autoFileDrop.theFileYouAttemptedToImport": {
+    "defaultMessage": "The file you attempted to import contained invalid attribute names.",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.additional.form.autoFileDrop.theFileYouAttemptedToImport4c195": {
+    "defaultMessage": "The file you attempted to import is not in a format supported by Interviewer.",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.additional.form.autoFileDrop.theFileYouAttemptedToImport6eebe": {
+    "defaultMessage": "The file you attempted to import contained data with a different number of columns to the header row.",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.additional.form.autoFileDrop.viewDocumentation": {
+    "defaultMessage": "View documentation",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.additional.form.fields.variablePicker.variableSpotlight.toCreateYourFirstAttributeOf": {
+    "defaultMessage": "To create your first attribute of this type, type a name above and press enter. See our <ExternalLink> {value1} </ExternalLink> for more information.",
+    "description": "Visible text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.additional.home.libraryPanel.becauseYourWorkIsStoredLocally": {
+    "defaultMessage": "Because your work is stored locally, clearing Architect's app data, or using \"Clear all protocols\", will permanently remove it. Download the protocol as a <code>.netcanvas</code> file to save a copy or move it to another device. See our guide to <ExternalLink>saving and backing up your work</ExternalLink> for more.",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.additional.home.libraryPanel.lookingForInspirationBrowseExampleResearch": {
+    "defaultMessage": "Looking for inspiration? Browse example research protocols in the <ExternalLink>Protocol Gallery</ExternalLink>.",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.additional.home.libraryPanel.moreExamplesOfNetworkCanvasProtocols": {
+    "defaultMessage": "More examples of Network Canvas protocols can be found on our <ExternalLink>Protocol Gallery</ExternalLink>.",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.additional.newVariableWindow.newVariableWindow.createNewOption": {
+    "defaultMessage": "Create new option",
+    "description": "The addButtonLabel text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.additional.pages.assetsPage.importExternalDataResourcesToUse": {
+    "defaultMessage": "Import external data resources to use in your protocol — images, video, audio, or network data. See our <ExternalLink> documentation </ExternalLink> for more information.",
+    "description": "Visible text in components / pages / AssetsPage."
+  },
+  "architect.additional.protocolOpenDialogs.createUpgradedCopy": {
+    "defaultMessage": "Create upgraded copy",
+    "description": "The label text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.ifTheProblemPersistsReachOut": {
+    "defaultMessage": "If the problem persists, reach out on our <ExternalLink> community website. </ExternalLink>",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.ifYouChooseToContinueAn": {
+    "defaultMessage": "If you choose to continue, an upgraded copy of your protocol will be created and then opened. Your original protocol will not be changed, and can still be opened and modified using an older version of Architect. Please see our <ExternalLink> documentation on protocol schemas </ExternalLink> for more information on this topic.",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.ifYouChooseToMigrateThe": {
+    "defaultMessage": "If you choose to migrate, the following actions will be automatically performed on your protocol. Read these notes carefully, as these actions may affect your data.",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.inOrderToOpenItYou": {
+    "defaultMessage": "In order to open it, you will need to install a version of Architect that supports schema version {value1}.",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.itCanBeAutomaticallyUpgradedTo": {
+    "defaultMessage": "It can be automatically upgraded to schema version {value1} using our migration feature.",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill": {
+    "defaultMessage": "Migrating to schema Version {version} will:",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.pleaseSeeOurDocumentationOnProtocol": {
+    "defaultMessage": "Please see our <ExternalLink> documentation on protocol schemas </ExternalLink> to locate an appropriate version, and for further information on this topic.",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.protocolNotCompatibleWithCurrentVersion": {
+    "defaultMessage": "Protocol not compatible with current version",
+    "description": "The title text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.protocolValidationErrors": {
+    "defaultMessage": "Protocol validation errors",
+    "description": "The aria-label text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.protocolValidationFailed": {
+    "defaultMessage": "Protocol Validation Failed",
+    "description": "The title text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.resourcesMissingDescription": {
+    "defaultMessage": "This protocol refers to files that were not included in it: {assetList}. Everything else opened normally. Add the files again in Resources — until you do, the protocol cannot be downloaded.",
+    "description": "The description text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.resourcesMissingTitle": {
+    "defaultMessage": "Some resources are missing",
+    "description": "The title text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.theProtocolCouldNotBeOpened": {
+    "defaultMessage": "The protocol could not be opened due to validation errors:",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.thisProtocolIsNotCompatibleWith": {
+    "defaultMessage": "This protocol is not compatible with the current version of Architect.",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.thisProtocolUsesSchemaVersion": {
+    "defaultMessage": "This protocol uses schema version {value1}, which is not compatible with this version of Architect.",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.additional.protocolOpenDialogs.upgradeToContinue": {
+    "defaultMessage": "Upgrade to continue",
+    "description": "The title text in components / protocolOpenDialogs."
+  },
+  "architect.additional.typeEditor.shapeVariableMapping.addThreshold": {
+    "defaultMessage": "Add threshold",
+    "description": "The addButtonLabel text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.additional.typeEditor.shapeVariableMapping.noThresholdsYetEveryValue": {
+    "defaultMessage": "No thresholds yet — every value uses the default shape.",
+    "description": "The emptyStateMessage text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.app.storageFailure": {
+    "defaultMessage": "Your recent changes could not be saved to this device, which can happen if local storage is full or unavailable. To avoid losing work, download a copy of your protocol.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.appUpdate.appUpdatePill.v": {
+    "defaultMessage": "v{appVersion}",
+    "description": "The label text in components / AppUpdate / AppUpdatePill."
+  },
+  "architect.assetBrowser.assetBrowser.addANewResourceToThis": {
+    "defaultMessage": "Add a new resource to this protocol.",
+    "description": "The description text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.areYouSureYouWantTo": {
+    "defaultMessage": "Are you sure you want to delete this resource? You can restore it with Undo while this protocol remains open.",
+    "description": "The description text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.browseAndManageResourcesStoredIn": {
+    "defaultMessage": "Browse and manage resources stored in this protocol.",
+    "description": "The description text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.cannotDeleteResource": {
+    "defaultMessage": "Cannot delete resource",
+    "description": "The title text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.cannotDeleteThisResourceBecauseIt": {
+    "defaultMessage": "Cannot delete this resource because it is used within your interview. Remove any uses of the resource, and try again.",
+    "description": "The description text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.chooseTheMissingFile": {
+    "defaultMessage": "Choose the missing file for this resource",
+    "description": "The aria-label text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.couldNotAddTheFile": {
+    "defaultMessage": "Could not add the file",
+    "description": "The title text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.deleteResource": {
+    "defaultMessage": "Delete Resource?",
+    "description": "The title text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.deleteResourcea742f": {
+    "defaultMessage": "Delete Resource",
+    "description": "The confirmLabel text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.importResource": {
+    "defaultMessage": "Import resource",
+    "description": "The title text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetBrowser.resourceLibrary": {
+    "defaultMessage": "Resource library",
+    "description": "The title text in components / AssetBrowser / AssetBrowser."
+  },
+  "architect.assetBrowser.assetCard.delete": {
+    "defaultMessage": "Delete {name}",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.deleteResource": {
+    "defaultMessage": "Delete resource",
+    "description": "The title text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.download": {
+    "defaultMessage": "Download {name}",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.downloadResource": {
+    "defaultMessage": "Download resource",
+    "description": "The title text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.isInUseAndCannot": {
+    "defaultMessage": "{name} is in use and cannot be deleted",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.missing": {
+    "defaultMessage": "File missing",
+    "description": "Visible text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.preview": {
+    "defaultMessage": "Preview {name}",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.previewResource": {
+    "defaultMessage": "Preview resource",
+    "description": "The title text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.replace": {
+    "defaultMessage": "Add the file for {name}",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.replaceResource": {
+    "defaultMessage": "Add the missing file",
+    "description": "The title text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.thisResourceIsInUseBy": {
+    "defaultMessage": "This resource is in use by the protocol and cannot be deleted",
+    "description": "The title text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.unused": {
+    "defaultMessage": "Unused",
+    "description": "Visible text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assetCard.videoPreview": {
+    "defaultMessage": "{name} video preview",
+    "description": "The aria-label text in components / AssetBrowser / AssetCard."
+  },
+  "architect.assetBrowser.assets.config.aPIKey": {
+    "defaultMessage": "API key",
+    "description": "Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated."
+  },
+  "architect.assetBrowser.assets.config.all": {
+    "defaultMessage": "All",
+    "description": "Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated."
+  },
+  "architect.assetBrowser.assets.config.audio": {
+    "defaultMessage": "Audio",
+    "description": "Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated."
+  },
+  "architect.assetBrowser.assets.config.geoJSON": {
+    "defaultMessage": "GeoJSON",
+    "description": "Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated."
+  },
+  "architect.assetBrowser.assets.config.image": {
+    "defaultMessage": "Image",
+    "description": "Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated."
+  },
+  "architect.assetBrowser.assets.config.network": {
+    "defaultMessage": "Network",
+    "description": "Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated."
+  },
+  "architect.assetBrowser.assets.config.video": {
+    "defaultMessage": "Video",
+    "description": "Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated."
+  },
+  "architect.assetBrowser.assets.filterResourcesByType": {
+    "defaultMessage": "Filter resources by type",
+    "description": "The aria-label text in components / AssetBrowser / Assets."
+  },
+  "architect.assetBrowser.assets.noResourcesToDisplay": {
+    "defaultMessage": "No resources to display.",
+    "description": "Visible text in components / AssetBrowser / Assets."
+  },
+  "architect.assetBrowser.assets.resourceLibrary": {
+    "defaultMessage": "Resource library",
+    "description": "The aria-label text in components / AssetBrowser / Assets."
+  },
+  "architect.assetBrowser.duplicateRowsWarning.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / AssetBrowser / duplicateRowsWarning."
+  },
+  "architect.assetBrowser.preview.closePreview": {
+    "defaultMessage": "Close preview",
+    "description": "Visible text in components / AssetBrowser / Preview."
+  },
+  "architect.assetBrowser.preview.copyAPIKey": {
+    "defaultMessage": "Copy API Key",
+    "description": "Visible text in components / AssetBrowser / Preview."
+  },
+  "architect.assetBrowser.preview.downloadAsset": {
+    "defaultMessage": "Download asset",
+    "description": "Visible text in components / AssetBrowser / Preview."
+  },
+  "architect.assetBrowser.preview.unavailable": {
+    "defaultMessage": "No preview available.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.assetBrowser.unusedAssetsAlert.notUsedByAnyStage": {
+    "defaultMessage": "{count, plural, one {This resource is not used by any stage in your protocol and is marked <strong>Unused</strong> below. Reference it in a stage, or remove it to keep your protocol tidy.} other {These resources are not used by any stage in your protocol and are marked <strong>Unused</strong> below. Reference them in a stage, or remove them to keep your protocol tidy.}}",
+    "description": "Visible text in components / AssetBrowser / UnusedAssetsAlert."
+  },
+  "architect.assetBrowser.unusedAssetsAlert.unused": {
+    "defaultMessage": "{count, plural, one {# unused resource} other {# unused resources}}",
+    "description": "Visible text in components / AssetBrowser / UnusedAssetsAlert."
+  },
+  "architect.assetBrowser.useExternalDataDownload.couldNotBeDownloaded": {
+    "defaultMessage": "\"{value1}\" could not be downloaded.",
+    "description": "The description text in components / AssetBrowser / useExternalDataDownload."
+  },
+  "architect.assetBrowser.useExternalDataDownload.downloadFailed": {
+    "defaultMessage": "Download failed",
+    "description": "The title text in components / AssetBrowser / useExternalDataDownload."
+  },
+  "architect.assetBrowser.useExternalDataDownload.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / AssetBrowser / useExternalDataDownload."
+  },
+  "architect.assetMetadata.apikey": {
+    "defaultMessage": "API key",
+    "description": "Researcher-facing resource metadata label; resource names and stable file/type identifiers are kept unchanged."
+  },
+  "architect.assetMetadata.audio": {
+    "defaultMessage": "Audio",
+    "description": "Researcher-facing resource metadata label; resource names and stable file/type identifiers are kept unchanged."
+  },
+  "architect.assetMetadata.geojson": {
+    "defaultMessage": "GeoJSON",
+    "description": "Researcher-facing resource metadata label; resource names and stable file/type identifiers are kept unchanged."
+  },
+  "architect.assetMetadata.image": {
+    "defaultMessage": "Image",
+    "description": "Researcher-facing resource metadata label; resource names and stable file/type identifiers are kept unchanged."
+  },
+  "architect.assetMetadata.interviewNetwork": {
+    "defaultMessage": "Interview network",
+    "description": "Researcher-facing resource metadata label; resource names and stable file/type identifiers are kept unchanged."
+  },
+  "architect.assetMetadata.network": {
+    "defaultMessage": "Network",
+    "description": "Researcher-facing resource metadata label; resource names and stable file/type identifiers are kept unchanged."
+  },
+  "architect.assetMetadata.video": {
+    "defaultMessage": "Video",
+    "description": "Researcher-facing resource metadata label; resource names and stable file/type identifiers are kept unchanged."
+  },
+  "architect.assets.geoJSON.showingOfFeatures": {
+    "defaultMessage": "Showing {ROW_LIMIT} of {value2} features",
+    "description": "Visible text in components / Assets / GeoJSON."
+  },
+  "architect.assets.network.showingOfRows": {
+    "defaultMessage": "Showing {ROW_LIMIT} of {value2} rows",
+    "description": "Visible text in components / Assets / Network."
+  },
+  "architect.assets.table.toggleSortBy": {
+    "defaultMessage": "Toggle SortBy",
+    "description": "The title text in components / Assets / Table."
+  },
+  "architect.brand.returnToStartScreen": {
+    "defaultMessage": "Return to start screen",
+    "description": "The aria-label text in components / Brand."
+  },
+  "architect.chrome.codebook.controlsColumn.deleteAttribute": {
+    "defaultMessage": "Delete attribute",
+    "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
+  },
+  "architect.chrome.codebook.controlsColumn.inUseCannotBeDeleted": {
+    "defaultMessage": "In use — cannot be deleted",
+    "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
+  },
+  "architect.chrome.codebook.entityTypeDialog.createType": {
+    "defaultMessage": "Create {entityLabel} Type",
+    "description": "Researcher-facing explanatory text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.chrome.codebook.entityTypeDialog.edge": {
+    "defaultMessage": "Edge",
+    "description": "Researcher-facing explanatory text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.chrome.codebook.entityTypeDialog.editType": {
+    "defaultMessage": "Edit {entityLabel} Type",
+    "description": "Researcher-facing explanatory text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.chrome.codebook.entityTypeDialog.node": {
+    "defaultMessage": "Node",
+    "description": "Researcher-facing explanatory text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.chrome.home.libraryPanel.anExampleIntroducingTheKeyFeatures": {
+    "defaultMessage": "An example introducing the key features and techniques available in Network Canvas.",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.chrome.home.libraryPanel.thisProtocolHasNoDescription": {
+    "defaultMessage": "This protocol has no description.",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn": {
+    "defaultMessage": "{protocolCount, plural, one {Your protocol is saved only on this device. It is never uploaded to a server.} other {Your # protocols are saved only on this device. They are never uploaded to a server.}}",
+    "description": "Researcher-facing explanatory text in components / Home / LibraryPanel."
+  },
+  "architect.chrome.projectNav.projectActions.returnToStages": {
+    "defaultMessage": "Return to Stages",
+    "description": "Researcher-facing explanatory text in components / ProjectNav / ProjectActions."
+  },
+  "architect.chrome.projectNav.projectActions.returnToStartScreen": {
+    "defaultMessage": "Return to Start Screen",
+    "description": "Researcher-facing explanatory text in components / ProjectNav / ProjectActions."
+  },
+  "architect.chrome.projectNav.projectNav.untitledProtocol": {
+    "defaultMessage": "Untitled protocol",
+    "description": "The label text in components / ProjectNav / ProjectNav."
+  },
+  "architect.chrome.projectNav.stageEditorNav.untitledProtocol": {
+    "defaultMessage": "Untitled protocol",
+    "description": "The label text in components / ProjectNav / StageEditorNav."
+  },
+  "architect.chrome.protocolLockBanner.theOtherTabHasBeenClosed": {
+    "defaultMessage": "The other tab has been closed, but an editor is still open here. Nothing can be saved or loaded in this tab until you finish or cancel that editor.",
+    "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
+  },
+  "architect.chrome.protocolLockBanner.theOtherTabHasBeenClosed6c9ac": {
+    "defaultMessage": "The other tab has been closed, but your unsaved changes to this stage cannot be combined with the version it saved. Nothing can be saved here until you decide which to keep.",
+    "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
+  },
+  "architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn": {
+    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to switch to a read-only view.",
+    "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
+  },
+  "architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn6aa3d": {
+    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.",
+    "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
+  },
+  "architect.chrome.protocolLockBanner.thisProtocolIsOpenInAnother": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.",
+    "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
+  },
+  "architect.chrome.protocolSummary.assetBadge.assetNotFound": {
+    "defaultMessage": "Asset {id} not found",
+    "description": "Researcher-facing explanatory text in lib / ProtocolSummary / components / AssetBadge."
+  },
+  "architect.chrome.protocolSummary.stage.mapOptions.message": {
+    "defaultMessage": "{latitude}, {longitude}",
+    "description": "Initial map center in latitude, longitude order. Values are locale-formatted signed decimal degrees with four decimal places; use unambiguous punctuation for the locale."
+  },
+  "architect.chrome.protocolSummary.stage.quickAdd.unknown": {
+    "defaultMessage": "Unknown",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / QuickAdd."
+  },
+  "architect.chrome.stageEditor.stageEditor.openingPreview": {
+    "defaultMessage": "Opening preview…",
+    "description": "Researcher-facing explanatory text in components / StageEditor / StageEditor."
+  },
+  "architect.chrome.stageEditor.stageEditor.preview": {
+    "defaultMessage": "Preview",
+    "description": "Researcher-facing explanatory text in components / StageEditor / StageEditor."
+  },
+  "architect.chrome.timeline.timelineStageRow.editStage": {
+    "defaultMessage": "Edit stage {position, number}: {stageName}, {interfaceName}",
+    "description": "Researcher-facing explanatory text in components / Timeline / TimelineStageRow."
+  },
+  "architect.chrome.timeline.timelineStageRow.editStage76e56": {
+    "defaultMessage": "Edit stage {position, number}: {stageName}",
+    "description": "Researcher-facing explanatory text in components / Timeline / TimelineStageRow."
+  },
+  "architect.codebook.codebook.createEdgeType": {
+    "defaultMessage": "Create edge type",
+    "description": "Visible text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.createNodeType": {
+    "defaultMessage": "Create node type",
+    "description": "Visible text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.edgeTypes": {
+    "defaultMessage": "Edge Types ({value1, number})",
+    "description": "Codebook section heading. value1 is the total number of edge types in the protocol."
+  },
+  "architect.codebook.codebook.ego": {
+    "defaultMessage": "Ego",
+    "description": "Visible text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.egoAttributes": {
+    "defaultMessage": "Ego attributes",
+    "description": "The title text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.networkAssets": {
+    "defaultMessage": "Network Assets ({value1, number})",
+    "description": "Codebook section heading. value1 is the total number of network resources in the protocol."
+  },
+  "architect.codebook.codebook.noEdgeTypesYet": {
+    "defaultMessage": "No edge types yet.",
+    "description": "Visible text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.noNodeTypesYet": {
+    "defaultMessage": "No node types yet.",
+    "description": "Visible text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.nodeTypes": {
+    "defaultMessage": "Node Types ({value1, number})",
+    "description": "Codebook section heading. value1 is the total number of node types in the protocol."
+  },
+  "architect.codebook.codebook.reviewTheAttributesCollectedAboutThe": {
+    "defaultMessage": "Review the attributes collected about the participant.",
+    "description": "The description text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.searchTheCodebookByName": {
+    "defaultMessage": "Search the codebook by name",
+    "description": "The label text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.searchTypesAndAttributesByName": {
+    "defaultMessage": "Search types and attributes by name...",
+    "description": "The placeholder text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.showUnusedOnly": {
+    "defaultMessage": "Show unused only",
+    "description": "Visible text in components / Codebook / Codebook."
+  },
+  "architect.codebook.codebook.thereAreCurrentlyNoTypesOr": {
+    "defaultMessage": "There are currently no types or attributes defined in this protocol. Use the buttons below to create your first node or edge type, or add ego attributes.",
+    "description": "Visible text in components / Codebook / Codebook."
+  },
+  "architect.codebook.egoType.addAttribute": {
+    "defaultMessage": "Add attribute",
+    "description": "Visible text in components / Codebook / EgoType."
+  },
+  "architect.codebook.egoType.noEgoAttributesMatchTheCurrent": {
+    "defaultMessage": "No ego attributes match the current filter.",
+    "description": "Visible text in components / Codebook / EgoType."
+  },
+  "architect.codebook.egoType.noEgoAttributesYet": {
+    "defaultMessage": "No ego attributes yet.",
+    "description": "Visible text in components / Codebook / EgoType."
+  },
+  "architect.codebook.entity.ego": {
+    "defaultMessage": "Ego",
+    "description": "The interviewee entity heading in the researcher codebook, not a persisted entity identifier."
+  },
+  "architect.codebook.entityType.addAttribute": {
+    "defaultMessage": "Add attribute",
+    "description": "Visible text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.areYouSureYouWantTo": {
+    "defaultMessage": "Are you sure you want to delete the {entity, select, node {node} edge {edge} other {ego}} type “{name}”? You can restore it with Undo while this protocol remains open.",
+    "description": "The description text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.cannotDeleteType": {
+    "defaultMessage": "Cannot delete type",
+    "description": "The title text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.deleteEntity": {
+    "defaultMessage": "Delete entity",
+    "description": "The title text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.deleteType": {
+    "defaultMessage": "Delete type",
+    "description": "The title text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.editEntity": {
+    "defaultMessage": "Edit entity",
+    "description": "Visible text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.inUseInStageSRemove": {
+    "defaultMessage": "{value1, plural, one {In use in # stage — remove usages first} other {In use in # stages — remove usages first}}",
+    "description": "The title text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.notInUse": {
+    "defaultMessage": "not in use",
+    "description": "Visible text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.theCannotBeDeletedAsIt": {
+    "defaultMessage": "The {name} {entity, select, node {node} edge {edge} other {ego}} cannot be deleted as it is currently in use.",
+    "description": "Visible text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.type": {
+    "defaultMessage": "{name} {entity, select, node {node} edge {edge} other {ego}} type",
+    "description": "The title text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityType.usedIn": {
+    "defaultMessage": "used in:",
+    "description": "Visible text in components / Codebook / EntityType."
+  },
+  "architect.codebook.entityTypeDialog.couldNotCreateType": {
+    "defaultMessage": "Could not create type",
+    "description": "The title text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.codebook.entityTypeDialog.couldNotUpdateType": {
+    "defaultMessage": "Could not update type",
+    "description": "The title text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.codebook.entityTypeDialog.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.codebook.entityTypeDialog.saveAndClose": {
+    "defaultMessage": "Save and Close",
+    "description": "The submitLabel text in components / Codebook / EntityTypeDialog."
+  },
+  "architect.codebook.error.attributeInUse": {
+    "defaultMessage": "This attribute is in use and cannot be deleted. Remove it from the stages listed under \"Used In\" first.",
+    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+  },
+  "architect.codebook.error.duplicateName": {
+    "defaultMessage": "Attribute with name \"{name}\" already exists",
+    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+  },
+  "architect.codebook.error.invalidName": {
+    "defaultMessage": "Attribute name contains no valid characters",
+    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+  },
+  "architect.codebook.error.missingAttribute": {
+    "defaultMessage": "Attribute \"{id}\" does not exist",
+    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+  },
+  "architect.codebook.error.missingName": {
+    "defaultMessage": "Enter a name for this attribute.",
+    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+  },
+  "architect.codebook.error.missingType": {
+    "defaultMessage": "Choose a type for this attribute.",
+    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+  },
+  "architect.codebook.error.typeInUse": {
+    "defaultMessage": "This type is in use and cannot be deleted. Remove it from the stages listed under \"used in\" first.",
+    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+  },
+  "architect.codebook.externalEntity.attributes": {
+    "defaultMessage": "Attributes:",
+    "description": "Visible text in components / Codebook / ExternalEntity."
+  },
+  "architect.codebook.externalEntity.download": {
+    "defaultMessage": "Download",
+    "description": "Visible text in components / Codebook / ExternalEntity."
+  },
+  "architect.codebook.externalEntity.networkResource": {
+    "defaultMessage": "Network resource: {name}",
+    "description": "The title text in components / Codebook / ExternalEntity."
+  },
+  "architect.codebook.externalEntity.preview": {
+    "defaultMessage": "Preview",
+    "description": "Visible text in components / Codebook / ExternalEntity."
+  },
+  "architect.codebook.unusedVariablesAlert.notReferencedAnywhereInYour": {
+    "defaultMessage": "{count, plural, one {This attribute is not referenced anywhere in your protocol and is tagged <strong>not in use</strong> below. Use the <strong2>Show unused only</strong2> filter to find it, then reference it in a stage or delete it.} other {These attributes are not referenced anywhere in your protocol and are tagged <strong>not in use</strong> below. Use the <strong2>Show unused only</strong2> filter to find them, then reference them in a stage or delete them.}}",
+    "description": "Visible text in components / Codebook / UnusedVariablesAlert."
+  },
+  "architect.codebook.unusedVariablesAlert.unused": {
+    "defaultMessage": "{count, plural, one {# unused attribute} other {# unused attributes}}",
+    "description": "Visible text in components / Codebook / UnusedVariablesAlert."
+  },
+  "architect.codebook.usage.elsewhere": {
+    "defaultMessage": "Used elsewhere in this protocol",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.codebook.usage.shape": {
+    "defaultMessage": "Used in shape settings for \"{name}\"",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.codebook.usage.unknown": {
+    "defaultMessage": "unknown",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.codebook.usage.validation": {
+    "defaultMessage": "Used as validation for \"{name}\"",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.codebook.usageColumn.notInUse": {
+    "defaultMessage": "not in use",
+    "description": "Visible text in components / Codebook / UsageColumn."
+  },
+  "architect.codebook.variableList.name": {
+    "defaultMessage": "Name",
+    "description": "The title text in components / Codebook / VariableList."
+  },
+  "architect.codebook.variableList.noAttributes": {
+    "defaultMessage": "No attributes.",
+    "description": "The emptyText text in components / Codebook / VariableList."
+  },
+  "architect.codebook.variables.actions": {
+    "defaultMessage": "Actions",
+    "description": "Visible text in components / Codebook / Variables."
+  },
+  "architect.codebook.variables.areYouSureYouWantTo": {
+    "defaultMessage": "Are you sure you want to delete the attribute “{name}”? You can restore it with Undo while this protocol remains open.",
+    "description": "The description text in components / Codebook / Variables."
+  },
+  "architect.codebook.variables.deleteAttribute": {
+    "defaultMessage": "Delete attribute",
+    "description": "The title text in components / Codebook / Variables."
+  },
+  "architect.codebook.variables.name": {
+    "defaultMessage": "Name",
+    "description": "The title text in components / Codebook / Variables."
+  },
+  "architect.codebook.variables.noAttributes": {
+    "defaultMessage": "No attributes.",
+    "description": "The emptyText text in components / Codebook / Variables."
+  },
+  "architect.codebook.variables.unknown": {
+    "defaultMessage": "Unknown",
+    "description": "Fallback attribute name when its record is unavailable in the deletion dialog."
+  },
+  "architect.codebook.variables.usedIn": {
+    "defaultMessage": "Used In",
+    "description": "The title text in components / Codebook / Variables."
+  },
+  "architect.config.mapboxConstants.config.dark": {
+    "defaultMessage": "Dark",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.light": {
+    "defaultMessage": "Light",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.navigationDay": {
+    "defaultMessage": "Navigation Day",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.navigationNight": {
+    "defaultMessage": "Navigation Night",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.outdoors": {
+    "defaultMessage": "Outdoors",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.satellite": {
+    "defaultMessage": "Satellite",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.satelliteStreets": {
+    "defaultMessage": "Satellite Streets",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.standard": {
+    "defaultMessage": "Standard",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.standardSatellite": {
+    "defaultMessage": "Standard Satellite",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.mapboxConstants.config.streets": {
+    "defaultMessage": "Streets",
+    "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
+  },
+  "architect.config.protocolNameTooLong": {
+    "defaultMessage": "Protocol names are limited to {max, number} characters.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.config.variables.config.boolean": {
+    "defaultMessage": "Boolean",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.categorical": {
+    "defaultMessage": "Categorical",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.date": {
+    "defaultMessage": "Date",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.layout": {
+    "defaultMessage": "Layout",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.location": {
+    "defaultMessage": "Location",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.number": {
+    "defaultMessage": "Number",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.ordinal": {
+    "defaultMessage": "Ordinal",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.scalar": {
+    "defaultMessage": "Scalar",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.config.variables.config.text": {
+    "defaultMessage": "Text",
+    "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
+  },
+  "architect.constants.components.nesteddraftreclaimdialog.elsewhereDescription": {
+    "defaultMessage": "The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with. It was filled in from the version this tab had before, so saving it now would write those older settings over what the other tab saved. Cancel that editor to continue — if you have made changes in it, you will be asked to confirm before anything is discarded.",
+    "description": "Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx."
+  },
+  "architect.constants.components.nesteddraftreclaimdialog.title": {
+    "defaultMessage": "An editor is still open",
+    "description": "Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx."
+  },
+  "architect.constants.components.stageeditor.stagedraftconflictdialog.conflictTitle": {
+    "defaultMessage": "Choose what to do with your unsaved changes",
+    "description": "Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx."
+  },
+  "architect.constants.components.stageeditor.stagedraftconflictdialog.downloadedDescription": {
+    "defaultMessage": "Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your unsaved changes to this stage.",
+    "description": "Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx."
+  },
+  "architect.constants.components.stageeditor.stagedraftconflictdialog.pendingDescription": {
+    "defaultMessage": "The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your unsaved changes to this stage.",
+    "description": "Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx."
+  },
+  "architect.constants.components.typeeditor.validateentitytype.selectVariableMessage": {
+    "defaultMessage": "Select an attribute to map to a shape, or turn off shape mapping.",
+    "description": "Researcher-facing status or validation message. Context: components/TypeEditor/validateEntityType.ts."
+  },
+  "architect.constants.components.typeeditor.validateentitytype.thresholdsAscendingMessage": {
+    "defaultMessage": "Thresholds must increase in value, with no duplicates.",
+    "description": "Researcher-facing status or validation message. Context: components/TypeEditor/validateEntityType.ts."
+  },
+  "architect.constants.components.typeeditor.validateentitytype.thresholdsMinMessage": {
+    "defaultMessage": "Add at least one threshold, or turn off shape mapping.",
+    "description": "Researcher-facing status or validation message. Context: components/TypeEditor/validateEntityType.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.discarddescriptions.openElsewhere": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.discarddescriptions.reclaimBlocked": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you return to the start screen now, those changes will be discarded and that saved version will remain available.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.discarddescriptions.saved": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.discarddescriptions.storageUnavailable": {
+    "defaultMessage": "This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Returning to the start screen now discards all of it.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.leavedescriptions.openElsewhere": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so returning to the start screen will not change your protocol.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.leavedescriptions.reclaimBlocked": {
+    "defaultMessage": "Nothing has been saved in this tab since the protocol was opened in another one. Returning to the start screen now will leave your protocol exactly as that tab saved it.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.leavedescriptions.saved": {
+    "defaultMessage": "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.leavedescriptions.storageUnavailable": {
+    "defaultMessage": "This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.nestedDraftDiscardDescription": {
+    "defaultMessage": "You have unsaved changes in an editor that is still open. If you leave now, those changes will be discarded and the rest of your protocol will be left as it is.",
+    "description": "Researcher-facing status or validation message. Context: hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.openElsewhere": {
+    "defaultMessage": "Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave the stage editor now, those changes will be discarded.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.reclaimBlocked": {
+    "defaultMessage": "Changes made in this stage cannot be saved over the version the other tab saved. If you leave the stage editor now, those changes will be discarded, along with any attributes you added or edited while it was open, and that saved version will be loaded here.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.saved": {
+    "defaultMessage": "Changes made in this stage have not been saved to the protocol. If you leave the stage editor now, those changes will be discarded and the last saved version of the stage will remain.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.storageUnavailable": {
+    "defaultMessage": "This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Leaving the stage editor now discards them.",
+    "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.utils.protocollockmessages.openElsewhereMessages.apiKey": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. Close the other tab, then create the key again.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.openElsewhereMessages.assetImportNestedEditor": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.openElsewhereMessages.assetImportStageDraft": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.openElsewhereMessages.nestedEditor": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.openElsewhereMessages.stage": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.apiKey": {
+    "defaultMessage": "These changes cannot be saved over the version the other tab saved. Cancel this form to let the saved copy be read back, then create the key again.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.assetImportNestedEditor": {
+    "defaultMessage": "These changes cannot be saved over the version the other tab saved. Finish or cancel the editor you still have open, then add the file again.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.assetImportStageDraft": {
+    "defaultMessage": "These changes cannot be saved over the version the other tab saved. Choose whether to keep your unsaved changes to that stage or discard them, then add the file again.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.nestedEditor": {
+    "defaultMessage": "These changes cannot be saved over the version the other tab saved. Cancel this editor to continue, and you will be asked to confirm before anything in it is discarded.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.constants.utils.protocollockmessages.reclaimBlockedMessages.stage": {
+    "defaultMessage": "These changes cannot be saved over the version the other tab saved. Choose whether to keep them or discard them first.",
+    "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
+  },
+  "architect.defaults.components.ProjectNav.ActionToolbar.ariaLabel": {
+    "defaultMessage": "Page actions",
+    "description": "Default researcher-facing copy when the caller does not supply its own ariaLabel."
+  },
+  "architect.defaults.components.ProjectNav.ActionToolbar.leadingAriaLabel": {
+    "defaultMessage": "History actions",
+    "description": "Default researcher-facing copy when the caller does not supply its own leadingAriaLabel."
+  },
+  "architect.dialogForm.dialogForm.resizeFormAndPreviewPanes": {
+    "defaultMessage": "Resize form and preview panes",
+    "description": "The aria-label text in components / DialogForm / DialogForm."
+  },
+  "architect.document.previewTitle": {
+    "defaultMessage": "Architect Preview",
+    "description": "Browser tab title for the separate interview preview window. Architect is the product name."
+  },
+  "architect.dropzone.extensions": {
+    "defaultMessage": "This resource type does not support these extensions: {extensions}. Supported extensions: {supported}.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.dropzone.failed": {
+    "defaultMessage": "Unable to import this file. Check its format and try again.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.errors.appErrorBoundary.copied": {
+    "defaultMessage": "Copied!",
+    "description": "Visible text in components / Errors / AppErrorBoundary."
+  },
+  "architect.errors.appErrorBoundary.copyError": {
+    "defaultMessage": "Copy error",
+    "description": "Visible text in components / Errors / AppErrorBoundary."
+  },
+  "architect.errors.appErrorBoundary.details": {
+    "defaultMessage": "Technical details (English)",
+    "description": "Introduces technical error details in the application error dialog. The error message itself is a diagnostic."
+  },
+  "architect.fieldValidation.invalidName": {
+    "defaultMessage": "Not a valid {name}. Only letters, numbers and the symbols ._-: are supported",
+    "description": "Error for a technical name containing unsupported characters. Name identifies the field."
+  },
+  "architect.fieldValidation.name": {
+    "defaultMessage": "attribute name",
+    "description": "Default subject name used by the technical-name validation error."
+  },
+  "architect.fieldValidation.nameHint": {
+    "defaultMessage": "Use only letters, numbers and the symbols ._-:",
+    "description": "Hint for researcher-authored technical names that must be valid XML names."
+  },
+  "architect.fieldValidation.required": {
+    "defaultMessage": "This field is required.",
+    "description": "Required field error in the researcher-facing protocol editor."
+  },
+  "architect.final.components.NewProtocolDialog.required": {
+    "defaultMessage": "Protocol name is required",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.ProjectNav.ProjectNav.assetsWarning": {
+    "defaultMessage": "has unused resources",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.ProjectNav.ProjectNav.attributesWarning": {
+    "defaultMessage": "has unused attributes",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.ProjectNav.ProjectNav.roleWarning": {
+    "defaultMessage": "has attributes written both with and without validation",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.StageEditor.StageEditor.newStage": {
+    "defaultMessage": "New stage",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.StorageUnavailableBanner.skippedAssets": {
+    "defaultMessage": "These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.Timeline.Timeline.untitledStage": {
+    "defaultMessage": "Untitled stage",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.Timeline.TimelineStageRow.untitledStage": {
+    "defaultMessage": "Untitled stage",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.Timeline.skipDestinationGuards.untitledStage": {
+    "defaultMessage": "Untitled stage",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.TypeEditor.TypeEditor.edgeName": {
+    "defaultMessage": "edge type name",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.TypeEditor.TypeEditor.nodeName": {
+    "defaultMessage": "node type name",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.components.VariablePill.required": {
+    "defaultMessage": "You must enter an attribute name",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.lib.ProtocolSummary.components.Stage.Anonymisation.maximumPassphrase": {
+    "defaultMessage": "Maximum passphrase length",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.lib.ProtocolSummary.components.Stage.Anonymisation.minimumPassphrase": {
+    "defaultMessage": "Minimum passphrase length",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.final.utils.downloadActiveProtocol.unresolvedAssets": {
+    "defaultMessage": "These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.form.arrayFields.option.areYouSureYouWantTo": {
+    "defaultMessage": "Are you sure you want to remove this option?",
+    "description": "The description text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.editOption": {
+    "defaultMessage": "Edit option {value1, number}",
+    "description": "Accessible edit-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value."
+  },
+  "architect.form.arrayFields.option.enterALabel": {
+    "defaultMessage": "Enter a label...",
+    "description": "The placeholder text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.enterAValue": {
+    "defaultMessage": "Enter a value...",
+    "description": "The placeholder text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.finishEditingOption": {
+    "defaultMessage": "Finish editing option",
+    "description": "The aria-label text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.label": {
+    "defaultMessage": "Label",
+    "description": "The label text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.noValue": {
+    "defaultMessage": "No value",
+    "description": "Visible text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.optionValue": {
+    "defaultMessage": "option value",
+    "description": "Subject of the invalid option-value identifier guidance."
+  },
+  "architect.form.arrayFields.option.removeOption": {
+    "defaultMessage": "Remove option",
+    "description": "The title text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.removeOption45a9b": {
+    "defaultMessage": "Remove option {value1, number}",
+    "description": "Accessible remove-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value."
+  },
+  "architect.form.arrayFields.option.reorderOptionOf": {
+    "defaultMessage": "Reorder option {value1, number} of {itemCount, number}",
+    "description": "The label text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.untitledOption": {
+    "defaultMessage": "Untitled option",
+    "description": "Visible text in components / Form / arrayFields / Option."
+  },
+  "architect.form.arrayFields.option.value": {
+    "defaultMessage": "Value",
+    "description": "The label text in components / Form / arrayFields / Option."
+  },
+  "architect.form.autoFileDrop.considerRemovingDuplicatesFromYourCSV": {
+    "defaultMessage": "Consider removing duplicates from your CSV file before importing.",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.form.autoFileDrop.couldNotBeAddedTo": {
+    "defaultMessage": "<strong>{value1}</strong> could not be added to your resource library.",
+    "description": "Visible text in components / Form / AutoFileDrop."
+  },
+  "architect.form.autoFileDrop.errorIsNotFormattedCorrectly": {
+    "defaultMessage": "Error: {value1} is not formatted correctly",
+    "description": "The title text in components / Form / AutoFileDrop."
+  },
+  "architect.form.autoFileDrop.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / Form / AutoFileDrop."
+  },
+  "architect.form.autoFileDrop.thatFileCouldNotBeAdded": {
+    "defaultMessage": "That file could not be added",
+    "description": "The title text in components / Form / AutoFileDrop."
+  },
+  "architect.form.autoFileDrop.theFileContainsDuplicateDuplicate": {
+    "defaultMessage": "The file contains {count, plural, one {# duplicate row} other {# duplicate rows}}. Duplicate rows will be removed when this roster is used in Fresco.",
+    "description": "Queued warning after importing a network resource. count is the number of duplicate rows detected; Fresco removes these rows when using the roster, not during this Architect import."
+  },
+  "architect.form.autoFileDrop.warningContainsDuplicateRows": {
+    "defaultMessage": "Warning: {value1} contains duplicate rows",
+    "description": "The title text in components / Form / AutoFileDrop."
+  },
+  "architect.form.dropzone.dropzone.dragAndDropAFileHere": {
+    "defaultMessage": "Drag and drop a file here to import it, or <span> click here to select a file from your computer </span> .",
+    "description": "Visible text in components / Form / Dropzone / Dropzone."
+  },
+  "architect.form.dropzone.dropzone.importingFile": {
+    "defaultMessage": "Importing file…",
+    "description": "Visible text in components / Form / Dropzone / Dropzone."
+  },
+  "architect.form.dropzone.dropzone.uploadFile": {
+    "defaultMessage": "Upload file",
+    "description": "The aria-label text in components / Form / Dropzone / Dropzone."
+  },
+  "architect.form.fields.variablePicker.variablePicker.changeAttribute": {
+    "defaultMessage": "Change attribute",
+    "description": "Visible text in components / Form / Fields / VariablePicker / VariablePicker."
+  },
+  "architect.form.fields.variablePicker.variablePicker.noAttributeSelected": {
+    "defaultMessage": "No attribute selected",
+    "description": "Visible text in components / Form / Fields / VariablePicker / VariablePicker."
+  },
+  "architect.form.fields.variablePicker.variablePicker.selectAttribute": {
+    "defaultMessage": "Select attribute",
+    "description": "Visible text in components / Form / Fields / VariablePicker / VariablePicker."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.attributeResults": {
+    "defaultMessage": "Attribute results",
+    "description": "The aria-label text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.cannotCreateAttributeNamed": {
+    "defaultMessage": "Cannot create attribute named \"{filterTerm}\"",
+    "description": "The label text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.createNewAttributeCalled": {
+    "defaultMessage": "Create new attribute called \"{filterTerm}\".",
+    "description": "The label text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.createOrFindAnAttribute": {
+    "defaultMessage": "Create or find an attribute...",
+    "description": "The placeholder text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.documentationOnAttributeNaming": {
+    "defaultMessage": "documentation on attribute naming",
+    "description": "Visible text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.findAnAttribute": {
+    "defaultMessage": "Find an attribute...",
+    "description": "The placeholder text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.findOrCreateAnAttribute": {
+    "defaultMessage": "Find or create an attribute",
+    "description": "The aria-label text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.noAttributesExistForYouTo": {
+    "defaultMessage": "No attributes exist for you to select, and you cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.",
+    "description": "Visible text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.form.fields.variablePicker.variableSpotlight.youCannotCreateANewAttribute": {
+    "defaultMessage": "You cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.",
+    "description": "Visible text in components / Form / Fields / VariablePicker / VariableSpotlight."
+  },
+  "architect.home.demoSubtitle.categoricalBin": {
+    "defaultMessage": "Categorical Bin",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.connections": {
+    "defaultMessage": "Connections",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.dyadCensus": {
+    "defaultMessage": "Dyad Census",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.egoForm": {
+    "defaultMessage": "Ego Form",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.information": {
+    "defaultMessage": "Information",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.nameGenerator": {
+    "defaultMessage": "Name Generator",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.narrative": {
+    "defaultMessage": "Narrative",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.ordinalBin": {
+    "defaultMessage": "Ordinal Bin",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.quickAdd": {
+    "defaultMessage": "Quick Add",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.roster": {
+    "defaultMessage": "Roster",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.tieStrength": {
+    "defaultMessage": "Tie Strength",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.home.architectIsTheProtocolDesignerFor": {
+    "defaultMessage": "Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and categorical data, map connections, and explore narratives.",
+    "description": "Visible text in components / Home / Home."
+  },
+  "architect.home.home.config.community": {
+    "defaultMessage": "Community",
+    "description": "Presentation label or description in components/Home/Home.tsx. Identifiers are not translated."
+  },
+  "architect.home.home.config.docs": {
+    "defaultMessage": "Docs",
+    "description": "Presentation label or description in components/Home/Home.tsx. Identifiers are not translated."
+  },
+  "architect.home.home.createANewProtocol": {
+    "defaultMessage": "Create a new protocol",
+    "description": "Visible text in components / Home / Home."
+  },
+  "architect.home.home.nameYourProtocol": {
+    "defaultMessage": "Name your protocol",
+    "description": "The title text in components / Home / Home."
+  },
+  "architect.home.home.openExistingProtocol": {
+    "defaultMessage": "Open existing protocol",
+    "description": "Visible text in components / Home / Home."
+  },
+  "architect.home.home.orDropANetcanvasFileAnywhere": {
+    "defaultMessage": "Or drop a <code>.netcanvas</code> file anywhere on this page",
+    "description": "Visible text in components / Home / Home."
+  },
+  "architect.home.home.protocolImportError": {
+    "defaultMessage": "Protocol Import Error",
+    "description": "The title text in components / Home / Home."
+  },
+  "architect.home.home.welcomeToArchitect": {
+    "defaultMessage": "Welcome to <span>Architect</span>",
+    "description": "Visible text in components / Home / Home."
+  },
+  "architect.home.libraryPanel.actionsFor": {
+    "defaultMessage": "Actions for {name}",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.added": {
+    "defaultMessage": "Added",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.andItsAssetsWill": {
+    "defaultMessage": "\"{value1}\" and its assets will be permanently removed from this device. This cannot be undone.",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.architectSStoredDataCouldNotBe": {
+    "defaultMessage": "Architect's stored data could not be removed.",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.assets": {
+    "defaultMessage": "Assets",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.clearAllLocallySavedProtocols": {
+    "defaultMessage": "Clear all locally saved protocols",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.couldNotBeDeleted": {
+    "defaultMessage": "\"{value1}\" could not be deleted.",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.couldNotBeDownloaded": {
+    "defaultMessage": "\"{value1}\" could not be downloaded.",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.couldNotRemoveData": {
+    "defaultMessage": "Could not remove data",
+    "description": "The title text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.deleteFailed": {
+    "defaultMessage": "Delete failed",
+    "description": "The title text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.deleteProtocol": {
+    "defaultMessage": "Delete protocol?",
+    "description": "The title text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.dismiss": {
+    "defaultMessage": "Dismiss",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.download": {
+    "defaultMessage": "Download",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.downloadFailed": {
+    "defaultMessage": "Download failed",
+    "description": "The title text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.edgeTypes": {
+    "defaultMessage": "Edge types",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.edited": {
+    "defaultMessage": "Edited",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.everyProtocolAssetAndSettingStored": {
+    "defaultMessage": "Every protocol, asset, and setting stored locally by Architect will be permanently removed. This cannot be undone.",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.includesExamplesOfEveryStageType": {
+    "defaultMessage": "Includes examples of every stage type",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.lookingForMore": {
+    "defaultMessage": "Looking for more?",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.noRecentProtocolsYet": {
+    "defaultMessage": "No recent protocols yet.",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.nodeTypes": {
+    "defaultMessage": "Node types",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.open": {
+    "defaultMessage": "Open",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.property": {
+    "defaultMessage": "Property",
+    "description": "Column heading for protocol metadata property names."
+  },
+  "architect.home.libraryPanel.protocolGallery": {
+    "defaultMessage": "Protocol gallery",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.protocolLibrary": {
+    "defaultMessage": "Protocol library",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.protocolStorage": {
+    "defaultMessage": "Protocol Storage",
+    "description": "The title text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.protocolTemplates": {
+    "defaultMessage": "Protocol templates",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.recent": {
+    "defaultMessage": "Recent",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.recentProtocols": {
+    "defaultMessage": "Recent protocols",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.removeAll": {
+    "defaultMessage": "Remove all",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.removeAllData": {
+    "defaultMessage": "Remove all data?",
+    "description": "The title text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.seeMoreInfo": {
+    "defaultMessage": "See more info",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.someAssetsCouldNotBeIncluded": {
+    "defaultMessage": "Some resources could not be read",
+    "description": "The title text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.stages": {
+    "defaultMessage": "Stages",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.templateCount": {
+    "defaultMessage": "{count, plural, one {# template} other {# templates}}",
+    "description": "Number of available protocol templates on the home page."
+  },
+  "architect.home.libraryPanel.templates": {
+    "defaultMessage": "Templates",
+    "description": "The label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.value": {
+    "defaultMessage": "Value",
+    "description": "Column heading for protocol metadata values."
+  },
+  "architect.home.libraryPanel.wasDownloadedButThese": {
+    "defaultMessage": "These resources could not be read, so \"{value1}\" was not downloaded: {assetList}. Open the protocol and add the files again in Resources, then download it.",
+    "description": "The description text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.whereYourProtocolsAreStored": {
+    "defaultMessage": "Where your protocols are stored",
+    "description": "The aria-label text in components / Home / LibraryPanel."
+  },
+  "architect.home.libraryPanel.yourProtocolsAreSavedOnlyOn": {
+    "defaultMessage": "Your protocols are saved only on this device. They are never uploaded to a server.",
+    "description": "Visible text in components / Home / LibraryPanel."
+  },
+  "architect.home.timelineScript.config.closeOut": {
+    "defaultMessage": "Close out",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.closeTies": {
+    "defaultMessage": "Close ties",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.closeness": {
+    "defaultMessage": "Closeness",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.consent": {
+    "defaultMessage": "Consent",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.contactFrequency": {
+    "defaultMessage": "Contact frequency",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.debrief": {
+    "defaultMessage": "Debrief",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.demographics": {
+    "defaultMessage": "Demographics",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.groupMembership": {
+    "defaultMessage": "Group membership",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.keyMoments": {
+    "defaultMessage": "Key moments",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.relationshipType": {
+    "defaultMessage": "Relationship type",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.sociogram": {
+    "defaultMessage": "Sociogram",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.storyExchange": {
+    "defaultMessage": "Story exchange",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.supportNetwork": {
+    "defaultMessage": "Support network",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.supportPaths": {
+    "defaultMessage": "Support paths",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.trustLevel": {
+    "defaultMessage": "Trust level",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.weakTies": {
+    "defaultMessage": "Weak ties",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.welcome": {
+    "defaultMessage": "Welcome",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.whoKnowsWhom": {
+    "defaultMessage": "Who knows whom",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.transitMap.protocolTimeline": {
+    "defaultMessage": "Protocol timeline",
+    "description": "Visible text in components / Home / TransitMap."
+  },
+  "architect.hooks.useJsonPreview.protocolJSON": {
+    "defaultMessage": "Protocol JSON",
+    "description": "The label text in hooks / useJsonPreview."
+  },
+  "architect.hooks.useJsonPreview.stageJSON": {
+    "defaultMessage": "Stage JSON",
+    "description": "The label text in hooks / useJsonPreview."
+  },
+  "architect.importFailure.protocol": {
+    "defaultMessage": "Architect could not open this protocol.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.importFailure.storage": {
+    "defaultMessage": "Architect could not save this protocol on this device. Your device may be out of space, or your browser may be blocking storage — which is common in a private window.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.importFailure.template": {
+    "defaultMessage": "Architect could not open this template.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.importSize.compressed": {
+    "defaultMessage": "This protocol file is too large to open ({size, number} MB). The maximum supported size is {maximum, number} MB.",
+    "description": "Import refusal before a protocol archive is buffered. Sizes are rounded mebibytes, shown consistently with the existing MB convention."
+  },
+  "architect.importSize.expanded": {
+    "defaultMessage": "This protocol file expands to more data than can be opened safely ({size, number} MB). It may be corrupt. The maximum supported size is {maximum, number} MB.",
+    "description": "Import refusal before media inflation when the archive declares an excessive expanded size."
+  },
+  "architect.installBanner.installArchitect": {
+    "defaultMessage": "Install Architect",
+    "description": "The aria-label text in components / InstallBanner."
+  },
+  "architect.interface.capability.createEdges": {
+    "defaultMessage": "Create edges",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.capability.createNodes": {
+    "defaultMessage": "Create nodes",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.capability.edgeAttributes": {
+    "defaultMessage": "Capture Edge Attributes",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.capability.egoData": {
+    "defaultMessage": "Capture Ego data",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.capability.nodeAttributes": {
+    "defaultMessage": "Capture Node Attributes",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.capability.provideInformation": {
+    "defaultMessage": "Display Data",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.capability.rosterData": {
+    "defaultMessage": "Use Roster Data",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.capability.showMedia": {
+    "defaultMessage": "Display Media",
+    "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
+  },
+  "architect.interface.description.AlterEdgeForm": {
+    "defaultMessage": "An edge interpreter interface that captures attribute data via a form.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.AlterForm": {
+    "defaultMessage": "An interface that allows the participant to fill out a form for each alter in the interview network.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.Anonymisation": {
+    "defaultMessage": "An interface that allows the participant to set a passphrase for node anonymisation.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.CategoricalBin": {
+    "defaultMessage": "A name interpreter interface that collects nominal data by allowing the participant to drag and drop alters into circles representing a category.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.DyadCensus": {
+    "defaultMessage": "A name interpreter interface that creates edges by systematically surveying all alters in the interview network.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.EgoForm": {
+    "defaultMessage": "An interface that collects data on your participant (ego).",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.FamilyPedigree": {
+    "defaultMessage": "An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.Geospatial": {
+    "defaultMessage": "An interface that captures geospatial data by allowing the user to select items on a map",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.Information": {
+    "defaultMessage": "A general purpose screen that can be used to present information to participants using a variety of text and media resources.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.NameGenerator": {
+    "defaultMessage": "A name generator interface which provides a form that participants complete when creating an alter.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.NameGeneratorQuickAdd": {
+    "defaultMessage": "A name generator interface designed for low response-burden. Only requires a label in order to create an alter.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.NameGeneratorRoster": {
+    "defaultMessage": "A name generator specifically for roster data, allowing sorting and filtering of the roster.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.Narrative": {
+    "defaultMessage": "A qualitative interface that uses \"presets\" to switch between different views of the data in the network.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.NarrativePedigree": {
+    "defaultMessage": "A read-only visualisation interface that overlays disease status and inheritance patterns onto a family pedigree collected by a Family Pedigree stage.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.NetworkComposer": {
+    "defaultMessage": "A free-form, single-screen canvas for building a whole network — create nodes, draw multiple edge types, and capture node and edge attributes in one place.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.OneToManyDyadCensus": {
+    "defaultMessage": "A name interpreter interface that creates edges by systematically surveying one alter against many others in the interview network.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.OrdinalBin": {
+    "defaultMessage": "A name interpreter interface that captures ordinal data by allowing the participant to drag and drop alters into bins.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.Sociogram": {
+    "defaultMessage": "Designed for spatially arranging alters (either manually or automatically), creating edges between them, and highlighting the presence of alter attributes.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.TieStrengthCensus": {
+    "defaultMessage": "Combines a dyad census with an ordinal attribute to simultaneously capture the strength of ties between alters.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.issues.issues": {
+    "defaultMessage": "Issues ({issueCount, number})",
+    "description": "Visible text in components / Issues."
+  },
+  "architect.jsonPreviewOverlay.altShiftJToClose": {
+    "defaultMessage": "Alt+Shift+J to close",
+    "description": "Visible text in components / JsonPreviewOverlay."
+  },
+  "architect.jsonPreviewOverlay.closePreview": {
+    "defaultMessage": "Close preview",
+    "description": "The aria-label text in components / JsonPreviewOverlay."
+  },
+  "architect.jsonPreviewOverlay.copied": {
+    "defaultMessage": "Copied!",
+    "description": "Visible text in components / JsonPreviewOverlay."
+  },
+  "architect.jsonPreviewOverlay.copy": {
+    "defaultMessage": "Copy",
+    "description": "Visible text in components / JsonPreviewOverlay."
+  },
+  "architect.library.metadata.justNow": {
+    "defaultMessage": "< 1 min ago",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.library.metadata.protocolMeta": {
+    "defaultMessage": "{count, plural, one {# stage} other {# stages}} · Added {created} · Edited {updated}",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.library.metadata.templateMeta": {
+    "defaultMessage": "{stages, plural, one {# stage} other {# stages}} · {nodes, plural, one {# node type} other {# node types}} · {edges, plural, one {# edge type} other {# edge types}}",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.nestedDraftReclaimDialog.backToTheEditor": {
+    "defaultMessage": "Back to the Editor",
+    "description": "The label text in components / NestedDraftReclaimDialog."
+  },
+  "architect.nestedDraftReclaimDialog.decideLater": {
+    "defaultMessage": "Decide Later",
+    "description": "The label text in components / NestedDraftReclaimDialog."
+  },
+  "architect.newProtocolDialog.createProtocol": {
+    "defaultMessage": "Create Protocol",
+    "description": "Visible text in components / NewProtocolDialog."
+  },
+  "architect.newProtocolDialog.enterANameForYourProtocol": {
+    "defaultMessage": "Enter a name for your protocol...",
+    "description": "The placeholder text in components / NewProtocolDialog."
+  },
+  "architect.newProtocolDialog.protocolName": {
+    "defaultMessage": "Protocol Name",
+    "description": "The label text in components / NewProtocolDialog."
+  },
+  "architect.newProtocolDialog.title": {
+    "defaultMessage": "Create New Protocol",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.newProtocolDialog.useAShortRecognizableNameOf": {
+    "defaultMessage": "Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH, number} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.",
+    "description": "Hint for the new protocol name. PROTOCOL_NAME_MAX_LENGTH is the maximum number of user-perceived characters allowed in that name."
+  },
+  "architect.newVariableWindow.newVariableWindow.allowedValues": {
+    "defaultMessage": "Allowed values",
+    "description": "The title text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.attributeDefinition": {
+    "defaultMessage": "Attribute definition",
+    "description": "The title text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.attributeName": {
+    "defaultMessage": "Attribute name",
+    "description": "The description text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.attributeType": {
+    "defaultMessage": "Attribute type",
+    "description": "The description text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.createNewAttribute": {
+    "defaultMessage": "Create New Attribute",
+    "description": "The title text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.createTheValuesThisInputControl": {
+    "defaultMessage": "Create the values this input control offers the participant.",
+    "description": "The hint text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.dataType": {
+    "defaultMessage": "Data type",
+    "description": "The title text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.defineTheAttributeSIdentityDataType": {
+    "defaultMessage": "Define the attribute's identity, data type, and available values.",
+    "description": "The description text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.eGNickname": {
+    "defaultMessage": "e.g. Nickname",
+    "description": "The placeholder text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.identity": {
+    "defaultMessage": "Identity",
+    "description": "The title text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.options": {
+    "defaultMessage": "Options",
+    "description": "The label text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.saveAndClose": {
+    "defaultMessage": "Save and Close",
+    "description": "The submitLabel text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.selectAttributeType": {
+    "defaultMessage": "Select attribute type",
+    "description": "The placeholder text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.newVariableWindow.newVariableWindow.theAttributeNameIsHowYou": {
+    "defaultMessage": "The attribute name is how you will reference the attribute elsewhere, including in exported data.",
+    "description": "The hint text in components / NewVariableWindow / NewVariableWindow."
+  },
+  "architect.notice.caption": {
+    "defaultMessage": "These options are automatically configured by the interface and cannot be modified.",
+    "description": "Researcher-facing explanation in components/Options/LockedOptions.tsx."
+  },
+  "architect.notice.unsavedWorkCaveat": {
+    "defaultMessage": "Installing the update will reload only this tab. Any unsaved work in this tab will be lost. Other open Architect tabs will keep running until they are reloaded.",
+    "description": "Researcher-facing explanation in components/AppUpdate/AppUpdatePill.tsx."
+  },
+  "architect.optionValidation.complete": {
+    "defaultMessage": "Every option needs both a label and a value.",
+    "description": "Validation for an ordinal or categorical attribute option list."
+  },
+  "architect.optionValidation.minimum": {
+    "defaultMessage": "Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.",
+    "description": "Validation for an ordinal or categorical attribute option list."
+  },
+  "architect.optionValidation.optionValue": {
+    "defaultMessage": "option value",
+    "description": "Validation for an ordinal or categorical attribute option list."
+  },
+  "architect.optionValidation.uniqueLabels": {
+    "defaultMessage": "Every option needs a unique label.",
+    "description": "Validation for an ordinal or categorical attribute option list."
+  },
+  "architect.optionValidation.uniqueValues": {
+    "defaultMessage": "Every option needs a unique value.",
+    "description": "Validation for an ordinal or categorical attribute option list."
+  },
+  "architect.options.lockedOptions.label": {
+    "defaultMessage": "Label",
+    "description": "Visible text in components / Options / LockedOptions."
+  },
+  "architect.options.lockedOptions.value": {
+    "defaultMessage": "Value",
+    "description": "Visible text in components / Options / LockedOptions."
+  },
+  "architect.pages.assetsPage.resourceLibrary": {
+    "defaultMessage": "Resource Library",
+    "description": "The title text in components / pages / AssetsPage."
+  },
+  "architect.pages.codebookPage.codebook": {
+    "defaultMessage": "Codebook",
+    "description": "The title text in components / pages / CodebookPage."
+  },
+  "architect.pages.codebookPage.overviewOfTheEgoNodeAnd": {
+    "defaultMessage": "Overview of the ego, node and edge types, their attributes, and network assets defined in your protocol. Create, edit, and delete types and attributes here. Unused entities can be deleted.",
+    "description": "The description text in components / pages / CodebookPage."
+  },
+  "architect.pages.experimentsPage.enableSupportForEncryptedAttributesIn": {
+    "defaultMessage": "Enable support for encrypted attributes in the codebook. This allows sensitive data to be collected securely.",
+    "description": "Visible text in components / pages / ExperimentsPage."
+  },
+  "architect.pages.experimentsPage.encryptedAttributes": {
+    "defaultMessage": "Encrypted Attributes",
+    "description": "Visible text in components / pages / ExperimentsPage."
+  },
+  "architect.pages.experimentsPage.experimentalFeatures": {
+    "defaultMessage": "Experimental Features",
+    "description": "Visible text in components / pages / ExperimentsPage."
+  },
+  "architect.pages.experimentsPage.experimentsActions": {
+    "defaultMessage": "Experiments actions",
+    "description": "The 'aria-label' text in components / pages / ExperimentsPage."
+  },
+  "architect.pages.experimentsPage.goBack": {
+    "defaultMessage": "Go Back",
+    "description": "Visible text in components / pages / ExperimentsPage."
+  },
+  "architect.pages.experimentsPage.theseFeaturesAreExperimentalAndMay": {
+    "defaultMessage": "These features are experimental and may not be fully supported.",
+    "description": "Visible text in components / pages / ExperimentsPage."
+  },
+  "architect.pages.summaryPage.belowIsAComprehensiveSummaryOf": {
+    "defaultMessage": "Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.",
+    "description": "The description text in components / pages / SummaryPage."
+  },
+  "architect.pages.summaryPage.protocolSummary": {
+    "defaultMessage": "Protocol Summary",
+    "description": "The title text in components / pages / SummaryPage."
+  },
+  "architect.presentation.conflictSubject": {
+    "defaultMessage": "{entityName}: {variableNames}",
+    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
+  },
+  "architect.presentation.invalidAttribute": {
+    "defaultMessage": "{label}: {reason}.",
+    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
+  },
+  "architect.presentation.issueDetail": {
+    "defaultMessage": "<fieldLabel>{field}</fieldLabel> - {issue}",
+    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
+  },
+  "architect.presentation.numberedStage": {
+    "defaultMessage": "{position, number}. {label}",
+    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
+  },
+  "architect.presentation.protocolCount": {
+    "defaultMessage": "{count, plural, one {# protocol} other {# protocols}}",
+    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
+  },
+  "architect.presentation.sortOrder": {
+    "defaultMessage": "<property></property> <direction>({directionLabel})</direction>",
+    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
+  },
+  "architect.presentation.warning": {
+    "defaultMessage": "({warning})",
+    "description": "Complete presentation message. Preserve authored values; the translator controls spacing and punctuation."
+  },
+  "architect.preview.constraints.thisType": {
+    "defaultMessage": "This type",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.preview.launch.missing": {
+    "defaultMessage": "No active protocol to preview. Open or save a protocol first.",
+    "description": "Preview launch refusal before opening a window."
+  },
+  "architect.preview.launch.timeout": {
+    "defaultMessage": "Preview window did not load in time. Close it and try again.",
+    "description": "Actionable preview handoff timeout."
+  },
+  "architect.previewHost.previewHost.closeTab": {
+    "defaultMessage": "Close tab",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.couldnTBuildThePreview": {
+    "defaultMessage": "Couldn't build the preview",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.couldnTReachTheArchitectTab": {
+    "defaultMessage": "Couldn't reach the Architect tab",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.ego": {
+    "defaultMessage": "Ego",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.finishConfirmation": {
+    "defaultMessage": "This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.",
+    "description": "Preview-specific finish confirmation inside the interview Shell. Preview answers are never saved, and the researcher can restart the run after finishing."
+  },
+  "architect.previewHost.previewHost.loadingPreview": {
+    "defaultMessage": "Loading preview…",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.previewFinished": {
+    "defaultMessage": "Preview finished",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.returnToArchitectAndClickPreview": {
+    "defaultMessage": "Return to Architect and click Preview again to start a new one.",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.somethingWentWrongPreparingThisProtocol": {
+    "defaultMessage": "Something went wrong preparing this protocol for preview. Return to Architect, check the protocol, and try again.",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.startThePreviewAgain": {
+    "defaultMessage": "Start the preview again",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.startingAgainRerunsTheProtocolAs": {
+    "defaultMessage": "Starting again reruns the protocol as it was when this preview opened. To preview changes you have made in Architect since then, start a new preview from there.",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.syntheticDataCouldnTBeGeneratedBecause": {
+    "defaultMessage": "Synthetic data couldn't be generated because these validation rules can't all be satisfied. Return to Architect, update the protocol, and preview it again.",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.theInterviewFinishedJustAsIt": {
+    "defaultMessage": "The interview finished, just as it would for a participant. Nothing was saved — preview responses are never stored.",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.thePreviewCouldnTBeLoadedThe": {
+    "defaultMessage": "The preview couldn't be loaded. The Architect tab may be closed or no longer responding.",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.thisPreviewHasEnded": {
+    "defaultMessage": "This preview has ended",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.thisProtocolCanTBePreviewed": {
+    "defaultMessage": "This protocol can't be previewed",
+    "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.projectNav.breadcrumb.breadcrumb": {
+    "defaultMessage": "Breadcrumb",
+    "description": "The aria-label text in components / ProjectNav / Breadcrumb."
+  },
+  "architect.projectNav.historyToolbarItems.historyControls": {
+    "defaultMessage": "History controls",
+    "description": "The aria-label text in components / ProjectNav / historyToolbarItems."
+  },
+  "architect.projectNav.historyToolbarItems.redo": {
+    "defaultMessage": "Redo",
+    "description": "The aria-label text in components / ProjectNav / historyToolbarItems."
+  },
+  "architect.projectNav.historyToolbarItems.undo": {
+    "defaultMessage": "Undo",
+    "description": "The aria-label text in components / ProjectNav / historyToolbarItems."
+  },
+  "architect.projectNav.navShell.closeMenu": {
+    "defaultMessage": "Close menu",
+    "description": "The aria-label text in components / ProjectNav / NavShell."
+  },
+  "architect.projectNav.navShell.mobileNavigation": {
+    "defaultMessage": "Mobile navigation",
+    "description": "The aria-label text in components / ProjectNav / NavShell."
+  },
+  "architect.projectNav.navShell.navigation": {
+    "defaultMessage": "Main navigation",
+    "description": "The aria-label text in components / ProjectNav / NavShell."
+  },
+  "architect.projectNav.navShell.openMenu": {
+    "defaultMessage": "Open menu",
+    "description": "The aria-label text in components / ProjectNav / NavShell."
+  },
+  "architect.projectNav.printProtocolAction.print": {
+    "defaultMessage": "Print",
+    "description": "Visible text in components / ProjectNav / PrintProtocolAction."
+  },
+  "architect.projectNav.projectActions.additionalActions": {
+    "defaultMessage": "Additional actions",
+    "description": "The aria-label text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.couldNotBeSaved": {
+    "defaultMessage": "\"{protocolName}\" could not be saved to source. Check the source files and your write permissions, then try again.",
+    "description": "The description text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.download": {
+    "defaultMessage": "Download",
+    "description": "Visible text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.downloadActions": {
+    "defaultMessage": "Download actions",
+    "description": "The aria-label text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.downloaded": {
+    "defaultMessage": "Downloaded",
+    "description": "Visible text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.downloading": {
+    "defaultMessage": "Downloading...",
+    "description": "Visible text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.navigationActions": {
+    "defaultMessage": "Navigation actions",
+    "description": "The aria-label text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.protocolSourceSaved": {
+    "defaultMessage": "Protocol source saved",
+    "description": "The title text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.saveProtocolSource": {
+    "defaultMessage": "Save protocol source?",
+    "description": "The title text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.saveToSource": {
+    "defaultMessage": "Save to source",
+    "description": "The label text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.saved": {
+    "defaultMessage": "Saved",
+    "description": "Visible text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.saving": {
+    "defaultMessage": "Saving...",
+    "description": "Visible text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.sourceActions": {
+    "defaultMessage": "Source actions",
+    "description": "The aria-label text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.sourceSaveFailed": {
+    "defaultMessage": "Source save failed",
+    "description": "The title text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.wasSavedTo": {
+    "defaultMessage": "\"{protocolName}\" was saved to {path}. {writtenCount, plural, one {# asset was written} other {# assets were written}} and {removedCount, plural, one {# stale asset was removed} other {# stale assets were removed}}.",
+    "description": "The description text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectActions.willOverwriteTheCanonical": {
+    "defaultMessage": "\"{value1}\" will overwrite the canonical protocol source files in this repository.",
+    "description": "The description text in components / ProjectNav / ProjectActions."
+  },
+  "architect.projectNav.projectNav.config.codebook": {
+    "defaultMessage": "Codebook",
+    "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
+  },
+  "architect.projectNav.projectNav.config.resources": {
+    "defaultMessage": "Resources",
+    "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
+  },
+  "architect.projectNav.projectNav.config.stages": {
+    "defaultMessage": "Stages",
+    "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
+  },
+  "architect.projectNav.projectNav.config.summary": {
+    "defaultMessage": "Summary",
+    "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
+  },
+  "architect.projectNav.projectNav.readOnly": {
+    "defaultMessage": "Read only",
+    "description": "Visible text in components / ProjectNav / ProjectNav."
+  },
+  "architect.projectNav.stageEditorNav.editingActions": {
+    "defaultMessage": "Editing actions",
+    "description": "The aria-label text in components / ProjectNav / StageEditorNav."
+  },
+  "architect.projectNav.stageEditorNav.finishedEditing": {
+    "defaultMessage": "Finished Editing",
+    "description": "Visible text in components / ProjectNav / StageEditorNav."
+  },
+  "architect.projectNav.stageEditorNav.preview": {
+    "defaultMessage": "Preview",
+    "description": "Visible text in components / ProjectNav / StageEditorNav."
+  },
+  "architect.projectNav.stageEditorNav.previewActions": {
+    "defaultMessage": "Preview actions",
+    "description": "The aria-label text in components / ProjectNav / StageEditorNav."
+  },
+  "architect.projectNav.stageEditorNav.previewSettings": {
+    "defaultMessage": "Preview settings",
+    "description": "The aria-label text in components / ProjectNav / StageEditorNav."
+  },
+  "architect.projectNav.stageEditorNav.stageEditorActions": {
+    "defaultMessage": "Stage editor actions",
+    "description": "The 'aria-label' text in components / ProjectNav / StageEditorNav."
+  },
+  "architect.protocol.stages": {
+    "defaultMessage": "Stages",
+    "description": "Visible text in components / Protocol."
+  },
+  "architect.protocolActions.failed": {
+    "defaultMessage": "Failed to Open Protocol",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.protocolActions.importError": {
+    "defaultMessage": "Protocol Import Error",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.protocolActions.migrationFailed": {
+    "defaultMessage": "Protocol migration failed.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.protocolActions.missing": {
+    "defaultMessage": "This protocol could not be found in your library.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.protocolActions.notFound": {
+    "defaultMessage": "Protocol Not Found",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.protocolActions.openError": {
+    "defaultMessage": "Protocol Open Error",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.protocolActions.unsupported": {
+    "defaultMessage": "Unsupported file type. Please open a .netcanvas file.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.protocolInfoCard.edge": {
+    "defaultMessage": "{edgeTypeCount, plural, one {# edge type} other {# edge types}}",
+    "description": "Visible text in components / ProtocolInfoCard."
+  },
+  "architect.protocolInfoCard.enterADescriptionForYourProtocol": {
+    "defaultMessage": "Enter a description for your protocol...",
+    "description": "The placeholder text in components / ProtocolInfoCard."
+  },
+  "architect.protocolInfoCard.enterProtocolName": {
+    "defaultMessage": "Enter protocol name...",
+    "description": "The placeholder text in components / ProtocolInfoCard."
+  },
+  "architect.protocolInfoCard.node": {
+    "defaultMessage": "{nodeTypeCount, plural, one {# node type} other {# node types}}",
+    "description": "Visible text in components / ProtocolInfoCard."
+  },
+  "architect.protocolInfoCard.protocolDescription": {
+    "defaultMessage": "Protocol description",
+    "description": "The aria-label text in components / ProtocolInfoCard."
+  },
+  "architect.protocolInfoCard.protocolName": {
+    "defaultMessage": "Protocol name",
+    "description": "The aria-label text in components / ProtocolInfoCard."
+  },
+  "architect.protocolInfoCard.requiresInternet": {
+    "defaultMessage": "Requires Internet",
+    "description": "Visible text in components / ProtocolInfoCard."
+  },
+  "architect.protocolInfoCard.stages": {
+    "defaultMessage": "{count, plural, one {# stage} other {# stages}}",
+    "description": "Number of stages in the open protocol."
+  },
+  "architect.protocolLockBanner.chooseWhatToKeep": {
+    "defaultMessage": "Choose What to Keep",
+    "description": "The label text in components / ProtocolLockBanner."
+  },
+  "architect.protocolLockBanner.discardChanges": {
+    "defaultMessage": "Discard Changes",
+    "description": "The label text in components / ProtocolLockBanner."
+  },
+  "architect.protocolLockBanner.showMeWhatToDo": {
+    "defaultMessage": "Show Me What to Do",
+    "description": "The label text in components / ProtocolLockBanner."
+  },
+  "architect.protocolOpenDialogs.technicalDetails": {
+    "defaultMessage": "Technical details (English)",
+    "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.protocolSummary.asset.english": {
+    "defaultMessage": "English",
+    "description": "The label text in lib / ProtocolSummary / components / Asset."
+  },
+  "architect.protocolSummary.assetManifest.resourceLibrary": {
+    "defaultMessage": "Resource Library",
+    "description": "Visible text in lib / ProtocolSummary / components / AssetManifest."
+  },
+  "architect.protocolSummary.contents.assets": {
+    "defaultMessage": "Assets",
+    "description": "Visible text in lib / ProtocolSummary / components / Contents."
+  },
+  "architect.protocolSummary.contents.codebook": {
+    "defaultMessage": "Codebook",
+    "description": "Visible text in lib / ProtocolSummary / components / Contents."
+  },
+  "architect.protocolSummary.contents.contents": {
+    "defaultMessage": "Contents",
+    "description": "Visible text in lib / ProtocolSummary / components / Contents."
+  },
+  "architect.protocolSummary.contents.edgeTypes": {
+    "defaultMessage": "Edge types",
+    "description": "Visible text in lib / ProtocolSummary / components / Contents."
+  },
+  "architect.protocolSummary.contents.ego": {
+    "defaultMessage": "Ego",
+    "description": "Visible text in lib / ProtocolSummary / components / Contents."
+  },
+  "architect.protocolSummary.contents.nodeTypes": {
+    "defaultMessage": "Node types",
+    "description": "Visible text in lib / ProtocolSummary / components / Contents."
+  },
+  "architect.protocolSummary.contents.stages": {
+    "defaultMessage": "Stages",
+    "description": "Visible text in lib / ProtocolSummary / components / Contents."
+  },
+  "architect.protocolSummary.cover.aNetworkCanvasProject": {
+    "defaultMessage": "A Network Canvas project",
+    "description": "The alt text in lib / ProtocolSummary / components / Cover."
+  },
+  "architect.protocolSummary.cover.documentCreated": {
+    "defaultMessage": "Document Created: {now}",
+    "description": "Visible text in lib / ProtocolSummary / components / Cover."
+  },
+  "architect.protocolSummary.cover.protocolSummaryDocument": {
+    "defaultMessage": "Protocol Summary Document",
+    "description": "Visible text in lib / ProtocolSummary / components / Cover."
+  },
+  "architect.protocolSummary.entity.ego": {
+    "defaultMessage": "Ego",
+    "description": "Visible text in lib / ProtocolSummary / components / Entity."
+  },
+  "architect.protocolSummary.protocolCard.lastModified": {
+    "defaultMessage": "Last Modified: {value1}",
+    "description": "Visible text in lib / ProtocolSummary / components / ProtocolCard."
+  },
+  "architect.protocolSummary.protocolCard.schemaVersion": {
+    "defaultMessage": "Schema Version: {schemaVersion}",
+    "description": "Visible text in lib / ProtocolSummary / components / ProtocolCard."
+  },
+  "architect.protocolSummary.stage.anonymisation.explanationText": {
+    "defaultMessage": "Explanation Text",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Anonymisation."
+  },
+  "architect.protocolSummary.stage.anonymisation.theFollowingAttributesWillBeEncrypted": {
+    "defaultMessage": "The following attributes will be encrypted using the participant's passphrase:",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / Anonymisation."
+  },
+  "architect.protocolSummary.stage.behaviours.behaviours": {
+    "defaultMessage": "Behaviours",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Behaviours."
+  },
+  "architect.protocolSummary.stage.dataSource.dataSource": {
+    "defaultMessage": "DataSource",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / DataSource."
+  },
+  "architect.protocolSummary.stage.form.form": {
+    "defaultMessage": "Form",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Form."
+  },
+  "architect.protocolSummary.stage.form.title": {
+    "defaultMessage": "Title: {value1}",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / Form."
+  },
+  "architect.protocolSummary.stage.interviewScript.interviewerScript": {
+    "defaultMessage": "Interviewer Script",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / InterviewScript."
+  },
+  "architect.protocolSummary.stage.introductionPanel.introductionPanel": {
+    "defaultMessage": "Introduction Panel",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / IntroductionPanel."
+  },
+  "architect.protocolSummary.stage.items.items": {
+    "defaultMessage": "Items",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Items."
+  },
+  "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": {
+    "defaultMessage": "GeoJSON Data Source",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / MapOptions."
+  },
+  "architect.protocolSummary.stage.mapOptions.mapboxAPIKey": {
+    "defaultMessage": "Mapbox API Key",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / MapOptions."
+  },
+  "architect.protocolSummary.stage.nameGenerationStep.formFields": {
+    "defaultMessage": "Form Fields",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep."
+  },
+  "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": {
+    "defaultMessage": "Name Generation Step Instructions",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep."
+  },
+  "architect.protocolSummary.stage.nominationPrompts.nominationPrompts": {
+    "defaultMessage": "Nomination Prompts",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / NominationPrompts. A Family Pedigree stage asks these after the family is built; each records a condition or trait as a boolean attribute of the family members the participant picks."
+  },
+  "architect.protocolSummary.stage.pageHeading.pageHeading": {
+    "defaultMessage": "Page Heading",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / PageHeading."
+  },
+  "architect.protocolSummary.stage.panels.existingNetwork": {
+    "defaultMessage": "Existing network",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / Panels."
+  },
+  "architect.protocolSummary.stage.panels.panels": {
+    "defaultMessage": "Panels",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Panels."
+  },
+  "architect.protocolSummary.stage.presets.presets": {
+    "defaultMessage": "Presets",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Presets."
+  },
+  "architect.protocolSummary.stage.prompts.prompts": {
+    "defaultMessage": "Prompts",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Prompts."
+  },
+  "architect.protocolSummary.stage.quickAdd.attribute": {
+    "defaultMessage": "Attribute",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / QuickAdd."
+  },
+  "architect.protocolSummary.stage.quickAdd.quickAdd": {
+    "defaultMessage": "Quick Add",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / QuickAdd."
+  },
+  "architect.protocolSummary.stage.quickAdd.type": {
+    "defaultMessage": "Type",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / QuickAdd."
+  },
+  "architect.protocolSummary.stage.scaffoldingStep.scaffoldingStepInstructions": {
+    "defaultMessage": "Scaffolding Step Instructions",
+    "description": "Visible text in lib / ProtocolSummary / components / Stage / ScaffoldingStep."
+  },
+  "architect.protocolSummary.stage.stage.networkFiltering": {
+    "defaultMessage": "Network Filtering",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Stage."
+  },
+  "architect.protocolSummary.stage.stage.skipLogic": {
+    "defaultMessage": "Skip Logic",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / Stage."
+  },
+  "architect.protocolSummary.variables.name": {
+    "defaultMessage": "Name",
+    "description": "Visible text in lib / ProtocolSummary / components / Variables."
+  },
+  "architect.protocolSummary.variables.noAttributesToDisplay": {
+    "defaultMessage": "No attributes to display.",
+    "description": "Visible text in lib / ProtocolSummary / components / Variables."
+  },
+  "architect.protocolSummary.variables.type": {
+    "defaultMessage": "Type",
+    "description": "Visible text in lib / ProtocolSummary / components / Variables."
+  },
+  "architect.protocolSummary.variables.usedIn": {
+    "defaultMessage": "Used In",
+    "description": "Visible text in lib / ProtocolSummary / components / Variables."
+  },
+  "architect.protocolValidationDialogReporter.misconfiguredProtocol": {
+    "defaultMessage": "Misconfigured Protocol",
+    "description": "The title text in components / ProtocolValidationDialogReporter."
+  },
+  "architect.protocolValidationDialogReporter.protocolValidationErrors": {
+    "defaultMessage": "Protocol validation errors",
+    "description": "The aria-label text in components / ProtocolValidationDialogReporter."
+  },
+  "architect.protocolValidationDialogReporter.returnToStartScreen": {
+    "defaultMessage": "Return to Start Screen",
+    "description": "Visible text in components / ProtocolValidationDialogReporter."
+  },
+  "architect.protocolValidationDialogReporter.revertToLastValidState": {
+    "defaultMessage": "Revert to Last Valid State",
+    "description": "Visible text in components / ProtocolValidationDialogReporter."
+  },
+  "architect.protocolValidationDialogReporter.theLatestChangeMadeThisProtocol": {
+    "defaultMessage": "The latest change made this protocol invalid. Revert to the last valid state to continue editing, or return to the start screen.",
+    "description": "The description text in components / ProtocolValidationDialogReporter."
+  },
+  "architect.protocolValidationDialogReporter.theProtocolContainsValidationErrors": {
+    "defaultMessage": "Technical details (English):",
+    "description": "Visible text in components / ProtocolValidationDialogReporter."
+  },
+  "architect.query.sentence.join": {
+    "defaultMessage": "{join, select, AND {and} OR {or} other {}}",
+    "description": "How adjacent network-filter rules combine. AND and OR are protocol identifiers; translate their displayed labels only."
+  },
+  "architect.remaining.newProtocolDialog.protocolNameIsRequired": {
+    "defaultMessage": "Protocol name is required",
+    "description": "The required text in components / NewProtocolDialog."
+  },
+  "architect.remaining.typeEditor.shapePicker.selectShape": {
+    "defaultMessage": "Select shape {value1}",
+    "description": "The ariaLabel text in components / TypeEditor / ShapePicker."
+  },
+  "architect.resource.genericImportFailure": {
+    "defaultMessage": "Check that it is a supported file type, and try again.",
+    "description": "Generic resource-import guidance for unexpected exception messages."
+  },
+  "architect.resourceImport.columns": {
+    "defaultMessage": "Some rows have a different number of columns. Make each row match the column headers, then import the file again.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.resourceImport.empty": {
+    "defaultMessage": "This network file doesn't contain any nodes or edges.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.resourceImport.generic": {
+    "defaultMessage": "Check that it is a supported file type, and try again.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.resourceImport.names": {
+    "defaultMessage": "Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.resourceImport.replacementType": {
+    "defaultMessage": "This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.resourceImport.unsupported": {
+    "defaultMessage": "That file type is not supported as a resource.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.screens.newStageScreen.interfaceList.clearSearchAndFilter": {
+    "defaultMessage": "Clear search and filter",
+    "description": "Visible text in components / Screens / NewStageScreen / InterfaceList."
+  },
+  "architect.screens.newStageScreen.interfaceList.noInterfacesMatchYourFilterAndOr": {
+    "defaultMessage": "No interfaces match your filter and/or search results. Try a different combination of types, or clear your filters and search query to see all available interfaces.",
+    "description": "Visible text in components / Screens / NewStageScreen / InterfaceList."
+  },
+  "architect.screens.newStageScreen.newStageScreen.clearSearch": {
+    "defaultMessage": "Clear search",
+    "description": "The aria-label text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.screens.newStageScreen.newStageScreen.filterByCapabilities": {
+    "defaultMessage": "Filter by capabilities:",
+    "description": "Visible text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.screens.newStageScreen.newStageScreen.interfaceCapabilityFilters": {
+    "defaultMessage": "Interface capability filters",
+    "description": "The aria-label text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.screens.newStageScreen.newStageScreen.searchInterfaces": {
+    "defaultMessage": "Search interfaces",
+    "description": "The aria-label text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.screens.newStageScreen.newStageScreen.searchInterfacesByNameOrKeyword": {
+    "defaultMessage": "Search interfaces by name or keyword...",
+    "description": "The placeholder text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.screens.newStageScreen.newStageScreen.selectAnInterfaceType": {
+    "defaultMessage": "Select an Interface Type",
+    "description": "The title text in components / Screens / NewStageScreen / NewStageScreen."
+  },
+  "architect.skipDestination.finish": {
+    "defaultMessage": "End interview",
+    "description": "Display of a skip-logic destination, preserving the authored stage label."
+  },
+  "architect.skipDestination.next": {
+    "defaultMessage": "Next available stage",
+    "description": "Display of a skip-logic destination, preserving the authored stage label."
+  },
+  "architect.skipDestination.stage": {
+    "defaultMessage": "Stage {position, number} — {label}",
+    "description": "Display of a skip-logic destination, preserving the authored stage label."
+  },
+  "architect.skipDestination.unknown": {
+    "defaultMessage": "Unknown stage",
+    "description": "Display of a skip-logic destination, preserving the authored stage label."
+  },
+  "architect.skipDestination.untitled": {
+    "defaultMessage": "Untitled stage",
+    "description": "Display of a skip-logic destination, preserving the authored stage label."
+  },
+  "architect.stageEditor.sectionOutline.completeStatus": {
+    "defaultMessage": "Finished",
+    "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.errorStatus": {
+    "defaultMessage": "Has a problem",
+    "description": "Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon."
+  },
+  "architect.stageEditor.sectionOutline.incompleteStatus": {
+    "defaultMessage": "Not finished",
+    "description": "Spoken state of one section of a stage editor: it still has required fields the researcher has not filled in. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.landmarkLabel": {
+    "defaultMessage": "Stage sections",
+    "description": "Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview."
+  },
+  "architect.stageEditor.sectionOutline.statusWithProblems": {
+    "defaultMessage": "{status}. {problems}",
+    "description": "Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state (\"Has a problem\"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them."
+  },
+  "architect.stageEditor.sectionOutline.switchedOffStatus": {
+    "defaultMessage": "Switched off",
+    "description": "Spoken state of one section of a stage editor: the researcher has turned this optional part of the stage off, so it asks for nothing. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.unavailableStatus": {
+    "defaultMessage": "Not available yet",
+    "description": "Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.stageDraftConflictDialog.decideLater": {
+    "defaultMessage": "Decide Later",
+    "description": "The label text in components / StageEditor / StageDraftConflictDialog."
+  },
+  "architect.stageEditor.stageDraftConflictDialog.discardMyChanges": {
+    "defaultMessage": "Discard My Changes",
+    "description": "The label text in components / StageEditor / StageDraftConflictDialog."
+  },
+  "architect.stageEditor.stageDraftConflictDialog.downloadACopy": {
+    "defaultMessage": "Download a Copy",
+    "description": "The label text in components / StageEditor / StageDraftConflictDialog."
+  },
+  "architect.stageEditor.stageEditor.cannotPreview": {
+    "defaultMessage": "Cannot Preview",
+    "description": "The title text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.discardChangesAndLeave": {
+    "defaultMessage": "Discard Changes and Leave",
+    "description": "The label text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.discardUnsavedStageChanges": {
+    "defaultMessage": "Discard unsaved stage changes?",
+    "description": "The title text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.failedToOpenPreview": {
+    "defaultMessage": "Failed to open preview",
+    "description": "The description text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.noProtocolLoaded": {
+    "defaultMessage": "No protocol loaded",
+    "description": "The description text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.previewError": {
+    "defaultMessage": "Preview Error",
+    "description": "The title text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.previewFailed": {
+    "defaultMessage": "Preview Failed",
+    "description": "The title text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.previewPopupBlocked": {
+    "defaultMessage": "Preview popup blocked",
+    "description": "The title text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.respectSkipLogic": {
+    "defaultMessage": "Respect skip logic",
+    "description": "Visible text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.stageNotFound": {
+    "defaultMessage": "Stage not found",
+    "description": "The title text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.startPreviewWithExampleData": {
+    "defaultMessage": "Start preview with example data",
+    "description": "Visible text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.thatStageNoLongerExistsIt": {
+    "defaultMessage": "That stage no longer exists. It may have been deleted. Returning you to the protocol overview.",
+    "description": "The description text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditor.yourBrowserBlockedThePreviewPopup": {
+    "defaultMessage": "Your browser blocked the preview popup. Allow popups for this site, then click Preview again.",
+    "description": "The description text in components / StageEditor / StageEditor."
+  },
+  "architect.stageEditor.stageEditorChrome.oK": {
+    "defaultMessage": "OK",
+    "description": "The label that dismisses a preview dialog in components / StageEditor / StageEditorChrome."
+  },
+  "architect.stageEditor.stageEditorPage.otherTab": {
+    "defaultMessage": "Another tab",
+    "description": "What an editor calls the browser tab that holds the saved copy of this protocol, when it is not this one. Read as, for example, “Another tab is editing this stage”."
+  },
+  "architect.stageEditor.stageTitle.documentation": {
+    "defaultMessage": "Documentation",
+    "description": "Link beside the name of the stage being edited, to the documentation for this type of interview interface."
+  },
+  "architect.stageEditor.stageTitle.position": {
+    "defaultMessage": "Stage {index, number} of {total, number}",
+    "description": "Where the stage being edited sits in the interview, shown above its name. index is one-based. A stage is one step of an interview."
+  },
+  "architect.storageUnavailableBanner.downloadFailed": {
+    "defaultMessage": "Download failed",
+    "description": "The title text in components / StorageUnavailableBanner."
+  },
+  "architect.storageUnavailableBanner.downloadNetcanvas": {
+    "defaultMessage": "Download .netcanvas",
+    "description": "Visible text in components / StorageUnavailableBanner."
+  },
+  "architect.storageUnavailableBanner.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / StorageUnavailableBanner."
+  },
+  "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": {
+    "defaultMessage": "Some resources could not be read",
+    "description": "The title text in components / StorageUnavailableBanner."
+  },
+  "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": {
+    "defaultMessage": "This protocol isn't being saved on this device — local app storage is unavailable, which is common in private browsing. Download a copy to keep your work.",
+    "description": "Visible text in components / StorageUnavailableBanner."
+  },
+  "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": {
+    "defaultMessage": "Your protocol couldn't be downloaded. Please try again.",
+    "description": "The description text in components / StorageUnavailableBanner."
+  },
+  "architect.storedProtocol.changed": {
+    "defaultMessage": "\"{name}\" was saved by another window while it was being upgraded. Nothing was changed. Open the protocol again to continue.",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.submission.failed": {
+    "defaultMessage": "These changes could not be saved. Check the current settings and try again.",
+    "description": "Actionable fallback for an unexpected editor submission failure. Technical exception text is not shown as repair guidance."
+  },
+  "architect.submission.missingAttribute": {
+    "defaultMessage": "Attribute not found",
+    "description": "Submission failure when the selected attribute disappeared while the editor was open."
+  },
+  "architect.submission.rowRemoved": {
+    "defaultMessage": "This item was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new item.",
+    "description": "A row disappeared during its asynchronous save. Whole neutral wording avoids capturing a previously translated item label."
+  },
+  "architect.summary.behaviours.automaticlayoutenabled": {
+    "defaultMessage": "Automatic layout enabled",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.behaviours.freedrawenabled": {
+    "defaultMessage": "Freedraw enabled",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.behaviours.maximumnodesonstage": {
+    "defaultMessage": "Maximum nodes on stage",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.behaviours.minimumnodesonstage": {
+    "defaultMessage": "Minimum nodes on stage",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.behaviours.repositioningenabled": {
+    "defaultMessage": "Repositioning enabled",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.boolean": {
+    "defaultMessage": "{value, select, true {TRUE} other {FALSE}}",
+    "description": "Display of a boolean value in the printable summary. Stored values are unchanged."
+  },
+  "architect.summary.label.aPIKey": {
+    "defaultMessage": "API Key",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.action": {
+    "defaultMessage": "Action",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.attribute": {
+    "defaultMessage": "Attribute",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.attributes": {
+    "defaultMessage": "Attributes",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.audio": {
+    "defaultMessage": "Audio",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.blockSize": {
+    "defaultMessage": "Block Size",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.component": {
+    "defaultMessage": "Component",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.content": {
+    "defaultMessage": "Content",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.dataSource": {
+    "defaultMessage": "Data Source",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.destination": {
+    "defaultMessage": "Destination",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.duration": {
+    "defaultMessage": "Duration",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.edgeType": {
+    "defaultMessage": "Edge Type",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.egoSexAttribute": {
+    "defaultMessage": "Ego Sex Attribute",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.geoJSON": {
+    "defaultMessage": "GeoJSON",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.groupAttribute": {
+    "defaultMessage": "Group attribute",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.highlightAttributes": {
+    "defaultMessage": "Highlight attributes",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.image": {
+    "defaultMessage": "Image",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.initialCenterLatLng": {
+    "defaultMessage": "Initial Center (lat, lng)",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.initialZoom": {
+    "defaultMessage": "Initial Zoom",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.label": {
+    "defaultMessage": "Label",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.layoutAttribute": {
+    "defaultMessage": "Layout attribute",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.mapStyle": {
+    "defaultMessage": "Map Style",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.name": {
+    "defaultMessage": "Name",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.network": {
+    "defaultMessage": "Network",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.nodeIsEgo": {
+    "defaultMessage": "Node Is Ego",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.nodeSexAttribute": {
+    "defaultMessage": "Node Sex Attribute",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.nodeType": {
+    "defaultMessage": "Node Type",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.preview": {
+    "defaultMessage": "Preview",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.prompt": {
+    "defaultMessage": "Prompt",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.relationshipToEgo": {
+    "defaultMessage": "Relationship to Ego",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.relationshipType": {
+    "defaultMessage": "Relationship Type",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.rules": {
+    "defaultMessage": "Rules",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.selectionColor": {
+    "defaultMessage": "Selection Color",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.showEdges": {
+    "defaultMessage": "Show edges",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.showQuickStartModal": {
+    "defaultMessage": "Show Quick Start Modal",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.subject": {
+    "defaultMessage": "Subject",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.targetFeatureProperty": {
+    "defaultMessage": "Target Feature Property",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.text": {
+    "defaultMessage": "Text",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.title": {
+    "defaultMessage": "Title",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.type": {
+    "defaultMessage": "Type",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.value": {
+    "defaultMessage": "Value",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.label.video": {
+    "defaultMessage": "Video",
+    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  },
+  "architect.summary.print.filename": {
+    "defaultMessage": "{name} Protocol Summary (Created {date})",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.allowhighlighting": {
+    "defaultMessage": "Allow highlighting",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.ascending": {
+    "defaultMessage": "ascending",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.attribute": {
+    "defaultMessage": "Attribute",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.binsortorder": {
+    "defaultMessage": "Bin sort order",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.bucketsortorder": {
+    "defaultMessage": "Bucket sort order",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.createsedge": {
+    "defaultMessage": "Creates edge",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.descending": {
+    "defaultMessage": "descending",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.edgeStrengthAttribute": {
+    "defaultMessage": "Edge Strength Attribute",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.highlightattribute": {
+    "defaultMessage": "Highlight attribute",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.layoutattribute": {
+    "defaultMessage": "Layout attribute",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.negativeOptionLabel": {
+    "defaultMessage": "Negative Option Label",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.otherattribute": {
+    "defaultMessage": "Other attribute",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.otherattributeprompt": {
+    "defaultMessage": "Other attribute prompt",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.otheroptionlabel": {
+    "defaultMessage": "Other option label",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.prompt.sortbyproperty": {
+    "defaultMessage": "Sort by property",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.summary.scaffolding.enabled": {
+    "defaultMessage": "{enabled, select, true {Yes} other {No}}",
+    "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.testingMapboxTokenAlert.howToGetAMapboxToken": {
+    "defaultMessage": "How to get a Mapbox token",
+    "description": "Visible text in components / TestingMapboxTokenAlert."
+  },
+  "architect.testingMapboxTokenAlert.revokedMapboxTestingToken": {
+    "defaultMessage": "Revoked Mapbox testing token",
+    "description": "Visible text in components / TestingMapboxTokenAlert."
+  },
+  "architect.testingMapboxTokenAlert.thisProtocolUsesARetiredNetwork": {
+    "defaultMessage": "This protocol uses a retired Network Canvas Mapbox testing token. It was revoked on 2 September 2026, so maps in Geospatial stages will not load. Replace it with your own token in the Resource Library.",
+    "description": "Visible text in components / TestingMapboxTokenAlert."
+  },
+  "architect.testingMapboxTokenAlert.thisProtocolUsesNetworkCanvasSShared": {
+    "defaultMessage": "This protocol uses Network Canvas's shared Mapbox testing token so the map renders out of the box. It is rate-limited and for evaluation only. Before you deploy this study, replace it with your own token in the Resource Library.",
+    "description": "Visible text in components / TestingMapboxTokenAlert."
+  },
+  "architect.testingMapboxTokenAlert.usingATestingMapboxToken": {
+    "defaultMessage": "Using a testing Mapbox token",
+    "description": "Visible text in components / TestingMapboxTokenAlert."
+  },
+  "architect.timeline.announcement.deleted": {
+    "defaultMessage": "Deleted stage {position, number}. {remaining, plural, =0 {No stages remain.} one {1 stage remains.} other {# stages remain.}}",
+    "description": "Live announcement after a timeline operation succeeds."
+  },
+  "architect.timeline.announcement.moved": {
+    "defaultMessage": "Moved stage {fromPosition, number} to position {toPosition, number} of {total, number}.",
+    "description": "Live announcement after a timeline operation succeeds."
+  },
+  "architect.timeline.insertButton.addStageHere": {
+    "defaultMessage": "Add stage here",
+    "description": "Visible text in components / Timeline / InsertButton."
+  },
+  "architect.timeline.insertButton.addStageHereBeforeStage": {
+    "defaultMessage": "Add stage here, before stage {position, number}: {nextStageName}",
+    "description": "The aria-label text in components / Timeline / InsertButton."
+  },
+  "architect.timeline.timeline.addNewStage": {
+    "defaultMessage": "Add new stage",
+    "description": "Visible text in components / Timeline / Timeline."
+  },
+  "architect.timeline.timeline.areYouSureYouWantTo": {
+    "defaultMessage": "Are you sure you want to delete this stage from your protocol? You can restore it with Undo while this protocol remains open.",
+    "description": "The description text in components / Timeline / Timeline."
+  },
+  "architect.timeline.timeline.cannotDeleteStage": {
+    "defaultMessage": "Cannot delete stage",
+    "description": "The title text in components / Timeline / Timeline."
+  },
+  "architect.timeline.timeline.deleteStage": {
+    "defaultMessage": "Delete stage",
+    "description": "The title text in components / Timeline / Timeline."
+  },
+  "architect.timeline.timeline.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / Timeline / Timeline."
+  },
+  "architect.timeline.timeline.protocolStages": {
+    "defaultMessage": "Protocol stages",
+    "description": "The aria-label text in components / Timeline / Timeline."
+  },
+  "architect.timeline.timeline.thisFamilyPedigreeStageIsUsed": {
+    "defaultMessage": "{stageCount, plural, one {This Family Pedigree stage is used by the Narrative Pedigree stage {names}. Remove that stage or change its source before deleting this stage.} other {This Family Pedigree stage is used by the Narrative Pedigree stages {names}. Remove those stages or change their source before deleting this stage.}}",
+    "description": "The description text in components / Timeline / Timeline."
+  },
+  "architect.timeline.timelineStageRow.deleteStage": {
+    "defaultMessage": "Delete stage {position, number}: {stageName}",
+    "description": "The aria-label text in components / Timeline / TimelineStageRow."
+  },
+  "architect.timeline.timelineStageRow.hasFilter": {
+    "defaultMessage": "Has filter",
+    "description": "The alt text in components / Timeline / TimelineStageRow."
+  },
+  "architect.timeline.timelineStageRow.hasSkipLogic": {
+    "defaultMessage": "Has skip logic",
+    "description": "The alt text in components / Timeline / TimelineStageRow."
+  },
+  "architect.typeEditor.shapePicker.config.circle": {
+    "defaultMessage": "Circle",
+    "description": "Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated."
+  },
+  "architect.typeEditor.shapePicker.config.diamond": {
+    "defaultMessage": "Diamond",
+    "description": "Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated."
+  },
+  "architect.typeEditor.shapePicker.config.square": {
+    "defaultMessage": "Square",
+    "description": "Presentation label or description in components/TypeEditor/ShapePicker.tsx. Identifiers are not translated."
+  },
+  "architect.typeEditor.shapeVariableMapping.attribute": {
+    "defaultMessage": "Attribute",
+    "description": "The label text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.belowFirstThreshold": {
+    "defaultMessage": "Below first threshold",
+    "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved": {
+    "defaultMessage": "Below first threshold cannot be removed",
+    "description": "The aria-label text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.defaultShape": {
+    "defaultMessage": "Default shape",
+    "description": "The aria-label text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.false": {
+    "defaultMessage": "False",
+    "description": "The label text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.mapAttributeToShape": {
+    "defaultMessage": "Map attribute to shape",
+    "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.overrideTheDefaultShapeBasedOn": {
+    "defaultMessage": "Override the default shape based on the value of a node's attribute.",
+    "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.removeThreshold": {
+    "defaultMessage": "Remove threshold {value1, number}",
+    "description": "Accessible remove-button label for a shape-mapping threshold. value1 is its one-based position in the threshold list."
+  },
+  "architect.typeEditor.shapeVariableMapping.shapeAtThreshold": {
+    "defaultMessage": "Shape at threshold {value}",
+    "description": "Accessible label for the shape chosen at a numeric breakpoint. value is the complete locale-formatted threshold number; its precision must be preserved."
+  },
+  "architect.typeEditor.shapeVariableMapping.shapeFor": {
+    "defaultMessage": "Shape for {value1}",
+    "description": "The aria-label text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.shapeForEachValue": {
+    "defaultMessage": "Shape for each value",
+    "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.shapeMapping": {
+    "defaultMessage": "Shape mapping",
+    "description": "The label text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill": {
+    "defaultMessage": "Some values are unmapped and will use the default shape.",
+    "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.thresholdValue": {
+    "defaultMessage": "Threshold {value1, number} value",
+    "description": "Accessible name of a numeric shape-mapping threshold input. value1 is the one-based threshold position, not the numeric breakpoint value."
+  },
+  "architect.typeEditor.shapeVariableMapping.thresholds": {
+    "defaultMessage": "Thresholds",
+    "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.true": {
+    "defaultMessage": "True",
+    "description": "The label text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.shapeVariableMapping.usesDefaultShape": {
+    "defaultMessage": "uses default shape",
+    "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
+  },
+  "architect.typeEditor.typeEditor.chooseAColorForThisType": {
+    "defaultMessage": "Choose a color for this {entity, select, node {node} edge {edge} other {ego}} type.",
+    "description": "The hint text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.chooseADefaultShapeAndOptionally": {
+    "defaultMessage": "Choose a default shape and optionally map shapes from an attribute.",
+    "description": "The description text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.chooseADefaultShapeForThis": {
+    "defaultMessage": "Choose a default shape for this node type.",
+    "description": "The hint text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.chooseAnIconToDisplayOn": {
+    "defaultMessage": "Choose an icon to display on interfaces that create this {entity, select, node {node} edge {edge} other {ego}}.",
+    "description": "The hint text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.color": {
+    "defaultMessage": "Color",
+    "description": "The label text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.enterANameForThisType": {
+    "defaultMessage": "Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...",
+    "description": "The placeholder text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.icon": {
+    "defaultMessage": "Icon",
+    "description": "The label text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.interfaceIcon": {
+    "defaultMessage": "Interface icon",
+    "description": "The title text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.nameThisTypeForTheCodebook": {
+    "defaultMessage": "Name this type for the codebook and exported data.",
+    "description": "The description text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.nodeAppearance": {
+    "defaultMessage": "Node appearance",
+    "description": "The title text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.shape": {
+    "defaultMessage": "Shape",
+    "description": "The label text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": {
+    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Colleagues\".}}",
+    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. The field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each translated example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote."
+  },
+  "architect.typeEditor.typeEditor.typeColor": {
+    "defaultMessage": "Type color",
+    "description": "The title text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.typeIdentity": {
+    "defaultMessage": "Type identity",
+    "description": "The title text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.typeName": {
+    "defaultMessage": "{entity, select, node {Node} other {Edge}} type name",
+    "description": "The label text in components / TypeEditor / TypeEditor."
+  },
+  "architect.utility.dialogForm.confirmDiscardNestedDraft.closeWithoutSaving": {
+    "defaultMessage": "Close Without Saving",
+    "description": "The label text in components / DialogForm / confirmDiscardNestedDraft."
+  },
+  "architect.utility.dialogForm.confirmDiscardNestedDraft.unsavedChanges": {
+    "defaultMessage": "Unsaved Changes",
+    "description": "The title text in components / DialogForm / confirmDiscardNestedDraft."
+  },
+  "architect.utility.dialogForm.confirmDiscardNestedDraft.youHaveUnsavedChangesInThis": {
+    "defaultMessage": "You have unsaved changes in this editor. Are you sure you want to close without saving?",
+    "description": "The description text in components / DialogForm / confirmDiscardNestedDraft."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.discardChangesAndLeave": {
+    "defaultMessage": "Discard Changes and Leave",
+    "description": "The label text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.discardChangesAndReturn": {
+    "defaultMessage": "Discard Changes and Return",
+    "description": "The label text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.discardUnsavedChanges": {
+    "defaultMessage": "Discard unsaved changes?",
+    "description": "The title text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.discardUnsavedStageChanges": {
+    "defaultMessage": "Discard unsaved stage changes?",
+    "description": "The title text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.returnAndDownloadNow": {
+    "defaultMessage": "Return and download now",
+    "description": "The label text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.returnToStartScreen": {
+    "defaultMessage": "Return to Start Screen",
+    "description": "The label text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.returnToStartScreenb2364": {
+    "defaultMessage": "Return to start screen?",
+    "description": "The title text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeRedone": {
+    "defaultMessage": "Change redone.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToCodebookTo": {
+    "defaultMessage": "Change redone. Moved to Codebook to show the result.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToResourcesTo": {
+    "defaultMessage": "Change redone. Moved to Resources to show the result.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToStagesTo": {
+    "defaultMessage": "Change redone. Moved to Stages to show the result.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeUndone": {
+    "defaultMessage": "Change undone.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToCodebookTo": {
+    "defaultMessage": "Change undone. Moved to Codebook to show the result.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToResourcesTo": {
+    "defaultMessage": "Change undone. Moved to Resources to show the result.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToStagesTo": {
+    "defaultMessage": "Change undone. Moved to Stages to show the result.",
+    "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.installBanner.after7DaysOfInactivity": {
+    "defaultMessage": "{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Architect now to protect your protocols from being deleted: choose Share → Add to Dock.",
+    "description": "Researcher-facing explanatory text in components / InstallBanner."
+  },
+  "architect.utility.installBanner.after7DaysOfInactivity7c6c0": {
+    "defaultMessage": "{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Architect now to protect your protocols from being deleted: choose Share → Add to Home Screen.",
+    "description": "Researcher-facing explanatory text in components / InstallBanner."
+  },
+  "architect.utility.installBanner.mayRemoveNetworkCanvasData": {
+    "defaultMessage": "{browserName} may remove Network Canvas data when this device runs low on storage. Allow persistent storage when {browserNameValue} asks, and install Architect if your device supports it to protect your protocols from being deleted.",
+    "description": "Researcher-facing explanatory text in components / InstallBanner."
+  },
+  "architect.utility.installBanner.rarelyRemovesNetworkCanvasData": {
+    "defaultMessage": "{browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Install Architect now to protect your protocols from being deleted.",
+    "description": "Researcher-facing explanatory text in components / InstallBanner."
+  },
+  "architect.utility.installBanner.rarelyRemovesNetworkCanvasData16bdc": {
+    "defaultMessage": "{browserName} rarely removes Network Canvas data automatically, but data stored in a browser tab is not guaranteed. Use the install icon in the browser's address bar to install Architect now and protect your protocols from being deleted.",
+    "description": "Researcher-facing explanatory text in components / InstallBanner."
+  },
+  "architect.utility.protocolInfoCard.ofCharactersRemaining": {
+    "defaultMessage": "{remaining, number} of {maximum, number} characters remaining",
+    "description": "Researcher-facing explanatory text in components / ProtocolInfoCard."
+  },
+  "architect.utility.protocolInfoCard.overTheCharacterLimit": {
+    "defaultMessage": "{over, plural, one {# character over the {maximum, number} character limit} other {# characters over the {maximum, number} character limit}}",
+    "description": "Researcher-facing explanatory text in components / ProtocolInfoCard."
+  },
+  "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": {
+    "defaultMessage": "Cannot delete stage",
+    "description": "The title text in components / Timeline / skipDestinationGuards."
+  },
+  "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": {
+    "defaultMessage": "Cannot move stage",
+    "description": "The title text in components / Timeline / skipDestinationGuards."
+  },
+  "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": {
+    "defaultMessage": "{destinationReference} is the skip destination for {dependentReferences}. Choose a different destination on those stages before deleting it.",
+    "description": "The description text in components / Timeline / skipDestinationGuards."
+  },
+  "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": {
+    "defaultMessage": "{destinationReference} must remain later than {sourceReference}, which routes to it when skipped. Choose a different destination before changing this order.",
+    "description": "The description text in components / Timeline / skipDestinationGuards."
+  },
+  "architect.utility.timeline.skipDestinationGuards.stage": {
+    "defaultMessage": "Stage {value1, number} — {value2}",
+    "description": "Researcher-facing explanatory text in components / Timeline / skipDestinationGuards."
+  },
+  "architect.utility.timeline.skipDestinationGuards.unknownStage": {
+    "defaultMessage": "Unknown stage ({value1})",
+    "description": "Researcher-facing explanatory text in components / Timeline / skipDestinationGuards."
+  },
+  "architect.utility.utils.describeMigrationFailure.failedToOpenProtocol": {
+    "defaultMessage": "Failed to Open Protocol",
+    "description": "The title text in utils / describeMigrationFailure."
+  },
+  "architect.utility.utils.describeMigrationFailure.thatWasAllowedWhen": {
+    "defaultMessage": "{location, select, ego {Two attributes on the interviewee are both named \"{name}\".} named {Two attributes on \"{ownerLabel}\" are both named \"{name}\".} other {Two attributes are both named \"{name}\".}} That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.",
+    "description": "The message text in utils / describeMigrationFailure."
+  },
+  "architect.utility.utils.describeMigrationFailure.thisProtocolCouldNotBeBrought": {
+    "defaultMessage": "This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.",
+    "description": "The message text in utils / describeMigrationFailure."
+  },
+  "architect.utility.utils.describeMigrationFailure.twoAttributesShareAName": {
+    "defaultMessage": "Two attributes share a name",
+    "description": "The title text in utils / describeMigrationFailure."
+  },
+  "architect.utility.utils.downloadActiveProtocol.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in utils / downloadActiveProtocol."
+  },
+  "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": {
+    "defaultMessage": "Some resources could not be read",
+    "description": "The title text in utils / downloadActiveProtocol."
+  },
+  "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": {
+    "defaultMessage": "Something went wrong while preparing the file. Please try again.",
+    "description": "The description text in utils / downloadActiveProtocol."
+  },
+  "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": {
+    "defaultMessage": "Your protocol could not be downloaded",
+    "description": "The title text in utils / downloadActiveProtocol."
+  },
+  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": {
+    "defaultMessage": "Protocol changed while upgrading",
+    "description": "The title text in utils / storedProtocolAdmission."
+  },
+  "architect.validation.attributeName": {
+    "defaultMessage": "attribute name",
+    "description": "Default subject in the invalid identifier guidance."
+  },
+  "architect.validation.dateIsNotValidValue1": {
+    "defaultMessage": "Date is not valid ({value1})",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.dateMustBeMinOr": {
+    "defaultMessage": "Date must be {min} or later",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.mustBeAtLeastMin": {
+    "defaultMessage": "Must be at least {min, number}",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.mustBeGreaterThanOr": {
+    "defaultMessage": "Must be greater than or equal to the other field",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.mustBeGreaterThanThe": {
+    "defaultMessage": "Must be greater than the other field",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.mustBeLessThanMax": {
+    "defaultMessage": "Must be at most {max, number}",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.mustBeMaxCharactersOr": {
+    "defaultMessage": "{max, plural, one {Must be # character or less} other {Must be # characters or less}}",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.mustBeMinCharactersOr": {
+    "defaultMessage": "{min, plural, one {Must be # character or more} other {Must be # characters or more}}",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.notAValidNameOnly": {
+    "defaultMessage": "Not a valid {name}. Only letters, numbers and the symbols ._-: are supported",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.notAValidRegularExpression": {
+    "defaultMessage": "Not a valid regular expression.",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.numberMustBePositive": {
+    "defaultMessage": "Number must be positive",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.required": {
+    "defaultMessage": "Required",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.unknownRule": {
+    "defaultMessage": "The validation rule \"{rule}\" is not available. Review this field’s settings.",
+    "description": "Actionable fallback for an unsupported validation rule; rule is a stable technical identifier."
+  },
+  "architect.validation.value1SMustBeUnique": {
+    "defaultMessage": "This value is already in use. Enter a different value.",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.valueIsAlreadyInUse": {
+    "defaultMessage": "\"{value}\" is already in use",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.youMustChooseAMaximum": {
+    "defaultMessage": "{max, plural, one {You must choose a maximum of # option} other {You must choose a maximum of # options}}",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.validation.youMustChooseAMinimum": {
+    "defaultMessage": "{min, plural, one {You must choose a minimum of # option} other {You must choose a minimum of # options}}",
+    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  },
+  "architect.variablePill.attribute": {
+    "defaultMessage": "{type} attribute",
+    "description": "The alt text in components / VariablePill."
+  },
+  "architect.variablePill.attributeName": {
+    "defaultMessage": "Attribute name",
+    "description": "The aria-label text in components / VariablePill."
+  },
+  "architect.variablePill.cancelled": {
+    "defaultMessage": "Attribute name edit cancelled",
+    "description": "Live announcement after cancelling an attribute rename."
+  },
+  "architect.variablePill.editAttributeName": {
+    "defaultMessage": "Edit attribute name: {label}",
+    "description": "The aria-label text in components / VariablePill."
+  },
+  "architect.variablePill.editAttributeName62aa3": {
+    "defaultMessage": "Edit attribute name",
+    "description": "The aria-label text in components / VariablePill."
+  },
+  "architect.variablePill.editing": {
+    "defaultMessage": "Editing attribute {name}",
+    "description": "Live announcement when the attribute name editor opens."
+  },
+  "architect.variablePill.enterAnAttributeName": {
+    "defaultMessage": "Enter an attribute name...",
+    "description": "The placeholder text in components / VariablePill."
+  },
+  "architect.variablePill.renamed": {
+    "defaultMessage": "Attribute renamed to {name}",
+    "description": "Live announcement after an attribute rename. Name is authored data."
+  },
+  "architect.variablePill.saveChanges": {
+    "defaultMessage": "Save Changes",
+    "description": "Visible text in components / VariablePill."
+  },
+  "architect.variableRoleConflictsAlert.anAttributeIsWrittenBothWith": {
+    "defaultMessage": "An attribute is written both with and without validation",
+    "description": "Visible text in components / VariableRoleConflictsAlert."
+  },
+  "architect.variableRoleConflictsAlert.attributesAreWrittenBothWith": {
+    "defaultMessage": "{value1, number} attributes are written both with and without validation",
+    "description": "Timeline warning title used for more than one conflicting attribute. value1 is the count of attributes written by both validated and unvalidated stages."
+  },
+  "architect.variableRoleConflictsAlert.collectedByAForm": {
+    "defaultMessage": "<strong>{value1}</strong> — collected by a form in {value3}; written without validation in {value4}",
+    "description": "Visible text in components / VariableRoleConflictsAlert."
+  },
+  "architect.variableRoleConflictsAlert.unknownStage": {
+    "defaultMessage": "an unknown stage",
+    "description": "Fallback for a referenced stage no longer in the protocol."
+  },
+  "architect.variableRoleConflictsAlert.valuesWrittenOutsideAFormBypass": {
+    "defaultMessage": "Values written outside a form bypass the attribute's validation rules, so forms elsewhere can receive values they would reject. For each attribute below, remove it from either the form or the other stage.",
+    "description": "Visible text in components / VariableRoleConflictsAlert."
+  },
+  "architect.viewManager.views.app.autosaveFailed": {
+    "defaultMessage": "Autosave failed",
+    "description": "The title text in components / ViewManager / views / App."
+  },
+  "architect.viewManager.views.app.couldNotOpenFile": {
+    "defaultMessage": "Could not open file",
+    "description": "The title text in components / ViewManager / views / App."
+  },
+  "architect.viewManager.views.app.launchedCouldNotBeRead": {
+    "defaultMessage": "{failedCount, plural, one {The launched file could not be read. It may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. They may have been moved, deleted, or become unavailable since they were opened.}}",
+    "description": "The description text in components / ViewManager / views / App."
+  },
+  "architect.viewManager.views.app.oK": {
+    "defaultMessage": "OK",
+    "description": "The label text in components / ViewManager / views / App."
+  },
+  "architect.viewManager.views.app.protocolUpdated": {
+    "defaultMessage": "Protocol updated",
+    "description": "The title text in components / ViewManager / views / App."
+  },
+  "architect.viewManager.views.app.wasMadeWithAn": {
+    "defaultMessage": "\"{name}\" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.",
+    "description": "The description text in components / ViewManager / views / App."
+  }
+}

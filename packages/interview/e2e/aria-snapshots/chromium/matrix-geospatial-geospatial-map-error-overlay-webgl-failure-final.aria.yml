@@ -6,10 +6,11 @@
   - button "Recenter Map"
   - status:
     - heading "Where does this person currently live?" [level=4]
-  - button "Mohammad Crist"
+  - button "Nikita Crist"
   - button "Outside Selectable Areas"
   - region "Map"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

@@ -1,5 +1,11 @@
 import { z } from 'zod/mini';
 
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+
 import { UnorderedList } from '../../typography/UnorderedList';
 import type {
   CustomFieldValidation,
@@ -14,6 +20,25 @@ import {
   validationPropKeys,
   validations,
 } from './functions';
+
+const messages = defineMessages({
+  unexpectedError: {
+    id: 'frescoUi.validation.unexpectedError',
+    defaultMessage: 'An error occurred while validating.',
+    description:
+      'Error shown when a validation rule itself throws unexpectedly.',
+  },
+});
+
+let defaultHelperIntl: IntlShape | undefined;
+
+// English fallback for callers that thread no intl — see the seam note on
+// `ValidationFunction` in ./functions.ts.
+const helperIntl = (intl?: IntlShape): IntlShape => {
+  if (intl) return intl;
+  defaultHelperIntl ??= createAppIntl({ locale: 'en' });
+  return defaultHelperIntl;
+};
 
 /**
  * Validates a field value against a validation schema.
@@ -48,12 +73,70 @@ export async function validateFieldValue<T extends z.ZodMiniType>(
 }
 
 /**
+ * A rule that judges a whole field value and answers with the message to show,
+ * or nothing when the value passes.
+ *
+ * The shape a rule takes when it is a piece of domain reasoning rather than a
+ * constraint from this catalogue — "every option needs a unique value", "every
+ * row needs a value in each column". Such a rule has no parameter to name and
+ * no hint to render; it has an explanation, and the explanation is its result.
+ */
+export type MessageRule = (
+  value: unknown,
+  formValues: Record<string, FieldValue>,
+) => string | undefined;
+
+/**
+ * Turns plain message rules into the `custom` entry `Field` accepts.
+ *
+ * Exported because a consumer that owns rules like these — an array editor
+ * whose whole list is one field value, above all — would otherwise need Zod as
+ * a dependency purely to say "this value is wrong, and here is why". The rules
+ * themselves stay plain functions, so they can be read, reused and tested
+ * without a schema in sight.
+ *
+ * The first failing rule wins, matching how a field reports one error at a
+ * time: a value that is both incomplete and malformed should say what is
+ * missing before it is told the missing part is wrong.
+ */
+export function messageRuleValidation(
+  rules: readonly MessageRule[],
+  hint?: string,
+): CustomFieldValidation {
+  return {
+    schema: (formValues: Record<string, FieldValue>) =>
+      z.unknown().check(
+        z.superRefine((value, ctx) => {
+          for (const rule of rules) {
+            const message = rule(value, formValues);
+            if (message === undefined) continue;
+            ctx.addIssue({
+              code: 'custom',
+              input: value,
+              message,
+              path: [],
+            });
+            return;
+          }
+        }),
+      ),
+    // Omitted rather than empty when the caller has nothing to promise up
+    // front: a hint is a sentence shown to a person, and the absence of one is
+    // "this rule has nothing to say until it fails", not "it says nothing".
+    ...(hint !== undefined ? { hint } : {}),
+  };
+}
+
+/**
  * Helper function that parses component props and converts them into a validation
  * using functions from ~/components/ui/form/validation/index.ts.
  *
  * Exported for use by UnconnectedField.
  */
-export function makeValidationFunction(props: Record<string, unknown>) {
+export function makeValidationFunction(
+  props: Record<string, unknown>,
+  intl?: IntlShape,
+) {
   const validationContext = props.validationContext as
     | ValidationContext
     | undefined;
@@ -78,6 +161,7 @@ export function makeValidationFunction(props: Record<string, unknown>) {
             const validationFn = validationFnFactory(
               parameter as ValidationParameter,
               validationContext,
+              intl,
             )(formValues);
 
             const result = await validationFn.safeParseAsync(fieldValue);
@@ -96,7 +180,7 @@ export function makeValidationFunction(props: Record<string, unknown>) {
             console.error('Error while validating:', error);
             ctx.addIssue({
               code: 'custom',
-              message: 'An error occurred while validating.',
+              message: helperIntl(intl).formatMessage(messages.unexpectedError),
             });
           }
         }
@@ -131,7 +215,9 @@ export function makeValidationFunction(props: Record<string, unknown>) {
               console.log('custom validation error', error);
               ctx.addIssue({
                 code: 'custom',
-                message: 'An error occurred while validating.',
+                message: helperIntl(intl).formatMessage(
+                  messages.unexpectedError,
+                ),
               });
             }
           }
@@ -146,7 +232,10 @@ export function makeValidationFunction(props: Record<string, unknown>) {
  *
  * Exported for use by UnconnectedField.
  */
-export function makeValidationHints(props: Record<string, unknown>) {
+export function makeValidationHints(
+  props: Record<string, unknown>,
+  intl?: IntlShape,
+) {
   const validationContext = props.validationContext as
     | ValidationContext
     | undefined;
@@ -180,6 +269,7 @@ export function makeValidationHints(props: Record<string, unknown>) {
           | boolean
           | { regex: string; hint: string },
         validationContext,
+        intl,
       )({});
 
       // Extract hint from the schema's metadata via global registry
@@ -202,7 +292,13 @@ export function makeValidationHints(props: Record<string, unknown>) {
       : [props.custom as CustomFieldValidation];
 
     for (const { hint } of customValidations) {
-      hints.push(hint);
+      // A rule with nothing to promise up front contributes no bullet — an
+      // absent or empty hint would otherwise render as an empty list item, and
+      // a field whose only rule is such a one would grow a list holding
+      // nothing at all.
+      if (hint) {
+        hints.push(hint);
+      }
     }
   }
 

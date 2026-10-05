@@ -1,0 +1,17 @@
+{
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "types": ["vite/client"]
+  },
+  // `.storybook/**/*` rather than `.storybook`: a bare directory name expands
+  // to a wildcard, and TypeScript's wildcards never match a path segment
+  // beginning with a dot — so the shorter form silently typechecked nothing in
+  // there, and `mapboxMock.ts` had been shadowing the global `Map` unnoticed.
+  // `vitest.config.ts` is in here because it was not, and a `browser.isolate`
+  // that Vitest 5 no longer reads sat in it unnoticed — the same mistake in the
+  // Interview config, which is typechecked, failed to compile.
+  "include": [".storybook/**/*", "src", "vitest.config.ts"],
+  "exclude": ["node_modules", "storybook-static"]
+}

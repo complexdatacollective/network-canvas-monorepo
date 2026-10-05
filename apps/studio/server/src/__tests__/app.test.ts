@@ -1,24 +1,9 @@
-import { createORPCClient } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
-import type { RouterContractClient } from '@orpc/contract';
-import { describe, expect, it } from 'vitest';
-
-import type { contract } from '@codaco/studio-rpc';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../app.ts';
-
-// The contract-typed client the SPA uses, bridged straight into the Hono app.
-// oRPC calls are POSTs, so the cookie plane's CSRF check (#1248) applies:
-// the client asserts same-origin the way a browser would.
-function createRpcClient(app: ReturnType<typeof createApp>) {
-  const link = new RPCLink({
-    origin: 'http://studio.test',
-    url: '/rpc',
-    headers: { 'sec-fetch-site': 'same-origin' },
-    fetch: async (url, init) => app.request(url, init),
-  });
-  return createORPCClient(link) as RouterContractClient<typeof contract>;
-}
+import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
+import { stubAuthService } from './support/auth.ts';
+import { createRpcClient } from './support/rpc.ts';
 
 describe('studio server', () => {
   it('reports healthy on /healthz', async () => {
@@ -36,8 +21,10 @@ describe('studio server', () => {
     expect(body.name).toBe('Network Canvas Studio');
     expect(body.version).toMatch(/^\d+\.\d+\.\d+/);
     // The public surface's output schema is the serialization allowlist
-    // (#1248): the SPA-facing auth capability block must never leak here.
+    // (#1248): the SPA-facing auth capability and deployment blocks must
+    // never leak here.
     expect(body).not.toHaveProperty('auth');
+    expect(body).not.toHaveProperty('deployment');
   });
 
   it('publishes an OpenAPI 3.1 document describing the API', async () => {
@@ -87,6 +74,109 @@ describe('studio server', () => {
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
     );
+  });
+
+  it('refuses audited team writes before Better Auth can mutate them', async () => {
+    const handler = vi.fn(() =>
+      Promise.resolve(Response.json({ wrote: true })),
+    );
+    const app = createApp(undefined, {
+      auth: stubAuthService({ handler }),
+    });
+    const bodies: Record<string, object> = {
+      '/api/auth/organization/create': {
+        name: 'Unaudited Team',
+        slug: 'unaudited-team',
+      },
+      '/api/auth/organization/update': {
+        organizationId: 'team-a',
+        data: { name: 'Unaudited Team' },
+      },
+      '/api/auth/organization/delete': {
+        organizationId: 'team-a',
+      },
+      '/api/auth/organization/update-member-role': {
+        organizationId: 'team-a',
+        memberId: 'member-a',
+        role: 'admin',
+      },
+      '/api/auth/organization/invite-member': {
+        organizationId: 'team-a',
+        email: 'invitee@example.com',
+        role: 'member',
+      },
+      '/api/auth/organization/cancel-invitation': {
+        invitationId: 'invitation-a',
+      },
+      '/api/auth/organization/accept-invitation': {
+        invitationId: 'invitation-a',
+      },
+      '/api/auth/organization/reject-invitation': {
+        invitationId: 'invitation-a',
+      },
+      '/api/auth/organization/remove-member': {
+        organizationId: 'team-a',
+        memberIdOrEmail: 'member-a',
+      },
+      '/api/auth/organization/leave': {
+        organizationId: 'team-a',
+      },
+    };
+
+    for (const path of BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS) {
+      for (const requestedPath of [path, `${path}/`, `${path}?attempt=1`]) {
+        const response = await app.request(requestedPath, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'origin': 'http://localhost:5173',
+          },
+          body: JSON.stringify(bodies[path]),
+        });
+        expect(response.status).toBe(404);
+        expect(await response.json()).toEqual({
+          title: 'Not Found',
+          status: 404,
+        });
+      }
+    }
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for an unclassified Better Auth organization mutation', async () => {
+    const handler = vi.fn(() =>
+      Promise.resolve(Response.json({ wrote: true })),
+    );
+    const app = createApp(undefined, {
+      auth: stubAuthService({ handler }),
+    });
+
+    const response = await app.request(
+      '/api/auth/organization/future-team-write/?attempt=1',
+      { method: 'POST' },
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ title: 'Not Found', status: 404 });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('forwards an explicitly classified Better Auth organization mutation', async () => {
+    const handler = vi.fn(() =>
+      Promise.resolve(Response.json({ available: true })),
+    );
+    const app = createApp(undefined, {
+      auth: stubAuthService({ handler }),
+    });
+
+    const response = await app.request(
+      '/api/auth/organization/check-slug/?slug=example',
+      { method: 'POST' },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ available: true });
+    expect(handler).toHaveBeenCalledOnce();
   });
 
   it('does not serve unmatched storage paths', async () => {

@@ -6,7 +6,7 @@ import type { MotionStyle, Variants } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
-import { buttonVariants } from '@codaco/fresco-ui/Button';
+import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { NewsTicker } from '~/components/sections/NewsTicker';
@@ -25,12 +25,18 @@ function renderStrong(chunks: ReactNode) {
 export function Hero({
   backdropItemVariants,
   containerVariants,
+  id,
   itemVariants,
   newsItems,
   scrollStyle,
 }: {
   backdropItemVariants?: Variants;
   containerVariants?: Variants;
+  /**
+   * Set by the page so the site header's skip link can land here — this is
+   * the first content the homepage shows after the header.
+   */
+  id?: string;
   itemVariants?: Variants;
   newsItems: readonly NewsItem[];
   scrollStyle?: MotionStyle;
@@ -39,6 +45,7 @@ export function Hero({
 
   return (
     <motion.div
+      id={id}
       variants={containerVariants}
       style={scrollStyle}
       data-testid="hero-root"
@@ -90,17 +97,12 @@ export function Hero({
           data-testid="hero-cta-wrapper"
           className="entrance-motion-item tablet-portrait:col-start-1 tablet-portrait:row-start-4 tablet-portrait:mt-0 mt-12 flex flex-col items-center gap-3"
         >
-          <Link
-            href={GET_STARTED_PATH}
-            className={buttonVariants({
-              size: 'xl',
-              color: 'destructive',
-              variant: 'raised',
-            })}
-          >
-            {t('getStarted')}
-            <ArrowRight aria-hidden />
-          </Link>
+          <Button asChild size="xl" color="destructive" variant="raised">
+            <Link href={GET_STARTED_PATH}>
+              {t('getStarted')}
+              <ArrowRight aria-hidden />
+            </Link>
+          </Button>
           <Paragraph margin="none" className="text-base-sm text-text/60">
             {t('keepScrolling')}
           </Paragraph>

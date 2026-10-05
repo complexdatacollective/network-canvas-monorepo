@@ -1,0 +1,1467 @@
+import {
+  createMessageError,
+  defineMessages,
+  type IntlShape,
+  type MessageDescriptor,
+  type MessageErrorValues,
+} from '@codaco/app-i18n/messages';
+import {
+  findValidationContradictions,
+  VARIABLE_REFERENCE_VALIDATIONS,
+  VARIABLE_TYPE_COMPONENTS,
+  VARIABLE_TYPE_VALIDATIONS,
+  type ValidationContradiction,
+  type ValidationName,
+  type VariableType,
+} from '@codaco/protocol-validation';
+import {
+  validationContradictionMessages,
+  validationRuleMessages,
+} from '@codaco/protocol-validation/messages';
+
+import type { CodebookSubject } from '../protocol-context.ts';
+import {
+  hasConflictingUse as roleMapHasConflictingUse,
+  type VariableRoleMap,
+  type WriterClass,
+} from './variableRoles.ts';
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const recordWith = (
+  source: Readonly<UnknownRecord>,
+  key: string,
+  value: unknown,
+): UnknownRecord =>
+  Object.fromEntries([...Object.entries(source), [key, value]]);
+
+const PASSPHRASE_VALIDATIONS = [
+  'minLength',
+  'maxLength',
+] as const satisfies readonly ValidationName[];
+
+const NUMBER_RULES = new Set<string>([
+  'minLength',
+  'maxLength',
+  'minValue',
+  'maxValue',
+  'minSelected',
+  'maxSelected',
+]);
+
+const VALUELESS_RULES = new Set<string>(['required', 'unique']);
+
+/**
+ * What each validation rule is called.
+ *
+ * Re-exported from `@codaco/protocol-validation`, which owns the rules
+ * themselves: one rule named two things in two places is the defect this
+ * replaces (a rule offered here as "Minimum length" and reported by the
+ * validator as "Minimum text length" reads as two different rules), and the
+ * shared catalogue is the one a protocol's own validation errors already use.
+ */
+const VALIDATION_LABELS = validationRuleMessages;
+
+const messages = defineMessages({
+  requirementsHeading: {
+    id: 'protocolBuilder.variableValidation.requirementsHeading',
+    defaultMessage: 'Requirements',
+    description:
+      'Heading over the validation rules that say an answer must be given at all, rather than what it may contain.',
+  },
+  limitsHeading: {
+    id: 'protocolBuilder.variableValidation.limitsHeading',
+    defaultMessage: 'Limits',
+    description:
+      'Heading over the validation rules that bound an answer by a number the researcher types — a length, a value, or how many options may be chosen.',
+  },
+  comparisonsHeading: {
+    id: 'protocolBuilder.variableValidation.comparisonsHeading',
+    defaultMessage: 'Compare to another attribute',
+    description:
+      'Heading over the validation rules that judge this attribute’s answer against another attribute’s. "Attribute" is a codebook variable.',
+  },
+  incompleteReferenceRule: {
+    id: 'protocolBuilder.variableValidation.incompleteReferenceRule',
+    defaultMessage:
+      'Choose a comparison attribute for "{label}", or switch the rule off.',
+    description:
+      'Refusal shown when a rule comparing this attribute against another one has been switched on without saying which. label is that rule’s own name, already translated.',
+  },
+  incompleteValueRule: {
+    id: 'protocolBuilder.variableValidation.incompleteValueRule',
+    defaultMessage: 'Enter a value for "{label}", or switch the rule off.',
+    description:
+      'Refusal shown when a rule that needs a number has been switched on without one. label is that rule’s own name, already translated.',
+  },
+  wholeNumberRule: {
+    id: 'protocolBuilder.variableValidation.wholeNumberRule',
+    defaultMessage: '{rule} must be a whole number',
+    description:
+      'Refusal shown when a rule counting characters or choices was given a fraction. rule is the schema’s own name for the rule, such as minValue, and is not translated.',
+  },
+  ruleFloor: {
+    id: 'protocolBuilder.variableValidation.ruleFloor',
+    defaultMessage: '{rule} must be at least {floor, number}',
+    description:
+      'Refusal shown when a counting rule was given a number below what it allows. rule is the schema’s own name for the rule, such as maxSelected, and is not translated; floor is the smallest number it accepts.',
+  },
+  codebookRenderingContradiction: {
+    id: 'protocolBuilder.variableValidation.codebookRenderingContradiction',
+    defaultMessage:
+      'These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. {contradiction}',
+    description:
+      'Refusal shown in a stage’s rules editor when a comparison the form’s own input controls would allow cannot be saved, because the rules are stored on the codebook attribute and the controls the codebook gives those attributes cannot satisfy the comparison. contradiction is the sentence the protocol’s own validation writes about it, already translated.',
+  },
+  validatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.validatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+    description:
+      'Refusal shown when a stage that writes an attribute without checking it picks one that a form elsewhere in the protocol collects with validation. variableName is the researcher’s own name for the attribute. A stage is one step of an interview.',
+  },
+  unvalidatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.unvalidatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is written without validation by another stage, so it cannot be used as a form field',
+    description:
+      'Refusal shown when a form field picks an attribute that another stage already writes without checking it. variableName is the researcher’s own name for the attribute. A stage is one step of an interview.',
+  },
+  draftValidatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.draftValidatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is collected by this stage\'s form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)',
+    description:
+      'The same refusal as validatedElsewhere, when the form doing the collecting belongs to the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads.',
+  },
+  thisAttribute: {
+    id: 'protocolBuilder.variableValidation.thisAttribute',
+    defaultMessage: 'this attribute',
+    description:
+      'Stands in for an attribute’s name inside a refusal about it, while the attribute is still being drafted and has not been named. Spliced mid-sentence into the repair guidance for a contradiction between rules, so it is lower case.',
+  },
+  draftUnvalidatedElsewhere: {
+    id: 'protocolBuilder.variableValidation.draftUnvalidatedElsewhere',
+    defaultMessage:
+      '"{variableName}" is assigned without validation by a prompt in this stage, so it cannot be used as a form field',
+    description:
+      'The same refusal as unvalidatedElsewhere, when the writer without validation is a prompt in the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads.',
+  },
+});
+
+const startCase = (value: string): string => {
+  const words = value
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .toLowerCase();
+  return words === ''
+    ? ''
+    : `${words[0]?.toUpperCase() ?? ''}${words.slice(1)}`;
+};
+
+const validationLabelMessage = (
+  validation: string,
+): MessageDescriptor | undefined => {
+  const labels: Record<string, MessageDescriptor | undefined> =
+    VALIDATION_LABELS;
+  return labels[validation];
+};
+
+/**
+ * The name of one validation rule.
+ *
+ * The `startCase` fallback stays English on purpose: it start-cases a schema
+ * token this package has no name for, so what it produces is the token made
+ * readable rather than copy anyone wrote. A rule the schema adds should gain a
+ * descriptor above, not a translation of `minSomething`.
+ */
+export const getValidationLabel = (
+  validation: string,
+  intl: IntlShape,
+): string => {
+  const message = validationLabelMessage(validation);
+  return message === undefined
+    ? startCase(validation)
+    : intl.formatMessage(message);
+};
+
+export const isValidationWithoutValue = (validation: string): boolean =>
+  VALUELESS_RULES.has(validation);
+
+export const isValidationWithNumberValue = (validation: string): boolean =>
+  NUMBER_RULES.has(validation);
+
+export const isValidationWithListValue = (validation: string): boolean =>
+  VARIABLE_REFERENCE_VALIDATIONS.some((key) => key === validation);
+
+export type ValidationOption = Readonly<{
+  label: string;
+  value: ValidationName;
+}>;
+
+export type ValidationGroup = Readonly<{
+  id: 'requirements' | 'limits' | 'comparisons';
+  heading: string;
+  rules: readonly ValidationOption[];
+}>;
+
+const isValidationName = (value: string): value is ValidationName =>
+  isValidationWithoutValue(value) ||
+  isValidationWithNumberValue(value) ||
+  isValidationWithListValue(value);
+
+const validationNamesFor = (variableType: string): ValidationName[] => {
+  if (variableType === 'passphrase') return [...PASSPHRASE_VALIDATIONS];
+  const entry = Object.entries(VARIABLE_TYPE_VALIDATIONS).find(
+    ([candidate]) => candidate === variableType,
+  );
+  return entry === undefined
+    ? []
+    : Object.keys(entry[1]).filter(isValidationName);
+};
+
+export const getValidationOptionsForVariableType = (
+  variableType: string,
+  entity: string,
+  intl: IntlShape,
+): ValidationOption[] =>
+  validationNamesFor(variableType)
+    .filter((validation) => entity !== 'ego' || validation !== 'unique')
+    .map((validation) => ({
+      label: getValidationLabel(validation, intl),
+      value: validation,
+    }));
+
+const VALIDATION_GROUPS = [
+  {
+    id: 'requirements' as const,
+    heading: messages.requirementsHeading,
+    includes: isValidationWithoutValue,
+  },
+  {
+    id: 'limits' as const,
+    heading: messages.limitsHeading,
+    includes: isValidationWithNumberValue,
+  },
+  {
+    id: 'comparisons' as const,
+    heading: messages.comparisonsHeading,
+    includes: isValidationWithListValue,
+  },
+] as const;
+
+/**
+ * The groups each formatter has already been given, held against the formatter
+ * itself.
+ *
+ * The headings and rule names in a cached group are already formatted, so what
+ * a cached group is true of is the formatter that produced it — not its
+ * language tag. Two formatters can share a tag and disagree about the words:
+ * `AppI18nProvider` builds a new one whenever its catalog changes, and a
+ * catalog arriving after boot, a module replacement in development, or a
+ * nested provider over the same language all change the catalog without
+ * changing the tag. Keyed by the tag, the second formatter is served the
+ * first one's words.
+ *
+ * A `WeakMap` because a formatter that has been replaced is exactly what this
+ * must not go on holding groups for.
+ */
+const groupsCache = new WeakMap<IntlShape, Map<string, ValidationGroup[]>>();
+
+export const getGroupedValidationsForVariableType = (
+  variableType: string,
+  entity: string,
+  intl: IntlShape,
+): ValidationGroup[] => {
+  let byVariableType = groupsCache.get(intl);
+  if (byVariableType === undefined) {
+    byVariableType = new Map();
+    groupsCache.set(intl, byVariableType);
+  }
+  const key = JSON.stringify([variableType, entity]);
+  const cached = byVariableType.get(key);
+  if (cached !== undefined) return cached;
+  const options = getValidationOptionsForVariableType(
+    variableType,
+    entity,
+    intl,
+  );
+  const groups = VALIDATION_GROUPS.map(({ id, heading, includes }) => ({
+    id,
+    heading: intl.formatMessage(heading),
+    rules: options.filter(({ value }) => includes(value)),
+  })).filter(({ rules }) => rules.length > 0);
+  byVariableType.set(key, groups);
+  return groups;
+};
+
+export type ValidationValue = boolean | number | string | null;
+export type ValidationMap = Record<string, ValidationValue>;
+
+export const parseForRule = (key: string, text: string): ValidationValue => {
+  if (key === '') return null;
+  if (isValidationWithoutValue(key)) return true;
+  if (isValidationWithNumberValue(key)) {
+    if (text.trim() === '') return null;
+    const parsed = Number(text);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (isValidationWithListValue(key)) return text === '' ? null : text;
+  return null;
+};
+
+export const formatCommitted = (value: unknown): string => {
+  if (typeof value === 'number') return value.toString();
+  return typeof value === 'string' ? value : '';
+};
+
+export const isValidationMap = (value: unknown): value is ValidationMap =>
+  isRecord(value);
+
+/**
+ * The rules that survive a change of kind of answer, and the ones that do not.
+ *
+ * One rule for every surface where the kind moves under rules that are already
+ * written, because there is more than one: the codebook editor's own type
+ * control (`draftForType`), a form-field row holding rules for an attribute it
+ * has not created yet, and the validation section beside a picker, where the
+ * kind moves because a COLLABORATOR changed it. Each kind's
+ * `VARIABLE_TYPE_VALIDATIONS` entry is the record its variable schema picks
+ * its `validation` shape from, so a rule outside it is one the write would be
+ * refused for — and a rules editor opened on the new kind lists only that
+ * entry, so it is not a rule the researcher could switch off either.
+ *
+ * Comparison rules go whatever the new kind accepts: each names another
+ * attribute that was comparable with the old kind, and a rule comparing two
+ * attributes that no longer hold the same sort of answer has to be written
+ * again against a target that is.
+ *
+ * The kind is a bare string because one caller reads it off the codebook's
+ * variable union rather than from a control that offers the schema's kinds. A
+ * kind the schema does not know keeps nothing: there is no entry saying which
+ * rules its writes accept, so every rule held is one that cannot be written.
+ */
+export const rulesSurvivingTypeChange = <TValue>(
+  validation: Readonly<Record<string, TValue>>,
+  nextType: VariableType | string,
+): Readonly<{ kept: Record<string, TValue>; dropped: string[] }> => {
+  const accepted: Readonly<Record<string, unknown>> = Object.hasOwn(
+    VARIABLE_TYPE_VALIDATIONS,
+    nextType,
+  )
+    ? VARIABLE_TYPE_VALIDATIONS[nextType as VariableType]
+    : {};
+  const kept: Record<string, TValue> = {};
+  const dropped: string[] = [];
+  for (const [rule, value] of Object.entries(validation)) {
+    if (Object.hasOwn(accepted, rule) && !isValidationWithListValue(rule)) {
+      kept[rule] = value;
+    } else {
+      dropped.push(rule);
+    }
+  }
+  return { kept, dropped };
+};
+
+export const isRuleValueComplete = (
+  ruleKey: string,
+  value: unknown,
+): boolean => {
+  if (isValidationWithoutValue(ruleKey)) return typeof value === 'boolean';
+  if (isValidationWithNumberValue(ruleKey)) return typeof value === 'number';
+  if (isValidationWithListValue(ruleKey)) {
+    return typeof value === 'string' && value.length > 0;
+  }
+  return value !== null && value !== undefined;
+};
+
+export const completeRuleValues = (
+  rules: Readonly<UnknownRecord>,
+): UnknownRecord =>
+  Object.fromEntries(
+    Object.entries(rules).filter(([ruleKey, value]) =>
+      isRuleValueComplete(ruleKey, value),
+    ),
+  );
+
+/**
+ * The rule's own name, as a value one refusal can carry to the other side of a
+ * string-only contract. A named rule travels as a reference to its descriptor
+ * so it is chosen in the reader's language when the sentence around it is;
+ * an unnamed one travels as the start-cased schema token, for the reason
+ * `getValidationLabel` records.
+ */
+const validationLabelValue = (
+  validation: string,
+): MessageErrorValues[string] => {
+  const message = validationLabelMessage(validation);
+  return message === undefined
+    ? startCase(validation)
+    : { messageError: createMessageError(message) };
+};
+
+export const incompleteRuleIssue = (
+  rules: Readonly<UnknownRecord>,
+): string | undefined => {
+  for (const [ruleKey, value] of Object.entries(rules)) {
+    if (isRuleValueComplete(ruleKey, value)) continue;
+    return createMessageError(
+      isValidationWithListValue(ruleKey)
+        ? messages.incompleteReferenceRule
+        : messages.incompleteValueRule,
+      { label: validationLabelValue(ruleKey) },
+    );
+  }
+  return undefined;
+};
+
+const RULE_FLOORS: Record<string, number> = {
+  minLength: 0,
+  maxLength: 0,
+  minSelected: 0,
+  maxSelected: 0,
+};
+
+export const floorIssue = (
+  ruleKey: string,
+  value: unknown,
+): string | undefined => {
+  if (
+    NUMBER_RULES.has(ruleKey) &&
+    typeof value === 'number' &&
+    !Number.isInteger(value)
+  ) {
+    return createMessageError(messages.wholeNumberRule, { rule: ruleKey });
+  }
+  const floor = RULE_FLOORS[ruleKey];
+  return floor !== undefined && typeof value === 'number' && value < floor
+    ? createMessageError(messages.ruleFloor, { rule: ruleKey, floor })
+    : undefined;
+};
+
+export const ruleMapPrecheck = (
+  rules: Readonly<UnknownRecord>,
+): { issue?: string; complete: UnknownRecord } => {
+  const incomplete = incompleteRuleIssue(rules);
+  if (incomplete !== undefined) return { issue: incomplete, complete: {} };
+  const complete = completeRuleValues(rules);
+  const floor = Object.entries(complete)
+    .map(([ruleKey, value]) => floorIssue(ruleKey, value))
+    .find((issue): issue is string => issue !== undefined);
+  return floor === undefined ? { complete } : { issue: floor, complete };
+};
+
+const DRAFT_VARIABLE_ID_BASE = '__draft-variable__';
+
+export const draftVariableId = (
+  allVariables: Readonly<UnknownRecord>,
+): string => {
+  let candidate = DRAFT_VARIABLE_ID_BASE;
+  let suffix = 1;
+  while (Object.hasOwn(allVariables, candidate)) {
+    suffix += 1;
+    candidate = `${DRAFT_VARIABLE_ID_BASE}${suffix}`;
+  }
+  return candidate;
+};
+
+const draftVariableBase = (
+  existing: unknown,
+  variableType: string,
+  draftVariableName: unknown,
+): UnknownRecord =>
+  isRecord(existing)
+    ? existing
+    : {
+        name:
+          typeof draftVariableName === 'string' && draftVariableName.trim()
+            ? draftVariableName
+            : // Deliberately English, and deliberately not a descriptor: this is
+              // seeded into `@codaco/protocol-validation`'s contradiction
+              // analyser AS A VARIABLE NAME, standing in for the unnamed
+              // attribute being drafted. The analyser writes the sentence it
+              // lands inside, in English, so translating the placeholder alone
+              // would put a Spanish noun in an English sentence.
+              'this attribute',
+        type: variableType,
+      };
+
+export type ProspectiveDraft = Readonly<{
+  allVariables: UnknownRecord;
+  currentVariableId: string;
+  variableType: string;
+  validation: UnknownRecord;
+  component?: unknown;
+  options?: unknown;
+  parameters?: unknown;
+  draftVariableName?: unknown;
+  stageEffectiveComponents?: boolean;
+}>;
+
+export const buildProspectiveVariables = ({
+  allVariables,
+  currentVariableId,
+  variableType,
+  validation,
+  component,
+  options,
+  parameters,
+  draftVariableName,
+}: ProspectiveDraft): UnknownRecord => {
+  const id = currentVariableId || draftVariableId(allVariables);
+  const base = draftVariableBase(
+    allVariables[id],
+    variableType,
+    draftVariableName,
+  );
+  return recordWith(allVariables, id, {
+    ...base,
+    type: variableType,
+    validation,
+    ...(component !== undefined ? { component } : {}),
+    ...(options !== undefined ? { options } : {}),
+    ...(parameters !== undefined ? { parameters } : {}),
+  });
+};
+
+const contradictionKey = (contradiction: ValidationContradiction): string =>
+  [
+    contradiction.class,
+    [...contradiction.variableIds].toSorted().join(','),
+    contradiction.strips
+      .map(({ variableId, rule }) => `${variableId}:${rule}`)
+      .toSorted()
+      .join(','),
+  ].join('|');
+
+const baselineCache = new WeakMap<
+  UnknownRecord,
+  Map<boolean, ValidationContradiction[]>
+>();
+
+const baselineContradictions = (
+  allVariables: UnknownRecord,
+  stageEffectiveComponents: boolean,
+): ValidationContradiction[] => {
+  let byMode = baselineCache.get(allVariables);
+  if (byMode === undefined) {
+    byMode = new Map();
+    baselineCache.set(allVariables, byMode);
+  }
+  let contradictions = byMode.get(stageEffectiveComponents);
+  if (contradictions === undefined) {
+    contradictions = findValidationContradictions(allVariables, {
+      stageEffectiveComponents,
+    });
+    byMode.set(stageEffectiveComponents, contradictions);
+  }
+  return contradictions;
+};
+
+/**
+ * What a contradiction between rules says to the researcher who caused it.
+ *
+ * A `ValidationContradiction` carries two different things: `class`, which is
+ * what went wrong, and `message`, which `@codaco/protocol-validation` writes
+ * for a developer reading a validation report — `Attribute "age": minValue
+ * (10) is greater than maxValue (2)`, in English, naming the schema's own rule
+ * keys. The researcher-facing half is the catalog keyed by that class
+ * (`validationContradictionMessages`), which says what to do about it and is
+ * translated. This picks the second and fills in the attribute names, which
+ * are the researcher's own words and are never translated.
+ *
+ * Encoded rather than formatted: every issue in this module travels as a
+ * string through contracts that have no `intl`, and is decoded wherever it is
+ * finally rendered — so the reader's language is the one they are reading in,
+ * not the one that was active when the rule was typed.
+ */
+const describeDraftContradiction = (
+  contradiction: ValidationContradiction,
+  draft: ProspectiveDraft,
+): string => {
+  // The attribute being drafted is not in `allVariables` under any name the
+  // researcher would recognise: it is seeded into the analyser under a
+  // synthesized id, and only the draft knows what has been typed into the name
+  // field so far. Everything else is named from the codebook.
+  const draftId =
+    draft.currentVariableId || draftVariableId(draft.allVariables);
+  // `MessageErrorValues` allows more shapes than a LIST item does, so the
+  // name is typed as what the list takes: the researcher's own word, or a
+  // reference to a descriptor the reader's own locale resolves.
+  type NameValue = string | Readonly<{ messageError: string }>;
+  const unnamed = (): NameValue => ({
+    messageError: createMessageError(messages.thisAttribute),
+  });
+  const nameOf = (id: string): NameValue => {
+    if (id === draftId && !Object.hasOwn(draft.allVariables, draftId)) {
+      const authored = draft.draftVariableName;
+      return typeof authored === 'string' && authored.trim() !== ''
+        ? authored
+        : unnamed();
+    }
+    const variable = draft.allVariables[id];
+    return isRecord(variable) &&
+      typeof variable.name === 'string' &&
+      variable.name !== ''
+      ? variable.name
+      : unnamed();
+  };
+  return createMessageError(
+    validationContradictionMessages[contradiction.class],
+    { variables: { list: contradiction.variableIds.map(nameOf) } },
+  );
+};
+
+export const findDraftContradictions = (
+  draft: ProspectiveDraft,
+): ValidationContradiction[] => {
+  const id = draft.currentVariableId || draftVariableId(draft.allVariables);
+  const stageEffectiveComponents = draft.stageEffectiveComponents ?? false;
+  const withDraft = findValidationContradictions(
+    buildProspectiveVariables(draft),
+    { stageEffectiveComponents },
+  );
+  const baselineKeys = new Set(
+    baselineContradictions(draft.allVariables, stageEffectiveComponents).map(
+      contradictionKey,
+    ),
+  );
+  return withDraft.filter(
+    (contradiction) =>
+      contradiction.variableIds.includes(id) ||
+      !baselineKeys.has(contradictionKey(contradiction)),
+  );
+};
+
+class UnionFind {
+  private readonly parent = new Map<string, string>();
+
+  find(id: string): string {
+    if (!this.parent.has(id)) {
+      this.parent.set(id, id);
+      return id;
+    }
+    let root = id;
+    while (true) {
+      const next = this.parent.get(root);
+      if (next === undefined || next === root) break;
+      root = next;
+    }
+    let current = id;
+    while (current !== root) {
+      const next = this.parent.get(current);
+      if (next === undefined) break;
+      this.parent.set(current, root);
+      current = next;
+    }
+    return root;
+  }
+
+  union(left: string, right: string): void {
+    const leftRoot = this.find(left);
+    const rightRoot = this.find(right);
+    if (leftRoot !== rightRoot) this.parent.set(leftRoot, rightRoot);
+  }
+}
+
+const referenceTargetOf = (
+  entry: unknown,
+  rule: string,
+): string | undefined => {
+  if (!isRecord(entry) || !isRecord(entry.validation)) return undefined;
+  const target = entry.validation[rule];
+  return typeof target === 'string' ? target : undefined;
+};
+
+export type ReferenceTargetLegalityInput = Readonly<{
+  allVariables: UnknownRecord;
+  currentVariableId: string;
+  variableType: string;
+  validation: UnknownRecord;
+  ruleKey: string;
+  candidateIds: readonly string[];
+  component?: unknown;
+  options?: unknown;
+  parameters?: unknown;
+  draftVariableName?: unknown;
+  stageEffectiveComponents?: boolean;
+}>;
+
+/**
+ * Returns the candidate ids that remain satisfiable after adding the rule.
+ * Isolated candidates share one canonical-analyser run; candidates already
+ * connected by reference rules use an independently pruned run.
+ */
+export const findLegalReferenceTargets = ({
+  allVariables,
+  currentVariableId,
+  variableType,
+  validation,
+  ruleKey,
+  candidateIds,
+  component,
+  options,
+  parameters,
+  draftVariableName,
+  stageEffectiveComponents = false,
+}: ReferenceTargetLegalityInput): Set<string> => {
+  const id = currentVariableId || draftVariableId(allVariables);
+  const baseline = { ...validation };
+  delete baseline[ruleKey];
+
+  const draftEntry = (draftValidation: UnknownRecord): UnknownRecord => ({
+    ...draftVariableBase(allVariables[id], variableType, draftVariableName),
+    type: variableType,
+    validation: draftValidation,
+    ...(component !== undefined ? { component } : {}),
+    ...(options !== undefined ? { options } : {}),
+    ...(parameters !== undefined ? { parameters } : {}),
+  });
+
+  const graph = recordWith(allVariables, id, draftEntry(baseline));
+  const unionFind = new UnionFind();
+  for (const sourceId of Object.keys(graph)) {
+    for (const rule of VARIABLE_REFERENCE_VALIDATIONS) {
+      const target = referenceTargetOf(graph[sourceId], rule);
+      if (target !== undefined && Object.hasOwn(graph, target)) {
+        unionFind.union(sourceId, target);
+      }
+    }
+  }
+
+  const componentMembers = new Map<string, string[]>();
+  for (const memberId of Object.keys(graph)) {
+    const root = unionFind.find(memberId);
+    const members = componentMembers.get(root);
+    if (members === undefined) componentMembers.set(root, [memberId]);
+    else members.push(memberId);
+  }
+
+  const baselineKeys = new Set(
+    findValidationContradictions(graph, { stageEffectiveComponents }).map(
+      contradictionKey,
+    ),
+  );
+  const idRoot = unionFind.find(id);
+  const editedHasExternalReferences =
+    (componentMembers.get(idRoot) ?? [id]).length > 1;
+  const usedRoots = new Set<string>();
+  const batched: string[] = [];
+  const individual: string[] = [];
+
+  for (const candidateId of candidateIds) {
+    const root = Object.hasOwn(graph, candidateId)
+      ? unionFind.find(candidateId)
+      : candidateId;
+    if (root === idRoot || usedRoots.has(root) || editedHasExternalReferences) {
+      individual.push(candidateId);
+    } else {
+      usedRoots.add(root);
+      batched.push(candidateId);
+    }
+  }
+
+  const legal = new Set<string>();
+  if (batched.length > 0) {
+    const batchEntries = new Map(Object.entries(allVariables));
+    if (currentVariableId !== '') batchEntries.delete(currentVariableId);
+    const clones: { candidateId: string; cloneId: string; root: string }[] = [];
+    for (const candidateId of batched) {
+      let cloneId = `${id}::${candidateId}`;
+      while (batchEntries.has(cloneId)) cloneId = `${cloneId}:`;
+      const root = Object.hasOwn(graph, candidateId)
+        ? unionFind.find(candidateId)
+        : candidateId;
+      clones.push({ candidateId, cloneId, root });
+      batchEntries.set(
+        cloneId,
+        draftEntry({ ...baseline, [ruleKey]: candidateId }),
+      );
+    }
+    const introduced = findValidationContradictions(
+      Object.fromEntries(batchEntries),
+      { stageEffectiveComponents },
+    ).filter(
+      (contradiction) => !baselineKeys.has(contradictionKey(contradiction)),
+    );
+    for (const { candidateId, cloneId, root } of clones) {
+      const scope = new Set(componentMembers.get(root) ?? [candidateId]);
+      scope.add(cloneId);
+      const conflicts = introduced.some((contradiction) =>
+        contradiction.variableIds.some((variableId) => scope.has(variableId)),
+      );
+      if (!conflicts) legal.add(candidateId);
+    }
+  }
+
+  for (const candidateId of individual) {
+    const candidateRoot = Object.hasOwn(graph, candidateId)
+      ? unionFind.find(candidateId)
+      : candidateId;
+    const entries = new Map<string, unknown>();
+    for (const memberId of componentMembers.get(idRoot) ?? [id]) {
+      entries.set(memberId, graph[memberId]);
+    }
+    if (candidateRoot !== idRoot) {
+      for (const memberId of componentMembers.get(candidateRoot) ?? [
+        candidateId,
+      ]) {
+        entries.set(memberId, graph[memberId] ?? allVariables[memberId]);
+      }
+    }
+    entries.set(id, draftEntry({ ...baseline, [ruleKey]: candidateId }));
+    const conflicts = findValidationContradictions(
+      Object.fromEntries(entries),
+      { stageEffectiveComponents },
+    ).some(
+      (contradiction) => !baselineKeys.has(contradictionKey(contradiction)),
+    );
+    if (!conflicts) legal.add(candidateId);
+  }
+
+  return legal;
+};
+
+export const variableDisplayName = (
+  variables: Readonly<UnknownRecord>,
+  variableId: string,
+): string => {
+  const variable = variables[variableId];
+  return isRecord(variable) && typeof variable.name === 'string'
+    ? variable.name
+    : variableId;
+};
+
+export const validatedElsewhereMessage = (variableName: string): string =>
+  createMessageError(messages.validatedElsewhere, { variableName });
+
+export const unvalidatedElsewhereMessage = (variableName: string): string =>
+  createMessageError(messages.unvalidatedElsewhere, { variableName });
+
+export const crossClassConflictMessage: Record<
+  WriterClass,
+  (variableName: string) => string
+> = {
+  unvalidated: validatedElsewhereMessage,
+  validated: unvalidatedElsewhereMessage,
+};
+
+export const draftValidatedElsewhereMessage = (variableName: string): string =>
+  createMessageError(messages.draftValidatedElsewhere, { variableName });
+
+export const draftUnvalidatedElsewhereMessage = (
+  variableName: string,
+): string =>
+  createMessageError(messages.draftUnvalidatedElsewhere, { variableName });
+
+export const crossClassPickIssue = ({
+  variableId,
+  originalVariableId,
+  hasConflictingUse,
+  allVariables,
+  message,
+}: {
+  variableId: string;
+  originalVariableId: string;
+  hasConflictingUse: (variableId: string) => boolean;
+  allVariables: Readonly<UnknownRecord>;
+  message: (variableName: string) => string;
+}): string | undefined => {
+  if (variableId === '' || variableId === originalVariableId) return undefined;
+  return hasConflictingUse(variableId)
+    ? message(variableDisplayName(allVariables, variableId))
+    : undefined;
+};
+
+export type CrossClassPick = Readonly<{
+  path: string;
+  writerClass: WriterClass;
+}>;
+
+const valueAtPath = (value: unknown, path: string): unknown => {
+  let current = value;
+  for (const part of path.split('.')) {
+    if (!isRecord(current) || !Object.hasOwn(current, part)) return undefined;
+    current = current[part];
+  }
+  return current;
+};
+
+const stringAt = (value: unknown, path: string): string => {
+  const result = valueAtPath(value, path);
+  return typeof result === 'string' ? result : '';
+};
+
+export const crossClassPickErrors = ({
+  values,
+  initialValues,
+  picks,
+  subject,
+  roleMap,
+  allVariables,
+}: {
+  values: UnknownRecord;
+  initialValues: unknown;
+  picks: readonly CrossClassPick[];
+  subject: CodebookSubject;
+  roleMap: VariableRoleMap;
+  allVariables: UnknownRecord;
+}): Record<string, string> | undefined => {
+  const errors = new Map<string, string>();
+  for (const { path, writerClass } of picks) {
+    const issue = crossClassPickIssue({
+      variableId: stringAt(values, path),
+      originalVariableId: stringAt(initialValues, path),
+      hasConflictingUse: (variableId) =>
+        roleMapHasConflictingUse(roleMap, subject, variableId, writerClass),
+      allVariables,
+      message: crossClassConflictMessage[writerClass],
+    });
+    if (issue !== undefined) errors.set(path, issue);
+  }
+  return errors.size === 0 ? undefined : Object.fromEntries(errors);
+};
+
+const variableIdsFromRows = (rows: unknown): ReadonlySet<string> => {
+  const ids = new Set<string>();
+  if (!Array.isArray(rows)) return ids;
+  for (const row of rows) {
+    if (isRecord(row) && typeof row.variable === 'string') {
+      ids.add(row.variable);
+    }
+  }
+  return ids;
+};
+
+export const draftFormFieldVariableIds = (
+  fields: unknown,
+): ReadonlySet<string> => variableIdsFromRows(fields);
+
+export const draftAdditionalAttributeVariableIds = (
+  prompts: unknown,
+): ReadonlySet<string> => {
+  const ids = new Set<string>();
+  if (!Array.isArray(prompts)) return ids;
+  for (const prompt of prompts) {
+    if (!isRecord(prompt)) continue;
+    for (const id of variableIdsFromRows(prompt.additionalAttributes)) {
+      ids.add(id);
+    }
+  }
+  return ids;
+};
+
+export type RuleMapContext = Readonly<{
+  allVariables: UnknownRecord;
+  currentVariableId: string;
+  variableType: string;
+  options?: unknown;
+  component?: unknown;
+  parameters?: unknown;
+  draftVariableName?: unknown;
+  stageEffectiveComponents?: boolean;
+}>;
+
+export const ruleMapIssue = (
+  value: unknown,
+  context: RuleMapContext,
+): string | undefined => {
+  if (!isValidationMap(value)) return undefined;
+  const { issue, complete } = ruleMapPrecheck(value);
+  if (issue !== undefined || context.variableType === '') return issue;
+  const draft: ProspectiveDraft = {
+    allVariables: context.allVariables,
+    currentVariableId: context.currentVariableId,
+    variableType: context.variableType,
+    validation: complete,
+    options: context.options,
+    component: context.component,
+    parameters: context.parameters,
+    draftVariableName: context.draftVariableName,
+    stageEffectiveComponents: context.stageEffectiveComponents,
+  };
+  const contradiction = findDraftContradictions(draft)[0];
+  return contradiction === undefined
+    ? undefined
+    : describeDraftContradiction(contradiction, draft);
+};
+
+export type VariableOverlay = Record<
+  string,
+  Readonly<{ component?: unknown; parameters?: unknown }>
+>;
+
+export type ResolvedFormValidationView = Readonly<{
+  renderedVariableIds: ReadonlySet<string>;
+  overlay: VariableOverlay;
+  includesEditedVariable?: boolean;
+}>;
+
+const withOverlay = (
+  allVariables: UnknownRecord,
+  overlay: VariableOverlay | undefined,
+): UnknownRecord => {
+  if (overlay === undefined) return allVariables;
+  const entries = new Map(Object.entries(allVariables));
+  for (const [id, { component, parameters }] of Object.entries(overlay)) {
+    const existing = allVariables[id];
+    if (!isRecord(existing)) continue;
+    entries.set(id, {
+      ...existing,
+      ...(component !== undefined ? { component } : {}),
+      ...(parameters !== undefined ? { parameters } : {}),
+    });
+  }
+  return Object.fromEntries(entries);
+};
+
+const NO_UNKNOWN_RENDERINGS: ReadonlySet<string> = new Set();
+
+/**
+ * What a STAGE decides about how the attributes it renders are asked for,
+ * where the codebook does not decide it.
+ *
+ * A network composer's form field keeps its own `component` and `parameters`,
+ * and the analyser reads both: a date window is the picker's own
+ * `before`/`after`, and a boolean's domain is the control's options. The field
+ * being edited hands its own pair; `overlay` is every OTHER field of the same
+ * form, keyed by the attribute it renders, because a rule comparing two
+ * answers is satisfiable or not in the renderings BOTH of them arrive with.
+ */
+export type StageRendering = Readonly<{
+  component?: unknown;
+  parameters?: unknown;
+  overlay?: VariableOverlay;
+  /**
+   * Attributes whose rendering THIS form does not decide and some other form
+   * does — a composer form elsewhere in the protocol overriding the same
+   * attribute's control.
+   *
+   * Left in, they would be judged at a codebook control nothing renders them
+   * with: a boolean the codebook declares as a choice of one value, rendered
+   * as a toggle by the form that actually asks for it, would pin a comparison
+   * this form can never see. Dropped from the judged set instead, which is
+   * what protocol validation does with them (`schema.ts`'s
+   * `unknownRenderingFor`) and for the same reason — an accept-direction gap
+   * is preferred to a refusal of something satisfiable.
+   */
+  unknownRenderings?: ReadonlySet<string>;
+}>;
+
+/**
+ * The part of a rule check the stage's own renderings decide, for an editor to
+ * spread over the rest of its context.
+ *
+ * One helper for `ruleMapIssue` and `findLegalReferenceTargets` alike, so the
+ * rules a surface OFFERS and the verdict it gives are read from one view. The
+ * view is resolved rather than guessed — every attribute this form renders
+ * carries the form's own pair — which is what earns
+ * `stageEffectiveComponents`: the analyser reads a `Boolean` control's
+ * `options` as the participant-facing domain only from a caller that has
+ * settled each variable's rendering, and it is exactly the reading protocol
+ * validation makes of the saved form (`schema.ts`'s composer overlay). Absent
+ * where the codebook's own control is what the interview renders, which is
+ * every other caller.
+ *
+ * Never the only reading, though: a validation rule is written to the CODEBOOK
+ * attribute, so `bothRenderingViews` pairs this one with the codebook's own —
+ * see there.
+ */
+const stageRenderingContext = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): Readonly<{
+  allVariables: UnknownRecord;
+  component?: unknown;
+  parameters?: unknown;
+  stageEffectiveComponents?: boolean;
+}> =>
+  stageRendering === undefined
+    ? { allVariables }
+    : {
+        allVariables: withOverlay(
+          withoutUnknownRenderings(
+            allVariables,
+            stageRendering.unknownRenderings ?? NO_UNKNOWN_RENDERINGS,
+            NO_UNKNOWN_RENDERINGS,
+          ),
+          stageRendering.overlay,
+        ),
+        component: stageRendering.component,
+        parameters: stageRendering.parameters,
+        stageEffectiveComponents: true,
+      };
+
+/**
+ * The two readings a rule set on a composer field has to pass.
+ *
+ * A validation rule is authored on a stage, but it is SAVED on the codebook
+ * attribute, and each of those is judged by something different. Protocol
+ * validation reads the saved stage through the form's own controls
+ * (`stageRenderingContext`), and reads the codebook record through the
+ * attribute's own — `rejectValidationContradictions` in
+ * `protocol-validation`'s `variables/variable.ts`, over the entity's variables
+ * with no stage overlay at all. A rule the form makes satisfiable is still
+ * refused by the write when the codebook's own controls cannot hold it, which
+ * is why the form's reading may only ever take a target away, never add one.
+ *
+ * So both readings are run and a target is offered, and a rule accepted, only
+ * where both accept. `undefined` in the second slot for a caller whose surface
+ * IS the codebook: there is one reading there, and running it twice would say
+ * the same thing twice.
+ */
+const bothRenderingViews = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): readonly [
+  ReturnType<typeof stageRenderingContext>,
+  ReturnType<typeof stageRenderingContext> | undefined,
+] =>
+  stageRendering === undefined
+    ? [stageRenderingContext(allVariables, undefined), undefined]
+    : [
+        stageRenderingContext(allVariables, stageRendering),
+        stageRenderingContext(allVariables, undefined),
+      ];
+
+/** What a caller brings to a rule check, less what the renderings decide. */
+type RenderingFree<T> = Omit<
+  T,
+  'allVariables' | 'component' | 'parameters' | 'stageEffectiveComponents'
+> &
+  Readonly<{ allVariables: UnknownRecord }>;
+
+/**
+ * The comparison targets a surface may offer: legal in BOTH readings.
+ *
+ * The codebook run is given the targets the form's reading already accepted
+ * rather than the whole list, so what comes back is the intersection and the
+ * second analyser pass costs only what the first left standing.
+ */
+export const findOfferableReferenceTargets = (
+  input: RenderingFree<ReferenceTargetLegalityInput>,
+  stageRendering: StageRendering | undefined,
+): Set<string> => {
+  const [stageView, codebookView] = bothRenderingViews(
+    input.allVariables,
+    stageRendering,
+  );
+  const legal = findLegalReferenceTargets({ ...input, ...stageView });
+  if (codebookView === undefined || legal.size === 0) return legal;
+  return findLegalReferenceTargets({
+    ...input,
+    ...codebookView,
+    candidateIds: [...legal],
+  });
+};
+
+/**
+ * What stands in the way of WRITING this rule map, in the reader's own terms.
+ *
+ * The form's own reading first, because a contradiction between the controls
+ * the researcher is looking at is the one they can act on where they are
+ * standing. A rule those controls make satisfiable but the codebook record
+ * cannot hold is reported too — it is the save that would fail otherwise, with
+ * nothing said about why — and it says which of the two refused it, because
+ * "these dates cannot overlap" in front of two fields that plainly do overlap
+ * reads as the application being wrong.
+ */
+export const ruleMapIssueForWrite = (
+  value: unknown,
+  context: RenderingFree<RuleMapContext>,
+  stageRendering: StageRendering | undefined,
+): string | undefined => {
+  const [stageView, codebookView] = bothRenderingViews(
+    context.allVariables,
+    stageRendering,
+  );
+  const stageIssue = ruleMapIssue(value, { ...context, ...stageView });
+  if (stageIssue !== undefined || codebookView === undefined) return stageIssue;
+  const codebookIssue = ruleMapIssue(value, { ...context, ...codebookView });
+  return codebookIssue === undefined
+    ? undefined
+    : createMessageError(messages.codebookRenderingContradiction, {
+        contradiction: { messageError: codebookIssue },
+      });
+};
+
+const withoutUnknownRenderings = (
+  variables: UnknownRecord,
+  allRenderedVariableIds: ReadonlySet<string>,
+  renderedVariableIds: ReadonlySet<string>,
+): UnknownRecord => {
+  const entries = new Map(Object.entries(variables));
+  for (const id of allRenderedVariableIds) {
+    if (!renderedVariableIds.has(id)) entries.delete(id);
+  }
+  return entries.size === Object.keys(variables).length
+    ? variables
+    : Object.fromEntries(entries);
+};
+
+const findResolvedViewDraftContradictions = (
+  draft: ProspectiveDraft,
+  view: ResolvedFormValidationView,
+  allRenderedVariableIds: ReadonlySet<string>,
+  baselineKeys: ReadonlySet<string>,
+  draftRenderingOwnership: 'codebook' | 'current-form',
+): ValidationContradiction[] => {
+  const id = draft.currentVariableId || draftVariableId(draft.allVariables);
+  const resolvedDraft =
+    draftRenderingOwnership === 'current-form'
+      ? { ...draft, component: undefined, parameters: undefined }
+      : draft;
+  const withDraft = withOverlay(
+    withoutUnknownRenderings(
+      buildProspectiveVariables(resolvedDraft),
+      allRenderedVariableIds,
+      view.renderedVariableIds,
+    ),
+    view.overlay,
+  );
+  return findValidationContradictions(withDraft, {
+    stageEffectiveComponents: true,
+  }).filter(
+    (contradiction) =>
+      contradiction.variableIds.includes(id) ||
+      !baselineKeys.has(contradictionKey(contradiction)),
+  );
+};
+
+/**
+ * The kind of answer an input control collects — the inverse of
+ * `VARIABLE_TYPE_COMPONENTS`, and so of `controlsForType` in
+ * `sections/collectableTypes.ts`, which reads the same table forwards.
+ *
+ * Total and unambiguous: every control in the table appears under exactly ONE
+ * type, because the variable schemas are split on `component` and a control
+ * offered for two kinds of answer would make a saved field mean two things. So
+ * a surface that knows which control the participant answers with already
+ * knows what the attribute holds — which is what lets this module's save gate
+ * read the rules of an attribute that does not exist yet, and what lets a
+ * field preview render a control chosen before the attribute it collects into
+ * exists.
+ *
+ * Exported for that preview, and for the network composer's row — which asks
+ * it for the kind of answer to CREATE an attribute with — as well as for the
+ * gate below: one lookup, so no two of them can answer the same control
+ * differently.
+ */
+export const variableTypeForComponent = (
+  component: string,
+): VariableType | undefined => {
+  // The table is declared `satisfies Record<VariableType, …>`, so its keys are
+  // exactly the kinds of answer; `Object.entries` widens them to `string` for
+  // want of a type, not for want of the fact. Said here so a caller that has
+  // to name a kind — creating an attribute from the control alone — does not
+  // have to re-ask whether the answer is one.
+  const table = Object.entries(VARIABLE_TYPE_COMPONENTS) as readonly (readonly [
+    VariableType,
+    readonly string[],
+  ])[];
+  for (const [variableType, components] of table) {
+    if (components.some((candidate) => candidate === component)) {
+      return variableType;
+    }
+  }
+  return undefined;
+};
+
+export type FieldEditorValidationContext = Readonly<{
+  initialValues?: unknown;
+}>;
+
+export type FieldEditorValidationErrors = Readonly<{
+  validation?: string;
+  variable?: string;
+}>;
+
+export type FieldEditorValidator = (
+  values: UnknownRecord,
+  context?: FieldEditorValidationContext,
+) => FieldEditorValidationErrors;
+
+/**
+ * Pure save gate for a variable editor. Optional overlays allow a host to
+ * validate stage-effective Network Composer renderings without importing UI
+ * or form-library state into the protocol-builder package.
+ */
+export const makeFieldEditorValidate = (
+  allVariables: UnknownRecord,
+  overlay?: VariableOverlay,
+  crossFormRendered?: ReadonlySet<string>,
+  hasUnvalidatedUse?: (variableId: string) => boolean | string,
+  resolvedViews: readonly ResolvedFormValidationView[] = [],
+  resolvedViewDraftRendering: 'codebook' | 'current-form' = 'codebook',
+): FieldEditorValidator => {
+  const overlaidVariables = withOverlay(allVariables, overlay);
+  const unknownRenderingCandidates = [...(crossFormRendered ?? [])].filter(
+    (id) =>
+      !(overlay !== undefined && Object.hasOwn(overlay, id)) &&
+      Object.hasOwn(overlaidVariables, id),
+  );
+  const resolvedViewIncludesEditedVariable = resolvedViews.some(
+    ({ includesEditedVariable }) => includesEditedVariable === true,
+  );
+  const resolvedRenderedVariableIds = new Set<string>();
+  for (const view of resolvedViews) {
+    for (const id of Object.keys(view.overlay)) {
+      resolvedRenderedVariableIds.add(id);
+    }
+  }
+  for (const id of Object.keys(overlay ?? {})) {
+    resolvedRenderedVariableIds.add(id);
+  }
+  const resolvedBaselineKeys = resolvedViews.map(
+    () => new Map<string, Set<string>>(),
+  );
+
+  return (values, context = {}) => {
+    const validation = isRecord(values.validation) ? values.validation : {};
+    const isCreatingVariable =
+      typeof values._createNewVariable === 'string' &&
+      values._createNewVariable !== '';
+    const currentVariableId =
+      !isCreatingVariable && typeof values.variable === 'string'
+        ? values.variable
+        : '';
+    const existing =
+      currentVariableId === ''
+        ? undefined
+        : overlaidVariables[currentVariableId];
+    const existingType = isRecord(existing) ? existing.type : undefined;
+    const component =
+      typeof values.component === 'string' ? values.component : '';
+    const variableType =
+      typeof existingType === 'string'
+        ? existingType
+        : variableTypeForComponent(component);
+    if (variableType === undefined || variableType === '') return {};
+
+    const { issue, complete } = ruleMapPrecheck(validation);
+    if (issue !== undefined) return { validation: issue };
+
+    const unknownRendering = unknownRenderingCandidates.filter(
+      (id) => id !== currentVariableId,
+    );
+    const visibleVariables =
+      unknownRendering.length === 0
+        ? overlaidVariables
+        : Object.fromEntries(
+            Object.entries(overlaidVariables).filter(
+              ([id]) => !unknownRendering.includes(id),
+            ),
+          );
+    const visibleDraft: ProspectiveDraft = {
+      allVariables: visibleVariables,
+      currentVariableId,
+      variableType,
+      validation: complete,
+      component: values.component,
+      options: values.options,
+      parameters: values.parameters,
+      draftVariableName: values._createNewVariable,
+      stageEffectiveComponents: overlay !== undefined,
+    };
+    const first = findDraftContradictions(visibleDraft)[0];
+    if (first !== undefined) {
+      return { validation: describeDraftContradiction(first, visibleDraft) };
+    }
+
+    if (resolvedViews.length > 0) {
+      const allResolvedRenderedVariableIds = new Set(
+        resolvedRenderedVariableIds,
+      );
+      if (overlay !== undefined || resolvedViewIncludesEditedVariable) {
+        allResolvedRenderedVariableIds.add(
+          currentVariableId || draftVariableId(allVariables),
+        );
+      }
+      const draft: ProspectiveDraft = {
+        allVariables,
+        currentVariableId,
+        variableType,
+        validation: complete,
+        component: values.component,
+        options: values.options,
+        parameters: values.parameters,
+        draftVariableName: values._createNewVariable,
+      };
+      const baselineKey =
+        overlay !== undefined || resolvedViewIncludesEditedVariable
+          ? currentVariableId || draftVariableId(allVariables)
+          : '';
+      for (const [viewIndex, view] of resolvedViews.entries()) {
+        const renderedVariableIds = view.includesEditedVariable
+          ? new Set([
+              ...view.renderedVariableIds,
+              currentVariableId || draftVariableId(allVariables),
+            ])
+          : view.renderedVariableIds;
+        const resolvedView = { ...view, renderedVariableIds };
+        const byEditedVariable = resolvedBaselineKeys[viewIndex];
+        if (byEditedVariable === undefined) continue;
+        let baselineKeys = byEditedVariable.get(baselineKey);
+        if (baselineKeys === undefined) {
+          const baseline = withOverlay(
+            withoutUnknownRenderings(
+              allVariables,
+              allResolvedRenderedVariableIds,
+              resolvedView.renderedVariableIds,
+            ),
+            resolvedView.overlay,
+          );
+          baselineKeys = new Set(
+            findValidationContradictions(baseline, {
+              stageEffectiveComponents: true,
+            }).map(contradictionKey),
+          );
+          byEditedVariable.set(baselineKey, baselineKeys);
+        }
+        const contradiction = findResolvedViewDraftContradictions(
+          draft,
+          resolvedView,
+          allResolvedRenderedVariableIds,
+          baselineKeys,
+          resolvedViewDraftRendering,
+        )[0];
+        if (contradiction !== undefined) {
+          return {
+            validation: describeDraftContradiction(contradiction, draft),
+          };
+        }
+      }
+    }
+
+    if (hasUnvalidatedUse !== undefined) {
+      const initialValues = isRecord(context.initialValues)
+        ? context.initialValues
+        : undefined;
+      const originalVariableId =
+        typeof initialValues?.variable === 'string'
+          ? initialValues.variable
+          : '';
+      const conflictingUse = hasUnvalidatedUse(currentVariableId);
+      if (
+        typeof conflictingUse === 'string' &&
+        currentVariableId !== originalVariableId
+      ) {
+        return { variable: conflictingUse };
+      }
+      const pickIssue = crossClassPickIssue({
+        variableId: currentVariableId,
+        originalVariableId,
+        hasConflictingUse: () =>
+          typeof conflictingUse === 'boolean' && conflictingUse,
+        allVariables: overlaidVariables,
+        message: unvalidatedElsewhereMessage,
+      });
+      if (pickIssue !== undefined) return { variable: pickIssue };
+    }
+    return {};
+  };
+};

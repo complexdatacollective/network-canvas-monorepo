@@ -491,7 +491,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'mapOptions.initialZoom',
     'mapOptions.dataSourceAssetId',
     'mapOptions.color',
-    'mapOptions.color=default',
     'mapOptions.targetFeatureProperty',
     'mapOptions.showTransit',
     'mapOptions.showTransit=false',

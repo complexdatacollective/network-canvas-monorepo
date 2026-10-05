@@ -1,15 +1,16 @@
 - main:
-  - text: Mohammad Crist and Laury Wisozk
-  - button "Mohammad Crist"
-  - button "Laury Wisozk"
+  - text: Nikita Crist and Lilliana Wisozk
+  - button "Nikita Crist"
+  - button "Lilliana Wisozk"
   - status:
     - heading "How close are these two people?" [level=2]
-  - listbox "Mohammad Crist and Laury Wisozk How close are these two people?":
+  - listbox "Nikita Crist and Lilliana Wisozk How close are these two people?":
     - option "Weak"
     - option "Moderate" [selected]
     - option "Strong"
     - option "Not close"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

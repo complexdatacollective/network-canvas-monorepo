@@ -11,50 +11,64 @@ inline as parentheticals (e.g. "Claude Code: invoke X").
 
 ## Committing and opening PRs
 
-When a change is complete and verified — types, lint, `knip`, and the relevant
-tests pass — you may commit it and open a pull request **without asking first**.
-Always work on a feature branch; never commit directly to `main`. Still confirm
-before other outward-facing or hard-to-reverse actions (merging, force-pushing,
-deleting branches, publishing releases).
+When a change is complete and verified — the automatic gates below are clean
+and the relevant tests pass — you may commit it and open a pull request
+**without asking first**. Always work on a feature branch; never commit
+directly to `main`. Still confirm before other outward-facing or
+hard-to-reverse actions (merging, force-pushing, deleting branches, publishing
+releases).
 
-## Essential Commands
+### Automatic quality gates — do not run them by hand
 
-### Development
+Formatting, lint, typecheck, and `knip` run for you through agent hooks
+(`scripts/agent-hooks/`, wired in `.claude/settings.json` for Claude Code and
+`.codex/hooks.json` for Codex) and git hooks. Never run whole-tree
+`pnpm lint`, `pnpm typecheck`, `pnpm knip`, bare `oxlint`/`oxfmt`, or
+`git commit --no-verify`: they take minutes, duplicate CI, and a hook refuses
+them.
 
-```bash
-# Install all dependencies
-pnpm install
+- **On every file edit** (including files written through shell commands)
+  the file is formatted (`oxfmt`) and lint-fixed (`oxlint --fix`); remaining
+  lint errors and any reformatting are reported back to you. Re-read a reformatted file before an edit that depends on its
+  exact surrounding text.
+- **When you end a turn** (main agent and subagents alike) the packages you
+  changed and their dependents are typechecked through turbo (cached, so
+  unchanged packages cost nothing; a turn that changed nothing is skipped);
+  failures come back as an instruction to fix them before finishing.
+- **On commit** `lint-staged` formats and lints the staged files and blocks
+  the commit on lint errors.
+- **On push** `knip` runs once and blocks the push on unused files, exports,
+  or dependencies.
+- **On demand** `pnpm agent:check` runs the same scoped typecheck, `knip`,
+  and a lint/format check of the changed files in seconds. Use it instead of
+  the whole-tree scripts when you want a check before you stop or push.
+- **Escape hatch**: prefix a command with `AGENT_GATES=1` when a whole-tree
+  run is genuinely required (for example after changing lint or TypeScript
+  configuration).
+- **Tests are not gated**; running one after a change is the normal loop.
+  Choose the smallest scope that answers the question: a named test file
+  first; then `pnpm agent:test`, which runs only the tests whose import graph
+  touches the files changed on the branch (vitest `--changed`, so a test that
+  reads a fixture through the filesystem rather than importing it is not
+  selected; add `--dependents` to also run the packages that consume the
+  change); then one package's `test` script. Leave the whole-tree
+  `pnpm test` to CI.
 
-# Start every workspace that has a development task
-pnpm dev
+CI remains the authority. The hooks exist so you get the same feedback locally
+without spending minutes on it. In a Claude Code worktree the commit and push
+gates come from the main checkout's `.husky/` scripts, so they apply once
+`main` carries them and the main checkout is updated.
 
-# Start specific applications
-pnpm --filter @codaco/architect dev
-pnpm --filter @codaco/interviewer dev
-pnpm --filter @codaco/documentation dev
-pnpm --filter networkcanvas.com dev
-# Fresco also starts PostgreSQL and MinIO in Docker
-pnpm --filter fresco dev
-```
+## Workspace mechanics
 
-### Building & Testing
+### Development VM
 
-```bash
-# Build the workspace through Turbo's dependency graph
-pnpm build
-
-# Run all tests
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Type check the workspace (always run before committing)
-pnpm typecheck
-
-# Check for unused files, exports, and dependencies
-pnpm knip
-```
+`dev-vm/` holds a Lima configuration for a Linux VM that carries the
+repository, the toolchain and every spawned process, so that a managed Mac's
+endpoint-security agents (which tax every process launch and file open on the
+host) never see them. `dev-vm/README.md` documents setup, daily use, and
+running Claude Code inside it. The rule that makes it work: nothing is mounted
+from the host; the repo is a clone on the VM's own data disk.
 
 ### Source-first workspace packages
 
@@ -76,11 +90,28 @@ Rules that keep this working:
 - **Publishing** — each published package keeps its live `exports` on `src/` and
   carries a dist-pointing override in `publishConfig`; `changeset publish`
   delegates to `pnpm publish`, which applies the swap at pack time.
-  `scripts/verify-publish-exports.mjs` (run in the release job, or manually
+  `scripts/release/verify-publish-exports.mjs` (run in the release job, or manually
   after `pnpm build`) asserts every packed tarball resolves into `dist/`.
   fresco-ui's 140-entry map pair is generated: after adding/removing a subpath
   in `exports`, run `pnpm --filter @codaco/fresco-ui sync-exports`; a vitest
   guard fails if the maps drift.
+- **First publications are made by hand.** The release job publishes through
+  npm trusted publishing (OIDC), which can only publish to a package npm
+  already knows — a new package's first version never goes out through the
+  lane. `changeset publish` publishes every public package whose current
+  version is absent from npm, changeset or not, so do not add a changeset for
+  a package that has never been published: it moves the version away from the
+  one `.github/npm-first-publications.json` approves, and the Version
+  Packages PR then fails the npm version guard. Instead, from a clean checkout
+  of the merged commit, with an npm token that may create packages in the
+  scope, run
+  `pnpm --filter <pkg> build && node scripts/release/verify-publish-exports.mjs <pkg> && pnpm --filter <pkg> publish --access public`,
+  push the `<pkg>@<version>` tag the lane would have created, and add the
+  package's trusted publisher on npmjs.com (package Settings → Trusted
+  publishing: repository `complexdatacollective/network-canvas-monorepo`,
+  workflow `ci-and-release.yml`, environment `npm-publish`).
+  `scripts/release/check-first-publications.mjs` refuses the Version Packages merge
+  and the release job's publish path until npm knows every lane package.
 - **No `~/` path aliases in package source.** Consumers typecheck package
   source inside their own TS program, where the consumer's `paths` win — an
   alias inside a consumed package resolves against the wrong root. Apps may
@@ -110,31 +141,7 @@ have no dependency edge at all. `test:e2e*` keeps `dependsOn: ["build"]`
 is the conservative fail-safe against under-invalidation across the dependency
 edge.
 
-### Code Quality (Always Run Before Committing)
-
-```bash
-# Auto-fix formatting and linting issues
-pnpm lint:fix
-
-# Check for dependency issues
-pnpm knip
-
-# Run type checking across all packages
-pnpm typecheck
-```
-
 ### Version Management
-
-```bash
-# Add a changeset for your changes
-pnpm changeset
-
-# Version packages (after changesets are added)
-pnpm version-packages
-
-# Publish packages
-pnpm publish-packages
-```
 
 #### Changeset lanes: normal vs separately gated products
 
@@ -144,7 +151,17 @@ pnpm publish-packages
   the **Version Packages** PR (`changeset-release/main`). Libraries publish to
   npm; changed apps deploy and receive a GitHub release after that PR merges —
   Architect, Background Creator, and Interviewer to Netlify, Fresco via the
-  mirror described below.
+  mirror described below. Merge the Version Packages PR only while it is
+  current: a head generated before main's newest normal-lane changeset lands a
+  tree that still carries a changeset, and `changesets/action` then
+  regenerates the PR instead of publishing (on 2026-09-01 that left three
+  bumped versions unpublished). The `version-packages-freshness` job refuses
+  that merge from the queue; wait for the regenerated head. Pushes to main
+  run concurrently, so the `release` job also stops when its commit is no
+  longer main's tip (`.github/scripts/superseded-push-guard.sh`) rather than
+  regenerating a release PR that has already merged, release jobs run one at
+  a time, and a tip run with nothing left to version closes any release PR a
+  superseded run opened.
 - **Separately gated products** are Documentation, networkcanvas.com, and
   Studio. Documentation and Website keep independent stable-semver release PRs,
   production deploys, and Git tags. The Studio lane covers all four Studio
@@ -159,29 +176,55 @@ pnpm publish-packages
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
 
-#### Hotfix releases for Architect and Interviewer
+#### Hotfix releases for Architect, Interviewer and Fresco
 
-Both apps' production jobs build `main`, so the normal lane cannot ship a patch
+The apps' production jobs build `main`, so the normal lane cannot ship a patch
 without everything else merged since the last release. When `main` holds work
 that must not go out yet, cut `hotfix/<app>-<version>` from the released tag,
 cherry-pick the fix, bump `package.json` + `CHANGELOG.md`, and run the
 **Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) from
 `main`, naming that branch in `source_ref`. The lane only ships the newest
-line — one production site per app means a `--prod` deploy always replaces what
-is live. Afterwards, merge the hotfix branch into `main` (dropping only that
-app's entry from the changeset it consumed). Both release lanes refuse to
-deploy a tree that does not contain the newest released commit, and the
-tag-driven guard skips a version whose tag already exists — so until that merge
-lands, `main` cannot release the app at all. Cherry-picking does not count: the
-guard checks commit ancestry. Full procedure in each app's `RELEASING.md`.
+line — one production target per app means a deploy always replaces what is
+live. Fresco's image installs the published `@codaco/*` packages rather than
+workspace source, so its hotfix mirrors the branch with every workspace package
+changed since the release tag (and its dependents) vendored as tarballs, and
+publishes nothing to npm. Afterwards, merge the hotfix branch into `main`
+(dropping only that app's entry from the changeset it consumed). Both release
+lanes refuse to deploy a tree that does not contain the newest released
+commit, and the tag-driven guard skips a version whose tag already exists — so
+until that merge lands, `main` cannot release the app at all. Cherry-picking
+does not count: the guard checks commit ancestry. Full procedure in
+`apps/architect/RELEASING.md`, `apps/interviewer/RELEASING.md` and
+`apps/fresco/CLAUDE.md`.
+
+#### Architect version archive
+
+Released Architect versions stay reachable at a per-major host —
+`@codaco/architect@8.2.5` → `https://v8.architect.networkcanvas.com` — so
+researchers on an older protocol schema keep a working Architect. Keyed by major
+version because majors track schema versions, so a later release replaces an
+earlier one on the same line. Run the **Architect Archive Release** workflow
+(`.github/workflows/architect-archive-release.yml`) with the released tag; it is
+deliberately not wired into the release lane yet, and it never touches
+production, tags, or GitHub releases.
+
+The archive is a Cloudflare Worker serving static assets, not Netlify: Netlify
+overrides `Cache-Control` on `/sw.js` and `/manifest.webmanifest` for any
+non-production deploy. Cloudflare instead **appends** `_headers` rules where
+Netlify replaces them, and rejects Netlify's SPA `_redirects` outright, so the
+deploy-time transform in
+`apps/architect/scripts/write-cloudflare-archive-config.mjs` reshapes a copy.
+Never "fix" `apps/architect/public/_headers` for Cloudflare — its Netlify shape
+is asserted in CI by `scripts/buildtime/assert-pwa-cache-headers.mjs`. Details in
+`apps/architect/RELEASING.md`.
 
 #### Apps that release by mirroring
 
 Fresco and the two classic apps are developed here but ship from their own
-GitHub repositories. `scripts/mirror-app.mjs` replaces the external repo's
+GitHub repositories. `scripts/release/mirror-app.mjs` replaces the external repo's
 default branch with the app's source as a single linear-append commit, resolving
 every `workspace:`/`catalog:` specifier to a registry version
-(`scripts/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
+(`scripts/release/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
 external repository is a mirror, never a source of truth — changes made there
 are overwritten by the next release.
 
@@ -189,114 +232,20 @@ Fresco additionally gets a generated single-package `pnpm-workspace.yaml` and a
 pnpm lockfile, because its `Dockerfile` builds the mirrored tree directly. The
 push to the Fresco repo's `main` is what triggers its container image build and
 push to GHCR; see `apps-release-fresco` in `.github/workflows/ci-and-release.yml`
-and `apps/fresco/CLAUDE.md`.
+and `apps/fresco/CLAUDE.md`. The lane is tag-driven and self-healing like the
+Netlify app lanes, and shares their guard: one concurrency group per app and
+`.github/scripts/app-release-guard.sh`, which refuses an older version or a
+tree missing the newest released commit, so a run for a superseded main commit
+skips instead of pushing older code over the newest release.
 
 ## Architecture Overview
 
-### Monorepo Structure
+### Package pointers
 
-This is a **pnpm workspace** monorepo with catalog dependencies for version
-consistency:
-
-- **Apps**: Products and websites
-  - `architect` - Offline-capable Vite/React PWA for designing, validating, and previewing protocols
-  - `architect-classic` - Maintenance-mode Electron version of the original Architect
-  - `background-creator` - Vite/React editor for designing responsive sociogram backgrounds and matching zone-assignment scripts
-  - `documentation` - Localized Next.js documentation site built from Markdown/MDX
-  - `fresco` - Self-hosted Next.js server that runs Network Canvas interviews in the browser, backed by PostgreSQL and object storage
-  - `interviewer` - Offline-first Vite/React PWA for protocol management, local interviews, and data export
-  - `interviewer-classic` - Maintenance-mode Interviewer for Electron desktop and Capacitor mobile
-  - `networkcanvas.com` - Localized Next.js project website
-- **Packages**: Shared libraries, generated assets, and protocol content
-  - `art` - Shared animated backgrounds, blobs, patterns, and network-weave visuals
-  - `development-protocol` - Published compatibility package for the canonical development protocol
-  - `fresco-ui` - React component system, forms, dialogs, styles, and utilities
-  - `interface-images` - Generated responsive interview-interface screenshots and display component
-  - `interview` - Embeddable participant-facing interview engine and host session contract
-  - `network-exporters` - CSV and GraphML interview-data export pipeline
-  - `network-query` - Network filtering and querying utilities
-  - `protocol-utilities` - Synthetic network generation and interview-payload builder
-  - `protocol-validation` - Protocol schemas, validation, hashing, and migration
-  - `protocols` - Private canonical source for bundled protocols, templates, downloads, and fixtures
-  - `sample-protocol` - Published compatibility package for the canonical sample protocol
-  - `shared-consts` - Shared constants and TypeScript definitions
-  - `site-navigation-element` - Self-contained Network Canvas navigation web component
-- **Tooling**: Shared build and code-quality configuration
-  - `tailwind` - Shared Tailwind theme, design tokens, fonts, and plugins
-  - `typescript` - Shared TypeScript configurations
-  - `oxlint` - Shared React and accessibility lint rules
-- **Workers**: Cloudflare Workers
-  - `development-protocol` - Resolves and serves the latest released development protocol
-  - `posthog-proxy` - Proxies PostHog API and static-asset requests with CORS support
-
-### Key Technologies
-
-- **Workspace orchestration**: pnpm workspaces and Turborepo
-- **Builds**: Vite for current web apps and libraries, Next.js for the websites
-  and Fresco, Electron Vite for classic desktop apps, and Wrangler for
-  Cloudflare Workers
-- **Validation**: Zod with complex cross-reference validation patterns
-- **Frontend**: React, with Redux or Zustand where application state requires it
-- **Styling**: Tailwind CSS, Base UI, and the shared Fresco design system
-- **Testing**: Vitest, Storybook/Chromatic, and Playwright
-
-#### @codaco/protocol-validation
-
-The core validation system for Network Canvas protocol files (`.netcanvas`). Contains:
-
-- **Schema validation**: Zod schemas for protocol structure validation
-- **Logic validation**: Cross-reference validation that can't be expressed in JSON schema
-- **Migration system**: Handles protocol upgrades between schema versions
-- **Structure**: Schemas are modularized in `src/schemas/8/` with logical groupings:
-  - `variables/` - Variable types, validation rules, component types
-  - `codebook/` - Node, edge, and ego entity definitions
-  - `stages/` - All stage type schemas (forms, name generators, sociograms, etc.)
-  - `filters/` - Filter rules and sort order schemas
-  - `common/` - Shared schemas (subjects, prompts, forms, skip logic)
-  - `assets/` - Asset management schemas
-
-#### @codaco/protocol-utilities
-
-Synthetic network generation and interview-payload builder for Network Canvas protocols. Provides:
-
-- **`generateNetwork`**: a pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given codebook and stages, with optional seeding for deterministic output. Used by `architect`'s PreviewHost and by tests that need a deterministic network shape.
-- **`SyntheticInterview`**: a fluent builder for codebooks, stages, prompts, forms, and full interview payloads. Used by `@codaco/interview`'s Storybook stories.
-
-#### @codaco/interview
-
-Embeddable React interview engine containing the participant-facing interfaces,
-stage navigation, state management, analytics hooks, and the contract a host
-uses to synchronize and finish sessions. It is hosted by the current Interviewer
-app, Architect previews, and Fresco.
-
-#### @codaco/fresco-ui
-
-The shared React design system. It provides accessible Base UI-backed
-components, forms, dialogs, collection primitives, typography, layout, themes,
-and motion utilities. Its `package.json` exports and co-located Storybook stories
-are the authoritative component API.
-
-#### @codaco/shared-consts
-
-Shared constants and type definitions used across the ecosystem. Place shared code, types, and constants here to avoid circular dependencies between packages.
-
-#### @codaco/art
-
-Animated backgrounds, blobs, patterns, and network-weave visuals shared across
-Network Canvas applications and websites.
-
-#### @codaco/network-exporters and @codaco/network-query
-
-`@codaco/network-exporters` provides the Effect pipeline for exporting interview
-data as CSV and GraphML. `@codaco/network-query` provides filtering and querying
-utilities shared by interview runtimes and applications.
-
-#### @codaco/protocols and compatibility packages
-
-`@codaco/protocols` is the private canonical source for development and sample
-protocols, Architect templates, documentation downloads, and E2E fixtures.
-`@codaco/development-protocol` and `@codaco/sample-protocol` are published
-compatibility packages synchronized from that canonical content.
+- **`@codaco/fresco-ui`** — its `package.json` exports and co-located Storybook
+  stories are the authoritative component API.
+- **`@codaco/shared-consts`** — place shared code, types, and constants here to
+  avoid circular dependencies between packages.
 
 ### Protocol System
 
@@ -316,7 +265,9 @@ Network Canvas uses a protocol-based system where:
 
 ## Development Guidelines
 
-**Before writing code for any feature, fix, or change, invoke the `developing-in-network-canvas` skill.** It covers reusing existing packages/components before building new, and the project's accessibility, internationalisation, participant-tone, and visual/motion priorities (with depth for UI work).
+Before adding code for any feature, fix, or refactor, search for the existing package, module, helper, component, or pattern. Prefer reuse, composition, or a focused extension over a parallel implementation. If nothing fits, state what you checked and why the new code belongs in its chosen package.
+
+**Immediately before the first code edit that changes a user-facing interface, interaction, or user-visible output, invoke the `developing-network-canvas-ui` skill once for that implementation task.** Do not invoke it for backend, schema, worker, CI, tooling, dependency, test-only, or documentation changes unless they alter a user-facing surface, and do not re-invoke it for follow-up messages within the same implementation task.
 
 ### Code Standards
 
@@ -335,135 +286,22 @@ Network Canvas uses a protocol-based system where:
   `@codaco/protocol-validation` dependency. Do not migrate either to the
   workspace package unless the task explicitly modernizes the classic apps.
 
-### TypeScript
-
-- NEVER use the `any` type
-- Shared TypeScript configurations in `tooling/typescript/`
-- Strict type checking enabled across all packages
-
 ### Testing
 
-- Test files use `.test.ts` or `.test.tsx` extensions
-- Tests are co-located with the source they cover, either adjacent to it or in a
-  nearby `__tests__/` directory
-- Vitest is the default unit and component test framework; Playwright covers E2E
 - If a storybook exists for a component, consider creating interactive tests within storybook
 
-#### Chromatic and TurboSnap
+### CI and E2E policy
 
-Chromatic runs from `.github/workflows/chromatic.yml` as three independent
-projects: `@codaco/fresco-ui`, `@codaco/interview`, and
-`@codaco/interviewer`. The workflow uses Turbo's package graph and the Git diff
-to run only affected projects, including downstream consumers (a Fresco UI
-change affects all three; an Interview change also affects Interviewer). Each
-job uses its matching `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`,
-`CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
-`CHROMATIC_PROJECT_TOKEN_INTERVIEWER` repository secret.
+Which E2E suites CI selects and why, the two-job pixel/native split, release-branch
+verdict reuse, Storybook interaction-test determinism, Chromatic/TurboSnap wiring, and
+the visual snapshot baseline workflow all live in the `ci-and-e2e-policy` skill.
 
-Each project's `build-storybook` script must emit `preview-stats.json` with
-Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
-`storybook-static` directory with `--only-changed` and the correct
-`--storybook-base-dir`; these inputs and the workflow's full Git history are
-required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
-its Chromatic externals so static-asset changes invalidate the relevant
-stories.
+# Learning more about Effect
 
-#### Affected E2E checks
+This repository uses the Effect Typescript library.
 
-CI runs the Architect, Interview, and Interviewer E2E suites on feature PRs
-targeting `main` when the cumulative PR diff touches the suite subject or
-anything in its workspace dependency closure. A change to `@codaco/interview`,
-for example, runs all downstream suites; an Architect-only change runs
-Architect E2E. The classifier treats `docs/`, `.changeset/`, and Markdown as
-inert, and fails closed for root configs, workflows, scripts, the lockfile,
-unrecognised paths, or unreadable history.
+Before writing any Effect code, first read `node_modules/effect/AGENTS.md`
+**completely**, and follow the links in the file when required.
 
-Generated release branches (`changeset-release/*`) keep their release-aware
-selection: only suites whose subjects ship in that release lane run. The normal
-Changesets lane (`changeset-release/main`) runs all three because it versions
-libraries, Architect, and Interviewer; the Documentation, Website, and Studio
-lanes run none. The mapping and feature-PR classifier live in
-`scripts/release-e2e-policy.mjs`, with tests derived from the real package.json
-dependency graph. The required `quality` check requires exactly the suites the
-policy selects.
-
-Each suite runs as **two jobs**. `<suite>-e2e` runs inside the pinned
-Playwright image and compares the committed PNG baselines; `<suite>-e2e-native`
-runs everything else on a plain runner, where it gets the Turbo remote cache
-the container is structurally denied. The pinned image is required for
-rasterising pixels and nothing else — Architect's JSON stage snapshots come
-from IndexedDB protocol JSON rather than the DOM, and Interview's ARIA
-snapshots are accessibility-tree text that is already regenerated on developer
-macOS hosts and compared in Linux CI. The split key is the selector each
-suite's `test:e2e:update-snapshots` script already uses (`--grep @visual`, or
-`--project=*-visual` for Interview), so the lanes cannot drift from the
-regeneration workflow. Both halves are required by `quality`, and
-`E2E_JOB_NAMES` in `scripts/release-e2e-policy.mjs` requires both to be green
-before a verdict can be reused. The capture helpers throw when
-`E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
-instead of silently comparing container baselines against a runner's fonts.
-Feature PRs never inherit an E2E verdict from an earlier commit: suite
-selection uses the cumulative merge-base-to-current-head diff, so every
-required verdict describes the exact head under review.
-
-Each PR run upserts one sticky **E2E status** comment (the informational
-`e2e-report` job): a single Status/Name/Report/Reason table over all six
-suite jobs, where Reason is the policy's per-suite selection explanation
-(the witness changed path, lane membership, or reuse). Only FAILED jobs
-publish their Playwright report, to GitHub Pages at
-`https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>/`;
-each branch keeps only its latest run's report, and a later green run removes
-the stale one. Every report run also sweeps directories whose slug matches no
-live branch, so reports for merged or deleted branches disappear on the next
-publish from any branch.
-
-Generated release branches use equivalence reuse: a suite is skipped when the
-newest equivalent native pull-request verdict across the generated release
-branches is successful and the diff since that commit touches only paths that
-provably cannot affect the suite — files in workspace packages outside the
-suite subject's declared workspace dependency closure (dependencies,
-devDependencies, peerDependencies, optionalDependencies), or the inert
-`docs/`, `.changeset/`, `*.md` set. Every guard fails closed: an unfetchable
-commit, Actions-API doubt, a fork head, a conclusive failure as the newest
-verdict, or any unrecognised path (root configs, `.github/`, `scripts/`, the
-lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
-unrelated merges to `main` therefore keep their E2E verdicts without
-re-running, while any change that ships in the lane re-runs as before (see
-`scripts/release-e2e-policy.mjs` and
-`docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
-
-Merge groups run only a lightweight `quality` acknowledgement. The main
-ruleset requires every pull request to pass its full `quality` check before it
-can enter the queue, so merge-group commits deliberately do not repeat lint,
-tests, typechecking, builds, E2E, or Chromatic. GitHub still requires the
-`quality` context to be reported on the merge-group SHA; the acknowledgement
-exists only to satisfy that protocol and does not revalidate the combined
-queue commit.
-
-The release jobs create and update generated branches with the fine-grained PAT
-stored as `RELEASE_PR_TOKEN`. That causes the normal `pull_request` workflow to
-start without manual approval. Do not add a separate workflow dispatch: it would
-duplicate the native CI run and its selected E2E suites.
-
-#### E2E visual snapshot baselines
-
-When an intentional rendering change requires new committed Playwright PNGs,
-invoke the `regenerating-e2e-visual-snapshots` skill. The manual
-`Regenerate E2E Visual Snapshots` GitHub Actions workflow runs only the
-selected Architect, Interview, or Interviewer capture code and uploads its
-images; it does not run normal tests or quality jobs. Inspect every artifact
-before committing selected baselines.
-
-On a generated release PR, a visual-snapshot E2E failure automatically runs the
-same focused generation-only workflow. If it produces changed baseline PNGs, a
-trusted follow-up opens or updates one serialized PNG-only PR against `main`.
-Failures from multiple release gates accumulate in that shared PR instead of
-creating per-product copies. Review every image; merging the snapshot PR accepts
-the baselines, refreshes every generated release branch from `main`, and reruns
-their E2E gates. Functional failures do not start regeneration, and no PNG
-changes means no snapshot PR.
-
-Keep Interview ARIA snapshot updates in the targeted local matrix workflow.
-Do not confuse E2E PNG baselines with `@codaco/interface-images`, whose
-committed WebP files are generated locally for stage thumbnails and
-documentation. CI and Netlify consume those files without regenerating them.
+If you need to learn more about particular Effect apis and concepts that the
+guide doesn't cover, search through the source code in `node_modules/effect/src`.

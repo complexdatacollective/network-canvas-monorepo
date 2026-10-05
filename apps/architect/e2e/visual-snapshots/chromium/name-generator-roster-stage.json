@@ -1,16 +1,16 @@
 {
-  "label": "Select From Roster",
-  "id": "id-1",
-  "type": "NameGeneratorRoster",
-  "subject": {
-    "entity": "node",
-    "type": "id-2"
-  },
   "dataSource": "roster_data",
+  "id": "id-1",
+  "label": "Select From Roster",
   "prompts": [
     {
-      "id": "id-3",
+      "id": "id-2",
       "text": "Choose someone from the roster"
     }
-  ]
+  ],
+  "subject": {
+    "entity": "node",
+    "type": "id-3"
+  },
+  "type": "NameGeneratorRoster"
 }

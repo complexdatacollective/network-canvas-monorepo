@@ -3,12 +3,17 @@ import { enableMapSet } from 'immer';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+
+import { resolveIntl } from '../../utils/resolveIntl';
 import type { FieldValue } from '../Field/types';
 import {
   createObjectPathWriter,
   formatObjectPath,
+  getValue as readObjectPath,
   isSafeObjectPath,
   type ObjectPath,
+  omitValue,
   parseLegacyObjectPath,
   parseObjectPath,
 } from '../utils/objectPath';
@@ -21,6 +26,48 @@ import type {
   FormSubmitHandler,
 } from './types';
 
+/**
+ * The one key of the throwaway object a container's seed is assembled in.
+ *
+ * The assembly is done through `createObjectPathWriter`, which copies every
+ * container it traverses but writes the LAST segment directly — so the value
+ * being built has to sit one segment down from the root for the document
+ * beneath it to be copied rather than written into.
+ */
+const seedRootKey = 'seed';
+
+const storeMessages = defineMessages({
+  validationFailed: {
+    id: 'frescoUi.formStore.validationFailed',
+    defaultMessage: 'Something went wrong during validation',
+    description:
+      'Error attached to a field whose own validation rule threw, so the rule produced no message of its own.',
+  },
+});
+
+/**
+ * How the store reaches the host's formatter. The store is plain Zustand, not
+ * a component, and it outlives any one render — so it takes a getter rather
+ * than a formatter, and `FormStoreProvider` points that getter at whatever
+ * `useAppIntl` last returned. A language switch is then already reflected the
+ * next time a rule throws, without the store being rebuilt underneath a form
+ * that is mid-edit.
+ */
+export type FormStoreOptions = {
+  getIntl?: () => IntlShape | undefined;
+  /**
+   * The document this form is editing, for fields that carry no
+   * `initialValue` of their own.
+   *
+   * A getter for the same reason `getIntl` is one: the store outlives any one
+   * render, and a form whose document advances while it is open — a list
+   * written structurally, a capability switched back on — has to seed a field
+   * mounting afterwards from the document as it stands then rather than as it
+   * stood when the form opened.
+   */
+  getInitialValues?: () => Record<string, unknown> | undefined;
+};
+
 // Enable Map/Set support in Immer
 enableMapSet();
 
@@ -29,16 +76,24 @@ const internalPathPrefix = '\u0000fresco-path:';
 const encodeObjectPath = (path: ObjectPath): string =>
   `${internalPathPrefix}${formatObjectPath(path)}`;
 
-const resolveFieldPath = (field: string): ObjectPath => {
+const parseFieldReference = (field: string): ObjectPath | null => {
   const path = field.startsWith(internalPathPrefix)
     ? parseObjectPath(field.slice(internalPathPrefix.length))
     : parseLegacyObjectPath(field);
 
-  if (!path || !isSafeObjectPath(path)) {
+  if (!path || !isSafeObjectPath(path)) return null;
+
+  return [...path];
+};
+
+const resolveFieldPath = (field: string): ObjectPath => {
+  const path = parseFieldReference(field);
+
+  if (!path) {
     throw new Error(`Unsafe form field path: ${field}`);
   }
 
-  return [...path];
+  return path;
 };
 
 const resolveFieldName = (field: string): string =>
@@ -79,16 +134,106 @@ const resolveRegisteredFieldName = (
   return aliases.size === 1 && alias ? alias : canonicalName;
 };
 
-const hasRegisteredAncestor = (
-  fields: Map<string, FieldState>,
-  path: ObjectPath,
+/**
+ * Whether `candidate` sits strictly beneath `containerPath`.
+ *
+ * Compared segment by segment rather than by string prefix, so a field whose
+ * NAME happens to read like a nested one — an opaque `parameters.type`, a
+ * single segment containing a dot — is not mistaken for a descendant of a
+ * container it has nothing to do with.
+ */
+const isDescendantPath = (
+  containerPath: ObjectPath,
+  candidate: ObjectPath,
+): boolean =>
+  candidate.length > containerPath.length &&
+  containerPath.every((segment, index) => candidate[index] === segment);
+
+const hasDescendantField = (
+  records: Map<string, FieldState>,
+  containerPath: ObjectPath,
 ): boolean => {
-  for (let length = 1; length < path.length; length += 1) {
-    if (fields.has(formatObjectPath(path.slice(0, length)))) return true;
+  for (const [fieldName, field] of records) {
+    if (
+      isDescendantPath(containerPath, resolveStoredFieldPath(fieldName, field))
+    ) {
+      return true;
+    }
   }
 
   return false;
 };
+
+const collectDescendantPaths = (
+  records: Map<string, FieldState>,
+  containerPath: ObjectPath,
+): ObjectPath[] => {
+  const paths: ObjectPath[] = [];
+  records.forEach((field, fieldName) => {
+    const path = resolveStoredFieldPath(fieldName, field);
+    if (isDescendantPath(containerPath, path)) paths.push(path);
+  });
+
+  return paths;
+};
+
+/**
+ * The NEAREST strict prefix of `path` registered as a field of its own, or
+ * `undefined` when no field sits above it.
+ *
+ * Looked up by key rather than scanned, which is sound only because
+ * `registerField` keys every record by `formatObjectPath` of its own path —
+ * the same formatting applied to a prefix here.
+ *
+ * Longest prefix first, because `getFormValues` replays nested fields
+ * shallowest-first: where a form registers both `parameters` and
+ * `parameters.bounds`, the deeper of the two is the one whose value the
+ * assembled output actually shows at a name beneath it.
+ */
+const findRegisteredAncestorPath = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): ObjectPath | undefined => {
+  for (let length = path.length - 1; length >= 1; length -= 1) {
+    const ancestorPath = path.slice(0, length);
+    if (fields.has(formatObjectPath(ancestorPath))) return ancestorPath;
+  }
+
+  return undefined;
+};
+
+/**
+ * EVERY strict prefix of `path` registered as a field of its own, nearest
+ * first — not just the nearest one, which is all a clear used to reach.
+ *
+ * Overlapping registrations nest arbitrarily deep: `parameters`,
+ * `parameters.bounds`, and `parameters.bounds.min` can all be fields. Dropping
+ * a sub-path from only the nearest container leaves every container above it
+ * still holding that sub-path, and nothing shows it while the inner fields are
+ * mounted, because `getFormValues` replays deeper paths over shallower ones.
+ * The stale value surfaces later, when those fields unmount and stop
+ * overwriting it.
+ */
+const collectRegisteredAncestorPaths = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): ObjectPath[] => {
+  const ancestorPaths: ObjectPath[] = [];
+  for (let length = path.length - 1; length >= 1; length -= 1) {
+    const ancestorPath = path.slice(0, length);
+    if (fields.has(formatObjectPath(ancestorPath))) {
+      ancestorPaths.push(ancestorPath);
+    }
+  }
+
+  return ancestorPaths;
+};
+
+/** Whether any strict prefix of `path` is registered as a field of its own. */
+const hasRegisteredAncestor = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): boolean => findRegisteredAncestorPath(fields, path) !== undefined;
 
 /**
  * Helper to calculate form validity based on both field states and form-level errors.
@@ -289,9 +434,22 @@ type InternalFieldConfig = Omit<FieldConfig, 'name'> & {
   name: ObjectPath;
 };
 
+type UnregisterFieldOptions = {
+  /**
+   * Keep the current value available for a later registration by default.
+   * When false, a cleared tombstone is retained so a later registration does
+   * not restore its initial value and form hosts can distinguish a deliberate
+   * discard from a field that was never mounted.
+   */
+  preserveValue?: boolean;
+};
+
 type FieldOperations<Reference, Config> = {
   registerField: (config: Config) => void;
-  unregisterField: (fieldName: Reference) => void;
+  unregisterField: (
+    fieldName: Reference,
+    options?: UnregisterFieldOptions,
+  ) => void;
   setFieldValue: (fieldName: Reference, value: FieldValue) => void;
   setFieldTouched: (fieldName: Reference, touched: boolean) => void;
   setFieldBlurred: (fieldName: Reference) => void;
@@ -299,6 +457,9 @@ type FieldOperations<Reference, Config> = {
   getFieldErrors: (fieldName: Reference) => string[] | null;
   validateField: (fieldName: Reference) => Promise<void>;
   resetField: (fieldName: Reference) => void;
+  getValue: (fieldName: Reference) => FieldValue;
+  hasValue: (fieldName: Reference) => boolean;
+  clearValue: (fieldName: Reference) => void;
 };
 
 type FieldPathOperations = FieldOperations<ObjectPath, InternalFieldConfig>;
@@ -307,6 +468,10 @@ type FormStoreState = {
   /** Public field map keyed by the names supplied by field consumers. */
   fields: Map<string, FieldState>;
   dormantValues: Map<string, FieldState>;
+  /** Increments when a configured field is deliberately discarded on unmount. */
+  fieldDiscardVersion: number;
+  /** Increments when a host restores an earlier form snapshot. */
+  formRestoreVersion: number;
   errors: FlattenedErrors;
   isSubmitting: boolean;
   isValidating: boolean;
@@ -327,7 +492,30 @@ type FormStoreState = {
 
   // Form management
   registerForm: (config: FormConfig) => void;
+  notifyRestore: () => void;
   reset: () => void;
+  /**
+   * Take `document` as every field's baseline.
+   *
+   * A field reads the document it is seeded from when it registers and never
+   * again, so a form whose document has been STORED — the protocol taking the
+   * save — goes on measuring every field on screen against the reading it
+   * opened on, and reports itself dirty over work that is saved. A host
+   * guarding unsaved work then asks the researcher whether to discard changes
+   * they have just watched it save.
+   *
+   * Said by the host, and never inferred from the document it was handed
+   * moving. A working document also advances for writes nobody has saved — a
+   * row added to a list, a subject changed, a draft discarded — and those
+   * carry the values the researcher is still typing, so a baseline taking
+   * them would call the form clean with all of it still to save. Only the
+   * host knows which of the two it has just done.
+   *
+   * Only the baseline moves. What a field HOLDS is the researcher's, saved or
+   * not: an edit `document` does not have keeps its value and goes on saying
+   * it is unsaved.
+   */
+  rebaseToDocument: (document: Record<string, unknown>) => void;
 
   setErrors: (errors: FlattenedErrors | null) => void;
   requestErrorFocus: () => void;
@@ -378,9 +566,10 @@ const hasFieldChanged = (field: FieldState): boolean => {
  * markdown-to-rich-text conversion, an editor seeding itself) makes a freshly
  * opened form claim to be dirty immediately.
  *
- * `dormantValues` counts: a field that unmounts (a collapsed section, a branch
- * that stopped rendering) parks its value there, and an edit made before it
- * unmounted is still an unsaved edit.
+ * `dormantValues` counts: a field that unmounts through the default lifecycle
+ * parks its value there, and an edit made before it unmounted is still an
+ * unsaved edit. A destructive unmount parks `undefined` instead, which is also
+ * a real change when the field originally held data.
  *
  * Lives here, next to the state it reads, because more than one host needs the
  * answer and a host-local copy freezes that host's idea of "blank" — Architect
@@ -408,7 +597,9 @@ export type FormStoreApi = Mutate<
   [['zustand/immer', never]]
 >;
 
-export const createFormStore = (): FormStoreApi => {
+export const createFormStore = (
+  storeOptions: FormStoreOptions = {},
+): FormStoreApi => {
   // Validation tokens are unique by identity, so resetting the form can never
   // make an old request current again (an ABA race). Authoritative state
   // transitions clear all field tokens because a field schema may depend on
@@ -417,6 +608,142 @@ export const createFormStore = (): FormStoreApi => {
   let formValidationToken = Symbol('form-validation');
   const fieldRecords = new Map<string, FieldState>();
   const dormantRecords = new Map<string, FieldState>();
+  /**
+   * How many mounted callers are holding each field. One path may be bound by
+   * more than one at a time — a stage editor's title and a rename dialog over
+   * it — and without a count registration is last-write-wins in both
+   * directions: the second mount resets the live field, and the first unmount
+   * deletes it.
+   */
+  const fieldHolders = new Map<string, number>();
+  // The last container value handed out per container name, so `getValue` can
+  // keep returning it by identity while it stays deep-equal. See `getValue`.
+  const containerValues = new Map<string, FieldValue>();
+
+  /**
+   * What a field with no `initialValue` of its own starts out holding.
+   *
+   * The DOCUMENT is the only thing that can give a field a starting value —
+   * a form handed none leaves every such field starting out holding nothing,
+   * exactly as it did before a form could be handed one. What the other
+   * mounted fields have assembled so far is not a starting value: seeding a
+   * container out of the leaves that happen to have registered before it
+   * would hand a compound control a partial copy of its siblings' keys, which
+   * it then answers for and writes back.
+   *
+   * Given a document, two readings of the path, in the order they outrank
+   * each other:
+   *
+   * 1. Beneath a field mounted ABOVE it, the form answers for the whole path,
+   *    absence included. A compound control the person has emptied says there
+   *    is nothing there, and the document must not put it back — that is a
+   *    value they have just deleted reappearing under them.
+   * 2. Otherwise the document at the field's own path, with what the fields
+   *    INSIDE it hold written over the top — so a container mounting over
+   *    leaves already on screen shows their edits, and still carries the keys
+   *    beside them that nothing renders.
+   *
+   * Rule 2 is written key by key rather than settled either way whole. A
+   * container seeded from only the leaves on screen answers for its whole
+   * subtree, so every sibling key the document holds and no field renders is
+   * dropped from the moment it mounts, and a form that never showed those
+   * keys saves them away.
+   *
+   * A document holding nothing at the path is not a shortcut past rule 2. It
+   * says only that the document has nothing to contribute, and the fields
+   * mounted inside still do — an optional container the researcher has just
+   * filled in for the first time is exactly the case, and a compound control
+   * that started on the absence would answer for the path with an emptiness
+   * and take their edit down with it when the leaf that made it went. With
+   * nothing mounted inside, absence is all there is, and the field starts out
+   * holding nothing.
+   */
+  const seedValueAt = (
+    fieldPath: ObjectPath,
+    formValues: Record<string, FieldValue>,
+  ): FieldValue => {
+    const beneathAMountedField = [...fieldRecords.values()].some(
+      (field) =>
+        field.path !== undefined &&
+        field.path.length < fieldPath.length &&
+        field.path.every((segment, index) => fieldPath[index] === segment),
+    );
+    // `getFormValues` assembles its output out of `FieldValue` leaves, and a
+    // caller's document is declared as a map of them, so every node within
+    // either is itself a `FieldValue`.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    if (beneathAMountedField)
+      return readObjectPath(formValues, fieldPath) as FieldValue;
+    const document = storeOptions.getInitialValues?.();
+    if (document === undefined) return undefined;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const documented = readObjectPath(document, fieldPath) as FieldValue;
+    return documentWithFieldsInside(fieldPath, documented);
+  };
+
+  /**
+   * The document's own reading of a container, with what the fields inside it
+   * hold written over the top.
+   *
+   * Written at each field's OWN path rather than merged key by key all the way
+   * down, because a field answers for everything beneath it — a compound
+   * control holding `{min: 1}` where the document holds `{min: 1, max: 2}` has
+   * had its `max` deleted, and merging would put it back. Shallowest first,
+   * the order `getFormValues` replays overlapping registrations in, so the
+   * deeper of two nested fields still wins.
+   *
+   * PARKED fields count, and are written before the mounted ones. A value the
+   * form is holding but not showing — a control inside a collapsed group of
+   * advanced options — is still the person's own most recent word on its path,
+   * and the document is by then out of date about it; seeded from the document
+   * alone, a container mounting afterwards would answer for that path with the
+   * value they replaced, and quietly put it back. A field on screen outranks a
+   * parked one, because it is the newer of the two. A field parked holding
+   * nothing was thrown away on purpose, and writing that nothing over the
+   * document is how it stays thrown away.
+   *
+   * Nothing reachable from the document is written to: the writer copies
+   * every container it traverses that it does not already own, and it owns
+   * only the wrapper made here — which is also what turns a `documented` of
+   * `undefined` into the container the fields are written into, so an absent
+   * subtree needs no special case. With no fields inside, `documented` is
+   * handed straight back, absence included.
+   */
+  const documentWithFieldsInside = (
+    containerPath: ObjectPath,
+    documented: FieldValue,
+  ): FieldValue => {
+    const fieldsInside = (
+      records: Map<string, FieldState>,
+    ): { path: ObjectPath; value: FieldValue }[] => {
+      const found: { path: ObjectPath; value: FieldValue }[] = [];
+      records.forEach((field, fieldName) => {
+        const path = resolveStoredFieldPath(fieldName, field);
+        if (isDescendantPath(containerPath, path)) {
+          found.push({ path, value: field.value });
+        }
+      });
+      return found.toSorted((a, b) => a.path.length - b.path.length);
+    };
+
+    const inside = [
+      ...fieldsInside(dormantRecords),
+      ...fieldsInside(fieldRecords),
+    ];
+    if (inside.length === 0) return documented;
+
+    const seedRoot: Record<string, FieldValue> = {};
+    const writeIntoSeed = createObjectPathWriter(seedRoot);
+    writeIntoSeed([seedRootKey], documented);
+    for (const field of inside) {
+      writeIntoSeed(
+        [seedRootKey, ...field.path.slice(containerPath.length)],
+        field.value,
+      );
+    }
+
+    return seedRoot[seedRootKey];
+  };
 
   const invalidateFormValidation = () => {
     formValidationToken = Symbol('form-validation');
@@ -448,6 +775,8 @@ export const createFormStore = (): FormStoreApi => {
     immer((set, get, _store) => ({
       fields: new Map(),
       dormantValues: new Map(),
+      fieldDiscardVersion: 0,
+      formRestoreVersion: 0,
       errors: { formErrors: [], fieldErrors: {} },
 
       isSubmitting: false,
@@ -465,8 +794,8 @@ export const createFormStore = (): FormStoreApi => {
             ...config,
             name: encodeObjectPath(config.name),
           }),
-        unregisterField: (fieldName) =>
-          get().unregisterField(encodeObjectPath(fieldName)),
+        unregisterField: (fieldName, options) =>
+          get().unregisterField(encodeObjectPath(fieldName), options),
         setFieldValue: (fieldName, value) =>
           get().setFieldValue(encodeObjectPath(fieldName), value),
         setFieldTouched: (fieldName, touched) =>
@@ -481,6 +810,10 @@ export const createFormStore = (): FormStoreApi => {
           get().validateField(encodeObjectPath(fieldName)),
         resetField: (fieldName) =>
           get().resetField(encodeObjectPath(fieldName)),
+        getValue: (fieldName) => get().getValue(encodeObjectPath(fieldName)),
+        hasValue: (fieldName) => get().hasValue(encodeObjectPath(fieldName)),
+        clearValue: (fieldName) =>
+          get().clearValue(encodeObjectPath(fieldName)),
       },
 
       registerForm: (config) => {
@@ -490,10 +823,18 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
+      notifyRestore: () => {
+        set((state) => {
+          state.formRestoreVersion += 1;
+        });
+      },
+
       reset: () => {
         invalidateAllValidations();
         fieldRecords.clear();
         dormantRecords.clear();
+        fieldHolders.clear();
+        containerValues.clear();
         set((state) => {
           state.fields.clear();
           state.dormantValues.clear();
@@ -507,6 +848,47 @@ export const createFormStore = (): FormStoreApi => {
           // Deliberately monotonic: rewinding the counter here would read as a
           // fresh request to the watching layout effect and focus a field the
           // person never tried to submit.
+        });
+      },
+
+      rebaseToDocument: (document) => {
+        // The document's OWN reading of each path, and never the seeding one:
+        // seeding writes what the fields inside a container hold over the
+        // document, so a baseline taking that overlay would carry the very
+        // edits it is there to measure.
+        const rebased = (
+          records: Map<string, FieldState>,
+        ): Map<string, FieldState> | undefined => {
+          const moved = new Map<string, FieldState>();
+          records.forEach((field, fieldName) => {
+            const path = resolveStoredFieldPath(fieldName, field);
+            // A caller's document is declared as a map of `FieldValue`, so
+            // every node within it is itself one.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            const documented = readObjectPath(document, path) as FieldValue;
+            if (isEqual(field.initialValue, documented)) return;
+            moved.set(fieldName, { ...field, initialValue: documented });
+          });
+
+          return moved.size === 0 ? undefined : moved;
+        };
+
+        const mounted = rebased(fieldRecords);
+        const parked = rebased(dormantRecords);
+        // A host may hand the form a fresh object on every render, so a
+        // document that has moved nothing writes no state: the fields map is
+        // rebuilt whole here, and every subscriber would be notified for it.
+        if (mounted === undefined && parked === undefined) return;
+
+        set((state) => {
+          mounted?.forEach((field, fieldName) => {
+            fieldRecords.set(fieldName, field);
+          });
+          parked?.forEach((field, fieldName) => {
+            dormantRecords.set(fieldName, field);
+          });
+          if (mounted) syncPublicFields(state.fields, fieldRecords);
+          if (parked) syncPublicFields(state.dormantValues, dormantRecords);
         });
       },
 
@@ -532,10 +914,21 @@ export const createFormStore = (): FormStoreApi => {
         // gate field's post-change revalidation is dropped by the very mount
         // that change caused, so its now-stale "required" error survives until
         // the field is blurred again.
+        // Another HOLDER of a mounted field, not a fresh registration: the
+        // record below carries untouched, unblurred, undirty meta, and the
+        // rules that stand are the mounted field's.
+        const holders = fieldHolders.get(fieldName) ?? 0;
+        fieldHolders.set(fieldName, holders + 1);
+        if (holders > 0 && fieldRecords.has(fieldName)) return;
+
         const supersededFields = collectSupersededFields(
           fieldRecords,
           fieldName,
         );
+        const seeded =
+          config.initialValue === undefined
+            ? seedValueAt(fieldPath, get().getFormValues())
+            : config.initialValue;
         invalidateAllValidations();
         set((state) => {
           state.isValidating = false;
@@ -543,7 +936,7 @@ export const createFormStore = (): FormStoreApi => {
 
           const dormant = dormantRecords.get(fieldName);
           const hasDormantValue = dormant !== undefined;
-          const value = hasDormantValue ? dormant.value : config.initialValue;
+          const value = hasDormantValue ? dormant.value : seeded;
           const standingErrors = Object.hasOwn(
             state.errors.fieldErrors,
             fieldName,
@@ -563,7 +956,7 @@ export const createFormStore = (): FormStoreApi => {
               dormant?.submissionErrorKey ??
               config.submissionErrorKey ??
               (publicFieldName === fieldName ? undefined : publicFieldName),
-            initialValue: config.initialValue,
+            initialValue: seeded,
             validation: config.validation,
             value,
             meta: {
@@ -590,13 +983,20 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      unregisterField: (fieldReference) => {
+      unregisterField: (fieldReference, options) => {
         // Check if field exists before updating to avoid unnecessary renders
         const fieldName = resolveRegisteredFieldName(
           fieldRecords,
           dormantRecords,
           fieldReference,
         );
+        const holders = fieldHolders.get(fieldName) ?? 0;
+        if (holders > 1) {
+          // Still held, so still mounted.
+          fieldHolders.set(fieldName, holders - 1);
+          return;
+        }
+        fieldHolders.delete(fieldName);
         if (fieldRecords.has(fieldName)) {
           // Unmounting removes a value from the snapshot, so it invalidates
           // every in-flight validation for the same reason `registerField`
@@ -612,20 +1012,32 @@ export const createFormStore = (): FormStoreApi => {
 
             const field = fieldRecords.get(fieldName);
             if (field) {
+              if (
+                options?.preserveValue === false &&
+                field.value !== undefined
+              ) {
+                state.fieldDiscardVersion += 1;
+              }
               dormantRecords.set(fieldName, {
                 path: resolveStoredFieldPath(fieldName, field),
                 submissionErrorKey: field.submissionErrorKey,
                 initialValue: field.initialValue,
                 validation: field.validation,
-                value: field.value,
+                value:
+                  options?.preserveValue === false ? undefined : field.value,
                 meta: {
                   isValidating: false,
                   isTouched: true,
                   isBlurred: true,
                   isDirty: true,
-                  isValid: field.meta.isValid,
+                  isValid:
+                    options?.preserveValue === false
+                      ? !field.validation
+                      : field.meta.isValid,
                 },
               });
+            } else {
+              dormantRecords.delete(fieldName);
             }
 
             fieldRecords.delete(fieldName);
@@ -829,6 +1241,211 @@ export const createFormStore = (): FormStoreApi => {
         );
       },
 
+      /**
+       * The value at `fieldName`, from whichever of three places the form
+       * holds it: a field of its own, leaves registered BENEATH it, or a
+       * compound field registered at an ANCESTOR of it.
+       *
+       * The field maps are exact-string-keyed and carry no hierarchy, so the
+       * name a value is readable at and the name it is registered under come
+       * apart in both directions. A form that registers `parameters.type` and
+       * `parameters.min` never registers `parameters` at all; a form that
+       * registers `parameters` whole never registers `parameters.type`. Both
+       * names are nonetheless there in the form's own output, so a read that
+       * stopped at the exact key would report `undefined` for a value every
+       * other consumer can see — and a caller layering live values over
+       * committed ones would take that as "not in the form" and revive the
+       * committed one. A name with no field of its own therefore falls through
+       * to the assembled output whenever a registered field sits beneath it or
+       * above it. It is the whole-form assembly and not just the subtree,
+       * because both directions resolve against the same object. A field
+       * registered AT the name is still read as itself, on the terms every
+       * other value read uses — that is the value its own control is showing.
+       *
+       * The result is returned by IDENTITY while it stays deep-equal to the
+       * last one handed out, because `getFormValues` builds a fresh object
+       * every call: without that, a component selecting a container would
+       * re-render on every unrelated keystroke in the form, and any effect
+       * depending on the value would loop. Exact-name reads never reach any of
+       * this.
+       *
+       * REGISTERED fields above or below outrank a dormant field sitting at
+       * the name itself, because `getFormValues` is built from registered
+       * fields alone. `clearValue` is what makes that ordering load-bearing:
+       * clearing a container parks a dormant `undefined` at its name, and
+       * taking that ahead of the leaves would leave every later read of the
+       * container answering `undefined` — permanently, since nothing registers
+       * at a container name to displace it.
+       *
+       * DORMANT ancestors are excluded for the same reason dormant leaves are:
+       * an unmounted field contributes nothing to `getFormValues`, so there is
+       * no assembled object to read a sub-path out of.
+       */
+      getValue: (fieldReference) => {
+        const fieldName = resolveRegisteredFieldName(
+          fieldRecords,
+          dormantRecords,
+          fieldReference,
+        );
+        const registered = fieldRecords.get(fieldName);
+        if (registered) return registered.value;
+
+        const containerPath = parseFieldReference(fieldReference);
+        if (
+          containerPath &&
+          (hasDescendantField(fieldRecords, containerPath) ||
+            hasRegisteredAncestor(fieldRecords, containerPath))
+        ) {
+          // `getFormValues` assembles its output out of `FieldValue` leaves,
+          // so every node within it is itself a `FieldValue`.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          const assembled = readObjectPath(
+            get().getFormValues(),
+            containerPath,
+          ) as FieldValue;
+          const containerName = formatObjectPath(containerPath);
+
+          if (containerValues.has(containerName)) {
+            const previous = containerValues.get(containerName);
+            if (isEqual(previous, assembled)) return previous;
+          }
+
+          containerValues.set(containerName, assembled);
+          return assembled;
+        }
+
+        // Dormant leaves contribute nothing to `getFormValues`, so a container
+        // held only by them assembles to nothing at all.
+        return dormantRecords.get(fieldName)?.value;
+      },
+
+      /**
+       * Whether the form holds anything at `fieldName` — a registered field, a
+       * dormant one, leaves registered beneath it, or a registered field above
+       * it that owns the subtree the name sits in.
+       *
+       * Separate from `getValue` because a value read collapses "the form owns
+       * nothing here" and "the form owns `undefined` here" into the same
+       * answer, and a caller merging live values over committed ones has to
+       * tell those apart: before the leaves of a container register, the
+       * committed value is the only one there is. A registered ANCESTOR
+       * answers `true` whatever the assembled sub-path currently reads as —
+       * the form owns that subtree, so a sub-path missing from it is a value
+       * the person has emptied, not one the form has yet to hold.
+       *
+       * DORMANT ancestors are excluded, matching `getValue`: an unmounted
+       * field is not part of the form's output, so it owns no subtree here.
+       */
+      hasValue: (fieldReference) => {
+        if (get().getFieldState(fieldReference) !== undefined) return true;
+
+        const containerPath = parseFieldReference(fieldReference);
+        if (!containerPath) return false;
+
+        return (
+          hasDescendantField(fieldRecords, containerPath) ||
+          hasDescendantField(dormantRecords, containerPath) ||
+          hasRegisteredAncestor(fieldRecords, containerPath)
+        );
+      },
+
+      /**
+       * Clear `fieldName` everywhere the form holds it — the same three places
+       * `getValue` reads it from, resolved in the same order: a field of its
+       * own, the leaves registered BENEATH it, and the compound field
+       * registered at an ANCESTOR of it.
+       *
+       * The name resolves to a FIELD before it is read structurally, exactly
+       * as every other operation on this store resolves one. An opaque name is
+       * a single segment that happens to contain a dot (`favorite.color`, what
+       * `Field nameMode="opaque"` registers and publishes), so interpreting it
+       * structurally parks an `undefined` at a nested name nothing is
+       * registered under and leaves the field it actually names holding its
+       * value — readable through the alias, and still submitted.
+       *
+       * `setFieldValue(name, undefined)` clears nothing when the value is held
+       * as a tree of leaves rather than as one field, and DORMANT descendants
+       * have to go too: an unmounted field's parked value outranks
+       * `initialValue` when it next registers, so a leaf left behind here comes
+       * straight back the moment anything re-registers it.
+       *
+       * A name a registered ANCESTOR supplies is cleared INSIDE that
+       * ancestor's value — a fresh copy of it with the sub-path dropped,
+       * written through `setFieldValue` like any other value, so subscribers
+       * and dirty tracking see it as the change it is. Parking an `undefined`
+       * at the name alone would clear nothing at all, because the read takes
+       * the registered ancestor over a dormant field sitting at the name. An
+       * ancestor holding nothing at the sub-path — a string where the name
+       * expects an object, a key it never carried — is left exactly as it is
+       * rather than rebuilt around a value it never had.
+       *
+       * A REGISTERED field at the name gets this same ancestor write, not just
+       * its own value cleared: while it stays mounted, `getFormValues` replays
+       * it OVER its ancestor, so the ancestor's stale value is invisible either
+       * way. But the leaf can unmount later — a conditional field whose
+       * governing value just changed, which is exactly when clearing one
+       * matters — and an unmounted field contributes nothing to
+       * `getFormValues`. Skipping the ancestor write here would leave its
+       * stale sub-path to resurface the moment the leaf goes dormant, silently
+       * reviving data the person just cleared.
+       */
+      clearValue: (fieldReference) => {
+        const pathOperations = get().pathOperations;
+        const fieldName = resolveRegisteredFieldName(
+          fieldRecords,
+          dormantRecords,
+          fieldReference,
+        );
+        const existingField =
+          fieldRecords.get(fieldName) ?? dormantRecords.get(fieldName);
+        // A field of its own answers for its own name, whatever that name
+        // reads like structurally.
+        const containerPath = existingField
+          ? resolveStoredFieldPath(fieldName, existingField)
+          : parseFieldReference(fieldReference);
+
+        if (!containerPath || !pathOperations) {
+          get().setFieldValue(fieldReference, undefined);
+          return;
+        }
+
+        // A path can only be registered or dormant, never both, so the two
+        // passes cannot name the same field twice.
+        const descendants = [
+          ...collectDescendantPaths(fieldRecords, containerPath),
+          ...collectDescendantPaths(dormantRecords, containerPath),
+        ];
+        const ancestorPaths = collectRegisteredAncestorPaths(
+          fieldRecords,
+          containerPath,
+        );
+
+        get().setFieldValue(fieldReference, undefined);
+        descendants.forEach((path) => {
+          pathOperations.setFieldValue(path, undefined);
+        });
+
+        ancestorPaths.forEach((ancestorPath) => {
+          const ancestor = fieldRecords.get(formatObjectPath(ancestorPath));
+          if (!ancestor) return;
+
+          // A copy of a `FieldValue` with one sub-path dropped out of it is
+          // itself a `FieldValue`: `omitValue` only ever removes a key from a
+          // container it has already copied.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          const clearedAncestorValue = omitValue(
+            ancestor.value,
+            containerPath.slice(ancestorPath.length),
+          ) as FieldValue;
+          // Identity is `omitValue`'s report that the value held nothing at
+          // the sub-path. Writing anyway would mark a field dirty over a value
+          // the person never had.
+          if (clearedAncestorValue === ancestor.value) return;
+
+          pathOperations.setFieldValue(ancestorPath, clearedAncestorValue);
+        });
+      },
+
       getFormValues: () => {
         const values: Record<string, FieldValue> = {};
         const writeValue = createObjectPathWriter(values);
@@ -1007,7 +1624,11 @@ export const createFormStore = (): FormStoreApi => {
                 formErrors: form.errors.formErrors,
                 fieldErrors: {
                   ...form.errors.fieldErrors,
-                  [fieldName]: ['Something went wrong during validation'],
+                  [fieldName]: [
+                    resolveIntl(storeOptions.getIntl?.()).formatMessage(
+                      storeMessages.validationFailed,
+                    ),
+                  ],
                 },
               };
 

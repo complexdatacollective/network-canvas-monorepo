@@ -47,7 +47,30 @@ ENV NODE_OPTIONS="--max-old-space-size=4096 --no-network-family-autoselection"
 #
 # The client is generated _again_ as part of migrate-and-start.sh in the final image
 # to ensure that it inherits the correct runtime environment variables.
-RUN corepack enable pnpm && pnpm exec prisma generate && pnpm run build
+#
+# PostHog resolves a minified stack frame by matching the chunk ID baked into
+# the bundle against an uploaded source map, so the maps are only useful when
+# they come from the build that produced this image's bundle — no other build's
+# chunk IDs match it. This is the only build of Fresco's deployed bundle, so it
+# is the only place those maps can come from.
+#
+# The credentials arrive as BuildKit secrets rather than build args or ENV so
+# they never reach the image or its layer history. When they are not supplied
+# the mounts are empty and the build runs exactly as it did before, emitting no
+# maps at all; `deleteAfterUpload` in next.config.ts keeps an uploading build
+# from leaving maps in the output this image serves. To upload, pass
+# `--secret id=posthog_personal_api_key,env=POSTHOG_PERSONAL_API_KEY` and
+# `--secret id=posthog_project_id,env=POSTHOG_PROJECT_ID` to `docker build`.
+RUN --mount=type=secret,id=posthog_personal_api_key \
+    --mount=type=secret,id=posthog_project_id \
+    corepack enable pnpm && pnpm exec prisma generate && \
+    if [ -s /run/secrets/posthog_personal_api_key ] && [ -s /run/secrets/posthog_project_id ]; then \
+      POSTHOG_PERSONAL_API_KEY="$(cat /run/secrets/posthog_personal_api_key)" \
+      POSTHOG_PROJECT_ID="$(cat /run/secrets/posthog_project_id)" \
+      pnpm run build; \
+    else \
+      pnpm run build; \
+    fi
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -83,7 +106,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/env.js ./
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./
 # The mirrored tsconfig.json extends ./tsconfig/web.json (vendored by
-# scripts/mirror-app.mjs), so the startup scripts need that directory present.
+# scripts/release/mirror-app.mjs), so the startup scripts need that directory present.
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig ./tsconfig
 
 # Install ONLY the deps the startup scripts need (prisma CLI, tsx, and the
@@ -94,10 +117,34 @@ COPY --from=builder --chown=nextjs:nodejs /app/tsconfig ./tsconfig
 # repeat rebuilds skip re-downloading; only /tmp scratch is removed in-layer.
 # (Replaces a `pnpm add --force` that baked a 3.6GB pnpm store + a redundant
 # 1.7GB node_modules copy into the image.)
+#
+# `@codaco/interview` is unpacked rather than installed. The startup scripts
+# import exactly one of its entries — the standalone `protocol-schema-version`
+# bundle naming the schema version this build's interview runtime executes —
+# and that bundle's only runtime import is `@codaco/protocol-validation`,
+# installed above. The package's own dependencies (mapbox-gl, posthog-js,
+# lucide-react, the Redux stack) exist for the interview UI, which these
+# scripts never load, and would add ~250MB to a ~44MB runtime tree. If a
+# startup script ever imports another entry of this package, install it
+# properly instead.
+#
+# The two @codaco packages install at the EXACT versions the generated pnpm
+# lockfile resolved (LV below), never the manifest's caret range: the schema
+# version the startup migration targets resolves through these packages, while
+# the interview runtime that must execute the migrated protocols is baked into
+# the Next build from the lockfile. A caret install rebuilt after a later
+# release could fetch newer package code and migrate production rows to a
+# schema the bundled runtime cannot run.
 COPY --from=builder /app/package.json /tmp/package.json
+COPY --from=builder /app/pnpm-lock.yaml /tmp/pnpm-lock.yaml
 RUN --mount=type=cache,target=/root/.npm \
     set -e; \
     V() { node -p "require('/tmp/package.json').dependencies?.['$1'] || require('/tmp/package.json').devDependencies?.['$1']"; }; \
+    LV() { \
+      v=$(awk -v dep="'$1':" '/^packages:/{exit} $1==dep{f=1;next} f&&$1=="specifier:"{next} f&&$1=="version:"{sub(/\(.*/,"",$2);print $2;exit} f{f=0}' /tmp/pnpm-lock.yaml); \
+      [ -n "$v" ] || { echo "pnpm-lock.yaml has no resolved version for $1" >&2; exit 1; }; \
+      printf '%s' "$v"; \
+    }; \
     mkdir -p /tmp/runtime && cd /tmp/runtime; \
     printf '{"name":"fresco-runtime-deps","private":true}\n' > package.json; \
     npm install --no-audit --no-fund \
@@ -108,10 +155,15 @@ RUN --mount=type=cache,target=/root/.npm \
       "dotenv@$(V dotenv)" \
       "zod@$(V zod)" \
       "@t3-oss/env-nextjs@$(V @t3-oss/env-nextjs)" \
-      "@codaco/protocol-validation@$(V @codaco/protocol-validation)"; \
+      "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"; \
+    npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \
+    mkdir -p /tmp/interview-pack /tmp/runtime/node_modules/@codaco; \
+    tar xzf /tmp/codaco-interview-*.tgz -C /tmp/interview-pack; \
+    mv /tmp/interview-pack/package /tmp/runtime/node_modules/@codaco/interview; \
     ( cd /tmp/runtime/node_modules && tar cf - . ) | ( cd /app/node_modules && tar xf - ); \
     chown -R nextjs:nodejs /app/node_modules; \
-    cd /app && rm -rf /tmp/runtime /root/.cache /tmp/package.json
+    cd /app && rm -rf /tmp/runtime /root/.cache /tmp/package.json \
+      /tmp/pnpm-lock.yaml /tmp/interview-pack /tmp/codaco-interview-*.tgz
 
 # Switch to non-root user
 USER nextjs

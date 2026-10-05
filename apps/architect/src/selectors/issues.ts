@@ -1,7 +1,11 @@
 import { createSelector } from '@reduxjs/toolkit';
 
 import { findVariableRoleConflicts } from '@codaco/protocol-validation';
-import { TESTING_MAPBOX_TOKEN } from '~/templates/testingMapboxToken';
+import {
+  getMapboxTokenId,
+  RETIRED_MAPBOX_TOKEN_IDS,
+  TESTING_MAPBOX_TOKEN,
+} from '~/templates/testingMapboxToken';
 
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
@@ -89,6 +93,31 @@ export const getUsesTestingMapboxToken = createSelector(
       (asset) =>
         asset.type === 'apikey' && asset.value === TESTING_MAPBOX_TOKEN,
     ),
+);
+
+const retiredMapboxTokenIds = new Set<string>(RETIRED_MAPBOX_TOKEN_IDS);
+
+/**
+ * Whether the protocol still carries a Network Canvas testing token that has
+ * since been revoked. It was the testing token when the protocol was created,
+ * so it arrived the same way the current one does — but Mapbox now answers it
+ * with 401 and every Geospatial map in the protocol is broken until the
+ * researcher replaces it. Matched by the token's id (`RETIRED_MAPBOX_TOKEN_IDS`
+ * via `getMapboxTokenId`) so the revoked value itself is stored nowhere.
+ * Deliberately separate from `getUsesTestingMapboxToken` (an exact match on
+ * the current token) so the timeline can show an error for this case and only
+ * a reminder for that one.
+ */
+export const getUsesRetiredMapboxToken = createSelector(
+  [getAssetManifest],
+  (assetManifest): boolean =>
+    Object.values(assetManifest).some((asset) => {
+      if (asset.type !== 'apikey' || asset.value === undefined) {
+        return false;
+      }
+      const id = getMapboxTokenId(asset.value);
+      return id !== null && retiredMapboxTokenIds.has(id);
+    }),
 );
 
 /**

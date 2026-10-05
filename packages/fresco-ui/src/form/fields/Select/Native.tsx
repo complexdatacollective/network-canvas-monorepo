@@ -1,3 +1,8 @@
+'use client';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { nativeSelectVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
@@ -8,6 +13,14 @@ import {
   type SelectOptionOrGroup,
   selectWrapperVariants,
 } from './shared';
+
+const messages = defineMessages({
+  placeholder: {
+    id: 'frescoUi.selectField.placeholder',
+    defaultMessage: 'Select an option…',
+    description: 'Default placeholder option of a native select.',
+  },
+});
 
 type SelectProps = CreateFormFieldProps<
   string | number,
@@ -25,6 +38,7 @@ type SelectProps = CreateFormFieldProps<
 >;
 
 export default function SelectField(props: SelectProps) {
+  const intl = useAppIntl();
   const {
     options,
     placeholder,
@@ -61,7 +75,8 @@ export default function SelectField(props: SelectProps) {
   // value can't leave the browser showing the first option as if selected.
   const displayValue = valueMatchesOption ? normalizedValue : '';
   const hasValue = displayValue !== '';
-  const placeholderLabel = placeholder ?? 'Select an option…';
+  const placeholderLabel =
+    placeholder ?? intl.formatMessage(messages.placeholder);
   const showPlaceholderOption =
     placeholder !== undefined || !valueMatchesOption;
 
@@ -98,6 +113,7 @@ export default function SelectField(props: SelectProps) {
                   key={groupedOption.value}
                   value={groupedOption.value}
                   disabled={groupedOption.disabled}
+                  lang={groupedOption.lang}
                 >
                   {groupedOption.label}
                 </option>
@@ -108,6 +124,7 @@ export default function SelectField(props: SelectProps) {
               key={option.value}
               value={option.value}
               disabled={option.disabled}
+              lang={option.lang}
             >
               {option.label}
             </option>

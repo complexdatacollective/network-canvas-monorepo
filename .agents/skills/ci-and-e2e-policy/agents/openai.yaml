@@ -1,0 +1,4 @@
+interface:
+  display_name: 'CI and E2E Policy'
+  short_description: 'How CI selects and runs the Network Canvas E2E suites'
+  default_prompt: 'Use $ci-and-e2e-policy to explain which CI checks run for this change and why.'

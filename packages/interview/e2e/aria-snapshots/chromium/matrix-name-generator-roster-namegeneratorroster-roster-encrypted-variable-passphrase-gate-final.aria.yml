@@ -18,7 +18,8 @@
   - listbox "Added Nodes":
     - option "Cara Chen"
   - navigation:
-    - button "Previous Step"
+    - button "Settings"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc", "import", "promise"],
+  // ESLint-compatible plugins, run inside the same oxlint invocation. NOTE
+  // that a nested `.oxlintrc.json` REPLACES this list rather than extending
+  // it, so a package with its own config must repeat any plugin it needs.
+  "jsPlugins": ["eslint-plugin-formatjs"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -90,7 +94,8 @@
       ],
       "rules": {
         "typescript/unbound-method": "off",
-        "no-import-assign": "off"
+        "no-import-assign": "off",
+        "react/globals": "off"
       }
     },
     {
@@ -140,6 +145,93 @@
         "**/e2e/**"
       ],
       "rules": { "typescript/no-floating-promises": "off" }
+    },
+    {
+      // Message-descriptor hygiene, wherever descriptors are authored. A
+      // package that owns an `.oxlintrc.json` of its own is NOT reached from
+      // here — an override's `files` are matched against the config that
+      // declares them — so such a package repeats these five in its own
+      // config rather than appearing in this list, where they would silently
+      // do nothing.
+      "files": [
+        "packages/app-i18n/src/**",
+        "packages/network-exporters/src/**",
+        "packages/protocol-validation/src/**",
+        "packages/protocol-utilities/src/**",
+        "packages/protocol-builder/src/**",
+        "apps/studio/client/src/**"
+      ],
+      "rules": {
+        "formatjs/enforce-description": "error",
+        "formatjs/enforce-default-message": "error",
+        "formatjs/no-invalid-icu": "error",
+        "formatjs/enforce-placeholders": "error",
+        "formatjs/no-multiple-whitespaces": "error"
+      }
+    },
+    {
+      // Untranslated copy, caught where it is a defect rather than
+      // unfinished work: the Studio client is converted end to end, so a
+      // bare literal in its JSX is a string somebody forgot. The other apps
+      // turn this on as their own conversions complete.
+      "files": ["apps/studio/client/src/**"],
+      "rules": {
+        "formatjs/no-literal-string-in-jsx": "error"
+      }
+    },
+    {
+      // Test and story fixtures render throwaway copy on purpose, and
+      // nobody translates a fixture.
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.stories.ts",
+        "**/*.stories.tsx",
+        "**/__tests__/**",
+        "**/__mocks__/**"
+      ],
+      "rules": {
+        "formatjs/no-literal-string-in-jsx": "off"
+      }
+    },
+    {
+      // The Studio server's environment boundary, made enforceable.
+      // `no-process-env` belongs to oxlint's `node` plugin, which is not in
+      // the repo-wide `plugins` list — so the entry under `rules` above is
+      // inert everywhere, and turning the plugin on repo-wide would light up
+      // every other package at once. Here it is scoped to the one tree that
+      // has a validated environment to use instead: `src/env.ts` decodes
+      // `process.env` through an Effect Schema, and everything else takes the
+      // resolved `StudioEnv`. Three escapes remain, each saying so on the
+      // line: `src/env.ts`, the boundary itself; the test harness's
+      // `src/__tests__/support/env.ts`, which reads the one flag the server
+      // has no business knowing about (whether this run is CI); and
+      // `src/__tests__/support/entrypoint.ts`, which forwards this process's
+      // whole environment to a child so the child is a deployment-shaped run
+      // of an entrypoint. `apps/studio/server/scripts/**` is deliberately
+      // outside the rule: a script that hands its environment to a child
+      // process has nothing to validate.
+      //
+      // The import ban is what makes the rule total rather than decorative:
+      // oxlint only sees `process.env` reached through the global, so a file
+      // that did `import process from 'node:process'` would read the
+      // environment with the rule none the wiser.
+      "files": ["apps/studio/server/src/**"],
+      "plugins": ["node"],
+      "rules": {
+        "node/no-process-env": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "node:process",
+                "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "ignorePatterns": [

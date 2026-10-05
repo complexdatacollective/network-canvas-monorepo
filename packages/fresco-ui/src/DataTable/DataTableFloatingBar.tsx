@@ -1,20 +1,40 @@
 'use client';
 
-import { type Table } from '@tanstack/react-table';
+import { type RowData, type Table } from '@tanstack/react-table';
 import { AnimatePresence } from 'motion/react';
 import { type ComponentProps } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import CloseButton from '../CloseButton';
 import { MotionSurface } from '../layout/Surface';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
+import { type DataTableFeatures } from './features';
 
-type DataTableFloatingBarProps<TData> = {
-  table: Table<TData>;
+const messages = defineMessages({
+  rowsSelected: {
+    id: 'frescoUi.dataTableFloatingBar.rowsSelected',
+    defaultMessage:
+      '{count, plural, one {# row selected} other {# rows selected}}',
+    description:
+      'Selection summary shown in the floating action bar above a table.',
+  },
+  closeSelectionBar: {
+    id: 'frescoUi.dataTableFloatingBar.close',
+    defaultMessage: 'Close selection bar',
+    description:
+      'Accessible name of the button that clears the selection and dismisses the floating action bar.',
+  },
+});
+
+type DataTableFloatingBarProps<TData extends RowData> = {
+  table: Table<DataTableFeatures, TData>;
   className?: string;
 } & Omit<ComponentProps<typeof MotionSurface>, 'table' | 'className'>;
 
-export function DataTableFloatingBar<TData>({
+export function DataTableFloatingBar<TData extends RowData>({
   table,
   children,
   className,
@@ -22,6 +42,7 @@ export function DataTableFloatingBar<TData>({
 }: DataTableFloatingBarProps<TData>) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
+  const intl = useAppIntl();
   const selectedCount = table.getFilteredSelectedRowModel().rows.length;
 
   return (
@@ -44,14 +65,15 @@ export function DataTableFloatingBar<TData>({
           {...props}
         >
           <Paragraph className="shrink-0 grow" margin="none">
-            {selectedCount} row
-            {selectedCount === 1 ? '' : 's'} selected
+            {intl.formatMessage(messages.rowsSelected, {
+              count: selectedCount,
+            })}
           </Paragraph>
           <div className="flex gap-2">{children}</div>
           <CloseButton
             className="grow"
             onClick={() => table.toggleAllRowsSelected(false)}
-            aria-label="Close selection bar"
+            aria-label={intl.formatMessage(messages.closeSelectionBar)}
           />
         </MotionSurface>
       )}

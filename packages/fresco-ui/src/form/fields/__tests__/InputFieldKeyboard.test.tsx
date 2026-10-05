@@ -10,11 +10,13 @@ function ControlledNumberInput({
   step,
   onStep,
   stepperLabels,
+  stepperDisabled,
 }: {
   preventStep?: boolean;
   step?: number | 'any';
   onStep?: (value: string) => void;
   stepperLabels?: { increase: string; decrease: string };
+  stepperDisabled?: { increase?: boolean; decrease?: boolean };
 }) {
   const [value, setValue] = useState('5');
 
@@ -29,6 +31,7 @@ function ControlledNumberInput({
       onChange={(nextValue) => setValue(nextValue ?? '')}
       onStep={onStep}
       stepperLabels={stepperLabels}
+      stepperDisabled={stepperDisabled}
       onKeyDown={preventStep ? (event) => event.preventDefault() : undefined}
     />
   );
@@ -137,5 +140,27 @@ describe('InputField number keyboard stepping', () => {
     expect(
       screen.queryByRole('button', { name: 'Increase value' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('allows either number stepper to be disabled independently', () => {
+    const { rerender } = render(
+      <ControlledNumberInput stepperDisabled={{ decrease: true }} />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Decrease value' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Increase value' }),
+    ).toBeEnabled();
+
+    rerender(<ControlledNumberInput stepperDisabled={{ increase: true }} />);
+
+    expect(
+      screen.getByRole('button', { name: 'Decrease value' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Increase value' }),
+    ).toBeDisabled();
   });
 });

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { BrowserContext } from '@playwright/test';
 
 const corsHeaders = { 'access-control-allow-origin': '*' };
 
@@ -50,8 +50,11 @@ const STREETS_TILEJSON = {
   ],
 };
 
+const MAPBOX_HOST = /^https?:\/\/([^/]+\.)?mapbox\.com\//;
+
 /**
- * Intercept all Mapbox network traffic with deterministic fixtures.
+ * Intercept all Mapbox network traffic with deterministic fixtures, and fail
+ * closed on anything they do not answer.
  *
  * Live tiles are not part of what these tests assert, and they made the
  * suite nondeterministic two ways: Mapbox can update tile content under
@@ -60,21 +63,45 @@ const STREETS_TILEJSON = {
  * results vary by region/session, and a failed retrieve silently skips
  * the fly-to.
  *
- * Installed once on the shared page, before any stage mounts a map.
- * Stub-mode browsers (firefox/webkit) never request these URLs.
+ * Installed by the `architect-test` fixture on the browser CONTEXT before its
+ * first page navigates: MapView creates the map during render (inside a rAF),
+ * so the routes have to exist before any goto that can reach a Geospatial
+ * editor, and context routes cover every page the context ever opens — the
+ * fixture's own, tabs a spec creates with `context.newPage()`, and the preview
+ * popup, where the interview runtime's Geospatial stage would mount a real map.
+ *
+ * Returns the live record of requests no mock answered. Each one is aborted —
+ * so it can never bill the shared testing token the all-interfaces fixture
+ * carries — and recorded as method + path (the query string carries the token
+ * and is dropped), so the caller can fail the test that caused it once the
+ * context is done. Without the record a missing mock would surface only as a
+ * map that quietly errors, or not at all: the test that mounted it may never
+ * look at the map.
  */
-export async function installMapboxMocks(page: Page): Promise<void> {
+export async function installMapboxMocks(
+  context: BrowserContext,
+): Promise<readonly string[]> {
+  // Registered FIRST so it matches LAST: Playwright checks routes in reverse
+  // registration order, so every specific mock below takes precedence and only
+  // what none of them claims falls through to here.
+  const escaped: string[] = [];
+  await context.route(MAPBOX_HOST, (route, request) => {
+    const { origin, pathname } = new URL(request.url());
+    escaped.push(`${request.method()} ${origin}${pathname}`);
+    return route.abort();
+  });
+
   // Billing/session probe (mapbox-gl v3 `map-sessions/v1`). Left unmocked it
   // reaches the real API, whose 401 for the fake e2e token makes mapbox-gl
   // revoke auth: the painter permanently stops drawing and the canvas is
   // cleared, while load/idle events (and data-map-idle) have already fired.
   // Whether the 401 lands before or after a capture is a network race, so
   // screenshots flip between a rendered map and a blank panel per attempt.
-  await page.route(/https:\/\/api\.mapbox\.com\/map-sessions\//, (route) =>
+  await context.route(/https:\/\/api\.mapbox\.com\/map-sessions\//, (route) =>
     route.fulfill({ headers: corsHeaders, json: {} }),
   );
 
-  await page.route(/https:\/\/api\.mapbox\.com\/styles\/v1\//, (route) =>
+  await context.route(/https:\/\/api\.mapbox\.com\/styles\/v1\//, (route) =>
     route.fulfill({ headers: corsHeaders, json: MINIMAL_STYLE }),
   );
 
@@ -82,7 +109,7 @@ export async function installMapboxMocks(page: Page): Promise<void> {
   // mapbox-gl handles gracefully without erroring the source. The .json
   // check reads the URL pathname because real requests carry an
   // access_token query string.
-  await page.route(
+  await context.route(
     /https:\/\/api\.mapbox\.com\/(v4|fonts|tiles)\//,
     (route, request) =>
       new URL(request.url()).pathname.endsWith('.json')
@@ -93,16 +120,16 @@ export async function installMapboxMocks(page: Page): Promise<void> {
   // Registered after the (v4|fonts|tiles) catch-all: Playwright checks
   // routes in reverse registration order, so the specific TileJSON mock
   // must come later to win for this URL.
-  await page.route(
+  await context.route(
     /https:\/\/api\.mapbox\.com\/v4\/mapbox\.mapbox-streets-v8\.json/,
     (route) => route.fulfill({ headers: corsHeaders, json: STREETS_TILEJSON }),
   );
 
-  await page.route(/https:\/\/events\.mapbox\.com\//, (route) =>
+  await context.route(/https:\/\/events\.mapbox\.com\//, (route) =>
     route.fulfill({ status: 204, headers: corsHeaders }),
   );
 
-  await page.route(
+  await context.route(
     /https:\/\/api\.mapbox\.com\/search\/searchbox\/v1\/suggest/,
     (route) =>
       route.fulfill({
@@ -124,7 +151,7 @@ export async function installMapboxMocks(page: Page): Promise<void> {
       }),
   );
 
-  await page.route(
+  await context.route(
     /https:\/\/api\.mapbox\.com\/search\/searchbox\/v1\/retrieve\//,
     (route) =>
       route.fulfill({
@@ -146,4 +173,5 @@ export async function installMapboxMocks(page: Page): Promise<void> {
         },
       }),
   );
+  return escaped;
 }

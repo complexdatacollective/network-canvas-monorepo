@@ -5,7 +5,8 @@
     - strong: details
     - text: about each person.
   - navigation:
-    - button "Previous Step"
+    - button "Settings"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

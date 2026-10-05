@@ -1,0 +1,8 @@
+{
+  "fresco.actions.auth.copyUnauthorized": "Unauthorised",
+  "fresco.actions.webauthn.copyPasskeyNotRecognized": "Passkey not recognised.",
+  "fresco.interviews.ExportOptionsView.byDefaultInterviewerExportsSociogramNodeCoordinates": "By default Interviewer exports sociogram node coordinates as normalised X/Y values (a number between 0 and 1 for each axis, with the origin in the top left). Enabling this option will store coordinates as screen space pixel values, with the same origin.",
+  "fresco.page.thisTableSummarizesTheMostRecentActivity": "This table summarises the most recent activity within Fresco. Use it to keep track of new protocols, interviews, and participants.",
+  "fresco.protocols.AnonymousRecruitmentWarning.anonymousRecruitmentIsEnabledThisMeansThat": "Anonymous recruitment is enabled. This means that participants can self-enrol in your study without needing to be invited, by visiting the protocol-specific onboarding link. To disable anonymous recruitment, visit <tag1>the settings page</tag1>.",
+  "fresco.settings.InterviewSettingsSection.ifAnonymousRecruitmentIsEnabledYouMay": "If anonymous recruitment is enabled, you may generate an anonymous participation URL. This URL can be shared with participants to allow them to self-enrol in your study."
+}

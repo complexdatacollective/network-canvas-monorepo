@@ -1,6 +1,8 @@
 import { useContext } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
+import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 import { getSkipLogicDestinationLabel } from '~/utils/skipLogicDestination';
 
 import MiniTable from '../MiniTable';
@@ -17,6 +19,7 @@ type SkipLogicProps = {
 };
 
 const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
+  const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
 
   if (!skipLogic) {
@@ -34,12 +37,19 @@ const SkipLogic = ({ skipLogic }: SkipLogicProps) => {
       rotated
       wide
       rows={[
-        ['Action', action],
+        [intl.formatMessage(summaryMessages.action), action],
         [
-          'Destination',
-          getSkipLogicDestinationLabel(protocol.stages ?? [], destination),
+          intl.formatMessage(summaryMessages.destination),
+          getSkipLogicDestinationLabel(
+            protocol.stages ?? [],
+            destination,
+            intl,
+          ),
         ],
-        ['Rules', filter ? <Rules key="rules" filter={filter} /> : null],
+        [
+          intl.formatMessage(summaryMessages.rules),
+          filter ? <Rules key="rules" filter={filter} /> : null,
+        ],
       ]}
     />
   );

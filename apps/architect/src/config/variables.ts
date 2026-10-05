@@ -1,9 +1,6 @@
 import { get } from 'es-toolkit/compat';
 
-import {
-  type ComponentType,
-  VARIABLE_TYPE_COMPONENTS,
-} from '@codaco/protocol-validation';
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 
 import BooleanVariable from '../images/variables/boolean-variable.svg';
 import CategoricalVariable from '../images/variables/categorical-variable.svg';
@@ -16,6 +13,63 @@ import OrdinalVariable from '../images/variables/ordinal-variable.svg';
 import ScalarVariable from '../images/variables/scalar-variable.svg';
 import TextVariable from '../images/variables/text-variable.svg';
 
+const configMessages = defineMessages({
+  number: {
+    id: 'architect.config.variables.config.number',
+    defaultMessage: 'Number',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  text: {
+    id: 'architect.config.variables.config.text',
+    defaultMessage: 'Text',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  boolean: {
+    id: 'architect.config.variables.config.boolean',
+    defaultMessage: 'Boolean',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  ordinal: {
+    id: 'architect.config.variables.config.ordinal',
+    defaultMessage: 'Ordinal',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  categorical: {
+    id: 'architect.config.variables.config.categorical',
+    defaultMessage: 'Categorical',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  scalar: {
+    id: 'architect.config.variables.config.scalar',
+    defaultMessage: 'Scalar',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  date: {
+    id: 'architect.config.variables.config.date',
+    defaultMessage: 'Date',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  layout: {
+    id: 'architect.config.variables.config.layout',
+    defaultMessage: 'Layout',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+  location: {
+    id: 'architect.config.variables.config.location',
+    defaultMessage: 'Location',
+    description:
+      'Presentation label or description in config/variables.ts. Identifiers are not translated.',
+  },
+});
+
 // TODO: This should be a monolithic object that contains all variable types
 // and properties. All other derivations/permutations of this data should be
 // merged into this object.
@@ -25,246 +79,74 @@ import TextVariable from '../images/variables/text-variable.svg';
 // map/reduce/get etc.
 export const VARIABLE_TYPES = {
   number: {
-    label: 'Number',
+    label: configMessages.number,
     value: 'number',
     icon: NumberVariable,
     color: 'paradise-pink',
   },
   text: {
-    label: 'Text',
+    label: configMessages.text,
     value: 'text',
     icon: TextVariable,
     color: 'cerulean-blue',
   },
   boolean: {
-    label: 'Boolean',
+    label: configMessages.boolean,
     value: 'boolean',
     icon: BooleanVariable,
     color: 'neon-carrot',
   },
   ordinal: {
-    label: 'Ordinal',
+    label: configMessages.ordinal,
     value: 'ordinal',
     icon: OrdinalVariable,
     color: 'sea-green',
   },
   categorical: {
-    label: 'Categorical',
+    label: configMessages.categorical,
     value: 'categorical',
     icon: CategoricalVariable,
     color: 'mustard',
   },
   scalar: {
-    label: 'Scalar',
+    label: configMessages.scalar,
     value: 'scalar',
     icon: ScalarVariable,
     color: 'kiwi',
   },
   datetime: {
-    label: 'Date',
+    label: configMessages.date,
     value: 'datetime',
     icon: DateVariable,
     color: 'tomato',
   },
   layout: {
-    label: 'Layout',
+    label: configMessages.layout,
     value: 'layout',
     icon: LayoutVariable,
     color: 'purple-pizazz',
   },
   location: {
-    label: 'Location',
+    label: configMessages.location,
     value: 'location',
     icon: LocationVariable,
     color: 'slate-blue-dark',
   },
 };
 
-type ComponentConfig = {
-  label: string;
-  value: string;
-  description: string;
-  image: string;
-};
-
-const COMPONENTS = {
-  TextInput: {
-    label: 'Text Input',
-    value: 'Text',
-    description:
-      'This is a standard text input, allowing for simple data entry up to approximately 30 characters.',
-    image: 'TextInput',
-  },
-  TextArea: {
-    label: 'Text Area',
-    value: 'TextArea',
-    description:
-      'This is an extra large text input, allowing for simple data entry for more than 30 characters.',
-    image: 'TextArea',
-  },
-  NumberInput: {
-    label: 'Number Input',
-    value: 'Number',
-    description:
-      'This input is optimized for collecting numerical data, and will show a number pad if available.',
-    image: 'NumberInput',
-  },
-  CheckboxGroup: {
-    label: 'Checkbox Group',
-    value: 'CheckboxGroup',
-    description:
-      'This component provides a group of checkboxes so that multiple values can be toggled on or off.',
-    image: 'CheckboxGroup',
-  },
-  Toggle: {
-    label: 'Toggle',
-    value: 'Toggle',
-    description:
-      'This component renders a switch, which can be tapped or clicked to indicate "on" or "off". By default it is in the "off" position. If you require a boolean input without a default, use the BooleanChoice component',
-    image: 'Toggle',
-  },
-  RadioGroup: {
-    label: 'Radio Group',
-    value: 'RadioGroup',
-    description:
-      'This component renders a group of options and allow the user to choose one.',
-    image: 'RadioGroup',
-  },
-  ToggleButtonGroup: {
-    label: 'Toggle Button Group',
-    value: 'ToggleButtonGroup',
-    description:
-      'This component provides a colorful button that can be toggled "on" or "off". It is an alternative to the Checkbox Group, and allows multiple selection by default.',
-    image: 'ToggleButtonGroup',
-  },
-  LikertScale: {
-    label: 'LikertScale',
-    value: 'LikertScale',
-    description:
-      'A component providing a likert-type scale in the form of a slider. Values are derived from the option properties of this attribute, with labels for each option label.',
-    image: 'LikertScale',
-  },
-  VisualAnalogScale: {
-    label: 'VisualAnalogScale',
-    value: 'VisualAnalogScale',
-    description:
-      'A Visual Analog Scale (VAS) component, which sets a normalized value between 0 and 1 representing the position of the slider between each end of the scale.',
-    image: 'VisualAnalogScale',
-  },
-  DatePicker: {
-    label: 'DatePicker',
-    value: 'DatePicker',
-    description:
-      'A calendar date picker that allows a respondent to quickly enter year, month, and day data.',
-    image: 'DatePicker',
-  },
-  RelativeDatePicker: {
-    label: 'RelativeDatePicker',
-    value: 'RelativeDatePicker',
-    description:
-      'A calendar date picker that automatically limits available dates relative to an "anchor date", which can be configured to the date of the interview session. ',
-    image: 'RelativeDatePicker',
-  },
-  BooleanChoice: {
-    label: 'BooleanChoice',
-    value: 'Boolean',
-    description:
-      'A component for boolean attributes that requires the participant to actively select an option. Unlike the toggle component, this component accepts the "required" validation.',
-    image: 'BooleanChoice',
-  },
-};
-
-// Architect's presentation metadata keyed by the control value the protocol
-// schema uses. The `COMPONENTS` keys above are not those values — TextInput is
-// 'Text', NumberInput is 'Number', BooleanChoice is 'Boolean' — so the schema's
-// lists can only be resolved through this map. Typing it as a record over the
-// schema's own `ComponentType` union means a control the schema gains without a
-// matching entry here fails typechecking rather than drifting silently.
-const COMPONENTS_BY_CONTROL = {
-  Boolean: COMPONENTS.BooleanChoice,
-  CheckboxGroup: COMPONENTS.CheckboxGroup,
-  DatePicker: COMPONENTS.DatePicker,
-  LikertScale: COMPONENTS.LikertScale,
-  Number: COMPONENTS.NumberInput,
-  RadioGroup: COMPONENTS.RadioGroup,
-  RelativeDatePicker: COMPONENTS.RelativeDatePicker,
-  Text: COMPONENTS.TextInput,
-  TextArea: COMPONENTS.TextArea,
-  Toggle: COMPONENTS.Toggle,
-  ToggleButtonGroup: COMPONENTS.ToggleButtonGroup,
-  VisualAnalogScale: COMPONENTS.VisualAnalogScale,
-} satisfies Record<ComponentType, ComponentConfig>;
-
-// The variable types the schema gives at least one input control. Layout and
-// location have empty lists — they have no participant-facing control — so they
-// have no place in the input-control dropdown.
-type RenderableVariableType = {
-  [
-    Type in keyof typeof VARIABLE_TYPE_COMPONENTS
-  ]: (typeof VARIABLE_TYPE_COMPONENTS)[Type]['length'] extends 0 ? never : Type;
-}[keyof typeof VARIABLE_TYPE_COMPONENTS];
-
-const variableTypeGroup = (
-  type: RenderableVariableType,
-  heading: string,
-): [string, ComponentConfig[], string] => {
-  const controls: readonly ComponentType[] = VARIABLE_TYPE_COMPONENTS[type];
-
-  return [
-    type,
-    controls.map((control) => COMPONENTS_BY_CONTROL[control]),
-    heading,
-  ];
-};
-
-// Display order and group headings are Architect's own: the schema record orders
-// its keys differently, so iterating it directly would reorder the dropdown.
-// Only the per-type control lists come from the schema.
-//
-// The headings carry no `--` decoration: they name real `<optgroup>`s, which
-// the browser already sets apart visually and which a screen reader already
-// announces as groups. The dashes were there to make a disabled option look
-// like a heading, and they were read out as part of it.
-const VARIABLE_TYPES_COMPONENTS: [string, ComponentConfig[], string][] = [
-  variableTypeGroup('number', 'Number Types'),
-  variableTypeGroup('scalar', 'Scalar Types'),
-  variableTypeGroup('datetime', 'Date Types'),
-  variableTypeGroup('text', 'Text Types'),
-  variableTypeGroup('boolean', 'Boolean Types'),
-  variableTypeGroup('ordinal', 'Ordinal Types'),
-  variableTypeGroup('categorical', 'Categorical Types'),
-];
-
 // Internal config - not exported
 const VARIABLE_TYPES_WITH_OPTIONS = ['ordinal', 'categorical'];
 
-// Internal config - not exported
-const VARIABLE_TYPES_WITH_PARAMETERS = ['scalar', 'datetime'];
-
-export const VARIABLE_TYPES_WITH_COMPONENTS = VARIABLE_TYPES_COMPONENTS.map(
-  ([type]) => type,
-);
-
-export const INPUT_OPTIONS = Object.values(COMPONENTS);
-
-/**
- * The input controls a researcher can choose from, grouped by the variable
- * type each group produces.
- *
- * A real group, not a flat list punctuated by value-less "heading" options:
- * seven headings all carrying the same absent value are seven duplicate React
- * keys, and a screen reader reads each of them as one more thing to pick.
- */
-export type InputControlGroup = {
-  label: string;
-  options: ComponentConfig[];
+/** Translate known attribute metadata without changing persisted type identifiers. */
+export const getVariableTypeLabel = (
+  type: string | undefined,
+  intl: IntlShape,
+): string => {
+  const descriptor = Object.entries(VARIABLE_TYPES).find(
+    ([key]) => key === type,
+  )?.[1].label;
+  return descriptor ? intl.formatMessage(descriptor) : (type ?? '');
 };
-
-const formattedInputOptions: InputControlGroup[] =
-  VARIABLE_TYPES_COMPONENTS.map(([, controls, heading]) => ({
-    label: heading,
-    options: controls,
-  }));
 
 export const VARIABLE_OPTIONS = Object.values(VARIABLE_TYPES);
 
@@ -274,59 +156,10 @@ const isOrdinalOrCategoricalType = (
   typeof variableType === 'string' &&
   VARIABLE_TYPES_WITH_OPTIONS.includes(variableType);
 
-const isVariableTypeWithParameters = (
-  variableType: string | null | undefined,
-): variableType is string =>
-  typeof variableType === 'string' &&
-  VARIABLE_TYPES_WITH_PARAMETERS.includes(variableType);
-
-const isBooleanWithOptions = (
-  component: string | null | undefined,
-): component is string =>
-  typeof component === 'string' && component === COMPONENTS.BooleanChoice.value;
-
-const findByType =
-  (type: string) =>
-  ([t]: [string, ComponentConfig[], string]) =>
-    t === type;
-const findByComponent =
-  (component: string) =>
-  ([, c]: [string, ComponentConfig[], string]) =>
-    c.some(({ value }) => value === component);
-const findTypeIndex = (
-  findBy: (entry: [string, ComponentConfig[], string]) => boolean,
-) => VARIABLE_TYPES_COMPONENTS.find(findBy) || [null, null, null];
-
-const getComponentsForType = (type: string) => {
-  const [, components] = findTypeIndex(findByType(type));
-
-  if (!components) {
-    return [COMPONENTS.TextInput];
-  }
-
-  return components;
-};
-
-const getTypeForComponent = (component: string | undefined) => {
-  if (!component) return null;
-  const [type] = findTypeIndex(findByComponent(component));
-
-  return type;
-};
-
 const getColorForType = (type: string | undefined) =>
   get(VARIABLE_TYPES, [type ?? '', 'color'], 'charcoal');
 
 const getIconForType = (type: string | undefined) =>
   get(VARIABLE_TYPES, `${type ?? ''}.icon`, DefaultVariable);
 
-export {
-  formattedInputOptions,
-  getColorForType,
-  getComponentsForType,
-  getIconForType,
-  getTypeForComponent,
-  isBooleanWithOptions,
-  isOrdinalOrCategoricalType,
-  isVariableTypeWithParameters,
-};
+export { getColorForType, getIconForType, isOrdinalOrCategoricalType };

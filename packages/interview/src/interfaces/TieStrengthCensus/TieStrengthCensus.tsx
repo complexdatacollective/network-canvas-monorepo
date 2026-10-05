@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
@@ -51,6 +52,7 @@ import {
   isDyadCensusMetadata,
   matchEntry,
 } from '../DyadCensus/helpers';
+import { interfaceMessages } from '../messages';
 import IntroPanel from '../SlidesForm/IntroPanel';
 import { getTieStrengthHasEdge } from './helpers';
 
@@ -206,11 +208,17 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const [isTouched, setIsTouched] = useState(false);
   const [isChanged, setIsChanged] = useState(false);
 
-  // Reset touch state when pair or prompt changes
-  useEffect(() => {
+  // Reset touch state when pair or prompt changes. Done during render rather
+  // than in an effect: an effect would leave one committed render in which the
+  // new pair is on screen while the previous pair's touch state still stands,
+  // and the auto-advance effect below reads exactly that pair of values.
+  const touchScope = `${pairIndex}:${promptIndex}`;
+  const [touchedScope, setTouchedScope] = useState(touchScope);
+  if (touchedScope !== touchScope) {
+    setTouchedScope(touchScope);
     setIsTouched(false);
     setIsChanged(false);
-  }, [pairIndex, promptIndex]);
+  }
 
   // Validation
   useStageValidation({
@@ -220,7 +228,9 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
         isMet: isIntroduction || hasEdge !== null,
         kind: 'comparison_response_required',
         toast: {
-          description: 'Please select a response before continuing.',
+          description: (
+            <AppMessage message={interfaceMessages.selectResponse} />
+          ),
           variant: 'destructive',
           anchor: 'forward',
         },

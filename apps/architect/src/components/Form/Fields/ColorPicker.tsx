@@ -1,15 +1,22 @@
+import { type IntlShape, createAppIntl } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 import { range } from 'es-toolkit';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
-import { getColorSwatchName } from '~/config';
+import { colorSequenceHueName } from '@codaco/fresco-ui/form/fields/ColorPicker';
+import {
+  type ColorReference,
+  ColorReferenceSchema,
+} from '@codaco/protocol-validation';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
 type ColorOption = {
   label: string;
-  value: string;
+  value: ColorReference;
 };
 
 type ColorPickerProps = CreateFormFieldProps<
@@ -27,10 +34,22 @@ type ColorPickerProps = CreateFormFieldProps<
   }
 >;
 
-const asColorOption = (name: string): ColorOption => ({
-  label: getColorSwatchName(name),
-  value: name,
-});
+/**
+ * A swatch and what it is called.
+ *
+ * The name comes from `@codaco/fresco-ui`, which owns the theme's colour
+ * sequences and names every position in them, so this picker and the shared
+ * one announce the same hue for the same token. A value outside those
+ * sequences has no name there and is announced as itself — unreachable here,
+ * since every value is parsed as a `ColorReference` first.
+ */
+const asColorOption = (
+  name: string,
+  intl: IntlShape = defaultIntl,
+): ColorOption => {
+  const value = ColorReferenceSchema.parse(name);
+  return { label: colorSequenceHueName(value, intl) ?? value, value };
+};
 
 /**
  * Protocol-colour swatch picker. Labelling belongs to the surrounding field —
@@ -54,25 +73,24 @@ const ColorPicker = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: ColorPickerProps) => {
+  const intl = useAppIntl();
   // range() is end-exclusive, so run to paletteRange + 1 — otherwise the
   // palette's last colour can never be picked.
   const offered = palette
     ? range(1, paletteRange + 1).map((index) =>
-        asColorOption(`${palette}-${index}`),
+        asColorOption(`${palette}-${index}`, intl),
       )
     : options;
 
-  // A stored colour the list no longer offers still gets a swatch of its own,
-  // at the end. Protocols exist that were authored against a wider range than
-  // the picker now shows (Narrative Pedigree offered ten swatches of an
-  // eight-colour palette), and the alternatives are both worse: a picker with
-  // nothing selected is a dead end that hides what the protocol actually
-  // holds, and silently rewriting the value would change an authored colour
-  // without asking. Shown, named, and replaceable — and only replaceable by
-  // something the palette really has.
+  // A picker can deliberately offer only part of the protocol-wide color
+  // reference union. Keep a different but schema-valid current reference
+  // visible and replaceable; raw, custom, and out-of-range values are not
+  // admitted here (or by protocol validation).
+  const currentReference = ColorReferenceSchema.safeParse(value);
   const colors =
-    value && !offered.some((color) => color.value === value)
-      ? [...offered, asColorOption(value)]
+    currentReference.success &&
+    !offered.some((color) => color.value === currentReference.data)
+      ? [...offered, asColorOption(currentReference.data, intl)]
       : offered;
 
   const isRequired = required || Boolean(ariaRequired);
@@ -126,11 +144,6 @@ const ColorPicker = ({
               )}
               style={
                 {
-                  // `resolveProtocolColor` carries its own fallback, which
-                  // only ever applies to the out-of-range swatch above whose
-                  // theme variable does not exist: without it the chip has no
-                  // background at all and the researcher cannot see the colour
-                  // their protocol is holding.
                   '--color': resolveProtocolColor(color.value),
                 } as React.CSSProperties
               }

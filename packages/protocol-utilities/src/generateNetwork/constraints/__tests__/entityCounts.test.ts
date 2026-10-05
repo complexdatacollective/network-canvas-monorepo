@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  RELATIONSHIP_TYPE_OPTIONS,
   type Stage,
   type Variables,
 } from '@codaco/protocol-validation';
@@ -9,14 +10,13 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
-  RELATIONSHIP_TYPE_OPTIONS,
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../../generateNetwork';
-import { resolveGenerationConfig } from '../../config';
-import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation';
-import { buildEntityConstraints } from '../buildConstraints';
+import { generateNetwork } from '../../../generateNetwork.ts';
+import { resolveGenerationConfig } from '../../config.ts';
+import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation.ts';
+import { buildEntityConstraints } from '../buildConstraints.ts';
 import {
   edgeCountFor,
   inheritedContributorAncestryCeiling,
@@ -25,8 +25,8 @@ import {
   pedigreeNodeCeiling,
   type NodeConstraintsFor,
   worstCaseEntityCounts,
-} from '../entityCounts';
-import { SyntheticDataConstraintError } from '../error';
+} from '../entityCounts.ts';
+import { SyntheticDataConstraintError } from '../error.ts';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 
@@ -502,7 +502,7 @@ describe('worstCaseEntityCounts', () => {
         {
           id: 'condition',
           label: 'Condition',
-          color: '#000000',
+          color: 'node-color-seq-1',
           variable: 'condition',
           inheritancePattern: 'xLinkedRecessive',
         },
@@ -568,7 +568,7 @@ describe('worstCaseEntityCounts', () => {
         {
           id: 'condition',
           label: 'Condition',
-          color: '#000000',
+          color: 'node-color-seq-1',
           variable: 'condition',
           inheritancePattern: 'xLinkedRecessive',
         },
@@ -643,7 +643,7 @@ describe('worstCaseEntityCounts', () => {
         {
           id: 'condition',
           label: 'Condition',
-          color: '#000000',
+          color: 'node-color-seq-1',
           variable: 'condition',
           inheritancePattern: 'xLinkedRecessive',
         },

@@ -117,6 +117,102 @@ describe('<nc-site-navigation>', () => {
     warn.mockRestore();
   });
 
+  it('opens the shadow root with a skip link aimed at the host page', async () => {
+    const host = mount();
+    await rendered(host);
+
+    const focusable =
+      host.shadowRoot?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [];
+
+    expect(focusable[0]).toBe(shadowLink(host, '#main-content'));
+    expect(focusable[0]?.textContent).toBe('Skip to main content');
+  });
+
+  it('aims the skip link at the id the host page names', async () => {
+    const host = mount({ 'skip-to-id': 'docs-body' });
+    await rendered(host);
+
+    expect(shadowLink(host, '#docs-body')).not.toBeNull();
+    expect(shadowLink(host, '#main-content')).toBeNull();
+  });
+
+  it('warns and keeps the default when skip-to-id is empty', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const host = mount({ 'skip-to-id': '   ' });
+    await rendered(host);
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('skip-to-id'));
+    expect(shadowLink(host, '#main-content')).not.toBeNull();
+    warn.mockRestore();
+  });
+
+  it('follows the fragment out of the shadow root to the host page element', async () => {
+    const host = mount();
+    await rendered(host);
+    // Push the target below the fold so that reaching it is visible as a
+    // scroll, not just a hash. Both the hash and the scroll are the browser's
+    // own doing: this activation is left to run its default action, which is
+    // the part a shadow-root fragment could plausibly get wrong.
+    const spacer = document.createElement('div');
+    spacer.style.height = '300vh';
+    const target = document.createElement('main');
+    target.id = 'main-content';
+    target.textContent = 'Host page content';
+    document.body.append(spacer, target);
+    const link = shadowLink(host, '#main-content');
+    if (!(link instanceof HTMLAnchorElement)) {
+      throw new Error('Expected the skip link.');
+    }
+
+    expect(window.scrollY).toBe(0);
+    expect(location.hash).toBe('');
+
+    try {
+      link.click();
+
+      await expect.poll(() => location.hash).toBe('#main-content');
+      await expect.poll(() => window.scrollY).toBeGreaterThan(0);
+      expect(target.getBoundingClientRect().top).toBeLessThan(
+        window.innerHeight,
+      );
+      expect(document.activeElement).toBe(target);
+    } finally {
+      history.replaceState(null, '', `${location.pathname}${location.search}`);
+      window.scrollTo(0, 0);
+    }
+  });
+
+  it('lands focus on the host page element the shadow root cannot own', async () => {
+    const host = mount();
+    await rendered(host);
+    const target = document.createElement('main');
+    target.id = 'main-content';
+    target.textContent = 'Host page content';
+    document.body.append(target);
+
+    // The fragment really navigates — that is the behaviour being relied on —
+    // but letting the test runner's own page follow it ends the session. The
+    // default action is cancelled after the element's handler has run, so what
+    // is asserted here is the part the component is responsible for.
+    const cancelNavigation = (event: Event) => event.preventDefault();
+    document.addEventListener('click', cancelNavigation);
+    try {
+      shadowLink(host, '#main-content')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, composed: true }),
+      );
+    } finally {
+      document.removeEventListener('click', cancelNavigation);
+    }
+
+    // Focus left the shadow tree entirely: the host element is the active
+    // element of the document, with no shadow descendant holding focus.
+    expect(target.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(target);
+    expect(host.shadowRoot?.activeElement).toBeNull();
+  });
+
   it('injects the document-level styles exactly once across instances', async () => {
     const first = mount();
     const second = mount();

@@ -2,6 +2,7 @@ import { test as base, expect, type Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
+import { installMapboxMocks } from './mapbox-mocks.js';
 import { seedProtocol, type SeedAsset } from './seed.js';
 
 type ArchitectFixtures = {
@@ -34,6 +35,24 @@ type ArchitectFixtures = {
 // of) and `apps/architect/src/config/__tests__/variables.test.ts` (no
 // value-less, no duplicated option values).
 export const test = base.extend<ArchitectFixtures>({
+  // Mapbox is mocked for EVERY spec, not only the ones that know they open a
+  // map. The all-interfaces fixture carries the shared Mapbox testing token,
+  // and a real `mapboxgl.Map` bills that token the moment it mounts — an
+  // August 2026 bill is what prompted this. The routes go on the context, so
+  // they exist before the first navigation (MapView creates the map during
+  // render) and cover every page the context ever opens, second tabs and
+  // popups included. Whatever they do not answer is aborted and recorded, and
+  // that record is asserted empty here in teardown. A spec that builds its own
+  // context (`00-sample-protocol.spec.ts`) has to do the same by hand. What is
+  // answered, and why, is documented in `mapbox-mocks.ts`.
+  context: async ({ context }, use) => {
+    const escaped = await installMapboxMocks(context);
+    await use(context);
+    expect(
+      escaped,
+      'Mapbox request(s) no mock in mapbox-mocks.ts answered (aborted, so nothing was billed). Add a route for each, or stop the test from mounting a live map.',
+    ).toEqual([]);
+  },
   architectPage: async ({ page }, use) => {
     await use(page);
   },

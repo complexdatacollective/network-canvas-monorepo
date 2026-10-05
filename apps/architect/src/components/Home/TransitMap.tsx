@@ -1,9 +1,24 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useRef } from 'react';
+import { type CSSProperties, createElement, useEffect, useRef } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  stageTypeColorStyle,
+  stageTypeIcon,
+} from '@codaco/fresco-ui/stages/stageTypes';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import type { StageType } from '@codaco/protocol-validation';
 
-import { STAGE_META, type TimelineStop } from './timelineScript';
+import { type TimelineStop } from './timelineScript';
+
+const messages = defineMessages({
+  protocolTimeline: {
+    id: 'architect.home.transitMap.protocolTimeline',
+    defaultMessage: 'Protocol timeline',
+    description: 'Visible text in components / Home / TransitMap.',
+  },
+});
 
 // Internal SVG design coordinates. The outer container width controls the
 // actual rendered size; everything inside scales via viewBox so stations,
@@ -31,6 +46,44 @@ const VISIBLE_WINDOW = 7;
 // then progressively older above).
 const INITIAL_BLOOM_STAGGER_S = 0.12;
 
+const ICON_STROKE = 2.75;
+
+// Information's platinum-dark is illegible against Architect's platinum page
+// background, so the timeline draws Information stations in charcoal.
+const INFORMATION_TIMELINE_STYLE = {
+  color: 'var(--color-charcoal)',
+  contrast: 'var(--color-white)',
+};
+
+function timelineStyle(type: StageType) {
+  return type === 'Information'
+    ? INFORMATION_TIMELINE_STYLE
+    : stageTypeColorStyle(type);
+}
+
+function timelineColor(type: StageType) {
+  return timelineStyle(type).color;
+}
+
+// The icon takes whichever ink contrast-color() picks for its disc, as Badge
+// does. A stroke of contrast-color(var(...)) is only invalid at computed-value
+// time, so a browser without it would draw no stroke at all; there the icon
+// falls back to the palette's paired contrast colour instead.
+const STATION_ICON_CLASS =
+  'stroke-(--station-ink) supports-[color:contrast-color(red)]:stroke-[contrast-color(var(--station-color))]';
+
+type StationIconStyle = CSSProperties & {
+  '--station-color': string;
+  '--station-ink': string;
+};
+
+// Most stage colours fall below AA as caption text on the page, so the caption
+// keeps the hue but moves toward the ink contrast-color() picks for the page,
+// as Badge does. 35% is the least that keeps every stage colour above AA.
+function captionColor(color: string) {
+  return `color-mix(in oklab, ${color}, contrast-color(var(--background)) 35%)`;
+}
+
 type TransitMapProps = {
   stops: TimelineStop[];
   count: number;
@@ -39,6 +92,7 @@ type TransitMapProps = {
 type WindowedStop = TimelineStop & { absoluteIndex: number };
 
 export default function TransitMap({ stops, count }: TransitMapProps) {
+  const intl = useAppIntl();
   const reducedMotion = useReducedMotion();
   const firstMountRef = useRef(true);
   const isFirstMount = firstMountRef.current;
@@ -68,7 +122,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
         height="100%"
         preserveAspectRatio="xMidYMid meet"
       >
-        <title>Protocol timeline</title>
+        <title>{intl.formatMessage(messages.protocolTimeline)}</title>
         <defs>
           <linearGradient id="nc-timeline-fade" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
@@ -91,16 +145,6 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
               fill="url(#nc-timeline-fade)"
             />
           </mask>
-          {/* Forces the (default-black) icon shapes to solid white while
-              preserving their alpha — the SVG-native equivalent of the
-              `brightness-0 invert` CSS filter, which is reliable in Safari
-              where `<img>` inside `<foreignObject>` is not. */}
-          <filter id="nc-icon-white">
-            <feColorMatrix
-              type="matrix"
-              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"
-            />
-          </filter>
         </defs>
 
         <g mask="url(#nc-timeline-mask)">
@@ -113,7 +157,6 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
               if (i === 0) return null;
               const prev = stations[i - 1];
               if (!prev) return null;
-              const prevMeta = STAGE_META[prev.key];
               const y1 = prev.absoluteIndex * STATION_GAP;
               const y2 = s.absoluteIndex * STATION_GAP;
               const isNewSeg = s.absoluteIndex === newestAbs;
@@ -136,7 +179,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
                     mass: 2,
                     delay: segDelay,
                   }}
-                  stroke={prevMeta.color}
+                  style={{ stroke: timelineColor(prev.type) }}
                   strokeWidth={LINE_STROKE}
                   strokeLinecap="round"
                   opacity={0.9}
@@ -163,7 +206,6 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 
             {stations.map((s, i) => {
               const y = s.absoluteIndex * STATION_GAP;
-              const meta = STAGE_META[s.key];
               const isNewest = s.absoluteIndex === newestAbs;
               const entryDelay = reducedMotion
                 ? undefined
@@ -177,7 +219,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
                   key={`station-${s.absoluteIndex}`}
                   x={STATION_X}
                   y={y}
-                  meta={meta}
+                  type={s.type}
                   label={s.label}
                   sub={s.sub}
                   isNewest={isNewest}
@@ -197,7 +239,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 type StationProps = {
   x: number;
   y: number;
-  meta: (typeof STAGE_META)[keyof typeof STAGE_META];
+  type: StageType;
   label: string;
   sub: string;
   isNewest: boolean;
@@ -209,7 +251,7 @@ type StationProps = {
 function Station({
   x,
   y,
-  meta,
+  type,
   label,
   sub,
   isNewest,
@@ -217,6 +259,14 @@ function Station({
   index,
   entryDelay,
 }: StationProps) {
+  // Palette colours are CSS custom properties, which SVG presentation
+  // attributes do not resolve — they have to be set as style properties.
+  const { color, contrast } = timelineStyle(type);
+  const iconStyle: StationIconStyle = {
+    '--station-color': color,
+    '--station-ink': contrast,
+    'strokeWidth': ICON_STROKE,
+  };
   const shouldEntry = entryDelay !== undefined;
   const baseDelay = entryDelay ?? 0;
   const stationSpring = {
@@ -254,7 +304,7 @@ function Station({
             cx={x}
             cy={y}
             fill="none"
-            stroke={meta.color}
+            style={{ stroke: color }}
             initial={{ r: STATION_R, opacity: 1, strokeWidth: 6 }}
             animate={{ r: HALO_R, opacity: 0, strokeWidth: 1.5 }}
             transition={{
@@ -265,16 +315,15 @@ function Station({
           />
         )}
         <circle cx={x} cy={y} r={STATION_R} fill="#fff" />
-        <circle cx={x} cy={y} r={STATION_INNER_R} fill={meta.color} />
-        <image
-          href={meta.icon}
-          x={x - ICON_SIZE / 2}
-          y={y - ICON_SIZE / 2}
-          width={ICON_SIZE}
-          height={ICON_SIZE}
-          preserveAspectRatio="xMidYMid meet"
-          filter="url(#nc-icon-white)"
-        />
+        <circle cx={x} cy={y} r={STATION_INNER_R} style={{ fill: color }} />
+        {createElement(stageTypeIcon(type), {
+          x: x - ICON_SIZE / 2,
+          y: y - ICON_SIZE / 2,
+          width: ICON_SIZE,
+          height: ICON_SIZE,
+          className: STATION_ICON_CLASS,
+          style: iconStyle,
+        })}
       </motion.g>
 
       {/* Label pill: slide in from its outer side */}
@@ -320,7 +369,7 @@ function Station({
                   className:
                     'mt-0.75 text-[12px] leading-none font-bold tracking-[0.16em]',
                 })}
-                style={{ color: meta.color }}
+                style={{ color: captionColor(color) }}
               >
                 {sub}
               </div>

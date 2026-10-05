@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -26,6 +27,7 @@ import {
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
+import { interfaceMessages } from '../messages';
 import AddNodeInput from './AddNodeInput';
 import GroupPicker, {
   type ActiveGroup,
@@ -106,6 +108,7 @@ export default function ToolPalette({
   automaticLayout,
   onToggleAutomaticLayout,
 }: ToolPaletteProps) {
+  const intl = useAppIntl();
   const activeTool = useComposerStore(composerStore, (s) => s.activeTool);
   const canUndo = useUndoStore(undoStore, (s) => s.past.length > 0);
   const canRedo = useUndoStore(undoStore, (s) => s.future.length > 0);
@@ -139,14 +142,16 @@ export default function ToolPalette({
 
   return (
     <SegmentedToolbar
-      aria-label="Network composer tools"
+      aria-label={intl.formatMessage(interfaceMessages.composerTools)}
       orientation="vertical"
       size="lg"
       className="absolute top-1/2 left-4 z-10 -translate-y-1/2"
     >
-      <ToolbarGroup aria-label="Editing tools">
+      <ToolbarGroup
+        aria-label={intl.formatMessage(interfaceMessages.editingTools)}
+      >
         <ToolbarIconButton
-          aria-label="Select"
+          aria-label={intl.formatMessage(interfaceMessages.select)}
           icon={<SelectIcon />}
           pressed={activeTool.kind === 'select'}
           onPressedChange={() => setActiveTool({ kind: 'select' })}
@@ -161,7 +166,7 @@ export default function ToolPalette({
           }
           trigger={
             <ToolbarIconButton
-              aria-label="Add node"
+              aria-label={intl.formatMessage(interfaceMessages.addNode)}
               aria-pressed={activeTool.kind === 'addNode'}
               icon={<AddNodeIcon />}
             />
@@ -182,7 +187,7 @@ export default function ToolPalette({
           <ToolbarMenu
             trigger={
               <ToolbarIconButton
-                aria-label="Draw edge"
+                aria-label={intl.formatMessage(interfaceMessages.drawEdge)}
                 aria-pressed={activeTool.kind === 'edge'}
                 icon={<EdgeIcon />}
                 className={edgeButtonClass}
@@ -215,7 +220,7 @@ export default function ToolPalette({
             onOpenChange={setGroupsOpen}
             trigger={
               <ToolbarIconButton
-                aria-label="Groups"
+                aria-label={intl.formatMessage(interfaceMessages.groups)}
                 aria-pressed={activeTool.kind === 'group'}
                 icon={<GroupsIcon />}
                 className={groupButtonClass}
@@ -236,9 +241,11 @@ export default function ToolPalette({
 
       <ToolbarSeparator />
 
-      <ToolbarGroup aria-label="Layout tools">
+      <ToolbarGroup
+        aria-label={intl.formatMessage(interfaceMessages.layoutTools)}
+      >
         <ToolbarIconButton
-          aria-label="Automatic layout"
+          aria-label={intl.formatMessage(interfaceMessages.automaticLayout)}
           icon={<AutoLayoutIcon />}
           pressed={automaticLayout}
           onPressedChange={onToggleAutomaticLayout}
@@ -247,15 +254,17 @@ export default function ToolPalette({
 
       <ToolbarSeparator />
 
-      <ToolbarGroup aria-label="History tools">
+      <ToolbarGroup
+        aria-label={intl.formatMessage(interfaceMessages.historyTools)}
+      >
         <ToolbarIconButton
-          aria-label="Undo"
+          aria-label={intl.formatMessage(interfaceMessages.undo)}
           icon={<UndoIcon />}
           disabled={!canUndo}
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
-          aria-label="Redo"
+          aria-label={intl.formatMessage(interfaceMessages.redo)}
           icon={<RedoIcon />}
           disabled={!canRedo}
           onClick={() => void undoStore.getState().redo()}

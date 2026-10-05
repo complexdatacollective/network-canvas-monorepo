@@ -1,5 +1,13 @@
+import {
+  type IntlShape,
+  createAppIntl,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { useCallback, useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
@@ -7,6 +15,56 @@ import {
   undoWithNavigation,
 } from '~/ducks/modules/activeProtocol';
 import { getCanRedo, getCanUndo } from '~/selectors/protocol';
+const utilityMessages = defineMessages({
+  changeUndoneMovedToStagesTo: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToStagesTo',
+    defaultMessage: 'Change undone. Moved to Stages to show the result.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeUndoneMovedToResourcesTo: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToResourcesTo',
+    defaultMessage: 'Change undone. Moved to Resources to show the result.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeUndoneMovedToCodebookTo: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToCodebookTo',
+    defaultMessage: 'Change undone. Moved to Codebook to show the result.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeUndone: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeUndone',
+    defaultMessage: 'Change undone.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeRedoneMovedToStagesTo: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToStagesTo',
+    defaultMessage: 'Change redone. Moved to Stages to show the result.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeRedoneMovedToResourcesTo: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToResourcesTo',
+    defaultMessage: 'Change redone. Moved to Resources to show the result.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeRedoneMovedToCodebookTo: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToCodebookTo',
+    defaultMessage: 'Change redone. Moved to Codebook to show the result.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+  changeRedone: {
+    id: 'architect.utility.hooks.useProtocolUndoRedo.changeRedone',
+    defaultMessage: 'Change redone.',
+    description:
+      'Researcher-facing explanatory text in hooks / useProtocolUndoRedo.',
+  },
+});
 
 type ProtocolUndoRedo = {
   canUndo: boolean;
@@ -21,31 +79,37 @@ type ProtocolUndoRedo = {
 // the targets `resolveTimelineNavTarget` can produce. Destinations are named
 // exactly as ProjectNav labels them, so what a researcher hears matches the
 // page they arrive on.
-const undoAnnouncement = (navigatedTo: string | null): string => {
+const undoAnnouncement = (
+  navigatedTo: string | null,
+  intl: IntlShape = defaultIntl,
+): string => {
   switch (navigatedTo) {
     case '/protocol':
-      return 'Change undone. Moved to Stages to show the result.';
+      return intl.formatMessage(utilityMessages.changeUndoneMovedToStagesTo);
     case '/protocol/assets':
-      return 'Change undone. Moved to Resources to show the result.';
+      return intl.formatMessage(utilityMessages.changeUndoneMovedToResourcesTo);
     case '/protocol/codebook':
-      return 'Change undone. Moved to Codebook to show the result.';
+      return intl.formatMessage(utilityMessages.changeUndoneMovedToCodebookTo);
     case null:
     default:
-      return 'Change undone.';
+      return intl.formatMessage(utilityMessages.changeUndone);
   }
 };
 
-const redoAnnouncement = (navigatedTo: string | null): string => {
+const redoAnnouncement = (
+  navigatedTo: string | null,
+  intl: IntlShape = defaultIntl,
+): string => {
   switch (navigatedTo) {
     case '/protocol':
-      return 'Change redone. Moved to Stages to show the result.';
+      return intl.formatMessage(utilityMessages.changeRedoneMovedToStagesTo);
     case '/protocol/assets':
-      return 'Change redone. Moved to Resources to show the result.';
+      return intl.formatMessage(utilityMessages.changeRedoneMovedToResourcesTo);
     case '/protocol/codebook':
-      return 'Change redone. Moved to Codebook to show the result.';
+      return intl.formatMessage(utilityMessages.changeRedoneMovedToCodebookTo);
     case null:
     default:
-      return 'Change redone.';
+      return intl.formatMessage(utilityMessages.changeRedone);
   }
 };
 
@@ -65,6 +129,7 @@ const redoAnnouncement = (navigatedTo: string | null): string => {
  * never claim a change that did not happen.
  */
 export const useProtocolUndoRedo = (): ProtocolUndoRedo => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { announce } = useAccessibilityAnnouncements();
 
@@ -74,14 +139,14 @@ export const useProtocolUndoRedo = (): ProtocolUndoRedo => {
   const undo = useCallback(() => {
     const outcome = dispatch(undoWithNavigation());
     if (!outcome.applied) return;
-    announce(undoAnnouncement(outcome.navigatedTo));
-  }, [announce, dispatch]);
+    announce(undoAnnouncement(outcome.navigatedTo, intl));
+  }, [announce, dispatch, intl]);
 
   const redo = useCallback(() => {
     const outcome = dispatch(redoWithNavigation());
     if (!outcome.applied) return;
-    announce(redoAnnouncement(outcome.navigatedTo));
-  }, [announce, dispatch]);
+    announce(redoAnnouncement(outcome.navigatedTo, intl));
+  }, [announce, dispatch, intl]);
 
   return useMemo(
     () => ({ canUndo, canRedo, undo, redo }),

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Codebook } from '@codaco/protocol-validation';
-import { validateProtocol } from '@codaco/protocol-validation';
+import { type Codebook, validateProtocol } from '@codaco/protocol-validation';
 import developmentProtocol from '@codaco/protocols/development';
 
 import codebookReducer, { test } from '../codebook';

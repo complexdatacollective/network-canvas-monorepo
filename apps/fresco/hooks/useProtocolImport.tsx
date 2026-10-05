@@ -1,16 +1,26 @@
 'use client';
 
 import { queue } from 'async';
-import posthog from 'posthog-js';
 import { useCallback, useRef } from 'react';
 
+import {
+  createAppIntl,
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
+import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import {
-  CURRENT_SCHEMA_VERSION,
-  getMigrationInfo,
+  createNetcanvasReader,
+  getProtocolFileErrorKind,
   hashProtocol,
+  isProtocolFileFault,
+  loadNetcanvasArchive,
+  missingAssetsError,
 } from '@codaco/protocol-validation';
+import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
 import {
   cleanupUploadedFiles,
@@ -26,6 +36,10 @@ import ImportToastContent from '~/components/ProtocolImport/ImportToastContent';
 import { APP_SUPPORTED_SCHEMA_VERSIONS } from '~/fresco.config';
 import { useUploadAssets } from '~/hooks/useUploadAssets';
 import {
+  captureClientEvent,
+  captureClientException,
+} from '~/lib/posthog-client';
+import {
   validateAndMigrateProtocol,
   type ProtocolValidationError,
 } from '~/lib/protocol/validateAndMigrateProtocol';
@@ -33,38 +47,113 @@ import { type AssetInsertType } from '~/schemas/protocol';
 import { DatabaseError } from '~/utils/databaseError';
 import {
   fileAsArrayBuffer,
-  getProtocolAssets,
-  getProtocolJson,
+  partitionProtocolAssets,
 } from '~/utils/protocolImport';
 import { getProtocolSizeError } from '~/utils/protocolSize';
 
-function formatNumberList(numbers: number[]): string {
-  if (numbers.length === 1) {
-    return numbers[0]!.toString();
-  }
+const messages = defineMessages({
+  operationalFailure: {
+    id: 'fresco.protocolImport.operationalFailure',
+    defaultMessage:
+      'The protocol could not be imported. Check your connection and storage configuration, then try again.',
+    description:
+      'Retry guidance for lookup, storage, or persistence failures after reading a protocol; does not claim that the protocol file is invalid.',
+  },
+  protocolMismatch: {
+    id: 'fresco.protocolImport.protocolMismatch',
+    defaultMessage:
+      'The uploaded protocol file did not match the requested file.',
+    description:
+      'Researcher-facing protocolImport: The uploaded protocol file did not match the requested file.',
+  },
 
-  if (numbers.length === 2) {
-    return numbers.join(' and ');
-  }
+  checkAssets: {
+    id: 'fresco.protocolImport.checkAssets',
+    defaultMessage: 'Could not check for existing assets.',
+    description:
+      'Researcher-facing protocolImport: Could not check for existing assets.',
+  },
 
-  const lastNumber = numbers.pop();
-  const formattedList = numbers.join(', ') + `, and ${lastNumber}`;
+  importedName: {
+    id: 'fresco.protocolImport.importedName',
+    defaultMessage: '{name} has been imported.',
+    description: 'Researcher-facing protocolImport: name has been imported.',
+  },
 
-  return formattedList;
-}
+  missingDependencies: {
+    id: 'fresco.protocolImport.validation.missingDependencies',
+    defaultMessage: 'Migration failed: missing {dependencies}.',
+    description:
+      'Researcher-facing protocolImport.validation: Migration failed: missing dependencies.',
+  },
+
+  validationFailed: {
+    id: 'fresco.protocolImport.validation.validationFailed',
+    defaultMessage:
+      'The protocol is invalid. Please check the protocol structure.',
+    description:
+      'Researcher-facing protocolImport.validation: The protocol is invalid. Please check the protocol structure.',
+  },
+
+  unsupportedVersion: {
+    id: 'fresco.protocolImport.validation.unsupportedVersion',
+    defaultMessage:
+      'Protocol version not supported. Fresco supports {count, plural, one {version} other {versions}} {versions}.',
+    description:
+      'Researcher-facing protocolImport.validation: Protocol version not supported. Fresco supports count, plural, one version other versions versions.',
+  },
+
+  invalidProtocol: {
+    id: 'fresco.protocolImport.validation.invalidProtocol',
+    defaultMessage: 'The uploaded file does not contain a valid protocol.',
+    description:
+      'Researcher-facing protocolImport.validation: The uploaded file does not contain a valid protocol.',
+  },
+
+  copyImportCompleted: {
+    id: 'fresco.hooks.useProtocolImport.copyImportCompleted',
+    defaultMessage: 'Import completed!',
+    description:
+      'Researcher-facing hooks / useProtocolImport: Import completed!',
+  },
+  copyAssetUploadFailed: {
+    id: 'fresco.hooks.useProtocolImport.copyAssetUploadFailed',
+    defaultMessage: 'Asset upload failed',
+    description:
+      'Researcher-facing hooks / useProtocolImport: Asset upload failed',
+  },
+  protocolImportedSuccessfully: {
+    id: 'fresco.hooks.useProtocolImport.protocolImportedSuccessfully',
+    defaultMessage: 'Protocol imported successfully',
+    description:
+      'Researcher-facing hooks / useProtocolImport: Protocol imported successfully',
+  },
+  protocolAlreadyExistsDeleteTheExistingProtocol: {
+    id: 'fresco.hooks.useProtocolImport.protocolAlreadyExistsDeleteTheExistingProtocol',
+    defaultMessage:
+      'Protocol already exists. Delete the existing protocol first before importing again.',
+    description:
+      'Researcher-facing hooks / useProtocolImport: Protocol already exists. Delete the existing protocol first before importing again.',
+  },
+});
 
 function getValidationErrorMessage(
   validationError: ProtocolValidationError,
 ): string {
   switch (validationError.error) {
     case 'invalid-object':
-      return 'The uploaded file does not contain a valid protocol.';
+      return createMessageError(messages.invalidProtocol);
     case 'unsupported-version':
-      return `Protocol version not supported. Fresco supports version${APP_SUPPORTED_SCHEMA_VERSIONS.length > 1 ? 's' : ''} ${formatNumberList([...APP_SUPPORTED_SCHEMA_VERSIONS])}.`;
+      return createMessageError(messages.unsupportedVersion, {
+        count: APP_SUPPORTED_SCHEMA_VERSIONS.length,
+        versions: { list: APP_SUPPORTED_SCHEMA_VERSIONS.map(String) },
+      });
     case 'validation-failed':
-      return 'The protocol is invalid. Please check the protocol structure.';
+      return createMessageError(messages.validationFailed);
     case 'missing-dependencies':
-      return `Migration failed: missing ${validationError.missingDependencies.join(', ')}.`;
+      return createMessageError(messages.missingDependencies, {
+        dependencies: { list: validationError.missingDependencies },
+      });
   }
 }
 
@@ -102,10 +191,17 @@ export const useProtocolImport = () => {
     if (phase === 'complete') {
       toastUpdate(toastId, {
         variant: 'success',
-        title: 'Protocol imported successfully',
-        description: displayName
-          ? `${displayName} has been imported.`
-          : 'Import completed!',
+        title: <AppMessage message={messages.protocolImportedSuccessfully} />,
+        description: displayName ? (
+          <AppMessage
+            message={messages.importedName}
+            values={{
+              name: displayName,
+            }}
+          />
+        ) : (
+          <AppMessage message={messages.copyImportCompleted} />
+        ),
         icon: null,
         timeout: 2000,
       });
@@ -155,31 +251,20 @@ export const useProtocolImport = () => {
     try {
       // Phase: Parsing
       updateToastPhase(toastId, 'parsing');
-      const fileArrayBuffer = await fileAsArrayBuffer(file);
+      const fileArrayBuffer = await fileAsArrayBuffer(file, createMessageError);
 
-      const JSZip = (await import('jszip')).default;
-      const zip = await JSZip.loadAsync(fileArrayBuffer);
-      const protocolJson = await getProtocolJson(zip);
-
-      const dependencies: Record<string, unknown> = {};
-      if (protocolJson.schemaVersion < CURRENT_SCHEMA_VERSION) {
-        const migrationInfo = getMigrationInfo(
-          protocolJson.schemaVersion,
-          CURRENT_SCHEMA_VERSION,
-        );
-        for (const dep of migrationInfo.dependencies) {
-          if (dep === 'name') {
-            dependencies.name = protocolName;
-          }
-        }
-      }
+      // One reader for the whole archive: it holds a single inflation budget
+      // across both reads below, so a deflate bomb split between
+      // `protocol.json` and the media cannot spend the allowance twice.
+      const zip = await loadNetcanvasArchive(new Uint8Array(fileArrayBuffer));
+      const reader = createNetcanvasReader(zip);
+      const protocolJson = await reader.readProtocol();
 
       // Phase: Validating
       updateToastPhase(toastId, 'validating');
-      const validationResult = await validateAndMigrateProtocol(
-        protocolJson,
-        dependencies,
-      );
+      const validationResult = await validateAndMigrateProtocol(protocolJson, {
+        name: protocolName,
+      });
 
       if (!validationResult.success) {
         const errorMessage = getValidationErrorMessage(validationResult);
@@ -198,18 +283,39 @@ export const useProtocolImport = () => {
       const exists = await getProtocolByHash(protocolHash);
       if (exists) {
         updateToastPhase(toastId, 'error', {
-          error:
-            'Protocol already exists. Delete the existing protocol first before importing again.',
+          error: createMessageError(
+            messages.protocolAlreadyExistsDeleteTheExistingProtocol,
+          ),
           onRetry: retryThisFile,
         });
         return;
       }
 
       // Phase: Extracting assets
+      //
+      // Deliberately after the duplicate check: re-importing a protocol that
+      // is already installed should cost the researcher the hash, not the
+      // inflation of every video in it.
+      //
+      // The archive's own manifest resolves the media, because its `source`
+      // values are the only ones that describe entries in this zip; the
+      // validated document supplies what gets stored against them.
       updateToastPhase(toastId, 'extracting-assets');
-      const { fileAssets, apikeyAssets } = await getProtocolAssets(
+      const { assets: extractedAssets, missingAssets } =
+        await reader.readAssets();
+
+      // Extraction reports a manifest entry with no file rather than refusing,
+      // leaving the policy to the host. Fresco serves these resources to
+      // participants, so an incomplete protocol must not be installed: a
+      // missing stimulus would surface mid-interview, to the one person who
+      // can do nothing about it.
+      if (missingAssets.length > 0) {
+        throw missingAssetsError(missingAssets);
+      }
+
+      const { fileAssets, apikeyAssets } = partitionProtocolAssets(
         validatedProtocol,
-        zip,
+        extractedAssets,
       );
 
       const newAssets: typeof fileAssets = [];
@@ -242,7 +348,9 @@ export const useProtocolImport = () => {
           }
         });
       } catch (_e) {
-        throw new Error('Error checking for existing assets', { cause: _e });
+        throw new Error(createMessageError(messages.checkAssets), {
+          cause: _e,
+        });
       }
 
       // Phase: Uploading protocol
@@ -259,7 +367,7 @@ export const useProtocolImport = () => {
       }
 
       if (uploadedOriginalFile?.name !== file.name) {
-        throw new Error('Original protocol file upload result mismatch');
+        throw new Error(createMessageError(messages.protocolMismatch));
       }
 
       // Phase: Uploading assets
@@ -286,7 +394,7 @@ export const useProtocolImport = () => {
         );
 
         if (!uploadedAsset) {
-          throw new Error('Asset upload failed');
+          throw new Error(createMessageError(messages.copyAssetUploadFailed));
         }
 
         return {
@@ -316,7 +424,7 @@ export const useProtocolImport = () => {
         throw new DatabaseError(result.error, result.errorDetails);
       }
 
-      posthog.capture('ProtocolInstalled', {
+      captureClientEvent('ProtocolInstalled', {
         protocol: fileName,
       });
 
@@ -326,8 +434,25 @@ export const useProtocolImport = () => {
       return;
     } catch (e) {
       const error = ensureError(e);
-
-      posthog.captureException(error);
+      const protocolFileError = describeProtocolFileErrorMessage(error);
+      // A file the researcher chose being damaged, truncated, or too old to
+      // upgrade is an answer about that file, not a defect in Fresco. Sending
+      // it to exception tracking buries the failures that are defects, and the
+      // message carries researcher-authored resource names. Record the kind
+      // instead, which is a fixed vocabulary and holds nothing from the file.
+      //
+      // `isProtocolFileFault`, not merely "can this be described": a migration
+      // step that throws because of a bug in it is re-raised as
+      // `MigrationStepError` and describes itself as a protocol that cannot be
+      // upgraded, so treating every describable failure as the file's fault
+      // would hide our own migration defects.
+      if (isProtocolFileFault(error)) {
+        captureClientEvent('ProtocolImportFailed', {
+          reason: getProtocolFileErrorKind(error),
+        });
+      } else {
+        captureClientException(error);
+      }
 
       // Best-effort cleanup of any blobs uploaded before the failure, so a
       // failed import doesn't leave orphaned files in storage.
@@ -336,7 +461,16 @@ export const useProtocolImport = () => {
       }
 
       updateToastPhase(toastId, 'error', {
-        error: error.message,
+        error:
+          formatMessageError(error.message, createAppIntl({ locale: 'en' })) ===
+          undefined
+            ? protocolFileError
+              ? createMessageError(
+                  protocolFileError.descriptor,
+                  protocolFileError.values,
+                )
+              : createMessageError(messages.operationalFailure)
+            : error.message,
         onRetry: retryThisFile,
       });
 
@@ -350,13 +484,13 @@ export const useProtocolImport = () => {
 
   const importProtocols = useCallback((files: File[]) => {
     files.forEach((file) => {
-      const sizeError = getProtocolSizeError(file);
+      const sizeError = getProtocolSizeError(file, createMessageError);
       if (sizeError) {
         toastRef.current.add({
           id: generateJobId(),
           variant: 'destructive',
           title: file.name,
-          description: sizeError,
+          description: <AppErrorMessage error={sizeError} />,
           timeout: 0,
         });
         return;

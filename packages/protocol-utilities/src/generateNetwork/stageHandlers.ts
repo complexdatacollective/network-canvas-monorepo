@@ -6,19 +6,23 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateAttributesForEntity } from './attributes';
+import { generateAttributesForEntity } from './attributes.ts';
 import {
   type EntityScopeRef,
   scopeKey,
   uniqueSlotMembers,
-} from './constraints/generateEntityAttributes';
-import { withRuleTiedVariables } from './constraints/stageWrites';
-import { valueKey } from './constraints/uniqueRegistry';
-import type { GenerationContext, NetworkDraft, StageOfType } from './context';
-import { createEdgesForPairs } from './edges';
-import { getStageFilteredEdges, getStageFilteredNodes } from './filtering';
-import { createNodesForStage, type RosterDraw } from './nodes';
-import { getSubjectType } from './subject';
+} from './constraints/generateEntityAttributes.ts';
+import { withRuleTiedVariables } from './constraints/stageWrites.ts';
+import { valueKey } from './constraints/uniqueRegistry.ts';
+import type {
+  GenerationContext,
+  NetworkDraft,
+  StageOfType,
+} from './context.ts';
+import { createEdgesForPairs } from './edges.ts';
+import { getStageFilteredEdges, getStageFilteredNodes } from './filtering.ts';
+import { createNodesForStage, type RosterDraw } from './nodes.ts';
+import { getSubjectType } from './subject.ts';
 
 export function handleNameGenerators(
   ctx: GenerationContext,

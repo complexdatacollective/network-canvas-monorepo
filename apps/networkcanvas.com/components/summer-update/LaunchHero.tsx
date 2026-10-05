@@ -11,6 +11,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 
+import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
@@ -190,7 +191,10 @@ export function LaunchHero() {
           entranceVariants={launchHeroHeaderVariants}
         />
 
-        <div className="tablet-portrait:pt-24 tablet-portrait:pb-48 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center">
+        <div
+          id={SITE_NAVIGATION_SKIP_TARGET_ID}
+          className="tablet-portrait:pt-24 tablet-portrait:pb-48 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center"
+        >
           <motion.div
             className="w-full origin-center will-change-transform"
             style={

@@ -1,0 +1,14 @@
+{
+  "common.back": "Volver",
+  "common.cancel": "Cancelar",
+  "common.close": "Cerrar",
+  "common.confirm": "Confirmar",
+  "common.continue": "Continuar",
+  "common.delete": "Eliminar",
+  "common.done": "Listo",
+  "common.genericError": "Se ha producido un error.",
+  "common.loading": "Cargando…",
+  "common.retry": "Volver a intentarlo",
+  "common.save": "Guardar",
+  "common.search": "Buscar"
+}

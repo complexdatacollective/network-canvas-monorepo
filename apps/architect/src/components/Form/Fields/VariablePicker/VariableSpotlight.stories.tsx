@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
 import { createStore } from 'redux';
-import { fn, screen, userEvent } from 'storybook/test';
+import { expect, fn, screen, userEvent } from 'storybook/test';
 
 import VariableSpotlight from './VariableSpotlight';
 
@@ -154,7 +154,44 @@ task.
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SelectOrCreate: Story = {};
+/** How the window is reached everywhere: over whatever opened it. */
+export const SelectOrCreate: Story = {
+  play: async () => {
+    const attributeWindow = await screen.findByRole('dialog');
+    const portal = attributeWindow.parentElement;
+    if (!portal) throw new Error('the window is not in a portal');
+
+    // The dims: the one `Modal` draws and the one this window adds over the
+    // dialog it was opened from. Base UI's 1×1 focus guards are siblings too
+    // and paint nothing, so what is drawn is what is asked about.
+    const dims = [...portal.children].filter((child) => {
+      if (child === attributeWindow) return false;
+      const style = getComputedStyle(child);
+      return (
+        style.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+        style.backdropFilter !== 'none'
+      );
+    });
+    await expect(dims.length).toBeGreaterThan(0);
+
+    const layerOf = (element: Element): number => {
+      const zIndex = getComputedStyle(element).zIndex;
+      return zIndex === 'auto' ? 0 : Number(zIndex);
+    };
+    const under = dims.filter((dim) => {
+      const gap = layerOf(attributeWindow) - layerOf(dim);
+      if (gap !== 0) return gap > 0;
+      return Boolean(
+        dim.compareDocumentPosition(attributeWindow) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+    await expect(under).toHaveLength(dims.length);
+    // And the window raises itself over none of them, so a dialog opened over
+    // this one is painted on top of it.
+    await expect(getComputedStyle(attributeWindow).zIndex).toBe('auto');
+  },
+};
 
 export const CreateNewVariable: Story = {
   play: async () => {

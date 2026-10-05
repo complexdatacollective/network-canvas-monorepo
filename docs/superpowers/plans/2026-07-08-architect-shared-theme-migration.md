@@ -184,10 +184,10 @@
   font-size: clamp(2.75rem, 8vh, 4.5rem);
 }
 @utility lead {
-  @apply text-muted text-lg leading-normal;
+  @apply text-current/70 text-lg leading-normal;
 }
 @utility hint {
-  @apply text-muted text-xs leading-normal;
+  @apply text-current/70 text-xs leading-normal;
 }
 @utility code {
   @apply bg-text/5 rounded-sm px-1 py-0.5 font-mono text-[0.9em];
@@ -355,7 +355,7 @@ export function resolveProtocolColor(
 
 **Files:** none kept (scratch probe only). Produces: `SPACING_BRANCH` = `A` or `B`, recorded for all shard prompts.
 
-- [ ] **Step 1:** Create a scratch probe `apps/architect/src/spike-probe.tsx` containing `export const Probe = () => <div className="p-4.8 z-1000 tablet-portrait:w-auto bg-rules-type text-muted var-probe" />;` (unreferenced file — Tailwind scans it regardless).
+- [ ] **Step 1:** Create a scratch probe `apps/architect/src/spike-probe.tsx` containing `export const Probe = () => <div className="p-4.8 z-1000 tablet-portrait:w-auto bg-rules-type text-current/70 var-probe" />;` (unreferenced file — Tailwind scans it regardless).
 - [ ] **Step 2:** Run `pnpm --filter @codaco/architect build`. Expected: build succeeds (Tailwind compile errors here mean Task 1/2 have a bug — fix before proceeding).
 - [ ] **Step 3:** `grep -o 'p-4\.8\|z-1000\|bg-rules-type' apps/architect/dist/assets/*.css | sort -u`. If `.p-4\.8` is present → **Branch A**; absent → **Branch B**. If `z-1000` absent, shard rule R4 uses `z-[1000]`-style arbitrary values. `bg-rules-type` must be present and its declaration must contain `oklch(var(--neon-coral))` inlined (else the app layer's `@theme inline` block isn't merging — stop and fix). Note: no `--color-*` variables are expected in the output — the theme is inline by design.
 - [ ] **Step 4:** Delete `apps/architect/src/spike-probe.tsx`. Record the branch decision.

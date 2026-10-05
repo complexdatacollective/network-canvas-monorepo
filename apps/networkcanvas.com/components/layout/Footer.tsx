@@ -5,7 +5,7 @@ import type {
   SiteFooterLink,
   SiteFooterSocialLink,
 } from '@codaco/fresco-ui/navigation/SiteFooter';
-import { LanguageSelector } from '~/components/layout/LanguageSelector';
+import { SiteLocaleSwitcher } from '~/components/layout/SiteLocaleSwitcher';
 import { Logo } from '~/components/ui/Logo';
 import { externalLinks, footerLinks } from '~/lib/content';
 
@@ -39,7 +39,7 @@ export function Footer() {
       links={links}
       copyright={t('copyright', { year: new Date().getFullYear() })}
       socialLinks={socialLinks}
-      extraContent={<LanguageSelector />}
+      extraContent={<SiteLocaleSwitcher />}
     />
   );
 }

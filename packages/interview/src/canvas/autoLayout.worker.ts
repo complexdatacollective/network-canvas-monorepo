@@ -1,13 +1,11 @@
 /* eslint-disable no-console */
-// Shared, options-driven force-layout worker for the canvas auto-layout engine.
+// Shared force-layout worker for the canvas auto-layout engine.
 //
-// One worker serves both the Narrative interface (run-once, seeded refinement
-// with group cohesion + edge attraction + an upward bias) and the Sociogram
-// interface (continuous, user-toggleable layout with charge + edge links). The
-// active forces are chosen entirely from the `initialize` options, so the same
-// worker expresses both behaviours without a fork. The worker has no persistence
-// concept at all — it only postMessages positions; nothing here writes node
-// attributes.
+// Narrative, Sociogram, and Network Composer use one canonical force profile.
+// Initialize options contain only canvas-derived geometry; callers cannot tune
+// the simulation per interface. Group cohesion remains data-driven and is inert
+// when no group keys are supplied. The worker has no persistence concept at all
+// — it only postMessages positions; nothing here writes node attributes.
 //
 // The simulation runs in an ISOTROPIC, SCREEN-NORMALISED space (the hook scales
 // the authored normalized 0-1 positions by canvas-height before seeding; see
@@ -34,7 +32,7 @@ import type { VariableOptionValue } from '@codaco/protocol-validation';
 import { forceGroupCohesion } from './forceGroupCohesion';
 import { collideRadiusForNode, FALLBACK_NODE_RADIUS } from './layoutGeometry';
 
-export type AutoLayoutForceOptions = {
+type AutoLayoutOptions = {
   alphaDecay: number;
   velocityDecay: number;
   charge: number;
@@ -56,21 +54,30 @@ export type AutoLayoutForceOptions = {
   startAlpha: number;
 };
 
+// These values depend on the rendered node size and canvas dimensions, so the
+// hook supplies them at initialization. Every force-tuning value remains owned
+// by DEFAULT_OPTIONS below.
+type AutoLayoutRuntimeOptions = Pick<
+  AutoLayoutOptions,
+  'collideRadius' | 'boundsInset' | 'simWidth' | 'simHeight'
+>;
+
 // Sim-space collision radius derived from the FALLBACK node radius on a typical
 // ~800px-tall canvas (collideRadiusForNode(48) / 800 ≈ 0.084). Only used to seed
 // the linkDistance default; the hook always overrides collideRadius with the live
 // measured value divided by the canvas height.
 const FALLBACK_SIM_COLLIDE_RADIUS =
   collideRadiusForNode(FALLBACK_NODE_RADIUS) / 800;
+const LINK_DISTANCE_COLLIDE_RATIO = 1.9;
 
-const DEFAULT_OPTIONS: AutoLayoutForceOptions = {
-  alphaDecay: 1 - 0.001 ** (1 / 300),
+const DEFAULT_OPTIONS: AutoLayoutOptions = {
+  // A hot start and slow 500-tick cooldown let a layout built from scratch
+  // escape local minima before settling.
+  alphaDecay: 1 - 0.001 ** (1 / 500),
   velocityDecay: 0.3,
-  // Charge is dropped (0) by default: forceManyBody competes with collision,
-  // causing drift and uneven spacing. Collision alone enforces the minimum gap;
-  // cohesion clusters. forceManyBody is only registered when charge !== 0
-  // (Sociogram supplies a negative charge for repulsion).
-  charge: 0,
+  // Screen-normalized repulsion spreads disconnected nodes while collision
+  // guarantees the minimum gap and optional cohesion clusters grouped nodes.
+  charge: -0.006,
   // collideRadius is a SIM-SPACE center-to-center half-distance (px collide
   // radius / canvas height): two nodes cannot settle closer than 2 *
   // collideRadius. The hook always overrides this with the live measured value;
@@ -83,32 +90,22 @@ const DEFAULT_OPTIONS: AutoLayoutForceOptions = {
   // layout. Unconnected nodes have no such pull and are spread beyond the floor
   // by charge, so a connected pair is never farther apart than an unconnected
   // one (the visual principle that connected nodes sit closer than unconnected
-  // ones). The hook recomputes this from the live collide radius. Tune visually.
-  linkDistance: 1.9 * FALLBACK_SIM_COLLIDE_RADIUS,
+  // ones). Initialization derives it from the live collide radius here.
+  linkDistance: LINK_DISTANCE_COLLIDE_RATIO * FALLBACK_SIM_COLLIDE_RADIUS,
   // Firm enough that connected nodes reach the collision floor during the anneal
   // and stay pressed there against charge, giving connected pairs a visibly
   // tighter spacing than the charge-spread unconnected pairs.
   linkStrength: 0.5,
-  // Horizontal centering (forceX): a symmetric counterpart to the upward bias.
-  // Narrative preserves authored x (biasXStrength 0, so forceX is inert), while
-  // Sociogram has no authored layout and uses a weak forceX toward sim-center to
-  // keep the composition horizontally centred. biasXFraction is the target as a
-  // fraction of the sim width (0.5 = center). forceX is registered only when
-  // biasXStrength > 0 and simWidth > 0 (the target is resolvable).
+  // Symmetric horizontal and vertical positioning forces keep every interface's
+  // composition centered. Fractions are targets within the simulation extents.
   biasXFraction: 0.5,
-  biasXStrength: 0,
-  // Upward bias (forceY): the layout settles around center, but the
-  // bottom-center legend/preset panel occludes the lowest nodes at its DEFAULT
-  // position. A weak forceY toward a target above center lifts the composition
-  // clear of that panel without fighting cohesion/links. biasYFraction is the
-  // target as a fraction of the sim height (0 = top). forceY is registered only
-  // when biasYStrength > 0 and simHeight > 0 (the target is resolvable).
+  biasXStrength: 0.13,
   biasYFraction: 0.5,
-  biasYStrength: 0,
+  biasYStrength: 0.13,
   // Hard inset (sim units) from each edge that confines node CENTERS, applied as
-  // a post-collision bounds force. 0 disables it (Sociogram). The hook supplies
-  // the value matching the store's drag/placement clamp (px inset / canvas
-  // height) so the clamp becomes a no-op once the simulation settles.
+  // a post-collision bounds force. The hook supplies the value matching the
+  // store's drag/placement clamp (px inset / canvas height) so the clamp
+  // becomes a no-op once the simulation settles.
   boundsInset: 0,
   // Sim-space extents; the hook supplies them so the forceX/forceY targets and
   // the bounds box are expressed in sim units. Both fall back to 0 (the
@@ -120,7 +117,7 @@ const DEFAULT_OPTIONS: AutoLayoutForceOptions = {
   // The velocity-based early stop below catches the common case sooner; this is
   // the hard floor. Tune visually.
   alphaMin: 0.025,
-  startAlpha: 0.4,
+  startAlpha: 1,
 };
 
 // Per-node speed (sim units / tick) below which — for ALL nodes — the layout is
@@ -148,7 +145,7 @@ type SimLink = SimulationLinkDatum<SimNode>;
 
 let simulation: Simulation<SimNode, undefined>;
 let links: SimLink[] = [];
-let options: AutoLayoutForceOptions = { ...DEFAULT_OPTIONS };
+let options: AutoLayoutOptions = { ...DEFAULT_OPTIONS };
 let running = false;
 // Distinguishes a user pause (toggle off → `stop`) from a natural settle (the
 // anneal converged). Both leave `running` false, but only a user pause should
@@ -307,8 +304,8 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   // the target spacing stays consistent with the collision guarantee. Registered
   // even with no links (an empty forceLink is inert).
   sim.force('link', makeLinkForce());
-  // Weak horizontal bias toward a target across the sim width (center by
-  // default), to keep an unauthored layout centred. Inert unless a positive
+  // Horizontal positioning toward a target across the sim width (center by
+  // default), keeping the layout centred. Inert unless a positive
   // strength and a resolvable target (sim width) are both supplied.
   if (options.biasXStrength > 0 && options.simWidth > 0) {
     sim.force(
@@ -320,9 +317,9 @@ const registerForces = (sim: Simulation<SimNode, undefined>) => {
   } else {
     sim.force('biasX', null);
   }
-  // Weak upward bias toward a target above center, to clear the bottom-center
-  // panel. Inert unless a positive strength and a resolvable target (sim height)
-  // are both supplied.
+  // Vertical positioning toward a target across the sim height (center by
+  // default). Inert unless a positive strength and a resolvable target are both
+  // supplied.
   if (options.biasYStrength > 0 && options.simHeight > 0) {
     sim.force(
       'biasY',
@@ -339,7 +336,7 @@ type InitializeMessage = {
   type: 'initialize';
   nodes: SimNode[];
   links?: SimLink[];
-  options?: Partial<AutoLayoutForceOptions>;
+  options?: Partial<AutoLayoutRuntimeOptions>;
 };
 
 type StopMessage = { type: 'stop' };
@@ -371,6 +368,12 @@ export function handleMessage(data: Message) {
       console.debug('autolayout-worker:initialize', data.nodes.length, 'nodes');
 
       options = { ...DEFAULT_OPTIONS, ...data.options };
+      // Link distance is part of the canonical force profile, but its absolute
+      // sim-space value follows the live card collision radius.
+      if (data.options?.collideRadius !== undefined) {
+        options.linkDistance =
+          LINK_DISTANCE_COLLIDE_RATIO * data.options.collideRadius;
+      }
       links = data.links ?? [];
 
       simulation = forceSimulation(data.nodes);
@@ -379,8 +382,7 @@ export function handleMessage(data: Message) {
       simulation.alphaMin(options.alphaMin);
       registerForces(simulation);
 
-      // Seed only — do not auto-run. The `start` message kicks off the gentle
-      // refinement pass.
+      // Seed only; the explicit `start` message begins the canonical anneal.
       simulation.alpha(0).stop();
       running = false;
       paused = false;
@@ -415,9 +417,8 @@ export function handleMessage(data: Message) {
       console.debug('autolayout-worker:start');
       running = true;
       paused = false;
-      // Gentle start: refine the seeded layout rather than relaying out from
-      // scratch. Continuous consumers (Sociogram) supply a higher startAlpha to
-      // run a full layout.
+      // The canonical hot start lets every interface escape local minima before
+      // the shared slow cooldown settles the layout.
       simulation.alpha(options.startAlpha).restart();
       break;
     }

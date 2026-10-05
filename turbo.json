@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "agentGuidance": false,
   "globalPassThroughEnv": [
     "NC_PREVIEW_HOST",
     "NEXT_PUBLIC_ALGOLIA_APPLICATION_ID",
@@ -10,6 +11,7 @@
     "NEXT_PUBLIC_GA_ID",
     "NEXT_PUBLIC_DOCUMENTATION_URL",
     "NEXT_PUBLIC_NETWORK_CANVAS_URL",
+    "NEXT_PUBLIC_PROTOCOL_GALLERY_URL",
     "VITE_FRESCO_PREVIEW_URL",
     "VITE_FRESCO_PREVIEW_API_TOKEN",
     "VITE_DISABLE_ANALYTICS",
@@ -100,6 +102,8 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -131,6 +135,26 @@
       "inputs": [
         "index.html",
         "src/**",
+        // Vite copies public/ into dist verbatim, so the maintenance page the
+        // web image serves is a build input like any source file.
+        "public/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": ["dist/**"]
+    },
+    // The generic `build` inputs do not cover scripts/, and this build runs
+    // one: after vite, `scripts/render-schema-ddl.ts` renders the DDL
+    // `studio-api migrate` executes, from `scripts/apply.ts`. Without these a
+    // change to the rendering would replay a cached bundle carrying the old
+    // statements.
+    "@codaco/studio-server#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
@@ -143,6 +167,8 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -211,6 +237,7 @@
       "env": [
         "NODE_ENV",
         "NEXT_PUBLIC_DOCUMENTATION_URL",
+        "NEXT_PUBLIC_PROTOCOL_GALLERY_URL",
         "CONTEXT",
         "REVIEW_ID",
         // See the note on the generic build task's `env`.
@@ -246,6 +273,7 @@
         "lib/**",
         "messages/**",
         "netlify/**",
+        "public/protocols/**",
         "test/**",
         "vitest.config.*",
         "vitest.setup.*",
@@ -324,10 +352,24 @@
       "persistent": true
     },
     "//#lint": {
+      // This task is the whole lint gate, so its inputs must cover every
+      // extension oxfmt checks, every extension oxlint reads, and every file
+      // that changes which paths either tool visits. An under-declared glob
+      // here means a cache hit that silently skips a check.
+      //
+      // Ignore files are the subtle half. On a whole-tree run oxlint honours
+      // nested `.gitignore` AND nested `.eslintignore` (verified by planting a
+      // violation and watching each file suppress it), so both need recursive
+      // globs — an ignore-only edit must invalidate the cache. oxfmt reads
+      // `.gitignore` and `.prettierignore` from the current directory only, so
+      // `.prettierignore` stays root-scoped. Nested `.oxlintrc.json` configs
+      // are already covered by the json glob above.
       "inputs": [
-        "**/*.{ts,tsx,js,jsx,mjs,cjs,json}",
-        "**/biome.json",
-        ".gitignore",
+        "**/*.{cjs,cts,js,jsx,mjs,mts,ts,tsx,vue}",
+        "**/*.{astro,css,gql,graphql,html,json,jsonc,less,md,mdx,scss,svelte,toml,yaml,yml}",
+        "**/.gitignore",
+        "**/.eslintignore",
+        ".prettierignore",
         "!**/dist/**",
         "!**/out/**",
         "!**/.next/**",
@@ -352,6 +394,45 @@
       ],
       "outputs": [],
       "dependsOn": ["fresco#codegen"]
+    },
+    // The guard scripts' suite. It is a root task rather than a workspace
+    // package's `test` because scripts/ has no source to build and shares the
+    // root's devDependencies instead of declaring a second copy of yaml,
+    // jsdom and playwright.
+    //
+    // The inputs are wide on purpose: these suites assert things ABOUT the
+    // repository — which script each workflow invokes, that every workspace
+    // with a `test` script lands in exactly one shard, that the packaged apps
+    // resolve their dependencies. A narrow glob here would cache a pass over
+    // a tree the guard no longer describes, which is the one failure this
+    // task exists to prevent.
+    "//#test:scripts": {
+      // Every tree the suite reads has to be here, or a change confined to one
+      // of them restores a stale green instead of re-running the guard that
+      // covers it. The agent-skills test walks .claude/skills and
+      // .agents/skills; the release-test suites read .claude/workflows; the
+      // changeset guards read .changeset; the release guards read the fresco
+      // and studio deployment trees; the CI workflow guard reads
+      // apps/studio/stack-test and the self-host guide the `studio-stack` job
+      // runs.
+      "inputs": [
+        "scripts/**",
+        ".github/**",
+        ".claude/**",
+        ".agents/**",
+        ".changeset/**",
+        "**/package.json",
+        "turbo.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "apps/fresco/release-test/**",
+        "apps/fresco/CLAUDE.md",
+        "apps/studio/stack-test/**",
+        "apps/studio/docs/self-host/**",
+        "tooling/vitest/**",
+        "!**/node_modules/**"
+      ],
+      "outputs": []
     },
     "dev": {
       "cache": false,
@@ -382,6 +463,24 @@
         "PROTOCOL_ENCRYPTION_IV",
         "GITHUB_TOKEN"
       ],
+      "outputs": []
+    },
+    "test:storybook": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "$TURBO_ROOT$/tooling/tailwind/**",
+        "src/**",
+        "components/**",
+        ".storybook/**",
+        "stories/**",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "vitest.setup.*",
+        "package.json",
+        "tsconfig*.json"
+      ],
+      "env": ["NODE_ENV", "STORYBOOK_MAPBOX_TOKEN", "SKIP_ENV_VALIDATION"],
       "outputs": []
     },
     "test:watch": {
@@ -418,6 +517,8 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "e2e/**/*.ts",
         "e2e/**/*.tsx",
@@ -438,6 +539,8 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "e2e/**/*.ts",
         "e2e/**/*.tsx",
@@ -453,9 +556,27 @@
       "env": ["NODE_ENV"],
       "outputs": []
     },
+    // The Vite configs compiled by the apps' node tsconfigs import the shared
+    // plugin sources under scripts/ (and apps/studio/scripts/), so those files
+    // must be typecheck inputs or a cached result can hide an error in them.
+    "@codaco/studio-client#typecheck": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/apps/studio/scripts/**",
+        "src/**",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
     "@codaco/studio-server#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "scripts/**",
         "*.config.ts",
@@ -530,8 +651,9 @@
         "$TURBO_ROOT$/packages/protocols/sample/**",
         "src/**",
         "__tests__/**",
-        "vitest.config.*",
-        "vite.config.*",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
         "package.json",
         ".env",
         ".env.development"
@@ -576,6 +698,11 @@
     "fresco#build": {
       "dependsOn": ["^topo", "fresco#codegen"],
       "passThroughEnv": ["SKIP_ENV_VALIDATION"],
+      // A task override replaces the base `build` definition rather than
+      // merging with it, so these have to be repeated here: without them a
+      // credentialled build could replay a cached artefact whose maps were
+      // never uploaded (see apps/fresco/next.config.ts).
+      "env": ["NODE_ENV", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
       "inputs": [
         "app/**",
         "actions/**",
@@ -660,6 +787,38 @@
         "vitest.setup.*",
         ".env"
       ],
+      "outputs": []
+    },
+    "fresco#test:storybook": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        ".storybook/**",
+        "env.js",
+        "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "tsconfig*.json",
+        "package.json",
+        "vitest.config.*",
+        "vitest.setup.*",
+        ".env"
+      ],
+      "env": ["NODE_ENV", "SKIP_ENV_VALIDATION"],
       "outputs": []
     },
     "fresco#codegen": {

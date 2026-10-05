@@ -1,6 +1,6 @@
 'use client';
 
-import { type Column, type Table } from '@tanstack/react-table';
+import { type Column, type RowData, type Table } from '@tanstack/react-table';
 import {
   ArrowDown,
   ArrowDown01,
@@ -11,6 +11,9 @@ import {
   Filter,
 } from 'lucide-react';
 import React, { type ReactNode, useRef, useState } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Button, { buttonVariants } from '../Button';
 import {
@@ -24,6 +27,7 @@ import {
 } from '../DropdownMenu';
 import { Popover, PopoverContent } from '../Popover';
 import { cx } from '../utils/cva';
+import { type DataTableFeatures } from './features';
 import BooleanFilter from './filters/BooleanFilter';
 import DateFilter from './filters/DateFilter';
 import FacetedFilter from './filters/FacetedFilter';
@@ -34,13 +38,47 @@ import { type FilterConfig, type FilterValue } from './filters/types';
 
 const stringSortFns = new Set(['text', 'textCaseSensitive']);
 
-type DataTableColumnHeaderProps<TData, TValue> = {
-  column: Column<TData, TValue>;
+const messages = defineMessages({
+  sortAscending: {
+    id: 'frescoUi.columnHeader.sortAscending',
+    defaultMessage: 'Sort ascending',
+    description: 'Column menu action sorting the table in ascending order.',
+  },
+  sortDescending: {
+    id: 'frescoUi.columnHeader.sortDescending',
+    defaultMessage: 'Sort descending',
+    description: 'Column menu action sorting the table in descending order.',
+  },
+  clearSort: {
+    id: 'frescoUi.columnHeader.clearSort',
+    defaultMessage: 'Clear sort',
+    description: 'Column menu action removing the sort on this column.',
+  },
+  filterAction: {
+    id: 'frescoUi.columnHeader.filterAction',
+    defaultMessage: '{isFiltered, select, true {Edit filter} other {Filter}}',
+    description:
+      'Column menu action opening the filter editor; says whether a filter already exists on the column.',
+  },
+  clearFilter: {
+    id: 'frescoUi.columnHeader.clearFilter',
+    defaultMessage: 'Clear',
+    description: 'Button discarding the filter being edited for a column.',
+  },
+  applyFilter: {
+    id: 'frescoUi.columnHeader.applyFilter',
+    defaultMessage: 'Apply',
+    description: 'Button applying the filter being edited for a column.',
+  },
+});
+
+type DataTableColumnHeaderProps<TData extends RowData, TValue> = {
+  column: Column<DataTableFeatures, TData, TValue>;
   title: ReactNode;
-  table?: Table<TData>;
+  table?: Table<DataTableFeatures, TData>;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, 'title'>;
 
-export function DataTableColumnHeader<TData, TValue>({
+export function DataTableColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   table,
@@ -48,13 +86,14 @@ export function DataTableColumnHeader<TData, TValue>({
 }: DataTableColumnHeaderProps<TData, TValue>) {
   'use no memo';
 
+  const intl = useAppIntl();
   const meta = column.columnDef.meta;
   const filterConfig = meta?.filterConfig;
   const hasFilter = !!meta?.filterType && !!filterConfig;
 
-  const sortingFn = column.columnDef.sortingFn;
+  const sortFn = column.columnDef.sortFn;
   const isStringSortFn =
-    typeof sortingFn === 'string' && stringSortFns.has(sortingFn);
+    typeof sortFn === 'string' && stringSortFns.has(sortFn);
 
   const isFiltered = column.getIsFiltered();
   const canSort = column.getCanSort();
@@ -168,19 +207,19 @@ export function DataTableColumnHeader<TData, TValue>({
                 closeOnClick
                 icon={isStringSortFn ? <ArrowUpAZ /> : <ArrowUp01 />}
               >
-                Sort ascending
+                {intl.formatMessage(messages.sortAscending)}
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem
                 value="desc"
                 closeOnClick
                 icon={isStringSortFn ? <ArrowDownAZ /> : <ArrowDown01 />}
               >
-                Sort descending
+                {intl.formatMessage(messages.sortDescending)}
               </DropdownMenuRadioItem>
 
               {isSorted !== false && (
                 <DropdownMenuItem onClick={() => column.clearSorting()}>
-                  Clear sort
+                  {intl.formatMessage(messages.clearSort)}
                 </DropdownMenuItem>
               )}
             </DropdownMenuRadioGroup>
@@ -192,7 +231,9 @@ export function DataTableColumnHeader<TData, TValue>({
               icon={<Filter />}
               closeOnClick
             >
-              {isFiltered ? 'Edit filter' : 'Filter'}
+              {intl.formatMessage(messages.filterAction, {
+                isFiltered: String(isFiltered),
+              })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -215,10 +256,10 @@ export function DataTableColumnHeader<TData, TValue>({
                   color="dynamic"
                   onClick={handleClearFilter}
                 >
-                  Clear
+                  {intl.formatMessage(messages.clearFilter)}
                 </Button>
                 <Button size="sm" color="primary" onClick={handleApplyFilter}>
-                  Apply
+                  {intl.formatMessage(messages.applyFilter)}
                 </Button>
               </div>
             </div>

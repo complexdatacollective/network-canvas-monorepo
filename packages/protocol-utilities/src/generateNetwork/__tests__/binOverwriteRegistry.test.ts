@@ -6,8 +6,8 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../generateNetwork';
-import { valueKey } from '../constraints/uniqueRegistry';
+import { generateNetwork } from '../../generateNetwork.ts';
+import { valueKey } from '../constraints/uniqueRegistry.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 

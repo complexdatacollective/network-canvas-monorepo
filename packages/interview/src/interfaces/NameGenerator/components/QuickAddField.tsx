@@ -1,8 +1,21 @@
+'use client';
+
 import { Toggle } from '@base-ui/react';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
@@ -31,13 +44,17 @@ import {
 } from '../../../components/actionButtonVariants';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { getNodeIconName } from '../../../selectors/name-generator';
+import {
+  getCanAddMultipleNodes,
+  getNodeIconName,
+} from '../../../selectors/name-generator';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
   getPromptAdditionalAttributes,
   resolveNodeShape,
 } from '../../../selectors/session';
+import { interfaceMessages } from '../../messages';
 
 function convertToNodeColor(color: NodeColorSequence): string {
   switch (color) {
@@ -85,6 +102,8 @@ type QuickAddFieldProps = {
   validationContext?: ValidationContext;
 } & Partial<ValidationPropsCatalogue>;
 
+const renderEnterKey = (chunks: ReactNode[]) => <kbd>{chunks}</kbd>;
+
 export default function QuickAddField({
   placeholder,
   name: targetVariable,
@@ -94,6 +113,7 @@ export default function QuickAddField({
   validationContext,
   ...validationProps
 }: QuickAddFieldProps) {
+  const intl = useAppIntl();
   const [checked, setChecked] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -220,6 +240,7 @@ export default function QuickAddField({
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+  const canAddMultiple = useStageSelector(getCanAddMultipleNodes);
 
   // When open, the toggle previews the node being created, so it takes the
   // shape the new node will have (resolved against the prompt's additional
@@ -234,7 +255,9 @@ export default function QuickAddField({
   // being asked for ("Person name"); the placeholder is an instruction, so it
   // is only the fallback when the codebook type is unavailable.
   const inputLabel = nodeTypeDefinition
-    ? `${nodeTypeDefinition.name} name`
+    ? intl.formatMessage(interfaceMessages.entityName, {
+        entityLabel: nodeTypeDefinition.name,
+      })
     : placeholder;
 
   // Close form when disabled
@@ -300,8 +323,14 @@ export default function QuickAddField({
                     className="max-w-md text-sm"
                     sideOffset={25}
                   >
-                    Press <kbd>Enter</kbd> when you are finished. The box will
-                    stay open so you can quickly enter multiple names in a row.
+                    <AppMessage
+                      message={
+                        canAddMultiple
+                          ? interfaceMessages.quickAddMultipleInstructions
+                          : interfaceMessages.quickAddInstructions
+                      }
+                      values={{ kbd: renderEnterKey }}
+                    />
                   </TooltipContent>
                 </Tooltip>
               </TooltipTrigger>
@@ -312,7 +341,9 @@ export default function QuickAddField({
                 sideOffset={10}
               >
                 {meta.errors?.[0] && (
-                  <Paragraph margin="none">{meta.errors[0]}</Paragraph>
+                  <Paragraph margin="none">
+                    <AppErrorMessage error={meta.errors[0]} />
+                  </Paragraph>
                 )}
               </TooltipContent>
             </Tooltip>
@@ -333,7 +364,11 @@ export default function QuickAddField({
           <button
             type="button"
             ref={buttonRef}
-            aria-label={checked ? 'Quick add input' : undefined}
+            aria-label={
+              checked
+                ? intl.formatMessage(interfaceMessages.quickAddInput)
+                : undefined
+            }
             className="focusable relative aspect-square size-28 rounded-full"
             data-testid="quick-add-toggle"
           >

@@ -1,15 +1,19 @@
 'use client';
 
-import {
-  type ColumnDef,
-  type Row,
-  type RowSelectionState,
-} from '@tanstack/react-table';
+import { type Row, type RowSelectionState } from '@tanstack/react-table';
 import { FileUp } from 'lucide-react';
 import { use, useMemo, useState, useTransition } from 'react';
 import SuperJSON from 'superjson';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
+import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
+import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
@@ -49,9 +53,41 @@ import {
   type ParticipantsSearchParams,
 } from './searchParams';
 
+const messages = defineMessages({
+  error: {
+    id: 'fresco.ParticipantsTable.ParticipantsTableClient.error',
+    defaultMessage: 'Error',
+    description:
+      'Researcher-facing ParticipantsTable / ParticipantsTableClient: Error',
+  },
+  filterByIdentifier: {
+    id: 'fresco.ParticipantsTable.ParticipantsTableClient.filterByIdentifier',
+    defaultMessage: 'Filter by identifier...',
+    description:
+      'Researcher-facing ParticipantsTable / ParticipantsTableClient: Filter by identifier...',
+  },
+  exportParticipants: {
+    id: 'fresco.ParticipantsTable.ParticipantsTableClient.exportParticipants',
+    defaultMessage: 'Export Participants',
+    description:
+      'Researcher-facing ParticipantsTable / ParticipantsTableClient: Export Participants',
+  },
+});
+
 const clearableFilters = ['q'] as const;
 
 export type ParticipantRow = GetParticipantsQuery[number];
+
+const createActionsColumn = (
+  onEdit: (participant: ParticipantRow) => void,
+  onDelete: (participant: ParticipantRow) => void,
+): DataTableColumnDef<ParticipantRow> => ({
+  id: 'actions',
+  enableSorting: false,
+  cell: ({ row }: { row: Row<DataTableFeatures, ParticipantRow> }) => (
+    <ActionsDropdown row={row} onEdit={onEdit} onDelete={onDelete} />
+  ),
+});
 
 type ParticipantsTableProps = {
   participantsPromise: GetParticipantsReturnType;
@@ -74,8 +110,12 @@ const ParticipantsTableInner = ({
   protocolsPromise,
   searchParams,
 }: ParticipantsTableProps) => {
-  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
   'use no memo';
+
+  const intl = useAppIntl();
+
+  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
+
   const { isPending } = useNuqsTable();
   const { add } = useToast();
   const rawAllParticipants = use(allParticipantsPromise);
@@ -141,22 +181,12 @@ const ParticipantsTableInner = ({
     [],
   );
 
-  const columns = useMemo<ColumnDef<ParticipantRow>[]>(
+  const columns = useMemo<DataTableColumnDef<ParticipantRow>[]>(
     () => [
-      ...getParticipantColumns(protocols),
-      {
-        id: 'actions',
-        enableSorting: false,
-        cell: ({ row }: { row: Row<ParticipantRow> }) => (
-          <ActionsDropdown
-            row={row}
-            onEdit={handleEditParticipant}
-            onDelete={handleDeleteSingle}
-          />
-        ),
-      },
+      ...getParticipantColumns(intl, protocols),
+      createActionsColumn(handleEditParticipant, handleDeleteSingle),
     ],
-    [protocols, handleEditParticipant, handleDeleteSingle],
+    [intl, protocols, handleEditParticipant, handleDeleteSingle],
   );
 
   const handleDeleteSelected = () => {
@@ -164,8 +194,8 @@ const ParticipantsTableInner = ({
       const result = await getParticipantDeletionInfo(selectedIds);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -196,8 +226,8 @@ const ParticipantsTableInner = ({
       const result = await getParticipantsForExport(ids);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -215,8 +245,8 @@ const ParticipantsTableInner = ({
       const idsResult = await resolveParticipantIds(searchParams);
       if (idsResult.error) {
         add({
-          title: 'Error',
-          description: idsResult.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={idsResult.error} />,
           variant: 'destructive',
         });
         return;
@@ -224,8 +254,8 @@ const ParticipantsTableInner = ({
       const result = await getParticipantsForExport(idsResult.ids);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -239,8 +269,8 @@ const ParticipantsTableInner = ({
       const result = await resolveParticipantIds(searchParams);
       if (result.error) {
         add({
-          title: 'Error',
-          description: result.error,
+          title: <AppMessage message={messages.error} />,
+          description: <AppErrorMessage error={result.error} />,
           variant: 'destructive',
         });
         return;
@@ -309,9 +339,14 @@ const Toolbar = ({
   isExportResolving: boolean;
   onExportAll: () => void;
 }) => {
+  const intl = useAppIntl();
+
   return (
     <div className="tablet-landscape:flex-row tablet-landscape:flex-wrap flex w-full flex-col items-center gap-2">
-      <NuqsSearchFilter paramKey="q" placeholder="Filter by identifier..." />
+      <NuqsSearchFilter
+        paramKey="q"
+        placeholder={intl.formatMessage(messages.filterByIdentifier)}
+      />
       <AddParticipantButton existingParticipants={existingParticipants} />
       <ImportParticipants />
       <Button
@@ -320,7 +355,7 @@ const Toolbar = ({
         icon={<FileUp />}
         data-testid="export-participants-button"
       >
-        Export Participants
+        {intl.formatMessage(messages.exportParticipants)}
       </Button>
       <NuqsClearFilters paramKeys={clearableFilters} />
     </div>

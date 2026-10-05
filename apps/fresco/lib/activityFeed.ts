@@ -5,6 +5,7 @@ import type {
   Activity,
   ActivityType,
 } from '~/app/dashboard/_components/ActivityFeed/types';
+import type { ActivityLocalization } from '~/i18n/activityDetails';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
@@ -12,6 +13,7 @@ import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 type NewActivity = {
   type: ActivityType;
   message: Activity['message'];
+  localization: ActivityLocalization;
   properties?: Record<string, unknown>;
 };
 
@@ -42,7 +44,11 @@ async function recordActivity(activities: NewActivity[]) {
   // down.
   const written = prisma.events
     .createMany({
-      data: activities.map(({ type, message }) => ({ type, message })),
+      data: activities.map(({ type, message, localization }) => ({
+        type,
+        message,
+        localization,
+      })),
     })
     .then(
       () => true,
@@ -90,9 +96,10 @@ async function recordActivity(activities: NewActivity[]) {
 export async function addEvent(
   type: ActivityType,
   message: Activity['message'],
+  localization: ActivityLocalization,
   properties?: Record<string, unknown>,
 ) {
-  return recordActivity([{ type, message, properties }]);
+  return recordActivity([{ type, message, localization, properties }]);
 }
 
 /**

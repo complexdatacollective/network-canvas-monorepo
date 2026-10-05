@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/** biome-ignore-all lint/suspicious/noConsole: test logging */
 /**
  * Validates redirect configurations in netlify.toml and vercel.json
  * Catches common issues before deployment:

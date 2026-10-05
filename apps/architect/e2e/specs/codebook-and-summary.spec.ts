@@ -121,6 +121,47 @@ test(
     // layout the printed document never has.
     const paper = await printableWidthPx(architectPage);
     await architectPage.setViewportSize(paper);
+    // Chromium can choose a larger cached responsive thumbnail after the app's
+    // idle preloader runs. Pin an advertised 2x candidate for this visual
+    // fixture, then decode the actual image. The image remains fully visible;
+    // this excludes cache timing from the label/layout assertion.
+    const pinnedPictures = await architectPage
+      .locator(`${SECTION} picture`)
+      .evaluateAll(async (pictures) => {
+        await Promise.all(
+          pictures.map(async (picture) => {
+            const image = picture.querySelector('img');
+            const source = picture.querySelector('source');
+            if (!image || !source) throw new Error('Incomplete print picture');
+            const width = image.getBoundingClientRect().width;
+            if (width <= 0)
+              throw new Error('Print picture has no visible width');
+            const candidates = source.srcset.split(/,\s+/).map((candidate) => {
+              const match = /^(.*) (\d+)w$/.exec(candidate);
+              if (!match) throw new Error('Unrecognized print picture source');
+              return { url: match[1]!, width: Number(match[2]) };
+            });
+            const target = candidates.find(
+              (candidate) => candidate.width >= width * 2,
+            );
+            if (!target) throw new Error('No 2x print picture source');
+            source.srcset = `${target.url} ${target.width}w`;
+            await new Promise<void>((resolve) =>
+              requestAnimationFrame(() => resolve()),
+            );
+            await image.decode();
+            if (
+              image.currentSrc !== new URL(target.url, document.baseURI).href
+            ) {
+              throw new Error(
+                'Print picture did not select the requested source',
+              );
+            }
+          }),
+        );
+        return pictures.length;
+      });
+    expect(pinnedPictures).toBe(protocol.stages.length);
     // Re-settle after the resize: a narrower column re-wraps headings and can
     // change how many rows a table needs, and capturing mid-reflow would bake
     // a transient layout into the baseline.
@@ -229,12 +270,12 @@ test(
     await architectPage.clock.setFixedTime(FIXED_CLOCK);
     await architectPage.goto('/protocol/codebook');
 
-    // Codebook.tsx renders each node type's protocol-defined `name` as an h2
-    // (EntityType.tsx); the fixture's only node type is `person`.
+    // EntityType renders the protocol-defined name and entity kind as the
+    // shared Section heading beneath Codebook's "Node Types" h2.
     await expect(
       architectPage.getByRole('heading', {
-        level: 2,
-        name: 'person',
+        level: 3,
+        name: 'person node type',
         exact: true,
       }),
     ).toBeVisible();
@@ -373,10 +414,32 @@ test('lands keyboard focus on the destination heading of a Used In link', async 
   expect(focused.isRouteTarget).toBe(true);
   expect(focused.text).toBe(destination?.trim());
 
+  // …and the next Tab continues INTO the editor rather than restarting at the
+  // app header: the first thing after the heading is the editor's own section
+  // outline, which is what a reader arriving here is offered first.
   await architectPage.keyboard.press('Tab');
   await expect(
-    architectPage.getByRole('textbox', { name: 'Stage name' }),
+    architectPage
+      .getByRole('navigation', { name: 'Stage sections' })
+      .getByRole('button')
+      .first(),
   ).toBeFocused();
+
+  // And the whole list comes before the editor, asserted as document order
+  // rather than by counting Tab presses — which would be a claim about how
+  // many controls the list happens to hold.
+  expect(
+    await architectPage.evaluate(() => {
+      const list = document.querySelector('nav[aria-label="Stage sections"]');
+      const name = document.querySelector('[data-field-name="label"]');
+      if (list === null || name === null) return 'one of them is missing';
+      return (list.compareDocumentPosition(name) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0
+        ? 'list first'
+        : 'title first';
+    }),
+  ).toBe('list first');
 });
 
 // #1392: a valid but very long variable name broke the delete confirmation.
@@ -455,3 +518,39 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
     stored.codebook.node?.person?.variables?.['long-name-variable'],
   ).toBeUndefined();
 });
+
+for (const attributeType of ['Categorical', 'Ordinal']) {
+  test(`brings a new ${attributeType.toLowerCase()} attribute's values into view below its type`, async ({
+    architectPage,
+    seed,
+  }) => {
+    const { protocol, assets } = loadAllInterfacesFixture();
+    await seed(protocol, { name: 'All Interfaces', assets });
+    await architectPage.goto('/protocol/codebook');
+
+    await architectPage
+      .getByRole('button', { name: 'Add attribute' })
+      .first()
+      .click();
+    const dialog = architectPage.getByRole('dialog', {
+      name: 'Create New Attribute',
+    });
+    await dialog
+      .getByRole('textbox', { name: 'Attribute name' })
+      .fill('closeness');
+    const type = dialog.getByRole('combobox', { name: 'Attribute type' });
+    await type.click();
+    await architectPage
+      .getByRole('option', { name: attributeType, exact: true })
+      .click();
+
+    await expect(
+      dialog.getByRole('heading', { name: 'Allowed values' }),
+    ).toBeInViewport();
+    await expect(
+      dialog.getByRole('button', { name: 'Create new option' }),
+    ).toBeInViewport();
+    await expect(type).toBeInViewport();
+    await expect(type).toBeFocused();
+  });
+}

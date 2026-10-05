@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import developmentProtocol from '@codaco/protocols/development';
+
 import { loadBundledSampleProtocol } from '../bundledProtocols';
 import { importBundledProtocol } from '../importProtocol';
 
@@ -12,6 +14,44 @@ const saveProtocol = vi.fn(async (..._args: unknown[]) => ({}) as never);
 vi.mock('../../db/api', () => ({
   saveProtocol: (...args: unknown[]) => saveProtocol(...args),
 }));
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const developmentProtocolWithRawColors = (): unknown => {
+  const document: unknown = structuredClone(developmentProtocol);
+  if (!isRecord(document)) {
+    throw new Error('Development protocol fixture has no stages');
+  }
+  const stages = document.stages;
+  if (!Array.isArray(stages)) {
+    throw new Error('Development protocol fixture has no stages');
+  }
+
+  const findStage = (type: string): UnknownRecord => {
+    const stage = stages.find(
+      (candidate) => isRecord(candidate) && candidate.type === type,
+    );
+    if (!isRecord(stage)) throw new Error(`Missing ${type} fixture stage`);
+    return stage;
+  };
+
+  const narrative = findStage('NarrativePedigree');
+  if (!Array.isArray(narrative.diseases) || !isRecord(narrative.diseases[0])) {
+    throw new Error('Narrative Pedigree fixture has no disease');
+  }
+  narrative.diseases[0].color = '#cc0000';
+
+  const geospatial = findStage('Geospatial');
+  if (!isRecord(geospatial.mapOptions)) {
+    throw new Error('Geospatial fixture has no map options');
+  }
+  geospatial.mapOptions.color = '#3399ff';
+
+  return document;
+};
 
 describe('bundled sample protocol', () => {
   beforeEach(() => {
@@ -85,6 +125,24 @@ describe('bundled sample protocol', () => {
         ]),
       );
     }
+    expect(saveProtocol).not.toHaveBeenCalled();
+  });
+
+  it('rejects raw colors in a current-version protocol', async () => {
+    const result = await importBundledProtocol({
+      name: 'Invalid Development Protocol',
+      assets: [],
+      document: developmentProtocolWithRawColors(),
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('Expected raw protocol colors to fail validation');
+    }
+    expect(result.error).toBe('validation-failed');
+    expect(
+      result.issues?.filter((issue) => issue.path.endsWith('.color')),
+    ).toHaveLength(2);
     expect(saveProtocol).not.toHaveBeenCalled();
   });
 });

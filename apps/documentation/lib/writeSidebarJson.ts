@@ -95,7 +95,7 @@ function generateSidebarData() {
 
     // If there's no locale, or the locale isn't included in the type, ignore it.
     if (!(locale && locales.includes(locale as Locale))) {
-      // biome-ignore lint/suspicious/noConsole: Logging missing locale
+      // oxlint-disable-next-line no-console -- Logging missing locale
       console.warn(
         `File ${file.name} is missing a locale or has a locale not defined in Locale. Locale is ${locale}. Skipping.`,
       );
@@ -103,7 +103,6 @@ function generateSidebarData() {
     }
 
     // Create a key based on the filename without the locale or extension
-    // biome-ignore lint/style/noNonNullAssertion: structure is known
     const key = file.name.split('.')[0]!;
 
     const nestedPath = getNestedPath(parentPath);

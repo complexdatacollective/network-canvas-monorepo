@@ -17,8 +17,8 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import {
   getLeavePersistence,
@@ -27,8 +27,8 @@ import {
 } from '../useProtocolNavGuard';
 
 // Intercepts the fresco dialog request so the test can read the config shown to
-// the user and auto-confirm it. Records every dispatched action (resetDraft is a
-// thunk, i.e. a function, so we can detect it by type).
+// the user and auto-confirm it. Records every dispatched action; the download
+// thunk is the only function among them, so it is detected by type.
 const setup = (
   dialogAction:
     | 'leave'
@@ -76,7 +76,7 @@ describe('promptLeaveEditor', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses a separate discard dialog and resets a dirty stage draft when returning to the start screen', async () => {
+  it('uses a separate discard dialog for a dirty stage draft when returning to the start screen', async () => {
     const { dispatch, dispatched, openDialog, getCaptured } =
       setup('discard-and-leave');
     const performLeave = vi.fn();
@@ -89,27 +89,32 @@ describe('promptLeaveEditor', () => {
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('warning');
     expect(captured.size).toBe('readable');
-    expect(captured.title).toBe('Discard unsaved changes?');
-    expect(captured.description).not.toMatch(/saved automatically/i);
-    expect(captured.description).toMatch(
+    expect(renderQueuedMessage(captured.title)).toBe(
+      'Discard unsaved changes?',
+    );
+    expect(renderQueuedMessage(captured.description)).not.toMatch(
+      /saved automatically/i,
+    );
+    expect(renderQueuedMessage(captured.description)).toMatch(
       /have not been saved to the protocol/i,
     );
-    expect(captured.description).toMatch(/last saved version/i);
-    expect(captured.actions.primary).toEqual({
+    expect(renderQueuedMessage(captured.description)).toMatch(
+      /last saved version/i,
+    );
+    expect({
+      ...captured.actions.primary,
+      label: renderQueuedMessage(captured.actions.primary.label),
+    }).toEqual({
       label: 'Discard Changes and Return',
       value: 'discard-and-leave',
     });
     expect(captured.actions.secondary).toBeUndefined();
 
-    // resetDraft is a thunk, so a function is dispatched to clear the draft.
-    expect(dispatched.some((action) => typeof action === 'function')).toBe(
-      true,
-    );
     expect(dispatched).toContainEqual(clearActiveProtocol());
     expect(performLeave).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the reassuring copy and does NOT reset the draft when the editor is pristine', async () => {
+  it('keeps the reassuring copy when the editor is pristine', async () => {
     const { dispatch, dispatched, openDialog, getCaptured } = setup();
     const performLeave = vi.fn();
 
@@ -120,11 +125,15 @@ describe('promptLeaveEditor', () => {
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('default');
     expect(captured.size).toBe('readable');
-    expect(captured.description).toMatch(/saved automatically/i);
-    expect(captured.description).toMatch(/on this device/i);
-    expect(captured.description).not.toMatch(/browser/i);
+    expect(renderQueuedMessage(captured.description)).toMatch(
+      /saved automatically/i,
+    );
+    expect(renderQueuedMessage(captured.description)).toMatch(
+      /on this device/i,
+    );
+    expect(renderQueuedMessage(captured.description)).not.toMatch(/browser/i);
 
-    // No draft-reset thunk for a pristine editor.
+    // Nothing is downloaded, so no thunk is dispatched.
     expect(dispatched.some((action) => typeof action === 'function')).toBe(
       false,
     );
@@ -142,7 +151,10 @@ describe('promptLeaveEditor', () => {
     const captured = getCaptured();
     expect(captured?.type).toBe('choice');
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
-    expect(captured.actions.secondary).toEqual({
+    expect({
+      ...captured.actions.secondary,
+      label: renderQueuedMessage(captured.actions.secondary?.label),
+    }).toEqual({
       label: 'Return and download now',
       value: 'download-and-leave',
     });
@@ -165,7 +177,13 @@ describe('promptLeaveEditor', () => {
     expect(dispatched).not.toContainEqual(clearActiveProtocol());
     expect(performLeave).not.toHaveBeenCalled();
     expect(getCapturedDialogs()).toHaveLength(2);
-    expect(getCapturedDialogs()[1]).toMatchObject({
+    const failure = getCapturedDialogs()[1];
+    expect(failure).toBeDefined();
+    expect({
+      ...failure,
+      title: renderQueuedMessage(failure?.title),
+      description: renderQueuedMessage(failure?.description),
+    }).toMatchObject({
       type: 'acknowledge',
       intent: 'destructive',
       title: 'Your protocol could not be downloaded',
@@ -189,9 +207,15 @@ describe('promptLeaveEditor', () => {
 
     const captured = getCaptured();
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
-    expect(captured.description).not.toMatch(/saved automatically/i);
-    expect(captured.description).toMatch(/open in another tab/i);
-    expect(captured.description).toMatch(/holds the saved copy/i);
+    expect(renderQueuedMessage(captured.description)).not.toMatch(
+      /saved automatically/i,
+    );
+    expect(renderQueuedMessage(captured.description)).toMatch(
+      /open in another tab/i,
+    );
+    expect(renderQueuedMessage(captured.description)).toMatch(
+      /holds the saved copy/i,
+    );
   });
 
   it('leads with downloading when nothing could be saved to this device', async () => {
@@ -208,13 +232,23 @@ describe('promptLeaveEditor', () => {
     const captured = getCaptured();
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('warning');
-    expect(captured.description).not.toMatch(/saved automatically/i);
-    expect(captured.description).toMatch(/could not be saved on this device/i);
-    expect(captured.actions.primary).toEqual({
+    expect(renderQueuedMessage(captured.description)).not.toMatch(
+      /saved automatically/i,
+    );
+    expect(renderQueuedMessage(captured.description)).toMatch(
+      /could not be saved on this device/i,
+    );
+    expect({
+      ...captured.actions.primary,
+      label: renderQueuedMessage(captured.actions.primary.label),
+    }).toEqual({
       label: 'Return and download now',
       value: 'download-and-leave',
     });
-    expect(captured.actions.secondary).toEqual({
+    expect({
+      ...captured.actions.secondary,
+      label: renderQueuedMessage(captured.actions.secondary?.label),
+    }).toEqual({
       label: 'Return to Start Screen',
       value: 'leave',
     });
@@ -228,11 +262,10 @@ describe('promptLeaveEditor', () => {
 
     await promptLeaveEditor(dispatch, openDialog, vi.fn(), false);
 
+    expect(getCapturedDialogs()).toHaveLength(2);
     for (const dialog of getCapturedDialogs()) {
-      const description =
-        'description' in dialog && typeof dialog.description === 'string'
-          ? dialog.description
-          : '';
+      const description = renderQueuedMessage(dialog.description);
+      expect(description.length).toBeGreaterThan(0);
       expect(description).not.toMatch(/at https?:\/\//);
       expect(description).not.toMatch(/"stack"/);
     }
@@ -246,7 +279,6 @@ describe('getLeavePersistence', () => {
         app,
         protocols,
         protocolValidation,
-        stageEditorDraft,
         activeProtocol: createTimeline(activeProtocol),
       }),
     });

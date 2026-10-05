@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import {
+  CategoricalColorSequence,
+  EdgeColorSequence,
+  NodeColorSequence,
+  OrdinalColorSequence,
+} from '../color-reference.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+} from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
 /**
@@ -1596,6 +1601,105 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       }
     });
 
+    /**
+     * A comparison value may be a fraction, because a scalar attribute records
+     * a normalised reading and a number attribute may hold any quantity.
+     *
+     * Whether an operand is one of the options its attribute authored is NOT
+     * asked here. Membership is an editor rule, not a load-time error (ruling
+     * on issue #1548): protocols already in the field hold rules naming an
+     * option that has since been renamed or deleted, and refusing to LOAD one
+     * locks the researcher out of the editor that could fix it. The protocol
+     * builder refuses a non-member operand as it is authored and reports one
+     * it finds in a stored rule; this validator checks shape only.
+     */
+    const ruleAgainst = (
+      attribute: string,
+      operator: string,
+      value: unknown,
+    ) => ({
+      ...baseValidProtocol,
+      stages: [
+        {
+          ...baseValidProtocol.stages[1],
+          filter: {
+            rules: [
+              {
+                id: 'rule1',
+                type: 'node',
+                options: { type: 'person', attribute, operator, value },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    it('accepts an operand that is one of the ordinal attribute’s options', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('strength', 'EXACTLY', 2),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts an INCLUDES operand the attribute no longer offers', () => {
+      // The case that rejected a deployed protocol when membership was a
+      // load-time error: `category` authors `friend` and `family`, and a
+      // stage in the field carries a skip-logic rule naming an option that is
+      // no longer among them. Loading it has to succeed so the builder can
+      // show the researcher the rule to fix — issue #1548.
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', 'retired'),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts a numeric INCLUDES operand no option of the attribute uses', () => {
+      // Verbatim shape of the rule CI refused: a number beside INCLUDES on an
+      // attribute whose options are strings.
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', 7),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts a list of the categorical attribute’s own options', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', ['friend', 'family']),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts a list holding an option the attribute no longer offers', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', ['friend', 'retired']),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts a fractional operand against an ordinal attribute', () => {
+      // Shape only: the options are whole numbers, and saying so is the
+      // editor's job rather than the loader's.
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('strength', 'EXACTLY', 0.5),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('keeps a fractional operand valid against a number attribute', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('age', 'EXACTLY', 2.5),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
     it('rejects nested filter rules with duplicate IDs', () => {
       const invalidProtocol = {
         ...baseValidProtocol,
@@ -2315,7 +2419,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             center: [-73.935242, 40.73061],
             initialZoom: 10,
             dataSourceAssetId: 'asset-geojson-456',
-            color: 'node-color-seq-1',
+            color: 'ord-color-seq-1',
             targetFeatureProperty: 'name',
             ...mapOptionsOverrides,
           },
@@ -2367,6 +2471,55 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       });
       const result = ProtocolSchemaV8.safeParse(protocol);
       expect(result.success).toBe(true);
+    });
+
+    it.each([
+      'node-color-seq-1',
+      'edge-color-seq-1',
+      'ord-color-seq-10',
+      'cat-color-seq-10',
+    ])('accepts Geospatial stage color reference %s', (color) => {
+      const protocol = createGeospatialProtocol({ color });
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(true);
+    });
+
+    it.each(['', '#3399ff', 'primary-color-seq-1', 'ord-color-seq-11'])(
+      'rejects Geospatial stage color %j',
+      (color) => {
+        const protocol = createGeospatialProtocol({ color });
+        const result = ProtocolSchemaV8.safeParse(protocol);
+        expect(result.success).toBe(false);
+      },
+    );
+
+    it('rejects an empty Geospatial color by naming every palette it could name', () => {
+      // The empty string is the interesting one: it is what an Architect field
+      // holds before anything is picked, so it reaches the schema looking like
+      // a value rather than an omission. `ColorReferenceSchema` is a union of
+      // the four palettes, and a union's own message is only "Invalid input" —
+      // what makes the failure actionable is the branch messages underneath,
+      // which spell out every colour the field will accept.
+      const result = ProtocolSchemaV8.safeParse(
+        createGeospatialProtocol({ color: '' }),
+      );
+      expect(result.success).toBe(false);
+      const issue = (result.success ? [] : result.error.issues).find(
+        (candidate) => candidate.path.join('.') === 'stages.0.mapOptions.color',
+      );
+      const quoted = (palette: readonly string[]) =>
+        `Invalid option: expected one of ${palette
+          .map((value) => `"${value}"`)
+          .join('|')}`;
+      expect(
+        issue?.code === 'invalid_union' &&
+          issue.errors.flat().map((nested) => nested.message),
+      ).toEqual([
+        quoted(NodeColorSequence),
+        quoted(EdgeColorSequence),
+        quoted(OrdinalColorSequence),
+        quoted(CategoricalColorSequence),
+      ]);
     });
 
     it('rejects Geospatial stage with invalid showTransit type', () => {

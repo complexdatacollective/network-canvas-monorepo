@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Interviewer Release Test'
+  short_description: 'Release smoke test of the deployed Interviewer PWA'
+  default_prompt: 'Use $interviewer-release-test to run the Interviewer release smoke test and report the verdict.'

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { removeLoadingScreen } from '../loadingScreen';
+import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
+
+import { announceLoadingScreen, removeLoadingScreen } from '../loadingScreen';
 
 function mountLoader(): HTMLElement {
   const el = document.createElement('div');
@@ -87,5 +89,41 @@ describe('removeLoadingScreen', () => {
       expect(loader.classList.contains('is-hidden')).toBe(false);
       expect(document.getElementById('app-loading')).toBeNull();
     });
+  });
+});
+
+describe('pre-React localized loading announcement', () => {
+  beforeEach(() => {
+    localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+  });
+  afterEach(() => {
+    localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+  });
+
+  function mountAnnouncement() {
+    const message = document.createElement('span');
+    message.id = 'app-loading__message';
+    message.textContent = 'Network Canvas Interviewer';
+    mountLoader().appendChild(message);
+    return message;
+  }
+
+  it('uses the persisted device language before asynchronous app startup', () => {
+    const message = mountAnnouncement();
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'es');
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
+    announceLoadingScreen();
+    expect(message.textContent).toBe('Cargando…');
+    expect(document.documentElement.lang).toBe('es');
+    expect(document.documentElement.dir).toBe('ltr');
+  });
+
+  it('ignores a malformed stored preference and negotiates the browser language', () => {
+    const message = mountAnnouncement();
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'invalid_locale');
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-MX']);
+    announceLoadingScreen();
+    expect(message.textContent).toBe('Cargando…');
+    expect(document.documentElement.lang).toBe('es');
   });
 });

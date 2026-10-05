@@ -1,19 +1,22 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
+import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
+import { createTenantDb } from '@codaco/studio-sync/tenant';
 
-import { createPool } from '../src/db/pool.ts';
+import { createOwnerPool, createPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
 import type { FieldChange, ProtocolChange } from '../src/protocol/diff.ts';
 import { addStage, removeStage } from '../src/protocol/draft-structure.ts';
 import { ProtocolStore } from '../src/protocol/store.ts';
-import { parseSectionId, sectionId } from '../src/protocol/taxonomy.ts';
+import { createSecretsCipher } from '../src/secrets/cipher.ts';
 import { applySchema } from './apply.ts';
+import { loadEnvFiles } from './load-env-files.ts';
 
 // Shows what a protocol looks like inside the store, because no RPC procedure
 // or screen reaches it yet. Verification belongs to src/protocol's suites, not
@@ -26,19 +29,6 @@ const { values } = parseArgs({
     force: { type: 'boolean', default: false },
   },
 });
-
-function loadEnvFiles(): void {
-  const file = (name: string) =>
-    fileURLToPath(new URL(`../${name}`, import.meta.url));
-  if (existsSync(file('.env'))) process.loadEnvFile(file('.env'));
-  const target = process.env.DATABASE_URL;
-  if (
-    (!target || isLocalDatabase(target)) &&
-    existsSync(file('.env.development'))
-  ) {
-    process.loadEnvFile(file('.env.development'));
-  }
-}
 
 const DEFAULT_PROTOCOL = '@codaco/protocols/sample';
 
@@ -132,6 +122,16 @@ if (!env.db) {
   process.exit(1);
 }
 
+// The store seals API-key protocol assets (#1900). `resolve()` already
+// requires a keyring wherever DATABASE_URL is set, so this is unreachable in
+// practice and is here to narrow the type rather than to guard a real case.
+if (!env.secrets) {
+  console.error(
+    'No secrets keyring is configured; set STUDIO_SECRETS_KEY or STUDIO_SECRETS_KEY_FILE.',
+  );
+  process.exit(1);
+}
+
 if (!isLocalDatabase(env.db.url) && !values.force) {
   console.error(
     'Refusing to write demo protocols to a non-local database. Pass --force to do it anyway.',
@@ -140,23 +140,29 @@ if (!isLocalDatabase(env.db.url) && !values.force) {
 }
 
 const url = new URL(env.db.url);
+const owner = createOwnerPool(env.db);
 const pool = createPool(env.db);
 
 try {
-  const schema = await checkSchema(pool);
+  const schema = await checkSchema(owner);
   if (schema.kind === 'stale') {
-    console.error(schemaProblemMessage(schema));
+    console.error(schemaProblemMessage(schema, 'development'));
     process.exit(1);
   }
   if (schema.kind === 'absent') {
-    await applySchema(pool);
+    await applySchema(owner);
   }
 
   console.log(
     `Protocol store — ${url.hostname}:${url.port || '5432'}${url.pathname}`,
   );
 
-  const store = new ProtocolStore(pool);
+  await pool.query(
+    `INSERT INTO teams (id, name, slug) VALUES ('demo-team', 'Demo', 'demo-team')
+     ON CONFLICT (id) DO NOTHING`,
+  );
+  const tenantDb = createTenantDb(pool, 'demo-team');
+  const store = new ProtocolStore(tenantDb, createSecretsCipher(env.secrets));
 
   // ── 1 ──────────────────────────────────────────────────────────────────
   step(1, 'The protocol document');
@@ -260,8 +266,8 @@ try {
 
   // Live section edits belong to the sync engine's lease path, which has no
   // client here, so the edit is made structurally instead.
-  await removeStage(pool, { draftId, stageId: stages.stageId });
-  const advanced = await addStage(pool, {
+  await removeStage(tenantDb, { draftId, stageId: stages.stageId });
+  const advanced = await addStage(tenantDb, {
     draftId,
     stage: edited,
     index: stages.index,
@@ -317,4 +323,5 @@ Inspect what was written:
 Published versions cannot be deleted, so db:reset is how you clear them.`);
 } finally {
   await pool.end();
+  await owner.end();
 }

@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod/mini';
 
 import InputField from '../fields/InputField';
 import Form from '../Form';
@@ -149,5 +151,120 @@ describe('Field aria-describedby', () => {
     const control = renderField({});
 
     expect(describedByIds(control)).toEqual([`${control.id}-error`]);
+  });
+});
+
+/**
+ * A hint that is a string is markdown; a hint that is a tree is already
+ * rendered.
+ *
+ * The two used to be told apart child by child, after React had flattened the
+ * tree — so a hint formatted from a message with a tag in it arrived as
+ * `['…see our ', <a>documentation</a>, '.']` and each string went through
+ * markdown on its own. Markdown trims a paragraph, so the space before the
+ * link disappeared and the researcher read "see ourdocumentation".
+ */
+describe('Field hint content', () => {
+  it('keeps the spacing around a link inside a hint', () => {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <Field
+          name="name"
+          label="Name"
+          component={InputField}
+          hint={[
+            'Read our ',
+            <a key="docs" href="/docs">
+              documentation
+            </a>,
+            '.',
+          ]}
+        />
+      </Form>,
+    );
+
+    const control = screen.getByRole('textbox', { name: 'Name' });
+    const hint = document.getElementById(`${control.id}-hint`);
+    expect(hint).not.toBeNull();
+    expect(hint?.textContent).toBe('Read our documentation.');
+  });
+
+  it('still renders a hint written as markdown', () => {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <Field
+          name="name"
+          label="Name"
+          component={InputField}
+          hint="As it appears on your **ID**"
+        />
+      </Form>,
+    );
+
+    const control = screen.getByRole('textbox', { name: 'Name' });
+    const hint = document.getElementById(`${control.id}-hint`);
+    expect(hint?.textContent).toBe('As it appears on your ID');
+    expect(hint?.querySelector('strong')?.textContent).toBe('ID');
+  });
+});
+
+/**
+ * A field's validation is MEMOISED, and the key it is memoised on is built by
+ * serialising the validation props. `JSON.stringify` drops a function-valued
+ * property entirely, so a rule rebuilt to judge something different serialises
+ * to the same key as the rule before it.
+ */
+describe('Field validation rebuilt with new rules', () => {
+  const refuse = (forbidden: string) => ({
+    schema: () =>
+      z.unknown().check(
+        z.superRefine((value, ctx) => {
+          if (value !== forbidden) return;
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message: `${forbidden} is not available.`,
+            path: [],
+          });
+        }),
+      ),
+  });
+
+  function NameForm({ forbidden }: { forbidden: string }) {
+    return (
+      <Form onSubmit={() => ({ success: true })}>
+        <Field
+          name="name"
+          label="Name"
+          component={InputField}
+          custom={refuse(forbidden)}
+        />
+      </Form>
+    );
+  }
+
+  it('runs the rule the field currently holds', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<NameForm forbidden="alpha" />);
+    const control = screen.getByRole('textbox', { name: 'Name' });
+
+    // Rebuilt to refuse something else. Nothing about the props' SHAPE has
+    // changed, which is all a serialised key can see.
+    rerender(<NameForm forbidden="bravo" />);
+
+    await user.type(control, 'bravo');
+    await user.tab();
+    expect(
+      await screen.findByText('bravo is not available.'),
+    ).toBeInTheDocument();
+
+    // And the value the rule it replaced refused is now accepted, so this is
+    // the new rule running rather than both of them.
+    await user.clear(control);
+    await user.type(control, 'alpha');
+    await user.tab();
+    await waitFor(() =>
+      expect(screen.queryByText(/is not available/)).not.toBeInTheDocument(),
+    );
   });
 });

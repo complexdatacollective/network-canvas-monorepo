@@ -7,8 +7,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { contentHash } from '../apply.ts';
 import { SyncClient } from '../client.ts';
-import { forceExpire, SyncServer } from '../server.ts';
-import { dbAvailable, makeDraft, makeServer } from './helpers.ts';
+import { SyncServer } from '../server.ts';
+import type { TenantDb } from '../tenant.ts';
+import {
+  dbAvailable,
+  expireLease,
+  makeDraft,
+  makeServer,
+  testSyncTransactionExecutor,
+} from './helpers.ts';
 
 /**
  * A server whose next getSection parks until released — the deterministic
@@ -40,14 +47,16 @@ class GatedServer extends SyncServer {
 
 describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   let db: Pool;
+  let dispose: () => Promise<void>;
+  let tenantDb: TenantDb;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, server } = await makeServer('sync_resume'));
+    ({ db, tenantDb, server, dispose } = await makeServer('sync_resume'));
   });
 
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
   it('retransmits unacknowledged batches idempotently after a lost ack', async () => {
     const draft = await makeDraft(server);
@@ -112,7 +121,7 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
     sleeper.edit('stage-1', [{ op: 'set', key: 'note', value: 'also mine' }]);
 
     // The laptop sleeps; the lease expires; a colleague takes over and edits.
-    await forceExpire(db, draft, 'stage-1');
+    await expireLease(tenantDb, draft, 'stage-1');
     const colleague = new SyncClient('tab-colleague', server, draft);
     expect(await colleague.openSection('stage-1')).toBe(true);
     colleague.edit('stage-1', [
@@ -152,7 +161,10 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   });
 
   it('reconnect discards a resume snapshot a concurrent push has overtaken', async () => {
-    const gated = new GatedServer(db);
+    const gated = new GatedServer(
+      tenantDb,
+      testSyncTransactionExecutor(tenantDb),
+    );
     const draft = await makeDraft(gated);
     const client = new SyncClient(randomUUID(), gated, draft);
     expect(await client.openSection('stage-1')).toBe(true);

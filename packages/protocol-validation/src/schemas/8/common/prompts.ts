@@ -1,8 +1,12 @@
 import { z } from 'zod';
 
+import { OrdinalColorReferenceSchema } from '../color-reference.ts';
+import { asExclusiveVariants } from '../declared-variants.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
+
+export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference.ts';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
@@ -97,6 +101,12 @@ const sociogramHighlightSchema = z
     ),
   );
 
+// Highlighting is on and names the attribute a tap writes, or it is off. A
+// value carrying the members of both is one this schema refuses, so an editor
+// writing part of one has to write the whole of it — see `asExclusiveVariants`,
+// which is how a walk of the schemas learns what the transform above hides.
+asExclusiveVariants(sociogramHighlightSchema);
+
 export const sociogramPromptSchema = promptSchema
   .extend({
     sortOrder: SortOrderSchema.optional(),
@@ -143,22 +153,6 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
   negativeLabel: z.string().min(1),
 });
 
-// The ten palette values the OrdinalBin interface maps to CSS colour
-// variables (see the interview's OrdinalBinItem). Any other string is
-// silently ignored by the runtime, so the schema only admits these.
-export const ordinalColorSequence = [
-  'ord-color-seq-1',
-  'ord-color-seq-2',
-  'ord-color-seq-3',
-  'ord-color-seq-4',
-  'ord-color-seq-5',
-  'ord-color-seq-6',
-  'ord-color-seq-7',
-  'ord-color-seq-8',
-  'ord-color-seq-9',
-  'ord-color-seq-10',
-] as const;
-
 export const ordinalBinPromptSchema = promptSchema.extend({
   variable: entityAttributeReference({
     subject: 'stageSubject',
@@ -166,7 +160,7 @@ export const ordinalBinPromptSchema = promptSchema.extend({
   }),
   bucketSortOrder: SortOrderSchema.optional(),
   binSortOrder: SortOrderSchema.optional(),
-  color: z.enum(ordinalColorSequence),
+  color: OrdinalColorReferenceSchema,
 });
 
 const categoricalBinPromptFields = {
@@ -259,6 +253,11 @@ export const categoricalBinPromptSchema = promptSchema
       ]),
     ),
   );
+
+// The ROW is the variant here: a bin prompt that offers an 'other' option
+// carries all three of the fields that describe it, and one that does not
+// carries none of them. Half of each is a prompt the schema refuses.
+asExclusiveVariants(categoricalBinPromptSchema);
 
 export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
   createEdge: entityTypeReference({ entity: 'edge' }),

@@ -8,24 +8,32 @@ import {
   textSizeVariants,
   wrapperPaddingVariants,
 } from '../../../styles/controlVariants';
-import { compose } from '../../../utils/cva';
+import { cva } from '../../../utils/cva';
 
 // Wrapper variants for select elements (shared by native and styled)
-export const selectWrapperVariants = compose(
-  textSizeVariants,
-  heightVariants,
-  controlVariants,
-  inputControlVariants,
-  inlineSpacingVariants,
-  wrapperPaddingVariants,
-  stateVariants,
-  interactiveStateVariants,
-);
+export const selectWrapperVariants = cva({
+  composes: [
+    textSizeVariants,
+    heightVariants,
+    controlVariants,
+    inputControlVariants,
+    inlineSpacingVariants,
+    wrapperPaddingVariants,
+    stateVariants,
+    interactiveStateVariants,
+  ],
+});
 
 export type SelectOption = {
   value: string | number;
   label: string;
   disabled?: boolean;
+  /**
+   * BCP 47 tag applied to the rendered `<option>` when its label is in a
+   * different language from the page — e.g. a locale autonym — so screen
+   * readers switch pronunciation per option.
+   */
+  lang?: string;
 };
 
 /**

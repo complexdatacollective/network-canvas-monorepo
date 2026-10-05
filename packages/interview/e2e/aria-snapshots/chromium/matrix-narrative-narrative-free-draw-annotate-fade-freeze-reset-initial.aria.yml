@@ -1,5 +1,5 @@
 - main:
-  - application "Sociogram Canvas":
+  - application "Placement area":
     - button "Alice"
     - button "Bob"
   - button "Drag to reposition"
@@ -16,6 +16,7 @@
       - button "Freeze annotations"
       - button "Reset annotations"
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

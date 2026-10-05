@@ -6,13 +6,14 @@
   - button "Recenter Map"
   - status:
     - heading "Select the test tract for this person." [level=4]
-  - button "Mohammad Crist"
+  - button "Nikita Crist"
   - button "Outside Selectable Areas" [disabled]
   - region "Map"
   - button "Toggle attribution"
   - link "Mapbox homepage":
     - /url: https://www.mapbox.com/
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

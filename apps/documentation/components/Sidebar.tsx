@@ -164,9 +164,16 @@ const SidebarFolder = ({
 
   const [isOpen, setIsOpen] = useState(memoizedIsOpen);
 
-  useEffect(() => {
+  // Re-sync the (otherwise freely toggleable) open state whenever the
+  // computed baseline changes — e.g. navigating to a page inside a
+  // different folder. Adjusted during render rather than in an effect so
+  // there is no extra paint where the folder is still shown in its old
+  // open/closed state.
+  const [prevMemoizedIsOpen, setPrevMemoizedIsOpen] = useState(memoizedIsOpen);
+  if (memoizedIsOpen !== prevMemoizedIsOpen) {
+    setPrevMemoizedIsOpen(memoizedIsOpen);
     setIsOpen(memoizedIsOpen);
-  }, [memoizedIsOpen]);
+  }
 
   return (
     <Collapsible
@@ -300,7 +307,6 @@ export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as Locale;
   const segments = pathname.split('/');
-  // biome-ignore lint/style/noNonNullAssertion: path structure is known
   const section = segments[2]! as Section;
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
@@ -310,7 +316,7 @@ export function Sidebar({ className }: { className?: string }) {
       .then((res) => res.json())
       .then((data) => setSidebarData(data as TSideBar))
       .catch((error) => {
-        // biome-ignore lint/suspicious/noConsole: Error logging for sidebar data loading failure
+        // oxlint-disable-next-line no-console -- Error logging for sidebar data loading failure
         console.error('Failed to load sidebar data:', error);
       });
   }, []);

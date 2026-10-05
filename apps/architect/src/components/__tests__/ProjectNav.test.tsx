@@ -24,7 +24,6 @@ const createTestStore = () =>
       activeProtocol: (
         state = { past: [], present: { name: 'Test' }, future: [] },
       ) => state,
-      stageEditorDraft: (state = { ui: { liveValues: null } }) => state,
     },
   });
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { INHERITANCE_PATTERNS } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  INHERITANCE_PATTERNS,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';

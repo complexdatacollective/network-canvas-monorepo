@@ -21,10 +21,7 @@ import {
 
 import type { Plugin } from 'vite';
 
-import {
-  type CurrentProtocol,
-  validateProtocol,
-} from '@codaco/protocol-validation';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 const PROTOCOL_SOURCE_ENDPOINT = '/__architect/protocol-source/save';
 const PROTOCOL_SOURCE_AUTHORING_HEADER =
@@ -401,6 +398,7 @@ export const saveProtocolSource = async (
     assertInside(protocolsRoot, protocolPath);
     assertInside(protocolsRoot, assetDir);
 
+    const { validateProtocol } = await import('@codaco/protocol-validation');
     const validationResult = await validateProtocol(request.protocol);
     if (!validationResult.success) {
       return {

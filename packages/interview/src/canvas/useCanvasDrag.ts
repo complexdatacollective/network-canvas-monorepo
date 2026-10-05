@@ -1,3 +1,5 @@
+'use client';
+
 import { clamp } from 'es-toolkit';
 import { type RefObject, useCallback, useRef, useState } from 'react';
 import type { StoreApi } from 'zustand';

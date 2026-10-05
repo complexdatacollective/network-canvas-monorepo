@@ -332,6 +332,76 @@ export function setValue(
   setValueWithOwnedContainers(obj, path, value);
 }
 
+const omitDictionaryKey = (
+  existing: object,
+  key: ObjectPathSegment,
+): Record<string, unknown> => {
+  const omitted = String(key);
+  const clone = createDictionary();
+
+  for (const existingKey of Object.keys(existing)) {
+    if (existingKey === omitted) continue;
+    writeOwnProperty(
+      clone,
+      existingKey,
+      readOwnProperty(existing, existingKey),
+    );
+  }
+
+  return clone;
+};
+
+const omitOwnPath = (container: unknown, segments: ObjectPath): unknown => {
+  const [segment, ...rest] = segments;
+  if (segment === undefined) return container;
+  if (container === null || typeof container !== 'object') return container;
+  if (!Object.hasOwn(container, segment)) return container;
+
+  if (rest.length > 0) {
+    const existing = readOwnProperty(container, segment);
+    const remaining = omitOwnPath(existing, rest);
+    if (remaining === existing) return container;
+
+    const clone = Array.isArray(container)
+      ? cloneArray(container)
+      : cloneDictionary(container);
+    writeOwnProperty(clone, segment, remaining);
+    return clone;
+  }
+
+  if (Array.isArray(container)) {
+    if (readOwnProperty(container, segment) === undefined) return container;
+
+    const clone = cloneArray(container);
+    writeOwnProperty(clone, segment, undefined);
+    return clone;
+  }
+
+  return omitDictionaryKey(container, segment);
+};
+
+/**
+ * A copy of `value` with whatever sits at `path` removed.
+ *
+ * Returns `value` ITSELF when the path names nothing it holds — an unsafe
+ * path, a primitive where the path expects a container, a key that is not
+ * there — so a caller can compare by identity to tell a real removal from a
+ * no-op. Nothing reachable from `value` is written to: every container along
+ * the path is copied, exactly as `setValue` copies the ones it traverses.
+ *
+ * A removal from a dictionary drops the key, so the value stops appearing in
+ * the object's own keys rather than lingering as an `undefined` that
+ * serialises into whatever is written from it. A removal from an ARRAY leaves
+ * the index in place holding `undefined`: the positions around it are ones
+ * other paths address by number, and closing the gap would renumber them.
+ */
+export function omitValue(value: unknown, path: string | ObjectPath): unknown {
+  const segments = resolveObjectPath(path);
+  if (!segments || segments.length === 0) return value;
+
+  return omitOwnPath(value, segments);
+}
+
 export function createObjectPathWriter(
   obj: Record<string, unknown>,
 ): (path: string | ObjectPath, value: unknown) => void {

@@ -5,7 +5,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { extractProtocol, validateProtocol } from '../dist/index.js';
+import {
+  extractProtocol,
+  missingAssetsError,
+  validateProtocol,
+} from '../dist/index.js';
 
 async function main() {
   const [, , filePath] = process.argv;
@@ -47,6 +51,13 @@ async function main() {
     if (absolutePath.endsWith('.netcanvas')) {
       const fileBuffer = fs.readFileSync(absolutePath);
       const result = await extractProtocol(fileBuffer);
+      // Extraction reports a manifest entry with no file rather than refusing,
+      // so that an authoring tool can open the protocol and let the researcher
+      // supply it. This command answers "is this file valid", and an archive
+      // missing one of its own resources is not.
+      if (result.missingAssets.length > 0) {
+        throw missingAssetsError(result.missingAssets);
+      }
       protocol = result.protocol;
     } else {
       // Read as JSON
@@ -60,7 +71,6 @@ async function main() {
       process.exit(0);
     } else {
       error('❌ Protocol validation failed:');
-      // biome-ignore lint/suspicious/noConsole: CLI script intentionally uses console for error output
       console.error(result.error.message);
       process.exit(1);
     }

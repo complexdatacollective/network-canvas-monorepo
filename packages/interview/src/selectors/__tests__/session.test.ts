@@ -101,6 +101,64 @@ describe('resolveNodeShape', () => {
     expect(resolveNodeShape(shape, { role: 'lead' })).toBe('diamond');
   });
 
+  /**
+   * The breakpoints branch, which the Architect editor writes and nothing here
+   * covered. Thresholds are inclusive lower bounds scanned from the top, so n
+   * of them describe n+1 bands — which is why the schema caps them at two.
+   */
+  describe('breakpoints', () => {
+    type Thresholds = Extract<
+      NonNullable<NodeDefinition['shape']['dynamic']>,
+      { type: 'breakpoints' }
+    >['thresholds'];
+
+    const shape = (thresholds: Thresholds): NodeDefinition['shape'] => ({
+      default: 'circle',
+      dynamic: {
+        variable: asEntityAttributeReference('age'),
+        type: 'breakpoints',
+        thresholds,
+      },
+    });
+
+    it('treats a threshold as an inclusive lower bound', () => {
+      const definition = shape([{ value: 18, shape: 'square' }]);
+
+      expect(resolveNodeShape(definition, { age: 18 })).toBe('square');
+      expect(resolveNodeShape(definition, { age: 19 })).toBe('square');
+    });
+
+    it('falls back to the default below the lowest threshold', () => {
+      const definition = shape([{ value: 18, shape: 'square' }]);
+
+      expect(resolveNodeShape(definition, { age: 17 })).toBe('circle');
+    });
+
+    it('gives two thresholds three bands', () => {
+      const definition = shape([
+        { value: 18, shape: 'square' },
+        { value: 65, shape: 'diamond' },
+      ]);
+
+      expect(resolveNodeShape(definition, { age: 0 })).toBe('circle');
+      expect(resolveNodeShape(definition, { age: 18 })).toBe('square');
+      expect(resolveNodeShape(definition, { age: 64 })).toBe('square');
+      expect(resolveNodeShape(definition, { age: 65 })).toBe('diamond');
+      expect(resolveNodeShape(definition, { age: 120 })).toBe('diamond');
+    });
+
+    it('falls back to the default for an answer that is not a number', () => {
+      const definition = shape([{ value: 18, shape: 'square' }]);
+
+      // Including the string form of a number the threshold would otherwise
+      // meet: the comparison is numeric, and a coerced string would make a
+      // text answer silently change a node's shape.
+      expect(resolveNodeShape(definition, { age: '20' })).toBe('circle');
+      expect(resolveNodeShape(definition, { age: null })).toBe('circle');
+      expect(resolveNodeShape(definition, {})).toBe('circle');
+    });
+  });
+
   it('maps a true boolean attribute and falls back for other values', () => {
     const shape: NodeDefinition['shape'] = {
       default: 'square',

@@ -21,7 +21,11 @@ const Variable = ({ id }: VariableProps) => {
 
   return (
     <DualLink to={`#variable-${id}`}>
-      <VariablePill label={name} type={meta.type as VariableType} />
+      <VariablePill
+        className="max-w-[7cm]"
+        label={name}
+        type={meta.type as VariableType}
+      />
     </DualLink>
   );
 };

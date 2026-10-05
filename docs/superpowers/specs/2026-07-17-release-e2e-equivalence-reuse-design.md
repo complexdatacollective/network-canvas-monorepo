@@ -33,7 +33,7 @@ the most visible instance, but any merge triggers it.
 
 The refresh itself cannot simply be skipped:
 
-- The merge-queue fast path in `scripts/release-e2e-policy.mjs`
+- The merge-queue fast path in `scripts/ci/release-e2e-policy.mjs`
   (`alreadyValidatedSuites`) only skips queue-time E2E when the queue's merge
   commit tree is **byte-identical** to a branch tip that passed a native
   `pull_request` run. Stale branches would push the full E2E cost into the
@@ -60,7 +60,7 @@ The refresh itself cannot simply be skipped:
 ## Design
 
 The decision lives in the `e2e-policy` job /
-`scripts/release-e2e-policy.mjs`: a suite whose outcome provably cannot have
+`scripts/ci/release-e2e-policy.mjs`: a suite whose outcome provably cannot have
 changed since a trusted successful run on any generated release branch is
 skipped, and the `quality` aggregate accepts that through the existing "policy
 says not required" path. Ordinary PRs are unaffected — they still never inherit
@@ -147,7 +147,7 @@ extra changes are irrelevant to S now also skips; anything relevant runs.
 
 ## Testing
 
-Extend `scripts/release-e2e-policy.test.mjs`:
+Extend `scripts/ci/release-e2e-policy.test.mjs`:
 
 - Relevance closures derived from the real package.json workspace graph (the
   existing anti-drift pattern), including dev-dependency and
@@ -161,7 +161,7 @@ Extend `scripts/release-e2e-policy.test.mjs`:
 - Chained refreshes: skipped-suite runs are walked past to the older native
   success and the diff is taken from there.
 
-`scripts/ci-workflow.test.mjs` asserts the workflow wiring (envs passed to
+`scripts/ci/ci-workflow.test.mjs` asserts the workflow wiring (envs passed to
 the policy step for head SHA / head repo, fetch strategy) where practical.
 
 ## Documentation

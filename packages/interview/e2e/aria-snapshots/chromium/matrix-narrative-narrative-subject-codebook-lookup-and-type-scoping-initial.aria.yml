@@ -1,5 +1,5 @@
 - main:
-  - application "Sociogram Canvas":
+  - application "Placement area":
     - img
     - button "Alice"
   - button "Drag to reposition"
@@ -20,6 +20,7 @@
       - button "Next preset" [disabled]
   - status
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

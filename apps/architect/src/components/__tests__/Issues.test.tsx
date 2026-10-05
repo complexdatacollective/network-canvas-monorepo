@@ -1,13 +1,71 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { configureStore } from '@reduxjs/toolkit';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { useContext, type ReactNode } from 'react';
+import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 
 import ArchitectField from '../Form/ArchitectField';
 import IssueAnchor from '../IssueAnchor';
 import { useIssuesToolbarControl } from '../Issues';
-import { renderStageForm } from '../StageEditor/__tests__/stageFormTestHarness';
+
+type FormStoreApi = NonNullable<React.ContextType<typeof FormStoreContext>>;
+
+/**
+ * The panel over a bare form store.
+ *
+ * The stage editor's form is the protocol-builder package's now, and what this
+ * panel reads of it is only what any Fresco form has: the field errors, and
+ * whether a submission has been refused. `requestErrorFocus` is how a form
+ * records the second — `useForm` ticks it for a submit its own validation
+ * blocked and for one the host answered with errors — so a test drives it the
+ * same way rather than through a stage editor.
+ */
+const renderStageForm = ({ children }: { children: ReactNode }) => {
+  const store = configureStore({ reducer: () => ({}) });
+  let storeApi: FormStoreApi | null = null;
+
+  const Probe = () => {
+    storeApi = useContext(FormStoreContext) ?? null;
+    return null;
+  };
+
+  const view = render(
+    <Provider store={store}>
+      <FormStoreProvider>
+        <Probe />
+        {children}
+      </FormStoreProvider>
+    </Provider>,
+  );
+
+  const getStoreApi = () => {
+    if (!storeApi) throw new Error('the form store was not captured');
+    return storeApi;
+  };
+
+  return {
+    ...view,
+    getStoreApi,
+    reportRefusedSubmit: () => {
+      getStoreApi().getState().requestErrorFocus();
+    },
+  };
+};
 
 vi.mock('../../utils/scrollTo', () => ({ default: vi.fn() }));
 const scrollTo = vi.mocked((await import('../../utils/scrollTo')).default);
@@ -18,8 +76,23 @@ const fieldErrors = {
   'baz[0].beep': ['boop'],
 };
 
-function IssuesHarness() {
-  const { control } = useIssuesToolbarControl();
+const NO_STAGE_PROBLEMS: readonly string[] = Object.freeze([]);
+
+/** The stage-level refusals the editor publishes, over a standing-in store. */
+const problemsStore = (
+  problems: readonly string[] = NO_STAGE_PROBLEMS,
+): StageProblemsStore => ({
+  subscribe: () => () => undefined,
+  getSnapshot: () => problems,
+  getServerSnapshot: () => problems,
+});
+
+function IssuesHarness({
+  problems = NO_STAGE_PROBLEMS,
+}: {
+  problems?: readonly string[];
+}) {
+  const { control } = useIssuesToolbarControl(problemsStore(problems));
   return control ? (
     <SegmentedToolbar aria-label="Stage editor actions">
       {control}
@@ -39,7 +112,7 @@ describe('<Issues />', () => {
 
     act(() => {
       view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
 
     // Popover content lives in a portal mounted to document.body, and opens
@@ -47,12 +120,56 @@ describe('<Issues />', () => {
     expect(await screen.findAllByTestId('issue')).toHaveLength(3);
   });
 
+  /**
+   * A refusal about no field at all. This panel is the only place in Architect
+   * one can be read: no control shows it and no section lists it. Dropped, the
+   * researcher met a Save button that did nothing.
+   */
+  it('lists a stage refusal that belongs to no field', async () => {
+    const view = renderStageForm({
+      children: (
+        <IssuesHarness
+          problems={['A setting this editor does not show has no value.']}
+        />
+      ),
+    });
+
+    act(() => {
+      view.reportRefusedSubmit();
+    });
+
+    const rows = await screen.findAllByTestId('issue');
+    expect(rows).toHaveLength(1);
+    // Its sentence and nothing else: the usual frame names a field.
+    expect(rows[0]).toHaveTextContent(
+      'A setting this editor does not show has no value.',
+    );
+    // And nowhere to send anybody, so it is not a link or a button.
+    expect(within(rows[0] as HTMLElement).queryByRole('link')).toBeNull();
+    expect(within(rows[0] as HTMLElement).queryByRole('button')).toBeNull();
+  });
+
+  /** Counted with the field errors, because a refused save is one event. */
+  it('counts stage refusals alongside the field errors', async () => {
+    const view = renderStageForm({
+      children: <IssuesHarness problems={['Something else is wrong.']} />,
+    });
+
+    act(() => {
+      view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
+      view.reportRefusedSubmit();
+    });
+
+    expect(await screen.findAllByTestId('issue')).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Issues (4)' })).toBeVisible();
+  });
+
   it('uses the semantic warning colour and unpadded popover surface', () => {
     const view = renderStageForm({ children: <IssuesHarness /> });
 
     act(() => {
       view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
 
     expect(screen.getByRole('button', { name: 'Issues (3)' })).toHaveClass(
@@ -97,7 +214,7 @@ describe('<Issues />', () => {
         });
 
       setErrors();
-      act(() => view.getContext().markSubmitFailed());
+      act(() => view.reportRefusedSubmit());
       await screen.findAllByTestId('issue');
 
       // Deliberately NO second `setErrors()` here. Base UI mounts the
@@ -193,6 +310,114 @@ describe('<Issues />', () => {
 });
 
 /**
+ * A field the way the stage editor actually renders one.
+ *
+ * Every field in the stage editor comes from `@codaco/protocol-builder`, which
+ * builds on fresco-ui's `Field` and renders none of Architect's own
+ * `IssueAnchor`s. A LIST is the shape that broke: the control fresco-ui names
+ * is the list as a whole, and the only thing inside it a person can operate is
+ * an add button that is named by its own words rather than by the field's
+ * label. Stood in for here rather than mounting the real `ArrayField`, which
+ * needs a dialog host and an announcer of its own; what the panel reads — a
+ * labelled `Field` container whose operable control carries no
+ * `aria-labelledby` — is the same either way.
+ */
+function ListControl(_props: Record<string, unknown>) {
+  return (
+    <div>
+      <p>No items have been created yet.</p>
+      <button type="button">Create new prompt</button>
+    </div>
+  );
+}
+
+describe('a field the stage editor renders itself', () => {
+  const FIELD = 'prompts';
+  const MESSAGE = 'Create at least one prompt.';
+
+  const renderListIssue = async () => {
+    const view = renderStageForm({
+      children: (
+        <>
+          <Field<typeof ListControl>
+            name={FIELD}
+            label="Prompts"
+            component={ListControl}
+          />
+          <IssuesHarness />
+        </>
+      ),
+    });
+
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({ formErrors: [], fieldErrors: { [FIELD]: [MESSAGE] } });
+      view.reportRefusedSubmit();
+    });
+    await screen.findAllByTestId('issue');
+    return view;
+  };
+
+  const row = () => screen.getAllByTestId('issue')[0]!;
+
+  it('names the field the way the researcher does, not by its store key', async () => {
+    // Before this, the panel could only name a field by reading a `data-name`
+    // off an `IssueAnchor`, or an `aria-labelledby` off the control. A list
+    // has neither, so every row in the stage editor read out the store's
+    // internal path: "prompts", "quickAdd", "subject".
+    await renderListIssue();
+
+    expect(row()).toHaveTextContent(`Prompts - ${MESSAGE}`);
+    expect(row().textContent).not.toContain(FIELD);
+  });
+
+  it('links to an element that is actually on the page', async () => {
+    // The row's `href` was composed as `#field_prompts` — an id only
+    // `IssueAnchor` ever renders, and nothing in the stage editor does. It was
+    // announced as a link, offered to open in a new tab, and went nowhere.
+    await renderListIssue();
+
+    const href = row().querySelector('a')?.getAttribute('href');
+    expect(href).toBeDefined();
+    expect(document.querySelector(href!)).not.toBeNull();
+  });
+
+  it('sends the researcher to the field when the row is taken', async () => {
+    scrollTo.mockClear();
+    await renderListIssue();
+
+    act(() => {
+      row().querySelector('a')!.click();
+    });
+
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+  });
+
+  it('is not a link at all when the field is nowhere on the page', async () => {
+    // A field inside a section that is not mounted cannot be navigated to. The
+    // row still has to say what is wrong — it is the only account the
+    // researcher gets of a refused save — but offering it as a link is a
+    // promise nothing can keep.
+    const view = renderStageForm({ children: <IssuesHarness /> });
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({ formErrors: [], fieldErrors: { [FIELD]: [MESSAGE] } });
+      view.reportRefusedSubmit();
+    });
+    await screen.findAllByTestId('issue');
+
+    expect(row()).toHaveTextContent(MESSAGE);
+    expect(row().querySelector('a')).toBeNull();
+  });
+});
+
+/**
  * An issue row is a promise to take the researcher to the thing they have to
  * correct. Before this it only scrolled: the scroll target is an `sr-only`
  * anchor with no control in it, so Base UI's popover handed focus straight
@@ -237,7 +462,7 @@ describe('<Issues /> focus', () => {
             [TEXT]: ['This field is required.'],
           },
         });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
     await screen.findAllByTestId('issue');
     return view;
@@ -323,7 +548,7 @@ describe('<Issues /> focus', () => {
         .getStoreApi()
         .getState()
         .setErrors({ formErrors: [], fieldErrors: { prompts: ['Required'] } });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
     await screen.findAllByTestId('issue');
     scrollTo.mockClear();

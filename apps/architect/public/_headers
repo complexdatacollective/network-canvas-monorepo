@@ -14,28 +14,38 @@
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 
+# Stable PWA entry points must not be stored by the browser or an intermediary.
+# The /* rule also covers SPA deep-link requests that Netlify rewrites to
+# index.html. Netlify's more-specific /assets/* rule below replaces only its
+# Cache-Control value, so content-hashed assets remain immutable.
+/
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /sw.js
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /index.html
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/preview/
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /preview/index.html
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /manifest.webmanifest
-  Cache-Control: public, max-age=0, must-revalidate
-# PWA icons are not content-hashed, so revalidate them rather than letting a
-# renamed-in-place icon serve stale after a release.
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+# PWA icons are not content-hashed, so never store a renamed-in-place icon.
 /favicon.ico
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /apple-touch-icon-180x180.png
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /pwa-64x64.png
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /pwa-192x192.png
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /pwa-512x512.png
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /maskable-icon-512x512.png
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/architect-icon.png
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

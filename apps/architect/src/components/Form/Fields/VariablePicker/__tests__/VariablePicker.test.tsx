@@ -1,6 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useContext, type ContextType, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -18,27 +25,49 @@ vi.mock('../VariableSpotlight', () => ({
   default: ({
     open,
     onSelect,
-    onCancel,
+    onOpenChange,
     onCreateOption,
+    shouldPropagateBlur,
   }: {
     open: boolean;
     onSelect: (value: string) => void;
-    onCancel: () => void;
+    onOpenChange: (open: boolean) => void;
     onCreateOption: (value: string) => void;
+    shouldPropagateBlur?: () => boolean;
   }) =>
-    open ? (
-      <div role="dialog" aria-label="Attribute library">
-        <button type="button" onClick={() => onSelect('age')}>
-          Choose age
-        </button>
-        <button type="button" onClick={() => onCreateOption('height')}>
-          Create new attribute called height
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancel selection
-        </button>
-      </div>
-    ) : null,
+    open
+      ? createPortal(
+          <div
+            role="dialog"
+            aria-label="Attribute library"
+            data-variable-spotlight=""
+            onBlur={(event) => {
+              if (!shouldPropagateBlur?.()) event.stopPropagation();
+            }}
+          >
+            <button
+              autoFocus
+              type="button"
+              onClick={(event) => {
+                onSelect('age');
+                // The real Base UI popup emits a final focusout as it unmounts.
+                // Keep the mock mounted until this handler returns so jsdom can
+                // exercise the same answered-selection boundary.
+                event.currentTarget.blur();
+              }}
+            >
+              Choose age
+            </button>
+            <button type="button" onClick={() => onCreateOption('height')}>
+              Create new attribute called height
+            </button>
+            <button type="button" onClick={() => onOpenChange(false)}>
+              Cancel selection
+            </button>
+          </div>,
+          document.body,
+        )
+      : null,
 }));
 
 import ArchitectField from '../../../ArchitectField';
@@ -130,6 +159,22 @@ describe('VariablePicker', () => {
     ).toBeInTheDocument();
   });
 
+  it('applies a caller class name to the picker root', () => {
+    const { container } = renderPicker(
+      <ArchitectField
+        name="variable"
+        label="Attribute"
+        component={VariablePicker}
+        className="@min-lg:w-[50cqw]"
+        options={options}
+      />,
+    );
+
+    expect(container.querySelector('[data-name="variable"]')).toHaveClass(
+      '@min-lg:w-[50cqw]',
+    );
+  });
+
   it('renders label, hint and errors through the BaseField slots only', async () => {
     const { container } = renderPicker(
       <ArchitectField
@@ -186,6 +231,70 @@ describe('VariablePicker', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('does not validate the field while focus moves into its portalled spotlight', async () => {
+    const { getValue } = setup();
+    if (!storeApi) throw new Error('form store was not captured');
+
+    // Mirrors a newly-added array row: the owning field is dirty
+    // before its picker opens, but the researcher has not left that field.
+    act(() => {
+      storeApi?.getState().setFieldValue('variable', '');
+    });
+
+    const selectAttribute = screen.getByRole('button', {
+      name: 'Select attribute',
+    });
+    selectAttribute.focus();
+    fireEvent.click(selectAttribute);
+    // Base UI can move focus through its guards while opening a nested modal,
+    // in which case the browser reports no related target for this blur. The
+    // picker's open state still makes it part of the same field interaction.
+    fireEvent.blur(selectAttribute, { relatedTarget: null });
+
+    const chooseAge = screen.getByRole('button', { name: 'Choose age' });
+    await waitFor(() => expect(chooseAge).toHaveFocus());
+    expect(screen.queryByTestId('variable-field-error')).toBeNull();
+
+    // The same interaction still commits the option and closes the picker on
+    // its first click.
+    fireEvent.click(chooseAge);
+    expect(getValue()).toBe('age');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(storeApi.getState().getFieldState('variable')?.meta.isBlurred).toBe(
+      true,
+    );
+  });
+
+  it('does not blur an owning array while a nested row is still incomplete', async () => {
+    const onArrayBlur = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <div
+        data-field-name="additionalAttributes"
+        data-field-path="additionalAttributes"
+        onBlur={onArrayBlur}
+      >
+        <div data-field-name="additionalAttributes[0].variable">
+          <VariablePicker
+            name="additionalAttributes[0].variable"
+            value=""
+            onChange={onChange}
+            options={options}
+          />
+        </div>
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
+    const chooseAge = screen.getByRole('button', { name: 'Choose age' });
+    await waitFor(() => expect(chooseAge).toHaveFocus());
+    onArrayBlur.mockClear();
+    fireEvent.click(chooseAge);
+
+    expect(onChange).toHaveBeenCalledWith('age');
+    expect(onArrayBlur).not.toHaveBeenCalled();
+  });
+
   /**
    * Creating a variable is a two-step write: the picker clears the field
    * (`onChange('')`, which validates and raises "This field is required.")
@@ -227,13 +336,15 @@ describe('VariablePicker', () => {
           name: 'Create new attribute called height',
         }),
       );
-      // What `withFieldsHandlers.handleNewVariable` does next.
+      // What the caller does next once the attribute has been created.
       act(() => {
         setFieldValue()('variable', 'height');
       });
 
       expect(getValue()).toBe('height');
-      expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      await waitFor(() => {
+        expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      });
       expect(
         screen.getByRole('group', { name: 'Attribute' }),
       ).not.toHaveAttribute('aria-invalid', 'true');
@@ -259,7 +370,9 @@ describe('VariablePicker', () => {
 
       // No remount, no second submit — the assertion the filed description
       // would fail.
-      expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      await waitFor(() => {
+        expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      });
     });
   });
 });

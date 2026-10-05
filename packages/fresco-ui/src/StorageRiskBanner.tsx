@@ -3,10 +3,48 @@
 import { Download } from 'lucide-react';
 import type { HTMLAttributes, ReactNode } from 'react';
 
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { Alert, AlertDescription } from './Alert';
 import Button, { type ButtonProps } from './Button';
 import CloseButton from './CloseButton';
 import { cx } from './utils/cva';
+
+const messages = defineMessages({
+  install: {
+    id: 'frescoUi.storageRiskBanner.install',
+    defaultMessage: 'Install',
+    description:
+      'Default label of the banner action that installs the app to reduce data-loss risk.',
+  },
+  dismiss: {
+    id: 'frescoUi.storageRiskBanner.dismiss',
+    defaultMessage: 'Dismiss',
+    description: 'Accessible name of the banner dismiss button.',
+  },
+  highRisk: {
+    id: 'frescoUi.storageRiskBanner.highRisk',
+    defaultMessage: 'High data-loss risk',
+    description:
+      'Context label announced before a high-risk browser-storage warning.',
+  },
+  mediumRisk: {
+    id: 'frescoUi.storageRiskBanner.mediumRisk',
+    defaultMessage: 'Medium data-loss risk',
+    description:
+      'Context label announced before a medium-risk browser-storage warning.',
+  },
+  lowRisk: {
+    id: 'frescoUi.storageRiskBanner.lowRisk',
+    defaultMessage: 'Low data-loss risk',
+    description:
+      'Context label announced before a low-risk browser-storage warning.',
+  },
+});
 
 /**
  * Browser-storage danger, ordered from high to low risk.
@@ -40,10 +78,10 @@ const intentByRisk: Record<StorageRisk, StorageRiskIntent> = {
   3: 'info',
 };
 
-const contextLabelByRisk: Record<StorageRisk, string> = {
-  1: 'High data-loss risk',
-  2: 'Medium data-loss risk',
-  3: 'Low data-loss risk',
+const contextLabelByRisk: Record<StorageRisk, MessageDescriptor> = {
+  1: messages.highRisk,
+  2: messages.mediumRisk,
+  3: messages.lowRisk,
 };
 
 /**
@@ -120,17 +158,18 @@ export function StorageRiskBanner({
   risk,
   children,
   installAction,
-  installLabel = 'Install',
+  installLabel,
   onDismiss,
   className,
   ...props
 }: StorageRiskBannerProps) {
+  const intl = useAppIntl();
   const intent = intentByRisk[risk];
 
   return (
     <Alert
       variant={intent}
-      contextLabel={contextLabelByRisk[risk]}
+      contextLabel={intl.formatMessage(contextLabelByRisk[risk])}
       density="compact"
       className={cx(
         'border-outline my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!',
@@ -148,14 +187,14 @@ export function StorageRiskBanner({
             icon={<Download />}
             onClick={installAction}
           >
-            {installLabel}
+            {installLabel ?? intl.formatMessage(messages.install)}
           </Button>
         )}
         <CloseButton
           color={intent}
           variant="default-inverted"
           size="sm"
-          title="Dismiss"
+          title={intl.formatMessage(messages.dismiss)}
           onClick={onDismiss}
         />
       </AlertDescription>

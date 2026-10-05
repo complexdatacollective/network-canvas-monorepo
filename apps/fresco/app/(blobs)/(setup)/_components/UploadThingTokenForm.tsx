@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -11,13 +14,75 @@ import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { setUploadThingToken } from '~/actions/appSettings';
 import { setStorageProvider } from '~/actions/storageProvider';
-import { createUploadThingTokenSchema } from '~/schemas/appSettings';
+import { captureClientException } from '~/lib/posthog-client';
+import { createUploadThingSchemas } from '~/schemas/appSettings';
+
+const messages = defineMessages({
+  copyAnUnexpectedErrorOccurred: {
+    id: 'fresco.UploadThingTokenForm.copyAnUnexpectedErrorOccurred',
+    defaultMessage: 'An unexpected error occurred',
+    description:
+      'Researcher-facing UploadThingTokenForm: An unexpected error occurred',
+  },
+  copyFailedToSetStorageProvider: {
+    id: 'fresco.UploadThingTokenForm.copyFailedToSetStorageProvider',
+    defaultMessage: 'Failed to set storage provider.',
+    description:
+      'Researcher-facing UploadThingTokenForm: Failed to set storage provider.',
+  },
+  copySaving: {
+    id: 'fresco.UploadThingTokenForm.copySaving',
+    defaultMessage: 'Saving...',
+    description: 'Researcher-facing UploadThingTokenForm: Saving...',
+  },
+  theUploadThingTokenIsConfiguredViaAn: {
+    id: 'fresco.UploadThingTokenForm.theUploadThingTokenIsConfiguredViaAn',
+    defaultMessage:
+      'The UploadThing token is configured via an environment variable and cannot be changed here.',
+    description:
+      'Researcher-facing UploadThingTokenForm: The UploadThing token is configured via an environment variable and cannot be changed here.',
+  },
+  uPLOADTHINGTOKEN: {
+    id: 'fresco.UploadThingTokenForm.uPLOADTHINGTOKEN',
+    defaultMessage: 'UPLOADTHING_TOKEN',
+    description: 'Researcher-facing UploadThingTokenForm: UPLOADTHING_TOKEN',
+  },
+  uPLOADTHINGTOKEN2: {
+    id: 'fresco.UploadThingTokenForm.uPLOADTHINGTOKEN2',
+    defaultMessage: 'UPLOADTHING_TOKEN=******************',
+    description:
+      'Researcher-facing UploadThingTokenForm: UPLOADTHING_TOKEN=******************',
+  },
+  copyAndPasteTheFullTokenFrom: {
+    id: 'fresco.UploadThingTokenForm.copyAndPasteTheFullTokenFrom',
+    defaultMessage:
+      'Copy and paste the full token from your UploadThing dashboard.',
+    description:
+      'Researcher-facing UploadThingTokenForm: Copy and paste the full token from your UploadThing dashboard.',
+  },
+  pasteTheFullTokenIncludingTheUPLOADTHING: {
+    id: 'fresco.UploadThingTokenForm.pasteTheFullTokenIncludingTheUPLOADTHING',
+    defaultMessage:
+      'Paste the full token including the UPLOADTHING_TOKEN= prefix',
+    description:
+      'Researcher-facing UploadThingTokenForm: Paste the full token including the UPLOADTHING_TOKEN= prefix',
+  },
+  saveAndContinue: {
+    id: 'fresco.UploadThingTokenForm.saveAndContinue',
+    defaultMessage: 'Save and continue',
+    description: 'Researcher-facing UploadThingTokenForm: Save and continue',
+  },
+});
 
 export const UploadThingTokenForm = ({
   disabled = false,
 }: {
   disabled?: boolean;
 }) => {
+  const intl = useAppIntl();
+  const { createUploadThingTokenSchema } =
+    createUploadThingSchemas(createMessageError);
+
   const router = useRouter();
   const [isContinuing, setIsContinuing] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
@@ -33,10 +98,9 @@ export const UploadThingTokenForm = ({
       }
       router.push('/setup?step=3');
     } catch (caught) {
+      captureClientException(caught);
       setContinueError(
-        caught instanceof Error
-          ? caught.message
-          : 'An unexpected error occurred',
+        createMessageError(messages.copyAnUnexpectedErrorOccurred),
       );
     } finally {
       setIsContinuing(false);
@@ -63,7 +127,8 @@ export const UploadThingTokenForm = ({
         return {
           success: false as const,
           formErrors: [
-            providerResult.error ?? 'Failed to set storage provider.',
+            providerResult.error ??
+              createMessageError(messages.copyFailedToSetStorageProvider),
           ],
         };
       }
@@ -74,8 +139,10 @@ export const UploadThingTokenForm = ({
         success: true as const,
       };
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'An unexpected error occurred';
+      captureClientException(error);
+      const message = createMessageError(
+        messages.copyAnUnexpectedErrorOccurred,
+      );
       return {
         success: false as const,
         formErrors: [message],
@@ -88,20 +155,21 @@ export const UploadThingTokenForm = ({
       {disabled && (
         <Alert variant="info">
           <AlertDescription>
-            The UploadThing token is configured via an environment variable and
-            cannot be changed here.
+            {intl.formatMessage(messages.theUploadThingTokenIsConfiguredViaAn)}
           </AlertDescription>
         </Alert>
       )}
       <Field
         key="uploadThingToken"
         name="uploadThingToken"
-        label="UPLOADTHING_TOKEN"
-        placeholder="UPLOADTHING_TOKEN=******************"
-        hint="Copy and paste the full token from your UploadThing dashboard."
+        label={intl.formatMessage(messages.uPLOADTHINGTOKEN)}
+        placeholder={intl.formatMessage(messages.uPLOADTHINGTOKEN2)}
+        hint={intl.formatMessage(messages.copyAndPasteTheFullTokenFrom)}
         custom={{
           schema: createUploadThingTokenSchema,
-          hint: 'Paste the full token including the UPLOADTHING_TOKEN= prefix',
+          hint: intl.formatMessage(
+            messages.pasteTheFullTokenIncludingTheUPLOADTHING,
+          ),
         }}
         component={InputField}
         type="text"
@@ -111,7 +179,9 @@ export const UploadThingTokenForm = ({
       {disabled ? (
         <>
           {continueError && (
-            <p className="text-destructive text-sm">{continueError}</p>
+            <p className="text-destructive text-sm">
+              <AppErrorMessage error={continueError} />
+            </p>
           )}
           <Button
             onClick={handleContinue}
@@ -119,12 +189,14 @@ export const UploadThingTokenForm = ({
             disabled={isContinuing}
             className="self-start"
           >
-            {isContinuing ? 'Saving...' : 'Continue'}
+            {isContinuing
+              ? intl.formatMessage(messages.copySaving)
+              : intl.formatMessage(commonMessages.continue)}
           </Button>
         </>
       ) : (
         <SubmitButton key="submit" className="mt-6">
-          Save and continue
+          {intl.formatMessage(messages.saveAndContinue)}
         </SubmitButton>
       )}
     </Form>

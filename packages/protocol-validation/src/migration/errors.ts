@@ -1,8 +1,8 @@
 import type { SchemaVersion } from '../schemas/index.ts';
 
 export class MigrationError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = 'MigrationError';
   }
 }
@@ -24,9 +24,30 @@ export class VersionMismatchError extends MigrationError {
 }
 
 export class MigrationStepError extends MigrationError {
-  constructor(version: number) {
-    super(`Migration step failed at version ${version}.`);
+  constructor(version: number, options?: { cause?: unknown }) {
+    super(`Migration step failed at version ${version}.`, options);
     this.name = 'MigrationStepError';
+  }
+}
+
+/**
+ * A migration ran and returned a document that does not satisfy the schema it
+ * targeted.
+ *
+ * Separate from `ValidationError`, which the same function throws when the
+ * *researcher's* document fails the checks for its own version. The two read
+ * identically at the throw site and mean opposite things: one is a fact about
+ * the file, the other is a migration that produced garbage. A host that cannot
+ * tell them apart either reports every old protocol as a bug, or — worse —
+ * reports none of its own broken migrations.
+ */
+export class MigrationResultInvalidError extends MigrationError {
+  readonly targetVersion: number;
+
+  constructor(message: string, targetVersion: number) {
+    super(message);
+    this.name = 'MigrationResultInvalidError';
+    this.targetVersion = targetVersion;
   }
 }
 

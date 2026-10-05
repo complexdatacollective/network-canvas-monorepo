@@ -2,8 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { type ComponentProps, useEffect, useState } from 'react';
 import { expect, fn, screen, userEvent, waitFor } from 'storybook/test';
 
-import { stageMessages } from '@codaco/network-exporters/events';
-
 import { ExportDialog } from './ExportDialog';
 import type { ExportFlow } from './useSessionMutations';
 
@@ -17,7 +15,7 @@ function AfterBuildHarness(props: ComponentProps<typeof ExportDialog>) {
   const [flow, setFlow] = useState<ExportFlow>({
     phase: 'building',
     sessionCount: 12,
-    stageMessage: stageMessages.outputting,
+    stage: 'outputting',
     current: 36,
     total: 40,
   });
@@ -109,7 +107,7 @@ export const BuildingIndeterminate: Story = {
     flow: {
       phase: 'building',
       sessionCount: 12,
-      stageMessage: stageMessages.fetching,
+      stage: 'fetching',
       current: null,
       total: null,
     },
@@ -121,7 +119,7 @@ export const BuildingWithProgress: Story = {
     flow: {
       phase: 'building',
       sessionCount: 12,
-      stageMessage: stageMessages.generating,
+      stage: 'generating',
       current: 74,
       total: 120,
     },
@@ -146,7 +144,7 @@ export const BuildingSingleInterview: Story = {
     flow: {
       phase: 'building',
       sessionCount: 1,
-      stageMessage: stageMessages.formatting,
+      stage: 'formatting',
       current: null,
       total: null,
     },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { UniqueRegistry, valueKey } from '../uniqueRegistry';
+import { UniqueRegistry, valueKey } from '../uniqueRegistry.ts';
 
 describe('valueKey', () => {
   it('keys two orderings of one categorical selection the same', () => {

@@ -1,8 +1,9 @@
 - main:
-    - heading "Destination" [level=1]
-    - paragraph: The targeted jump lands here.
-    - navigation:
-        - button "Previous Step"
-        - progressbar "Progress indicator": x
-        - button "Next Step"
-    - region "Interview notifications"
+  - heading "Destination" [level=1]
+  - paragraph: The targeted jump lands here.
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

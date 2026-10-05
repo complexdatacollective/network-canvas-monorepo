@@ -1,0 +1,4 @@
+{
+  "studio.teamActivity.unrecognizedDetail": "Studio does not recognise this event type. It was likely recorded by a newer version of Studio; its identifying information is shown without further detail.",
+  "studio.teamActivity.unrecognizedEvent": "Unrecognised event"
+}

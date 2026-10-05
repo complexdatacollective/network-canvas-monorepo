@@ -3,7 +3,7 @@ import { setAppSetting } from '~/actions/appSettings';
 import Switch from '~/components/SwitchWithOptimisticUpdate';
 import { getAppSetting } from '~/queries/appSettings';
 
-const InterviewDataApiSwitch = async () => {
+const InterviewDataApiSwitch = async ({ label }: { label: string }) => {
   const enableInterviewDataApi = await getAppSetting('enableInterviewDataApi');
 
   if (enableInterviewDataApi === null) {
@@ -12,6 +12,7 @@ const InterviewDataApiSwitch = async () => {
 
   return (
     <Switch
+      label={label}
       initialValue={enableInterviewDataApi}
       updateValue={async (value) => {
         'use server';

@@ -1,3 +1,5 @@
+'use client';
+
 import { AnimatePresence } from 'motion/react';
 import { type ReactNode, useMemo } from 'react';
 

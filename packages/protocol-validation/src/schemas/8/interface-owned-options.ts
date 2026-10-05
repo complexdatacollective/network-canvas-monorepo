@@ -1,10 +1,9 @@
+import type { InterfaceOwnedOptionSetKey } from './entity-attribute-reference.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
-import type { InterfaceOwnedOptionSetKey } from './entity-attribute-reference.ts';
+} from './family-pedigree-values.ts';
 
 export type InterfaceOwnedOption = { value: string; label: string };
 
@@ -19,11 +18,11 @@ export type InterfaceOwnedOptionSet = {
 
 /**
  * The canonical value sets an interface owns, keyed by the
- * `ownedOptions` tag a schema reference declares. The option arrays
- * themselves live in `@codaco/shared-consts` because the interview runtime
- * writes and branches on them; this table is only the slot → set mapping the
- * validator and Architect's option editors both derive from, so the editor's
- * idea of "locked" cannot drift from the validator's.
+ * `ownedOptions` tag a schema reference declares. The option arrays themselves
+ * live in this version directory (`family-pedigree-values.ts`); this table is
+ * only the slot → set mapping the validator and Architect's option editors both
+ * derive from, so the editor's idea of "locked" cannot drift from the
+ * validator's.
  */
 export const INTERFACE_OWNED_OPTION_SETS: Record<
   InterfaceOwnedOptionSetKey,

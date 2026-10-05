@@ -47,14 +47,15 @@ const GOLDEN_TRANSCRIPT: Command[][] = [
 ];
 describe.skipIf(!dbAvailable)('golden transcripts', () => {
   let db: Pool;
+  let dispose: () => Promise<void>;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, server } = await makeServer('sync_golden'));
+    ({ db, server, dispose } = await makeServer('sync_golden'));
   });
 
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
 
   it('client and server engines produce hash-identical section state', async () => {

@@ -21,11 +21,6 @@ vi.mock('~/selectors/protocol', async (importOriginal) => ({
   getExperiments: () => ({}),
 }));
 vi.mock('~/ducks/hooks', () => ({ useAppDispatch: () => mocks.dispatch }));
-vi.mock('~/components/EditorLayout', () => ({
-  Layout: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
 
 import ExperimentsPage from '../ExperimentsPage';
 

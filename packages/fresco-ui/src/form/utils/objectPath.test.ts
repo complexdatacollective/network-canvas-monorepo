@@ -4,6 +4,7 @@ import {
   createObjectPathWriter,
   formatObjectPath,
   getValue,
+  omitValue,
   parseObjectPath,
   setValue,
 } from './objectPath';
@@ -509,6 +510,71 @@ describe('Object Path Utils', () => {
         value: 3,
         writable: true,
       });
+    });
+  });
+
+  describe('omitValue', () => {
+    it('drops the key rather than leaving an `undefined` under it', () => {
+      const result = omitValue({ first: 'one', second: 'two' }, 'first');
+
+      expect(result).toStrictEqual({ second: 'two' });
+      expect(Object.keys(result as object)).toStrictEqual(['second']);
+    });
+
+    it('copies every container it passes through', () => {
+      const bounds = { min: 1, max: 5 };
+      const original = { type: 'relative', bounds };
+
+      const result = omitValue(original, 'bounds.min');
+
+      expect(original).toStrictEqual({
+        type: 'relative',
+        bounds: { min: 1, max: 5 },
+      });
+      expect(bounds).toStrictEqual({ min: 1, max: 5 });
+      expect(result).toStrictEqual({ type: 'relative', bounds: { max: 5 } });
+    });
+
+    it('returns the value itself when the path names nothing it holds', () => {
+      const original = { bounds: { min: 1 } };
+
+      expect(omitValue(original, 'type')).toBe(original);
+      expect(omitValue(original, 'bounds.max')).toBe(original);
+      expect(omitValue(original, 'type.min')).toBe(original);
+      expect(omitValue('relative', 'type')).toBe('relative');
+      expect(omitValue(original, '__proto__.polluted')).toBe(original);
+    });
+
+    it('keeps an array an array, and its later indices where they were', () => {
+      const items = [{ x: 1, y: 2 }, { x: 3 }];
+
+      const result = omitValue(items, [0, 'x']);
+
+      expect(items).toStrictEqual([{ x: 1, y: 2 }, { x: 3 }]);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toStrictEqual([{ y: 2 }, { x: 3 }]);
+    });
+
+    it('holds a removed array position open instead of closing the gap', () => {
+      const result = omitValue({ items: ['a', 'b', 'c'] }, 'items[1]');
+
+      expect(result).toStrictEqual({ items: ['a', undefined, 'c'] });
+    });
+
+    it('leaves an array position that is already empty alone', () => {
+      const original = { items: ['a', undefined] };
+
+      expect(omitValue(original, 'items[1]')).toBe(original);
+    });
+
+    it('never reaches a key through the prototype chain', () => {
+      const original = { own: 'kept' };
+
+      // An inherited key is not one this value holds, so there is nothing
+      // here to remove — and nothing to rebuild the value around.
+      expect(omitValue(original, 'toString')).toBe(original);
+      expect(omitValue(original, 'constructor.name')).toBe(original);
+      expect(typeof original.toString).toBe('function');
     });
   });
 });

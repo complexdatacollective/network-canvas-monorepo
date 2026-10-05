@@ -10,13 +10,18 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 import type { StoredProtocolRow } from '~/utils/assetDB';
+import { UnresolvedAssetsError } from '~/utils/bundleProtocol';
 
 import LibraryPanel from '../LibraryPanel';
 
 const downloadProtocolAsNetcanvasMock = vi.fn();
 
-vi.mock('~/utils/bundleProtocol', () => ({
+vi.mock('~/utils/bundleProtocol', async (importOriginal) => ({
+  // The real error class: the panel narrows on `instanceof`, so a look-alike
+  // would silently take the generic-failure branch instead.
+  ...(await importOriginal<typeof import('~/utils/bundleProtocol')>()),
   downloadProtocolAsNetcanvas: (...args: unknown[]) =>
     downloadProtocolAsNetcanvasMock(...args),
 }));
@@ -81,7 +86,7 @@ const openMenuItem = async (name: RegExp) => {
 const openDownloadFromRow = () => openMenuItem(/download/i);
 
 type DialogConfig = {
-  title?: string;
+  title?: ReactNode;
   intent?: string;
   finalFocus?: () => HTMLElement | null;
 };
@@ -89,7 +94,7 @@ type DialogConfig = {
 const dialogCallWithTitle = (title: string): DialogConfig | undefined =>
   openDialogMock.mock.calls
     .map(([config]) => config as DialogConfig)
-    .find((config) => config.title === title);
+    .find((config) => renderQueuedMessage(config.title) === title);
 
 describe('<LibraryPanel /> download', () => {
   beforeEach(() => {
@@ -101,10 +106,10 @@ describe('<LibraryPanel /> download', () => {
     });
   });
 
-  it('warns the author when downloaded .netcanvas silently omits skipped assets', async () => {
-    downloadProtocolAsNetcanvasMock.mockResolvedValueOnce([
-      { id: 'asset-1', name: 'missing-image.png' },
-    ]);
+  it('names the resources it could not read when the download is refused', async () => {
+    downloadProtocolAsNetcanvasMock.mockRejectedValueOnce(
+      new UnresolvedAssetsError(['missing-image.png']),
+    );
 
     renderPanel();
     await openDownloadFromRow();
@@ -113,19 +118,24 @@ describe('<LibraryPanel /> download', () => {
       expect(openDialogMock).toHaveBeenCalled();
     });
 
-    const warningCall = openDialogMock.mock.calls.find(
+    // Destructive, not a warning: nothing was written. Writing the file
+    // without the resource would drop its manifest entry while the stages
+    // referencing it keep the id, and that file opens nowhere.
+    const refusalCall = openDialogMock.mock.calls.find(
       ([config]) =>
         (config as { type?: string; intent?: string }).type === 'acknowledge' &&
-        (config as { type?: string; intent?: string }).intent === 'warning',
+        (config as { type?: string; intent?: string }).intent === 'destructive',
     );
-    expect(warningCall).toBeDefined();
-    expect((warningCall![0] as { description: string }).description).toContain(
-      'missing-image.png',
-    );
+    expect(refusalCall).toBeDefined();
+    expect(
+      renderQueuedMessage(
+        (refusalCall![0] as { description: ReactNode }).description,
+      ),
+    ).toContain('missing-image.png');
   });
 
   it('does not warn when every asset was included', async () => {
-    downloadProtocolAsNetcanvasMock.mockResolvedValueOnce([]);
+    downloadProtocolAsNetcanvasMock.mockResolvedValueOnce(undefined);
 
     renderPanel();
     await openDownloadFromRow();
@@ -304,7 +314,7 @@ describe('<LibraryPanel /> gallery card', () => {
       within(card).getByRole('button', { name: 'Dismiss' }),
     ).toBeInTheDocument();
     expect(
-      within(card).getByRole('link', { name: 'protocol gallery' }),
+      within(card).getByRole('link', { name: 'Protocol Gallery' }),
     ).toBeInTheDocument();
   });
 

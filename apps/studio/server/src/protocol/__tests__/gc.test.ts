@@ -1,19 +1,31 @@
+import { createHash, randomUUID } from 'node:crypto';
+
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SyncServer, forceExpire } from '@codaco/studio-sync/server';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
 import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore } from '../store.ts';
-import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
+import {
+  GC_OPTS,
+  TEST_TEAM_ID,
+  ageQuarantine,
+  baseProtocol,
+  expireLease,
+  makeStoreSchema,
+  makeTestSyncServer,
+  storeDb,
+} from './helpers.ts';
 
 async function commitDescription(
-  db: pg.Pool,
+  db: TenantDb,
   draftId: string,
   value: string,
   clientSeq: bigint,
 ) {
-  const sync = new SyncServer(db);
+  const sync = makeTestSyncServer(db);
   const owner = 'gc-tab';
   const lease = await sync.acquire(draftId, 'settings', owner);
   await sync.commit({
@@ -31,26 +43,16 @@ async function sectionExists(db: pg.Pool, hash: string): Promise<boolean> {
   return res.rowCount === 1;
 }
 
-async function ageQuarantine(db: pg.Pool): Promise<void> {
-  await db.query(
-    `UPDATE sections SET unreferenced_at = unreferenced_at - interval '1 hour'`,
-  );
-}
-
-const GC_OPTS = {
-  retainManifestsPerDraft: 0,
-  sectionGraceMs: 60_000,
-  commandRetryHorizonMs: 0,
-};
-
 describe.skipIf(!storeDb)('gcProtocolStore', () => {
   let db: pg.Pool;
+  let maintenance: pg.Pool;
+  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(db);
+    ({ db, maintenance, tenantDb, dispose } = await makeStoreSchema());
+    store = new ProtocolStore(tenantDb, testCipher());
   });
   afterAll(async () => {
     await dispose();
@@ -65,15 +67,15 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const published = await store.publishDraft({ draftId });
     if (published.status !== 'published') throw new Error(published.status);
 
-    await commitDescription(db, draftId, 'intermediate', 1n);
+    await commitDescription(tenantDb, draftId, 'intermediate', 1n);
     const intermediateSettingsHash = (await store.getDraftSections(draftId))
       .sectionHashes.settings!;
-    await commitDescription(db, draftId, 'final', 2n);
+    await commitDescription(tenantDb, draftId, 'final', 2n);
     const head = await store.getDraftSections(draftId);
 
     // Expire the live lease: this case is about the manifest/section window.
-    await forceExpire(db, draftId, 'settings');
-    const marked = await gcProtocolStore(db, GC_OPTS);
+    await expireLease(tenantDb, draftId, 'settings');
+    const marked = await gcProtocolStore(maintenance, GC_OPTS);
 
     expect(marked.manifestsDeleted).toBe(2);
     expect(marked.commandLogDeleted).toBe(1);
@@ -87,7 +89,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     expect(await sectionExists(db, intermediateSettingsHash)).toBe(true);
 
     await ageQuarantine(db);
-    const swept = await gcProtocolStore(db, GC_OPTS);
+    const swept = await gcProtocolStore(maintenance, GC_OPTS);
     expect(swept.sectionsDeleted).toBe(1);
     expect(await sectionExists(db, intermediateSettingsHash)).toBe(false);
     expect(await sectionExists(db, publishedSettingsHash)).toBe(true);
@@ -100,11 +102,69 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     );
   });
 
+  it('keeps a section held only by a published template version', async () => {
+    // A template version pins sections exactly as a protocol version does,
+    // and its pins are immutable too. A section no protocol references but a
+    // template does must therefore count as referenced: swept, it would hit
+    // the pin's foreign key and abort the tenant's whole pass — on every pass
+    // after, since the pin can never be retracted.
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    await commitDescription(tenantDb, draftId, 'held by a template', 1n);
+    const heldHash = (await store.getDraftSections(draftId)).sectionHashes
+      .settings!;
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      const templateId = randomUUID();
+      const versionId = randomUUID();
+      await client.query(
+        `INSERT INTO templates (id, team_id, kind, name)
+         VALUES ($1, $2, 'protocol', 'Holds one section')`,
+        [templateId, TEST_TEAM_ID],
+      );
+      await client.query(
+        `INSERT INTO template_versions
+           (id, team_id, template_id, version_number, manifest, manifest_hash,
+            schema_version)
+         VALUES ($1, $2, $3, 1, $4, $5, 8)`,
+        [
+          versionId,
+          TEST_TEAM_ID,
+          templateId,
+          JSON.stringify({ settings: heldHash }),
+          createHash('sha256').update(heldHash).digest('hex'),
+        ],
+      );
+      await client.query(
+        `INSERT INTO template_version_sections
+           (version_id, team_id, section_id, section_hash)
+         VALUES ($1, $2, 'settings', $3)`,
+        [versionId, TEST_TEAM_ID, heldHash],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    // The draft moves on, so nothing but the template holds the section.
+    await commitDescription(tenantDb, draftId, 'moved on', 2n);
+    await expireLease(tenantDb, draftId, 'settings');
+    await gcProtocolStore(maintenance, GC_OPTS);
+    await ageQuarantine(db);
+    await expect(gcProtocolStore(maintenance, GC_OPTS)).resolves.toBeDefined();
+    expect(await sectionExists(db, heldHash)).toBe(true);
+  });
+
   it('a live lease retains idempotency records, and dedup replay still works after GC', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'retry-tab');
     await sync.commit({
       draftId,
@@ -123,7 +183,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       commands: [{ op: 'set', key: 'description', value: 'second' }],
     });
 
-    const result = await gcProtocolStore(db, GC_OPTS);
+    const result = await gcProtocolStore(maintenance, GC_OPTS);
     expect(result.commandLogDeleted).toBe(0);
 
     const replay = await sync.commit({
@@ -142,9 +202,9 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'kept', 30n);
-    await forceExpire(db, draftId, 'settings');
-    const result = await gcProtocolStore(db, {
+    await commitDescription(tenantDb, draftId, 'kept', 30n);
+    await expireLease(tenantDb, draftId, 'settings');
+    const result = await gcProtocolStore(maintenance, {
       ...GC_OPTS,
       commandRetryHorizonMs: 60_000,
     });
@@ -155,17 +215,17 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'the resumed head', 40n);
-    const sync = new SyncServer(db);
+    await commitDescription(tenantDb, draftId, 'the resumed head', 40n);
+    const sync = makeTestSyncServer(tenantDb);
     const resumed = (await sync.resume(draftId, 'reader-tab')).sectionHashes
       .settings!;
     await db.query(
       `UPDATE sections SET created_at = created_at - interval '1 hour'`,
     );
-    await commitDescription(db, draftId, 'superseding it', 41n);
-    await forceExpire(db, draftId, 'settings');
+    await commitDescription(tenantDb, draftId, 'superseding it', 41n);
+    await expireLease(tenantDb, draftId, 'settings');
 
-    await gcProtocolStore(db, GC_OPTS);
+    await gcProtocolStore(maintenance, GC_OPTS);
     expect(await sync.getSection(resumed)).toMatchObject({
       description: 'the resumed head',
     });
@@ -188,17 +248,19 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       [hash],
     );
     expect((mark.rows[0] as { cleared: boolean }).cleared).toBe(true);
-    expect((await gcProtocolStore(db, GC_OPTS)).sectionsDeleted).toBe(0);
+    expect((await gcProtocolStore(maintenance, GC_OPTS)).sectionsDeleted).toBe(
+      0,
+    );
   });
 
   it('the grace window protects freshly unreferenced sections', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'about to be superseded', 10n);
-    await commitDescription(db, draftId, 'head', 11n);
+    await commitDescription(tenantDb, draftId, 'about to be superseded', 10n);
+    await commitDescription(tenantDb, draftId, 'head', 11n);
 
-    const result = await gcProtocolStore(db, GC_OPTS);
+    const result = await gcProtocolStore(maintenance, GC_OPTS);
     expect(result.sectionsDeleted).toBe(0);
   });
 
@@ -206,14 +268,20 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'kept in window', 20n);
+    await commitDescription(tenantDb, draftId, 'kept in window', 20n);
     const superseded = (await store.getDraftSections(draftId)).sectionHashes
       .settings!;
-    await commitDescription(db, draftId, 'newest', 21n);
+    await commitDescription(tenantDb, draftId, 'newest', 21n);
 
-    await gcProtocolStore(db, { ...GC_OPTS, retainManifestsPerDraft: 1 });
+    await gcProtocolStore(maintenance, {
+      ...GC_OPTS,
+      retainManifestsPerDraft: 1,
+    });
     await ageQuarantine(db);
-    await gcProtocolStore(db, { ...GC_OPTS, retainManifestsPerDraft: 1 });
+    await gcProtocolStore(maintenance, {
+      ...GC_OPTS,
+      retainManifestsPerDraft: 1,
+    });
     expect(await sectionExists(db, superseded)).toBe(true);
   });
 

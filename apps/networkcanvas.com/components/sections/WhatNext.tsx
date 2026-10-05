@@ -1,9 +1,9 @@
 import { useTranslations } from 'next-intl';
 
+import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { MailingListForm } from '~/components/sections/MailingListForm';
-import { ButtonLink } from '~/components/ui/ButtonLink';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
 import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
@@ -18,14 +18,19 @@ export function WhatNext() {
       body: t('documentation.body'),
       icon: '/images/icons/docs.png',
       action: (
-        <ButtonLink
-          href={externalLinks.documentation}
-          external
+        <Button
+          asChild
           color="default"
           className="bg-neon-coral mt-6 rounded-full text-white"
         >
-          {t('documentation.action')}
-        </ButtonLink>
+          <a
+            href={externalLinks.documentation}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t('documentation.action')}
+          </a>
+        </Button>
       ),
     },
     {
@@ -34,14 +39,15 @@ export function WhatNext() {
       body: t('community.body'),
       icon: '/images/icons/community.png',
       action: (
-        <ButtonLink
-          href={externalLinks.community}
-          external
+        <Button
+          asChild
           color="default"
           className="bg-sea-green mt-6 rounded-full text-white"
         >
-          {t('community.action')}
-        </ButtonLink>
+          <a href={externalLinks.community} target="_blank" rel="noreferrer">
+            {t('community.action')}
+          </a>
+        </Button>
       ),
     },
     {
@@ -57,14 +63,19 @@ export function WhatNext() {
       body: t('collaboration.body'),
       icon: '/images/icons/collaborate.png',
       action: (
-        <ButtonLink
-          href={externalLinks.collaboration}
-          external
+        <Button
+          asChild
           color="default"
           className="bg-mustard mt-6 rounded-full text-white"
         >
-          {t('collaboration.action')}
-        </ButtonLink>
+          <a
+            href={externalLinks.collaboration}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t('collaboration.action')}
+          </a>
+        </Button>
       ),
     },
   ];

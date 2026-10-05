@@ -1,3 +1,5 @@
+'use client';
+
 import { get } from 'es-toolkit/compat';
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';

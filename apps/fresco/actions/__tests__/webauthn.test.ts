@@ -1,3 +1,9 @@
+import { formatActionError } from './formatActionError';
+vi.mock('~/i18n/server', async () => {
+  const { createAppIntl } = await import('@codaco/app-i18n/messages');
+  return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
+});
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
@@ -125,7 +131,9 @@ describe('switchToPasswordMode', () => {
   ])('rejects %s without touching credentials', async (_label, password) => {
     const result = await switchToPasswordMode(password);
 
-    expect(result.error).toContain('Password must be at least 8 characters');
+    expect(formatActionError(result.error)).toContain(
+      'Password must be at least 8 characters',
+    );
     expect(result.data).toBeNull();
     expect(mockHashPassword).not.toHaveBeenCalled();
     expect(mockTransaction).not.toHaveBeenCalled();
@@ -134,7 +142,7 @@ describe('switchToPasswordMode', () => {
   it('accepts a strong password', async () => {
     const result = await switchToPasswordMode('Sup3rSecret!');
 
-    expect(result.error).toBeNull();
+    expect(formatActionError(result.error)).toBeNull();
     expect(mockHashPassword).toHaveBeenCalledWith('Sup3rSecret!');
     expect(mockTransaction).toHaveBeenCalled();
   });
@@ -147,7 +155,9 @@ describe('switchToPasswordMode', () => {
 
     const result = await switchToPasswordMode('Sup3rSecret!');
 
-    expect(result.error).toBe('Account is already in password mode.');
+    expect(formatActionError(result.error)).toBe(
+      'Account is already in password mode.',
+    );
     expect(mockTransaction).not.toHaveBeenCalled();
   });
 });

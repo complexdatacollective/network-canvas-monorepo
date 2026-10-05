@@ -1,4 +1,4 @@
-import type { BiologicalSex } from '@codaco/shared-consts';
+import type { BiologicalSex } from '@codaco/protocol-validation';
 
 import type { CommitBatch, VariableConfig } from './store';
 

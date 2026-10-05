@@ -6,11 +6,33 @@ import {
   selectOrCreateEdgeType,
   selectOrCreateNodeType,
 } from '../../pageobjects/editor-sections/entity-types.js';
-import {
-  createVariableViaSpotlight,
-  createVariableWithOptions,
-} from '../../pageobjects/editor-sections/variables.js';
+import { createAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
+
+// Nothing is seeded: this pedigree is built on an empty protocol, and the two
+// codebook types it binds are AUTHORED from inside the stage editor, through
+// the type picker's own "Create new {node|edge} type" button. That button is
+// part of `EntityTypePickerField` itself, so every stage that picks a type
+// offers it — which is what stops a Family Pedigree on a fresh protocol from
+// dead-ending at "No node types currently defined", with nothing on screen
+// saying where node types come from.
+//
+// Each of the pedigree's attribute slots picks from the codebook and invents
+// what it needs from the picker's OWN create row — no create control sits
+// beside a picker any more. `SlotVariableField` hands the picker the props
+// `useCreateAttributeForSlot` answers with, and what the row does next is
+// decided by the kind of answer the slot binds:
+//
+// - `text` and `boolean` slots (display label, participant identifier,
+//   relationship, active status, gestational carrier) are finished by a name,
+//   so the row writes the codebook and binds the result with no dialog at all.
+// - The three whose VALUES the interface owns (biological sex, relationship
+//   type, gamete role) are `categorical` with `lockedOptions`, which a name
+//   cannot finish — so the row escalates to the codebook's own editor, titled
+//   with the slot's own words and opened already holding the typed name. Those
+//   values arrive seeded and read-only, so the name is still the whole of the
+//   authoring; nothing is entered in the editor beyond pressing "Create
+//   attribute".
 
 test('creates a valid FamilyPedigree stage from scratch', async ({
   architectPage,
@@ -23,137 +45,119 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   await editor.createNew('FamilyPedigree');
   await editor.setStageName('Your Family');
 
-  // StageEditor/Interfaces.tsx: `FamilyPedigree.sections = [FramingConfig,
-  // BoundaryOptions, IntroScreen, FamilyPedigreeNodeConfiguration,
-  // FamilyPedigreeEdgeConfiguration, CensusPrompt, NominationPrompts,
-  // SkipLogic, InterviewScript]`, and the interface's `template` (Interfaces.tsx)
-  // pre-seeds `framing: {mode:'fixed', value:'gamete'}`,
-  // `boundaries: {requireGrandparents:'off', requireChildrenContributors:'off'}`,
-  // and a one-item `introScreen` — all already schema-valid, so
-  // FramingConfig/BoundaryOptions/IntroScreen are deliberately left untouched
-  // here (same reasoning as NetworkComposer's optional Group-hulls/Edge
+  // The picker fills its field. Architect's own pedigree sections laid these
+  // out two to a row, so the control was half the width of the field around
+  // it; the protocol-builder editors lay every field out one after another at
+  // full width, spaced by the field's own margin
+  // (docs/superpowers/plans/2026-09-09-protocol-builder-rework.md, "Layout of
+  // fields"). Measured rather than assumed, because a picker that had lost its
+  // width entirely would still be on screen.
+  const expectFullWidthAttributePicker = async (fieldName: string) => {
+    const field = editor.field(fieldName);
+    const picker = field.locator(`[data-name="${fieldName}"]`);
+    const [fieldBox, pickerBox] = await Promise.all([
+      field.boundingBox(),
+      picker.boundingBox(),
+    ]);
+
+    if (!fieldBox || !pickerBox) {
+      throw new Error(`Could not measure the ${fieldName} attribute picker`);
+    }
+
+    expect(pickerBox.width / fieldBox.width).toBeCloseTo(1, 2);
+  };
+
+  // `@codaco/protocol-builder`'s `FamilyPedigreeStageEditor.ts` composes
+  // `[stageHeading, framingConfig, boundaryOptions, pedigreeNodeConfiguration,
+  // pedigreeEdgeConfiguration, contentBlocks({variant:'introScreen'}),
+  // censusPrompt, nominationPrompts, skipLogic, interviewerGuidance]`, and the
+  // interface's template (`interfaces/templates.ts`) pre-seeds
+  // `framing: {mode:'fixed', value:'gamete'}`,
+  // `boundaries: {requireGrandparents:'off', requireChildrenContributors:'off'}`
+  // and a one-block `introScreen` — all already schema-valid, so the framing,
+  // boundary and introduction sections are deliberately left untouched here
+  // (same reasoning as NetworkComposer's optional Group-hulls/Edge
   // Configuration sections).
+  //
+  // The type is CREATED here: the codebook has none, so the shared helper
+  // takes its create branch, which presses the picker's own button, names the
+  // type in the codebook editor the button opens, and answers the stage's
+  // question about what choosing it costs.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // NodeConfiguration.tsx renders FOUR `VariablePicker`s (nodeLabelVariable/
-  // egoVariable/relationshipVariable/biologicalSexVariable) simultaneously
-  // inside one always-visible surface once `nodeConfig.type` is set — the
-  // same multi-picker shape NetworkComposer's NodeConfiguration.tsx already
-  // forced `createVariableViaSpotlight`'s `scope` option to handle (Task 19's
-  // network-composer.spec.ts). Each picker IS wrapped through
-  // `VariablePicker`'s own internal `FrescoReduxField`, so
-  // `editor.field(name)` resolves it correctly for scoping even though the
-  // row itself is hand-rolled JSX (`VariableRow`), not a bare
-  // `FrescoReduxField` call site.
+  // "Family member data" renders the node type picker and, once a type is
+  // chosen, FOUR attribute slots at once (nodeLabelVariable / egoVariable /
+  // relationshipVariable / biologicalSexVariable —
+  // `PedigreeNodeConfigurationSection.tsx`). Each is a `SlotVariableField`,
+  // which is why every attribute below is created through that slot's own
+  // picker rather than through one shared control.
   //
-  // Every one of the 4 node + 4 edge variables below routes through
-  // NodeConfiguration.tsx's/EdgeConfiguration.tsx's own `handleNewXxxVariable`
-  // callbacks, which ALL call `openVariableWindow` unconditionally (unlike
-  // NetworkComposer's quick-add/layout, which use the "simple creation"
-  // path) — so EVERY variable here opens NewVariableWindow, regardless of
-  // whether its locked type is text/boolean/categorical:
-  //   - text (`nodeLabelVariable`, `relationshipVariable`) and boolean
-  //     (`egoVariable`, `isActiveVariable`, `isGestationalCarrierVariable`)
-  //     variables set `initialValues.type` (text/boolean) with no
-  //     `lockedOptions` — NewVariableWindow.tsx disables "Variable type"
-  //     whenever `initialValues?.type` is set, and neither type is
-  //     ordinal/categorical, so the Options subsection never renders at all.
-  //   - categorical variables (`biologicalSexVariable`, matching
-  //     `BIOLOGICAL_SEX_OPTIONS`; `relationshipTypeVariable`, matching
-  //     `RELATIONSHIP_TYPE_OPTIONS`; `gameteRoleVariable`, matching
-  //     `GAMETE_ROLE_OPTIONS`) additionally pass `lockedOptions` —
-  //     NewVariableWindow.tsx disables "Variable type" for the same reason AND
-  //     merges `lockedOptions` into the form's initial `options`, rendering
-  //     `<LockedOptions>` (a read-only display, no add button) instead
-  //     of the editable `<Options>` editor.
-  // In both cases the "Variable type" combobox ends up disabled and no
-  // interactive Options editor renders, so `createVariableWithOptions`'s
-  // existing `isEnabled()` branch and its empty-`options`-array no-op loop
-  // already do exactly the right thing for all 8 variables uniformly — live
-  // verification found no helper fix needed here.
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'name',
-    scope: editor.field('nodeConfig.nodeLabelVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'name',
-    options: [],
-  });
+  // The slots' types are fixed by the interface, not chosen here: text
+  // (`nodeLabelVariable`, `relationshipVariable`), boolean (`egoVariable`,
+  // `isActiveVariable`, `isGestationalCarrierVariable`) and categorical
+  // (`biologicalSexVariable`, `relationshipTypeVariable`, `gameteRoleVariable`,
+  // whose canonical values the interface owns and locks). So no type is picked
+  // and no option is authored for any of the eight — the name is the whole of
+  // the authoring, whether the row writes it directly or hands it to the
+  // editor.
+  await createAttribute(editor.field('nodeConfig.nodeLabelVariable'), 'name');
+  await createAttribute(editor.field('nodeConfig.egoVariable'), 'is_ego');
+  await createAttribute(
+    editor.field('nodeConfig.relationshipVariable'),
+    'relationship_to_ego',
+  );
+  await createAttribute(
+    editor.field('nodeConfig.biologicalSexVariable'),
+    'biologicalSex',
+    {
+      title: 'Create a new biological sex attribute',
+    },
+  );
 
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'is_ego',
-    scope: editor.field('nodeConfig.egoVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'is_ego',
-    options: [],
-  });
+  await expectFullWidthAttributePicker('nodeConfig.egoVariable');
 
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'relationship_to_ego',
-    scope: editor.field('nodeConfig.relationshipVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'relationship_to_ego',
-    options: [],
-  });
-
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'biologicalSex',
-    scope: editor.field('nodeConfig.biologicalSexVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'biologicalSex',
-    options: [],
-  });
+  // `nodeConfig.form` is optional. A new pedigree therefore leaves the family
+  // member form switched off, so it registers nothing and the saved stage
+  // carries no `form` key.
+  await expect(
+    architectPage.getByRole('switch', { name: 'Form configuration' }),
+  ).not.toBeChecked();
 
   await selectOrCreateEdgeType(architectPage, 'family_edge');
 
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'relationshipType',
-    scope: editor.field('edgeConfig.relationshipTypeVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'relationshipType',
-    options: [],
-  });
-
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'isActive',
-    scope: editor.field('edgeConfig.isActiveVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'isActive',
-    options: [],
-  });
-
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'isGestationalCarrier',
-    scope: editor.field('edgeConfig.isGestationalCarrierVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'isGestationalCarrier',
-    options: [],
-  });
-
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'gameteRole',
-    scope: editor.field('edgeConfig.gameteRoleVariable'),
-  });
-  await createVariableWithOptions(architectPage, {
-    variableName: 'gameteRole',
-    options: [],
-  });
-
-  // CensusPrompt.tsx: `Section title="Census Prompt"`, a single RichText
-  // field labelled "Prompt for building the family pedigree" (labelHidden).
-  await editor.fillRichText(
-    'Prompt for building the family pedigree',
-    'Who is in your family?',
+  await createAttribute(
+    editor.field('edgeConfig.relationshipTypeVariable'),
+    'relationshipType',
+    {
+      title: 'Create a new relationship type attribute',
+    },
+  );
+  await createAttribute(
+    editor.field('edgeConfig.isActiveVariable'),
+    'isActive',
+  );
+  await createAttribute(
+    editor.field('edgeConfig.isGestationalCarrierVariable'),
+    'isGestationalCarrier',
+  );
+  await createAttribute(
+    editor.field('edgeConfig.gameteRoleVariable'),
+    'gameteRole',
+    {
+      title: 'Create a new gamete role attribute',
+    },
   );
 
-  // NominationPrompts.tsx's `nominationPrompts` array is optional
-  // (`familyPedigreeStage`'s zod schema) and deliberately left untouched.
+  await expectFullWidthAttributePicker('edgeConfig.relationshipTypeVariable');
+
+  // The "Family-building prompt" section holds one RichText field, and the
+  // field owns the visible label rather than proxying it through the section
+  // heading (`CensusPromptSection.tsx`).
+  await editor.fillRichText('Census prompt', 'Who is in your family?');
+
+  // `nominationPrompts` is optional (`familyPedigreeStage`'s zod schema), and
+  // its section is a capability switched off by default, so it is deliberately
+  // left untouched.
 
   await editor.expectNoIssues();
   await editor.save();

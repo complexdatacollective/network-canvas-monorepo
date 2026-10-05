@@ -1,5 +1,5 @@
 - main:
-  - application "Sociogram Canvas":
+  - application "Placement area":
     - button "Ash"
     - button "Bea"
     - button "Cy"
@@ -10,6 +10,7 @@
   - status:
     - heading "Connect colleagues." [level=4]
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

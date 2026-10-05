@@ -8,6 +8,7 @@ import CloseButton from '../CloseButton';
 import { surfaceSpacingVariants } from '../layout/Surface';
 import Modal from '../Modal';
 import { ScrollArea } from '../ScrollArea';
+import { EnclosingHeadingLevel } from '../typography/EnclosingHeadingLevel';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
@@ -29,6 +30,17 @@ export type DialogProps = {
   closeDialog?: () => void;
   footer?: React.ReactNode;
   open?: boolean;
+  /**
+   * Called once the close animation has finished and the dialog has left the
+   * DOM.
+   *
+   * A dialog whose CONTENT belongs to what it is editing must stay mounted
+   * with `open={false}` for the exit to run at all — rendering it only while
+   * there is something to edit takes the animation away with it, and the
+   * dialog vanishes instead of closing. Hold that state until this fires, then
+   * drop it.
+   */
+  onExitComplete?: () => void;
   children?: ReactNode;
   /** Supplementary controls rendered below the title in the fixed header. */
   header?: ReactNode;
@@ -43,8 +55,14 @@ export type DialogProps = {
   size?: DialogSize;
   /**
    * When false, the dialog cannot be dismissed: the close button is hidden,
-   * and clicks outside / Escape no longer trigger `closeDialog`. Use this for
-   * forced flows like a lock screen that the user must complete.
+   * and an outside press or Escape neither closes it nor calls `closeDialog`.
+   * Use this for forced flows like a lock screen that the user must complete,
+   * and for a dialog whose work must finish before it may go — a submit in
+   * flight, an export being built.
+   *
+   * A dialog held open this way must still offer a way out that a keyboard
+   * user can reach, unless there is genuinely none: with Escape refused and
+   * the close button gone, a footer action is the only route left.
    * @default true
    */
   dismissible?: boolean;
@@ -73,7 +91,8 @@ export type DialogProps = {
  * - Uses Base UI Dialog for accessibility and state management
  * - ModalPopup with ModalPopupAnimation for consistent animations
  * - Surface styling applied via className for proper elevation and spacing
- * - Backdrop click-to-close is handled by Base UI's dismissible behavior
+ * - Backdrop click-to-close is handled by Base UI's dismissible behavior,
+ *   which `Modal` refuses on this dialog's behalf when `dismissible` is false
  */
 export default function Dialog({
   title,
@@ -84,6 +103,7 @@ export default function Dialog({
   accent,
   footer,
   open = false,
+  onExitComplete,
   className,
   size = 'readable',
   dismissible = true,
@@ -95,6 +115,8 @@ export default function Dialog({
   return (
     <Modal
       open={open}
+      dismissible={dismissible}
+      onExitComplete={onExitComplete}
       onOpenChange={(isOpen) => {
         if (!isOpen && closeDialog) {
           closeDialog();
@@ -145,7 +167,13 @@ export default function Dialog({
               {description}
             </BaseDialog.Description>
           )}
-          {children}
+          {/* The title above is an `h2` wherever the dialog was opened from,
+              so a section or an alert title in here starts the outline at
+              `h3`. Without this a section read its level from Surface depth,
+              which `DialogPopup` restarts at 1 for the overlay's color ladder,
+              and an alert title was a fixed `h4` — both an `h4` under an
+              `h2`. */}
+          <EnclosingHeadingLevel level="h2">{children}</EnclosingHeadingLevel>
         </DialogContent>
         <DialogFooter>{footer}</DialogFooter>
       </DialogPopup>

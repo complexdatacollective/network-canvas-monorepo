@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { PencilIcon, X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { action } from 'storybook/actions';
 import { useArgs } from 'storybook/preview-api';
+
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button, IconButton, MotionButton } from '../../../Button';
 import Dialog from '../../../dialogs/Dialog';
@@ -44,11 +47,14 @@ function SimpleInlineItem({
 }: ArrayFieldItemProps<SimpleItemBase>) {
   const [label, setLabel] = useState(item?.label ?? '');
 
-  useEffect(() => {
-    if (isBeingEdited) {
-      setLabel(item?.label ?? '');
-    }
-  }, [isBeingEdited, item]);
+  // Seed the draft from the item whenever editing starts, or the item under
+  // the open editor is replaced. Done during render so the input never paints
+  // a frame holding the previous item's text.
+  const [seededFrom, setSeededFrom] = useState({ isBeingEdited, item });
+  if (seededFrom.isBeingEdited !== isBeingEdited || seededFrom.item !== item) {
+    setSeededFrom({ isBeingEdited, item });
+    if (isBeingEdited) setLabel(item?.label ?? '');
+  }
 
   if (isBeingEdited) {
     return (
@@ -229,7 +235,13 @@ immediately upon creation.
     },
     'itemTemplate': {
       control: false,
-      description: 'Function that returns a new item template when adding',
+      description:
+        'Optional function that returns a new item template when adding. Omitted, a new item starts empty.',
+    },
+    'itemLabel': {
+      control: false,
+      description:
+        'MessageDescriptor for this list’s own noun for one of its rows, used to name the row in the delete confirmation.',
     },
   },
   args: {
@@ -370,12 +382,17 @@ function TagInlineItem({
   const [label, setLabel] = useState(item?.label ?? '');
   const [color, setColor] = useState<TagItem['color']>(item?.color ?? 'node-1');
 
-  useEffect(() => {
+  // Seed the draft from the item whenever editing starts, or the item under
+  // the open editor is replaced. Done during render so the editor never paints
+  // a frame holding the previous item's values.
+  const [seededFrom, setSeededFrom] = useState({ isBeingEdited, item });
+  if (seededFrom.isBeingEdited !== isBeingEdited || seededFrom.item !== item) {
+    setSeededFrom({ isBeingEdited, item });
     if (isBeingEdited) {
       setLabel(item?.label ?? '');
       setColor(item?.color ?? 'node-1');
     }
-  }, [isBeingEdited, item]);
+  }
 
   // Edit mode
   if (isBeingEdited) {
@@ -564,12 +581,18 @@ function ContactDisplayItem({
   isBeingEdited,
   onEdit,
   onDelete,
+  deleteTriggerRef,
+  itemLabel,
   dragControls,
   index,
   itemCount,
   onMove,
   disabled,
 }: ArrayFieldItemProps<ContactItem>) {
+  const intl = useAppIntl();
+  // The list's own word for a row, so this row's affordances are named for the
+  // researcher rather than being one more "Remove" among several lists.
+  const noun = itemLabel ? intl.formatMessage(itemLabel) : 'contact';
   // Hide when being edited (dialog takes over) or when it's a new draft
   if (isBeingEdited || item._draft) {
     return null;
@@ -603,17 +626,20 @@ function ContactDisplayItem({
           className="text-current"
           color="primary"
           onClick={onEdit}
-          aria-label="Edit contact"
+          aria-label={`Edit ${noun}`}
           icon={<PencilIcon />}
         />
         <IconButton
+          // Registered so the removal confirmation can hand focus to the row
+          // that takes this one's place instead of to the add button.
+          ref={deleteTriggerRef}
           variant="text"
           className="text-current"
           color="destructive"
           size="sm"
           onClick={onDelete}
           icon={<X />}
-          aria-label="Remove contact"
+          aria-label={`Remove ${noun}`}
         />
       </div>
     </motion.div>
@@ -780,6 +806,7 @@ For complex forms, use a separate \`editorComponent\`:
         addButtonLabel="Add Contact"
         emptyStateMessage="No contacts yet. Add your first contact!"
         value={contacts}
+        itemLabel={contactLabel}
         onChange={(newValue) => {
           setContacts(newValue ?? []);
           action('onChange')(newValue);
@@ -1011,6 +1038,109 @@ export const ManyItems: Story = {
           updateArgs({ value: newValue });
           action('onChange')(newValue);
         }}
+      />
+    );
+  },
+};
+
+// ============================================================================
+// Naming the rows
+// ============================================================================
+
+// Story-only descriptors. Stories are excluded from message extraction, so
+// these are never shipped copy — they stand in for the nouns a real list
+// passes from its own catalog.
+const promptLabel: MessageDescriptor = {
+  id: 'frescoUiStories.arrayField.prompt',
+  defaultMessage: 'prompt',
+};
+
+const contactLabel: MessageDescriptor = {
+  id: 'frescoUiStories.arrayField.contact',
+  defaultMessage: 'contact',
+};
+
+/**
+ * A list that has a word for its rows says what is being deleted.
+ */
+export const NamedRows: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Naming the rows**
+
+Pass \`itemLabel\` — a \`MessageDescriptor\`, so the word is extracted and
+translated like any other — and the delete confirmation asks "Delete this
+prompt?" instead of the generic "Are you sure?", and its action reads
+"Delete prompt".
+
+Without it the confirmation keeps that generic wording, which is all a list
+with no word for its rows can honestly say.
+        `,
+      },
+    },
+  },
+  render: function Render() {
+    const [prompts, setPrompts] = useState<SimpleItemType[]>([
+      { id: '1', label: 'Who do you turn to for advice?' },
+      { id: '2', label: 'Who have you spent time with recently?' },
+    ]);
+
+    return (
+      <ArrayField<SimpleItemType>
+        sortable
+        itemLabel={promptLabel}
+        addButtonLabel="Add prompt"
+        emptyStateMessage="No prompts yet."
+        value={prompts}
+        onChange={(newValue) => {
+          setPrompts(newValue ?? []);
+          action('onChange')(newValue);
+        }}
+        itemTemplate={() => ({ id: crypto.randomUUID(), label: '' })}
+        itemComponent={SimpleInlineItem}
+      />
+    );
+  },
+};
+
+/**
+ * A list whose every field is answered in the row dialog passes no
+ * `itemTemplate`: adding opens the editor on an empty row.
+ */
+export const DialogEditingWithoutTemplate: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**No item template**
+
+\`itemTemplate\` is optional. Omit it when every field of a new row is answered
+in the editor and there is nothing to seed: "Add" opens the editor on an empty
+row, and — with \`immediateAdd\`, or with no \`editorComponent\` — appends an
+empty object instead.
+        `,
+      },
+    },
+  },
+  render: function Render() {
+    const [contacts, setContacts] = useState<ContactItem[]>([
+      { id: '1', name: 'John Doe', email: 'john@example.com' },
+    ]);
+
+    return (
+      <ArrayField<ContactItem>
+        itemLabel={contactLabel}
+        addButtonLabel="Add Contact"
+        emptyStateMessage="No contacts yet. Add your first contact!"
+        value={contacts}
+        onChange={(newValue) => {
+          setContacts(newValue ?? []);
+          action('onChange')(newValue);
+        }}
+        itemComponent={ContactDisplayItem}
+        editorComponent={ContactDialogEditor}
       />
     );
   },

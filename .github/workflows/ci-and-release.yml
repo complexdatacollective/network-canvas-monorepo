@@ -70,6 +70,22 @@ concurrency:
     && (startsWith(github.ref_name, 'changeset-release/')
     || github.ref_name == 'e2e-snapshots/main')) }}
 
+env:
+  # Turbo runs one task at a time on every CI runner. Standard runners have four
+  # vCPUs and this repository's tasks are documented as sensitive to contention
+  # — see the `test` job below for the measurements that set the cap at one.
+  #
+  # Set here rather than per invocation. Capping each call site is what left
+  # `quality-support` running `turbo run typecheck` at turbo's default of ten,
+  # which was harmless while those tasks were cache replays and killed the
+  # runner outright on a pull request that invalidated six packages at once
+  # (#2023, run 36858613676, both attempts).
+  #
+  # CI only, on purpose: a developer's machine has cores to spare and keeps
+  # turbo's default. A `--concurrency` flag would override this, so there are
+  # none — `scripts/ci/ci-workflow.test.mjs` refuses one.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   # Skipped on push: its only consumers (site preview checks, the quality
   # aggregate, carry-forward-statuses) never run on push-to-main.
@@ -83,6 +99,7 @@ jobs:
     outputs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
+      studio: ${{ steps.flags.outputs.studio }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -145,6 +162,10 @@ jobs:
             echo "CI workflow changed in $PREV..$CURR — forcing all conditional jobs to run."
           fi
 
+          # This job installs no dependencies, so fetch turbo at the exact
+          # version the root package.json pins rather than a version of its own.
+          TURBO_VERSION=$(node -p "require('./package.json').devDependencies.turbo")
+
           # flag <package>: true if any file in the package's workspace dep
           # tree changed between PREV and CURR, false otherwise.
           flag() {
@@ -158,7 +179,7 @@ jobs:
               echo true; return
             fi
             local paths
-            paths=$(npx --yes turbo@2.9.6 ls --filter="${pkg}..." --output=json 2>/dev/null \
+            paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json 2>/dev/null \
               | jq -r '.packages.items[].path')
             local pathspec=()
             while IFS= read -r p; do
@@ -173,6 +194,27 @@ jobs:
           docs=$(flag @codaco/documentation)
           website=$(flag networkcanvas.com)
 
+          # The Studio deployment stack, for the `studio-stack` job. The
+          # package flag is not enough on its own: the compose files, the
+          # Dockerfile, the environment template, the stack-test scripts and
+          # the self-host guide are all inputs to that job and none of them
+          # lives inside a package the `flag` function's `turbo ls` walks, so
+          # a change confined to any of them would leave the flag false and
+          # the job unrun. The guide is in the list because own-proxy extracts
+          # its nginx configuration from it at run time: editing that block
+          # changes what the job runs.
+          studio=$(flag @codaco/studio-server)
+          if [[ "$studio" != "true" && -n "$PREV" ]] \
+            && ! git diff --quiet "$PREV" "$CURR" -- \
+              apps/studio/Dockerfile \
+              'apps/studio/docker-compose*.yml' \
+              apps/studio/.env.example \
+              apps/studio/stack-test \
+              apps/studio/docs/self-host; then
+            studio=true
+            echo "Studio stack inputs changed outside the package graph."
+          fi
+
           # Either public site can contain inbound links to routes owned by the
           # other. Crawl both paired previews whenever either site changes so a
           # removed route cannot escape the link check on the unchanged peer.
@@ -183,6 +225,7 @@ jobs:
 
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
+          echo "studio=$studio" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -190,7 +233,7 @@ jobs:
   # release-PR refreshes may reuse an equivalent earlier verdict. Merge groups
   # deliberately skip the policy and all E2E work. Every path and history guard
   # fails closed; see
-  # scripts/release-e2e-policy.mjs.
+  # scripts/ci/release-e2e-policy.mjs.
   e2e-policy:
     if: >-
       github.event_name != 'merge_group'
@@ -234,7 +277,7 @@ jobs:
           # Read-only, feeds release-PR equivalence lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
-          policy=$(node scripts/release-e2e-policy.mjs)
+          policy=$(node scripts/ci/release-e2e-policy.mjs)
           if [[ "$BENCHMARK_INTERVIEW_E2E" == "true" ]]; then
             policy=$(jq \
               '.interview = true
@@ -422,6 +465,97 @@ jobs:
   # types directly and do not need built `.d.ts`. This seed job still runs
   # `build` explicitly so the release and app-deploy jobs find a warm `build`
   # cache on main.
+  #
+  # Playwright's browser cache is a separate GitHub Actions cache from the
+  # turbo remote-cache above, and it was competing with it for the same 10 GB
+  # per-repository ceiling. Every job that installs Playwright browsers used
+  # to gate on `github.event_name != 'push'`, so main never wrote a
+  # Playwright cache entry and no PR had anything to fall back on — each PR
+  # missed, installed its own browsers, and saved a copy keyed to its own ref
+  # that no other PR could read. Measured on 2026-09-10: 14 live copies
+  # totalling 5.17 GB, 53% of the ceiling, which evicted the turbo entries
+  # the `seed-turbo-cache` job below exists to seed — the shared turbo slice
+  # was down to 0.64 GB, which is what decides whether the `test` job takes
+  # two minutes or thirty.
+  #
+  # This job restores or (on a miss) installs and saves ONE union-keyed
+  # Playwright cache entry — every browser any of the four consumer jobs
+  # below need between them — and only main writes it; every consumer reads
+  # it with `actions/cache/restore` and never writes its own PR-scoped copy.
+  # See the comment on the first of those restores (in `test-storybook`) for
+  # the full arrangement and its trade-off.
+  warm-playwright-cache:
+    # This job is the only writer of the shared key, so if it fails there is
+    # no cache until it succeeds again. Ordinarily that self-heals on the
+    # next push to main, which is frequent — but a deterministic failure (a
+    # Playwright bump landing while apt is broken for that image) would
+    # otherwise need a no-op commit to clear. Accepting a manual dispatch of
+    # this workflow gives a way to re-warm without one.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/main')
+    # Cache warming only — a flake here must not fail the push run, which
+    # also carries the release jobs. (`playwright install --with-deps` shells
+    # out to apt and is known to fail runner-side.)
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        # The same lockfile-derived pin the Docker image tag is built from:
+        # the browser build is fixed by the resolved @playwright/test version
+        # either way, so this lane is no less deterministic about Chromium.
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          # No browser-set suffix: this is the one union key every consumer
+          # job restores, whatever subset of browsers it installs.
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install every browser the consumer jobs need
+        # `actions/cache` (not `/restore`) is deliberate here: it restores if
+        # this key already has an entry and saves at job end only on a miss,
+        # so a warmed main costs nothing on later pushes — this step becomes
+        # a no-op restore. chromium, firefox and webkit together are the
+        # union test-storybook, interview-e2e-native, interviewer-e2e-native
+        # and architect-e2e-native install between them.
+        id: install
+        run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium firefox webkit
+      # Same reasoning as `seed-turbo-cache`'s reporting step: this job is
+      # `continue-on-error`, so a failure leaves the run green and nothing
+      # else says a word. That matters more here than it looks, because the
+      # four consumer jobs are restore-only — if this never succeeds, main
+      # holds no browser cache, every one of them falls through to a full
+      # `playwright install`, and the only symptom is CI being quietly
+      # slower than it should be. Measured cost is about ten seconds per
+      # e2e job rather than minutes, so this is a warning and not a gate,
+      # but it must be a visible one.
+      - name: Report a failed warm
+        if: always()
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+        run: |
+          {
+            echo "### Playwright cache warm"
+            echo
+            echo "- install: \`$INSTALL_OUTCOME\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$INSTALL_OUTCOME" != "success" ]]; then
+            echo "::warning::warm-playwright-cache did not warm the shared browser cache (install: $INSTALL_OUTCOME). Every e2e job on the next pull requests will install browsers itself until a later push to main succeeds."
+          fi
+
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Cache warming only — a flake here must not fail the push run, which also
@@ -430,8 +564,11 @@ jobs:
     runs-on: ubuntu-latest
     # The `test` task includes the studio-sync and studio-server conformance
     # suites, which refuse to skip under CI. Without this they abort the whole
-    # `turbo run`, and the job seeds no cache at all — see the `test` job, whose
-    # service this mirrors.
+    # `turbo run`, and the job seeds no cache at all. This job seeds every
+    # package in one run, so it keeps a plain job-level service; the sharded
+    # `test` job starts an equivalent container from a step instead, because
+    # only one of its five shards holds a suite that needs a database and
+    # `services:` cannot be varied per matrix leg.
     services:
       postgres:
         image: postgres:18
@@ -442,6 +579,18 @@ jobs:
           - 54318:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      # And the rate-limit store the studio-server suite needs for the same
+      # reason (#1909): its limiter suites refuse to skip under CI, so without
+      # this the seeding run aborts and caches nothing.
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 63790:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -461,15 +610,114 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Seeded on its own first, for the reason the `test` job gives: this
+      # suite's assertions are wall-clock budgets, and turbo kills the
+      # in-flight tasks when any task in the run fails. On 2026-09-06 a
+      # protocol-builder failure here killed @codaco/studio-server#test
+      # mid-run, so main's tip seeded no cache entry for it and every PR built
+      # on that tip had to execute the suite itself.
+      #
+      # Carries an `id:` so the report step below can see it. Without one the
+      # report covered two of this job's three seeding steps, and the missing
+      # one was the Studio suite — the very suite whose cold-cache cost is
+      # what motivated splitting it out of `test` in the first place.
+      - name: Seed the Studio server suite
+        id: studio-server
+        run: pnpm exec turbo run '@codaco/studio-server#test'
+        continue-on-error: true
       # Fresco's `build` script is a bare `next build`, whose env.js validates
       # the full deployment env at config load; this job has no Fresco
       # deployment secrets. The variable reaches the task through
       # `fresco#build`'s `passThroughEnv` (strict env mode strips undeclared
       # variables), which keeps it out of the task hash so the seeded cache
       # stays valid for runs that don't set it.
-      - run: pnpm exec turbo run build test typecheck
+      #
+      # `--continue=dependencies-successful` (turbo 2.10.4): without it turbo's
+      # default `--continue=never` cancels every task still queued the moment
+      # one task fails, so a single failing package seeds no cache entry for
+      # any task behind it. Measured across 115 seed runs, 19 (17%) ended this
+      # way, leaving main unseeded for a median of 1.7 hours and once for 12.9
+      # — and a PR's `test` job runs a measured 12.9m median against a cold
+      # cache versus 8.8m against a warm one, so an unseeded main is not a
+      # cosmetic gap. `id:` and `continue-on-error: true` let the step below
+      # report which of these two runs left something unseeded, without
+      # turning that into a job failure — the job is cache warming, not a gate.
+      - name: Build and typecheck
+        id: build-typecheck
+        continue-on-error: true
+        run: pnpm exec turbo run build typecheck --continue=dependencies-successful
         env:
           SKIP_ENV_VALIDATION: 'true'
+      # The test suites run one at a time, for the reason the `test` job
+      # gives: a single vitest already fills the runner, and suites run in
+      # parallel starve each other into timeouts. A starved failure here
+      # would abort the run and leave every suite still queued unseeded.
+      #
+      # `--continue=dependencies-successful`: see the comment above the build
+      # step. On 2026-09-10 at 06:20 UTC the killer was protocol-builder's
+      # `src/form/__tests__/lockAndSave.test.tsx > a save the protocol did not
+      # take > rebases the form once the protocol takes the save`, which
+      # failed at 5161 ms and — under the old `--continue=never` default —
+      # would have cancelled every other queued suite's cache seed along with
+      # it. Not applied to the `@codaco/studio-server#test` run above:
+      # `--continue` governs how a multi-task run treats one task's failure,
+      # and a single-task run has nothing else queued behind it to protect.
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: pnpm exec turbo run test --continue=dependencies-successful
+        env:
+          SKIP_ENV_VALIDATION: 'true'
+      # Surfaces a broken seed instead of letting it fail silently, and then
+      # FAILS, which is the part that matters.
+      #
+      # The step-level `continue-on-error` above exists so that a failed
+      # `build typecheck` does not stop the `test` step from seeding what it
+      # still can. But those step-level flags also make every step succeed,
+      # and a job all of whose steps succeed concludes `success` — so without
+      # this final non-zero exit the job's conclusion would flip from
+      # `failure` to `success` the moment a step failed. That conclusion is
+      # not cosmetic. It is the only signal that `main` is broken at all,
+      # because `test`, `test-storybook` and `lint` are all gated
+      # `github.event_name != 'push'` and never run on a push; and it is the
+      # exact field `computeSeedHealth()` in scripts/ci/ci-metrics.mjs counts,
+      # so hiding it would have permanently zeroed the seed-failure
+      # measurement this branch adds in order to catch the next regression.
+      #
+      # The JOB-level `continue-on-error: true` at the top still keeps the
+      # push run green, so a flake here cannot fail a run that also carries
+      # the release jobs. That was always the property worth having; a green
+      # job conclusion was not.
+      - name: Report seed step outcomes
+        if: always()
+        env:
+          STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
+          BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          {
+            echo "### Turbo cache seed outcomes"
+            echo
+            echo "- studio-server: $STUDIO_SERVER_OUTCOME"
+            echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
+            echo "- test: $TEST_OUTCOME"
+          } >> "$GITHUB_STEP_SUMMARY"
+          failed=false
+          for result in \
+            "studio-server=$STUDIO_SERVER_OUTCOME" \
+            "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
+            "test=$TEST_OUTCOME"; do
+            name="${result%%=*}"
+            outcome="${result#*=}"
+            if [[ "$outcome" != "success" ]]; then
+              echo "::warning::seed-turbo-cache: '$name' concluded '$outcome' — main's cache for one or more of those tasks was not seeded"
+              failed=true
+            fi
+          done
+          if [[ "$failed" == "true" ]]; then
+            echo "::error::seed-turbo-cache did not fully seed main's cache. The push run stays green (job-level continue-on-error), but this job's conclusion must stay 'failure' so the breakage is visible and stays countable."
+            exit 1
+          fi
 
   lint:
     if: >-
@@ -482,26 +730,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-          # Pull requests lint only changed files against their synthetic
-          # merge commit's base parent.
-          fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
       # oxlint-tsgolint's type-aware rules resolve workspace types directly from
       # each package's `src` (exports point at source), so no built `.d.ts` is
       # needed and the job runs without a prior package build. Fresco is the one
       # exception: its Prisma client and Next type declarations are generated
       # and gitignored, and the install above runs with --ignore-scripts, so
-      # without this its queries lint as untyped. The PR path below calls oxlint directly rather than through
-      # turbo, so the task cannot be reached as a dependency.
-      - name: Generate Fresco's Prisma client and Next types
-        run: pnpm exec turbo run fresco#codegen
+      # without this its queries lint as untyped. `//#lint` declares
+      # `fresco#codegen` as a dependency, so turbo runs it as part of the task.
       - name: Lint and check formatting
-        run: |
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            pnpm lint:changed HEAD^1
-          else
-            pnpm exec turbo run //#lint
-          fi
+        run: pnpm exec turbo run //#lint
 
   # These checks are individually short and cache-heavy. Keeping them on one
   # runner avoids five duplicate checkout/install/cache-server sequences while
@@ -517,6 +755,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
+          # The npm version guard compares changed package manifests with the
+          # pull request's base commit. A shallow checkout cannot prove that
+          # comparison and must not turn registry uncertainty into a pass.
+          fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
       - name: Check unused files, exports, and dependencies
         id: knip
@@ -530,16 +772,77 @@ jobs:
         id: compat-protocols
         continue-on-error: true
         run: pnpm check:compat-protocols
+      - name: Check no Mapbox token other than the sandbox testing token is committed
+        id: mapbox-tokens
+        continue-on-error: true
+        run: pnpm check:mapbox-tokens
+      - name: Check the hydration flag has one implementation
+        id: hydration-flag
+        continue-on-error: true
+        run: pnpm check:hydration-flag
+      - name: Check every dialog closes by its open prop, never by unmounting
+        id: dialog-exits
+        continue-on-error: true
+        run: pnpm check:dialog-exits
+      # Studio's ERD and README schema section are generated and committed. The
+      # render is CPU-only — no database — so it belongs beside the other
+      # artifact checks rather than in the server's vitest lane, where it
+      # competed for a per-test budget with suites that hold Postgres busy for
+      # minutes and timed the test job out.
+      - name: Check the committed Studio schema docs are current
+        id: studio-schema-docs
+        continue-on-error: true
+        run: pnpm --filter @codaco/studio-server check:schema-docs
+      - name: Check changed public package versions are unoccupied on npm
+        id: npm_versions
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
+            echo "npm version collision check is only required for pull requests"
+            exit 0
+          fi
+          if [[ -z "$BASE_SHA" ]]; then
+            echo "::error::Pull request base SHA is unavailable"
+            exit 1
+          fi
+          node scripts/release/check-npm-version-collisions.mjs --base "$BASE_SHA"
       - name: Test repository scripts
         id: scripts
         continue-on-error: true
-        run: pnpm test:scripts
-      - name: Build shared packages and Background Creator
+        # Through turbo so the suite is cached like every other test task; it
+        # is a root task because scripts/ is not a workspace package.
+        run: pnpm exec turbo run //#test:scripts
+      - name: Build shared packages and release-sensitive apps
         id: build
         continue-on-error: true
-        # Background Creator has no E2E suite, so exercise its complete Vite
-        # build before the post-merge production release job runs it.
-        run: pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
+        # Background Creator has no E2E suite. Architect and Interviewer's
+        # PostHog source-map path is credential-gated and otherwise runs only
+        # after a release PR merges. A local CLI stub exercises app and worker
+        # source-map processing plus deletion without contacting PostHog.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
+          POSTHOG_PROJECT_ID: '1'
+          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/buildtime/posthog-cli-upload-stub.mjs
+        run: |
+          pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
+          pnpm --filter=@codaco/architect build
+          pnpm --filter=@codaco/interviewer build
+      # Every other Storybook is built in CI as Chromatic's upload input
+      # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
+      # Builder has no Chromatic project by design, and the build step above
+      # skips it because a private, source-first package has no `build` script
+      # — so without this step nothing in CI runs its static build at all.
+      # `test:storybook` is not a substitute: it serves stories through Vite's
+      # dev server and never bundles, and it does not read the generated docs
+      # entries either (a CSF file with `autodocs` and no story exports is
+      # skipped). Cached through turbo like the other build tasks, so it
+      # replays on the PRs that do not touch the package.
+      - name: Build the Protocol Builder Storybook
+        id: protocol_builder_storybook
+        continue-on-error: true
+        run: pnpm exec turbo run build-storybook --filter=@codaco/protocol-builder
       - name: Typecheck workspaces
         id: typecheck
         continue-on-error: true
@@ -550,8 +853,14 @@ jobs:
           KNIP_OUTCOME: ${{ steps.knip.outcome }}
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
+          MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
+          HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
+          DIALOG_EXITS_OUTCOME: ${{ steps.dialog-exits.outcome }}
+          STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
+          NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
           failed=false
@@ -559,8 +868,14 @@ jobs:
             "knip=$KNIP_OUTCOME" \
             "changesets=$CHANGESETS_OUTCOME" \
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
+            "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
+            "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
+            "dialog-exits=$DIALOG_EXITS_OUTCOME" \
+            "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
+            "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
             if [[ "${result#*=}" != "success" ]]; then
@@ -572,7 +887,7 @@ jobs:
             exit 1
           fi
 
-  test:
+  test-studio-server:
     if: >-
       github.event_name != 'merge_group'
       && github.event_name != 'push'
@@ -592,6 +907,284 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # The shared rate-limit store (#1909). The suites that exercise it skip
+      # when nothing answers `REDIS_URL` on a developer's machine and throw
+      # here instead, the same way the Postgres suites do: on this runner an
+      # absent store is a broken workflow, not a missing container. The port
+      # matches the committed `.env.development`, which is what the suite
+      # reads.
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 63790:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Write protocol-validation .env (test fixture)
+        env:
+          PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+          PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+          TEST_PROTOCOL_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+        run: |
+          {
+            echo "PROTOCOL_ENCRYPTION_KEY=$PROTOCOL_ENCRYPTION_KEY"
+            echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
+            echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
+          } > packages/protocol-validation/.env
+      - name: Run the Studio server suite
+        # The only workspace suite whose assertions are wall-clock budgets
+        # rather than logic. The one that a starved event loop actually
+        # breaks is the 150ms delivery lease in
+        # src/team/__tests__/invitation-delivery.test.ts: the dispatcher
+        # renews it from a 50ms setTimeout that has to fire during a real
+        # 450ms pg_sleep, so scheduling jitter, not a hang, is what fails it.
+        # The rest are hang backstops rather than budgets being spent —
+        # `timeout: 10_000` on the ~10 spawnSync launches of the Node
+        # entrypoint, `testTimeout`/`hookTimeout` of 30s as the package-wide
+        # default in vitest.config.ts, and the seeding hooks' 180s (and, in
+        # src/db/__tests__/seed.test.ts, 360s, widened from 180s for being
+        # too tight). Seeding does not take 180s; the ceiling exists to fail
+        # a hung seed rather than a slow one. Read a budget as headroom that
+        # contention eats, not as time the suite spends.
+        #
+        # Before turbo's concurrency was capped here, this suite shared the
+        # 4-vCPU runner with the jsdom suites (architect, protocol-builder,
+        # interview, fresco-ui, interviewer) and those budgets lapsed.
+        # Measured across #1693's runs it passed at or under 408s of suite
+        # wall time and failed at every observed time above that (509s, 519s,
+        # 527s, 583s, 847s, 851s) — thresholds from that shared-runner shape,
+        # not comparable to the times this dedicated job now posts.
+        #
+        # What the suite costs, measured on this job: vitest's two phases sum
+        # to the work, and the workers divide it, down to a floor set by the
+        # longest single file. The file that set that floor was the versioned
+        # migration security suite, which this branch's revert of #1700
+        # deletes along with the migration runner it exercised, so the floor
+        # is now whichever integration file is longest and the measurement
+        # wants repeating before it is quoted again. Shortening the suite means
+        # removing work — see the fingerprint-addressed DDL cache in
+        # src/__tests__/support/schema-ddl.ts, which took the import phase
+        # from ~310s to ~110s by keeping drizzle-kit out of the module graph
+        # of the sixty files that only needed the rendered statements — not
+        # loosening a budget above.
+        #
+        # It is selected far more often than it is touched, because
+        # @codaco/protocol-utilities dev-depends on @codaco/fresco-ui: every
+        # fresco-ui change re-hashes it through `^topo`, and protocol-builder
+        # — where most current work sits — pulls it in the same way. When this
+        # suite ran as the first, blocking step of the `test` job, it cost
+        # about 9 minutes in 33 of 60 sampled successful PR runs (55%) and 0
+        # seconds in the other 27, 28% of that job's total wall time, on a job
+        # that gates 51% of pull requests and finished a median of 7.0 minutes
+        # after the runner-up. It now runs as its own job on its own runner
+        # instead of serially ahead of the rest of the workspace: a dedicated
+        # runner is *more* uncontended than a shared one, so the isolation
+        # this suite has always needed for its wall-clock budgets is
+        # strengthened, not weakened. It also no longer needs
+        # `continue-on-error` — as its own job its verdict is its own, and it
+        # can no longer hide behind, or be hidden by, the workspace suite's
+        # result.
+        run: pnpm exec turbo run '@codaco/studio-server#test'
+
+  # The Studio deployment stack, run the way a self-hoster runs it and once for
+  # each documented swap with the swapped element replaced by a stub (#1909).
+  #
+  # Not a unit suite and not an E2E suite: what it covers is the compose file,
+  # the two images, the routing table and the self-host guide — none of which
+  # any workspace test can reach, because all four are only true once
+  # containers are running. The scripts are `apps/studio/stack-test`, and CI
+  # runs exactly what a developer runs; see that directory's README.
+  #
+  # Conditional on the same `detect` flag machinery the site previews use, with
+  # `test-studio-server`'s exclusions: never on `merge_group` (PR verdicts are
+  # authoritative there) and never on `push`.
+  studio-stack:
+    needs: detect
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+      && needs.detect.outputs.studio == 'true'
+    runs-on: ubuntu-latest
+    # The build is most of this. Four variant cycles cost about a minute each
+    # once the images exist; a cold build of studio-api is the rest, and the
+    # GitHub Actions cache below is what keeps it off the critical path on
+    # every run after the first.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      # `--cache-to type=gha` needs a builder that can export a cache, and the
+      # runner's default one is the `docker` driver, which cannot — it fails
+      # the build rather than ignoring the flag. One `buildx create` rather
+      # than a third-party action: this is the whole of what that action would
+      # do here; `build.sh` calls `docker buildx build`, which follows the
+      # selected builder (`docker build` on this runner does not, and fails).
+      # `docker buildx use` alone was not enough: the first run built on the
+      # default driver and could not export the cache.
+      - name: Select a cache-capable builder
+        run: docker buildx create --name studio-stack --driver docker-container --use
+      # The `gha` cache backend authenticates with the job's runtime token, and
+      # GitHub exposes that (and the cache service address) to ACTIONS, not to
+      # `run:` steps — which is why `docker/build-push-action` can use the
+      # backend and a shell script cannot. Re-exporting the three variables
+      # from inside an action is what makes `build.sh` usable here unchanged,
+      # rather than CI building the images some other way than a developer
+      # does. They are job-scoped and go no further than this job.
+      - name: Expose the Actions cache service to the build
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_RESULTS_URL',
+            ]) {
+              const value = process.env[name];
+              if (value) core.exportVariable(name, value);
+            }
+      - name: Build the stack images
+        env:
+          # Belt and braces with the `buildx create --use` above: buildx reads
+          # this before its saved selection, so the build cannot fall back to
+          # the default driver, whose cache export the first run failed on.
+          BUILDX_BUILDER: studio-stack
+          # Scoped per target by the `{target}` placeholder, so the two images
+          # do not overwrite each other's cache manifest.
+          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
+          # `ignore-error`: a cache export that the service refuses is a slower
+          # next run, not a broken build, and this job's verdict is about the
+          # stack rather than about the cache.
+          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+        run: apps/studio/stack-test/build.sh
+
+      # Serial, and each variant torn down before the next: they share a
+      # Compose project name, the host's ports 80 and 443, and two fixed
+      # subnets. `down.sh` runs whatever the assertions did, so a failed
+      # variant cannot leave containers holding the network the next one needs.
+      - name: The reference stack
+        run: |
+          apps/studio/stack-test/up.sh --variant reference
+          apps/studio/stack-test/assert.sh --variant reference
+      - name: Tear down the reference stack
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant reference
+
+      - name: A swapped database
+        run: |
+          apps/studio/stack-test/up.sh --variant external-postgres
+          apps/studio/stack-test/assert.sh --variant external-postgres
+      - name: Tear down the swapped database
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-postgres
+
+      - name: A swapped object store
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket
+          apps/studio/stack-test/assert.sh --variant external-bucket
+      - name: Tear down the swapped object store
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-bucket
+
+      - name: A swapped rate-limit store
+        run: |
+          apps/studio/stack-test/up.sh --variant external-redis
+          apps/studio/stack-test/assert.sh --variant external-redis
+      - name: Tear down the swapped rate-limit store
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-redis
+
+      - name: A swapped ingress
+        run: |
+          apps/studio/stack-test/up.sh --variant own-proxy
+          apps/studio/stack-test/assert.sh --variant own-proxy
+      - name: Tear down the swapped ingress
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant own-proxy
+
+      # The assertions print `docker compose ps` and the last 200 log lines
+      # inline, which is where a reader looks first; `down.sh` writes the same
+      # `ps` and the WHOLE log to files before it tears anything down, which is
+      # what a 200-line tail is not enough for. Those, `migrate`'s output and
+      # the nginx configuration own-proxy extracted from the guide are listed
+      # by name rather than uploading the directory: the generated environment
+      # file and the setup token also live there, and an artifact is a worse
+      # place for either than the machine they were made on.
+      - name: Keep the failing run's diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-stack-diagnostics
+          include-hidden-files: true
+          path: |
+            apps/studio/stack-test/.work/*-ps.txt
+            apps/studio/stack-test/.work/*-logs.txt
+            apps/studio/stack-test/.work/migrate.log
+            apps/studio/stack-test/.work/nginx.conf
+          if-no-files-found: warn
+          retention-days: 7
+
+  test:
+    # The workspace unit suites, one bucket of packages per parallel runner.
+    #
+    # These suites are embarrassingly parallel across MACHINES and stubbornly
+    # serial on one. Every vitest sizes its fork pool to the runner's CPU
+    # count, so a single suite already saturates a 4-vCPU standard runner and
+    # turbo's own concurrency knob buys nothing — measured on the same
+    # thirteen tasks (#1801), 25m53s at 1, 25m49s at 2, 26m08s
+    # at the default. The bottleneck is CPU throughput, not scheduling, so the
+    # only lever is more CPUs. Standard runners are free on this public
+    # repository and the org has 500 concurrent standard jobs against a
+    # sampled live usage of ~26, so shard count is not the constraint either.
+    #
+    # Each shard is a whole runner running its own bucket serially (from
+    # `TURBO_CONCURRENCY` at the top of this file), which is the same
+    # uncontended machine per suite that the single job gave — the per-test
+    # wall-clock budgets still measure the test rather than the queue. scripts/ci/test-shards.mjs owns which package
+    # is in which bucket, how the buckets were weighted, and the coverage
+    # check that refuses a package belonging to no shard.
+    name: test (shard ${{ matrix.shard }})
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # Every shard's verdict is wanted. Under the default fail-fast the first
+      # red suite cancels its siblings, and a cancelled shard reports no
+      # failure of its own — a pull request would be told about one broken
+      # package at a time, one push each.
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+          - shard: 2
+          # packages/studio-sync's conformance suite is the only workspace
+          # suite outside @codaco/studio-server that needs a database, and it
+          # refuses to skip under CI. Its shard starts one; the others do not
+          # pay for it. `services:` cannot be varied per matrix leg, so the
+          # container is started by a step instead — measured at 24s of
+          # "Initialize containers" on every run of the unsharded job.
+          - shard: 3
+            postgres: true
+            # @codaco/protocol-validation's suite is the only one that reads
+            # the encryption keys and the protocol-fetch token, through a
+            # `.env` in its own package directory. Only its shard writes them,
+            # so the secrets never reach a runner with no use for them.
+            protocolValidation: true
+          - shard: 4
+          - shard: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -599,8 +1192,61 @@ jobs:
           # `--affected` diffs against the PR base; on a shallow clone turbo
           # treats every package as changed.
           fetch-depth: 0
+      # Both Postgres steps run BEFORE the install, so a container that cannot
+      # start fails this job in seconds rather than after a checkout, a pnpm
+      # install and a cache restore. That ordering is what the `services:`
+      # block this replaces gave for free: Actions blocked every step on the
+      # container's healthcheck. Same image, same env (POSTGRES_INITDB_ARGS is
+      # read by the official image's entrypoint either way), same port.
+      - name: Start Postgres for the studio-sync conformance suite
+        if: matrix.postgres
+        run: |
+          docker run --detach --name studio-sync-postgres \
+            --env POSTGRES_PASSWORD=spike \
+            --env POSTGRES_DB=studio_dev \
+            --env POSTGRES_INITDB_ARGS=--set=max_prepared_transactions=10 \
+            --publish 54318:5432 \
+            postgres:18
+      # `-h 127.0.0.1` on purpose: during initdb the official image runs a
+      # temporary server bound to the unix socket only, so a socket-based
+      # pg_isready (what the old service's health-cmd ran) can report ready
+      # before the TCP listener the suite actually connects to exists. The
+      # 120s budget covers that init; a container that has *stopped* is not
+      # going to start listening, so it is reported at once rather than
+      # waited out.
+      - name: Wait for Postgres
+        if: matrix.postgres
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if docker exec studio-sync-postgres pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              echo "Postgres is accepting TCP connections"
+              exit 0
+            fi
+            if [[ "$(docker inspect --format '{{.State.Running}}' studio-sync-postgres 2>/dev/null)" != "true" ]]; then
+              docker logs studio-sync-postgres || true
+              echo "::error::The Postgres container stopped before accepting connections"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs studio-sync-postgres || true
+          echo "::error::Postgres did not accept connections within 120s"
+          exit 1
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
+        # Only the shard whose bucket holds @codaco/protocol-validation. The
+        # file is that package's own turbo input, so writing it anywhere else
+        # hands three secrets to a runner that cannot use them.
+        #
+        # Withholding it elsewhere cannot cost cache hits: `.env` is
+        # gitignored, so turbo's default inputs — which is what the input-less
+        # `topo` transit task hashes, and therefore what propagates across the
+        # dependency edge — do not include it. Only a task that names `.env`
+        # in its own `inputs` hashes it, and only for its own package.
+        # Verified by diffing every task hash with the file present and
+        # absent: @codaco/protocol-validation moved, nothing else did.
+        if: matrix.protocolValidation
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
           PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
@@ -614,7 +1260,40 @@ jobs:
       - name: Run tests (PRs run only affected tasks)
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Restrict this runner to its bucket. scripts/ci/test-shards.mjs emits
+          # one `--filter=!<pkg>` for every test-carrying workspace package
+          # this shard does not own, and refuses to emit anything at all if a
+          # package belongs to no bucket.
+          #
+          # Negations, not positive filters, because turbo UNIONS what the
+          # positive filters select: `--filter=@codaco/art` beside the
+          # affected selector below would run art on every pull request
+          # whether or not the diff touched it. Negations subtract from that
+          # union, which is the intersection a shard actually wants — the same
+          # mechanism that already kept @codaco/studio-server out. That suite
+          # is now excluded by simply belonging to no bucket, so every shard
+          # negates it and the split cannot be undone by editing one shard.
+          #
+          # Via a file rather than `mapfile < <(node ...)`: process
+          # substitution discards the script's exit status, so a script that
+          # died would leave an empty filter list and silently widen the shard
+          # to the whole workspace — every suite run five times over, in
+          # parallel with itself.
+          #
+          # The EXIT STATUS is what decides, not whether the file has content.
+          # A bucket that owned every test package would need no negations at
+          # all, and treating that empty-but-correct output as a failure would
+          # abort a shard that had nothing wrong with it.
+          set -euo pipefail
+          if ! node scripts/ci/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"; then
+            echo "::error::shard $SHARD could not resolve its package filters; refusing to run an unrestricted workspace"
+            exit 1
+          fi
+          mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
+          echo "Shard $SHARD excludes ${#SHARD_FILTERS[@]} packages"
+
           # PR checkouts are synthetic merges. Diff against the event's base
           # SHA, then use --affected to scope the run to tasks whose declared
           # inputs the diff touches, plus their dependents (turbo.json enables
@@ -630,6 +1309,49 @@ jobs:
           # quality-support, so changing only a scripts/*.test.mjs file does
           # not invalidate workspace unit tests. Docs, changesets, and
           # markdown are inert to tests as well.
+          #
+          # One suite at a time. No flag here: `TURBO_CONCURRENCY` at the top
+          # of this file caps every turbo invocation in every job, and this is
+          # the measurement that set that cap — so it is recorded here rather
+          # than beside the variable.
+          #
+          # Turbo's default runs up to
+          # ten tasks at once, and every vitest sizes its fork pool to the
+          # runner's CPUs (three workers on the 4-vCPU runner, behind a main
+          # process that serves their module transforms), so a single suite
+          # already fills the machine and each further one only divides it. A
+          # fresco-ui change invalidates thirteen suites: run 34372974092
+          # (#1796) had nine in flight at once, every protocol-builder file
+          # took 4–5× as long as in a lightly loaded run (including one that
+          # renders nothing), and ten tests timed out at 20s. Serialising the
+          # suites costs no wall time, because the runner is saturated either
+          # way, and hands each suite the whole machine, so per-test budgets
+          # measure the test rather than the queue. Measured on the same
+          # thirteen tasks (#1801): 25m53s at concurrency 1 and 25m49s at 2
+          # against 26m08s at the default, with no timeouts at either cap. Not
+          # 2: a protocol-builder file that took 9.5s alone took 20s beside
+          # one other suite, which is the headroom the 20s budgets need.
+          #
+          # The cap is still right per shard. A shard is a whole
+          # runner, so serialising its bucket hands each suite the same
+          # uncontended 4 vCPUs the single job did; the parallelism comes from
+          # the other runners, not from this one.
+          #
+          # Capping per invocation was the old arrangement, and it left the
+          # invocations nobody had thought about uncapped: `quality-support`
+          # ran `turbo run typecheck` at the default, which was harmless while
+          # those tasks were cache replays and killed the runner outright on a
+          # pull request that invalidated six packages at once (#2023, run
+          # 36858613676, both attempts). Hence job-wide rather than per call.
+          #
+          # The `!@codaco/studio-server` negation SHARD_FILTERS carries: that
+          # suite runs as its own `test-studio-server` job (see the comment
+          # there for why), on its own runner in parallel with these. Without
+          # the exclusion both the `--affected` pass and the full-suite
+          # fallback below would still select `@codaco/studio-server#test` as
+          # a cache miss — turbo has no notion that a sibling job already
+          # claimed it — and run the wall-clock-budgeted suite again, on a
+          # runner it was carved out specifically to avoid sharing.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -639,18 +1361,228 @@ jobs:
               ':(exclude)pnpm-lock.yaml' \
               ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
-            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test --affected
+            # `--affected` is turbo's own sugar for `--filter=...[<base>]`,
+            # spelled out here because turbo 2.10.4 ignores every `--filter`
+            # for TASK selection when `--affected` is present. It is not a
+            # silent no-op either: the run prints a "Packages in scope" line
+            # that honours the filter and then executes the unfiltered task
+            # set anyway, so the exclusion below reads as working while the
+            # Studio suite runs in this job as well as in
+            # `test-studio-server` -- twice per pull request, the second copy
+            # on the very runner the split exists to get it off, on the
+            # affected path most pull requests take.
+            #
+            # The explicit form obeys every filter. Verified equivalent to
+            # `--affected` against two independent bases (23 and 56 selected
+            # tasks, identical task IDs both times), and verified to drop
+            # exactly one task when the negation is added. The per-shard
+            # negations ride the same form for the same reason: under
+            # `--affected` they would be ignored and every shard would run the
+            # whole affected set.
+            #
+            # Check any change here by EXECUTING turbo, never with `--dry`:
+            # `--dry`'s `packages` field reports the filtered scope even in
+            # the broken case, so it confirms a filter the run then ignores.
+            # Its `tasks` field is the one that matches what runs. Executed
+            # against base b0bc600: 22 real `test` tasks unsharded, and with a
+            # three-package bucket's negations exactly @codaco/art,
+            # @codaco/network-query and @codaco/shared-consts.
+            pnpm exec turbo run test \
+              --filter="...[$DIFF_BASE_SHA]" \
+              "${SHARD_FILTERS[@]}"
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test
+          pnpm exec turbo run test "${SHARD_FILTERS[@]}"
+
+  test-storybook:
+    # Storybook's play functions and their assertions, executed in a real
+    # browser by vitest. Chromatic captures stories for three of these
+    # projects, but TurboSnap only re-captures the ones a PR changed, and
+    # Architect and Fresco have no Chromatic project at all — so this is the
+    # only check that runs every play function on every change.
+    #
+    # A separate job from `test` because it needs Playwright browsers, which
+    # the plain unit-test runner does not.
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+          # `--affected` diffs against the PR base; on a shallow clone turbo
+          # treats every package as changed.
+          fetch-depth: 0
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # One union key, written only by `warm-playwright-cache` on pushes to
+      # main, restored read-only here and by the other three jobs that need
+      # Playwright browsers (interview-e2e-native, interviewer-e2e-native,
+      # architect-e2e-native): a PR-scoped copy is readable by exactly one
+      # pull request, and on 2026-09-10 fourteen of those PR-scoped copies
+      # held 5.17 GB — 53% of the repository's 10 GB cache ceiling — which
+      # evicted the turbo cache entries `test` depends on to stay fast.
+      # `actions/cache/restore` (not `actions/cache`) makes that one-way: each
+      # of these four jobs can read main's warm entry but never writes a
+      # competing copy of its own, warm or not. The deliberate trade: a job
+      # that needs fewer than all three browsers still restores the full
+      # union (this one restores a webkit binary it never launches), a few
+      # hundred MB and some seconds it would not pay from a job-scoped key —
+      # traded for never holding open a second key against the ceiling this
+      # rearrangement exists to protect.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install the pinned browsers
+        # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
+        # postinstall browser download never runs. Firefox is for fresco-ui,
+        # the one project whose storybook suite runs both engines. This step
+        # is the fallback for a cold cache (main's warm job hasn't run yet, or
+        # missed) — a no-op when the binaries the restore above already
+        # placed are present.
+        run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium firefox
+      - name: Generate Fresco's Prisma client and Next types
+        run: pnpm exec turbo run fresco#codegen
+      - name: Run storybook tests (PRs run only affected tasks)
+        env:
+          DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # Same fail-closed affected selection as the `test` job: a change
+          # outside the workspace package trees can alter how these run
+          # without being any task's declared input, so it forces the full
+          # set. See that job for the reasoning behind each exclusion.
+          #
+          # These run one at a time, from `TURBO_CONCURRENCY` at the top of
+          # this file. Each suite drives its own
+          # Chromium (and Firefox, for fresco-ui); in parallel they starve each
+          # other on a four-core runner and the timing-sensitive stories fail on
+          # a half-rendered DOM. Serially the whole set takes about 100s.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
+            && [[ -n "$DIFF_BASE_SHA" ]] \
+            && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
+            && git diff --quiet "$DIFF_BASE_SHA" HEAD -- . \
+              ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
+              ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
+              ':(exclude)pnpm-lock.yaml' \
+              ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
+            echo "Running storybook test tasks affected by $DIFF_BASE_SHA..HEAD"
+            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test:storybook \
+              --affected
+            exit 0
+          fi
+
+          echo "Running every storybook suite for $GITHUB_EVENT_NAME"
+          pnpm exec turbo run test:storybook
+
+  # Refuses to merge a stale Version Packages PR. Every push to main
+  # regenerates changeset-release/main, but a head generated before main's
+  # newest changeset can still be queued and merged: on 2026-09-01 #1558 merged
+  # 48 seconds after #1574 added a changeset. The merged tree then carried both
+  # the bumped versions and an unconsumed changeset, changesets/action took its
+  # regenerate-the-PR path instead of publishing, and fresco-ui 6.3.0,
+  # interview 9.0.1 and fresco 4.1.3 sat on main unpublished until the next
+  # release PR bumped past them — with apps-release-fresco failing on every
+  # push in between, because the mirror pinned versions npm never had.
+  #
+  # Unlike every other check, this one is about the merged tree rather than the
+  # PR head, so it runs on merge-group commits (the exact tree that lands on
+  # main) as well as on the release PR itself, and `quality` consults it in
+  # both modes. The queue batches up to five entries, each built on top of the
+  # entries ahead of it, and a group's ref names only its last pull request —
+  # so whether this tree merges the release PR is decided by ancestry (does it
+  # contain the open release PR's head?), never by the ref suffix. A later
+  # entry that lands a changeset on top of the release PR fails here, drops
+  # out of the queue, and lets the release PR merge alone.
+  #
+  # The same tree is where the publish run's other precondition is decided:
+  # the lane publishes through npm trusted publishing, which cannot create a
+  # package, so a merge whose publish would need one (a package no one has
+  # published by hand yet — @codaco/app-i18n on 2026-09-08) is refused here
+  # rather than failing halfway through `changeset publish` on main.
+  version-packages-freshness:
+    if: >-
+      github.event_name == 'merge_group'
+      || (github.event_name == 'pull_request'
+      && github.head_ref == 'changeset-release/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Decide whether this tree merges the Version Packages PR
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+        run: |
+          release_pr=false
+          if [[ "$EVENT_NAME" == 'pull_request' ]]; then
+            [[ "$PR_HEAD_REF" == 'changeset-release/main' ]] && release_pr=true
+          else
+            # The queue only ever merges the open PR's current head (a push
+            # to the branch dequeues it), so this tree merges the release PR
+            # exactly when it contains that head. An API failure fails the
+            # job: a queue entry that cannot be judged must not merge on a
+            # guess, and re-queueing retries it.
+            vp_head=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
+              --jq '.[0].head.sha // empty')
+            if [[ -z "$vp_head" ]]; then
+              echo "No open Version Packages PR — nothing to check"
+            else
+              status=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/compare/${vp_head}...${GITHUB_SHA}" \
+                --jq .status)
+              case "$status" in
+                ahead | identical) release_pr=true ;;
+              esac
+              echo "Open Version Packages PR head $vp_head is '$status' relative to this tree"
+            fi
+          fi
+          echo "release_pr=$release_pr" >> "$GITHUB_OUTPUT"
+          if [[ "$release_pr" == 'true' ]]; then
+            echo "This tree merges the Version Packages PR — checking it"
+          else
+            echo "This tree does not merge the Version Packages PR — nothing to check"
+          fi
+      - if: steps.head.outputs.release_pr == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - if: steps.head.outputs.release_pr == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: '.nvmrc'
+      - name: Refuse a release PR that leaves normal-lane changesets behind
+        if: steps.head.outputs.release_pr == 'true'
+        run: node scripts/release/check-version-packages-freshness.mjs
+      - name: Refuse a release PR whose publish needs a package npm does not know
+        if: steps.head.outputs.release_pr == 'true'
+        run: node scripts/release/check-first-publications.mjs
 
   quality:
     needs:
       - lint
       - quality-support
       - test
+      - test-studio-server
+      - studio-stack
+      - test-storybook
       - detect
       - e2e-policy
       - interview-e2e
@@ -659,6 +1591,7 @@ jobs:
       - interviewer-e2e-native
       - architect-e2e
       - architect-e2e-native
+      - version-packages-freshness
     if: >-
       ${{ !cancelled()
       && github.event_name != 'push'
@@ -670,6 +1603,8 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           DETECT_RESULT: ${{ needs.detect.result }}
+          STUDIO_STACK_REQUIRED: ${{ needs.detect.outputs.studio }}
+          STUDIO_STACK_RESULT: ${{ needs.studio-stack.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
           E2E_INTERVIEW_REQUIRED: ${{ needs.e2e-policy.outputs.interview }}
           E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
@@ -677,13 +1612,24 @@ jobs:
           LINT_RESULT: ${{ needs.lint.result }}
           SUPPORT_RESULT: ${{ needs.quality-support.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          STUDIO_SERVER_RESULT: ${{ needs.test-studio-server.result }}
+          TEST_STORYBOOK_RESULT: ${{ needs.test-storybook.result }}
           INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
           INTERVIEW_E2E_NATIVE_RESULT: ${{ needs.interview-e2e-native.result }}
           INTERVIEWER_E2E_RESULT: ${{ needs.interviewer-e2e.result }}
           INTERVIEWER_E2E_NATIVE_RESULT: ${{ needs.interviewer-e2e-native.result }}
           ARCHITECT_E2E_RESULT: ${{ needs.architect-e2e.result }}
           ARCHITECT_E2E_NATIVE_RESULT: ${{ needs.architect-e2e-native.result }}
+          FRESHNESS_RESULT: ${{ needs.version-packages-freshness.result }}
         run: |
+          # The one check whose subject is the merged tree rather than the PR
+          # head, so it is consulted in both modes. 'skipped' is a pull request
+          # whose head is not the release branch.
+          if [[ "$FRESHNESS_RESULT" != "success" && "$FRESHNESS_RESULT" != "skipped" ]]; then
+            echo "::error::quality gate failed — version-packages-freshness concluded '$FRESHNESS_RESULT'"
+            exit 1
+          fi
+
           if [[ "$EVENT_NAME" == "merge_group" ]]; then
             echo "PR quality verdicts are authoritative; merge-group CI is intentionally lightweight"
             exit 0
@@ -704,11 +1650,28 @@ jobs:
           verify_successes "quality gate" \
             "$LINT_RESULT" \
             "$SUPPORT_RESULT" \
-            "$TEST_RESULT"
+            "$TEST_RESULT" \
+            "$STUDIO_SERVER_RESULT" \
+            "$TEST_STORYBOOK_RESULT"
 
           if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
             echo "::error::quality gate failed — detect concluded '$DETECT_RESULT'"
             exit 1
+          fi
+
+          # The Studio deployment stack (#1909), evaluated the way the E2E
+          # suites below are: on the flag that selected it rather than on the
+          # job's own result, so a job that never ran cannot read as a pass on
+          # a change that needed it. `skipped` is the correct outcome for a
+          # pull request that does not touch the stack.
+          if [[ "$STUDIO_STACK_REQUIRED" == "true" ]]; then
+            if [[ "$STUDIO_STACK_RESULT" != "success" ]]; then
+              echo "::error::quality gate failed — studio-stack concluded '$STUDIO_STACK_RESULT'"
+              exit 1
+            fi
+            echo "studio-stack passed"
+          else
+            echo "studio-stack is not required for this event (result: $STUDIO_STACK_RESULT)"
           fi
 
           if [[ "$E2E_POLICY_RESULT" != "success" ]]; then
@@ -742,12 +1705,19 @@ jobs:
 
   docs-preview-checks:
     needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.docs == 'true'
+    # Documentation and Website are separately gated products. Crawl both
+    # paired previews only when one of their generated release PRs is being
+    # validated; ordinary feature PRs must not run the dead-link checker.
+    if: >-
+      github.event_name == 'pull_request'
+      && needs.detect.outputs.docs == 'true'
+      && (github.head_ref == 'changeset-release/documentation'
+      || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budgets a 15-minute Netlify status poll plus the crawl. Every link is a
+    # browser navigation now, so a cold cache is minutes rather than seconds;
+    # the site's own pages are never cached and set the floor.
+    timeout-minutes: 45
     permissions:
       contents: read
       statuses: read
@@ -761,6 +1731,7 @@ jobs:
             const statusContext = `netlify/${siteName}/deploy-preview`;
             const headSha = context.payload.pull_request.head.sha;
             const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const expectedOrigin = `https://${expectedHost}`;
             const deadline = Date.now() + 15 * 60 * 1000;
 
             while (Date.now() < deadline) {
@@ -784,14 +1755,26 @@ jobs:
                   return;
                 }
 
-                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                const isPreviewUrl =
+                  previewUrl.protocol === 'https:' && previewUrl.hostname === expectedHost;
+                // Netlify reports an ignored deploy as a successful commit status,
+                // but links to its deploy dashboard instead of the stable PR alias.
+                const isCanceledDeployDashboard =
+                  status.description === 'Deploy Preview canceled.' &&
+                  previewUrl.protocol === 'https:' &&
+                  previewUrl.hostname === 'app.netlify.com' &&
+                  new RegExp(`^/projects/${siteName}/deploys/[a-f0-9]{24}/?$`).test(
+                    previewUrl.pathname,
+                  );
+
+                if (!isPreviewUrl && !isCanceledDeployDashboard) {
                   core.setFailed(
                     `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
                   );
                   return;
                 }
 
-                core.setOutput('url', previewUrl.origin);
+                core.setOutput('url', expectedOrigin);
                 return;
               }
 
@@ -807,7 +1790,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -829,15 +1812,10 @@ jobs:
           done
           echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
           exit 1
-      - name: Dead-link check
-        env:
-          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
-        # @jthrilly/dead-link-checker >=1.1.0 retries each request on transient
-        # network errors (UND_ERR_SOCKET / connect timeouts), so a single flaky
-        # fetch no longer fails the run. Retrying the whole crawl here was the
-        # wrong layer — it multiplied exposure to the per-request flake instead
-        # of recovering from it — so a single invocation is now correct.
-        run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$DOCS_URL" -v --yes
+      - uses: ./.github/actions/dead-link-check
+        with:
+          url: ${{ steps.netlify-preview.outputs.url }}
+          report-name: docs-dead-link-report
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -846,14 +1824,19 @@ jobs:
 
   website-preview-checks:
     needs: detect
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.detect.outputs.website == 'true'
+    # Keep this condition paired with docs-preview-checks: either public-site
+    # release validates both sites because they link to each other's routes.
+    if: >-
+      github.event_name == 'pull_request'
+      && needs.detect.outputs.website == 'true'
+      && (github.head_ref == 'changeset-release/documentation'
+      || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
     # Budgets two sequential 15-minute Netlify status polls (website, then
-    # documentation) plus the reachability probes and the crawl itself.
-    timeout-minutes: 40
+    # documentation) plus the reachability probes and the crawl itself. Every
+    # link is a browser navigation now, so the crawl's share is minutes rather
+    # than seconds on a cold cache.
+    timeout-minutes: 55
     permissions:
       contents: read
       statuses: read
@@ -867,6 +1850,7 @@ jobs:
             const statusContext = `netlify/${siteName}/deploy-preview`;
             const headSha = context.payload.pull_request.head.sha;
             const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const expectedOrigin = `https://${expectedHost}`;
             const deadline = Date.now() + 15 * 60 * 1000;
 
             while (Date.now() < deadline) {
@@ -890,14 +1874,26 @@ jobs:
                   return;
                 }
 
-                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                const isPreviewUrl =
+                  previewUrl.protocol === 'https:' && previewUrl.hostname === expectedHost;
+                // Netlify reports an ignored deploy as a successful commit status,
+                // but links to its deploy dashboard instead of the stable PR alias.
+                const isCanceledDeployDashboard =
+                  status.description === 'Deploy Preview canceled.' &&
+                  previewUrl.protocol === 'https:' &&
+                  previewUrl.hostname === 'app.netlify.com' &&
+                  new RegExp(`^/projects/${siteName}/deploys/[a-f0-9]{24}/?$`).test(
+                    previewUrl.pathname,
+                  );
+
+                if (!isPreviewUrl && !isCanceledDeployDashboard) {
                   core.setFailed(
                     `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
                   );
                   return;
                 }
 
-                core.setOutput('url', previewUrl.origin);
+                core.setOutput('url', expectedOrigin);
                 return;
               }
 
@@ -940,6 +1936,7 @@ jobs:
             const statusContext = `netlify/${siteName}/deploy-preview`;
             const headSha = context.payload.pull_request.head.sha;
             const expectedHost = `deploy-preview-${context.issue.number}--${siteName}.netlify.app`;
+            const expectedOrigin = `https://${expectedHost}`;
             const deadline = Date.now() + 15 * 60 * 1000;
 
             while (Date.now() < deadline) {
@@ -963,14 +1960,26 @@ jobs:
                   return;
                 }
 
-                if (previewUrl.protocol !== 'https:' || previewUrl.hostname !== expectedHost) {
+                const isPreviewUrl =
+                  previewUrl.protocol === 'https:' && previewUrl.hostname === expectedHost;
+                // Netlify reports an ignored deploy as a successful commit status,
+                // but links to its deploy dashboard instead of the stable PR alias.
+                const isCanceledDeployDashboard =
+                  status.description === 'Deploy Preview canceled.' &&
+                  previewUrl.protocol === 'https:' &&
+                  previewUrl.hostname === 'app.netlify.com' &&
+                  new RegExp(`^/projects/${siteName}/deploys/[a-f0-9]{24}/?$`).test(
+                    previewUrl.pathname,
+                  );
+
+                if (!isPreviewUrl && !isCanceledDeployDashboard) {
                   core.setFailed(
                     `${statusContext} pointed to unexpected URL ${previewUrl.toString()}`,
                   );
                   return;
                 }
 
-                core.setOutput('url', previewUrl.origin);
+                core.setOutput('url', expectedOrigin);
                 return;
               }
 
@@ -998,10 +2007,21 @@ jobs:
           done
           echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
           exit 1
-      - name: Dead-link check
-        env:
-          WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: npx --yes @jthrilly/dead-link-checker@^1.1.0 "$WEBSITE_URL/en-US/" -v --yes
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: ./.github/actions/dead-link-check
+        with:
+          url: ${{ steps.netlify-preview.outputs.url }}/en-US/
+          report-name: website-dead-link-report
 
   interview-e2e:
     # Runs when the policy requires the interview suite. The Dockerized suite
@@ -1141,7 +2161,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       # Dormant until a shard matrix is added (spec: enable shards only if the
@@ -1219,13 +2239,22 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for why (a PR-scoped write-and-save copy of this cache, multiplied
+      # across live PRs, is what forced this rearrangement in the first
+      # place). This job needs every browser the key holds, so it pays no
+      # part of the union trade the other three jobs make.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-firefox-webkit
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/interview exec playwright install --with-deps chromium firefox webkit
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
@@ -1267,7 +2296,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -1321,13 +2350,20 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for the full arrangement. This job skips firefox, so it restores a
+      # firefox binary it never launches as its share of the union trade.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium webkit
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
@@ -1368,7 +2404,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -1392,10 +2428,30 @@ jobs:
     # cannot reach the Turbo remote cache. The @visual tests stay in
     # architect-e2e's container, the only place a pixel comparison means
     # anything.
+    #
+    # Sharded two ways across separate runners rather than given more
+    # Playwright `workers` on one: measured at 175 tests, `fullyParallel:
+    # true`, and Playwright's default two workers (its own default caps
+    # workers around half the runner's four vCPUs), this job spends 10.5
+    # minutes actually executing tests inside an 11.2-minute median job with
+    # almost no variance (p90 12.7m) — a hard floor that gates 22% of pull
+    # requests. Raising `workers` on that same single four-vCPU runner
+    # confronts the contention this repository's suites are documented
+    # elsewhere in this file as sensitive to (see the `test` job's
+    # concurrency comment and its measured starvation failures at
+    # higher turbo concurrency): more workers would divide the same four
+    # vCPUs more ways, not add capacity. Splitting the fixed test count
+    # across two runners instead gives each shard's two workers a whole
+    # four-vCPU machine to itself, halving wall time without reproducing that
+    # contention.
     needs: e2e-policy
     if: ${{ !cancelled() && needs.e2e-policy.outputs.architect == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/2', '2/2']
     env:
       # Build-time PostHog kill switch. Not a Docker artifact: without it the
       # CSP-blocked analytics script load interleaves non-deterministically
@@ -1428,25 +2484,46 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for the full arrangement. This job needs only chromium, so it
+      # restores the firefox and webkit binaries the key also carries and
+      # never launches: about 200 MB more than a chromium-only key, which
+      # costs one to three seconds, since this job's whole cache-hit restore
+      # has a 3.5s median. In exchange it never holds a second key against
+      # the ceiling. Across every Playwright-consuming job in the repository
+      # the union costs on the order of one runner-hour a week, against the
+      # 4.6 GB of ceiling that thirteen per-pull-request copies were holding.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
         # one for us.
         run: pnpm exec turbo run build --filter=@codaco/architect
       - name: Run functional E2E tests
-        run: pnpm --filter @codaco/architect run test:e2e:native
+        # `pnpm run` forwards an unrecognised flag straight to the underlying
+        # script (verified: `pnpm --filter @codaco/architect run
+        # test:e2e:native --shard=1/2 --list` produces the same shard split
+        # as calling `playwright test --shard=1/2` directly), so `--shard`
+        # reaches Playwright without needing the `exec playwright` form.
+        run: pnpm --filter @codaco/architect run test:e2e:native --shard=${{ matrix.shard }}
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-architect-native
+          # Unique per shard: `matrix.shard` itself contains a `/` and is not
+          # a legal artifact name, and without a per-shard name the two
+          # shards' uploads would collide and only one report would survive.
+          name: playwright-report-architect-native-${{ strategy.job-index }}
           path: apps/architect/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
@@ -1721,6 +2798,36 @@ jobs:
           merge_report interviewer-e2e "$R_INTERVIEWER_PIXEL" interviewer-playwright-report
           merge_report interviewer-e2e-native "$R_INTERVIEWER_NATIVE" interviewer-playwright-report-native
           merge_report architect-e2e "$R_ARCHITECT_PIXEL" playwright-report-architect
+          # architect-e2e-native runs as a 2-way shard matrix (see that job),
+          # so each shard uploads its own numbered
+          # playwright-report-architect-native-<job-index> artifact — giving
+          # both shards the same artifact name would make their uploads
+          # collide. merge_report above assumes exactly one source directory
+          # per job, so build it a synthetic one here: copy each shard's
+          # report into its own numbered subdirectory (two independent
+          # Playwright HTML reports nested flat would clobber each other's
+          # identically-named assets) and drop a tiny index linking to both,
+          # so the PR comment's existing '<job-name>/<slug>/' link still
+          # resolves to something useful even when only one shard failed.
+          architect_native_src="reports/playwright-report-architect-native"
+          rm -rf "$architect_native_src"
+          shard_found=false
+          for shard_dir in reports/playwright-report-architect-native-*/; do
+            [ -d "$shard_dir" ] || continue
+            shard_found=true
+            shard_name=$(basename "$shard_dir")
+            mkdir -p "$architect_native_src/$shard_name"
+            cp -r "$shard_dir." "$architect_native_src/$shard_name/"
+          done
+          if [ "$shard_found" = true ]; then
+            {
+              echo '<!doctype html><title>architect-e2e-native shard reports</title>'
+              for shard_dir in "$architect_native_src"/*/; do
+                shard_name=$(basename "$shard_dir")
+                echo "<p><a href=\"./${shard_name}/\">${shard_name}</a></p>"
+              done
+            } > "$architect_native_src/index.html"
+          fi
           merge_report architect-e2e-native "$R_ARCHITECT_NATIVE" playwright-report-architect-native
           # Sweep orphaned reports AFTER merging: a directory whose slug
           # matches no live branch belongs to a deleted or merged branch (or
@@ -1794,7 +2901,7 @@ jobs:
       - name: Deploy report to Pages
         id: deploy
         if: steps.merge.outputs.needs_deploy == 'true'
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         timeout-minutes: 3
         continue-on-error: true
       - name: Record the deployed state
@@ -1918,6 +3025,20 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: npm-publish
+    # One release job at a time. The tip check below is a check-then-act on a
+    # branch this job cannot lock, so a push can still land between the check
+    # and changesets/action. Serialising the job means the run for that push
+    # cannot act until this one has finished — and that run, the only one that
+    # sees the true tip, then publishes, regenerates the release PR, or closes
+    # the one this run left behind (the cleanup step after the action). A
+    # versionless group keeps only one pending run, so in a burst of merges the
+    # middle runs' release jobs are dropped; that is safe because the newest
+    # run's tree contains everything theirs did and every decision here is
+    # made from state (changeset files, npm, tags), never from the event.
+    # Never cancel-in-progress: that would kill a publish mid-flight.
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -1941,15 +3062,43 @@ jobs:
         # package and assert no packed export/main/module/types path points into
         # `src` and every referenced file exists — guarding the swap before the
         # changesets/action publish below.
-        run: node scripts/verify-publish-exports.mjs
+        run: node scripts/release/verify-publish-exports.mjs
       - name: Hide separately gated product changesets from the normal release
         # Documentation, Website, and Studio changesets persist until their own
         # release PR consumes them. Normal-lane apps intentionally remain for
         # the Changesets CLI to version alongside library packages.
         # Working-tree-only deletion; see the script header.
-        run: node scripts/prune-ignored-changesets.mjs
+        run: node scripts/release/prune-ignored-changesets.mjs
+      - name: Refuse to publish a package npm does not know
+        # The lane publishes through npm trusted publishing, which can only
+        # publish to a package npm already knows; every first publication is
+        # made by hand (CLAUDE.md, "First publications are made by hand").
+        # `changeset publish` would try anyway — it publishes every public
+        # package whose current version npm lacks, changeset or not — and stop
+        # at the first failure with the rest of the release unpublished, so the
+        # publish path stops here first. While normal-lane changesets are
+        # pending the action only regenerates the release PR, and the check
+        # skips itself; version-packages-freshness refuses the merge that would
+        # reach the publish path.
+        run: node scripts/release/check-first-publications.mjs --publish-path-only
+      - name: Confirm this run still describes main's tip
+        # Push-to-main runs never cancel each other (see the top of the file)
+        # and the build above takes minutes, so the run for an older main
+        # commit can reach this point after a newer commit — the merge of a
+        # Version Packages PR — has already published and released. Acting
+        # from that stale tree regenerated an already-merged release PR
+        # (#1597, 2026-09-02). The newer commit's run covers everything this
+        # one would do, so a superseded run stops here. Checked last, right
+        # before the action reads the tree; the job's concurrency group and the
+        # cleanup step below close the window that remains after the check.
+        id: tip
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: bash .github/scripts/superseded-push-guard.sh
       - id: changesets
-        uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
+        if: steps.tip.outputs.current == 'true'
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           version-script: pnpm run version-packages
           publish-script: pnpm run publish-packages
@@ -1960,7 +3109,7 @@ jobs:
           # the Documentation and Website changesets. The Git CLI path still
           # begins with the `git reset --hard` that restores them, so the prune
           # stays working-tree-only — keep it until
-          # scripts/prune-ignored-changesets.mjs no longer relies on that reset.
+          # scripts/release/prune-ignored-changesets.mjs no longer relies on that reset.
           push-with-git-cli: true
           # A fine-grained PAT makes the generated PR's pull_request event run
           # normally. GITHUB_TOKEN-created PR events always require manual
@@ -1970,6 +3119,28 @@ jobs:
           github-token: ${{ secrets.RELEASE_PR_TOKEN }}
         env:
           NPM_CONFIG_PROVENANCE: true
+      - name: Close a release PR the tip no longer needs
+        # A run superseded between its tip check and the action above can
+        # still open or refresh a Version Packages PR for changesets the newer
+        # commit has already released (#1597). This run holds the tip, and it
+        # found nothing left to version, so any open release PR was generated
+        # from a tree older than main and is stale by definition. Closing it
+        # here makes the tip run the last word, which the job's concurrency
+        # group guarantees it is: a superseded run that slipped past its check
+        # finished before this one started.
+        if: >-
+          steps.tip.outputs.current == 'true'
+          && steps.changesets.outputs['has-changesets'] == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+            --head changeset-release/main --json number --jq '.[].number' \
+            | while read -r number; do
+                gh pr close "$number" --repo "$GITHUB_REPOSITORY" --comment \
+                  "Closing: main ($GITHUB_SHA) has no changesets left to version, so this release PR was generated from a superseded tree. The next push that adds a changeset opens a fresh one."
+                echo "::notice::Closed stale Version Packages PR #$number"
+              done
 
   # Maintains generated PRs for the products that remain outside the normal
   # "Version Packages" PR. Normal-lane apps use that standard Changesets lane;
@@ -2009,7 +3180,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -2019,11 +3190,22 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Guard against mixed changesets
         run: pnpm check:changesets
+      - name: Confirm this run still describes main's tip
+        # The superseded-run guard the `release` job uses: a run for an older
+        # main commit must not regenerate a product release PR that a newer
+        # commit has just merged.
+        id: tip
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: bash .github/scripts/superseded-push-guard.sh
       - name: Compute ${{ matrix.product }} version bump
+        if: steps.tip.outputs.current == 'true'
         run: >-
-          node scripts/version-gated-products.mjs ${{ matrix.package_args }}
+          node scripts/release/version-gated-products.mjs ${{ matrix.package_args }}
           --out "${RUNNER_TEMP}/product-release-body.md"
       - name: Open/update the ${{ matrix.product }} release PR
+        if: steps.tip.outputs.current == 'true'
         id: product_pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
@@ -2151,7 +3333,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2171,6 +3353,11 @@ jobs:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: pnpm exec turbo run build --filter=@codaco/architect
+      # After the turbo-cached build so a cache-restored dist still gets THIS
+      # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
+      - name: Stamp deployed commit
+        if: steps.guard.outputs.skip != 'true'
+        run: node apps/architect/scripts/write-build-info.mjs
       - name: Deploy architect to production
         if: steps.guard.outputs.skip != 'true'
         run: |
@@ -2187,14 +3374,14 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect
           --pkg @codaco/architect
           --version "$VERSION"
           --since "$SINCE"
           --out "${RUNNER_TEMP}/architect-notes.md"
       - if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
           name: Architect ${{ needs.apps-release-detect.outputs.architect_version }}
@@ -2239,7 +3426,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2275,14 +3462,14 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer
           --pkg @codaco/interviewer
           --version "$VERSION"
           --since "$SINCE"
           --out "${RUNNER_TEMP}/interviewer-notes.md"
       - if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
           name: Interviewer ${{ needs.apps-release-detect.outputs.interviewer_version }}
@@ -2322,7 +3509,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2350,14 +3537,14 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/background-creator
           --pkg @codaco/background-creator
           --version "$VERSION"
           --since "$SINCE"
           --out "${RUNNER_TEMP}/background-creator-notes.md"
       - if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: '@codaco/background-creator@${{ needs.apps-release-detect.outputs.background_creator_version }}'
           name: Background Creator ${{ needs.apps-release-detect.outputs.background_creator_version }}
@@ -2382,9 +3569,18 @@ jobs:
     if: needs.apps-release-detect.outputs.fresco_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release per version — see apps-release-architect for the rationale.
+    # One release at a time, whichever main commit carries it — the same
+    # versionless group as apps-release-architect, for the same reason: main
+    # runs execute concurrently, so two of them can hold different untagged
+    # versions of this app at once, and only exclusion over the whole
+    # check → mirror → tag sequence orders them. The mirror is a linear append
+    # onto the external repository's main, whose newest push is published as
+    # `latest`, so order matters even more than for a Netlify site. With a
+    # per-version group and a tag-only check, the run for cd9040bcf mirrored
+    # 4.1.3 on top of the 4.1.4 release on 2026-09-02 and an older library
+    # closure went out as `latest`.
     concurrency:
-      group: apps-release-fresco@${{ needs.apps-release-detect.outputs.fresco_version }}
+      group: apps-release-fresco
       cancel-in-progress: false
     permissions:
       contents: write
@@ -2392,20 +3588,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-tags: true
+          # Full history: the guard checks that this tree contains the newest
+          # released commit, which a shallow clone cannot answer.
+          fetch-depth: 0
           persist-credentials: false
-      - name: Skip if this version was already released
+      # Refuses a version older than the newest fresco@ tag and a tree that
+      # does not contain the newest released commit, so a run for a superseded
+      # main commit skips instead of mirroring older code over the newest
+      # release.
+      - name: Skip if this version should not be released
         id: guard
         env:
-          TAG: 'fresco@${{ needs.apps-release-detect.outputs.fresco_version }}'
-        run: |
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "$TAG already released — nothing to do"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          PKG_NAME: fresco
+          VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
+        run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2421,7 +3619,7 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/fresco
           --repo complexdatacollective/Fresco
           --branch main
@@ -2429,17 +3627,22 @@ jobs:
           --with-lockfile
       - name: fresco release notes
         if: steps.guard.outputs.skip != 'true'
+        # --since is the newest version released before this one, so the body
+        # also carries any CHANGELOG section whose own release never happened
+        # (4.1.3's did not) or was dropped while pending on this job's group.
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
+          SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/fresco
           --pkg fresco
           --version "$VERSION"
+          --since "$SINCE"
           --out "${RUNNER_TEMP}/fresco-notes.md"
       - name: Create the release on the Fresco repository
         if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/Fresco
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -2453,7 +3656,7 @@ jobs:
       # the mirror is not repeated on the next push to main.
       - name: Tag the released version in this repository
         if: steps.guard.outputs.skip != 'true'
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: 'fresco@${{ needs.apps-release-detect.outputs.fresco_version }}'
           name: Fresco ${{ needs.apps-release-detect.outputs.fresco_version }}
@@ -2684,16 +3887,16 @@ jobs:
       # renderer process to appear (macOS/Linux; Windows runs the sweep
       # only). Either check would have blocked the broken 6.6.0 releases,
       # where `files` exclusions stripped runtime modules from the asar and
-      # the apps crashed at launch. See scripts/verify-packaged-app.mjs.
+      # the apps crashed at launch. See scripts/release/verify-packaged-app.mjs.
       - name: Verify packaged app
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -2748,9 +3951,9 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -2780,19 +3983,19 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/interviewer-classic
           --repo complexdatacollective/interviewer
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer-classic
           --pkg @codaco/interviewer-classic
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/interviewer
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -2818,7 +4021,7 @@ jobs:
           merge-multiple: true
       - run: ls -la artifacts/
       - name: Attach artifacts and publish
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/interviewer
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -2843,7 +4046,7 @@ jobs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -2859,19 +4062,19 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/architect-classic
           --repo complexdatacollective/architect
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect-classic
           --pkg @codaco/architect-classic
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
           --out "${RUNNER_TEMP}/notes.md"
       - name: Create draft release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/architect
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
@@ -2896,7 +4099,7 @@ jobs:
           merge-multiple: true
       - run: ls -la artifacts/
       - name: Attach artifacts and publish
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           repository: complexdatacollective/architect
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}

@@ -84,7 +84,18 @@ const inflateEntryWithinBudget = (
       })
       .on('error', (error) => {
         if (!aborted) {
-          reject(error);
+          // A stream that gives up mid-inflate means the archive's compressed
+          // data is damaged. Classify it here so every caller describes it as
+          // a damaged file, rather than letting pako's own wording ("invalid
+          // distance too far back") reach a researcher through a host's
+          // fallback branch.
+          reject(
+            new MalformedNetcanvasError(
+              'unreadable-entry',
+              `Archive entry "${entry.name}" could not be decompressed`,
+              { cause: error },
+            ),
+          );
         }
       })
       .on('end', () => {
@@ -159,12 +170,54 @@ export type ExtractedAsset = {
   data: Blob | string; // The actual file data
 };
 
+/**
+ * A manifest entry whose file is not in the archive.
+ *
+ * Reported rather than thrown, because the right answer differs by host. An
+ * authoring tool can open the protocol and let the researcher re-supply the
+ * file; a runtime about to show the resource to a participant cannot. Only the
+ * host knows which it is, so extraction states the fact and leaves the policy
+ * alone — see `missingAssetsError` for the refusal every runtime shares.
+ */
+export type MissingAsset = {
+  /** The manifest key, which is what stages reference. */
+  id: string;
+  /** What the researcher named the resource. */
+  name: string;
+  /** The archive entry the manifest pointed at. */
+  source: string;
+};
+
+export type ExtractedAssets = {
+  assets: Array<ExtractedAsset>;
+  missingAssets: Array<MissingAsset>;
+};
+
+/**
+ * The refusal a host raises when it cannot proceed without the missing files.
+ *
+ * Shared so every runtime refuses in the same words. `assetName` carries the
+ * first resource because the researcher-facing sentence names one; the full
+ * list stays on `message`, for the console and a technical-details disclosure.
+ */
+export const missingAssetsError = (
+  missingAssets: ReadonlyArray<MissingAsset>,
+): MalformedNetcanvasError =>
+  new MalformedNetcanvasError(
+    'missing-asset',
+    `Asset ${missingAssets.length === 1 ? 'file' : 'files'} ${missingAssets
+      .map((asset) => `"${asset.source}"`)
+      .join(', ')} not found in zip`,
+    { assetName: missingAssets[0]?.name },
+  );
+
 const extractProtocolAssets = async (
   protocol: VersionedProtocol,
   zip: Zip,
   budget: InflationBudget,
-) => {
+): Promise<ExtractedAssets> => {
   const assets: Array<ExtractedAsset> = [];
+  const missingAssets: Array<MissingAsset> = [];
 
   // Inflate assets sequentially so the shared budget is enforced deterministically
   // and a bomb aborts before later entries begin inflating.
@@ -188,13 +241,16 @@ const extractProtocolAssets = async (
 
       const entry = zip.file(`assets/${assetDefinition.source}`);
       if (!entry) {
-        throw new MalformedNetcanvasError(
-          'missing-asset',
-          `Asset file "${assetDefinition.source}" not found in zip for asset ID "${assetId}"`,
-          // The manifest's own display name, not the zip path: it is what the
-          // researcher named the resource in the protocol.
-          { assetName: assetDefinition.name },
-        );
+        // Recorded, not thrown: one absent file must not decide for the host
+        // whether the other twenty are worth having. Carries the manifest's
+        // own display name, not the zip path, because that is what the
+        // researcher called the resource.
+        missingAssets.push({
+          id: assetId,
+          name: assetDefinition.name,
+          source: assetDefinition.source,
+        });
+        continue;
       }
 
       const fileData = await inflateEntryToBlob(
@@ -205,13 +261,15 @@ const extractProtocolAssets = async (
       assets.push({ id: assetId, name: assetDefinition.name, data: fileData });
       continue;
     }
+    // Still fatal, unlike a missing file: the manifest itself is a shape this
+    // version cannot read, so there is no protocol to open with a gap in it.
     throw new MalformedNetcanvasError(
       'invalid-asset-definition',
       `Invalid asset definition for asset ID "${assetId}"`,
     );
   }
 
-  return assets;
+  return { assets, missingAssets };
 };
 
 /**
@@ -240,9 +298,56 @@ export const loadNetcanvasArchive = async (
 export const extractProtocol = async (
   protocolBuffer: Buffer,
   maxInflatedBytes: number = MAX_INFLATED_BYTES,
-): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
+): Promise<ExtractedAssets & { protocol: VersionedProtocol }> => {
   const zip = await loadNetcanvasArchive(protocolBuffer);
   return extractProtocolFromZip(zip, maxInflatedBytes);
+};
+
+/**
+ * One archive's two reads, sharing one inflation budget.
+ *
+ * `extractProtocolFromZip` reads everything in one go, which is what a host
+ * that installs whatever it is given wants. A host that decides whether to
+ * keep the protocol *before* paying for its media does not: Fresco refuses a
+ * duplicate as soon as it has hashed `protocol.json`, and inflating a 200 MB
+ * video first — only to throw it away — is the difference between a fast
+ * refusal and a stalled tab.
+ *
+ * Splitting the reads must not split the budget. Two independent caps would
+ * let an archive spend the whole allowance twice, so a bomb divided between
+ * `protocol.json` and the assets would pass both. The reader holds a single
+ * budget across both calls, so the total is what is capped.
+ *
+ * `readAssets` takes no document. The manifest it resolves against has to be
+ * the one that came out of *this* archive, and a host that has since migrated
+ * or validated the protocol holds a different object whose `source` values may
+ * no longer name entries in this zip. Accepting a protocol would let a caller
+ * pass that one — the exact mismatch this reader exists to prevent — so the
+ * reader keeps the document it read instead of trusting the caller to hand
+ * back the right one.
+ *
+ * The read is memoised, so a host that wants the protocol as well pays for
+ * `protocol.json` once and spends the budget once.
+ */
+export type NetcanvasReader = {
+  readProtocol: () => Promise<VersionedProtocol>;
+  readAssets: () => Promise<ExtractedAssets>;
+};
+
+export const createNetcanvasReader = (
+  zip: Zip,
+  maxInflatedBytes: number = MAX_INFLATED_BYTES,
+): NetcanvasReader => {
+  const budget = createInflationBudget(maxInflatedBytes);
+  let protocol: Promise<VersionedProtocol> | undefined;
+  const readProtocol = () =>
+    (protocol ??= getProtocolJsonAsObject(zip, budget));
+
+  return {
+    readProtocol,
+    readAssets: async () =>
+      extractProtocolAssets(await readProtocol(), zip, budget),
+  };
 };
 
 // Extract from an already-loaded zip. Lets a caller that has already parsed the
@@ -252,13 +357,14 @@ export const extractProtocol = async (
 export const extractProtocolFromZip = async (
   zip: Zip,
   maxInflatedBytes: number = MAX_INFLATED_BYTES,
-): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
-  const budget = createInflationBudget(maxInflatedBytes);
-  const protocol = await getProtocolJsonAsObject(zip, budget);
-  const assets = await extractProtocolAssets(protocol, zip, budget);
+): Promise<ExtractedAssets & { protocol: VersionedProtocol }> => {
+  const reader = createNetcanvasReader(zip, maxInflatedBytes);
+  const protocol = await reader.readProtocol();
+  const { assets, missingAssets } = await reader.readAssets();
 
   return {
     assets,
+    missingAssets,
     protocol,
   };
 };

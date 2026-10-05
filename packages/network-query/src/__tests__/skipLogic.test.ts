@@ -10,7 +10,7 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { isStageSkipped, resolveSkipLogicDestinationIndex } from '../index';
+import { isStageSkipped, resolveSkipLogicDestinationIndex } from '../index.ts';
 
 const matchingNetwork: NcNetwork = {
   ego: {

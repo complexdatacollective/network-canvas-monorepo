@@ -1,0 +1,1028 @@
+import { screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
+import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { attributeField } from '../../testing/attributePicker.ts';
+import {
+  expectNoLocaleLeaks,
+  protocolStrings,
+} from '../../testing/localeSweep.ts';
+import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../testing/renderStageEditor.tsx';
+import { exactlyText } from '../../testing/text.ts';
+import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
+import InterviewerGuidanceSection from '../interviewer-guidance/InterviewerGuidanceSection.tsx';
+import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
+import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
+
+/**
+ * The three sections every stage editor composes, read in Spanish.
+ *
+ * The rest of this directory's suite mounts no provider, so each section
+ * renders its English `defaultMessage` and the existing English assertions
+ * stand unchanged. These are the tests that mount one, and they are what proves
+ * the wiring: a section still holding an English literal, or one whose ids
+ * never reached `src/locales/es.json`, shows up here as an English string
+ * where a Spanish one was asked for. The harness merges the three catalogs a
+ * host merges, in the order a host merges them, so a section that takes its
+ * confirmation's cancel verb from `common.*` is read here over the layer a host
+ * would actually serve it from.
+ *
+ * The words are asserted as literals rather than by re-formatting the same
+ * descriptor the section read. `intl.formatMessage(messages.title)` would pass
+ * whatever the catalog said, including nothing at all.
+ */
+
+/**
+ * Everything on screen that belongs to the researcher rather than to this
+ * package: the whole protocol the harness is mounted over, the stage's own
+ * seeded fields, and the codebook the sections read type and attribute names
+ * out of.
+ *
+ * Read out of the documents the harness mounts rather than listed by hand, so a
+ * fixture that gains a stage or an attribute cannot quietly widen the sweep's
+ * blind spot — or start failing it.
+ */
+const researcherWords = (harness: StageEditorHarness) =>
+  protocolStrings(
+    harness.protocolSections(),
+    harness.seeded.fields,
+    harness.hostCodebook(),
+  );
+
+/**
+ * The fixture's alter form with the three shared sections on it.
+ *
+ * That stage holds no filter, no skip logic and no guidance, so each of the
+ * three opens from the closed state a researcher meets it in — which is what
+ * the tests below drive.
+ */
+const renderInSpanish = () =>
+  renderStageEditor({
+    stageId: 'alter-form-1',
+    locale: 'es',
+    sections: (
+      <>
+        <NetworkFilterSection />
+        <SkipLogicSection />
+        <InterviewerGuidanceSection />
+      </>
+    ),
+  });
+
+describe('the shared stage-editor sections in Spanish', () => {
+  it('ships Spanish for the ids these sections declare', () => {
+    // Checked first so a merge that has not landed this directory's catalog
+    // entries fails saying so, rather than as an unexplained English string.
+    expect(Object.keys(protocolBuilderCatalogs.es ?? {})).toEqual(
+      expect.arrayContaining([
+        'protocolBuilder.networkFilter.title',
+        'protocolBuilder.networkFilter.rulesHint',
+        'protocolBuilder.skipLogic.title',
+        'protocolBuilder.interviewerGuidance.title',
+      ]),
+    );
+  });
+
+  it('names each section in Spanish', () => {
+    renderInSpanish();
+
+    expect(
+      screen.getByRole('switch', { name: 'Filtro de la etapa' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Lógica de salto' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', {
+        name: 'Guía para quien realiza la entrevista',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('describes each section in Spanish', () => {
+    const harness = renderInSpanish();
+
+    expect(
+      screen.getByText(
+        'Crea reglas que filtren los nodos o vínculos que se muestran en esta etapa.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Determina si se muestra esta etapa y dónde continúa la entrevista cuando se omite.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Crea notas o una guía para quien realiza la entrevista.',
+      ),
+    ).toBeInTheDocument();
+    // The assertions above name what these sections are supposed to say; the
+    // sweep reports whatever else they said — including a sentence rebuilt out
+    // of an English pattern, which matches no whole message.
+    expectNoLocaleLeaks('the closed sections', researcherWords(harness));
+  });
+
+  it('labels the controls inside a section in Spanish', async () => {
+    const harness = renderInSpanish();
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Lógica de salto' }),
+    );
+
+    // The section's own words, and the destination field's, which the section
+    // hands to a field this directory does not own — so an English label here
+    // would mean the section's copy stopped where the field begins.
+    expect(await screen.findByText('Acción')).toBeInTheDocument();
+    expect(screen.getByText('Mostrar esta etapa')).toBeInTheDocument();
+    expect(screen.getByText('Cuando se omita esta etapa')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Elige dónde debe continuar la entrevista. Solo se pueden seleccionar etapas posteriores.',
+      ),
+    ).toBeInTheDocument();
+    expectNoLocaleLeaks(
+      'the open skip-logic section',
+      researcherWords(harness),
+    );
+  });
+
+  it('asks in Spanish before throwing a capability’s content away', async () => {
+    const harness = renderInSpanish();
+
+    const guidance = screen.getByRole('switch', {
+      name: 'Guía para quien realiza la entrevista',
+    });
+    await harness.user.click(guidance);
+    const field = await screen.findByRole('textbox', {
+      name: 'Texto del guion de la entrevista',
+    });
+    await harness.user.click(field);
+    await harness.user.keyboard('Pregunta con calma.');
+    await harness.user.click(guidance);
+
+    // The confirmation is the capability's own words, formatted by
+    // BuilderSection out of the descriptors the section handed it — a string
+    // prop here would have left this dialog English.
+    expect(
+      await screen.findByText('Se borrará el guion de la entrevista'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Borrar guion' }),
+    ).toBeInTheDocument();
+    // And the cancel verb comes from the shared common.* catalog rather than
+    // from this package, so this fails if the common layer stopped reaching
+    // the merge.
+    expect(
+      screen.getByRole('button', { name: 'Cancelar' }),
+    ).toBeInTheDocument();
+    expectNoLocaleLeaks('the discard confirmation', researcherWords(harness));
+  });
+});
+
+/**
+ * The form-fields section read in Spanish.
+ *
+ * The other shared sections are swept in `stageSectionsLocale.test.tsx`. This
+ * one is here because its collapsed rows assemble a sentence out of two
+ * values read from the codebook — the kind of attribute and the control it is
+ * collected with — which used to reach the screen as the schema's own tokens
+ * in every language.
+ *
+ * The words are asserted as literals rather than by re-formatting the same
+ * descriptor the component read: `esIntl.formatMessage(messages.x)` would pass
+ * whatever the catalog said, including nothing at all.
+ */
+describe('the form-fields section, read in Spanish', () => {
+  it('says what a row collects with both halves translated', async () => {
+    renderStageEditor({
+      stageId: 'alter-form-1',
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" hasTitle />,
+    });
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Título del formulario' }),
+    ).toBeInTheDocument();
+
+    // `relationship_to_ego` is a `text` attribute collected with `Text`, and
+    // neither token appears: the row names the kind of answer and the control
+    // in the reader's own language, inside one sentence the translator moved
+    // whole.
+    //
+    // Matched on `textContent` because the sentence emphasises both halves, so
+    // it is broken across elements and no single text node carries it.
+    expect(
+      screen.getByText(
+        exactlyText('Atributo de tipo Texto con control Entrada de texto'),
+      ),
+    ).toBeVisible();
+  });
+
+  /**
+   * The one decision this section exists to ask, and the groups it is read
+   * under.
+   *
+   * The control list used to be labelled with the schema's own tokens in every
+   * language. No guard in the package could see it: a string with no
+   * descriptor behind it is invisible to `checkFullLocale`, to the copy scan
+   * and to the sweep alike, which is why the whole list is read here rather
+   * than one entry of it.
+   */
+  it('names every input control, under the kind of answer each one collects', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" hasTitle />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Crear nuevo campo de formulario',
+      }),
+    );
+    const dialog = asDialog(await screen.findByRole('dialog'));
+    await inventThroughThePicker(harness, dialog, 'apodo');
+
+    const control = await dialog.findByRole('combobox', {
+      name: 'Control de entrada',
+    });
+    // Unanswered, because answering it is the decision: a control chosen for
+    // the researcher would decide what the attribute holds for them.
+    expect(control).toHaveValue('');
+
+    // Real `<optgroup>`s rather than disabled rows standing in for headings,
+    // which would be announced as seven more things a researcher could pick.
+    const groups = within(control).getAllByRole('group');
+    expect(groups.map((group) => group.getAttribute('label'))).toEqual([
+      'Texto',
+      'Número',
+      'Booleano',
+      'Ordinal',
+      'Categórico',
+      'Escalar',
+      'Fecha',
+    ]);
+    expect(
+      groups.map((group) =>
+        within(group)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ),
+    ).toEqual([
+      ['Entrada de texto', 'Área de texto'],
+      ['Entrada numérica'],
+      ['Elección booleana', 'Interruptor'],
+      ['Grupo de opciones', 'Escala Likert'],
+      ['Grupo de casillas', 'Grupo de botones conmutables'],
+      ['Escala analógica visual'],
+      ['Selector de fecha', 'Selector de fecha relativa'],
+    ]);
+
+    await harness.user.selectOptions(control, 'VisualAnalogScale');
+    const settings = within(
+      await dialog.findByRole('region', { name: 'Ajustes del control' }),
+    );
+    expect(
+      settings.getByRole('textbox', { name: 'Etiqueta del mínimo' }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.getByRole('combobox', { name: 'Control de entrada' }),
+    ).toBeInTheDocument();
+
+    // And the same list narrowed, for a scale the codebook already holds: a
+    // bound attribute's kind cannot change, so only its own controls are
+    // offered.
+    seedPersonVariables(harness, {
+      closeness: {
+        name: 'closeness',
+        type: 'scalar',
+        parameters: { minLabel: 'Nada cerca', maxLabel: 'Muy cerca' },
+      },
+    });
+    await chooseAttribute(harness, dialog, 'closeness');
+    const scaleControls = await dialog.findByRole('combobox', {
+      name: 'Control de entrada',
+    });
+    expect(
+      within(scaleControls)
+        .getAllByRole('option')
+        .map((option) => option.textContent)
+        .filter((label) => label !== 'Selecciona una opción…'),
+    ).toEqual(['Escala analógica visual']);
+  });
+});
+
+/**
+ * The rest of the form-fields surface, read in Spanish: the row dialog, the
+ * codebook doors it opens, and every sentence that only appears when something
+ * is wrong.
+ *
+ * A refusal is the half of a surface a positive test never reaches — nothing
+ * renders "Elige el atributo que recoge este campo." until a researcher tries
+ * to save a field that collects nothing — so each one below is reached by
+ * doing the thing that earns it rather than by rendering the component and
+ * looking for a string.
+ *
+ * The words are asserted as literals rather than by re-formatting the
+ * descriptor the component read, for the reason given above: a formatted
+ * assertion passes over an empty catalog.
+ *
+ * Two sentences used to be listed here as unreachable and are not:
+ * `formFields.componentRequired` is what the dialog says when the attribute a
+ * field collects has no input control to offer — read below — and
+ * `codebookEditing.unsupportedControl` is read in
+ * `fields/__tests__/VariablePickerField.test.tsx`, where a host asks the codebook for an
+ * attribute its control cannot collect.
+ */
+const PERSON_TYPE_SECTION = sectionId({
+  kind: 'codebookNode',
+  typeId: 'person',
+});
+
+/** The fixture's alter form, mounted with only the section under test. */
+const alterFormInSpanish = () =>
+  renderStageEditor({
+    stageId: 'alter-form-1',
+    locale: 'es',
+    sections: <FormFieldsSection subject="node" />,
+  });
+
+/**
+ * A row's open dialog, with the element it was found as.
+ *
+ * The element is carried because the attribute picker opens a SECOND dialog on
+ * top of a row editor, so "the dialog" is ambiguous while its window is up:
+ * the window is the one that is not this element.
+ */
+type OpenDialog = ReturnType<typeof within> & { element: HTMLElement };
+
+const asDialog = (element: HTMLElement): OpenDialog =>
+  Object.assign(within(element), { element });
+
+/** Opens one row's dialog. Several rows carry the same affordance, so which. */
+const openFieldDialog = async (
+  harness: StageEditorHarness,
+  name: string,
+  index = 0,
+): Promise<OpenDialog> => {
+  const trigger = screen.getAllByRole('button', { name })[index];
+  if (trigger === undefined) throw new Error(`There is no "${name}" ${index}.`);
+  await harness.user.click(trigger);
+  return asDialog(await screen.findByRole('dialog'));
+};
+
+/**
+ * Puts attributes on the person type as a collaborator would.
+ *
+ * Through the HOST, so what the section then reads is a codebook a real
+ * protocol could hold: the fixture happens to declare no date attribute a form
+ * may collect, and no attribute the schema accepts but the codebook editor
+ * cannot rewrite, and both are states a researcher's own protocol reaches.
+ */
+const seedPersonVariables = (
+  harness: StageEditorHarness,
+  variables: Readonly<Record<string, SectionDoc>>,
+) => {
+  const person = harness.protocolSections()[PERSON_TYPE_SECTION];
+  if (person === undefined) throw new Error('the person type is gone');
+  const existing = person.variables;
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...person,
+        variables: {
+          ...(typeof existing === 'object' && existing !== null
+            ? existing
+            : {}),
+          ...variables,
+        },
+      },
+    },
+  });
+};
+
+/** The two names the attribute picker's trigger goes by, in Spanish. */
+const isPickerTrigger = (name: string) =>
+  name === 'Seleccionar atributo' || name === 'Cambiar atributo';
+
+/**
+ * Chooses the attribute a field collects, once the picker is offering it.
+ *
+ * A codebook change reaches a subscribed component on a microtask, so an
+ * attribute seeded a line above is not in the window the moment the seeding
+ * call returns — which is why the row it is chosen by is waited for rather
+ * than read once.
+ *
+ * Named by the id the field stores, which for every attribute seeded here is
+ * also the name the researcher reads.
+ */
+const chooseAttribute = async (
+  harness: StageEditorHarness,
+  dialog: OpenDialog,
+  attributeId: string,
+) => {
+  await harness.user.click(
+    within(attributeField('Atributo', dialog.element)).getByRole('button', {
+      name: isPickerTrigger,
+    }),
+  );
+  const window = await waitFor(() => {
+    const found = screen
+      .getAllByRole('dialog')
+      .find((element) => element !== dialog.element);
+    if (found === undefined) {
+      throw new Error('the attribute window did not open');
+    }
+    return found;
+  });
+  const row = await waitFor(() => {
+    const found = window.querySelector<HTMLElement>(
+      `[role="option"][data-attribute-id="${attributeId}"]`,
+    );
+    if (found === null) {
+      throw new Error(`the window is not offering "${attributeId}"`);
+    }
+    return found;
+  });
+  await harness.user.click(row);
+  // The pick is written as the window closes, so nothing may carry on while it
+  // is still covering the row.
+  await waitFor(() => {
+    if (window.isConnected) throw new Error('the attribute window is open');
+  });
+};
+
+/**
+ * Invents an attribute of this name from the window, in Spanish.
+ *
+ * The whole act is the picker's now, so a section that offers creation says so
+ * through the window's search box and its create row — and this reads both of
+ * them back in the reader's own language on the way past.
+ */
+const searchForAnAttribute = async (
+  harness: StageEditorHarness,
+  dialog: OpenDialog,
+  term: string,
+): Promise<HTMLElement> => {
+  await harness.user.click(
+    within(attributeField('Atributo', dialog.element)).getByRole('button', {
+      name: isPickerTrigger,
+    }),
+  );
+  const window = await waitFor(() => {
+    const found = screen
+      .getAllByRole('dialog')
+      .find((element) => element !== dialog.element);
+    if (found === undefined) {
+      throw new Error('the attribute window did not open');
+    }
+    return found;
+  });
+  await harness.user.type(
+    within(window).getByRole('searchbox', { name: 'Busca o crea un atributo' }),
+    term,
+  );
+  return window;
+};
+
+const inventThroughThePicker = async (
+  harness: StageEditorHarness,
+  dialog: OpenDialog,
+  attributeName: string,
+) => {
+  const window = await searchForAnAttribute(harness, dialog, attributeName);
+  await harness.user.click(
+    within(window).getByRole('option', {
+      name: `Crear un atributo nuevo llamado «${attributeName}».`,
+    }),
+  );
+  // The window closes on the create row, and the picker is left showing the
+  // name — which is also what makes the row underneath reachable again.
+  await within(attributeField('Atributo', dialog.element)).findByText(
+    attributeName,
+  );
+};
+
+/**
+ * Writes the question a field asks.
+ *
+ * Typed rather than set, because the question is a rich-text editor: it takes
+ * keystrokes through the caret, and `type()` on the element does nothing.
+ */
+const writeQuestion = async (
+  harness: StageEditorHarness,
+  dialog: ReturnType<typeof within>,
+  question: string,
+) => {
+  await harness.user.click(
+    dialog.getByRole('textbox', { name: 'Texto de la pregunta' }),
+  );
+  await harness.user.keyboard(question);
+};
+
+/** Fills in a field collecting a plain text attribute nobody has declared. */
+const inventAttribute = async (
+  harness: StageEditorHarness,
+  attributeName: string,
+) => {
+  const dialog = await openFieldDialog(
+    harness,
+    'Crear nuevo campo de formulario',
+  );
+  await inventThroughThePicker(harness, dialog, attributeName);
+  await harness.user.selectOptions(
+    await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+    'Text',
+  );
+  await writeQuestion(harness, dialog, '¿Cómo lo llaman?');
+  await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
+  return dialog;
+};
+
+const addValue = async (
+  harness: StageEditorHarness,
+  label: string,
+  value: string,
+) => {
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Crear nueva opción' }),
+  );
+  await harness.user.type(
+    await screen.findByRole('textbox', { name: 'Etiqueta' }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: 'Valor' }),
+    value,
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Finalizar edición de la opción' }),
+  );
+};
+
+describe('the form-fields row dialog, read in Spanish', () => {
+  it('shows its examples and asks for what a field needs', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+
+    // Both examples reach the screen as `aria-placeholder`: the two questions
+    // are rich-text editors rather than inputs, and a contenteditable surface
+    // has no `placeholder` attribute to carry one.
+    expect(
+      dialog.getByRole('textbox', { name: 'Texto de la pregunta' }),
+    ).toHaveAttribute('aria-placeholder', '¿Cómo se llama esta persona?');
+    expect(
+      dialog.getByRole('textbox', { name: 'Texto de ayuda' }),
+    ).toHaveAttribute(
+      'aria-placeholder',
+      'p. ej., Selecciona todas las opciones que correspondan...',
+    );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
+
+    expect(
+      await dialog.findByText('Elige el atributo que recoge este campo.'),
+    ).toBeInTheDocument();
+    expect(
+      dialog.getByText('Escribe la pregunta que hace este campo.'),
+    ).toBeInTheDocument();
+  });
+
+  it('asks for the one fact an invented attribute still needs', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+    // The name was given to the window's create row, in Spanish, which leaves
+    // the input control as the only thing the row is still missing.
+    await inventThroughThePicker(harness, dialog, 'apodo');
+
+    expect(
+      await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+    ).toBeInTheDocument();
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
+
+    expect(
+      await dialog.findByText(
+        'Elige cómo responde el participante a esta pregunta.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('refuses an invented list of answers until it offers two values', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+    await inventThroughThePicker(harness, dialog, 'lugar_de_contacto');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+      'CheckboxGroup',
+    );
+
+    expect(
+      await dialog.findByRole('region', { name: 'Valores de las opciones' }),
+    ).toBeInTheDocument();
+
+    await writeQuestion(harness, dialog, '¿Dónde soléis veros?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
+
+    expect(
+      await dialog.findByText(
+        'Se requieren al menos dos opciones. Si necesitas menos opciones, considera usar un atributo booleano.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('creates an attribute and its values from the field that collects it', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+    await inventThroughThePicker(harness, dialog, 'lugar_de_contacto');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+      'CheckboxGroup',
+    );
+    await addValue(harness, 'En casa', 'casa');
+    await addValue(harness, 'En el trabajo', 'trabajo');
+    expect(
+      dialog.getByRole('switch', { name: 'Validación' }),
+    ).toBeInTheDocument();
+    await writeQuestion(harness, dialog, '¿Dónde soléis veros?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+  });
+
+  it('offers the answers of a yes-or-no field by their words', async () => {
+    const harness = alterFormInSpanish();
+    // The fixture's second field collects a boolean, whose two stored values
+    // are fixed and whose WORDS are the researcher's.
+    const dialog = await openFieldDialog(harness, 'Editar campo', 1);
+
+    expect(screen.getByText('Editar campo de formulario')).toBeInTheDocument();
+    expect(
+      await dialog.findByRole('region', { name: 'Valores booleanos' }),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        dialog.getByRole('region', { name: 'Valores booleanos' }),
+      ).getByRole('textbox', { name: 'Etiqueta de «true»' }),
+    ).toBeInTheDocument();
+    // And the rules the answer has to satisfy, in the nested section this
+    // dialog ends with rather than behind a button of their own.
+    expect(
+      dialog.getByRole('switch', { name: 'Validación' }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers what a date field accepts', async () => {
+    const harness = alterFormInSpanish();
+    seedPersonVariables(harness, {
+      met_on: { name: 'met_on', type: 'datetime', component: 'DatePicker' },
+    });
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+    await chooseAttribute(harness, dialog, 'met_on');
+
+    const settings = within(
+      await dialog.findByRole('region', { name: 'Ajustes del control' }),
+    );
+    expect(
+      settings.getByRole('combobox', { name: 'Precisión de la fecha' }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.queryByRole('region', { name: 'Valores de las opciones' }),
+    ).toBeNull();
+  });
+
+  /**
+   * The dialog with no input control to offer. `layout` records where a node
+   * was dropped rather than an answer, so no control collects it — a form
+   * cannot ask for one, and a protocol that already does opens here.
+   */
+  it('says a field whose attribute cannot be answered is unsaveable', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'collects-a-position',
+        type: 'AlterForm',
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          label: 'Dónde se sitúa cada persona',
+          form: {
+            fields: [{ variable: 'layout', prompt: '¿Dónde se sitúa?' }],
+          },
+        },
+      },
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openFieldDialog(harness, 'Editar campo');
+
+    expect(
+      await dialog.findByText(
+        'El atributo de este campo no ofrece al participante ninguna forma de responder. Elige otro atributo o elimina este campo.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Guardar' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+});
+
+/**
+ * The codebook writes a field makes, refused — in Spanish.
+ *
+ * A compound result's own `message` is written for whoever reads a log, and
+ * the builder's throws name a record id nobody has seen. What lands on the
+ * control is this package's own wording, and this is where it is read in the
+ * language a researcher asked for.
+ */
+describe('a codebook write a Spanish form field needs, refused', () => {
+  /**
+   * The two names the create row turns away by itself, read in Spanish.
+   *
+   * Neither reaches the codebook any more: the row it is typed into asks the
+   * schema's own name rule and the names this type already holds, so the
+   * refusal stands beside the name while the researcher is still looking at
+   * it, in their own language, with nothing asked of the host.
+   */
+  it('says on the create row what the codebook could not store', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+
+    const window = await searchForAnAttribute(
+      harness,
+      dialog,
+      'nombre de pila',
+    );
+
+    const refused = within(window).getByRole('option', {
+      name: 'No se puede crear un atributo llamado «nombre de pila»: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
+    });
+    expect(refused).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('says on the create row that this type is already using the name', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+
+    // `contactType` is what the fixture's person type already calls one of its
+    // own — and one no form may collect, because a bin stage writes it without
+    // asking. So it is not in the list, and a name is taken by an attribute
+    // whether or not this control could have offered it.
+    const window = await searchForAnAttribute(harness, dialog, 'contactType');
+
+    const refused = within(window).getByRole('option', {
+      name: 'No se puede crear un atributo llamado «contactType»: este tipo ya tiene un atributo con ese nombre',
+    });
+    expect(refused).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('says the type it would be added to has gone', async () => {
+    const harness = alterFormInSpanish();
+    // The type this stage collects about, deleted by a collaborator. A
+    // codebook section has a lock of its own, so holding this stage does not
+    // hold that off.
+    harness.receiveCodebookUpdate({ node: { person: null } });
+
+    const dialog = await inventAttribute(harness, 'apodo');
+
+    expect(
+      await dialog.findByText(
+        'Esta etapa trabaja con algo que el libro de códigos ya no contiene, así que no se ha guardado nada. Elige de nuevo con qué trabaja.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The refusal with no explanation of its own: the codebook will not rewrite
+   * this attribute, and what is wrong with it is not something the researcher
+   * chose here.
+   *
+   * Reached through an attribute the protocol SCHEMA accepts and the builder
+   * refuses — a stored value with a space in it, which export formats turn
+   * into a key — so the row's own save is refused on the control that caused
+   * it rather than closing over a write that never happened.
+   */
+  it('says the input control could not be recorded', async () => {
+    const harness = alterFormInSpanish();
+    seedPersonVariables(harness, {
+      lugar_de_contacto: {
+        name: 'lugar_de_contacto',
+        type: 'categorical',
+        component: 'CheckboxGroup',
+        // Not the researcher's to change, so the values are shown rather than
+        // offered — which is what leaves the control the only thing this row
+        // writes, and its write the only thing that can be refused.
+        readOnly: true,
+        options: [
+          { label: 'En casa', value: 'en casa' },
+          { label: 'En el trabajo', value: 'trabajo' },
+        ],
+      },
+    });
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+    await chooseAttribute(harness, dialog, 'lugar_de_contacto');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Control de entrada' }),
+      'ToggleButtonGroup',
+    );
+    await writeQuestion(harness, dialog, '¿Dónde soléis veros?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
+
+    expect(
+      await dialog.findByText(
+        'No se pudo cambiar el control de entrada de este atributo, así que no se cambió nada. Inténtalo de nuevo.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The rules about the LIST, which no row can refuse: they are said above the
+ * fields rather than on one of them, and only a save can ask them.
+ */
+describe('a form a Spanish researcher cannot save', () => {
+  it('says a form with nothing left in it collects nothing', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      locale: 'es',
+      sections: <FormFieldsSection subject="ego" />,
+    });
+
+    // Twice: the first click asks, and the confirmation carries the same words.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Eliminar campo' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Eliminar campo' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Editar campo' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    expect(
+      screen.getByText('Todavía no se ha creado ningún elemento.'),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText('Debes crear al menos un elemento.'),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * Both halves of the one-attribute-per-form rule, which the picker hides and
+   * neither the list nor the row can let through: a protocol that arrives
+   * already repeating one is refused above the list, and the row that repeats
+   * it is refused on the control that names it.
+   */
+  it('says an attribute is collected twice, from the list and from the row', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'repite-un-atributo',
+        type: 'AlterForm',
+        fields: {
+          label: 'Formulario de alter',
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            fields: [
+              {
+                variable: 'relationship_to_ego',
+                prompt: '¿De qué os conocéis?',
+              },
+              { variable: 'relationship_to_ego', prompt: '¿Y de qué más?' },
+            ],
+          },
+        },
+      },
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'Dos campos recogen el mismo atributo. Cada atributo puede recogerse una sola vez por formulario.',
+      ),
+    ).toBeInTheDocument();
+
+    const dialog = await openFieldDialog(harness, 'Editar campo', 1);
+    await harness.user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(
+      await dialog.findByText(
+        'Otro campo de este formulario ya recoge este atributo. Elige otro atributo o edita el campo existente.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says a field nobody finished has to be finished', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'un-campo-sin-terminar',
+        type: 'AlterForm',
+        fields: {
+          label: 'Formulario de alter',
+          subject: { entity: 'node', type: 'person' },
+          // A field that names an attribute and asks nothing, which the row
+          // dialog cannot produce and an import can.
+          form: { fields: [{ variable: 'relationship_to_ego' }] },
+        },
+      },
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'Cada campo necesita un atributo y una pregunta. Abre el campo incompleto y termínalo.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('asks for the heading the form is shown under', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" hasTitle />,
+    });
+
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: 'Título del formulario' }),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText('Da un título a este formulario.'),
+    ).toBeInTheDocument();
+  });
+});
+
+/**
+ * A form on a stage that has not been told what it is about yet.
+ *
+ * There is nothing to draw attributes from, so the section says what is
+ * missing in place of its own description and closes.
+ */
+describe('a Spanish form-fields section waiting on a subject', () => {
+  it('says what has to be chosen first', async () => {
+    renderStageEditor({
+      stage: {
+        id: 'sin-sujeto',
+        type: 'NameGenerator',
+        fields: {
+          label: 'Generador de nombres',
+          form: { title: 'Añadir una persona', fields: [] },
+          prompts: [{ id: 'prompt-1', text: '¿A quién conoces?' }],
+        },
+      },
+      locale: 'es',
+      sections: <FormFieldsSection subject="node" hasTitle />,
+    });
+
+    expect(
+      await screen.findByText(
+        'Elige con qué trabaja esta etapa antes de escribir su formulario.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Crear nuevo campo de formulario' }),
+    ).toBeDisabled();
+  });
+});

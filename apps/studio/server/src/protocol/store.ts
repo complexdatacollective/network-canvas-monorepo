@@ -9,18 +9,37 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-
-import { AssemblyError, assembleProtocol } from './assemble.ts';
-import { type ProtocolChange, diffProtocolSections } from './diff.ts';
-import { insertDraftRows } from './draft-rows.ts';
-import { sectionizeProtocol } from './sectionize.ts';
-import { sectionId as makeSectionId, parseSectionId } from './taxonomy.ts';
+import {
+  assembleProtocolSections,
+  ProtocolAssemblyError,
+} from '@codaco/studio-sync/protocol-document';
 import {
   type SectionIssue,
   SectionValidationFailedError,
   validateSection,
   validateStageSectionIdentity,
-} from './validate.ts';
+} from '@codaco/studio-sync/section-validation';
+import {
+  parseSectionId,
+  sectionId as makeSectionId,
+} from '@codaco/studio-sync/taxonomy';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
+
+import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
+import type { SecretsCipher } from '../secrets/cipher.ts';
+import { assertNoAssetKeyValues } from '../secrets/exclusion.ts';
+import {
+  type StudyVisibility,
+  studyVisibleToCallerSql,
+} from '../study/store.ts';
+import {
+  sealAssetKeys,
+  stripAssetKeyValues,
+  withPlaceholderAssetKeys,
+} from './asset-keys.ts';
+import { type ProtocolChange, diffProtocolSections } from './diff.ts';
+import { insertDraftRows } from './draft-rows.ts';
+import { sectionizeProtocol } from './sectionize.ts';
 import { versionContentHash } from './version-hash.ts';
 
 /** @public */
@@ -48,12 +67,59 @@ export type VersionRow = {
   publishedAt: Date;
 };
 
+export type ProtocolRow = {
+  id: string;
+  draftId: string | null;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type CreateProtocolResult = {
+  protocolId: string;
+  draftId: string;
+};
+
+type CreateProtocolParams = {
+  protocol: CurrentProtocol;
+  protocolId?: string;
+  draftId?: string /**
+   * When the protocol was created, for a caller that must say so — the
+   * synthetic-data seed, whose whole corpus is dated from one anchor so the
+   * line exists before the studies that pin its versions. Defaults to now.
+   */;
+  createdAt?: Date;
+};
+
+type CreateProtocolTransactionResult = CreateProtocolResult & {
+  created: boolean;
+};
+
+type EditableProtocolRow = Omit<ProtocolRow, 'draftId'> & { draftId: string };
+
 export type DraftSections = {
   headSeq: bigint;
   headManifestHash: string;
   sectionHashes: Record<string, string>;
   sections: Record<string, SectionDoc>;
 };
+
+/**
+ * Which protocol lines the caller may reach, which is #1257's study rule and
+ * not a second one: a team Admin or Owner reaches every line their team owns,
+ * and anyone else reaches a line only through a study they can see. A line no
+ * study references is therefore Admin/Owner-only — no grant exists that could
+ * reach it — and that is why creating one is an Admin/Owner action too.
+ *
+ * The predicate over the study itself comes from the study tier, so the two
+ * cannot drift: what `studies.list` omits, the protocol surface refuses. `p`
+ * is the `protocols` row being asked about, and the bind order is the study
+ * tier's — `$1` the team, `$2` the role as one boolean, `$3` the user id.
+ */
+const REACHABLE_BY_CALLER = `($2::boolean OR EXISTS (
+         SELECT 1 FROM studies s
+         WHERE s.team_id = p.team_id AND s.protocol_id = p.id
+           AND ${studyVisibleToCallerSql('s')}))`;
 
 // A lease-scoped command can rewrite a stage's own id, which neither assembly
 // nor the canonical validator can see is out of step with its section key.
@@ -78,15 +144,31 @@ function sectionIdentityIssues(
   return issues;
 }
 
+/**
+ * The two public assembly paths (`getDraftDocument`, `getVersionDocument`) go
+ * through here, which is the #1897 exclusion check at the point a document
+ * leaves the store for anything that is not a participant session or a
+ * researcher preview. Neither of those exists yet; when one does, it assembles
+ * and then puts the keys back, and this stays the exit every other reader
+ * takes.
+ */
+function assembleDocumentWithoutKeys(
+  sections: Record<string, SectionDoc>,
+): Record<string, unknown> {
+  const document = assembleProtocolSections(sections);
+  assertNoAssetKeyValues(document);
+  return document;
+}
+
 function assembleOrIssues(
   sections: Record<string, SectionDoc>,
 ):
   | { document: Record<string, unknown>; issues?: undefined }
   | { document?: undefined; issues: ProtocolValidationIssue[] } {
   try {
-    return { document: assembleProtocol(sections) };
+    return { document: assembleProtocolSections(sections) };
   } catch (err) {
-    if (err instanceof AssemblyError) {
+    if (err instanceof ProtocolAssemblyError) {
       return { issues: [{ code: 'custom', path: [], message: err.message }] };
     }
     throw err;
@@ -113,44 +195,120 @@ function assertNoValidationFailures(sections: Record<string, SectionDoc>) {
 }
 
 export class ProtocolStore {
-  private db: pg.Pool;
+  private db: TenantDb;
+  /**
+   * Seals the API-key assets of a protocol imported whole (#1900). A
+   * dependency of the store rather than of the one method that uses it,
+   * because a store that cannot seal cannot safely accept a protocol at all:
+   * `createProtocol` is a write boundary, and one constructed without a cipher
+   * would be one whose failure showed up only on the first protocol that
+   * happened to carry a key.
+   */
+  private cipher: SecretsCipher;
 
-  constructor(db: pg.Pool) {
+  constructor(db: TenantDb, cipher: SecretsCipher) {
     this.db = db;
+    this.cipher = cipher;
   }
 
   // Sections are write-time validated; the document is not required to pass
   // whole-protocol validation until publish.
-  async createProtocol(params: {
-    protocol: CurrentProtocol;
-    protocolId?: string;
-    draftId?: string;
-  }): Promise<{ protocolId: string; draftId: string }> {
+  async createProtocol(
+    params: CreateProtocolParams,
+  ): Promise<CreateProtocolResult>;
+  async createProtocol(
+    params: CreateProtocolParams,
+    client: pg.PoolClient,
+  ): Promise<CreateProtocolTransactionResult>;
+  async createProtocol(
+    params: CreateProtocolParams,
+    client?: pg.PoolClient,
+  ): Promise<CreateProtocolResult | CreateProtocolTransactionResult> {
     const protocolId = params.protocolId ?? randomUUID();
     const draftId = params.draftId ?? randomUUID();
     const sections = sectionizeProtocol(params.protocol);
+    // While the keys are still in the document: the assets schema requires an
+    // `apikey` entry to carry a non-empty value, so an import missing one is
+    // refused here rather than silently becoming a protocol with a key asset
+    // the store holds nothing for.
     assertNoValidationFailures(sections);
 
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`INSERT INTO protocols (id, name) VALUES ($1, $2)`, [
-        protocolId,
-        params.protocol.name,
-      ]);
-      await insertDraftRows(client, draftId, sections);
-      await client.query(
-        `INSERT INTO protocol_drafts (draft_id, protocol_id) VALUES ($1, $2)`,
-        [draftId, protocolId],
-      );
-      await client.query('COMMIT');
-      return { protocolId, draftId };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
+    // The second write boundary (#1900): a whole protocol arriving at once —
+    // an import, or the synthetic-data seed — carries its keys in the asset
+    // manifest, and they must not reach `sections` any more than a promotion's
+    // do. Stripped before the draft rows are inserted, sealed in the same
+    // transaction that inserts them.
+    const assetsSectionId = makeSectionId({ kind: 'assets' });
+    const assets = sections[assetsSectionId];
+    const strippedAssets =
+      assets === undefined ? undefined : stripAssetKeyValues(assets);
+    if (strippedAssets !== undefined) {
+      sections[assetsSectionId] = strippedAssets.doc;
     }
+
+    const teamId = this.db.teamId;
+    const create = async (
+      transactionClient: pg.PoolClient,
+    ): Promise<CreateProtocolTransactionResult> => {
+      const inserted = await transactionClient.query(
+        `INSERT INTO protocols (id, team_id, name, created_at, updated_at)
+         VALUES ($1, $2, $3, COALESCE($4, now()), COALESCE($4, now()))
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [protocolId, teamId, params.protocol.name, params.createdAt ?? null],
+      );
+      if (inserted.rowCount === 0) {
+        const existing = await transactionClient.query(
+          `SELECT p.name, pd.draft_id
+           FROM protocols p
+           JOIN protocol_drafts pd
+             ON pd.protocol_id = p.id AND pd.team_id = p.team_id
+           WHERE p.id = $1 AND p.team_id = $2`,
+          [protocolId, teamId],
+        );
+        const row = existing.rows[0] as
+          | { name: string; draft_id: string }
+          | undefined;
+        if (row?.name === params.protocol.name && row.draft_id === draftId) {
+          return { protocolId, draftId, created: false };
+        }
+        throw new ProtocolStoreError(
+          `protocol creation identity ${protocolId} is already in use`,
+        );
+      }
+      if (strippedAssets !== undefined && strippedAssets.values.size > 0) {
+        // After the `protocols` row the foreign key names, and before the
+        // sections, so a refused creation seals nothing.
+        await sealAssetKeys(
+          transactionClient,
+          this.cipher,
+          { teamId, protocolId },
+          strippedAssets.values,
+          params.createdAt,
+        );
+      }
+      await insertDraftRows(
+        transactionClient,
+        teamId,
+        draftId,
+        sections,
+        params.createdAt,
+      );
+      await transactionClient.query(
+        `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, created_at)
+         VALUES ($1, $2, $3, COALESCE($4, now()))`,
+        [draftId, teamId, protocolId, params.createdAt ?? null],
+      );
+      return { protocolId, draftId, created: true };
+    };
+
+    if (client !== undefined) return create(client);
+    const result = await runNoAuditTenantTransaction(
+      this.db,
+      'protocol.create',
+      create,
+    );
+    return { protocolId: result.protocolId, draftId: result.draftId };
   }
 
   async createDraftFromVersion(params: {
@@ -158,56 +316,58 @@ export class ProtocolStore {
     draftId?: string;
   }): Promise<{ draftId: string; protocolId: string }> {
     const draftId = params.draftId ?? randomUUID();
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      const version = await client.query(
-        `SELECT protocol_id FROM protocol_versions WHERE id = $1`,
-        [params.versionId],
-      );
-      const versionRow = version.rows[0] as { protocol_id: string } | undefined;
-      if (versionRow === undefined) {
-        throw new ProtocolStoreError(`no version ${params.versionId}`);
-      }
-      const pins = await client.query(
-        `SELECT vs.section_id, vs.section_hash, s.doc
-         FROM version_sections vs JOIN sections s ON s.hash = vs.section_hash
-         WHERE vs.version_id = $1`,
-        [params.versionId],
-      );
-      const sections: Record<string, SectionDoc> = {};
-      for (const row of pins.rows as {
-        section_id: string;
-        doc: SectionDoc;
-      }[]) {
-        sections[row.section_id] = row.doc;
-      }
-      await insertDraftRows(client, draftId, sections);
-      await client.query(
-        `INSERT INTO protocol_drafts (draft_id, protocol_id, based_on_version_id)
-         VALUES ($1, $2, $3)`,
-        [draftId, versionRow.protocol_id, params.versionId],
-      );
-      await client.query('COMMIT');
-      return { draftId, protocolId: versionRow.protocol_id };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    const teamId = this.db.teamId;
+    return runNoAuditTenantTransaction(
+      this.db,
+      'protocol.createDraftFromVersion',
+      async (client) => {
+        const version = await client.query(
+          `SELECT protocol_id FROM protocol_versions
+         WHERE id = $1 AND team_id = $2`,
+          [params.versionId, teamId],
+        );
+        const versionRow = version.rows[0] as
+          | { protocol_id: string }
+          | undefined;
+        if (versionRow === undefined) {
+          throw new ProtocolStoreError(`no version ${params.versionId}`);
+        }
+        const pins = await client.query(
+          `SELECT vs.section_id, vs.section_hash, s.doc
+         FROM version_sections vs
+         JOIN sections s ON s.team_id = vs.team_id AND s.hash = vs.section_hash
+         WHERE vs.version_id = $1 AND vs.team_id = $2`,
+          [params.versionId, teamId],
+        );
+        const sections: Record<string, SectionDoc> = {};
+        for (const row of pins.rows as {
+          section_id: string;
+          doc: SectionDoc;
+        }[]) {
+          sections[row.section_id] = row.doc;
+        }
+        await insertDraftRows(client, teamId, draftId, sections);
+        await client.query(
+          `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, based_on_version_id)
+         VALUES ($1, $2, $3, $4)`,
+          [draftId, teamId, versionRow.protocol_id, params.versionId],
+        );
+        return { draftId, protocolId: versionRow.protocol_id };
+      },
+    );
   }
 
   async getDraftSections(draftId: string): Promise<DraftSections> {
     const res = await this.db.query(
       `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes,
               (SELECT jsonb_object_agg(s.hash, s.doc) FROM sections s
-                WHERE s.hash IN (SELECT jsonb_each_text.value
+                WHERE s.team_id = d.team_id
+                  AND s.hash IN (SELECT jsonb_each_text.value
                                  FROM jsonb_each_text(m.section_hashes))) AS docs
        FROM drafts d
-       JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
-       WHERE d.id = $1`,
-      [draftId],
+       JOIN manifests m ON m.draft_id = d.id AND m.team_id = d.team_id AND m.seq = d.head_seq
+       WHERE d.id = $1 AND d.team_id = $2`,
+      [draftId, this.db.teamId],
     );
     const row = res.rows[0] as
       | {
@@ -240,7 +400,49 @@ export class ProtocolStore {
 
   async getDraftDocument(draftId: string): Promise<Record<string, unknown>> {
     const { sections } = await this.getDraftSections(draftId);
-    return assembleProtocol(sections);
+    return assembleDocumentWithoutKeys(sections);
+  }
+
+  async getProtocolDraftMetadata(
+    protocolId: string,
+    draftId: string,
+  ): Promise<EditableProtocolRow> {
+    const res = await this.db.query(
+      `SELECT p.id, p.name, p.created_at, p.updated_at
+       FROM protocols p
+       JOIN protocol_drafts pd
+         ON pd.protocol_id = p.id AND pd.team_id = p.team_id
+       WHERE p.id = $1 AND pd.draft_id = $2 AND p.team_id = $3`,
+      [protocolId, draftId, this.db.teamId],
+    );
+    const row = res.rows[0] as
+      | {
+          id: string;
+          name: string;
+          created_at: Date;
+          updated_at: Date;
+        }
+      | undefined;
+    if (row === undefined) {
+      throw new ProtocolStoreError(
+        `no draft ${draftId} for protocol ${protocolId}`,
+      );
+    }
+    return {
+      id: row.id,
+      draftId,
+      name: row.name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  async getProtocolDraft(
+    protocolId: string,
+    draftId: string,
+  ): Promise<{ protocol: EditableProtocolRow; draft: DraftSections }> {
+    const protocol = await this.getProtocolDraftMetadata(protocolId, draftId);
+    return { protocol, draft: await this.getDraftSections(draftId) };
   }
 
   async validateDraft(
@@ -257,8 +459,12 @@ export class ProtocolStore {
     if (assembled.document === undefined) {
       return { valid: false, issues: assembled.issues };
     }
+    // Against a placeholder rather than the sealed keys (#1900): what the
+    // canonical validator has to say about an API key is that the asset has
+    // one, and decrypting a researcher's third-party credentials to answer
+    // "is this protocol valid" would put them in memory for no reason.
     const result = await validateProtocol(
-      assembled.document as VersionedProtocol,
+      withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
     );
     return result.success
       ? { valid: true }
@@ -271,6 +477,19 @@ export class ProtocolStore {
     draftId: string;
     label?: string;
     expectedManifestHash?: string;
+    /**
+     * The id to mint the new version under, for a caller that must know it in
+     * advance — the synthetic-data seed, whose ids all come from its own
+     * seeded PRNG. Same role as `createProtocol`'s `protocolId`/`draftId`.
+     * Ignored when the publish resolves to an existing version.
+     */
+    versionId?: string;
+    /**
+     * When the version was published, for the same caller and reason as
+     * `versionId`: the seed's versions must predate the sessions that pin
+     * them. Defaults to now.
+     */
+    publishedAt?: Date;
   }): Promise<PublishResult> {
     const head = await this.getDraftSections(params.draftId);
     if (
@@ -287,8 +506,10 @@ export class ProtocolStore {
     if (assembled.document === undefined) {
       return { status: 'invalid', issues: assembled.issues };
     }
+    // The same placeholder substitution `validateDraft` makes, for the same
+    // reason: publication checks the protocol's shape, never the key's value.
     const validation = await validateProtocol(
-      assembled.document as VersionedProtocol,
+      withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
     );
     if (!validation.success) {
       return { status: 'invalid', issues: validation.error.issues };
@@ -301,125 +522,131 @@ export class ProtocolStore {
     }
     const name = typeof settings?.name === 'string' ? settings.name : null;
 
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      const lockedHead = await client.query(
-        `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
-        [params.draftId],
-      );
-      const lockedRow = lockedHead.rows[0] as
-        | { head_seq: string; head_manifest_hash: string }
-        | undefined;
-      if (lockedRow === undefined) {
-        throw new ProtocolStoreError(`no draft ${params.draftId}`);
-      }
-      if (lockedRow.head_manifest_hash !== head.headManifestHash) {
-        await client.query('ROLLBACK');
-        return {
-          status: 'conflict',
-          headManifestHash: lockedRow.head_manifest_hash,
-        };
-      }
-
-      const draftRow = await client.query(
-        `SELECT protocol_id, based_on_version_id FROM protocol_drafts WHERE draft_id = $1`,
-        [params.draftId],
-      );
-      const draft = draftRow.rows[0] as
-        | { protocol_id: string; based_on_version_id: string | null }
-        | undefined;
-      if (draft === undefined) {
-        throw new ProtocolStoreError(
-          `draft ${params.draftId} belongs to no protocol`,
+    const teamId = this.db.teamId;
+    return runNoAuditTenantTransaction(
+      this.db,
+      'protocol.publishDraft',
+      async (client): Promise<PublishResult> => {
+        const lockedHead = await client.query(
+          `SELECT head_seq, head_manifest_hash FROM drafts
+         WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+          [params.draftId, teamId],
         );
-      }
-
-      await client.query(`SELECT 1 FROM protocols WHERE id = $1 FOR UPDATE`, [
-        draft.protocol_id,
-      ]);
-
-      const versionHash = versionContentHash(head.sectionHashes);
-      const existing = await client.query(
-        `SELECT id, version_number FROM protocol_versions
-         WHERE protocol_id = $1 AND version_hash = $2`,
-        [draft.protocol_id, versionHash],
-      );
-      const existingRow = existing.rows[0] as
-        | { id: string; version_number: number }
-        | undefined;
-      if (existingRow !== undefined) {
-        await client.query('ROLLBACK');
-        return {
-          status: 'unchanged',
-          versionId: existingRow.id,
-          versionNumber: existingRow.version_number,
-        };
-      }
-
-      let migratedFrom: string | null = null;
-      if (draft.based_on_version_id !== null) {
-        const basis = await client.query(
-          `SELECT schema_version FROM protocol_versions WHERE id = $1`,
-          [draft.based_on_version_id],
-        );
-        const basisRow = basis.rows[0] as
-          | { schema_version: number }
+        const lockedRow = lockedHead.rows[0] as
+          | { head_seq: string; head_manifest_hash: string }
           | undefined;
-        if (basisRow !== undefined && basisRow.schema_version < schemaVersion) {
-          migratedFrom = draft.based_on_version_id;
+        if (lockedRow === undefined) {
+          throw new ProtocolStoreError(`no draft ${params.draftId}`);
         }
-      }
+        if (lockedRow.head_manifest_hash !== head.headManifestHash) {
+          return {
+            status: 'conflict',
+            headManifestHash: lockedRow.head_manifest_hash,
+          };
+        }
 
-      const versionId = randomUUID();
-      const inserted = await client.query(
-        `INSERT INTO protocol_versions
-           (id, protocol_id, version_number, label, version_hash, manifest,
-            schema_version, source_draft_id, source_manifest_hash,
-            migrated_from_version_id)
-         SELECT $1, $2,
+        const draftRow = await client.query(
+          `SELECT protocol_id, based_on_version_id FROM protocol_drafts
+         WHERE draft_id = $1 AND team_id = $2`,
+          [params.draftId, teamId],
+        );
+        const draft = draftRow.rows[0] as
+          | { protocol_id: string; based_on_version_id: string | null }
+          | undefined;
+        if (draft === undefined) {
+          throw new ProtocolStoreError(
+            `draft ${params.draftId} belongs to no protocol`,
+          );
+        }
+
+        await client.query(
+          `SELECT 1 FROM protocols WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+          [draft.protocol_id, teamId],
+        );
+
+        const versionHash = versionContentHash(head.sectionHashes);
+        const existing = await client.query(
+          `SELECT id, version_number FROM protocol_versions
+         WHERE protocol_id = $1 AND version_hash = $2 AND team_id = $3`,
+          [draft.protocol_id, versionHash, teamId],
+        );
+        const existingRow = existing.rows[0] as
+          | { id: string; version_number: number }
+          | undefined;
+        if (existingRow !== undefined) {
+          return {
+            status: 'unchanged',
+            versionId: existingRow.id,
+            versionNumber: existingRow.version_number,
+          };
+        }
+
+        let migratedFrom: string | null = null;
+        if (draft.based_on_version_id !== null) {
+          const basis = await client.query(
+            `SELECT schema_version FROM protocol_versions
+           WHERE id = $1 AND team_id = $2`,
+            [draft.based_on_version_id, teamId],
+          );
+          const basisRow = basis.rows[0] as
+            | { schema_version: number }
+            | undefined;
+          if (
+            basisRow !== undefined &&
+            basisRow.schema_version < schemaVersion
+          ) {
+            migratedFrom = draft.based_on_version_id;
+          }
+        }
+
+        const versionId = params.versionId ?? randomUUID();
+        const inserted = await client.query(
+          `INSERT INTO protocol_versions
+           (id, protocol_id, team_id, version_number, label, version_hash,
+            manifest, schema_version, source_draft_id, source_manifest_hash,
+            migrated_from_version_id, published_at)
+         SELECT $1, $2, $10,
                 COALESCE(MAX(v.version_number), 0) + 1,
                 $3, $4,
                 (SELECT to_jsonb(m) FROM manifests m
-                  WHERE m.draft_id = $5 AND m.seq = $6),
-                $7, $5, $8, $9
-         FROM protocol_versions v WHERE v.protocol_id = $2
+                  WHERE m.draft_id = $5 AND m.team_id = $10 AND m.seq = $6),
+                $7, $5, $8, $9, COALESCE($11, now())
+         FROM protocol_versions v
+         WHERE v.protocol_id = $2 AND v.team_id = $10
          RETURNING version_number`,
-        [
-          versionId,
-          draft.protocol_id,
-          params.label ?? null,
-          versionHash,
-          params.draftId,
-          String(head.headSeq),
-          schemaVersion,
-          head.headManifestHash,
-          migratedFrom,
-        ],
-      );
-      const versionNumber = (inserted.rows[0] as { version_number: number })
-        .version_number;
-      for (const [id, hash] of Object.entries(head.sectionHashes)) {
-        await client.query(
-          `INSERT INTO version_sections (version_id, section_id, section_hash)
-           VALUES ($1, $2, $3)`,
-          [versionId, id, hash],
+          [
+            versionId,
+            draft.protocol_id,
+            params.label ?? null,
+            versionHash,
+            params.draftId,
+            String(head.headSeq),
+            schemaVersion,
+            head.headManifestHash,
+            migratedFrom,
+            teamId,
+            params.publishedAt ?? null,
+          ],
         );
-      }
-      if (name !== null) {
-        await client.query(
-          `UPDATE protocols SET name = $2, updated_at = now() WHERE id = $1`,
-          [draft.protocol_id, name],
-        );
-      }
-      await client.query('COMMIT');
-      return { status: 'published', versionId, versionNumber, versionHash };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+        const versionNumber = (inserted.rows[0] as { version_number: number })
+          .version_number;
+        for (const [id, hash] of Object.entries(head.sectionHashes)) {
+          await client.query(
+            `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
+           VALUES ($1, $2, $3, $4)`,
+            [versionId, teamId, id, hash],
+          );
+        }
+        if (name !== null) {
+          await client.query(
+            `UPDATE protocols SET name = $2, updated_at = COALESCE($4, now())
+           WHERE id = $1 AND team_id = $3`,
+            [draft.protocol_id, name, teamId, params.publishedAt ?? null],
+          );
+        }
+        return { status: 'published', versionId, versionNumber, versionHash };
+      },
+    );
   }
 
   async getVersionSections(versionId: string): Promise<{
@@ -428,9 +655,10 @@ export class ProtocolStore {
   }> {
     const res = await this.db.query(
       `SELECT vs.section_id, vs.section_hash, s.doc
-       FROM version_sections vs JOIN sections s ON s.hash = vs.section_hash
-       WHERE vs.version_id = $1`,
-      [versionId],
+       FROM version_sections vs
+       JOIN sections s ON s.team_id = vs.team_id AND s.hash = vs.section_hash
+       WHERE vs.version_id = $1 AND vs.team_id = $2`,
+      [versionId, this.db.teamId],
     );
     if (res.rowCount === 0) {
       throw new ProtocolStoreError(`no version ${versionId}`);
@@ -452,16 +680,16 @@ export class ProtocolStore {
     versionId: string,
   ): Promise<Record<string, unknown>> {
     const { sections } = await this.getVersionSections(versionId);
-    return assembleProtocol(sections);
+    return assembleDocumentWithoutKeys(sections);
   }
 
   async listVersions(protocolId: string): Promise<VersionRow[]> {
     const res = await this.db.query(
       `SELECT id, protocol_id, version_number, label, version_hash,
               schema_version, migrated_from_version_id, published_at
-       FROM protocol_versions WHERE protocol_id = $1
+       FROM protocol_versions WHERE protocol_id = $1 AND team_id = $2
        ORDER BY version_number DESC`,
-      [protocolId],
+      [protocolId, this.db.teamId],
     );
     return (
       res.rows as {
@@ -483,6 +711,80 @@ export class ProtocolStore {
       schemaVersion: row.schema_version,
       migratedFromVersionId: row.migrated_from_version_id,
       publishedAt: row.published_at,
+    }));
+  }
+
+  /**
+   * Whether the caller may open one protocol line at all. A boolean rather
+   * than a row, because callers answer every false the same way: a line in
+   * another team, a line behind a study the caller holds no grant on, and a
+   * line that does not exist are one refusal, so this is no more an existence
+   * oracle than `studies.get` is.
+   */
+  async isReachableByCaller(
+    protocolId: string,
+    visibility: StudyVisibility,
+  ): Promise<boolean> {
+    const res = await this.db.query(
+      `SELECT 1 FROM protocols p
+       WHERE p.team_id = $1 AND p.id = $4 AND ${REACHABLE_BY_CALLER}`,
+      [
+        this.db.teamId,
+        visibility.seesEveryStudy,
+        visibility.actorUserId,
+        protocolId,
+      ],
+    );
+    return res.rowCount === 1;
+  }
+
+  /**
+   * The draft a protocol line is edited through — its newest, by the same
+   * ordering `listProtocols` shows. The protocol-builder contract names a
+   * protocol and never a draft, so the server picks one, and it must pick the
+   * one the rest of the app calls current.
+   */
+  async latestDraftId(protocolId: string): Promise<string | undefined> {
+    const res = await this.db.query(
+      `SELECT pd.draft_id
+       FROM protocol_drafts pd
+       WHERE pd.protocol_id = $1 AND pd.team_id = $2
+       ORDER BY pd.created_at DESC, pd.draft_id
+       LIMIT 1`,
+      [protocolId, this.db.teamId],
+    );
+    return (res.rows[0] as { draft_id: string } | undefined)?.draft_id;
+  }
+
+  async listProtocols(visibility: StudyVisibility): Promise<ProtocolRow[]> {
+    const res = await this.db.query(
+      `SELECT p.id, p.name, p.created_at, p.updated_at, d.draft_id
+       FROM protocols p
+       LEFT JOIN LATERAL (
+         SELECT pd.draft_id
+         FROM protocol_drafts pd
+         WHERE pd.protocol_id = p.id AND pd.team_id = p.team_id
+         ORDER BY pd.created_at DESC, pd.draft_id
+         LIMIT 1
+       ) d ON true
+       WHERE p.team_id = $1 AND ${REACHABLE_BY_CALLER}
+       ORDER BY p.created_at DESC, p.id`,
+      [this.db.teamId, visibility.seesEveryStudy, visibility.actorUserId],
+    );
+    return (
+      res.rows as {
+        id: string;
+        draft_id: string | null;
+        name: string;
+        created_at: Date;
+        updated_at: Date;
+      }[]
+    ).map((row) => ({
+      id: row.id,
+      draftId: row.draft_id,
+      name: row.name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     }));
   }
 
@@ -510,29 +812,47 @@ export class ProtocolStore {
 
   // Section documents are left for garbage collection.
   async discardDraft(draftId: string): Promise<void> {
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM leases WHERE draft_id = $1`, [draftId]);
-      await client.query(`DELETE FROM command_log WHERE draft_id = $1`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM protocol_drafts WHERE draft_id = $1`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM manifests WHERE draft_id = $1`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM drafts WHERE id = $1`, [draftId]);
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    const teamId = this.db.teamId;
+    await runNoAuditTenantTransaction(
+      this.db,
+      'protocol.discardDraft',
+      async (client) => {
+        await client.query(
+          `SELECT 1 FROM drafts WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM leases WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM command_log WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        // Before the draft row, which the log's foreign key names. Replay is
+        // meaningful only while the draft it describes exists, and so is the
+        // receipt that tells a retried write what it already committed.
+        await client.query(
+          `DELETE FROM protocol_events WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM protocol_write_receipts WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM protocol_drafts WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM manifests WHERE draft_id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+        await client.query(
+          `DELETE FROM drafts WHERE id = $1 AND team_id = $2`,
+          [draftId, teamId],
+        );
+      },
+    );
   }
 }

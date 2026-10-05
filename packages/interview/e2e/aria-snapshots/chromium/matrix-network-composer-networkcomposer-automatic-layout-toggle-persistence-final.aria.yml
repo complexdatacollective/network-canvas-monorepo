@@ -13,11 +13,12 @@
       - button "Redo" [disabled]
   - application:
     - img
-    - button "Lurline Schuster"
-    - button "Joesph Hartmann"
-    - button "Vernice Rath"
-    - button "Tony Dietrich"
+    - button "Lucius Schuster"
+    - button "Kasey Hartmann"
+    - button "Wade Rath"
+    - button "Tyrell Dietrich"
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

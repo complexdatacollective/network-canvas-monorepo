@@ -1,5 +1,11 @@
 'use client';
 
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button from '../../Button';
 import InputField from '../../form/fields/InputField';
 import { type DateFilterConfig, type DateFilterValue } from './types';
@@ -10,18 +16,38 @@ type DateFilterProps = {
   config: DateFilterConfig;
 };
 
+const messages = defineMessages({
+  presetToday: {
+    id: 'frescoUi.dateFilter.presetToday',
+    defaultMessage: 'Today',
+    description: 'Relative date-range preset covering the current day.',
+  },
+  presetLastDays: {
+    id: 'frescoUi.dateFilter.presetLastDays',
+    defaultMessage: 'Last {days, number} days',
+    description:
+      'Relative date-range preset covering the last {days} days up to today.',
+  },
+  rangeSeparator: {
+    id: 'frescoUi.dateFilter.rangeSeparator',
+    defaultMessage: 'to',
+    description:
+      'Word shown between the start and end date inputs of a date-range filter.',
+  },
+});
+
 type RelativePreset = {
-  label: string;
+  message: MessageDescriptor;
   days: number;
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const relativePresets: RelativePreset[] = [
-  { label: 'Today', days: 0 },
-  { label: 'Last 7 days', days: 7 },
-  { label: 'Last 30 days', days: 30 },
-  { label: 'Last 90 days', days: 90 },
+  { message: messages.presetToday, days: 0 },
+  { message: messages.presetLastDays, days: 7 },
+  { message: messages.presetLastDays, days: 30 },
+  { message: messages.presetLastDays, days: 90 },
 ];
 
 function toISODate(date: Date): string {
@@ -58,6 +84,8 @@ export default function DateFilter({
   onChange,
   config: _config,
 }: DateFilterProps) {
+  const intl = useAppIntl();
+
   const handlePresetClick = (days: number) => {
     if (isPresetActive(value, days)) {
       onChange(undefined);
@@ -89,13 +117,13 @@ export default function DateFilter({
       <div className="flex flex-wrap gap-2">
         {relativePresets.map((preset) => (
           <Button
-            key={preset.label}
+            key={preset.days}
             size="sm"
             variant="default"
             color={isPresetActive(value, preset.days) ? 'success' : 'default'}
             onClick={() => handlePresetClick(preset.days)}
           >
-            {preset.label}
+            {intl.formatMessage(preset.message, { days: preset.days })}
           </Button>
         ))}
       </div>
@@ -109,7 +137,9 @@ export default function DateFilter({
           onChange={(val) => handleFromChange(val ?? '')}
           className="min-w-0 flex-1"
         />
-        <span className="text-text/60 text-xs">to</span>
+        <span className="text-text/60 text-xs">
+          {intl.formatMessage(messages.rangeSeparator)}
+        </span>
         <InputField
           type="date"
           name="filter-date-to"

@@ -179,7 +179,7 @@ Notes for the remaining work:
   classes. The rest are legacy global/BEM classes (allowlist candidates — but the
   plugin's `allowlist` rule-option works with the Fresco entrypoint yet **not** with
   the app-specific entrypoints, a plugin quirk to investigate) and a few ambiguous
-  design-token references (`text-muted`, `text-navy-taupe-foreground`) that need a
+  design-token references (`text-current/70`, `text-navy-taupe-foreground`) that need a
   visual/design decision.
 - **PR4 — RTK typed-thunk seam (deferred to its own PR).** A `createAppAsyncThunk`
   seam removes the ~16 `getState() as RootState` casts in `codebook.ts`, `stages.ts`,

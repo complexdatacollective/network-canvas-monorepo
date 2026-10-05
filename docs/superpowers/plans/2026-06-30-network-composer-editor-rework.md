@@ -16,7 +16,7 @@
 - **Component↔variable-type compatibility is editor-enforced** for v1 (the field schema validates only that `component` is a known `ComponentType`). A codebook-aware compatibility check is explicitly out of scope.
 - **No `any`.** No `as` assertions to bypass typing — use guards. (Pre-existing `as` casts copied verbatim from reference files are tolerated only where the reference uses them.)
 - **No barrel files.** Import from original sources; never re-export for convenience.
-- **Reuse first** (developing-in-network-canvas ladder): reuse/compose existing architect + fresco-ui primitives before building new. New interactive UI is keyboard-operable with correct ARIA.
+- **Reuse first** (developing-network-canvas-ui ladder): reuse/compose existing architect + fresco-ui primitives before building new. New interactive UI is keyboard-operable with correct ARIA.
 - **Every registered section's `compose` second generic MUST be `StageEditorSectionProps`** (QuickAdd/ComposerLayoutVariable precedent), e.g. `compose<InnerProps, StageEditorSectionProps>(...)`.
 - **Inner section components must NOT be exported** beyond what tests need (knip) — export the named inner only if a unit test imports it directly; otherwise only the `compose(...)` default.
 - **Verification discipline** (see [[feedback_agents_minimize_verification_runs]]): each task runs only its **targeted Vitest**. Defer ALL `tsc`/typecheck and `knip` to the final task (Task 10). Pre-commit hooks run lint+format — do NOT run format/lint manually per task. NEVER run e2e/Playwright locally.

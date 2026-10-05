@@ -19,17 +19,14 @@ vi.mock('~/components/DialogForm/DialogForm', async () => {
   };
 });
 
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Subsection: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-
 // The pickers are irrelevant to store identity and drag in canvas/motion work
 // jsdom cannot do.
 vi.mock('~/components/Form/Fields/ColorPicker', () => ({
   default: () => null,
 }));
-vi.mock('~/components/TypeEditor/IconPicker', () => ({ default: () => null }));
+vi.mock('@codaco/fresco-ui/form/fields/IconPicker', () => ({
+  default: () => null,
+}));
 vi.mock('~/components/TypeEditor/ShapePicker', () => ({
   ShapePickerControl: () => null,
 }));
@@ -53,7 +50,7 @@ vi.mock('~/ducks/hooks', () => ({
 
 import EntityTypeDialog from '../EntityTypeDialog';
 
-// The dialog is mounted for the lifetime of its owner (NewTypeDialog keeps it
+// The dialog is mounted for the lifetime of its owner (CodebookPage keeps it
 // rendered and only toggles `show`), and every "Create node type" is a
 // DIFFERENT type — so each open needs its own field store. Keying on
 // `type ?? \`new-${entity}\`` cannot provide one: the key is identical for two

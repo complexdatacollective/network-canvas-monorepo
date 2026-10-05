@@ -15,7 +15,7 @@ import {
   StageMetadataSchema,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../generateNetwork';
+import { generateNetwork } from '../generateNetwork.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 

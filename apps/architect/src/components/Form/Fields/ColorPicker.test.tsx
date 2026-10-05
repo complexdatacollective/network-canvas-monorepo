@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useContext, type ContextType, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+import { colorSequenceHueName } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { COLOR_PALETTES } from '~/config';
@@ -113,32 +115,6 @@ describe('ColorPicker', () => {
     ]);
   });
 
-  // A protocol authored against an over-ranged picker (Narrative Pedigree
-  // offered ten swatches of an eight-colour palette) still holds a value the
-  // list no longer offers. Dropping it from the list would show the researcher
-  // an unselected required field and hide what the protocol actually contains.
-  it('keeps a stored colour the palette no longer offers, selected and named', () => {
-    renderInForm(
-      <ArchitectField
-        name="color"
-        label="Disease color"
-        component={ColorPicker}
-        initialValue="node-color-seq-10"
-        palette="node-color-seq"
-        paletteRange={COLOR_PALETTES['node-color-seq']}
-      />,
-    );
-
-    const swatches = screen.getAllByRole('radio');
-    expect(swatches).toHaveLength(COLOR_PALETTES['node-color-seq'] + 1);
-
-    const stored = screen.getByRole('radio', { name: 'Color 10' });
-    expect(stored).toHaveAttribute('aria-checked', 'true');
-    // Last, so the palette proper still reads as the palette proper.
-    expect(swatches.at(-1)).toBe(stored);
-    expect(getColor()).toBe('node-color-seq-10');
-  });
-
   it('offers only the palette when the stored colour is one of its own', () => {
     renderInForm(
       <ArchitectField
@@ -158,5 +134,79 @@ describe('ColorPicker', () => {
       'aria-checked',
       'true',
     );
+  });
+
+  it('keeps a schema-valid current reference outside the offered subset visible', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Map color"
+        component={ColorPicker}
+        initialValue="ord-color-seq-10"
+        palette="ord-color-seq"
+        paletteRange={COLOR_PALETTES['ord-color-seq']}
+      />,
+    );
+
+    expect(screen.getAllByRole('radio')).toHaveLength(
+      COLOR_PALETTES['ord-color-seq'] + 1,
+    );
+    expect(screen.getByRole('radio', { name: 'Slate Blue' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(getColor()).toBe('ord-color-seq-10');
+  });
+
+  it('does not add an invalid current value to the offered palette', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Disease color"
+        component={ColorPicker}
+        initialValue="node-color-seq-10"
+        palette="node-color-seq"
+        paletteRange={COLOR_PALETTES['node-color-seq']}
+      />,
+    );
+
+    expect(screen.getAllByRole('radio')).toHaveLength(
+      COLOR_PALETTES['node-color-seq'],
+    );
+    expect(
+      screen.queryByRole('radio', { name: 'node-color-seq-10' }),
+    ).toBeNull();
+  });
+
+  /**
+   * The names are `@codaco/fresco-ui`'s, not Architect's: this picker and the
+   * shared one draw on the same list, so a researcher hears the same hue for
+   * the same token wherever a colour is chosen. Asserted against the shared
+   * lookup rather than against strings written out here, which is what a
+   * second copy of the names would be.
+   */
+  it('announces each swatch by the name fresco-ui gives that token', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Palette"
+        component={ColorPicker}
+        palette="cat-color-seq"
+        paletteRange={COLOR_PALETTES['cat-color-seq']}
+      />,
+    );
+
+    const intl = createAppIntl({ locale: 'en' });
+    const expected = Array.from(
+      { length: COLOR_PALETTES['cat-color-seq'] },
+      (_, index) => colorSequenceHueName(`cat-color-seq-${index + 1}`, intl),
+    );
+    expect(expected).not.toContain(undefined);
+
+    expect(
+      screen
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label')),
+    ).toEqual(expected);
   });
 });

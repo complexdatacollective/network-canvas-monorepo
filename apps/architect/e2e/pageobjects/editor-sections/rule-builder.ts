@@ -1,36 +1,38 @@
 import { type Locator } from '@playwright/test';
 
-// Shared Query/Rules primitive (src/components/Query/Rules/*) used by the
-// SkipLogic section (`type="query"` — ego rules available) and the
-// Filter/NetworkFilter sections (no ego rules). Facts verified against
-// source, not guessed:
-// - Add buttons: each editable rule list names its one add control, because
-//   most stage editors mount both at once (RuleSetFields.tsx — see
-//   ADD_RULE_BUTTONS below). The rule target (Node/Edge/Ego) is selected inside
-//   the editor. The rule
-//   editor dialog is titled 'Construct a Rule' for both new and edit; its
-//   submit reads 'Finish and Close' (EditRule.tsx).
-// - Entity type selection inside the dialog reuses the EntitySelectField
-//   radio-pill pattern — accessible names 'Select node <Name>' /
-//   'Select edge <Name>' (PreviewNode.tsx / PreviewEdge.tsx), the exact
-//   convention entity-types.ts already documents. The dialog also contains a
-//   'Create new node type' button, and the stage editor BEHIND the dialog has
-//   identical pills — every locator here is dialog-scoped.
-// - The 'Rule type' rich select is a listbox whose options carry the long
-//   markdown descriptions as accessible names ('Attribute Rule based on…' /
-//   'Presence Based on…', withEntityRuleType.tsx).
-// - Operator LABELS (options.ts): EXACTLY → 'is exactly', EXISTS → 'exists',
-//   NOT_EXISTS → 'does not exist' .
-//   Presence operators render as radios; variable-rule operators are a native
-//   <select> named 'Operator'.
-// - Boolean 'Attribute Value' is a radiogroup. Its visible option labels come
-//   from the variable's authored markdown, while each radio exposes the stored
-//   boolean through `data-value`.
-// - Ego rules: no entity-type step; the native select is labelled 'Ego
-//   attribute'.
-// - The 'Rule Matching' control only renders once 2+ rules exist. Its visible
-//   radios read 'All rules must match' / 'Any rule can match'; a single-rule
-//   filter writes no `join` key.
+import { chooseAttribute } from './variables.js';
+
+// The rule builder `@codaco/protocol-builder` ships (`fields/RuleSetField.tsx`,
+// `rules/RuleEditorDialog.tsx`), mounted by the Skip logic section (ego rules
+// available) and by the Stage filter section (no ego rules). Facts read off
+// that source:
+// - Add buttons: each rule set names its one add control, because a stage
+//   editor can mount both at once (`addRuleLabel` — see ADD_RULE_BUTTONS).
+//   The rule target is chosen inside the editor. The dialog is titled
+//   'Construct a Rule' for both new and edit; its submit reads 'Finish and
+//   Close'.
+// - The entity radios are whole sentences ('Node - match a node type or one of
+//   its attributes.'), so they are matched by their opening word.
+// - The entity TYPE is the package's `EntityTypePickerField`: a native radio
+//   named for the type alone, `sr-only` inside the label that draws the chip —
+//   so the label is what a researcher clicks, and the input is what reports
+//   checked. The stage editor behind the dialog renders the same picker, so
+//   every locator here is dialog-scoped.
+// - The 'Rule type' rich select is a listbox whose options carry their
+//   descriptions in their accessible names ('Attribute Rule based on…' /
+//   'Presence Based on…').
+// - Operator LABELS (rules/operators.ts): EXACTLY → 'is exactly', EXISTS →
+//   'exists', NOT_EXISTS → 'does not exist'. Presence operators render as
+//   radios; attribute-rule operators are a native <select> named 'Operator'.
+// - Boolean 'Attribute value' is a radiogroup. Its visible option labels come
+//   from the attribute's authored markdown, while each radio exposes the
+//   stored boolean through `data-value`.
+// - The attribute is picked from a native select inside the
+//   `options.attribute` field — the same seam, a different control from the
+//   spotlight Architect used to render.
+// - The join control only renders once 2+ rules exist. Its visible radios read
+//   'All rules must match' / 'Any rule can match'; a single-rule set writes no
+//   `join` key.
 export type RuleSpec =
   | { kind: 'egoBooleanExactly'; variableName: string; value: boolean }
   | {
@@ -66,10 +68,34 @@ const ADD_RULE_BUTTONS = {
   skipLogic: 'Add new skip logic rule',
 } as const;
 
+/**
+ * The chip a researcher clicks to choose an entity type.
+ *
+ * The radio itself is `sr-only` inside its own label, so the label is the
+ * control on screen; the radio is still what reports the choice.
+ */
+const entityTypeChip = (host: Locator, name: string): Locator =>
+  host
+    .getByRole('radio', { name, exact: true })
+    .locator('xpath=ancestor::label[1]');
+
 const ruleDialog = (host: Locator) =>
   host.page().getByRole('dialog', { name: 'Construct a Rule' });
 
-/** Authors one rule in the Filter section's builder. */
+async function selectAttribute(
+  dialog: Locator,
+  attributeName: string,
+): Promise<void> {
+  // Scoped to the field rather than named: the picker's own label is the
+  // entity it is about ('Node attribute', 'Ego attribute'), and this helper
+  // serves both. A rule builder offers no creation, so this only ever chooses.
+  await chooseAttribute(
+    dialog.locator('[data-field-name="options.attribute"]'),
+    attributeName,
+  );
+}
+
+/** Authors one rule in the Stage filter section's builder. */
 export async function addFilterRule(
   host: Locator,
   spec: FilterRuleSpec,
@@ -77,7 +103,7 @@ export async function addFilterRule(
   await addEntityRule(host, ADD_RULE_BUTTONS.filter, spec);
 }
 
-/** Authors one rule in the Skip Logic section's builder. */
+/** Authors one rule in the Skip logic section's builder. */
 export async function addSkipLogicRule(
   host: Locator,
   spec: RuleSpec,
@@ -97,14 +123,12 @@ async function addEgoRule(
 
   await host.getByRole('button', { name: ADD_RULE_BUTTONS.skipLogic }).click();
   await dialog.getByRole('radio', { name: /^Ego -/ }).click();
-  await dialog
-    .getByRole('combobox', { name: 'Ego attribute' })
-    .selectOption({ label: spec.variableName });
+  await selectAttribute(dialog, spec.variableName);
   await dialog
     .getByRole('combobox', { name: 'Operator' })
     .selectOption({ label: 'is exactly' });
   await dialog
-    .getByRole('radiogroup', { name: 'Attribute Value' })
+    .getByRole('radiogroup', { name: 'Attribute value' })
     .locator(`[role="radio"][data-value="${String(spec.value)}"]`)
     .click();
 
@@ -119,13 +143,9 @@ async function addEntityRule(
   const dialog = ruleDialog(host);
 
   await host.getByRole('button', { name: addButtonLabel }).click();
-  await dialog.getByRole('radio', { name: /^Node -/ }).click();
-  await dialog
-    .getByRole('radio', {
-      name: `Select node ${spec.nodeTypeName}`,
-      exact: true,
-    })
-    .click();
+  const ruleTarget = dialog.getByRole('region', { name: 'Rule target' });
+  await ruleTarget.getByRole('radio', { name: /^Node -/ }).click();
+  await entityTypeChip(ruleTarget, spec.nodeTypeName).click();
   if (spec.kind === 'alterPresence') {
     await dialog
       .getByRole('listbox', { name: 'Rule type' })
@@ -140,14 +160,12 @@ async function addEntityRule(
       .getByRole('listbox', { name: 'Rule type' })
       .getByRole('option', { name: /^Attribute/ })
       .click();
-    await dialog
-      .getByRole('combobox', { name: 'Attribute' })
-      .selectOption({ label: spec.variableName });
+    await selectAttribute(dialog, spec.variableName);
     await dialog
       .getByRole('combobox', { name: 'Operator' })
       .selectOption({ label: 'is exactly' });
     await dialog
-      .getByRole('radiogroup', { name: 'Attribute Value' })
+      .getByRole('radiogroup', { name: 'Attribute value' })
       .locator('[role="radio"][data-value="true"]')
       .click();
   }

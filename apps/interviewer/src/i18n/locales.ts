@@ -1,0 +1,22 @@
+import { defineAppLocales, pseudoAppLocale } from '@codaco/app-i18n/locales';
+import type { AppLocale } from '@codaco/app-i18n/locales';
+
+// A production locale is advertised only when this app ships its full catalog.
+export const interviewerProductionLocales = defineAppLocales([
+  { locale: 'en', label: 'English', direction: 'ltr' },
+  { locale: 'en-GB', label: 'English (UK)', direction: 'ltr' },
+  { locale: 'es', label: 'Español', direction: 'ltr' },
+  { locale: 'zh-Hans', label: '简体中文', direction: 'ltr' },
+  { locale: 'zh-Hant', label: '繁體中文', direction: 'ltr' },
+  { locale: 'de', label: 'Deutsch', direction: 'ltr' },
+  { locale: 'nl', label: 'Nederlands', direction: 'ltr' },
+  { locale: 'pt-BR', label: 'Português (Brasil)', direction: 'ltr' },
+  { locale: 'it', label: 'Italiano', direction: 'ltr' },
+  { locale: 'fr', label: 'Français', direction: 'ltr' },
+]);
+
+export const interviewerLocales: readonly AppLocale[] = import.meta.env.DEV
+  ? [...interviewerProductionLocales, pseudoAppLocale]
+  : interviewerProductionLocales;
+
+export const interviewerDefaultLocale = 'en';

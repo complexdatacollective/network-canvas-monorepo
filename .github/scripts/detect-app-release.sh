@@ -14,9 +14,11 @@
 # only a generated release PR's version bump can trigger production deployment.
 #
 # This tag check is only a preflight — parallel main-push runs could each see the
-# same untagged version. The authoritative guard against a duplicate release is
-# on the apps-release-<app> jobs (per-<PKG_NAME>@<version> concurrency group +
-# a re-check of the tag before deploy) in .github/workflows/ci-and-release.yml.
+# same untagged version, or different untagged versions of the same app. The
+# authoritative guard is on the apps-release-<app> jobs in
+# .github/workflows/ci-and-release.yml: one concurrency group per app plus
+# .github/scripts/app-release-guard.sh, which re-checks the tag under that lock
+# and refuses an older version or a tree missing the newest released commit.
 #
 # Inputs (env):
 #   PKG_JSON   path to the app's package.json

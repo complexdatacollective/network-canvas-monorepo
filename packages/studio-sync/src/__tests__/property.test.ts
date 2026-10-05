@@ -1,7 +1,6 @@
 // Property tests. Pure properties run hundreds of cases; the DB-backed
 // interleaving property runs fewer (each case is real Postgres traffic).
 import fc from 'fast-check';
-import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -13,10 +12,12 @@ import {
   contentHash,
   type SectionDoc,
 } from '../apply.ts';
-import { forceExpire, LeaseRejectedError, type SyncServer } from '../server.ts';
+import { LeaseRejectedError, type SyncServer } from '../server.ts';
+import type { TenantDb } from '../tenant.ts';
 import {
   assertLinearChain,
   dbAvailable,
+  expireLease,
   makeDraft,
   makeServer,
 } from './helpers.ts';
@@ -114,15 +115,16 @@ describe('apply engine properties (pure, 300 cases each)', () => {
 describe.skipIf(!dbAvailable)(
   'lease/commit interleaving property (DB-backed, 25 schedules)',
   () => {
-    let db: Pool;
+    let dispose: () => Promise<void>;
+    let tenantDb: TenantDb;
     let server: SyncServer;
 
     beforeAll(async () => {
-      ({ db, server } = await makeServer('sync_property'));
+      ({ tenantDb, server, dispose } = await makeServer('sync_property'));
     });
 
     afterAll(async () => {
-      await db.end();
+      await dispose();
     });
 
     // Random schedules of two contenders (acquire, renew, commit, expire,
@@ -164,7 +166,7 @@ describe.skipIf(!dbAvailable)(
 
             for (const o of ops) {
               if (o === 'expire') {
-                await forceExpire(db, draft, 's');
+                await expireLease(tenantDb, draft, 's');
                 if (model) model.expired = true;
               } else if (o === 'acquireA' || o === 'acquireB') {
                 const who = o === 'acquireA' ? 'A' : 'B';

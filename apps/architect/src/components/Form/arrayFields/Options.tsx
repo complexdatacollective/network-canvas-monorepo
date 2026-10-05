@@ -1,35 +1,100 @@
 import { useCallback, useMemo } from 'react';
 
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { normalizeForComparison } from '@codaco/shared-consts';
+import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
+import {
+  hasDuplicateOptionLabels,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
 import {
   isOptionComplete,
-  isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
-import { validations } from '~/utils/validations';
+import { createValidations } from '~/utils/validations';
 
 import Option, { OptionsContext, type OptionValue } from './Option';
 import { arrayScopedValues } from './RowField';
+const additionalMessages = defineMessages({
+  noOptionsHaveBeenAddedYet: {
+    id: 'architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet',
+    defaultMessage: 'No options have been added yet.',
+    description:
+      'The emptyStateMessage text in components / Form / arrayFields / Options.',
+  },
+});
+const messages = defineMessages({
+  minimum: {
+    id: 'architect.optionValidation.minimum',
+    defaultMessage:
+      'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
+    description:
+      'Validation for an ordinal or categorical attribute option list.',
+  },
+  complete: {
+    id: 'architect.optionValidation.complete',
+    defaultMessage: 'Every option needs both a label and a value.',
+    description:
+      'Validation for an ordinal or categorical attribute option list.',
+  },
+  uniqueValues: {
+    id: 'architect.optionValidation.uniqueValues',
+    defaultMessage: 'Every option needs a unique value.',
+    description:
+      'Validation for an ordinal or categorical attribute option list.',
+  },
+  uniqueLabels: {
+    id: 'architect.optionValidation.uniqueLabels',
+    defaultMessage: 'Every option needs a unique label.',
+    description:
+      'Validation for an ordinal or categorical attribute option list.',
+  },
+  optionValue: {
+    id: 'architect.optionValidation.optionValue',
+    defaultMessage: 'option value',
+    description:
+      'Validation for an ordinal or categorical attribute option list.',
+  },
+});
 
 export type { OptionValue } from './Option';
+const defaultIntl = createAppIntl({ locale: 'en' });
 
 /**
  * Array-level rules. They belong to the caller's `ArchitectArrayField`
- * (`validation={optionsValidation}`), where the shared adapter routes them
+ * (`validation={optionsValidation(intl)}`), where the shared adapter routes them
  * through fresco-ui's `custom` entry with the whole array as the value — rows
  * are not registered fields and cannot carry them.
  */
-export const minTwoOptions = (value: unknown) =>
-  !value || (Array.isArray(value) && value.length < 2)
-    ? 'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.'
+export const minimumOptionsMessage = messages.minimum;
+
+export const minTwoOptions = (value: unknown, intl: IntlShape = defaultIntl) =>
+  !value || (Array.isArray(value) && value.length < MINIMUM_VARIABLE_OPTIONS)
+    ? intl.formatMessage(messages.minimum)
     : undefined;
 
-export const completeOptions = (value: unknown) =>
+/** Native `required` owns an absent/empty list; this owns the one-row case. */
+export const minTwoPopulatedOptions = (
+  value: unknown,
+  intl: IntlShape = defaultIntl,
+) =>
+  Array.isArray(value) && value.length > 0
+    ? minTwoOptions(value, intl)
+    : undefined;
+
+export const completeOptions = (
+  value: unknown,
+  intl: IntlShape = defaultIntl,
+) =>
   Array.isArray(value) && !value.every(isOptionComplete)
-    ? 'Every option needs both a label and a value.'
+    ? intl.formatMessage(messages.complete)
     : undefined;
 
 /**
@@ -64,28 +129,35 @@ const readOptions = (value: unknown): Record<string, unknown>[] =>
  * carries it into the form's validity. Incomplete entries are `completeOptions`'
  * business and are ignored here so one edit does not raise two errors.
  */
-export const uniqueOptionValues = (value: unknown) =>
+export const uniqueOptionValues = (
+  value: unknown,
+  intl: IntlShape = defaultIntl,
+) =>
   hasDuplicates(
     readOptions(value)
       .map((option) => option.value)
       .filter((optionValue) => !isOptionValueEmpty(optionValue)),
   )
-    ? 'Every option needs a unique value.'
+    ? intl.formatMessage(messages.uniqueValues)
     : undefined;
 
-/** The label counterpart of `uniqueOptionValues`. */
-export const uniqueOptionLabels = (value: unknown) =>
-  hasDuplicates(
-    readOptions(value)
-      .map((option) => option.label)
-      .filter((label) => !isOptionLabelEmpty(label)),
-  )
-    ? 'Every option needs a unique label.'
+/**
+ * The label counterpart of `uniqueOptionValues`, asked of the one predicate
+ * every surface that authors an option label asks — shared-consts'
+ * `hasDuplicateOptionLabels`, which the protocol-builder editors and the
+ * codebook write that records what they author ask as well, so a list this
+ * rule lets through is never refused again further down.
+ */
+export const uniqueOptionLabels = (
+  value: unknown,
+  intl: IntlShape = defaultIntl,
+) =>
+  hasDuplicateOptionLabels(value)
+    ? intl.formatMessage(messages.uniqueLabels)
     : undefined;
 
 // Runs the rows' own rule so the array and its rows can never disagree about
 // which characters — or which wording — apply.
-const validateOptionValue = validations.allowedVariableName('option value');
 
 /**
  * The array counterpart of the rows' `allowedVariableName`. An option value
@@ -101,11 +173,18 @@ const validateOptionValue = validations.allowedVariableName('option value');
  * field (see `toZodValidation`) — a blank row should say what it is missing
  * before it is told the missing value is malformed.
  */
-export const allowedOptionValues = (value: unknown) =>
+export const allowedOptionValues = (
+  value: unknown,
+  intl: IntlShape = defaultIntl,
+) =>
   readOptions(value)
     .map((option) => option.value)
     .filter((optionValue) => !isOptionValueEmpty(optionValue))
-    .map((optionValue) => validateOptionValue(String(optionValue)))
+    .map((optionValue) =>
+      createValidations(intl).allowedVariableName(
+        intl.formatMessage(messages.optionValue),
+      )(String(optionValue)),
+    )
     .find((message) => message !== undefined);
 
 /**
@@ -113,13 +192,14 @@ export const allowedOptionValues = (value: unknown) =>
  * owning `ArchitectArrayField`'s `validation` prop. Passed whole rather than
  * rule by rule so a call site cannot silently keep some and drop others.
  */
-export const optionsValidation = {
-  minTwoOptions,
-  completeOptions,
-  uniqueOptionValues,
-  uniqueOptionLabels,
-  allowedOptionValues,
-};
+export const optionsValidation = (intl: IntlShape = defaultIntl) => ({
+  required: intl.formatMessage(messages.minimum),
+  minTwoOptions: (value: unknown) => minTwoPopulatedOptions(value, intl),
+  completeOptions: (value: unknown) => completeOptions(value, intl),
+  uniqueOptionValues: (value: unknown) => uniqueOptionValues(value, intl),
+  uniqueOptionLabels: (value: unknown) => uniqueOptionLabels(value, intl),
+  allowedOptionValues: (value: unknown) => allowedOptionValues(value, intl),
+});
 
 const EMPTY_OPTIONS: OptionValue[] = [];
 
@@ -141,10 +221,10 @@ export type OptionsProps = Omit<
    * string rather than a `Create new ${itemLabel}` template, so it can be
    * localised and so no call site can fall back to a generic default.
    *
-   * The sibling `MultiSelect` doc explains what a shared default costs: a
-   * Categorical Bin prompt editor mounts this list alongside two sort-rule
-   * lists, and named "Add new" all three are the same control to anyone
-   * navigating by a list of buttons (#1391).
+   * A shared default costs a real defect: a Categorical Bin prompt editor
+   * mounts this list alongside two sort-rule lists, and named "Add new" all
+   * three are the same control to anyone navigating by a list of buttons
+   * (#1391).
    */
   addButtonLabel: string;
 };
@@ -166,6 +246,7 @@ const Options = ({
   'aria-invalid': ariaInvalid = false,
   ...arrayFieldProps
 }: OptionsProps) => {
+  const intl = useAppIntl();
   const context = useMemo(
     () => ({
       arrayName: name,
@@ -187,9 +268,11 @@ const Options = ({
         aria-invalid={ariaInvalid}
         itemComponent={Option}
         itemTemplate={itemTemplate}
-        itemClasses="bg-surface-3 text-surface-3-contrast p-0! shadow-none"
+        itemClasses="p-0! shadow-none"
         addButtonLabel={addButtonLabel}
-        emptyStateMessage="No options have been added yet."
+        emptyStateMessage={intl.formatMessage(
+          additionalMessages.noOptionsHaveBeenAddedYet,
+        )}
         immediateAdd
         sortable
         confirmDelete={false}

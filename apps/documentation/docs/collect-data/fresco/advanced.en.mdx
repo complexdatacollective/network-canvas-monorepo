@@ -92,11 +92,18 @@ POSTGRES_PASSWORD=CHANGE_ME
 
 # Optional
 #DISABLE_ANALYTICS=true
+#REQUIRE_TWO_FACTOR=true
 ```
 
 <TipBox>
 
-We use anonymous analytics to gather error data from instances of Fresco to troubleshoot issues. No identifiable information of any kind is collected or sent to us. To disable all analytics, set `DISABLE_ANALYTICS=true` in your `.env`. Leaving it at the default (`false`) helps us identify bugs and improve the app.
+We use anonymous analytics to gather usage and error data from instances of Fresco to troubleshoot issues. Fresco's own events carry no participant data or interview identifiers. The one thing that can reach us is a dashboard search term: searching the participants, interviews or activity-feed table puts what you typed in the page address, and the analytics library's page-view events carry that address. See [Does Fresco send data to third parties?](/en/collect-data/fresco/it-faq#does-fresco-send-data-to-third-parties) for the full picture, and turn analytics off in **Settings → Privacy** or with `DISABLE_ANALYTICS` if that is a problem for your deployment. To disable all analytics, set `DISABLE_ANALYTICS=true` in your `.env`; this also locks the **Disable Analytics** setting on the settings page. Leaving it at the default (`false`) helps us identify bugs and improve the app.
+
+</TipBox>
+
+<TipBox>
+
+If your institution requires multi-factor authentication for every administrator, set `REQUIRE_TWO_FACTOR=true`. Every account that signs in with a password must then set up two-factor authentication before it can use the dashboard, and cannot turn it off; accounts that sign in with a passkey are not affected. It is an environment variable rather than a dashboard setting because every Fresco account is an equal administrator. See [Accounts & Security](/en/collect-data/fresco/accounts#requiring-two-factor-authentication-for-everyone) for what it enforces.
 
 </TipBox>
 
@@ -189,7 +196,11 @@ On first start, Traefik will request a Let's Encrypt certificate for `FRESCO_DOM
 
 ### Pinning a version
 
-The compose files use the `ghcr.io/complexdatacollective/fresco:latest` image, which always tracks the most recent release. To pin a specific version, change the image tag to `:vX.Y.Z` in the compose file. You can browse published images on the [Fresco container registry](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco/versions).
+The compose files use the `ghcr.io/complexdatacollective/fresco:latest` image, which always tracks the most recent release. To pin a specific version, change the image tag to the release's version number in the compose file, for example `:4.1.4` (tags carry no `v` prefix). You can browse published images on the [Fresco container registry](https://github.com/complexdatacollective/Fresco/pkgs/container/fresco/versions).
+
+### Health checks
+
+Fresco serves a liveness endpoint at `/api/health` for load balancers, container orchestrators, and uptime monitors. It requires no authentication. While the service is up it answers with HTTP `200` and a JSON body whose `status` is `healthy` (or `degraded`); when it is not, it answers `503` with `unhealthy`. Alongside `status`, the body carries only a `timestamp`, the list of individual `checks` behind the overall status, and how long the check took. It does not name the running Fresco version or the process uptime, because together they would tell a scanner which published vulnerabilities apply to an instance and whether a fix has been deployed yet. Signed-in researchers can see the running version under **App Details** on the **Settings** page.
 
 ## Access Fresco
 

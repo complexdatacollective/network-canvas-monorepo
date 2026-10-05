@@ -14,6 +14,9 @@ import {
 } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { useFitText } from './hooks/useFitText';
 import {
   type ActivationSource,
@@ -33,6 +36,15 @@ import { cva, type VariantProps } from './utils/cva';
 export type NodeShape = 'circle' | 'square' | 'diamond';
 
 export type { ActivationSource, NodeDragEndInfo };
+
+const nodeMessages = defineMessages({
+  defaultLabel: {
+    id: 'frescoUi.node.defaultLabel',
+    defaultMessage: 'Node',
+    description:
+      'Default label rendered inside a network node when the host supplies none.',
+  },
+});
 
 // TODO: should be part of protocol-validation
 export const NodeColors = [
@@ -358,8 +370,9 @@ type UINodeProps = {
  *   animations would otherwise compose incorrectly with the rotation.
  */
 export default function Node(props: UINodeProps) {
+  const intl = useAppIntl();
   const {
-    label = 'Node',
+    label = intl.formatMessage(nodeMessages.defaultLabel),
     ariaLabel,
     color,
     shape,
@@ -442,10 +455,9 @@ export default function Node(props: UINodeProps) {
 
   // A label already on screen has to come down when it stops being applicable.
   // Starting a keyboard drag flips `aria-grabbed` without moving focus, so
-  // nothing else would close a popup opened by that focus.
-  useEffect(() => {
-    if (!canRevealLabel) setLabelRevealed(false);
-  }, [canRevealLabel]);
+  // nothing else would close a popup opened by that focus. Adjusted during
+  // render, so the label is gone in the same paint that withdraws it.
+  if (labelRevealed && !canRevealLabel) setLabelRevealed(false);
 
   // A drag withdraws a revealed label — pointer drags set no `aria-grabbed`
   // (that is the drag system moving the node, not the node describing itself),
@@ -531,10 +543,12 @@ export default function Node(props: UINodeProps) {
   // still-held press reads as the interface acting before the participant has
   // finished. Announcements (`aria-pressed`) and the semantic data attribute
   // stay immediate — only the ring is choreographed.
+  // Adjusted during render: the release that hands the ring its new state does
+  // so in the paint that ends the press, not a commit later.
   const [displayedSelected, setDisplayedSelected] = useState(selected);
-  useEffect(() => {
-    if (!isPressed) setDisplayedSelected(selected);
-  }, [isPressed, selected]);
+  if (!isPressed && displayedSelected !== selected) {
+    setDisplayedSelected(selected);
+  }
 
   // Track previous states for animation transitions
   const prevSelected = usePrevious(displayedSelected);

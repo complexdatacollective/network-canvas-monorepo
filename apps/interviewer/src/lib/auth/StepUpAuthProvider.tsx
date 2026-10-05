@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -147,20 +148,30 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
       pendingResolve.current = resolve;
       // Capture this when the prompt opens. A route change while authentication
       // is pending must not turn destructive recovery back on for the same
-      // dialog.
-      setAllowDestructiveRecovery(!isInterviewRoutePath(location));
+      // dialog. Read the live pathname rather than the routed location: a
+      // location dependency would give this callback a new identity on every
+      // navigation, re-running consumer effects that list it in their deps —
+      // including the interview route's enter gate while App.tsx's
+      // AnimatePresence holds the exiting route mounted, which raised a
+      // phantom step-up prompt over Home after a gated interview exit.
+      setAllowDestructiveRecovery(
+        !isInterviewRoutePath(window.location.pathname),
+      );
       setOpen(true);
     });
-  }, [auth.kind, auth.mode, location]);
+  }, [auth.kind, auth.mode]);
+
+  const contextValue = useMemo(
+    () => ({
+      requireFreshUnlock,
+      getAuthorizedInterviewId,
+      setAuthorizedInterviewId,
+    }),
+    [requireFreshUnlock, getAuthorizedInterviewId, setAuthorizedInterviewId],
+  );
 
   return (
-    <StepUpAuthContext.Provider
-      value={{
-        requireFreshUnlock,
-        getAuthorizedInterviewId,
-        setAuthorizedInterviewId,
-      }}
-    >
+    <StepUpAuthContext.Provider value={contextValue}>
       {children}
       <StepUpAuthDialog
         open={open}

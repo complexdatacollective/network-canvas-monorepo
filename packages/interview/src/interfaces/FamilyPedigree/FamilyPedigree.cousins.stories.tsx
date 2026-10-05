@@ -4,7 +4,7 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {

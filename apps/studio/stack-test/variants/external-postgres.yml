@@ -1,0 +1,94 @@
+# The database swap (#1909): docs/self-host/swap.md, "A managed database".
+#
+# A stub Postgres stands in for the institution's managed instance. It is on a
+# network of its own — `api`, `worker` and `migrate` are attached to both, the
+# stack's own bridge and the stub's — so the swap is a real one: the stack
+# reaches the database across a boundary rather than over the bridge its own
+# services share, and nothing on that boundary is in TRUSTED_PROXIES.
+#
+# `DATABASE_URL` is the whole swap, and it is set in the environment file
+# `up.sh` writes rather than here: pointing Studio at a managed database must
+# not require an edit to a file a self-hoster downloaded, so everything below
+# is the tidying the guide describes as following the swap, not the swap.
+
+services:
+  # The stub. The same major version the stack ships, and the SAME password
+  # file — `DATABASE_PASSWORD_FILE` still names `secrets/postgres-password`
+  # after the swap, which is the part of the contract a URL carrying its own
+  # password would break.
+  #
+  # Its login is a superuser, so it has the CREATEROLE the guide says the first
+  # `migrate` needs; a managed provider's default login has it too.
+  external-postgres:
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    networks:
+      - external
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # "Then delete the `postgres` service and the `postgres-data` volume." A
+  # profile no command enables is the closest an override can get to deleting a
+  # service, and it is testable: `assert.sh` holds that the container does not
+  # exist, which a service that was merely left running would fail.
+  postgres:
+    profiles: [unused]
+
+  # `!override` rather than an addition: Compose MERGES a `depends_on` mapping,
+  # so the base file's entry for `postgres` would survive an override that only
+  # named the others — and a dependency on a service no profile enables fails
+  # the whole command. Restating the surviving entries is the point.
+  api:
+    depends_on: !override
+      valkey:
+        condition: service_healthy
+      garage:
+        condition: service_started
+      external-postgres:
+        condition: service_healthy
+    networks:
+      - default
+      - external
+
+  worker:
+    depends_on: !override
+      valkey:
+        condition: service_healthy
+      garage:
+        condition: service_started
+      external-postgres:
+        condition: service_healthy
+    networks:
+      - default
+      - external
+
+  migrate:
+    depends_on: !override
+      garage-init:
+        condition: service_completed_successfully
+      external-postgres:
+        condition: service_healthy
+    networks:
+      - default
+      - external
+
+networks:
+  # `default` is declared by `docker-compose.yml`, with the ipam block that
+  # pins STACK_SUBNET; restating it here — even as an empty entry — is how that
+  # block would get merged away. The services above name it because a service
+  # that lists any network is attached to exactly those and loses the implicit
+  # default attachment.
+  external:
+    name: ${EXTERNAL_NETWORK}
+    ipam:
+      config:
+        - subnet: ${EXTERNAL_SUBNET}

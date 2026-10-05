@@ -23,7 +23,7 @@ Right now! Network Canvas has been in development since 2016, and the first stab
 
 ## How much does the software cost? What is your funding model?
 
-The Network Canvas suite is free! It is licensed under the GPLv3 open source license. The project team has a strong ideological commitment to producing high quality free academic software for the benefit of researchers, students, and any other interested parties. We were funded to produce this software via [a grant from the National Institutes for Health](https://reporter.nih.gov/search/My1lXoKhnEyzXX5kIyl7Mw/project-details/9306043), for which we are extremely grateful.
+The Network Canvas suite is free! It is licensed under the GPLv3 open source license. The project team has a strong ideological commitment to producing high quality free academic software for the benefit of researchers, students, and any other interested parties. Development has been funded primarily by grants from the National Institutes of Health, for which we are extremely grateful: the [original award](https://reporter.nih.gov/project-details/9306043) that produced the suite, the [current award](https://reporter.nih.gov/project-details/10715902) that funds ongoing development, and a [dedicated award](https://reporter.nih.gov/search/vB-u312oGkW58r46HT8FmA/project-details/11339209) that supports the maintenance and support of the existing tools. Smaller grants in the UK have also supported development, and consultancy arrangements between the developers and individual research groups have resulted in contributed code.
 
 Our license means that you are free to use, modify, and extend the software however you wish. It is our intention to foster a community to support the ongoing development of these tools, and we welcome collaboration. If you do extend or improve the software, we welcome contributions back into our main [GitHub repositories](https://github.com/complexdatacollective) in the form of pull requests.
 
@@ -46,6 +46,8 @@ Finally, this documentation site is a hub for training material and tutorials, a
 ## My participants have special language or literacy requirements. Can I still use Network Canvas?
 
 Network Canvas has technologies built in to allow research with mixed/low written literacy groups, and we welcome feedback about ways we can adapt the software to new research populations and make it more accessible.
+
+The interfaces of Architect, Interviewer, and Fresco are available in English, British English, and Spanish. The interface language covers the apps' own menus, buttons, and messages; the text of your protocol — prompts, form labels, response options, and information screens — appears exactly as the researcher wrote it. A Spanish-language study therefore needs a protocol authored in Spanish.
 
 Accessibility support depends on which generation of the apps you use. Interviews run in the current **Interviewer** app and in **Fresco** are built for screen-reader use and full keyboard operation. The Classic apps do not have specific screen-reader support. Right-to-left languages are not currently supported in any of the apps.
 

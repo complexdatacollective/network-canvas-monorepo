@@ -1,13 +1,11 @@
-import { Loader2 } from 'lucide-react';
 import { type ReactNode, Suspense } from 'react';
 
+import SetupLoading from '~/components/SetupLoading';
 import { requireAppNotExpired } from '~/queries/appSettings';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <Suspense
-      fallback={<Loader2 className="text-background size-10 animate-spin" />}
-    >
+    <Suspense fallback={<SetupLoading />}>
       <SetupLayoutContent>{children}</SetupLayoutContent>
     </Suspense>
   );

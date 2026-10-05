@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 
 import type { AuthMode } from '~/lib/auth/api';
 
@@ -84,6 +84,27 @@ export const Default: Story = {
 
 export const NotEncryptedNotPersisted: Story = {
   args: { mode: 'none', persisted: false },
+};
+
+// Touch regression: the explanations were hover/focus-only Tooltips, which a
+// tablet user could never open. A plain click/tap must reveal them (the
+// popover portals outside the canvas, so query the document body). Ends with
+// the encryption popover open so Chromatic also captures its rendering.
+export const ExplanationPopover: Story = {
+  args: { mode: 'none', persisted: false },
+  play: async ({ canvas, userEvent }) => {
+    const body = within(document.body);
+
+    await userEvent.click(canvas.getByTestId('storage-status-trigger'));
+    await waitFor(() =>
+      expect(body.getByText(/^Storage not persistent\./)).toBeVisible(),
+    );
+
+    await userEvent.click(canvas.getByTestId('encryption-status-trigger'));
+    await waitFor(() =>
+      expect(body.getByText(/^Not encrypted\./)).toBeVisible(),
+    );
+  },
 };
 
 // Safari decides persist() from opaque interaction heuristics and may never

@@ -15,6 +15,13 @@ const meta: Meta<typeof Surface> = {
         'Applies the popover surface treatment regardless of depth and restarts the depth ladder for children.',
       defaultValue: false,
     },
+    series: {
+      control: 'select',
+      options: ['default', 'accent'],
+      description:
+        'Starts a named color series at depth 0. Descendant Surfaces inherit the series and advance its depth.',
+      defaultValue: 'default',
+    },
     spacing: {
       control: {
         type: 'select',
@@ -83,6 +90,17 @@ export const DerivedLevels: StoryFn<typeof Surface> = () => (
       </Surface>
     </Surface>
   </div>
+);
+
+// A named series starts its own ladder. Descendants inherit the series, so
+// reusable nested components do not need to know which palette surrounds them.
+export const AccentSeries: StoryFn<typeof Surface> = () => (
+  <Surface series="accent" className="flex flex-col gap-4">
+    Accent depth 0
+    <Surface>
+      Accent depth 1<Surface className="mt-4">Accent depth 2</Surface>
+    </Surface>
+  </Surface>
 );
 
 // Intermediate non-Surface elements do not affect the derived depth.

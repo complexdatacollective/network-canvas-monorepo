@@ -4,7 +4,7 @@
       - text: ""
       - strong: these
       - text: ""
-  - button "Category **Family**, 0 items":
+  - button "Category Family, 0 items":
     - heading "Family" [level=4]:
       - strong: Family
   - button "Category Work, 0 items":
@@ -13,6 +13,7 @@
   - button "Alice"
   - button "Bob"
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

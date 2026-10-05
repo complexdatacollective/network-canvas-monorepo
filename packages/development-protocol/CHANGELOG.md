@@ -1,5 +1,40 @@
 # @codaco/development-protocol
 
+## 2.0.8
+
+### Patch Changes
+
+- cd75518: Require an answer in the bundled protocols' quick-add and "other" fields
+
+  Quick-add name generators and the follow-up question behind a categorical bin's
+  "other" option used to require an answer on their own. They now follow the
+  validation set on the attribute they write to, and upgrading a protocol to
+  schema 8 adds `required` to those attributes so nothing changes for existing
+  studies. The protocols bundled with Architect and Interviewer were never
+  upgraded that way, so participants could leave these fields blank. The sample
+  protocol, the development protocol and the Colored Eco-Genetic Relationship Map
+  (CEGRM) template now require an answer in those fields again.
+
+## 2.0.7
+
+### Patch Changes
+
+- f217425: Rotate the shared Mapbox testing token carried by the development protocol's Geospatial stage. The new token is URL-restricted to networkcanvas.com, networkcanvas.dev and localhost, so the map only renders on those hosts.
+
+## 2.0.6
+
+### Patch Changes
+
+- c599dac: This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
+
+  - Stage edits are now transactional: cancelling restores Codebook changes, incomplete settings remain open with actionable errors, and Information blocks retain their drafts while switching media types.
+  - Forms, rule builders, the Codebook, timeline, dialogs, and resource library now provide accurate labels, keyboard operation, focus restoration, and layouts that work on smaller screens. Undo and Redo operate one change at a time without recording no-op edits.
+  - A second tab now shows a read-only protocol instead of accepting changes it cannot save. Closing the editing tab restores editing from the saved copy, and deleting a protocol clears its history and releases associated resources.
+  - Protocol names, resource cards, variable identifiers, and stage editors are bounded on narrow screens. Duplicate resource filenames are distinguishable without changing the names stored in the protocol.
+  - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
+  - Recent protocols in the library now show their description, and starter templates show their stage, node type, and edge type counts.
+  - The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Protocol colors are constrained to typed node, edge, ordinal, or categorical palette references; Narrative Pedigree and Geospatial resolve those references through the active theme. A protocol created from the previous release's CEGRM template will report a validation error on its condition color — open the stage editor and select one of the available colors to fix it. A downloaded protocol file with this problem must be corrected before it can be imported again. Neutral dialog actions remain distinct from white dialog surfaces.
+
 ## 2.0.5
 
 ### Patch Changes

@@ -465,6 +465,143 @@ describe('focusFirstError target selection', () => {
 });
 
 /**
+ * Which fields one form may claim.
+ *
+ * A form is React state rather than a `<form>` element, so "this form's
+ * fields" is not "the elements inside one element". Two facts decide it: the
+ * form's own markup, and the identity every connected field stamps on its
+ * container. `focusFirstError` is given both, and nothing outside them is a
+ * candidate for the focus OR for the scroll.
+ */
+describe('focusFirstError, scoped to one form', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.replaceChildren();
+  });
+
+  /**
+   * One form's field container, wherever it is put.
+   *
+   * Built the way `useField` builds one: the store's own key, the public name
+   * and — the part this is about — which form store the field belongs to.
+   */
+  const fieldOf = (
+    form: string,
+    fieldName: string,
+    parent: HTMLElement,
+  ): Readonly<{ field: HTMLElement; input: HTMLInputElement }> => {
+    const field = document.createElement('div');
+    field.setAttribute('data-field-name', fieldName);
+    field.setAttribute('data-field-path', fieldName);
+    field.setAttribute('data-field-form', form);
+    const input = document.createElement('input');
+    field.append(input);
+    parent.append(field);
+    return { field, input };
+  };
+
+  const scrollerIn = (parent: HTMLElement): HTMLElement => {
+    const scroller = document.createElement('div');
+    scroller.style.overflowY = 'auto';
+    scroller.scrollTo = vi.fn();
+    parent.append(scroller);
+    return scroller;
+  };
+
+  /**
+   * The page behind a dialog, and the dialog over it, each a form of its own
+   * rendering the same field path.
+   *
+   * The page's field is FIRST in the document, which is what makes this worth
+   * asserting: document order is how the first problem is chosen, so an
+   * unscoped search hands the dialog's failed submit the page's control every
+   * time.
+   */
+  const aDialogOverAPage = () => {
+    const pageScroller = scrollerIn(document.body);
+    const page = fieldOf('page-form', 'dob', pageScroller);
+
+    const dialog = document.createElement('div');
+    document.body.append(dialog);
+    const dialogScroller = scrollerIn(dialog);
+    const inDialog = fieldOf('dialog-form', 'dob', dialogScroller);
+
+    return { page, pageScroller, dialog, inDialog, dialogScroller };
+  };
+
+  it('never reaches another form’s field, even one earlier in the document', () => {
+    const { page, dialog, inDialog, pageScroller } = aDialogOverAPage();
+
+    focusFirstError(errors, dialog, 'dialog-form');
+
+    expect(document.activeElement).toBe(inDialog.input);
+    expect(document.activeElement).not.toBe(page.input);
+    // And the page behind it is not scrolled either. The scroll target used to
+    // be chosen from an unfiltered list, so a dialog whose own field was found
+    // could still scroll the page underneath it to a field of the same name.
+    expect(pageScroller.scrollTo).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A field this form owns, drawn outside the form ELEMENT.
+   *
+   * A stage editor's title is one: the host draws it wherever its page has
+   * room, and it is still a field of the editor's form. Containment cannot
+   * find it, so the form's identity is what does.
+   */
+  it('reaches a field of this form that the form element does not contain', () => {
+    const formElement = document.createElement('form');
+    document.body.append(formElement);
+    const inside = scrollerIn(formElement);
+    fieldOf('page-form', 'title', inside);
+
+    // Drawn ABOVE the form element, as a host's title is.
+    const aboveTheForm = scrollerIn(document.body);
+    document.body.insertBefore(aboveTheForm, formElement);
+    const outside = fieldOf('page-form', 'dob', aboveTheForm);
+
+    focusFirstError(errors, formElement, 'page-form');
+
+    expect(document.activeElement).toBe(outside.input);
+  });
+
+  /**
+   * And the scroll follows the focus rather than the whole document.
+   *
+   * Asserted on the SCROLLER that was told to move, because that is the thing
+   * a researcher sees happen: the field's own scroll parent, and not the one
+   * behind the dialog.
+   */
+  it('scrolls only inside the scope it was given', () => {
+    const { dialog, dialogScroller, pageScroller } = aDialogOverAPage();
+
+    focusFirstError(errors, dialog, 'dialog-form');
+
+    expect(dialogScroller.scrollTo).toHaveBeenCalled();
+    expect(pageScroller.scrollTo).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A marker that belongs to no form store at all — Architect's whole-editor
+   * contradiction alert is one, carrying `data-field-name` and nothing else —
+   * is still reached, through the form element that contains it.
+   */
+  it('still reaches a marker inside the form that no store stamped', () => {
+    const formElement = document.createElement('form');
+    document.body.append(formElement);
+    const scroller = scrollerIn(formElement);
+    const alert = document.createElement('div');
+    alert.setAttribute('data-field-name', 'dob');
+    scroller.append(alert);
+
+    focusFirstError(errors, formElement, 'page-form');
+
+    expect(document.activeElement).toBe(alert);
+    expect(alert.getAttribute('tabindex')).toBe('-1');
+  });
+});
+
+/**
  * Architect's Issues panel lists every message and lets the researcher pick
  * one. It knows which field they picked, so it needs the same answer
  * `focusFirstError` would give for that field alone — otherwise a click

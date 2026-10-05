@@ -1,8 +1,10 @@
 import { get, has } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type FocusEvent } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { VariableType } from '@codaco/protocol-validation';
@@ -10,6 +12,26 @@ import { ConnectedVariablePill, VariablePill } from '~/components/VariablePill';
 import { cx } from '~/utils/cva';
 
 import VariableSpotlight from './VariableSpotlight';
+const messages = defineMessages({
+  noAttributeSelected: {
+    id: 'architect.form.fields.variablePicker.variablePicker.noAttributeSelected',
+    defaultMessage: 'No attribute selected',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+  },
+  changeAttribute: {
+    id: 'architect.form.fields.variablePicker.variablePicker.changeAttribute',
+    defaultMessage: 'Change attribute',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+  },
+  selectAttribute: {
+    id: 'architect.form.fields.variablePicker.variablePicker.selectAttribute',
+    defaultMessage: 'Select attribute',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+  },
+});
 
 export type VariableOption = {
   label: string;
@@ -37,6 +59,7 @@ type VariablePickerProps = CreateFormFieldProps<
  * surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
  */
 export const VariablePickerControl = ({
+  className,
   id,
   name,
   value,
@@ -54,9 +77,11 @@ export const VariablePickerControl = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
 }: VariablePickerProps) => {
+  const intl = useAppIntl();
   const [showPicker, setShowPicker] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const answeredRef = useRef(false);
+  const propagatedAnsweredBlurRef = useRef(false);
 
   /**
    * The picker is a modal opened from INSIDE another modal, so leaving focus on
@@ -81,6 +106,46 @@ export const VariablePickerControl = ({
     () => (answeredRef.current ? false : triggerRef.current),
     [],
   );
+
+  /**
+   * The spotlight is part of this field's interaction, but its popup is
+   * portalled outside the field's DOM subtree. Without this boundary check,
+   * fresco-ui's container-scoped blur validation treats the popup's autofocus
+   * as leaving the field. A dirty array field around it then validates and
+   * re-renders underneath the popup before its first option click completes.
+   */
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      const nextTarget = event.relatedTarget;
+      if (
+        showPicker ||
+        (nextTarget instanceof Element &&
+          nextTarget.closest('[data-variable-spotlight]'))
+      ) {
+        event.stopPropagation();
+        return;
+      }
+      onBlur?.(event);
+    },
+    [onBlur, showPicker],
+  );
+
+  const shouldPropagatePopupBlur = useCallback(() => {
+    if (propagatedAnsweredBlurRef.current || !answeredRef.current) return false;
+
+    // A direct connected Field owns the completed pick and must receive the
+    // popup's final blur so it marks itself blurred and validates the committed
+    // value. A picker inside RowField is different: its nearest field is
+    // unconnected, while the next connected ancestor owns the whole array.
+    // Propagating there would immediately reject the still-incomplete row
+    // before the researcher can choose its value.
+    const nearestField =
+      triggerRef.current?.closest<HTMLElement>('[data-field-name]');
+    const shouldPropagate =
+      nearestField?.hasAttribute('data-field-path') ?? false;
+    if (shouldPropagate) propagatedAnsweredBlurRef.current = true;
+    return shouldPropagate;
+  }, []);
 
   const handleSelectVariable = (variable: string) => {
     if (disabled || readOnly) return;
@@ -123,9 +188,9 @@ export const VariablePickerControl = ({
     <>
       <div
         data-name={name}
-        onBlur={onBlur}
+        onBlur={handleBlur}
         onFocus={onFocus}
-        className="flex w-full flex-col items-start gap-4"
+        className={cx('flex w-full flex-col items-start gap-4', className)}
       >
         <fieldset
           id={id}
@@ -147,17 +212,17 @@ export const VariablePickerControl = ({
         >
           {!value && (
             <p className="w-full py-6 text-center text-sm text-current/70 italic">
-              No attribute selected
+              {intl.formatMessage(messages.noAttributeSelected)}
             </p>
           )}
           {value && (
             <AnimatePresence mode="wait" initial={false}>
               {/* `w-full`, not shrink-to-fit. The fieldset is `items-start`,
                   so without an explicit width this wrapper takes the pill's
-                  own content width — and the pill's `max-width: min(20rem,
-                  100%)` then resolves 100% against a box the pill itself
-                  sized, which can never clamp anything. Filling the fieldset
-                  gives that percentage a real bound to resolve against. */}
+                  own content width — and the pill's `max-width: 100%` then
+                  resolves against a box the pill itself sized, which can
+                  never clamp anything. Filling the fieldset gives that
+                  percentage a real bound to resolve against. */}
               <motion.div
                 className="w-full min-w-0"
                 initial={{ opacity: 0 }}
@@ -176,6 +241,7 @@ export const VariablePickerControl = ({
           icon={<Plus />}
           onClick={() => {
             answeredRef.current = false;
+            propagatedAnsweredBlurRef.current = false;
             setShowPicker(true);
           }}
           color="primary"
@@ -186,7 +252,9 @@ export const VariablePickerControl = ({
           // field once a variable has been picked.
           data-field-focus-target=""
         >
-          {value ? 'Change attribute' : 'Select attribute'}
+          {value
+            ? intl.formatMessage(messages.changeAttribute)
+            : intl.formatMessage(messages.selectAttribute)}
         </Button>
       </div>
       <VariableSpotlight
@@ -197,6 +265,7 @@ export const VariablePickerControl = ({
         entity={entity ?? undefined}
         type={type ?? undefined}
         onSelect={handleSelectVariable}
+        shouldPropagateBlur={shouldPropagatePopupBlur}
         finalFocus={finalFocus}
         options={options}
         onCreateOption={handleCreateOption}

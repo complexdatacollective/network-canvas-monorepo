@@ -5,16 +5,25 @@ import {
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectEntityTypeReferencesFromSchema,
+  collectStageReferences,
+  declaredStageReferenceSites,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
+  type StageReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
 import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
+  createNetcanvasReader,
   type ExtractedAsset,
+  type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
   loadNetcanvasArchive,
   MAX_INFLATED_BYTES,
+  type MissingAsset,
+  missingAssetsError,
+  type NetcanvasReader,
   NetcanvasInflationLimitError,
 } from './utils/extractProtocol.ts';
 import { hashProtocol } from './utils/hashProtocol.ts';
@@ -22,6 +31,11 @@ import {
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,
 } from './utils/malformedNetcanvasError.ts';
+import {
+  getProtocolFileErrorKind,
+  isProtocolFileFault,
+  type ProtocolFileErrorKind,
+} from './utils/protocolFileErrorKind.ts';
 import {
   getVariableNamesFromNetwork,
   type Network,
@@ -34,6 +48,7 @@ import validateProtocol, {
   type ProtocolValidationResult,
 } from './validation/validate-protocol.ts';
 
+export { parseAcceptLanguage } from './localization/parseAcceptLanguage.ts';
 export {
   MigrationChain,
   type ProtocolMigration as Migration,
@@ -52,6 +67,27 @@ export {
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
+// Interface-owned value sets that are part of the current schema's contract.
+// They live in the schema version directory and are copied — never shared —
+// when a new version directory is created, so a host always reads the set the
+// version it targets defines.
+export {
+  BIOLOGICAL_SEX_OPTIONS,
+  BIOLOGICAL_SEX_VALUES,
+  type BiologicalSex,
+  FRAMING_IDS,
+  type FramingId,
+  GAMETE_ROLE_OPTIONS,
+  GAMETE_ROLES,
+  type GameteRole,
+  RELATIONSHIP_TYPE_OPTIONS,
+  RELATIONSHIP_TYPES,
+  type RelationshipType,
+} from './schemas/8/family-pedigree-values.ts';
+export {
+  INHERITANCE_PATTERNS,
+  type InheritancePattern,
+} from './schemas/8/narrative-pedigree-values.ts';
 export {
   findValidationContradictions,
   type ValidationContradiction,
@@ -63,9 +99,20 @@ export {
   type VariableRoleGroup,
   type VariableRoleHit,
 } from './utils/findVariableRoleConflicts.ts';
+// Where a stage document may hold only ONE of several shapes, so that an
+// editor writing part of one can be told to write the whole of it — and
+// whether a container an editor has ASSEMBLED out of two people's work is one
+// the schema refuses, for the places whose members constrain each other
+// without being rivals. Both are read off the stage schemas rather than listed
+// here; the lists that module also derives stay internal to it, for its tests.
+export {
+  isExclusiveVariantContainer,
+  schemaRefusesContainer,
+  VARIANT_ROW_SEGMENT,
+} from './schemas/8/exclusive-variant-containers.ts';
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
-// protocol schema's own refinement and the repair below, and a host that wants
-// to know whether a protocol is admissible should call `validateProtocol`.
+// protocol schema's own refinement, and a host that wants to know whether a
+// protocol is admissible should call `validateProtocol`.
 export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
@@ -73,34 +120,42 @@ export {
   type InterfaceOwnedOptionBinding,
 } from './utils/findExclusiveVariableConflicts.ts';
 export {
-  type ConfigurationProblem,
-  repairConfigurationConflicts,
-} from './utils/repairConfigurationConflicts.ts';
-export {
   asEntityAttributeReference,
   type AssetReferenceHit,
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectEntityTypeReferencesFromSchema,
+  collectStageReferences,
+  createNetcanvasReader,
+  declaredStageReferenceSites,
   describeProtocolFileError,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
   type ExtractedAsset,
+  type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
   formatProtocolValidationIssues,
   getAssetMimeType,
+  getProtocolFileErrorKind,
   getVariableNamesFromNetwork,
   hashProtocol,
+  isProtocolFileFault,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,
   MAX_INFLATED_BYTES,
+  type MissingAsset,
+  missingAssetsError,
+  type NetcanvasReader,
   type Network,
   NetcanvasInflationLimitError,
+  type ProtocolFileErrorKind,
   ProtocolValidationError,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
+  type StageReferenceHit,
   validateNames,
   validateProtocol,
 };

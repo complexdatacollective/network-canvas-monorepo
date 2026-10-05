@@ -1,3 +1,8 @@
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
+
+import { LocalizedError, messageFailure } from '../../i18n/messageResult';
+import type { MessageFailure } from '../../i18n/messageResult';
 import { getInstallationId } from '../installationId';
 import {
   deriveKekFromPassword,
@@ -20,10 +25,83 @@ import {
 } from './vaultStore';
 import { enrollBiometric, readPrf, signalCredentialUnknown } from './webauthn';
 
-export type UnlockResult =
-  | { ok: true; dek: CryptoKey }
-  | { ok: false; message: string };
-export type EnrolResult = { ok: boolean; message?: string };
+const messages = defineMessages({
+  vaultChanged: {
+    id: 'interviewer.vault.vaultChanged',
+    defaultMessage:
+      'The device lock changed while unlocking. Please try again.',
+    description: 'Administration text in Interviewer vault.',
+  },
+  pinUnconfigured: {
+    id: 'interviewer.vault.pinUnconfigured',
+    defaultMessage: 'PIN is not configured on this device',
+    description: 'Administration text in Interviewer vault.',
+  },
+  passphraseUnconfigured: {
+    id: 'interviewer.vault.passphraseUnconfigured',
+    defaultMessage: 'Passphrase is not configured on this device',
+    description: 'Administration text in Interviewer vault.',
+  },
+  wrongCurrentPin: {
+    id: 'interviewer.vault.wrongCurrentPin',
+    defaultMessage: 'Current PIN is incorrect',
+    description: 'Administration text in Interviewer vault.',
+  },
+  wrongCurrentPassphrase: {
+    id: 'interviewer.vault.wrongCurrentPassphrase',
+    defaultMessage: 'Current passphrase is incorrect',
+    description: 'Administration text in Interviewer vault.',
+  },
+  wrongPin: {
+    id: 'interviewer.vault.wrongPin',
+    defaultMessage: 'Incorrect PIN',
+    description: 'Administration text in Interviewer vault.',
+  },
+  wrongPassphrase: {
+    id: 'interviewer.vault.wrongPassphrase',
+    defaultMessage: 'Incorrect passphrase',
+    description: 'Administration text in Interviewer vault.',
+  },
+  biometricUnconfigured: {
+    id: 'interviewer.vault.biometricUnconfigured',
+    defaultMessage: 'Biometric authentication is not configured on this device',
+    description: 'Administration text in Interviewer vault.',
+  },
+  recoveryUnavailable: {
+    id: 'interviewer.vault.recoveryUnavailable',
+    defaultMessage: 'Recovery is not available for this vault',
+    description: 'Administration text in Interviewer vault.',
+  },
+  biometricEnrolment: {
+    id: 'interviewer.vault.biometricEnrolment',
+    defaultMessage: 'Biometric enrolment failed',
+    description: 'Administration text in Interviewer vault.',
+  },
+  biometricAuthentication: {
+    id: 'interviewer.vault.biometricAuthentication',
+    defaultMessage: 'Biometric authentication failed',
+    description: 'Administration text in Interviewer vault.',
+  },
+  pinLength: {
+    id: 'interviewer.vault.pinLength',
+    defaultMessage: 'PIN must be exactly {count, number} digits',
+    description: 'Administration text in Interviewer vault.',
+  },
+  passphraseLength: {
+    id: 'interviewer.vault.passphraseLength',
+    defaultMessage: 'Passphrase must be at least {count, number} characters',
+    description: 'Administration text in Interviewer vault.',
+  },
+  passphraseStrength: {
+    id: 'interviewer.vault.passphraseStrength',
+    defaultMessage:
+      'Passphrase must be stronger — combine uppercase, lowercase, numbers, and symbols',
+    description: 'Administration text in Interviewer vault.',
+  },
+});
+
+export type UnlockResult = { ok: true; dek: CryptoKey } | MessageFailure;
+export type EnrolResult = { ok: true } | MessageFailure;
 
 const PIN_LENGTH = 8;
 const PASSPHRASE_MIN_LENGTH = 12;
@@ -32,7 +110,7 @@ const PASSPHRASE_MIN_CLASSES = 3;
 // Reused verbatim from the retired auth/api.ts.
 function validatePin(pin: string): EnrolResult {
   if (pin.length !== PIN_LENGTH || !/^\d+$/.test(pin)) {
-    return { ok: false, message: `PIN must be exactly ${PIN_LENGTH} digits` };
+    return messageFailure(messages.pinLength, { count: PIN_LENGTH });
   }
   return { ok: true };
 }
@@ -48,17 +126,12 @@ function countCharacterClasses(s: string): number {
 
 function validatePassphrase(phrase: string): EnrolResult {
   if (phrase.length < PASSPHRASE_MIN_LENGTH) {
-    return {
-      ok: false,
-      message: `Passphrase must be at least ${PASSPHRASE_MIN_LENGTH} characters`,
-    };
+    return messageFailure(messages.passphraseLength, {
+      count: PASSPHRASE_MIN_LENGTH,
+    });
   }
   if (countCharacterClasses(phrase) < PASSPHRASE_MIN_CLASSES) {
-    return {
-      ok: false,
-      message:
-        'Passphrase must be stronger — combine uppercase, lowercase, numbers, and symbols',
-    };
+    return messageFailure(messages.passphraseStrength);
   }
   return { ok: true };
 }
@@ -90,7 +163,7 @@ async function unlockWithPassword(
     kdfIterations: number;
     wrappedDekB64: string;
   },
-  wrongMessage: string,
+  wrongMessage: MessageDescriptor,
 ): Promise<UnlockResult> {
   const kek = await deriveKekFromPassword(
     secret,
@@ -101,7 +174,7 @@ async function unlockWithPassword(
     const dek = await unwrapDek(material.wrappedDekB64, kek);
     return { ok: true, dek };
   } catch {
-    return { ok: false, message: wrongMessage };
+    return messageFailure(wrongMessage);
   }
 }
 
@@ -125,10 +198,7 @@ function guardVaultUnchanged(
   if (!result.ok) return result;
   const current = readVault();
   if (!current || vaultFingerprint(current) !== fingerprintBefore) {
-    return {
-      ok: false,
-      message: 'The device lock changed while unlocking. Please try again.',
-    };
+    return messageFailure(messages.vaultChanged);
   }
   return result;
 }
@@ -150,7 +220,7 @@ async function reEnrolPassword(
   mode: 'pin' | 'passphrase',
   current: string,
   next: string,
-  wrongCurrentMessage: string,
+  wrongCurrentMessage: MessageDescriptor,
 ): Promise<EnrolResult> {
   const validation =
     mode === 'pin' ? validatePin(next) : validatePassphrase(next);
@@ -158,13 +228,11 @@ async function reEnrolPassword(
 
   const record = readVault();
   if (!record || record.mode !== mode) {
-    return {
-      ok: false,
-      message:
-        mode === 'pin'
-          ? 'PIN is not configured on this device'
-          : 'Passphrase is not configured on this device',
-    };
+    return messageFailure(
+      mode === 'pin'
+        ? messages.pinUnconfigured
+        : messages.passphraseUnconfigured,
+    );
   }
 
   const oldKek = await deriveKekFromPassword(
@@ -177,7 +245,7 @@ async function reEnrolPassword(
   try {
     dek = await unwrapDekExtractable(record.wrappedDekB64, oldKek);
   } catch {
-    return { ok: false, message: wrongCurrentMessage };
+    return messageFailure(wrongCurrentMessage);
   }
 
   const kdfSaltB64 = randomSaltB64();
@@ -202,12 +270,7 @@ export function reEnrolPin(
   currentPin: string,
   nextPin: string,
 ): Promise<EnrolResult> {
-  return reEnrolPassword(
-    'pin',
-    currentPin,
-    nextPin,
-    'Current PIN is incorrect',
-  );
+  return reEnrolPassword('pin', currentPin, nextPin, messages.wrongCurrentPin);
 }
 
 export function reEnrolPassphrase(
@@ -218,7 +281,7 @@ export function reEnrolPassphrase(
     'passphrase',
     currentPhrase,
     nextPhrase,
-    'Current passphrase is incorrect',
+    messages.wrongCurrentPassphrase,
   );
 }
 
@@ -253,7 +316,7 @@ export async function enrolBiometric(
 ): Promise<UnlockResult> {
   const validation = validatePassphrase(recoveryPhrase);
   if (!validation.ok) {
-    return { ok: false, message: validation.message ?? 'Invalid passphrase' };
+    return validation;
   }
 
   try {
@@ -292,39 +355,42 @@ export async function enrolBiometric(
     const sessionDek = await unwrapDek(wrappedDekB64, bioKek);
     return { ok: true, dek: sessionDek };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Biometric enrolment failed';
-    return { ok: false, message };
+    return error instanceof LocalizedError
+      ? messageFailure(
+          error.localizedMessage.descriptor,
+          error.localizedMessage.values,
+        )
+      : {
+          ...messageFailure(messages.biometricEnrolment),
+          ...(error instanceof Error ? { message: error.message } : {}),
+        };
   }
 }
 
 export async function unlockPin(pin: string): Promise<UnlockResult> {
   const validation = validatePin(pin);
-  if (!validation.ok) return { ok: false, message: 'Incorrect PIN' };
+  if (!validation.ok) return messageFailure(messages.wrongPin);
   const record = readVault();
   if (!record || record.mode !== 'pin') {
-    return { ok: false, message: 'PIN is not configured on this device' };
+    return messageFailure(messages.pinUnconfigured);
   }
   const fingerprint = vaultFingerprint(record);
-  const result = await unlockWithPassword(pin, record, 'Incorrect PIN');
+  const result = await unlockWithPassword(pin, record, messages.wrongPin);
   return guardVaultUnchanged(fingerprint, result);
 }
 
 export async function unlockPassphrase(phrase: string): Promise<UnlockResult> {
   const validation = validatePassphrase(phrase);
-  if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
+  if (!validation.ok) return messageFailure(messages.wrongPassphrase);
   const record = readVault();
   if (!record || record.mode !== 'passphrase') {
-    return {
-      ok: false,
-      message: 'Passphrase is not configured on this device',
-    };
+    return messageFailure(messages.passphraseUnconfigured);
   }
   const fingerprint = vaultFingerprint(record);
   const result = await unlockWithPassword(
     phrase,
     record,
-    'Incorrect passphrase',
+    messages.wrongPassphrase,
   );
   return guardVaultUnchanged(fingerprint, result);
 }
@@ -332,10 +398,7 @@ export async function unlockPassphrase(phrase: string): Promise<UnlockResult> {
 export async function unlockBiometric(): Promise<UnlockResult> {
   const record = readVault();
   if (!record || record.mode !== 'biometric') {
-    return {
-      ok: false,
-      message: 'Biometric authentication is not configured on this device',
-    };
+    return messageFailure(messages.biometricUnconfigured);
   }
   const fingerprint = vaultFingerprint(record);
   try {
@@ -347,51 +410,52 @@ export async function unlockBiometric(): Promise<UnlockResult> {
     const dek = await unwrapDek(record.wrappedDekB64, kek);
     return guardVaultUnchanged(fingerprint, { ok: true, dek });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Biometric authentication failed';
-    return { ok: false, message };
+    return error instanceof LocalizedError
+      ? messageFailure(
+          error.localizedMessage.descriptor,
+          error.localizedMessage.values,
+        )
+      : {
+          ...messageFailure(messages.biometricAuthentication),
+          ...(error instanceof Error ? { message: error.message } : {}),
+        };
   }
 }
 
 export async function unlockRecovery(phrase: string): Promise<UnlockResult> {
   const validation = validatePassphrase(phrase);
-  if (!validation.ok) return { ok: false, message: 'Incorrect passphrase' };
+  if (!validation.ok) return messageFailure(messages.wrongPassphrase);
   const record = readVault();
   if (!record || record.mode !== 'biometric') {
-    return {
-      ok: false,
-      message: 'Recovery is not available for this vault',
-    };
+    return messageFailure(messages.recoveryUnavailable);
   }
   const fingerprint = vaultFingerprint(record);
   const result = await unlockWithPassword(
     phrase,
     record.recovery,
-    'Incorrect passphrase',
+    messages.wrongPassphrase,
   );
   return guardVaultUnchanged(fingerprint, result);
 }
 
 export async function verifyPin(pin: string): Promise<EnrolResult> {
   const result = await unlockPin(pin);
-  return result.ok ? { ok: true } : { ok: false, message: result.message };
+  return result.ok ? { ok: true } : result;
 }
 
 export async function verifyPassphrase(phrase: string): Promise<EnrolResult> {
   const result = await unlockPassphrase(phrase);
-  return result.ok ? { ok: true } : { ok: false, message: result.message };
+  return result.ok ? { ok: true } : result;
 }
 
 export async function verifyBiometric(): Promise<EnrolResult> {
   const result = await unlockBiometric();
-  return result.ok ? { ok: true } : { ok: false, message: result.message };
+  return result.ok ? { ok: true } : result;
 }
 
 export async function verifyRecovery(phrase: string): Promise<EnrolResult> {
   const result = await unlockRecovery(phrase);
-  return result.ok ? { ok: true } : { ok: false, message: result.message };
+  return result.ok ? { ok: true } : result;
 }
 
 export function vaultStatus(): {

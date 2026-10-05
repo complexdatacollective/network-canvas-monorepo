@@ -134,11 +134,47 @@
     --surface-4: oklch(from var(--background) calc(l - 0.09) c h);
     --surface-4-contrast: var(--text);
 
+    /* Alternate surface series for emphasized collections. It deliberately
+       aliases the deepest default levels so adopting the semantic series does
+       not change existing themes. Product themes may replace the whole series
+       with a brand-specific palette. */
+    --surface-accent: var(--surface-3);
+    --surface-accent-contrast: var(--surface-3-contrast);
+    --surface-accent-1: var(--surface-4);
+    --surface-accent-1-contrast: var(--surface-4-contrast);
+    --surface-accent-2: var(--surface-4);
+    --surface-accent-2-contrast: var(--surface-4-contrast);
+    --surface-accent-3: var(--surface-4);
+    --surface-accent-3-contrast: var(--surface-4-contrast);
+    --surface-accent-4: var(--surface-4);
+    --surface-accent-4-contrast: var(--surface-4-contrast);
+
     --surface-popover: oklch(var(--white));
     --surface-popover-contrast: var(--text);
 
     --destructive: oklch(var(--tomato));
     --destructive-contrast: oklch(var(--white));
+    /* The ink a boxed field error draws on `--destructive`: its own token so
+       the dark block can change the box without changing every other
+       destructive fill. */
+    --destructive-box-contrast: var(--destructive-contrast);
+    /* The destructive ink a tinted surface opts into — see
+       `--color-destructive-strong` in theme.css for what it is for. Written in
+       each theme scope rather than once in the token block because a custom
+       property's `var()`s are substituted on the element the declaration sits
+       on, so one copy at `:root` would cascade the light mixture into every
+       dark region below it.
+
+       The WEIGHTING is per scope too, not just the expression: how far the
+       fill has to travel toward the ink depends on how light that scope's
+       `--surface-accent` is. 78% measures 5.00:1 here and 4.55:1 on
+       `--surface-accent-1`, and the other blocks say why they need their own
+       numbers. */
+    --destructive-strong: color-mix(
+      in oklch,
+      var(--destructive) 78%,
+      var(--text)
+    );
 
     --warning: oklch(
       from oklch(var(--neon-carrot)) calc(l - 0.17) calc(c + 0.06) h
@@ -161,6 +197,11 @@
     --drag-over: oklch(var(--slate-blue) / 0.8);
 
     --link: oklch(from var(--accent) calc(l - 0.2) calc(c + 0.05) h);
+    --surface-link: var(--link);
+    --surface-accent-link: var(--link);
+    --destructive-ink: var(--destructive);
+    --surface-destructive: var(--destructive);
+    --surface-accent-destructive: var(--destructive-strong);
 
     --outline: oklch(from var(--background) calc(l - 0.05) c h);
 
@@ -261,12 +302,40 @@
     --surface-4: oklch(from var(--background) calc(l + 0.14) c h);
     --surface-4-contrast: var(--text);
 
+    /* Redeclared so these aliases resolve against the dark ladder rather than
+       inheriting the computed light-theme values from :root. */
+    --surface-accent: var(--surface-3);
+    --surface-accent-contrast: var(--surface-3-contrast);
+    --surface-accent-1: var(--surface-4);
+    --surface-accent-1-contrast: var(--surface-4-contrast);
+    --surface-accent-2: var(--surface-4);
+    --surface-accent-2-contrast: var(--surface-4-contrast);
+    --surface-accent-3: var(--surface-4);
+    --surface-accent-3-contrast: var(--surface-4-contrast);
+    --surface-accent-4: var(--surface-4);
+    --surface-accent-4-contrast: var(--surface-4-contrast);
+
     --surface-popover: oklch(from var(--background) calc(l + 0.06) c h);
     --surface-popover-contrast: var(--text);
 
     /* State colors are brightened for legibility on dark while keeping hue. */
     --destructive: oklch(from oklch(var(--tomato)) calc(l + 0.08) c h);
     --destructive-contrast: oklch(var(--white));
+    /* White on the lifted fill is 3.85:1, under AA for a normal-size field
+       error; dark ink is 5.06:1, as studio's dark block does for the whole
+       token. */
+    --destructive-box-contrast: oklch(0.16 0.03 var(--base-hue));
+    /* Redeclared, like the surface aliases above: the mixture has to be made
+       against THIS scope's `--destructive` and `--text` — mixing toward the
+       light theme's near-black ink darkens the error on a dark surface
+       instead of lifting it off one. 78% measures 4.63:1 on this scope's
+       `--surface-accent` but 4.17:1 on `--surface-accent-1`; 70% measures
+       5.13:1 and 4.62:1. */
+    --destructive-strong: color-mix(
+      in oklch,
+      var(--destructive) 70%,
+      var(--text)
+    );
 
     --warning: oklch(from oklch(var(--neon-carrot)) calc(l + 0.04) c h);
     --warning-contrast: oklch(0.2 0.03 var(--base-hue));
@@ -284,6 +353,11 @@
     --drag-over: oklch(var(--slate-blue) / 0.8);
 
     --link: oklch(from var(--accent) calc(l + 0.1) c h);
+    --surface-link: var(--link);
+    --surface-accent-link: var(--link);
+    --destructive-ink: var(--destructive);
+    --surface-destructive: var(--destructive);
+    --surface-accent-destructive: var(--destructive-strong);
 
     /* Borders sit just above the background on dark (inverse of light). */
     --outline: oklch(from var(--background) calc(l + 0.1) c h);

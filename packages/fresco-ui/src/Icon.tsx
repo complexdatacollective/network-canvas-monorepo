@@ -12,11 +12,18 @@ type IconProps = {
 } & LucideProps;
 
 function isCustomIcon(name: string): name is CustomIconName {
-  return name in customIcons;
+  return Object.hasOwn(customIcons, name);
 }
 
 function isLucideIcon(name: string): name is LucideIconName {
-  return name in icons;
+  return Object.hasOwn(icons, name);
+}
+
+/** Whether Fresco can render this exact Network Canvas or Lucide icon name. */
+export function isInterviewerIconName(
+  name: string,
+): name is InterviewerIconName {
+  return isCustomIcon(name) || isLucideIcon(name);
 }
 
 export default function Icon({ name, ...props }: IconProps) {

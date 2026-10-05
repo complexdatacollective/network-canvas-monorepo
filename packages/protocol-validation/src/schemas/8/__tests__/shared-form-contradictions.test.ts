@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+} from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 
 const booleanPair = {

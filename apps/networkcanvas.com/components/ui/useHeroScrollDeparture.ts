@@ -7,7 +7,9 @@ import {
   useSpring,
   useTransform,
 } from 'motion/react';
-import { type RefObject, useSyncExternalStore } from 'react';
+import type { RefObject } from 'react';
+
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 
 import { heroScrollSpring } from './scrollDrivenMotion';
 
@@ -16,20 +18,12 @@ type HeroScrollDepartureOptions = {
   restingScale?: number;
 };
 
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
-
 export function useHeroScrollDeparture<T extends HTMLElement>(
   target: RefObject<T | null>,
   { distance = 96, restingScale = 0.93 }: HeroScrollDepartureOptions = {},
 ): MotionStyle | undefined {
   const shouldReduceMotion = useReducedMotion();
-  const hasHydrated = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const hasHydrated = useHasHydrated();
   const { scrollYProgress } = useScroll({
     target,
     offset: ['start start', 'end start'],

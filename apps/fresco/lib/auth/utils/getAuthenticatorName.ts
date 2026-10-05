@@ -1,12 +1,9 @@
 import aaguidNames from './aaguid-names.json';
 
-const registry = aaguidNames as Record<string, string>;
+const registry: Readonly<Record<string, string>> = aaguidNames;
 
-export function getAuthenticatorName(
-  aaguid: string,
-  deviceType: string,
-): string {
-  const name = registry[aaguid];
-  if (name) return name;
-  return deviceType === 'multiDevice' ? 'Synced passkey' : 'Security key';
+export function getAuthenticatorName(aaguid: string): string | null {
+  // Unknown authenticators use their existing deviceType at display time.
+  // Persisting a generated English name would make it indistinguishable from data.
+  return registry[aaguid] ?? null;
 }

@@ -32,7 +32,6 @@ const FancyHeading = (props: ComponentProps<typeof Heading>) => {
 
         return (
           <span
-            // biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
             key={`${outerIndex}-${lineIndex}-${wordIndex}`}
             className="relative top-[-0.75em] mb-[-1em] inline-block overflow-hidden"
           >
@@ -51,13 +50,7 @@ const FancyHeading = (props: ComponentProps<typeof Heading>) => {
 
       if (lineIndex === lines.length - 1) return lineWords;
 
-      return [
-        ...lineWords,
-        <br
-          // biome-ignore lint/suspicious/noArrayIndexKey: line index won't change
-          key={`${outerIndex}-${lineIndex}-break`}
-        />,
-      ];
+      return [...lineWords, <br key={`${outerIndex}-${lineIndex}-break`} />];
     });
 
   return (
@@ -67,7 +60,6 @@ const FancyHeading = (props: ComponentProps<typeof Heading>) => {
           renderText(word, index)
         ) : (
           <motion.span
-            // biome-ignore lint/suspicious/noArrayIndexKey: word index won't change
             key={index}
             custom={animationIndex++}
             variants={variants}

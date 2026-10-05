@@ -152,7 +152,7 @@ export const informationScenarios: InterfaceScenarios = {
       },
     },
     {
-      id: 'audio-asset-description-aria',
+      id: 'media-asset-description-and-name-fallback',
       covers: ['items[].type=asset(audio)', 'items[].description'],
       build: () => {
         const synth = new SyntheticInterview();
@@ -162,8 +162,14 @@ export const informationScenarios: InterfaceScenarios = {
           type: 'audio',
           source: 'click_the_thing.mp3',
         });
+        synth.addAsset({
+          id: 'video-1',
+          name: 'welcome',
+          type: 'video',
+          source: 'withSound.mp4',
+        });
         synth.addInformationStage({
-          title: 'Audio stage',
+          title: 'Media stage',
           items: [
             {
               id: 'item-1',
@@ -172,6 +178,7 @@ export const informationScenarios: InterfaceScenarios = {
               description: 'Intro narration',
             },
             { id: 'item-2', type: 'asset', content: 'audio-1' },
+            { id: 'item-3', type: 'asset', content: 'video-1' },
           ],
         });
         return synth;
@@ -184,6 +191,13 @@ export const informationScenarios: InterfaceScenarios = {
           source: 'click_the_thing.mp3',
           localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
         },
+        {
+          assetId: 'video-1',
+          name: 'welcome',
+          type: 'video',
+          source: 'withSound.mp4',
+          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'withSound.mp4'),
+        },
       ],
       run: async ({ page }) => {
         const audios = page.locator('main audio');
@@ -195,11 +209,16 @@ export const informationScenarios: InterfaceScenarios = {
         // description fallback: the asset NAME labels the second player
         await expect(audios.nth(1)).toHaveAttribute('aria-label', 'clip');
         await expect(audios.nth(0)).toHaveAttribute('controls', '');
+        // a video with no description takes the same fallback
+        await expect(page.locator('main video')).toHaveAttribute(
+          'aria-label',
+          'welcome',
+        );
       },
     },
     {
       id: 'video-asset-e2e-mode',
-      covers: ['items[].type=asset(video)'],
+      covers: ['items[].type=asset(video)', 'items[].description'],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -217,7 +236,7 @@ export const informationScenarios: InterfaceScenarios = {
               type: 'asset',
               content: 'video-1',
               size: 'MEDIUM',
-              description: 'Ignored under video',
+              description: 'A welcome from the research team',
             },
           ],
         });
@@ -238,7 +257,13 @@ export const informationScenarios: InterfaceScenarios = {
         // isE2E branch: controls without autoplay so captures are stable
         await expect(video).toHaveAttribute('controls', '');
         await expect(video).not.toHaveAttribute('autoplay');
-        await expect(video).toHaveAttribute('aria-label', 'intro');
+        // the researcher's description names the player, as it does for an
+        // image's alt text and an audio player; the asset name is only the
+        // fallback (covered by media-asset-description-and-name-fallback)
+        await expect(video).toHaveAttribute(
+          'aria-label',
+          'A welcome from the research team',
+        );
       },
     },
     {

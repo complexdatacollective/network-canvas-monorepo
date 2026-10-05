@@ -26,7 +26,6 @@ export default function MobileSidebarDialog({
   const pathname = usePathname();
   const t = useTranslations('SharedNavigation');
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: close when the path changes
   useEffect(() => {
     setOpen(false);
   }, [pathname, setOpen]);

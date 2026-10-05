@@ -1,11 +1,13 @@
 'use client';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
+import { messages } from '../messages';
 import { NotationKey } from './NotationKey';
 
 type Disease = {
@@ -41,6 +43,7 @@ export default function ConditionPanel({
   showAtRiskStatuses,
   onSnapshot,
 }: ConditionPanelProps) {
+  const intl = useAppIntl();
   // When a single condition is shown, draw the notation key in its colour so the
   // key matches the pedigree; otherwise use a neutral vivid node colour.
   const selectedDisease =
@@ -56,12 +59,12 @@ export default function ConditionPanel({
       spacing="none"
       shadow="md"
       className="flex h-full min-h-0 flex-col rounded-none"
-      aria-label="Condition key"
+      aria-label={intl.formatMessage(messages.conditionKey)}
     >
       {/* Header — panel title, fixed above the scrolling key. */}
       <div className="flex shrink-0 flex-col gap-1 border-b border-(--outline) p-4">
         <Heading level="h4" margin="none">
-          Key
+          <AppMessage message={messages.key} />
         </Heading>
       </div>
 
@@ -71,10 +74,10 @@ export default function ConditionPanel({
           {diseases.length > 0 && (
             <>
               <Heading level="label" margin="none">
-                Conditions
+                <AppMessage message={messages.conditions} />
               </Heading>
               <p className="text-sm opacity-80">
-                Select a condition to see who it affects.
+                <AppMessage message={messages.selectCondition} />
               </p>
               {diseases.map((disease) => {
                 const isSelected = disease.id === selectedDiseaseId;
@@ -102,7 +105,7 @@ export default function ConditionPanel({
           )}
 
           <Heading level="label" margin="none">
-            What the symbols mean
+            <AppMessage message={messages.symbols} />
           </Heading>
           <NotationKey
             glyphColour={glyphColour}
@@ -122,7 +125,7 @@ export default function ConditionPanel({
           }
           onClick={onSnapshot}
         >
-          Save snapshot
+          <AppMessage message={messages.saveSnapshot} />
         </Button>
       </div>
     </Surface>

@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test.js';
+import { clickWhenDeckSettles } from '../helpers/deck.js';
 import {
   LEAN_E2E_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_PATH,
@@ -118,8 +119,16 @@ test('keeps the selected protocol card stable above the backdrop when the softwa
 }) => {
   await installVisualViewportStub(page, LAYOUT_VISUAL_VIEWPORT);
   await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
-  await page.getByRole('button', { name: 'Start new interview' }).click();
-  const card = page.getByLabel(`${LEAN_E2E_PROTOCOL_NAME} (active)`);
+  await clickWhenDeckSettles(
+    page.getByRole('button', { name: 'Start new interview' }),
+  );
+  // The installing card carries the imported protocol's name too, and lingers
+  // in the DOM through its exit animation after the installed card has taken
+  // the slot — so a bare label match resolves to two cards. Only loading cards
+  // set aria-busy, which separates the one that is still leaving.
+  const card = page.locator(
+    `[aria-label="${LEAN_E2E_PROTOCOL_NAME} (active)"]:not([aria-busy="true"])`,
+  );
   const caseIdInput = card.getByTestId('new-session-case-id');
   await expect(page.getByTestId('new-session-backdrop')).toBeVisible();
   await expect(caseIdInput).toBeVisible();
@@ -168,7 +177,9 @@ test('keeps the Name Generator prompt, quick add, and new node inside the iOS vi
   // viewport.
   await installVisualViewportStub(page, LAYOUT_VISUAL_VIEWPORT);
   await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
-  await page.getByRole('button', { name: 'Start new interview' }).click();
+  await clickWhenDeckSettles(
+    page.getByRole('button', { name: 'Start new interview' }),
+  );
   const caseId = page.getByTestId('new-session-case-id');
   await caseId.fill('IOS-VIEWPORT');
   // Submitting the card-hosted form with Enter avoids neighboring fanned-card

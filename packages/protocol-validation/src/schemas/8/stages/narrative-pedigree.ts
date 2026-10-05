@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import {
-  INHERITANCE_PATTERNS,
-  normalizeForComparison,
-} from '@codaco/shared-consts';
+import { normalizeForComparison } from '@codaco/shared-consts';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
+import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -76,7 +76,7 @@ export const duplicateDiseaseRows = (
 const narrativePedigreeStageShape = baseStageSchema.extend({
   type: z.literal('NarrativePedigree'),
 
-  sourceStageId: z.string(),
+  sourceStageId: stageReference('sourceStageId'),
 
   showAtRiskStatuses: z.boolean().default(false),
 
@@ -85,7 +85,7 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
       z.strictObject({
         id: z.string(),
         label: z.string().min(1),
-        color: z.string().min(1),
+        color: NodeColorReferenceSchema,
         // Tagged as a writer even though this stage only renders: a disease
         // row DECLARES what the variable means ("who is affected by X"), and
         // the synthetic generator writes affected status through exactly this

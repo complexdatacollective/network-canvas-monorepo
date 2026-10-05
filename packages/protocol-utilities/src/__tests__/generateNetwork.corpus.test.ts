@@ -9,10 +9,10 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../generateNetwork';
-import { resolveGenerationConfig } from '../generateNetwork/config';
-import { analyseFeasibility } from '../generateNetwork/constraints/feasibility';
-import { delegatedValidationContradictions } from '../generateNetwork/constraints/validationContradictions';
+import { generateNetwork } from '../generateNetwork.ts';
+import { resolveGenerationConfig } from '../generateNetwork/config.ts';
+import { analyseFeasibility } from '../generateNetwork/constraints/feasibility.ts';
+import { delegatedValidationContradictions } from '../generateNetwork/constraints/validationContradictions.ts';
 
 /**
  * Randomised acceptance corpus for the finite-domain solver.

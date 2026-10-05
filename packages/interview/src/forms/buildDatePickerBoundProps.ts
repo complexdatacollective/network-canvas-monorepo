@@ -1,11 +1,7 @@
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import { todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import type { ComponentType } from '@codaco/protocol-validation';
-import {
-  dateWithinPickerRange,
-  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
-  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
-} from '@codaco/shared-consts';
+import { relativeDatePickerWindow } from '@codaco/shared-consts';
 
 type BoundedField = {
   component?: ComponentType;
@@ -37,7 +33,11 @@ type BoundedField = {
  *   (before=180, after=0, anchor=today) whether or not the record exists, so
  *   the control constrains the participant either way, and the analyser's
  *   `dateWindowInterval` models the same absent-record default. Returning `{}`
- *   here would leave submission validation looser than both.
+ *   here would leave submission validation looser than both. The derivation
+ *   itself is `relativeDatePickerWindow` in `@codaco/shared-consts`, so the
+ *   protocol builder — which reports a rule operand outside the window a
+ *   participant can answer within — reaches the same two dates by calling the
+ *   same function rather than by copying this one.
  *
  * Returns `{}` for any other component, or for a DatePicker with no authored
  * bounds.
@@ -57,16 +57,7 @@ export function buildDatePickerBoundProps(
   }
 
   if (component === 'RelativeDatePicker') {
-    const { anchor, before, after } = parameters;
-    const anchorYmd = typeof anchor === 'string' ? anchor : todayYmd();
-    const beforeDays =
-      typeof before === 'number' ? before : RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
-    const afterDays =
-      typeof after === 'number' ? after : RELATIVE_DATE_PICKER_DEFAULT_AFTER;
-    return {
-      min: dateWithinPickerRange(anchorYmd, -beforeDays),
-      max: dateWithinPickerRange(anchorYmd, afterDays),
-    };
+    return relativeDatePickerWindow(parameters, todayYmd());
   }
 
   return {};

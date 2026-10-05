@@ -31,6 +31,22 @@ directly on the PR. Production is no longer deployed on every push to `main`—i
 is deployed only when the Version Packages PR containing an Architect version
 bump merges.
 
+Merge the Version Packages PR through the merge queue while it is current. If
+main gains a normal-lane changeset after the PR head was generated, the merged
+tree carries both the bumped versions and that changeset, and
+`changesets/action` regenerates the PR instead of publishing the libraries —
+the app lane still deploys (it is tag-driven), but the library versions this
+release depends on never reach npm and the next release PR bumps past them.
+The `version-packages-freshness` job refuses such a merge; wait for the bot to
+regenerate the head and queue that. Pushes to main also run concurrently, so a
+`release` job whose commit is no longer main's tip stops before
+`changesets/action` runs (`.github/scripts/superseded-push-guard.sh`) rather
+than regenerating a release PR that has already merged; release jobs run one
+at a time, and a tip run with nothing left to version closes any release PR a
+superseded run still managed to open. The app lane needs no
+such check: `app-release-guard.sh` below already makes a superseded tree
+harmless, and it skips with a warning that needs no follow-up.
+
 ## Hotfix releases (when main is ahead)
 
 The changeset lane always builds main, so it can only ship a patch together
@@ -48,7 +64,7 @@ is not ready to go out, release from the previous tag instead:
    hotfix branch is a delivery vehicle, not the source of truth.
 
 2. Bump `apps/architect/package.json` to the hotfix version and add the
-   matching `## <version>` section to `CHANGELOG.md`; `scripts/release-notes.mjs`
+   matching `## <version>` section to `CHANGELOG.md`; `scripts/release/release-notes.mjs`
    reads that section for the GitHub release. Do **not** run
    `changeset version` on the branch — it would consume changesets that belong
    to main's next release.
@@ -126,6 +142,86 @@ tag before re-dispatching:
 git push --delete origin '@codaco/architect@<version>'
 ```
 
+## Version archive
+
+Released versions stay reachable at a per-major-version host so researchers on
+an older protocol schema keep a working Architect after production moves on:
+
+```text
+@codaco/architect@8.2.5  ->  https://v8.architect.networkcanvas.com
+```
+
+The archive is keyed by **major version**, not by release, because major
+versions track protocol schema versions: only the newest release on each major
+line needs to stay reachable, so 8.3.0 replaces 8.2.5 at the same host. That
+holds the host count to one per schema generation, which matters because a
+Cloudflare zone allows 100 custom domains in total.
+
+Run the **Architect Archive Release** workflow
+(`.github/workflows/architect-archive-release.yml`) with the released tag. It is
+not yet wired into the release lane — do it by hand after a release, or call the
+workflow from another one. Integration is tracked in
+[#1767](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1767);
+note that the archive must run _after_ the release tag is pushed, because the
+newest-on-the-line guard reads tags.
+
+The lane refuses a version that is not the newest on its major line, so
+archiving an old patch cannot roll the host backwards; `force` overrides that
+for repairs. It never touches the production site, the tags, or the GitHub
+releases, so a failure here cannot block or undo a release.
+
+Each archived line is a Cloudflare Worker serving static assets, with
+`custom_domain: true` provisioning both the DNS record and the certificate.
+Static asset requests are free and unlimited on both Workers plans, so the
+archive costs nothing to run.
+
+**Netlify cannot host this.** It overrides `Cache-Control` on `/sw.js` and
+`/manifest.webmanifest` for any deploy that is not the site's production deploy,
+serving `public,max-age=0,must-revalidate` whatever `_headers` says — so an
+aliased Netlify deploy cannot satisfy the cache contract below. (The same
+override applies to Architect's deploy previews, and `assert-pwa-build.mjs`
+cannot catch it because it validates the emitted `_headers` file rather than
+what the origin serves.)
+
+Cloudflare honours those rules but differs in two other ways, both handled by
+`scripts/write-cloudflare-archive-config.mjs` at deploy time — **never by
+editing `public/_headers`**, whose shape is asserted for Netlify in
+`scripts/buildtime/assert-pwa-cache-headers.mjs`:
+
+- **`_headers` rules append rather than replace.** Netlify lets `/assets/*`
+  override the blanket `/*` no-store; Cloudflare joins them into one header
+  where `no-store` wins and every content-hashed asset becomes uncacheable. The
+  transform strips `Cache-Control` from `/*` only.
+- **`_redirects` is rejected**, because Cloudflare's asset layer already strips
+  `/index` and `.html` and reads `/* /index.html 200` as an infinite loop. The
+  SPA fallback is expressed as `not_found_handling` in the Wrangler config.
+
+The workflow asserts the resulting contract against the live host after
+deploying and fails the run if it does not hold.
+
+**Setup (one-time, and load-bearing).** The deploy job declares the
+`architect-archive` environment, but — exactly as for the hotfix lane above — a
+workflow file cannot enforce its own protection: GitHub runs whichever copy of
+the YAML lives on the ref a dispatch selects, so a branch copy with the
+`environment:` line deleted would run instead. Only repository configuration
+closes that:
+
+1. Create the `architect-archive` environment.
+2. Restrict its **deployment branches** to `main`, so a job reaching for it from
+   any other ref is refused.
+3. Hold `CLOUDFLARE_API_TOKEN` as an **environment** secret, not a repository
+   secret. A repository secret is readable by any branch that can rewrite the
+   scripts this workflow runs, and this token can edit DNS across the whole
+   networkcanvas.com zone and deploy Workers to the account. Scope it to that
+   zone with DNS:Edit, Zone:Read and Workers Routes:Edit, plus account-level
+   Workers Scripts:Edit.
+4. Optionally set the repository variable `CLOUDFLARE_ACCOUNT_ID`; a
+   single-account token lets Wrangler resolve it on its own.
+
+Required reviewers are worth considering but are not the load-bearing part
+here: unlike the hotfix lane this one cannot change what production serves, so
+the branch restriction and the environment-scoped secret are what matter.
+
 ## Developer site
 
 The separate `.dev` Netlify site is intentionally linked to this repository and
@@ -144,11 +240,69 @@ declaration bundling can exceed Node's default heap during a clean build.
 Netlify preview builds and the CI release job run `pnpm exec turbo run build
 --filter=@codaco/architect`. The app's `build` command runs Vite and then
 `scripts/assert-pwa-build.mjs`. That assertion fails the build if `dist/` is
-missing the service worker, manifest, or icons, or if any emitted JS chunk was
-dropped from the workbox precache manifest (e.g. for exceeding the size limit) —
-which would 404 offline and break the offline boot. Treat an assertion failure as
-a hard release blocker. Architect asserts that _every_ chunk is precached because
-it uses no `globIgnores`.
+missing the service worker, manifest, or icons, or if any emitted JS chunk or
+responsive screen-preview image was dropped from the Workbox precache manifest
+(e.g. for exceeding the size limit) — which would 404 offline and break either
+the offline boot or first rendering of screen thumbnails. Treat an assertion
+failure as a hard release blocker. Architect asserts that _every_ chunk is
+precached because it uses no `globIgnores`. The assertion also validates the
+emitted `_headers`:
+the service worker, HTML shells (including requested SPA deep links), manifest,
+and stable icons must use `no-store, no-cache, max-age=0, must-revalidate`, while
+only content-hashed `/assets/*` may use a one-year immutable cache. The generated
+worker assertion also ensures its image runtime cache excludes every stable PWA
+icon, because Cache API writes would otherwise bypass those HTTP directives.
+
+The production custom domain is fronted by Cloudflare, so this repository rule
+is necessary but cannot override an account-level Browser Cache TTL rule. Keep
+Cloudflare set to **Respect Existing Headers** (with no cache rule that replaces
+these origin directives), and verify `/`, `/sw.js`, `/index.html`, and
+`/manifest.webmanifest` return the no-store policy after each release. A
+response with a positive browser `max-age` is a release blocker even when the
+build assertion passed, because it means an intermediary replaced the emitted
+contract.
+
+## Service worker update propagation
+
+The service worker (`registerType: 'prompt'`, see `vite.config.ts`) has two
+deliberately different update paths:
+
+- On a fresh navigation, the pre-render startup check activates a waiting
+  worker while the static loading spinner remains visible. Startup then
+  continues on the same navigation; activation never calls `reload()`.
+- The separate `/preview/` entry performs the same no-reload handoff before it
+  renders, so its shell and deferred interface chunks use the same controller.
+  Update discovery, installation, and activation remain bounded: on failure or
+  timeout the preview proceeds instead of leaving the popup permanently blank.
+  The opener keeps its payload handshake available for 55 seconds, covering the
+  handoff's complete 46-second healthy worst case plus scheduling headroom.
+- Once React has rendered, a newly discovered update remains in the **update
+  available** state until the user opens the version indicator and chooses
+  **Install and reload**. Neither `AppUpdateProvider` nor `vite-plugin-pwa` may
+  reload the page independently.
+- After that user-requested reload, the version indicator shows the recently
+  updated state and exposes the release notes for the running version.
+
+This means an already-open Architect tab continues running its current version
+until the researcher explicitly installs the update. Do not add an automatic
+post-render reload path: open editor drafts, dialogs, imports, and exports make
+that data-destructive.
+
+The worker deliberately uses `clientsClaim: false`, a build-scoped precache,
+and no blanket `cleanupOutdatedCaches`. Turbo's task fingerprint names deployed
+build artifacts, so two same-version developer deployments with different
+assets cannot prune each other's caches. Service-worker activation advances
+every client already using the registration, even without `clientsClaim`; it
+does not reload those documents. The new worker therefore resolves an older
+tab's exact content-hashed JS/CSS URLs across retained precaches, while HTML
+navigation fallbacks remain pinned to the active worker's own precache. This
+keeps the older loaded bundle usable offline without risking an ambiguous
+`index.html` match. Each page also reports its compiled build ID to the worker.
+The worker reclaims only precaches that no responsive open page has leased;
+any legacy, frozen, or nonresponding page blocks cleanup, and an installing or
+waiting worker blocks it as well. This preserves open work without allowing
+old build caches to accumulate indefinitely.
+`scripts/assert-pwa-build.mjs` verifies these generated-worker invariants.
 
 ## PostHog source maps
 
@@ -162,13 +316,14 @@ Only the production release job sets `POSTHOG_PERSONAL_API_KEY` and
 `POSTHOG_PROJECT_ID` (repository secrets shared with Interviewer and
 Documentation; the personal API key needs the _error tracking: write_ and
 _organization: read_ scopes). Their presence is what switches source-map upload
-on: the build emits `hidden` maps, `@posthog/rollup-plugin` injects the chunk ids
-PostHog matches on, uploads the maps, and deletes them from `dist/` — so the
-exceptions `posthog-js` reports symbolicate to real source while the deploy still
-ships no maps. Every other build — local, PR, Netlify preview, the `.dev` site —
+on: the build emits `hidden` maps, the shared Vite hook uploads them, and deletes
+them from `dist/` — so the exceptions `posthog-js` reports symbolicate to real
+source while the deploy still ships no maps. The hook processes the completed
+output directory so maps for Web Workers emitted as parent-build assets are
+included too. Every other build — local, PR, Netlify preview, the `.dev` site —
 has no credentials and emits no maps at all.
 
 A failed upload fails the build rather than deploying unsymbolicated. Both
 variables are part of the Turbo cache key for `build`, so a production build can
 never replay a cached artefact whose maps were never uploaded, and
-`scripts/assert-pwa-build.mjs` fails if a map is left behind in `dist/assets`.
+`scripts/assert-pwa-build.mjs` fails if a map is left behind anywhere in `dist`.

@@ -28,13 +28,20 @@ import {
 const IMPLEMENTATION_DETAIL =
   /jszip|stuk\.github\.io|central directory|protocol\.json|JSON at position|position \d+|schemaVersion|\d+ -> \d+/i;
 
-const ALL_REASONS: MalformedNetcanvasReason[] = [
-  'not-an-archive',
-  'missing-protocol',
-  'unreadable-protocol-json',
-  'missing-asset',
-  'invalid-asset-definition',
-];
+// Keyed rather than listed, so `satisfies` makes a new union member a compile
+// error here instead of a silently uncovered reason: the table below claims to
+// describe every one of them.
+const ALL_REASONS = Object.keys({
+  'not-an-archive': true,
+  'missing-protocol': true,
+  'unreadable-protocol-json': true,
+  'unreadable-entry': true,
+  'missing-asset': true,
+  'invalid-asset-definition': true,
+} satisfies Record<
+  MalformedNetcanvasReason,
+  true
+>) as MalformedNetcanvasReason[];
 
 describe('describeProtocolFileError', () => {
   it('describes every malformed-archive reason', () => {

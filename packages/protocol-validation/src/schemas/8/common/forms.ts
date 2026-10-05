@@ -23,16 +23,12 @@ export type FormField = z.infer<typeof FormFieldSchema>;
  * same array already names — never the first occurrence, so array order alone
  * decides which field is the real one.
  *
- * The rule below, the migration that brings a legacy protocol forward, and the
- * repair Architect offers for a protocol already on this schema version all
- * ask this one question, and they must agree exactly: a repair that judged
- * duplicates differently from the schema would either drop a field the schema
- * was happy with, or leave a protocol the schema still rejects — asking the
- * researcher to approve a repair that fixes nothing, every time they open it.
- *
- * Takes `unknown` entries because two of those three callers work on
- * unvalidated protocol data. A field whose `variable` is not a string is never
- * a duplicate; the schema rejects it on its own terms.
+ * Kept separate from the rule below, and taking `unknown` entries, so anything
+ * that has to ask this question of unvalidated protocol data asks it in exactly
+ * the terms the schema does — an answer that differed from the schema's would
+ * either object to a form the schema accepts, or pass one it still rejects. A
+ * field whose `variable` is not a string is never a duplicate; the schema
+ * rejects it on its own terms.
  */
 export const duplicateFormFieldIndices = (
   fields: readonly unknown[],

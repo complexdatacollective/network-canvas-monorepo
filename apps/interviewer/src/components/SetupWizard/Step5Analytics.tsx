@@ -1,10 +1,44 @@
 import { useEffect } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+
+const messages = defineMessages({
+  finish: {
+    id: 'interviewer.step5Analytics.finish',
+    defaultMessage: 'Finish',
+    description:
+      'Final wizard action that applies the analytics preference and completes device setup.',
+  },
+  youCanHelpUsImproveNetworkCanvas: {
+    id: 'interviewer.step5Analytics.youCanHelpUsImproveNetworkCanvas',
+    defaultMessage:
+      'You can help us improve Network Canvas Interviewer by sending anonymous usage and error data. This tells us which features are used and details of any errors or crashes, so we can fix bugs and decide what to build next.',
+    description: 'Visible copy in Interviewer Step5Analytics.',
+  },
+  sendAnonymousAnalytics: {
+    id: 'interviewer.step5Analytics.sendAnonymousAnalytics',
+    defaultMessage: 'Send anonymous analytics',
+    description: 'The label label in Interviewer Step5Analytics.',
+  },
+  noParticipantOrPersonalDataIsCollected: {
+    id: 'interviewer.step5Analytics.noParticipantOrPersonalDataIsCollected',
+    defaultMessage: 'No participant or personal data is collected',
+    description: 'Visible copy in Interviewer Step5Analytics.',
+  },
+  networkDataInterviewResponsesCaseIDsAnd: {
+    id: 'interviewer.step5Analytics.networkDataInterviewResponsesCaseIDsAnd',
+    defaultMessage:
+      'Network data, interview responses, case IDs, and protocol contents never leave this device. Analytics contain no user-identifiable information — events are tied only to a random per-device installation ID, never your name, email, or any account. You can change this any time in Settings → Privacy.',
+    description: 'Visible copy in Interviewer Step5Analytics.',
+  },
+});
 
 // First-run setup defaults analytics to on. A Settings-launched wizard supplies
 // the user's current preference instead, so leaving the toggle untouched cannot
@@ -18,6 +52,7 @@ export default function Step5Analytics({
 }: {
   initialEnabled?: boolean;
 }) {
+  const intl = useAppIntl();
   const wizard = useWizard();
   const enabled = asAnalyticsEnabled(
     wizard.data.analyticsEnabled,
@@ -26,24 +61,21 @@ export default function Step5Analytics({
 
   useEffect(() => {
     wizard.setNextEnabled(true);
-    wizard.setNextLabel('Finish');
+    wizard.setNextLabel(intl.formatMessage(messages.finish));
     wizard.setBeforeNext(null);
     return () => {
-      wizard.setNextLabel('Continue');
+      wizard.setNextLabel(intl.formatMessage(commonMessages.continue));
     };
-  }, [wizard]);
+  }, [intl, wizard]);
 
   return (
     <>
       <Paragraph>
-        You can help us improve Network Canvas Interviewer by sending anonymous
-        usage and error data. This tells us which features are used and details
-        of any errors or crashes, so we can fix bugs and decide what to build
-        next.
+        {intl.formatMessage(messages.youCanHelpUsImproveNetworkCanvas)}
       </Paragraph>
       <UnconnectedField
         name="analyticsEnabled"
-        label="Send anonymous analytics"
+        label={intl.formatMessage(messages.sendAnonymousAnalytics)}
         inline
         component={ToggleField}
         value={enabled}
@@ -52,13 +84,11 @@ export default function Step5Analytics({
         }
       />
       <Alert variant="info">
-        <AlertTitle>No participant or personal data is collected</AlertTitle>
+        <AlertTitle>
+          {intl.formatMessage(messages.noParticipantOrPersonalDataIsCollected)}
+        </AlertTitle>
         <AlertDescription>
-          Network data, interview responses, case IDs, and protocol contents
-          never leave this device. Analytics contain no user-identifiable
-          information — events are tied only to a random per-device installation
-          ID, never your name, email, or any account. You can change this any
-          time in Settings → Privacy.
+          {intl.formatMessage(messages.networkDataInterviewResponsesCaseIDsAnd)}
         </AlertDescription>
       </Alert>
     </>

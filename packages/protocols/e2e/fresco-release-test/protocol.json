@@ -1,0 +1,223 @@
+{
+  "name": "Fresco Release Test",
+  "description": "Purpose-built protocol for the Fresco release test's interview lane. It is short enough to conduct on every run and deliberately shaped around the behaviours that release test could not otherwise reach: response options long enough to need the bin's own fitting, emphasis authored inside those options, an Information screen whose text a participant must be able to select, a video described by the researcher beside one whose description is blank. The filter fixtures the lane also imports are derived from it (make-fixtures.mjs), so the one protocol-content consequence of the pending protocol-validation changes that a host can observe \u2014 a comparison value that is a fraction \u2014 is tested against a protocol that is otherwise known to import.",
+  "schemaVersion": 8,
+  "lastModified": "2026-09-15T00:00:00.000Z",
+  "assetManifest": {
+    "release-test-video": {
+      "id": "release-test-video",
+      "name": "Duck clip",
+      "type": "video",
+      "source": "withSound.mp4"
+    }
+  },
+  "codebook": {
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true
+            }
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          },
+          "hours": {
+            "name": "hours",
+            "type": "number",
+            "component": "Number"
+          },
+          "context": {
+            "name": "context",
+            "type": "categorical",
+            "options": [
+              {
+                "label": "Someone I know through **work**, or through something work led to",
+                "value": "work"
+              },
+              {
+                "label": "Previously involved in the criminal legal system, but not currently",
+                "value": "legal"
+              },
+              {
+                "label": "_Family_",
+                "value": "family"
+              }
+            ]
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "ordinal",
+            "options": [
+              {
+                "label": "Someone I would tell **anything** to, however difficult the subject",
+                "value": 3
+              },
+              {
+                "label": "Someone I would talk to about most things",
+                "value": 2
+              },
+              {
+                "label": "_Not_ close",
+                "value": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1"
+      }
+    },
+    "ego": {
+      "variables": {
+        "ego_name": {
+          "name": "ego_name",
+          "type": "text",
+          "component": "Text",
+          "validation": {
+            "required": true
+          }
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "stage-info",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "Welcome",
+      "items": [
+        {
+          "id": "info-text",
+          "type": "text",
+          "content": "# Fresco release test\n\nThis text is **selectable**, and this is _emphasised_."
+        },
+        {
+          "id": "info-video-described",
+          "type": "asset",
+          "content": "release-test-video",
+          "description": "A short clip of a duck, with sound",
+          "size": "SMALL"
+        },
+        {
+          "id": "info-video-blank-description",
+          "type": "asset",
+          "content": "release-test-video",
+          "description": "   ",
+          "size": "SMALL"
+        }
+      ]
+    },
+    {
+      "id": "stage-ego",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "Introduction",
+        "text": "Tell us about **you**."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_name",
+            "prompt": "What is your name?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "stage-ng",
+      "type": "NameGeneratorQuickAdd",
+      "label": "Name people",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "quickAdd": "name",
+      "behaviours": {
+        "minNodes": 1,
+        "maxNodes": 8
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Who are the people you know?"
+        }
+      ]
+    },
+    {
+      "id": "stage-socio",
+      "type": "Sociogram",
+      "label": "Place and connect",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 4,
+        "skewedTowardCenter": true
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "Drag to place everyone; link people who know each other.",
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "stage-ordinal",
+      "type": "OrdinalBin",
+      "label": "Closeness",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "How close are you to each person?",
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "stage-catbin",
+      "type": "CategoricalBin",
+      "label": "Context",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p1",
+          "text": "How do you know each person?",
+          "variable": "context"
+        }
+      ]
+    }
+  ]
+}

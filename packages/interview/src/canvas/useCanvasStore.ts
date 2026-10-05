@@ -1,3 +1,5 @@
+'use client';
+
 import { clamp } from 'es-toolkit';
 import { createStore, useStore } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';

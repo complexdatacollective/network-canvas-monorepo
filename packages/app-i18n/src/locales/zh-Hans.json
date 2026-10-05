@@ -1,0 +1,14 @@
+{
+  "common.back": "返回",
+  "common.cancel": "取消",
+  "common.close": "关闭",
+  "common.confirm": "确认",
+  "common.continue": "继续",
+  "common.delete": "删除",
+  "common.done": "完成",
+  "common.genericError": "出现问题。",
+  "common.loading": "正在加载…",
+  "common.retry": "重试",
+  "common.save": "保存",
+  "common.search": "搜索"
+}

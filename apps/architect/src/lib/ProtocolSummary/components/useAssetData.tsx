@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 
 import type { RootState } from '~/ducks/modules/root';
 import { getAssetPath, makeGetNetworkAssetVariables } from '~/selectors/assets';
@@ -24,11 +24,17 @@ const useAssetData = (id: string) => {
   const { protocol } = useContext(SummaryContext);
 
   const data = get(protocol.assetManifest, id) as AssetData | undefined;
-  const [variables, setVariables] = useState<string | null>(null);
+  const [variables, setVariables] = useState<string[] | null>(null);
   const [url, setUrl] = useState<string | undefined>(undefined);
 
-  const stubbedState = stubState(protocol.assetManifest ?? {});
-  const getNetworkAssetVariables = makeGetNetworkAssetVariables(stubbedState);
+  const stubbedState = useMemo(
+    () => stubState(protocol.assetManifest ?? {}),
+    [protocol.assetManifest],
+  );
+  const getNetworkAssetVariables = useMemo(
+    () => makeGetNetworkAssetVariables(stubbedState),
+    [stubbedState],
+  );
   const assetPath = getAssetPath(stubbedState, id);
 
   useEffect(() => {
@@ -40,7 +46,11 @@ const useAssetData = (id: string) => {
       if (!v) {
         return;
       }
-      setVariables(v.join(', '));
+      setVariables(
+        v.map((variable) =>
+          typeof variable === 'string' ? variable : variable.label,
+        ),
+      );
     });
   }, [data, data?.type, getNetworkAssetVariables, id]);
 
@@ -68,7 +78,6 @@ const useAssetData = (id: string) => {
       } catch (error) {
         // The asset can't be shown; report it rather than leaving a blank
         // image with no trace of why.
-        console.error('Failed to load asset blob URL', error);
         reportError(error);
       }
     };

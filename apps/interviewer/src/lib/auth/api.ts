@@ -1,3 +1,4 @@
+import type { LocalizedMessage } from '../../i18n/messageResult';
 import { reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
@@ -10,18 +11,20 @@ import {
 } from './reencryptionPending';
 
 export type AuthMode = 'pin' | 'passphrase' | 'biometric' | 'none';
-export type AuthResult = { ok: boolean; message?: string };
+export type AuthResult = {
+  ok: boolean;
+  message?: string;
+  localizedMessage?: LocalizedMessage;
+};
 
 function toAuthResult(result: vault.EnrolResult): AuthResult {
-  return result.message === undefined
-    ? { ok: result.ok }
-    : { ok: result.ok, message: result.message };
+  return result;
 }
 
 // Unlock/enrol take custody of the freshly derived session DEK. A reload drops
 // this module + the holder, which re-locks the app (spec: reload re-locks).
 async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
-  if (!result.ok) return { ok: false, message: result.message };
+  if (!result.ok) return result;
   setSessionDek(result.dek);
   return { ok: true };
 }
@@ -41,6 +44,9 @@ async function runReencryptionSweep(): Promise<void> {
     const { failed } = await reencryptAllRecords();
     setReencryptionPending(failed > 0);
   } catch (error) {
+    // No other reporting exists for this background sweep, and the security
+    // invariant depends on knowing why it failed.
+    // oxlint-disable-next-line no-console -- only diagnostic for a re-encryption sweep failure; nothing else reports this security-relevant background failure
     console.error(
       'Re-encryption sweep failed; existing data may remain plaintext until a later unlock retries it',
       error,

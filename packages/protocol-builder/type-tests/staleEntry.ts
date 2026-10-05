@@ -1,0 +1,15 @@
+import { defineStageEditor } from '../src/editors/defineStageEditor.tsx';
+import { type UnregisteredIn } from '../src/stageEditorRegistry.ts';
+
+/**
+ * MUST NOT COMPILE: an interface that has an editor and is still listed as
+ * waiting for one.
+ *
+ * The list is documentation a reviewer trusts, so a stale entry is worse than
+ * no list at all: it says a family has not landed when it has.
+ */
+const PARTS = [defineStageEditor('Information', [])] as const;
+
+export const AWAITING = [
+  'Information',
+] as const satisfies readonly UnregisteredIn<typeof PARTS>[];

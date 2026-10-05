@@ -1,0 +1,252 @@
+import { useCallback, useMemo } from 'react';
+
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import ArrayField, {
+  type ArrayFieldProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
+import { hasDuplicateOptionLabels } from '@codaco/shared-consts';
+
+import { minimumOptionsMessage } from '../../codebook/editing.ts';
+import {
+  invalidVariableName,
+  isSameAnswer,
+  variableNameSubjects,
+} from './cellRules.ts';
+import Option, {
+  optionNoun,
+  OptionsContext,
+  type OptionValue,
+} from './Option.tsx';
+import { isOptionComplete, isOptionValueEmpty } from './optionCompleteness.ts';
+
+export type { OptionValue } from './Option.tsx';
+
+/**
+ * What the array-level rules say when they refuse a save, plus the list's own
+ * empty state.
+ *
+ * The rules cross a string-only contract — Fresco reads a validation message
+ * off the field's own props and hands it back as a field error — so each is
+ * encoded here and decoded by `FieldErrors` where the list shows it.
+ */
+const messages = defineMessages({
+  incompleteOptions: {
+    id: 'protocolBuilder.option.incompleteOptions',
+    defaultMessage: 'Every option needs both a label and a value.',
+    description:
+      'Shown under a list of options when one of them is half-finished. The label is what a participant reads; the value is what the answer is stored and exported as.',
+  },
+  duplicateValues: {
+    id: 'protocolBuilder.option.duplicateValues',
+    defaultMessage: 'Every option needs a unique value.',
+    description:
+      'Shown under a list of options when two of them would be stored and exported as the same answer.',
+  },
+  duplicateLabels: {
+    id: 'protocolBuilder.option.duplicateLabels',
+    defaultMessage: 'Every option needs a unique label.',
+    description:
+      'Shown under a list of options when two of them would read identically to a participant.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.option.emptyState',
+    defaultMessage: 'No options have been added yet.',
+    description:
+      'Shown in place of the list of answers a categorical or ordinal attribute offers, while the researcher has added none.',
+  },
+});
+
+/**
+ * Array-level rules. They belong to the caller's `<Field>`
+ * (spread as `{...optionsValidation}`), which hands the whole array to each
+ * rule — rows are not registered fields and cannot carry them.
+ */
+const MINIMUM_OPTIONS_MESSAGE = createMessageError(minimumOptionsMessage);
+
+const minTwoOptions = (value: unknown) =>
+  !value || (Array.isArray(value) && value.length < MINIMUM_VARIABLE_OPTIONS)
+    ? MINIMUM_OPTIONS_MESSAGE
+    : undefined;
+
+/** Native `required` owns an absent/empty list; this owns the one-row case. */
+const minTwoPopulatedOptions = (value: unknown) =>
+  Array.isArray(value) && value.length > 0 ? minTwoOptions(value) : undefined;
+
+const completeOptions = (value: unknown) =>
+  Array.isArray(value) && !value.every(isOptionComplete)
+    ? createMessageError(messages.incompleteOptions)
+    : undefined;
+
+/**
+ * Compared exactly as the rows compare themselves (`isSameAnswer`), so the
+ * array and its rows never disagree about which entries clash.
+ */
+const hasDuplicates = (values: unknown[]) =>
+  values.some((value, index) =>
+    values.slice(index + 1).some((other) => isSameAnswer(value, other)),
+  );
+
+const readOptions = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value)
+    ? value.filter(
+        (option): option is Record<string, unknown> =>
+          typeof option === 'object' && option !== null,
+      )
+    : [];
+
+/**
+ * Duplicate values export as indistinguishable answers, so the ARRAY has to
+ * reject them: a row reports the clash where the researcher is working, but a
+ * row is not a registered field and can only display its error — nothing
+ * carries it into the form's validity. Incomplete entries are `completeOptions`'
+ * business and are ignored here so one edit does not raise two errors.
+ */
+const uniqueOptionValues = (value: unknown) =>
+  hasDuplicates(
+    readOptions(value)
+      .map((option) => option.value)
+      .filter((optionValue) => !isOptionValueEmpty(optionValue)),
+  )
+    ? createMessageError(messages.duplicateValues)
+    : undefined;
+
+/**
+ * The label counterpart of `uniqueOptionValues`, asked of the one predicate
+ * every surface and the codebook write itself ask — so a list this rule lets
+ * through is never refused again on the way to the protocol, and a list it
+ * refuses reads the same in both places.
+ */
+const uniqueOptionLabels = (value: unknown) =>
+  hasDuplicateOptionLabels(value)
+    ? createMessageError(messages.duplicateLabels)
+    : undefined;
+
+/**
+ * The array counterpart of the rows' own name check, running the same rule so
+ * the two can never disagree about which characters — or which wording —
+ * apply. An option value has to be an NMTOKEN because it becomes an XML export
+ * key and a CSV column header (`${attributeName}_${option.value}`), and the
+ * row's own message is display-only: collapsing the row hides it entirely
+ * while keeping the value, so without this the protocol ships with a value the
+ * researcher was told was invalid.
+ *
+ * Values are stringified because `parseOptionValue` stores numeric-looking
+ * input as a number. Empty values are `completeOptions`' business, and this
+ * rule is bundled last because only the first failing rule is reported per
+ * field — a blank row should say what it is missing before it is told the
+ * missing value is malformed.
+ */
+const allowedOptionValues = (value: unknown) =>
+  readOptions(value)
+    .map((option) => option.value)
+    .filter((optionValue) => !isOptionValueEmpty(optionValue))
+    .map((optionValue) =>
+      invalidVariableName(
+        String(optionValue),
+        variableNameSubjects.optionValue,
+      ),
+    )
+    .find((message) => message !== undefined);
+
+/**
+ * Every array-level rule an options editor needs, as one object to SPREAD onto
+ * the owning `<Field>` (`{...optionsValidation}`) — Fresco reads
+ * validation from the field's own props. Passed whole rather than rule by rule
+ * so a call site cannot silently keep some and drop others.
+ *
+ * These are the rules that can actually REFUSE a save. Each has a row-level
+ * twin that only displays, and the pairing is deliberate: the row explains the
+ * problem where the researcher is working, the array is what stops the
+ * protocol being saved with it.
+ */
+export const optionsValidation = {
+  required: MINIMUM_OPTIONS_MESSAGE,
+  custom: messageRuleValidation([
+    minTwoPopulatedOptions,
+    completeOptions,
+    uniqueOptionValues,
+    uniqueOptionLabels,
+    allowedOptionValues,
+  ]),
+};
+
+const EMPTY_OPTIONS: OptionValue[] = [];
+
+export type OptionsProps = Omit<
+  ArrayFieldProps<OptionValue>,
+  | 'addButtonLabel'
+  | 'confirmDelete'
+  | 'editorComponent'
+  | 'emptyStateMessage'
+  | 'immediateAdd'
+  | 'itemClasses'
+  | 'itemComponent'
+  | 'itemLabel'
+  | 'itemTemplate'
+  | 'onOperation'
+  | 'sortable'
+> & {
+  /**
+   * Visible text and accessible name of the add button — REQUIRED, and a whole
+   * string rather than a `Create new ${itemLabel}` template, so it can be
+   * localised and so no call site can fall back to a generic default.
+   *
+   * The sibling `MultiSelect` doc explains what a shared default costs: a
+   * Categorical Bin prompt editor mounts this list alongside two sort-rule
+   * lists, and named "Add new" all three are the same control to anyone
+   * navigating by a list of buttons (#1391).
+   */
+  addButtonLabel: string;
+};
+
+/**
+ * The inline label/value option-list editor for ordinal and categorical
+ * variables.
+ *
+ * Rendered as `<Field component={Options} … />`, so the whole
+ * list is ONE field value; a row's cells judge themselves and render through
+ * `UnconnectedField` rather than registering `options[0].label` in the form
+ * store, which would let a deleted option's dormant value reappear in the
+ * saved variable.
+ */
+export default function Options({
+  value = EMPTY_OPTIONS,
+  onChange,
+  name = '',
+  addButtonLabel,
+  'aria-invalid': ariaInvalid = false,
+  ...arrayFieldProps
+}: OptionsProps) {
+  const intl = useAppIntl();
+  const context = useMemo(
+    () => ({ arrayName: name, rows: value, showArrayError: ariaInvalid }),
+    [ariaInvalid, name, value],
+  );
+
+  const itemTemplate = useCallback(() => ({}), []);
+  // Options carry no id of their own, so `ArrayField` issues each row a managed
+  // one and strips it again on submit.
+
+  return (
+    <OptionsContext value={context}>
+      <ArrayField<OptionValue>
+        {...arrayFieldProps}
+        name={name}
+        value={value}
+        onChange={onChange}
+        aria-invalid={ariaInvalid}
+        itemComponent={Option}
+        itemTemplate={itemTemplate}
+        itemClasses="p-0! shadow-none"
+        addButtonLabel={addButtonLabel}
+        itemLabel={optionNoun}
+        emptyStateMessage={intl.formatMessage(messages.emptyState)}
+        immediateAdd
+        sortable
+      />
+    </OptionsContext>
+  );
+}

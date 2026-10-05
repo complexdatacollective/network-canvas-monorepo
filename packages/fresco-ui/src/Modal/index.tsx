@@ -1,3 +1,5 @@
+'use client';
+
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { AnimatePresence } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -20,8 +22,10 @@ import { ModalOpenerContext } from './ModalOpener';
  *
  * @param open Whether the modal is open.
  * @param onOpenChange Callback when the open state changes.
- * @param forceBackdrop Whether to render the backdrop when this modal is nested
- * within another dialog.
+ * @param onExitComplete Called once the close animation has finished and the
+ * surface has left the DOM. See the prop's own note below.
+ * @param dismissible Whether the user may dismiss this modal by pressing
+ * outside it or pressing Escape. See the prop's own note below.
  * @param backdropClassName Additional classes for the modal backdrop.
  * @param children The content of the modal.
  *
@@ -30,13 +34,42 @@ import { ModalOpenerContext } from './ModalOpener';
 export default function Modal({
   open,
   onOpenChange,
-  forceBackdrop = false,
+  onExitComplete,
+  dismissible = true,
   backdropClassName,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  forceBackdrop?: boolean;
+  /**
+   * Called once the close animation has finished and this modal's surface has
+   * left the DOM.
+   *
+   * This is what lets a caller whose CONTENT depends on the thing being closed
+   * — the row being edited, the type being created — keep that state until the
+   * animation is over, instead of dropping it on close and unmounting the
+   * modal mid-flight. A surface unmounted that way has no exit animation at
+   * all: it simply vanishes, because the `AnimatePresence` that would run the
+   * exit goes with it.
+   *
+   * Only fires for a close that was animated, which is the only close that
+   * needs waiting for.
+   */
+  onExitComplete?: () => void;
+  /**
+   * When false, neither an outside press nor Escape closes this modal, and
+   * `onOpenChange` is not called for either. The surface inside it is
+   * responsible for offering whatever way out it does allow (or none, for a
+   * forced flow) — hiding a close button on its own does not hold a modal
+   * open.
+   *
+   * Two mechanisms, because Base UI 1.7 has a `Dialog.Root` prop for one of
+   * these routes and not the other: `disablePointerDismissal` refuses the
+   * outside press at source, and the Escape key is refused by cancelling the
+   * change event it raises, which returns before Base UI acts on it.
+   * @default true
+   */
+  dismissible?: boolean;
   backdropClassName?: string;
   children: ReactNode;
 }) {
@@ -106,18 +139,44 @@ export default function Modal({
 
   return (
     <ModalOpenerContext.Provider value={openerRef}>
-      <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
-        <AnimatePresence>
+      <BaseDialog.Root
+        open={open}
+        disablePointerDismissal={!dismissible}
+        onOpenChange={(nextOpen, eventDetails) => {
+          // `disablePointerDismissal` covers the outside press (and, for a
+          // non-modal dialog, focus leaving it); Escape has no equivalent
+          // prop, so it arrives here and is cancelled. Cancelling returns
+          // before Base UI dispatches the change, so nothing downstream —
+          // including the caller's `onOpenChange` — observes a close.
+          if (
+            !nextOpen &&
+            !dismissible &&
+            eventDetails.reason === 'escape-key'
+          ) {
+            eventDetails.cancel();
+            return;
+          }
+
+          onOpenChange(nextOpen);
+        }}
+      >
+        <AnimatePresence onExitComplete={onExitComplete}>
           {open && (
             <BaseDialog.Portal
               ref={setPortalNode}
               container={portalContainer ?? undefined}
               keepMounted
             >
-              <ModalBackdrop
-                forceRender={forceBackdrop}
-                className={backdropClassName}
-              />
+              {/*
+                `forceRender`, always: Base UI suppresses a backdrop whose
+                dialog is nested inside another open one, and nesting is React
+                context, so a portalled overlay opened from inside a dialog
+                counts as nested and would come up with no dimmed layer at all.
+                A nested surface dims what is behind it like any other, which
+                stacks the dim and the blur — the deeper the stack, the more
+                the page recedes, which is what the stack means.
+              */}
+              <ModalBackdrop forceRender className={backdropClassName} />
               {children}
             </BaseDialog.Portal>
           )}

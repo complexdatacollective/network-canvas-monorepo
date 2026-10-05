@@ -1,7 +1,9 @@
 'use client';
 
 import { useReducedMotion } from 'motion/react';
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef } from 'react';
+
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 
 const TARGET_SELECTOR = '[data-homepage-weave-target]';
 const COLOR_PROPERTIES = [
@@ -11,9 +13,6 @@ const COLOR_PROPERTIES = [
   '--color-sea-green',
 ] as const;
 const MAX_PIXEL_RATIO = 1.5;
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
 
 const VERTEX_SHADER = `
   attribute vec2 a_position;
@@ -385,11 +384,7 @@ function resolveThemeColor(
 export function HeroSignalField() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shouldReduceMotion = useReducedMotion();
-  const hasHydrated = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
 
   useEffect(() => {

@@ -5,8 +5,9 @@
   - button "Add a person" [disabled]:
     - img "Add a person"
   - navigation:
-    - button "Previous Step"
-    - button "🔑"
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - button "Enter your Passphrase": 🔑
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

@@ -261,7 +261,7 @@ describe('Geospatial targetFeatureProperty (#674)', () => {
     center: [0, 0] as [number, number],
     initialZoom: 5,
     dataSourceAssetId: 'data',
-    color: 'node-color-seq-1',
+    color: 'ord-color-seq-1',
   };
 
   it('accepts a non-empty targetFeatureProperty', () => {
@@ -476,7 +476,7 @@ describe('Narrative preset label non-empty', () => {
   });
 });
 
-describe('Side panel title non-empty', () => {
+describe('Side panel title and dataSource non-empty', () => {
   const basePanel = {
     id: 'panel1',
     dataSource: 'existing' as const,
@@ -491,6 +491,27 @@ describe('Side panel title non-empty', () => {
     expect(panelSchema.safeParse({ ...basePanel, title: '' }).success).toBe(
       false,
     );
+  });
+
+  it('rejects an empty panel dataSource', () => {
+    // A panel's `dataSource` is either the literal 'existing' (the current
+    // network) or an asset id. An empty string is neither: it names no roster
+    // to draw from, so the panel renders nothing at all.
+    const result = panelSchema.safeParse({ ...basePanel, dataSource: '' });
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.issues).toContainEqual(
+      expect.objectContaining({
+        message: 'Too small: expected string to have >=1 characters',
+        path: ['dataSource'],
+      }),
+    );
+  });
+
+  it('accepts a panel whose dataSource names an asset', () => {
+    expect(
+      panelSchema.safeParse({ ...basePanel, dataSource: 'roster-asset' })
+        .success,
+    ).toBe(true);
   });
 });
 

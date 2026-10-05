@@ -12,11 +12,21 @@ const { mapInstance, MapConstructor } = vi.hoisted(() => {
     on: vi.fn(),
     resize: vi.fn(),
     remove: vi.fn(),
+    getCanvas: vi.fn<() => HTMLCanvasElement>(),
+    getContainer: vi.fn<() => HTMLElement>(),
   };
   // A regular (non-arrow) function so it can be invoked with `new`.
   return {
     mapInstance: instance,
-    MapConstructor: vi.fn(function MapMock() {
+    MapConstructor: vi.fn(function MapMock(options: {
+      container: HTMLElement;
+      locale?: Record<string, string>;
+    }) {
+      const canvas = document.createElement('canvas');
+      canvas.setAttribute('aria-label', options.locale?.['Map.Title'] ?? 'Map');
+      options.container.append(canvas);
+      instance.getCanvas.mockReturnValue(canvas);
+      instance.getContainer.mockReturnValue(options.container);
       return instance;
     }),
   };
@@ -40,8 +50,13 @@ vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 // The hook under test (imported after mocks are declared)
-import { type ExtendedMapOptions, useMapbox } from '../useMapbox';
+import {
+  type ExtendedMapOptions,
+  resolveProtocolThemeVariable,
+  useMapbox,
+} from '../useMapbox';
 
 // --- ResizeObserver stub (mirrors hooks/__tests__/useNodeMeasurement.test.tsx) ---
 
@@ -94,11 +109,18 @@ const baseMapOptions = {
   center: [0, 0],
   initialZoom: 0,
   tokenAssetId: 'token-asset',
-  color: 'primary-color-seq-1',
+  color: 'ord-color-seq-1',
   targetFeatureProperty: 'id',
   style: 'mapbox://styles/mapbox/streets-v12',
   showTransit: false,
 } as unknown as ExtendedMapOptions;
+
+it('resolves every supported sequence family', () => {
+  expect(resolveProtocolThemeVariable('node-color-seq-3')).toBe('--node-3');
+  expect(resolveProtocolThemeVariable('edge-color-seq-4')).toBe('--edge-4');
+  expect(resolveProtocolThemeVariable('ord-color-seq-5')).toBe('--ord-5');
+  expect(resolveProtocolThemeVariable('cat-color-seq-6')).toBe('--cat-6');
+});
 
 function TestHarness({ mapOptions }: { mapOptions: ExtendedMapOptions }) {
   const { mapContainerRef } = useMapbox({
@@ -186,5 +208,29 @@ describe('useMapbox resize handling', () => {
     expect(observerInstances[0]!.disconnectSpy).toHaveBeenCalled();
     expect(cancelRaf).toHaveBeenCalled();
     expect(mapInstance.remove).toHaveBeenCalled();
+  });
+});
+
+describe('useMapbox built-in locale changes', () => {
+  it('updates the existing map canvas when the Shell language changes without recreating or removing the map', () => {
+    const tree = (locale: string) => (
+      <InterviewI18nProvider requestedLocale={locale}>
+        <TestHarness mapOptions={baseMapOptions} />
+      </InterviewI18nProvider>
+    );
+    const { rerender } = render(tree('en'));
+    const canvas = mapInstance.getCanvas();
+    expect(canvas).toHaveAccessibleName('Map');
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+
+    rerender(tree('es'));
+    expect(mapInstance.getCanvas()).toBe(canvas);
+    expect(canvas).toHaveAccessibleName('Mapa');
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+    expect(mapInstance.remove).not.toHaveBeenCalled();
+
+    rerender(tree('en-GB'));
+    expect(canvas).toHaveAccessibleName('Map');
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
   });
 });

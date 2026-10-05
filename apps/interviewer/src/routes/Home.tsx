@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useMemo, useState } from 'react';
+import { createElement, useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
@@ -15,7 +18,6 @@ import { TopActionBar } from '~/components/TopActionBar';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
-import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
@@ -26,6 +28,34 @@ import {
   protocolsContainerVariants,
 } from './homeAnimations';
 import { useHomeData } from './useHomeData';
+
+const messages = defineMessages({
+  deleteThisProtocol: {
+    id: 'interviewer.home.deleteThisProtocol',
+    defaultMessage: 'Delete this protocol?',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  deleteProtocol: {
+    id: 'interviewer.home.deleteProtocol',
+    defaultMessage: 'Delete Protocol',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  protocolDeleted: {
+    id: 'interviewer.home.protocolDeleted',
+    defaultMessage: 'Protocol deleted',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  couldNotDeleteProtocol: {
+    id: 'interviewer.home.couldNotDeleteProtocol',
+    defaultMessage: 'Could not delete protocol',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  deleteFailedHelp: {
+    id: 'interviewer.home.deleteFailedHelp',
+    defaultMessage: 'The protocol could not be deleted. Please try again.',
+    description: 'Administration text in Interviewer Home.',
+  },
+});
 
 type OpenDialog = 'settings' | null;
 type View = 'protocols' | 'data';
@@ -135,12 +165,27 @@ export function HomeRoute() {
 
       const confirmed = await dialog.openDialog({
         type: 'choice',
-        title: 'Delete this protocol?',
-        description,
+        title: createElement(AppMessage, {
+          message: messages.deleteThisProtocol,
+        }),
+        description: createElement(AppMessage, {
+          message: description.descriptor,
+          values: description.values,
+        }),
         intent: hasUnexported ? 'destructive' : 'default',
         actions: {
-          primary: { label: 'Delete Protocol', value: true },
-          cancel: { label: 'Cancel', value: false },
+          primary: {
+            label: createElement(AppMessage, {
+              message: messages.deleteProtocol,
+            }),
+            value: true,
+          },
+          cancel: {
+            label: createElement(AppMessage, {
+              message: commonMessages.cancel,
+            }),
+            value: false,
+          },
         },
       });
       if (confirmed !== true) return;
@@ -152,15 +197,25 @@ export function HomeRoute() {
         // bytes behind them) it minted while the protocol existed.
         revokeProtocolAssetUrls(hash);
         toast.add({
-          title: 'Protocol deleted',
+          title: createElement(AppMessage, {
+            message: messages.protocolDeleted,
+          }),
           description: protocol.name,
           variant: 'success',
         });
         await reload();
       } catch (cause) {
+        // Only the generic translated message below reaches the user; the raw
+        // IndexedDB/Dexie cause is only visible here.
+        // oxlint-disable-next-line no-console -- only diagnostic for a protocol-deletion failure; the user-facing toast is deliberately generic
+        console.error('Protocol deletion failed', cause);
         toast.add({
-          title: 'Could not delete protocol',
-          description: cause instanceof Error ? cause.message : String(cause),
+          title: createElement(AppMessage, {
+            message: messages.couldNotDeleteProtocol,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.deleteFailedHelp,
+          }),
           variant: 'destructive',
         });
       }
@@ -236,20 +291,14 @@ export function HomeRoute() {
               protocols={protocols}
               sessions={sessions}
               initialProtocolHash={initialProtocolHash}
+              // Both flags say only whether the teaser is wanted at all — the
+              // researcher's preference, and the dev-only build gate. The deck
+              // drops a teaser whose protocol is already installed, and hands
+              // its slot to the pending card while an install is in flight.
               showSampleCard={
-                settings
-                  ? !settings.sampleProtocolDismissed &&
-                    !pendingImports.some((p) => p.source === 'sample')
-                  : false
+                settings ? !settings.sampleProtocolDismissed : false
               }
-              showDevelopmentCard={
-                // Dev-only teaser; disappears once the Development protocol
-                // is installed (or while its import is in flight — the
-                // pending card shadows the slot during the install itself).
-                import.meta.env.DEV &&
-                !protocols.some((p) => p.name === DEVELOPMENT_PROTOCOL.name) &&
-                !pendingImports.some((p) => p.source === 'development')
-              }
+              showDevelopmentCard={import.meta.env.DEV}
               pendingImports={pendingImports}
               onImportFile={handleImportFile}
               onStartInterview={setPendingProtocolHash}

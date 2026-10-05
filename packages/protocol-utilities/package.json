@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-utilities",
-  "version": "3.2.1",
+  "version": "4.1.0",
   "description": "Synthetic network generation and interview-payload builder for Network Canvas protocols.",
   "license": "MIT",
   "repository": {
@@ -13,13 +13,23 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./messages": "./src/messages.ts",
+    "./locales": "./src/locales/catalogs.ts"
   },
   "publishConfig": {
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
+      },
+      "./messages": {
+        "types": "./dist/messages.d.ts",
+        "import": "./dist/messages.js"
+      },
+      "./locales": {
+        "types": "./dist/locales.d.ts",
+        "import": "./dist/locales.js"
       }
     },
     "access": "public"
@@ -29,7 +39,9 @@
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rm -rf .turbo node_modules dist"
+    "clean": "rm -rf .turbo node_modules dist",
+    "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs"
   },
   "dependencies": {
     "@codaco/network-query": "workspace:^",
@@ -40,11 +52,19 @@
     "uuid": "catalog:"
   },
   "devDependencies": {
-    "@codaco/fresco-ui": "workspace:^",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@codaco/app-i18n": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@codaco/app-i18n": {
+      "optional": true
+    }
   }
 }

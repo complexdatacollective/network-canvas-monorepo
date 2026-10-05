@@ -2,7 +2,7 @@
   - heading "About you" [level=1]
   - paragraph: Please answer the questions below.
   - text: Where do you know them from?
-  - group:
+  - group "Where do you know them from?":
     - checkbox "Family"
     - text: Family
     - checkbox "Work"
@@ -12,7 +12,8 @@
     - checkbox "Neighborhood"
     - text: Neighborhood
   - navigation:
-    - button "Previous Step"
+    - button "Settings"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

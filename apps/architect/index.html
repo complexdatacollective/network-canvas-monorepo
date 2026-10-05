@@ -42,6 +42,18 @@
         opacity: 0;
       }
 
+      .boot-loader__sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        border: 0;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
       /* circle-size mirrors the fresco-ui Spinner `lg` preset: 1.25 x 1rem. */
       .boot-spinner {
         --circle-size: 1.25rem;
@@ -186,7 +198,7 @@
   </head>
   <body>
     <div id="root" className="root"></div>
-    <div id="boot-loader" role="status" aria-label="Loading Architect">
+    <div id="boot-loader" role="status" aria-live="polite">
       <div class="boot-spinner" aria-hidden="true">
         <div class="boot-spinner__scale">
           <div class="boot-petal boot-petal--1">
@@ -207,6 +219,11 @@
           </div>
         </div>
       </div>
+      <!-- The proper name is language-neutral before the module downloads.
+           Startup replaces it with the existing localized loading message. -->
+      <span id="boot-loader-message" class="boot-loader__sr-only"
+        >Architect</span
+      >
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

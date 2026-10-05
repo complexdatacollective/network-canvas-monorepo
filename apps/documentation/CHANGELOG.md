@@ -1,5 +1,73 @@
 # @codaco/documentation
 
+## 0.6.0
+
+### Minor Changes
+
+- Update the documentation for Architect 8.3, Interviewer 8.3 and Fresco 4.2.
+
+  - **Interface languages.** Architect, Interviewer and Fresco can each be used in English, English (UK) or Español. The docs cover where each app's language switcher is, the language chooser inside an interview, and what a language choice never changes: protocol text, labels and collected data.
+  - **Architect.**
+    - The building-a-protocol tutorial now walks through the searchable attribute window and uses Architect's own button names.
+    - New pages cover the two-pane form-field dialog with its participant preview and **Check response**, validation rules set outside forms, creating node and edge types from the type picker, and the stage editor's section list.
+    - Also covered: renaming an attribute from its pill, per-node-type switches on the Anonymisation stage, mapping shapes to an attribute, and what undo and redo cover.
+  - **Missing resources.** Architect opens a protocol whose resource files are missing so they can be added again. It won't download the protocol until they are, and Interviewer and Fresco refuse such a protocol.
+  - **Interviewer.** Settings lists all seven sections. The interview menu, the home top bar, the setup wizard and the device checklist match the app.
+  - **Fresco.**
+    - A new "Upgrading to 4.2.0" section: passkeys must verify you, the health check no longer reports the version, two-factor authentication can be required, and import messages are clearer.
+    - The Fresco version is shown on the Settings page.
+    - The analytics and GDPR pages now describe exactly what the optional analytics send.
+
+### Patch Changes
+
+- The section label on each search result, and the schema, app and requirement
+  chips on each interface page, are the shared `Badge`, so they match the chips
+  used across the other Network Canvas apps.
+
+## 0.5.2
+
+### Patch Changes
+
+- Corrected the "Freeze completed interviews" section of the Fresco guide, which
+  described the setting as off by default when Fresco actually freezes completed
+  interviews by default. The section now explains the default behaviour and how
+  to switch it off if you want re-opened interviews to keep syncing changes.
+
+## 0.5.1
+
+### Patch Changes
+
+- Fix the corner radius on the copy-code confirmation bubble and the interface-summary badges (Schema, Available In, Requires). They used `rounded-md`, a step the shared theme's radius scale does not define (it goes straight from the default radius to `rounded-lg`), so the plugin serving the scale silently applied no rounding at those corners. They now use `rounded-lg`, matching their pre-theme-migration radius.
+- Sidebar folders now open and close in step with the page you navigate to, instead of showing their previous state for a moment first.
+
+## 0.5.0
+
+### Minor Changes
+
+- Expanded the Fresco "FAQ for IT Departments" to answer the questions institutional IT and security teams ask before approving a deployment: who develops and funds Network Canvas and who owns it, whether Fresco is a vendor product and on what terms it may be used, where to obtain the software, which sites the project itself hosts and what data they hold, whether Fresco supports institutional single sign-on and how to restrict the dashboard to an institutional network in the meantime, and how vulnerabilities and updates are handled, including the project's responsibilities and timelines. Updated the project FAQ's funding answer to list the current and maintenance awards. Corrected two related statements elsewhere in the Fresco docs: container image tags carry no `v` prefix (Advanced Deployment), and a passkey is not guaranteed to be multi-factor because Fresco requests but does not require user verification (Accounts).
+
+### Patch Changes
+
+- Document Fresco's `/api/health` liveness endpoint in the Advanced Deployment guide and the IT FAQ: it is unauthenticated, reports only the service status, and never names the running version or uptime.
+- Describe Fresco's new `REQUIRE_TWO_FACTOR` environment variable in the Accounts & Security guide, the deployment environment-variable reference, and the FAQ for IT departments: what it enforces for password accounts, why it is an environment variable rather than a dashboard setting, how a locked-out colleague is recovered, and why passkey accounts are exempt.
+- The Fresco FAQ for IT departments' network-restriction mitigation now discloses a real gap: Next.js dispatches Server Actions by a request header rather than by URL, so a signed-in researcher's session cookie can still authorize an action (export, deletion, settings changes) through a path the guidance leaves public. Closing this requires app-level enforcement that does not exist yet; the section now says so plainly rather than implying the path split is a complete boundary.
+- Disclose a limit of the Fresco IT FAQ's institutional network-restriction guidance: a Server Action can be invoked through any URL a valid session cookie reaches, including routes the guidance leaves public, the same way the `/api/uploadthing` exception is already documented as session-gated rather than network-gated. Also add the not-yet-configured `/expired` page, which binds a Server Action, to the list of researcher surfaces to restrict.
+- The Fresco Accounts & Security guide and the FAQ for IT Departments now state that Fresco requires WebAuthn user verification for every passkey, so a passkey sign-in always combines possession of the authenticator with a biometric or PIN check, and explain what to do about a passkey registered on a security key that cannot verify its user.
+
+## 0.4.2
+
+### Patch Changes
+
+- The documentation layout now marks its `<main>` as the target of the site
+  header's new skip link, so keyboard and screen-reader visitors can bypass the
+  navigation on every page.
+
+## 0.4.1
+
+### Patch Changes
+
+- Point Fresco setup instructions at GitHub's working account entry point.
+
 ## 0.4.0
 
 ### Minor Changes

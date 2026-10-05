@@ -165,14 +165,14 @@ const narrativeStage: NarrativeStage = {
     {
       id: 'breast-cancer',
       label: 'Breast Cancer',
-      color: '#e53e3e',
+      color: 'node-color-seq-1',
       variable: asEntityAttributeReference(BREAST_CANCER_VAR),
       inheritancePattern: 'autosomalDominant',
     },
     {
       id: 'haemophilia',
       label: 'Haemophilia',
-      color: '#3182ce',
+      color: 'node-color-seq-6',
       variable: asEntityAttributeReference(HAEMOPHILIA_VAR),
       inheritancePattern: 'xLinkedRecessive',
     },

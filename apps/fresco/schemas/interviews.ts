@@ -20,6 +20,7 @@ export type CreateInterview = {
  * rather than a fault in the deployment.
  */
 export type CreateInterviewErrorType =
+  | 'incompatible-protocol'
   | 'invalid-identifier'
   | 'no-anonymous-recruitment'
   | 'no-protocol'

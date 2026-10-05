@@ -27,16 +27,33 @@ import { expect, type Locator, type Page } from '@playwright/test';
 export class StagePreview {
   private readonly page: Page;
 
-  constructor(page: Page) {
+  private readonly labels: {
+    launch: string;
+    settings: string;
+    nextStep: string;
+  };
+
+  constructor(
+    page: Page,
+    labels = {
+      launch: 'Preview',
+      settings: 'Preview settings',
+      nextStep: 'Next Step',
+    },
+  ) {
     this.page = page;
+    this.labels = labels;
   }
 
   get launchButton(): Locator {
-    return this.page.getByRole('button', { name: 'Preview', exact: true });
+    return this.page.getByRole('button', {
+      name: this.labels.launch,
+      exact: true,
+    });
   }
 
   get settingsButton(): Locator {
-    return this.page.getByRole('button', { name: 'Preview settings' });
+    return this.page.getByRole('button', { name: this.labels.settings });
   }
 
   /**
@@ -69,7 +86,7 @@ export class StagePreview {
     // The handshake delivers the protocol after mount, so wait for the stage
     // itself rather than for load.
     await expect(
-      preview.getByRole('button', { name: 'Next Step' }),
+      preview.getByRole('button', { name: this.labels.nextStep, exact: true }),
     ).toBeVisible({ timeout: 20_000 });
     return preview;
   }

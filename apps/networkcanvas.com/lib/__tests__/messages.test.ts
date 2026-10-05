@@ -2,9 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { supportedLocales } from '~/lib/i18n/locales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
+import de from '~/messages/de.json';
 import enGB from '~/messages/en-GB.json';
 import en from '~/messages/en.json';
 import es from '~/messages/es.json';
+import fr from '~/messages/fr.json';
+import italian from '~/messages/it.json';
+import nl from '~/messages/nl.json';
+import ptBR from '~/messages/pt-BR.json';
+import zhHans from '~/messages/zh-Hans.json';
+import zhHant from '~/messages/zh-Hant.json';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -24,15 +31,32 @@ function messageLeaves(value: unknown, prefix = ''): Array<[string, string]> {
 }
 
 function messageTokens(text: string): string[] {
-  return text.match(/\{[^}]+\}|<\/?[a-z]+>/g)?.toSorted() ?? [];
+  return Array.from(
+    text.matchAll(/\{([a-zA-Z][\w]*)\b|(<\/?[a-z]+>)/g),
+    (match) => (match[1] ? `{${match[1]}}` : (match[2] ?? '')),
+  ).toSorted();
 }
 
+const translatedCatalogs = [
+  ['Spanish', es],
+  ['Simplified Chinese', zhHans],
+  ['Traditional Chinese', zhHant],
+  ['German', de],
+  ['Dutch', nl],
+  ['Brazilian Portuguese', ptBR],
+  ['Italian', italian],
+  ['French', fr],
+] as const;
+
 describe('message catalogs', () => {
-  it('keeps Spanish keys in parity with English', () => {
-    expect(messageLeaves(es).map(([key]) => key)).toEqual(
-      messageLeaves(en).map(([key]) => key),
-    );
-  });
+  it.each(translatedCatalogs)(
+    'keeps %s keys in parity with English',
+    (_language, catalog) => {
+      expect(messageLeaves(catalog).map(([key]) => key)).toEqual(
+        messageLeaves(en).map(([key]) => key),
+      );
+    },
+  );
 
   it.each(
     supportedLocales.map(({ locale }) => [locale, loadLocaleMessages(locale)]),
@@ -79,14 +103,16 @@ describe('message catalogs', () => {
     ).toContain('analysing');
   });
 
-  it('keeps placeholders and rich-text tags in parity', () => {
-    const englishLeaves = messageLeaves(en);
-    const spanishLeaves = new Map(messageLeaves(es));
+  it.each(translatedCatalogs)(
+    'keeps %s placeholders and rich-text tags in parity',
+    (_language, catalog) => {
+      const translatedLeaves = new Map(messageLeaves(catalog));
 
-    for (const [key, englishText] of englishLeaves) {
-      expect(messageTokens(spanishLeaves.get(key) ?? '')).toEqual(
-        messageTokens(englishText),
-      );
-    }
-  });
+      for (const [key, englishText] of messageLeaves(en)) {
+        expect(messageTokens(translatedLeaves.get(key) ?? '')).toEqual(
+          messageTokens(englishText),
+        );
+      }
+    },
+  );
 });

@@ -3,7 +3,7 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup, type RadioGroupProps } from '@base-ui/react/radio-group';
 import { motion } from 'motion/react';
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -17,39 +17,47 @@ import {
   smallSizeVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
-const radioGroupWrapperVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  interactiveStateVariants,
-  orientationVariants,
-  cva({
-    base: 'items-start',
-  }),
-);
+const radioGroupWrapperOwnVariants = cva({
+  base: 'items-start',
+});
 
-const radioIndicatorVariants = compose(
-  smallSizeVariants,
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  cva({
-    base: cx(
-      'flex aspect-square shrink-0! items-center justify-center',
-      'rounded-full',
-      'focusable',
-    ),
-  }),
-);
+const radioGroupWrapperVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    interactiveStateVariants,
+    orientationVariants,
+    radioGroupWrapperOwnVariants,
+  ],
+});
+
+const radioIndicatorOwnVariants = cva({
+  base: cx(
+    'flex aspect-square shrink-0! items-center justify-center',
+    'rounded-full',
+    'focusable',
+  ),
+});
+
+const radioIndicatorVariants = cva({
+  composes: [
+    smallSizeVariants,
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    radioIndicatorOwnVariants,
+  ],
+});
 
 type RadioItemProps = {
   value: string | number;
-  label: string;
+  label: ReactNode;
   disabled?: boolean;
   readOnly?: boolean;
   size?: VariantProps<typeof radioIndicatorVariants>['size'];
@@ -139,7 +147,11 @@ export function RadioItem({
           labelClassName,
         )}
       >
-        <RenderMarkdown>{label}</RenderMarkdown>
+        {typeof label === 'string' ? (
+          <RenderMarkdown>{label}</RenderMarkdown>
+        ) : (
+          label
+        )}
       </span>
     </label>
   );
@@ -147,7 +159,7 @@ export function RadioItem({
 
 type RadioOption = {
   value: string | number;
-  label: string;
+  label: ReactNode;
   disabled?: boolean;
 };
 

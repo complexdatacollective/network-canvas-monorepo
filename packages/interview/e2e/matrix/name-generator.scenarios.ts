@@ -244,6 +244,68 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
     },
 
     {
+      id: 'number-unique-validation',
+      covers: ['codebook: variable.validation'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const contact = synth.addNodeType({ name: 'Contact' });
+        contact.addVariable({
+          id: 'alterId',
+          name: 'alterId',
+          type: 'number',
+          component: 'Number',
+          validation: { required: true, unique: true },
+        });
+        const stage = synth.addStage('NameGenerator', {
+          subject: { entity: 'node', type: contact.id },
+          form: { title: 'Add a person', fields: [] },
+        });
+        stage.addFormField({
+          variable: 'alterId',
+          component: 'Number',
+          prompt: 'Alter ID',
+        });
+        stage.addPrompt({ text: 'Who do you know?' });
+        return synth;
+      },
+      run: async ({ page, stage, protocol, interview }) => {
+        // The first alter takes ID 12, stored as a number.
+        await stage.nameGenerator.openAddForm();
+        await stage.form.fillNumber('alterId', '12');
+        await stage.nameGenerator.submitForm();
+        const afterFirst = await protocol.getNetworkState(
+          interview.interviewId,
+        );
+        expect(afterFirst?.nodes).toHaveLength(1);
+
+        // A second alter with the same ID is refused. The number input holds
+        // '12' as a string while the first alter stores the number 12; the
+        // uniqueness rule has to treat them as the same ID.
+        await stage.nameGenerator.openAddForm();
+        await stage.form.fillNumber('alterId', '12');
+        await page.getByRole('button', { name: 'Finished' }).click();
+        await expect(stage.form.getFieldError('alterId')).toBeVisible();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        const afterDuplicate = await protocol.getNetworkState(
+          interview.interviewId,
+        );
+        expect(afterDuplicate?.nodes).toHaveLength(1);
+
+        // A distinct ID is accepted and stored as a number.
+        await stage.form.fillNumber('alterId', '13');
+        await stage.nameGenerator.submitForm();
+        const afterSecond = await protocol.getNetworkState(
+          interview.interviewId,
+        );
+        expect(
+          afterSecond?.nodes.map(
+            (node) => node[entityAttributesProperty].alterId,
+          ),
+        ).toEqual([12, 13]);
+      },
+    },
+
+    {
       id: 'all-field-components-and-parameters',
       covers: ['codebook: variable.component', 'codebook: variable.parameters'],
       slow: true,

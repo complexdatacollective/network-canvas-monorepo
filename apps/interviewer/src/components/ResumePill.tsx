@@ -3,8 +3,29 @@ import { motion } from 'motion/react';
 import { useMemo } from 'react';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { updateSettings } from '~/lib/db/api';
 import type { StoredSessionLite } from '~/lib/db/types';
+
+const messages = defineMessages({
+  identity: {
+    id: 'interviewer.resumePill.identity',
+    defaultMessage: '{protocol} – {caseId}',
+    description:
+      'Protocol name and case identifier on the resume shortcut; both values are unchanged research content.',
+  },
+  resumeLastInterview: {
+    id: 'interviewer.resumePill.resumeLastInterview',
+    defaultMessage: 'Resume last interview',
+    description: 'Visible copy in Interviewer Resume Pill.',
+  },
+  untitled: {
+    id: 'interviewer.resumePill.untitled',
+    defaultMessage: 'Untitled',
+    description: 'User-facing message in Interviewer Resume Pill.',
+  },
+});
 
 // Enter: drops in from above as a circle, then the content panel
 // springs open to reveal text + play button. The 0.7s delay on the drop
@@ -56,6 +77,7 @@ export function ResumePillView({
   session: StoredSessionLite;
   onResume: () => void;
 }) {
+  const intl = useAppIntl();
   return (
     <motion.button
       key="resume-pill-button"
@@ -88,10 +110,13 @@ export function ResumePillView({
       >
         <div className="ml-2 text-left whitespace-nowrap">
           <div className="font-heading text-text/60 mb-0.5 text-xs font-black tracking-widest uppercase">
-            Resume last interview
+            {intl.formatMessage(messages.resumeLastInterview)}
           </div>
           <div className="font-heading max-w-xs overflow-hidden text-sm font-extrabold text-ellipsis">
-            {session.protocolName} – {session.caseId || 'Untitled'}
+            {intl.formatMessage(messages.identity, {
+              protocol: session.protocolName,
+              caseId: session.caseId || intl.formatMessage(messages.untitled),
+            })}
           </div>
         </div>
         <div

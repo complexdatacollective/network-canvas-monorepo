@@ -9,6 +9,7 @@ declare global {
   // Injected at build time by `vite.renderer.config.ts` (read from
   // apps/interviewer/package.json `version`). Renderer-only.
   const __APP_VERSION__: string;
+  const __PWA_BUILD_ID__: string;
 
   type WireAsset = {
     id: string;

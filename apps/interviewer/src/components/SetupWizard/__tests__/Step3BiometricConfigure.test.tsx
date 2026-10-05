@@ -16,7 +16,7 @@ vi.mock('@codaco/fresco-ui/dialogs/useWizard', () => ({
 }));
 
 type AuthStatusResult = { configured: boolean; locked: boolean };
-type AuthResult = { ok: boolean; message?: string };
+import type { AuthResult } from '~/lib/auth/api';
 
 const statusMock = vi.fn<() => Promise<AuthStatusResult>>(async () => ({
   configured: false,
@@ -93,7 +93,13 @@ describe('Step3BiometricConfigure — recovery passphrase capture', () => {
   it('surfaces an enrolment failure and does not advance', async () => {
     enrolWithBiometricMock.mockResolvedValue({
       ok: false,
-      message: 'Cancelled',
+      message: 'Biometric enrolment was cancelled',
+      localizedMessage: {
+        descriptor: {
+          id: 'interviewer.webauthn.enrolmentCancelled',
+          defaultMessage: 'Biometric enrolment was cancelled',
+        },
+      },
     });
     render(<Step3BiometricConfigure />);
     const [phrase, confirm] = passphraseFields();
@@ -105,6 +111,8 @@ describe('Step3BiometricConfigure — recovery passphrase capture', () => {
 
     const ok = await lastBeforeNext()();
     expect(ok).toBe(false);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Cancelled');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Biometric enrolment was cancelled',
+    );
   });
 });

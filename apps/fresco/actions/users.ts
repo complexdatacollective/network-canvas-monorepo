@@ -1,21 +1,70 @@
 'use server';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { createUserSchema } from '~/schemas/auth';
-import { changePasswordSchema, deleteUsersSchema } from '~/schemas/users';
+import { createAuthSchemas } from '~/schemas/auth';
+import { createUsersSchemas } from '~/schemas/users';
 import { hashPassword, verifyPassword } from '~/utils/password';
 
+const messages = defineMessages({
+  copyInvalidFormData: {
+    id: 'fresco.actions.users.copyInvalidFormData',
+    defaultMessage: 'Invalid form data',
+    description: 'Researcher-facing actions / users: Invalid form data',
+  },
+  copyFailedToCreateUserUsernameMayAlready: {
+    id: 'fresco.actions.users.copyFailedToCreateUserUsernameMayAlready',
+    defaultMessage: 'Failed to create user. Username may already exist.',
+    description:
+      'Researcher-facing actions / users: Failed to create user. Username may already exist.',
+  },
+  copyInvalidData: {
+    id: 'fresco.actions.users.copyInvalidData',
+    defaultMessage: 'Invalid data',
+    description: 'Researcher-facing actions / users: Invalid data',
+  },
+  copyNoValidUsersToDelete: {
+    id: 'fresco.actions.users.copyNoValidUsersToDelete',
+    defaultMessage: 'No valid users to delete',
+    description: 'Researcher-facing actions / users: No valid users to delete',
+  },
+  copyCannotDeleteAllUsersAtLeastOne: {
+    id: 'fresco.actions.users.copyCannotDeleteAllUsersAtLeastOne',
+    defaultMessage: 'Cannot delete all users. At least one user must remain.',
+    description:
+      'Researcher-facing actions / users: Cannot delete all users. At least one user must remain.',
+  },
+  copyFailedToDeleteUsers: {
+    id: 'fresco.actions.users.copyFailedToDeleteUsers',
+    defaultMessage: 'Failed to delete users',
+    description: 'Researcher-facing actions / users: Failed to delete users',
+  },
+  copyCurrentPasswordIsIncorrect: {
+    id: 'fresco.actions.users.copyCurrentPasswordIsIncorrect',
+    defaultMessage: 'Current password is incorrect',
+    description:
+      'Researcher-facing actions / users: Current password is incorrect',
+  },
+  copyFailedToUpdatePassword: {
+    id: 'fresco.actions.users.copyFailedToUpdatePassword',
+    defaultMessage: 'Failed to update password',
+    description: 'Researcher-facing actions / users: Failed to update password',
+  },
+});
+
 export async function createUser(data: unknown) {
+  const { createUserSchema } = createAuthSchemas(createMessageError);
+
   const session = await requireApiAuth();
 
   const parsedData = createUserSchema.safeParse(data);
 
   if (!parsedData.success) {
     return {
-      error: 'Invalid form data',
+      error: createMessageError(messages.copyInvalidFormData),
       data: null,
     };
   }
@@ -40,6 +89,10 @@ export async function createUser(data: unknown) {
     void addEvent(
       'User Created',
       `User ${session.user.username} created user: ${username}`,
+      {
+        kind: 'userCreated',
+        values: { username: session.user.username, target: username },
+      },
     );
     safeUpdateTag('getUsers');
     safeUpdateTag('activityFeed');
@@ -47,7 +100,9 @@ export async function createUser(data: unknown) {
     return { error: null, data: { username } };
   } catch (_error) {
     return {
-      error: 'Failed to create user. Username may already exist.',
+      error: createMessageError(
+        messages.copyFailedToCreateUserUsernameMayAlready,
+      ),
       data: null,
     };
   }
@@ -71,13 +126,15 @@ export async function checkUsernameAvailable(
 }
 
 export async function deleteUsers(data: unknown) {
+  const { deleteUsersSchema } = createUsersSchemas(createMessageError);
+
   const session = await requireApiAuth();
 
   const parsedData = deleteUsersSchema.safeParse(data);
 
   if (!parsedData.success) {
     return {
-      error: 'Invalid data',
+      error: createMessageError(messages.copyInvalidData),
       data: null,
     };
   }
@@ -89,7 +146,7 @@ export async function deleteUsers(data: unknown) {
 
   if (idsToDelete.length === 0) {
     return {
-      error: 'No valid users to delete',
+      error: createMessageError(messages.copyNoValidUsersToDelete),
       data: null,
     };
   }
@@ -98,7 +155,7 @@ export async function deleteUsers(data: unknown) {
   const userCount = await prisma.user.count();
   if (userCount - idsToDelete.length < 1) {
     return {
-      error: 'Cannot delete all users. At least one user must remain.',
+      error: createMessageError(messages.copyCannotDeleteAllUsersAtLeastOne),
       data: null,
     };
   }
@@ -119,6 +176,14 @@ export async function deleteUsers(data: unknown) {
     void addEvent(
       'User Deleted',
       `User ${session.user.username} deleted user(s): ${usernames}`,
+      {
+        kind: 'usersDeleted',
+        values: {
+          username: session.user.username,
+          count: usersToDelete.length,
+          users: usersToDelete.map((user) => user.username),
+        },
+      },
     );
     safeUpdateTag('getUsers');
     safeUpdateTag('activityFeed');
@@ -126,13 +191,15 @@ export async function deleteUsers(data: unknown) {
     return { error: null, data: { deletedIds } };
   } catch (_error) {
     return {
-      error: 'Failed to delete users',
+      error: createMessageError(messages.copyFailedToDeleteUsers),
       data: null,
     };
   }
 }
 
 export async function changePassword(data: unknown) {
+  const { changePasswordSchema } = createUsersSchemas(createMessageError);
+
   const session = await requireApiAuth();
 
   const parsedData = changePasswordSchema.safeParse(data);
@@ -140,7 +207,9 @@ export async function changePassword(data: unknown) {
   if (!parsedData.success) {
     const errors = parsedData.error.flatten();
     return {
-      error: errors.fieldErrors.newPassword?.[0] ?? 'Invalid data',
+      error:
+        errors.fieldErrors.newPassword?.[0] ??
+        createMessageError(messages.copyInvalidData),
       data: null,
     };
   }
@@ -154,7 +223,7 @@ export async function changePassword(data: unknown) {
 
     if (!key?.hashed_password) {
       return {
-        error: 'Current password is incorrect',
+        error: createMessageError(messages.copyCurrentPasswordIsIncorrect),
         data: null,
       };
     }
@@ -162,13 +231,13 @@ export async function changePassword(data: unknown) {
     const valid = await verifyPassword(currentPassword, key.hashed_password);
     if (!valid) {
       return {
-        error: 'Current password is incorrect',
+        error: createMessageError(messages.copyCurrentPasswordIsIncorrect),
         data: null,
       };
     }
   } catch (_error) {
     return {
-      error: 'Current password is incorrect',
+      error: createMessageError(messages.copyCurrentPasswordIsIncorrect),
       data: null,
     };
   }
@@ -184,13 +253,14 @@ export async function changePassword(data: unknown) {
     void addEvent(
       'Password Changed',
       `User ${session.user.username} changed their password`,
+      { kind: 'passwordChanged', values: { username: session.user.username } },
     );
     safeUpdateTag('activityFeed');
 
     return { error: null, data: { success: true } };
   } catch (_error) {
     return {
-      error: 'Failed to update password',
+      error: createMessageError(messages.copyFailedToUpdatePassword),
       data: null,
     };
   }

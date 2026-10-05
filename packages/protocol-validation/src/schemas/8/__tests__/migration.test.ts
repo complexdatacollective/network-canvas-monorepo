@@ -1422,6 +1422,123 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('node palette position wrap', () => {
+    // Architect Classic offered ten node palette positions; v8 defines eight.
+    // A protocol authored with the ninth or tenth is legitimate v7 data, and
+    // before the wrap it could not be imported at all — a node definition's
+    // `color` is required, so there is nothing to drop.
+    const v7WithNodeColors = (colors: Record<string, string>) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: Object.fromEntries(
+            Object.entries(colors).map(([type, color]) => [
+              type,
+              { name: type, color, variables: {} },
+            ]),
+          ),
+          edge: {},
+          ego: {},
+        },
+        stages: [],
+      }) as Protocol<7>;
+
+    const migrateColors = (colors: Record<string, string>) => {
+      const migratedRaw = migrationV7toV8.migrate(v7WithNodeColors(colors), {
+        name: 'Test Protocol',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      return Object.fromEntries(
+        Object.entries(parsed.data?.codebook.node ?? {}).map(
+          ([type, definition]) => [type, definition.color],
+        ),
+      );
+    };
+
+    it('wraps the ninth and tenth positions onto the first and second', () => {
+      expect(
+        migrateColors({
+          ninth: 'node-color-seq-9',
+          tenth: 'node-color-seq-10',
+        }),
+      ).toEqual({
+        ninth: 'node-color-seq-1',
+        tenth: 'node-color-seq-2',
+      });
+    });
+
+    it('leaves every in-range position exactly as authored', () => {
+      const inRange = Object.fromEntries(
+        Array.from({ length: 8 }, (_, index) => [
+          `type${index + 1}`,
+          `node-color-seq-${index + 1}`,
+        ]),
+      );
+      expect(migrateColors(inRange)).toEqual(inRange);
+    });
+
+    it('does not touch edge or ordinal palette references', () => {
+      // Classic's edge and ordinal palettes both offer eight positions, which
+      // is inside v8's ranges, so there is nothing to wrap there — and a wrap
+      // applied to a ten-value palette (ordinal) would silently recolour a
+      // valid protocol.
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {},
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-8' } },
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ordinal-bin',
+            label: 'Sort',
+            type: 'OrdinalBin',
+            subject: { entity: 'node', type: 'person' },
+            prompts: [{ id: 'p1', text: 'Sort them', variable: 'closeness' }],
+          },
+        ],
+      } as Protocol<7>;
+      const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      }) as {
+        codebook: { edge: Record<string, { color: string }> };
+        stages: { prompts: { color: string }[] }[];
+      };
+      expect(migratedRaw.codebook.edge.knows?.color).toBe('edge-color-seq-8');
+      // The OrdinalBin prompt's own colour backfill is unaffected: it still
+      // defaults to the first ordinal colour rather than a node one.
+      expect(migratedRaw.stages[0]?.prompts[0]?.color).toBe('ord-color-seq-1');
+    });
+
+    it('leaves positions beyond the tenth for the schema to reject', () => {
+      // Classic's palette stopped at ten, so an eleventh position can only be
+      // hand-authored or corrupt — it has no legacy interpretation to wrap to.
+      const migratedRaw = migrationV7toV8.migrate(
+        v7WithNodeColors({ person: 'node-color-seq-11' }),
+        { name: 'Test Protocol' },
+      ) as { codebook: { node: Record<string, { color: string }> } };
+      expect(migratedRaw.codebook.node.person?.color).toBe('node-color-seq-11');
+      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
+    });
+
+    it('leaves a colour that is not a palette position for the schema to reject', () => {
+      // Not a repair path: only a `node-color-seq-<position>` reference is
+      // rewritten, and only its position. Anything else is a value the
+      // migration cannot interpret, and guessing one would hide the problem.
+      const migratedRaw = migrationV7toV8.migrate(
+        v7WithNodeColors({ person: '#ff0000' }),
+        { name: 'Test Protocol' },
+      ) as { codebook: { node: Record<string, { color: string }> } };
+      expect(migratedRaw.codebook.node.person?.color).toBe('#ff0000');
+      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
+    });
+  });
+
   describe('automaticLayout flatten', () => {
     const buildV7 = (
       stageType: 'Sociogram' | 'Narrative',

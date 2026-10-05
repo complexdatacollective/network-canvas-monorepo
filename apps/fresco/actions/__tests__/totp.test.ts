@@ -1,3 +1,9 @@
+import { formatActionError } from './formatActionError';
+vi.mock('~/i18n/server', async () => {
+  const { createAppIntl } = await import('@codaco/app-i18n/messages');
+  return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
+});
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
@@ -62,6 +68,8 @@ const {
   mockAddEvent,
   mockVerifyTotpSetupSchemaSafeParse,
   mockDisableTotpSchemaSafeParse,
+  mockIsTwoFactorRequired,
+  mockGetTwoFactorStatus,
 } = vi.hoisted(() => ({
   mockPrismaTotpCredentialUpsert: vi.fn(),
   mockPrismaTotpCredentialFindUnique: vi.fn(),
@@ -82,6 +90,8 @@ const {
   mockAddEvent: vi.fn(),
   mockVerifyTotpSetupSchemaSafeParse: vi.fn(),
   mockDisableTotpSchemaSafeParse: vi.fn(),
+  mockIsTwoFactorRequired: vi.fn(),
+  mockGetTwoFactorStatus: vi.fn(),
 }));
 
 vi.mock('~/lib/db', () => ({
@@ -136,6 +146,11 @@ vi.mock('~/lib/auth/guards', () => ({
   getServerSession: vi.fn(),
 }));
 
+vi.mock('~/lib/auth/twoFactorPolicy', () => ({
+  getTwoFactorStatus: mockGetTwoFactorStatus,
+  isTwoFactorRequired: mockIsTwoFactorRequired,
+}));
+
 vi.mock('~/utils/getBaseUrl', () => ({
   getBaseUrl: () => 'https://fresco.example.com',
 }));
@@ -154,15 +169,17 @@ vi.mock('~/lib/activityFeed', () => ({
 }));
 
 vi.mock('~/schemas/totp', () => ({
-  verifyTotpSetupSchema: {
-    safeParse: mockVerifyTotpSetupSchemaSafeParse,
-  },
-  disableTotpSchema: {
-    safeParse: mockDisableTotpSchemaSafeParse,
-  },
-  verifyTwoFactorSchema: {
-    safeParse: vi.fn(),
-  },
+  createTotpSchemas: () => ({
+    verifyTotpSetupSchema: {
+      safeParse: mockVerifyTotpSetupSchemaSafeParse,
+    },
+    disableTotpSchema: {
+      safeParse: mockDisableTotpSchemaSafeParse,
+    },
+    verifyTwoFactorSchema: {
+      safeParse: vi.fn(),
+    },
+  }),
 }));
 
 import {
@@ -214,7 +231,7 @@ describe('enableTotp', () => {
   it('creates an unverified TOTP credential and returns secret and QR code', async () => {
     const result = await enableTotp();
 
-    expect(result.error).toBeNull();
+    expect(formatActionError(result.error)).toBeNull();
     expect(result.data).toEqual({
       secret: TOTP_SECRET,
       qrCodeDataUrl: QR_CODE_DATA_URL,
@@ -261,6 +278,14 @@ describe('enableTotp', () => {
 
     await expect(enableTotp()).rejects.toThrow('Unauthorized');
   });
+
+  it('stays reachable to an account held at the mandatory two-factor setup gate', async () => {
+    await enableTotp();
+
+    expect(mockRequireApiAuth).toHaveBeenCalledWith({
+      allowPendingTwoFactorSetup: true,
+    });
+  });
 });
 
 describe('verifyTotpSetup', () => {
@@ -278,7 +303,7 @@ describe('verifyTotpSetup', () => {
 
     const result = await verifyTotpSetup({ code: 'invalid' });
 
-    expect(result.error).toBe('Invalid code');
+    expect(formatActionError(result.error)).toBe('Invalid code');
     expect(result.data).toBeNull();
   });
 
@@ -291,7 +316,7 @@ describe('verifyTotpSetup', () => {
 
     const result = await verifyTotpSetup({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBe('No pending TOTP setup found');
+    expect(formatActionError(result.error)).toBe('No pending TOTP setup found');
     expect(result.data).toBeNull();
   });
 
@@ -308,7 +333,7 @@ describe('verifyTotpSetup', () => {
 
     const result = await verifyTotpSetup({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBe('No pending TOTP setup found');
+    expect(formatActionError(result.error)).toBe('No pending TOTP setup found');
     expect(result.data).toBeNull();
   });
 
@@ -326,7 +351,7 @@ describe('verifyTotpSetup', () => {
 
     const result = await verifyTotpSetup({ code: '000000' });
 
-    expect(result.error).toBe('Invalid verification code');
+    expect(formatActionError(result.error)).toBe('Invalid verification code');
     expect(result.data).toBeNull();
   });
 
@@ -346,10 +371,32 @@ describe('verifyTotpSetup', () => {
 
     const result = await verifyTotpSetup({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBeNull();
+    expect(formatActionError(result.error)).toBeNull();
     expect(result.data).toEqual({ recoveryCodes: RECOVERY_CODES });
     expect(mockPrismaTransaction).toHaveBeenCalled();
     expect(mockSafeUpdateTag).toHaveBeenCalledWith('activityFeed');
+  });
+
+  it('stays reachable to an account held at the mandatory two-factor setup gate', async () => {
+    mockVerifyTotpSetupSchemaSafeParse.mockReturnValue({
+      success: true,
+      data: { code: VALID_TOTP_CODE },
+    });
+    mockPrismaTotpCredentialFindUnique.mockResolvedValue({
+      user_id: CURRENT_USER_ID,
+      secret: TOTP_SECRET,
+      verified: false,
+    });
+    mockVerifyTotpCode.mockReturnValue(true);
+    mockGenerateRecoveryCodes.mockReturnValue(RECOVERY_CODES);
+    mockHashRecoveryCode.mockImplementation((code: string) => `hash:${code}`);
+    mockPrismaTransaction.mockResolvedValue([{}, {}]);
+
+    await verifyTotpSetup({ code: VALID_TOTP_CODE });
+
+    expect(mockRequireApiAuth).toHaveBeenCalledWith({
+      allowPendingTwoFactorSetup: true,
+    });
   });
 });
 
@@ -358,6 +405,107 @@ describe('disableTotp', () => {
     vi.clearAllMocks();
     mockRequireApiAuth.mockResolvedValue(mockSession);
     mockPrismaTransaction.mockResolvedValue([{}, {}]);
+    mockIsTwoFactorRequired.mockReturnValue(false);
+    mockGetTwoFactorStatus.mockResolvedValue({
+      passwordMode: true,
+      totpEnabled: true,
+    });
+  });
+
+  const verifiedCredential = {
+    user_id: CURRENT_USER_ID,
+    secret: TOTP_SECRET,
+    verified: true,
+  };
+
+  const TWO_FACTOR_REQUIRED_MESSAGE =
+    'This installation of Fresco requires two-factor authentication for every account that signs in with a password, so it cannot be turned off.';
+
+  it('is not exempt from the mandatory two-factor setup gate', async () => {
+    mockDisableTotpSchemaSafeParse.mockReturnValue({
+      success: true,
+      data: { code: VALID_TOTP_CODE },
+    });
+    mockPrismaTotpCredentialFindUnique.mockResolvedValue(verifiedCredential);
+    mockVerifyTotpCode.mockReturnValue(true);
+
+    await disableTotp({ code: VALID_TOTP_CODE });
+
+    expect(mockRequireApiAuth).toHaveBeenCalledWith();
+  });
+
+  it('refuses while the installation requires two-factor for password accounts, before checking the code', async () => {
+    mockIsTwoFactorRequired.mockReturnValue(true);
+    mockDisableTotpSchemaSafeParse.mockReturnValue({
+      success: true,
+      data: { code: VALID_TOTP_CODE },
+    });
+    mockPrismaTotpCredentialFindUnique.mockResolvedValue(verifiedCredential);
+    mockVerifyTotpCode.mockReturnValue(true);
+
+    const result = await disableTotp({ code: VALID_TOTP_CODE });
+
+    expect(formatActionError(result.error)).toBe(TWO_FACTOR_REQUIRED_MESSAGE);
+    expect(result.data).toBeNull();
+    expect(mockIsTwoFactorRequired).toHaveBeenCalled();
+    expect(mockVerifyTotpCode).not.toHaveBeenCalled();
+    expect(mockPrismaTransaction).not.toHaveBeenCalled();
+    expect(mockAddEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not consume a recovery code on a refused attempt', async () => {
+    mockIsTwoFactorRequired.mockReturnValue(true);
+    const recoveryCode = '0123456789abcdef0123';
+    mockDisableTotpSchemaSafeParse.mockReturnValue({
+      success: true,
+      data: { code: recoveryCode },
+    });
+    mockPrismaTotpCredentialFindUnique.mockResolvedValue(verifiedCredential);
+
+    // The prisma mock has no recoveryCode.updateMany: reaching it would throw.
+    const result = await disableTotp({ code: recoveryCode });
+
+    expect(formatActionError(result.error)).toBe(TWO_FACTOR_REQUIRED_MESSAGE);
+    expect(mockHashRecoveryCode).not.toHaveBeenCalled();
+    expect(mockPrismaTransaction).not.toHaveBeenCalled();
+  });
+
+  it('still lets a passkey-mode account remove a stray authenticator while the setting is on', async () => {
+    mockIsTwoFactorRequired.mockReturnValue(true);
+    mockGetTwoFactorStatus.mockResolvedValue({
+      passwordMode: false,
+      totpEnabled: true,
+    });
+    mockDisableTotpSchemaSafeParse.mockReturnValue({
+      success: true,
+      data: { code: VALID_TOTP_CODE },
+    });
+    mockPrismaTotpCredentialFindUnique.mockResolvedValue(verifiedCredential);
+    mockVerifyTotpCode.mockReturnValue(true);
+
+    const result = await disableTotp({ code: VALID_TOTP_CODE });
+
+    expect(formatActionError(result.error)).toBeNull();
+    expect(mockPrismaTransaction).toHaveBeenCalled();
+  });
+
+  it('disables again once the variable is unset', async () => {
+    mockDisableTotpSchemaSafeParse.mockReturnValue({
+      success: true,
+      data: { code: VALID_TOTP_CODE },
+    });
+    mockPrismaTotpCredentialFindUnique.mockResolvedValue(verifiedCredential);
+    mockVerifyTotpCode.mockReturnValue(true);
+
+    mockIsTwoFactorRequired.mockReturnValue(true);
+    const refused = await disableTotp({ code: VALID_TOTP_CODE });
+    expect(formatActionError(refused.error)).toBe(TWO_FACTOR_REQUIRED_MESSAGE);
+    expect(mockPrismaTransaction).not.toHaveBeenCalled();
+
+    mockIsTwoFactorRequired.mockReturnValue(false);
+    const allowed = await disableTotp({ code: VALID_TOTP_CODE });
+    expect(formatActionError(allowed.error)).toBeNull();
+    expect(mockPrismaTransaction).toHaveBeenCalledTimes(1);
   });
 
   it('returns error for invalid schema data', async () => {
@@ -368,7 +516,7 @@ describe('disableTotp', () => {
 
     const result = await disableTotp({ code: 'bad' });
 
-    expect(result.error).toBe('Invalid code');
+    expect(formatActionError(result.error)).toBe('Invalid code');
     expect(result.data).toBeNull();
   });
 
@@ -381,7 +529,9 @@ describe('disableTotp', () => {
 
     const result = await disableTotp({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBe('Two-factor authentication is not enabled');
+    expect(formatActionError(result.error)).toBe(
+      'Two-factor authentication is not enabled',
+    );
     expect(result.data).toBeNull();
   });
 
@@ -398,7 +548,9 @@ describe('disableTotp', () => {
 
     const result = await disableTotp({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBe('Two-factor authentication is not enabled');
+    expect(formatActionError(result.error)).toBe(
+      'Two-factor authentication is not enabled',
+    );
     expect(result.data).toBeNull();
   });
 
@@ -416,7 +568,7 @@ describe('disableTotp', () => {
 
     const result = await disableTotp({ code: '000000' });
 
-    expect(result.error).toBe('Invalid verification code');
+    expect(formatActionError(result.error)).toBe('Invalid verification code');
     expect(result.data).toBeNull();
     expect(mockPrismaTransaction).not.toHaveBeenCalled();
   });
@@ -435,7 +587,7 @@ describe('disableTotp', () => {
 
     const result = await disableTotp({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBeNull();
+    expect(formatActionError(result.error)).toBeNull();
     expect(result.data).toBeNull();
     expect(mockPrismaTransaction).toHaveBeenCalled();
     expect(mockSafeUpdateTag).toHaveBeenCalledWith('activityFeed');
@@ -457,7 +609,7 @@ describe('regenerateRecoveryCodes', () => {
 
     const result = await regenerateRecoveryCodes({ code: 'bad' });
 
-    expect(result.error).toBe('Invalid code');
+    expect(formatActionError(result.error)).toBe('Invalid code');
     expect(result.data).toBeNull();
   });
 
@@ -470,7 +622,9 @@ describe('regenerateRecoveryCodes', () => {
 
     const result = await regenerateRecoveryCodes({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBe('Two-factor authentication is not enabled');
+    expect(formatActionError(result.error)).toBe(
+      'Two-factor authentication is not enabled',
+    );
     expect(result.data).toBeNull();
   });
 
@@ -488,7 +642,7 @@ describe('regenerateRecoveryCodes', () => {
 
     const result = await regenerateRecoveryCodes({ code: '000000' });
 
-    expect(result.error).toBe('Invalid verification code');
+    expect(formatActionError(result.error)).toBe('Invalid verification code');
     expect(result.data).toBeNull();
     expect(mockPrismaTransaction).not.toHaveBeenCalled();
   });
@@ -509,7 +663,7 @@ describe('regenerateRecoveryCodes', () => {
 
     const result = await regenerateRecoveryCodes({ code: VALID_TOTP_CODE });
 
-    expect(result.error).toBeNull();
+    expect(formatActionError(result.error)).toBeNull();
     expect(result.data).toEqual({ recoveryCodes: RECOVERY_CODES });
     expect(mockPrismaTransaction).toHaveBeenCalled();
     expect(mockSafeUpdateTag).toHaveBeenCalledWith('activityFeed');
@@ -530,7 +684,7 @@ describe('resetTotpForUser', () => {
   it('returns error when attempting to reset own two-factor authentication', async () => {
     const result = await resetTotpForUser(CURRENT_USER_ID);
 
-    expect(result.error).toBe(
+    expect(formatActionError(result.error)).toBe(
       'Cannot reset your own two-factor authentication',
     );
     expect(result.data).toBeNull();
@@ -542,7 +696,7 @@ describe('resetTotpForUser', () => {
 
     const result = await resetTotpForUser(targetUserId);
 
-    expect(result.error).toBeNull();
+    expect(formatActionError(result.error)).toBeNull();
     expect(result.data).toBeNull();
     expect(mockPrismaTransaction).toHaveBeenCalled();
     expect(mockSafeUpdateTag).toHaveBeenCalledWith('activityFeed');

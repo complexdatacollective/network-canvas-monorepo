@@ -6,7 +6,8 @@ import SuperJSON from 'superjson';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
-import { getServerSession } from '~/lib/auth/guards';
+import type { ActivityLocalization } from '~/i18n/activityDetails';
+import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
@@ -55,7 +56,9 @@ async function InterviewContent({
 
   const interview =
     SuperJSON.parse<NonNullable<GetInterviewByIdQuery>>(rawInterview);
-  const session = await getServerSession();
+  // A session still held at the mandatory two-factor gate is not a
+  // researcher yet, and gets the participant treatment below.
+  const session = await getAdmittedSession();
 
   const limitInterviews = await getAppSetting('limitInterviews');
 
@@ -97,19 +100,33 @@ async function InterviewContent({
         data: {
           type: 'Interview Opened' satisfies ActivityType,
           message,
+          localization: {
+            kind: 'interviewOpened',
+            values: {
+              actor: session ? 'researcher' : 'participant',
+              interview: interviewId,
+              username: session?.user.username ?? '',
+            },
+          } satisfies ActivityLocalization,
         },
       });
 
       safeRevalidateTag('activityFeed');
 
-      await captureEvent('Interview Opened', { message });
+      // The analytics copy of this event carries only who opened it. The feed
+      // message above names the interview, and an interview id is the
+      // participant's access link, so it must not leave the deployment.
+      await captureEvent('Interview Opened', {
+        actor: session ? 'researcher' : 'participant',
+      });
       await flushPostHog();
     } catch {
       // Non-critical — don't block the interview
     }
   });
 
-  const { payload, assetUrls, initialStep } = mapInterviewPayload(interview);
+  const { payload, assetUrls, initialStep, initialSyncRevision } =
+    mapInterviewPayload(interview);
 
   const installationId = (await getAppSetting('installationId')) ?? 'unknown';
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
@@ -121,6 +138,7 @@ async function InterviewContent({
       payload={payload}
       assetUrls={assetUrls}
       initialStep={initialStep}
+      initialSyncRevision={initialSyncRevision}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
     />

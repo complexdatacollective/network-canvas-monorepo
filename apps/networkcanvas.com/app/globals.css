@@ -12,6 +12,8 @@
    against packages/fresco-ui/src, not this app's node_modules, so point
    Tailwind at the source tree directly. */
 @source '../node_modules/@codaco/fresco-ui/src/**/*.{ts,tsx}';
+/* The interview Shell (protocol gallery preview) is consumed from source too. */
+@source '../node_modules/@codaco/interview/src/**/*.{ts,tsx}';
 
 /* The Fresco theme resets the text scale; re-add the slightly-smaller-than
    -base size used for secondary and meta copy. */
@@ -39,6 +41,19 @@
     opacity: 0;
     transform: translateY(1rem);
   }
+}
+
+/*
+ * Product (Architect) type scale for dense content pages. Pins the root-size
+ * sentinel to the fixed product base instead of the site's fluid ramp.
+ * `--spacing-base` is redeclared so the calc re-evaluates at this level rather
+ * than inheriting :root's fluid snapshot, and `font-size` is set so em-based
+ * container widths resolve against the product base too.
+ */
+@utility type-scale-product {
+  --theme-root-size: 1rem;
+  --spacing-base: calc(0.25 * var(--theme-root-size));
+  font-size: var(--theme-root-size);
 }
 
 /* Continuous horizontal marquee used by the desktop news ticker. */

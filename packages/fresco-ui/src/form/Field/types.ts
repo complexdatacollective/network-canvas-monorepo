@@ -18,6 +18,10 @@ type VariableComparisonParam = {
 
 /**
  * Type representing all possible values for a form field.
+ *
+ * A connected control declares a narrower value type than this union, but is
+ * handed the stored value verbatim and must render any shape of it without
+ * throwing — see the contract on `useField`'s `fieldProps.value`.
  */
 export type FieldValue =
   | string
@@ -52,7 +56,7 @@ export type ExtractValue<C extends ValidFieldComponent> =
  * over `C extends ValidFieldComponent`, so `React.ComponentProps<C>`
  * recovers the consumer's concrete prop shape at every call site.
  */
-// biome-ignore lint/suspicious/noExplicitAny: see comment above
+// oxlint-disable-next-line typescript/no-explicit-any -- see comment above
 export type ValidFieldComponent = React.ComponentType<any>;
 
 // ═══════════════════════════════════════════════════════════════
@@ -265,8 +269,8 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
    * @default legacy
    */
   nameMode?: FieldNameMode;
-  /** Label text rendered above (or beside when inline) the control. */
-  label: string;
+  /** Strings retain protocol Markdown; React nodes support literal rich labels. */
+  label: ReactNode;
   /** Supplementary text rendered below the label. */
   hint?: ReactNode;
   /**

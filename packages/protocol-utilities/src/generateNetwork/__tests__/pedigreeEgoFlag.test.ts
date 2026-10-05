@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 
-import { generateNetwork } from '../../generateNetwork';
-import { SyntheticDataConstraintError } from '../../generateNetwork/constraints/error';
+import { generateNetwork } from '../../generateNetwork.ts';
+import { SyntheticDataConstraintError } from '../../generateNetwork/constraints/error.ts';
 
 const pedigree = {
   id: 'pedigree',

@@ -144,10 +144,10 @@ Before requesting review on any change that adds or alters a shared seam:
 - [ ] A type, a safe default, or a test prevents the next bypass
 - [ ] No comment in my diff asserts an invariant the code does not enforce
 - [ ] Shared code landed in the right package with `workspace:^`
-- [ ] `pnpm typecheck`, `pnpm knip`, and the affected packages' tests pass
+- [ ] `pnpm agent:check` (scoped typecheck, `knip`, lint of changed files) and the affected packages' tests pass
 
 ## Related
 
 - `creating-a-changeset` — a seam change in a published package is consumer-visible
-- `developing-in-network-canvas` — reuse existing packages before building new
+- `developing-network-canvas-ui` — for refactors that change a user-facing interface or interaction
 - `adopting-a-test-baseline` — do not let a regenerated snapshot absorb a regression

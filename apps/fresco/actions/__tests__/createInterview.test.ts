@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -132,7 +133,10 @@ type MockInterviewResult = {
 describe('createInterview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockProtocolFindUnique.mockResolvedValue({ id: 'protocol-123' });
+    mockProtocolFindUnique.mockResolvedValue({
+      id: 'protocol-123',
+      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    });
   });
 
   describe('with participantIdentifier provided', () => {
@@ -369,6 +373,24 @@ describe('createInterview', () => {
       });
 
       expect(result.errorType).toBe('no-protocol');
+    });
+
+    it('refuses a protocol below the runtime schema version without creating anything', async () => {
+      // A row the deploy-time migration tolerated-and-left; every recruitment
+      // link attempt must be refused here, before an interview is persisted.
+      mockProtocolFindUnique.mockResolvedValue({
+        id: 'protocol-123',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1,
+      });
+
+      const result = await createInterview({
+        participantIdentifier: 'TEST-PARTICIPANT',
+        protocolId: 'protocol-123',
+      });
+
+      expect(result.createdInterviewId).toBeNull();
+      expect(result.errorType).toBe('incompatible-protocol');
+      expect(mockPrismaCreate).not.toHaveBeenCalled();
     });
 
     it('should return a no-protocol error when the protocol does not exist', async () => {

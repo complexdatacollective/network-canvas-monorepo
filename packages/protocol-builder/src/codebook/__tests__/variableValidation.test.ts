@@ -1,0 +1,552 @@
+import { describe, expect, it } from 'vitest';
+
+import { createAppIntl } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { VARIABLE_TYPE_VALIDATIONS } from '@codaco/protocol-validation';
+
+import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { enIntl, readMessage } from '../../testing/i18n.ts';
+import { variableRoleKey } from '../variableRoles.ts';
+import {
+  buildProspectiveVariables,
+  completeRuleValues,
+  crossClassPickErrors,
+  draftAdditionalAttributeVariableIds,
+  draftFormFieldVariableIds,
+  draftVariableId,
+  findDraftContradictions,
+  findLegalReferenceTargets,
+  getGroupedValidationsForVariableType,
+  getValidationOptionsForVariableType,
+  isRuleValueComplete,
+  makeFieldEditorValidate,
+  parseForRule,
+  ruleMapIssue,
+  ruleMapIssueForWrite,
+  ruleMapPrecheck,
+  validatedElsewhereMessage,
+  type RuleMapContext,
+} from '../variableValidation.ts';
+
+const SUBJECT = { entity: 'node', type: 'person' } as const;
+
+const numberVariable = (
+  name: string,
+  validation: Record<string, unknown> = {},
+) => ({ name, type: 'number', validation });
+
+const ruleContext = (
+  overrides: Partial<RuleMapContext> = {},
+): RuleMapContext => ({
+  allVariables: {},
+  currentVariableId: 'subject',
+  variableType: 'number',
+  ...overrides,
+});
+
+describe('variable validation options', () => {
+  it.each(Object.entries(VARIABLE_TYPE_VALIDATIONS))(
+    'offers exactly the canonical %s rules',
+    (variableType, rules) => {
+      expect(
+        getValidationOptionsForVariableType(variableType, 'node', enIntl).map(
+          ({ value }) => value,
+        ),
+      ).toEqual(Object.keys(rules));
+    },
+  );
+
+  it('keeps host-only passphrases narrow and removes unique for ego', () => {
+    expect(
+      getGroupedValidationsForVariableType(
+        'passphrase',
+        'node',
+        enIntl,
+      ).flatMap(({ rules }) => rules.map(({ value }) => value)),
+    ).toEqual(['minLength', 'maxLength']);
+    expect(
+      getValidationOptionsForVariableType('text', 'ego', enIntl).map(
+        ({ value }) => value,
+      ),
+    ).not.toContain('unique');
+    expect(
+      getValidationOptionsForVariableType('unknown', 'node', enIntl),
+    ).toEqual([]);
+  });
+
+  /**
+   * Two formatters for one language are not one formatter.
+   *
+   * `AppI18nProvider` builds a new `IntlShape` whenever its `messages` change,
+   * and the locale tag does not have to change with them: a host swapping in a
+   * catalog it has just loaded, a module replacement in development, or a
+   * nested provider mounted over the same language all produce a second
+   * formatter reading a different catalog under the same tag. The groups
+   * carry already-formatted headings and rule names, so a cache that files
+   * them under the tag hands the second formatter the first one's words.
+   */
+  it('gives each formatter its own words, however the catalog behind it changed', () => {
+    const catalog = protocolBuilderCatalogs.es ?? {};
+    const headingsFor = (intl: IntlShape) =>
+      getGroupedValidationsForVariableType('number', 'node', intl).map(
+        ({ heading }) => heading,
+      );
+
+    const shipped = createAppIntl({ locale: 'es', messages: catalog });
+    const revised = createAppIntl({
+      locale: 'es',
+      messages: {
+        ...catalog,
+        'protocolBuilder.variableValidation.limitsHeading': 'Límites revisados',
+      },
+    });
+
+    expect(headingsFor(shipped)).toContain('Límites');
+    expect(headingsFor(revised)).toContain('Límites revisados');
+    // Asked for again, so a cache that filed the revision under the language
+    // cannot pass by answering the first reader correctly once.
+    expect(headingsFor(shipped)).toContain('Límites');
+  });
+});
+
+describe('rule draft values', () => {
+  it('preserves cleared values as null and reports them as incomplete', () => {
+    expect(parseForRule('minValue', '')).toBeNull();
+    expect(parseForRule('sameAs', '')).toBeNull();
+    expect(isRuleValueComplete('minValue', null)).toBe(false);
+    expect(isRuleValueComplete('required', null)).toBe(false);
+    // The issue crossed a string-only contract, so it is read back the way the
+    // editor renders it rather than compared as an opaque encoded string.
+    const precheck = ruleMapPrecheck({ minValue: null, maxValue: 2 });
+    expect(precheck.complete).toEqual({});
+    expect(readMessage(precheck.issue ?? '')).toBe(
+      'Enter a value for "Minimum value", or switch the rule off.',
+    );
+  });
+
+  it('keeps zero and false while dropping only incomplete values', () => {
+    expect(
+      completeRuleValues({ maxLength: 0, required: false, sameAs: null }),
+    ).toEqual({ maxLength: 0, required: false });
+  });
+
+  it('rejects fractional integer rules before contradiction analysis', () => {
+    expect(readMessage(ruleMapPrecheck({ minValue: 1.5 }).issue ?? '')).toBe(
+      'minValue must be a whole number',
+    );
+    expect(readMessage(ruleMapPrecheck({ maxSelected: -1 }).issue ?? '')).toBe(
+      'maxSelected must be at least 0',
+    );
+  });
+});
+
+describe('prospective contradiction analysis', () => {
+  it('uses a collision-free id for a newly created variable', () => {
+    const allVariables = {
+      '__draft-variable__': numberVariable('Existing'),
+      '__draft-variable__2': numberVariable('Existing2'),
+    };
+
+    expect(draftVariableId(allVariables)).toBe('__draft-variable__3');
+    expect(
+      buildProspectiveVariables({
+        allVariables,
+        currentVariableId: '',
+        variableType: 'number',
+        validation: { required: true },
+        draftVariableName: 'Draft',
+      })['__draft-variable__3'],
+    ).toMatchObject({ name: 'Draft', validation: { required: true } });
+  });
+
+  it('reports an inverted bound introduced by the draft', () => {
+    expect(
+      findDraftContradictions({
+        allVariables: { subject: numberVariable('Subject') },
+        currentVariableId: 'subject',
+        variableType: 'number',
+        validation: { minValue: 10, maxValue: 2 },
+      }),
+    ).not.toHaveLength(0);
+  });
+
+  it('finds a contradiction introduced between two other variables', () => {
+    const allVariables = {
+      a: numberVariable('A', { sameAs: 'b' }),
+      b: numberVariable('B', { lessThanVariable: 'c' }),
+      c: numberVariable('C', { required: true, maxValue: 10 }),
+    };
+
+    expect(
+      findDraftContradictions({
+        allVariables,
+        currentVariableId: 'a',
+        variableType: 'number',
+        validation: { required: true, sameAs: 'b', minValue: 10 },
+      }),
+    ).not.toHaveLength(0);
+  });
+});
+
+describe('legal comparison targets', () => {
+  it('excludes a target made impossible by propagated draft bounds', () => {
+    const allVariables = {
+      a: numberVariable('A'),
+      b: numberVariable('B', { lessThanVariable: 'c' }),
+      c: numberVariable('C', { required: true, maxValue: 10 }),
+      d: numberVariable('D'),
+    };
+
+    expect(
+      findLegalReferenceTargets({
+        allVariables,
+        currentVariableId: 'a',
+        variableType: 'number',
+        validation: { required: true, minValue: 10 },
+        ruleKey: 'sameAs',
+        candidateIds: ['b', 'd'],
+      }),
+    ).toEqual(new Set(['d']));
+  });
+
+  it("retains another variable's incoming constraint on the edited variable", () => {
+    const allVariables = {
+      x: numberVariable('X', {
+        minValue: 10,
+        maxValue: 10,
+        lessThanVariable: 'a',
+      }),
+      a: numberVariable('A'),
+      below: numberVariable('Below', { minValue: 5, maxValue: 5 }),
+      above: numberVariable('Above', { minValue: 100, maxValue: 100 }),
+    };
+
+    expect(
+      findLegalReferenceTargets({
+        allVariables,
+        currentVariableId: 'a',
+        variableType: 'number',
+        validation: {},
+        ruleKey: 'lessThanVariable',
+        candidateIds: ['below', 'above'],
+      }),
+    ).toEqual(new Set(['above']));
+  });
+
+  it('treats __proto__ as an ordinary variable record id', () => {
+    const allVariables = Object.fromEntries([
+      ['a', numberVariable('A')],
+      ['__proto__', numberVariable('Prototype')],
+    ]);
+
+    expect(
+      findLegalReferenceTargets({
+        allVariables,
+        currentVariableId: 'a',
+        variableType: 'number',
+        validation: {},
+        ruleKey: 'lessThanVariable',
+        candidateIds: ['__proto__'],
+      }),
+    ).toEqual(new Set(['__proto__']));
+  });
+});
+
+describe('rule-map and field-editor save gates', () => {
+  it('reports the same incomplete draft from both gates', () => {
+    const allVariables = { subject: numberVariable('Subject') };
+    const validation = { minValue: null };
+
+    expect(
+      makeFieldEditorValidate(allVariables)({
+        variable: 'subject',
+        component: 'Number',
+        validation,
+      }).validation,
+    ).toBe(
+      ruleMapIssue(
+        validation,
+        ruleContext({ allVariables, currentVariableId: 'subject' }),
+      ),
+    );
+  });
+
+  it('infers a new variable type from the canonical component map', () => {
+    // The repair guidance a researcher reads, named for the attribute they are
+    // still inventing — not the analyser's own diagnostic (`Attribute
+    // "NewVariable": minValue (10) is greater than maxValue (1)`), which names
+    // the schema's rule keys and is written for a validation report.
+    expect(
+      readMessage(
+        makeFieldEditorValidate({})({
+          variable: 'NewVariable',
+          _createNewVariable: 'NewVariable',
+          component: 'Number',
+          validation: { minValue: 10, maxValue: 1 },
+        }).validation ?? '',
+      ),
+    ).toBe(
+      'The minimum and maximum rules for NewVariable leave no permitted answer. Adjust the bounds or the required-answer rule.',
+    );
+  });
+
+  it('reports a contradiction introduced by shrinking categorical options', () => {
+    const allVariables = {
+      colors: {
+        name: 'Colors',
+        type: 'categorical',
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+          { label: 'Green', value: 'green' },
+        ],
+        validation: { minSelected: 3 },
+      },
+    };
+
+    expect(
+      makeFieldEditorValidate(allVariables)({
+        variable: 'colors',
+        validation: { minSelected: 3 },
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+        ],
+      }).validation,
+    ).toContain('minSelected');
+  });
+
+  it('checks every independently resolved stage-effective form view', () => {
+    const allVariables = {
+      a: {
+        name: 'A',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: {},
+      },
+      b: {
+        name: 'B',
+        type: 'datetime',
+        component: 'DatePicker',
+        validation: {},
+      },
+    };
+    const validate = makeFieldEditorValidate(
+      allVariables,
+      undefined,
+      undefined,
+      undefined,
+      [
+        {
+          renderedVariableIds: new Set(['a', 'b']),
+          overlay: {
+            a: { component: 'DatePicker', parameters: { type: 'year' } },
+            b: { component: 'DatePicker', parameters: { type: 'year' } },
+          },
+        },
+        {
+          renderedVariableIds: new Set(['a', 'b']),
+          overlay: {
+            a: { component: 'DatePicker', parameters: { type: 'year' } },
+            b: { component: 'DatePicker', parameters: {} },
+          },
+        },
+      ],
+    );
+
+    expect(
+      readMessage(
+        validate({
+          variable: 'a',
+          validation: { sameAs: 'b' },
+          component: 'DatePicker',
+          parameters: {},
+        }).validation ?? '',
+      ),
+    ).toBe(
+      'The comparisons for A and B cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+    );
+  });
+
+  it('applies the unchanged-pick escape to its cross-class save backstop', () => {
+    const allVariables = {
+      colors: {
+        name: 'Colors',
+        type: 'categorical',
+        options: [
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+        ],
+        validation: {},
+      },
+    };
+    const validate = makeFieldEditorValidate(
+      allVariables,
+      undefined,
+      undefined,
+      () => true,
+    );
+
+    expect(
+      validate(
+        { variable: 'colors', validation: {} },
+        { initialValues: { variable: 'colors' } },
+      ),
+    ).toEqual({});
+    expect(
+      validate(
+        { variable: 'colors', validation: {} },
+        { initialValues: { variable: 'other' } },
+      ).variable,
+    ).toBeDefined();
+  });
+});
+
+describe('draft writer roles and cross-class picks', () => {
+  it('collects live form and additional-attribute writers', () => {
+    expect(
+      draftFormFieldVariableIds([
+        { variable: 'validated' },
+        { variable: null },
+      ]),
+    ).toEqual(new Set(['validated']));
+    expect(
+      draftAdditionalAttributeVariableIds([
+        { additionalAttributes: [{ variable: 'first' }] },
+        { additionalAttributes: [{ variable: 'second' }] },
+      ]),
+    ).toEqual(new Set(['first', 'second']));
+  });
+
+  it('rejects a changed nested pick claimed by the opposite writer class', () => {
+    const key = variableRoleKey(SUBJECT, 'category');
+    const roleMap = Object.fromEntries([
+      [key, { validated: 1, unvalidated: 0 }],
+    ]);
+    const allVariables = {
+      category: { name: 'Category', type: 'categorical' },
+    };
+
+    expect(
+      crossClassPickErrors({
+        values: { highlight: { variable: 'category' } },
+        initialValues: { highlight: { variable: 'previous' } },
+        picks: [{ path: 'highlight.variable', writerClass: 'unvalidated' }],
+        subject: SUBJECT,
+        roleMap,
+        allVariables,
+      }),
+    ).toEqual({
+      'highlight.variable': validatedElsewhereMessage('Category'),
+    });
+  });
+
+  it('allows an unchanged pre-existing cross-class conflict', () => {
+    const key = variableRoleKey(SUBJECT, 'category');
+    const roleMap = Object.fromEntries([
+      [key, { validated: 1, unvalidated: 0 }],
+    ]);
+    const row = { highlight: { variable: 'category' } };
+
+    expect(
+      crossClassPickErrors({
+        values: row,
+        initialValues: row,
+        picks: [{ path: 'highlight.variable', writerClass: 'unvalidated' }],
+        subject: SUBJECT,
+        roleMap,
+        allVariables: {
+          category: { name: 'Category', type: 'categorical' },
+        },
+      }),
+    ).toBeUndefined();
+  });
+});
+
+/**
+ * The two readings a rule authored on a stage has to pass before it is
+ * written: the form's own controls, and the codebook record it is saved on.
+ *
+ * Every surface that writes a rule map asks this one function
+ * (`VariableValidationEditor`'s per-row verdict, `CodebookVariableValidationSection`'s
+ * write gate, `DraftValidationRulesField`'s row refusal), and the researcher
+ * has to be told WHICH of the two refused: "these dates cannot overlap", in
+ * front of two fields that plainly do overlap, reads as the application being
+ * wrong about what is on the screen.
+ */
+describe('the rule-map gate that reads a stage and the codebook', () => {
+  const dateWindow = (min: string, max: string) => ({
+    component: 'DatePicker',
+    parameters: { type: 'year', min, max },
+  });
+
+  it('names the codebook record when only the form’s controls accept the rule', () => {
+    const allVariables = {
+      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('1990', '1995') },
+      bornOn: {
+        name: 'bornOn',
+        type: 'datetime',
+        ...dateWindow('2020', '2025'),
+      },
+    };
+
+    // Both fields of the form render the same window, so the comparison is
+    // satisfiable in front of the researcher — and the codebook's own windows,
+    // which are what the write is judged by, are disjoint.
+    const issue = ruleMapIssueForWrite(
+      { sameAs: 'bornOn' },
+      { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+      {
+        ...dateWindow('2020', '2025'),
+        overlay: { bornOn: dateWindow('2020', '2025') },
+      },
+    );
+
+    expect(readMessage(issue ?? '')).toBe(
+      'These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. The comparisons for metOn and bornOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+    );
+  });
+
+  it('states the form’s own contradiction in its own words, unprefixed', () => {
+    const allVariables = {
+      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('1990', '1995') },
+      bornOn: {
+        name: 'bornOn',
+        type: 'datetime',
+        ...dateWindow('1990', '1995'),
+      },
+    };
+
+    // Satisfiable in the codebook; impossible only through the window this
+    // field puts on it. The researcher can act on that where they stand, so
+    // the sentence is not about the record at all.
+    const issue = ruleMapIssueForWrite(
+      { sameAs: 'bornOn' },
+      { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+      { ...dateWindow('2020', '2025') },
+    );
+
+    expect(readMessage(issue ?? '')).toBe(
+      'The comparisons for metOn and bornOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+    );
+  });
+
+  it('accepts a rule both readings can hold', () => {
+    const allVariables = {
+      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('2020', '2025') },
+      bornOn: {
+        name: 'bornOn',
+        type: 'datetime',
+        ...dateWindow('2020', '2025'),
+      },
+    };
+
+    expect(
+      ruleMapIssueForWrite(
+        { sameAs: 'bornOn' },
+        { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+        { ...dateWindow('2020', '2025') },
+      ),
+    ).toBeUndefined();
+  });
+});

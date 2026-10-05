@@ -1,10 +1,12 @@
 'use client';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { messages } from '../../messages';
 import { inferGameteProviders } from '../../utils/inferGameteProviders';
 import BioTriadStep, {
   BioTriadConfigProvider,
@@ -13,6 +15,7 @@ import { readBiologicalSex } from '../wizards/transforms/personAttributes';
 import PersonFields from './PersonFields';
 
 export default function ChildrenDetailStep() {
+  const intl = useAppIntl();
   const values = useFormValue([
     'childrenWithPartnerCount',
     'partner.name',
@@ -25,7 +28,7 @@ export default function ChildrenDetailStep() {
   const partnerName =
     typeof partnerNameValue === 'string' && partnerNameValue.length > 0
       ? partnerNameValue
-      : 'Your partner';
+      : intl.formatMessage(messages.yourPartner);
 
   if (count === 0) return null;
 
@@ -48,7 +51,7 @@ export default function ChildrenDetailStep() {
   const existingNodes = [
     {
       value: 'ego',
-      label: 'You',
+      label: intl.formatMessage(messages.you),
     },
     {
       value: 'partner',
@@ -64,13 +67,17 @@ export default function ChildrenDetailStep() {
   return (
     <BioTriadConfigProvider value={bioTriadConfig}>
       <Paragraph>
-        Please tell us about each of your children with your current partner,
-        and confirm who their biological parents are.
+        <AppMessage message={messages.childrenIntro} />
       </Paragraph>
       <div className="flex flex-col gap-6">
         {Array.from({ length: count }, (_, i) => (
           <Surface key={i} spacing="sm" shadow="sm">
-            <Heading level="h3">Child {i + 1}</Heading>
+            <Heading level="h3">
+              <AppMessage
+                message={messages.childNumber}
+                values={{ number: i + 1 }}
+              />
+            </Heading>
             <PersonFields namespace={`childWithPartner[${String(i)}]`} />
             <BioTriadStep prefix={`childWithPartner[${String(i)}].parentage`} />
           </Surface>

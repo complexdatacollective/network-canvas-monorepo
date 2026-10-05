@@ -1,15 +1,25 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import type { Context } from '@netlify/edge-functions';
+import { describe, expect, it, vi } from 'vitest';
 
 import { getStaticLocaleParams, locales } from '~/lib/i18n/locales';
 import { routing } from '~/lib/i18n/routing';
-import {
+import { loadProtocolGallery } from '~/lib/protocolGallery';
+import localeRedirect, {
   config,
   detectLocale,
+  getConfiguredGalleryHost,
+  getGalleryCanonicalRedirect,
+  getGalleryLegacyRedirect,
+  getGalleryRewrite,
   getLocaleRedirect,
+  isProtocolGalleryHost,
+  legacyGallerySlugs,
 } from '~/netlify/edge-functions/locale';
+
+const galleryOrigin = 'https://protocolgallery.networkcanvas.com';
 
 type NegotiationCase = {
   name: string;
@@ -39,6 +49,141 @@ const negotiationCases: readonly NegotiationCase[] = [
     name: 'Argentinian Spanish browser language',
     headers: { 'accept-language': 'es-AR,es;q=0.9,en;q=0.8' },
     destination: 'http://localhost/es/',
+  },
+  {
+    name: 'mainland Chinese browser language',
+    headers: { 'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Simplified Chinese browser language',
+    headers: { 'accept-language': 'zh-Hans,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Singaporean Chinese browser language',
+    headers: { 'accept-language': 'zh-SG,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'unscripted Chinese browser language best-fits Simplified Chinese',
+    headers: { 'accept-language': 'zh' },
+    destination: 'http://localhost/zh-Hans/',
+  },
+  {
+    name: 'Taiwanese Chinese browser language',
+    headers: { 'accept-language': 'zh-TW,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Hong Kong Chinese browser language',
+    headers: { 'accept-language': 'zh-HK,zh;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Macanese Chinese browser language',
+    headers: { 'accept-language': 'zh-MO,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Traditional Chinese browser language',
+    headers: { 'accept-language': 'zh-Hant,zh;q=0.9' },
+    destination: 'http://localhost/zh-Hant/',
+  },
+  {
+    name: 'Germany German browser language',
+    headers: { 'accept-language': 'de-DE,de;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'Austrian German browser language',
+    headers: { 'accept-language': 'de-AT,de;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'Swiss German browser language',
+    headers: { 'accept-language': 'de-CH,de;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'bare German browser language',
+    headers: { 'accept-language': 'de' },
+    destination: 'http://localhost/de/',
+  },
+  {
+    name: 'Netherlands Dutch browser language',
+    headers: { 'accept-language': 'nl-NL,nl;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/nl/',
+  },
+  {
+    name: 'Belgian Dutch browser language',
+    headers: { 'accept-language': 'nl-BE,nl;q=0.9,fr-BE;q=0.8,en;q=0.7' },
+    destination: 'http://localhost/nl/',
+  },
+  {
+    name: 'bare Dutch browser language',
+    headers: { 'accept-language': 'nl' },
+    destination: 'http://localhost/nl/',
+  },
+  {
+    name: 'Brazilian Portuguese browser language',
+    headers: { 'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'bare Portuguese browser language best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'European Portuguese browser language best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt-PT' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'European Portuguese with a Portuguese fallback best-fits Brazilian Portuguese',
+    headers: { 'accept-language': 'pt-PT,pt;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/pt-BR/',
+  },
+  {
+    name: 'Italian browser language',
+    headers: { 'accept-language': 'it-IT,it;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/it/',
+  },
+  {
+    name: 'Swiss Italian browser language',
+    headers: { 'accept-language': 'it-CH,it;q=0.9' },
+    destination: 'http://localhost/it/',
+  },
+  {
+    name: 'bare Italian browser language',
+    headers: { 'accept-language': 'it' },
+    destination: 'http://localhost/it/',
+  },
+  {
+    name: 'France French browser language',
+    headers: { 'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'Canadian French browser language',
+    headers: { 'accept-language': 'fr-CA,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'Belgian French browser language',
+    headers: { 'accept-language': 'fr-BE,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'Swiss French browser language',
+    headers: { 'accept-language': 'fr-CH,fr;q=0.9,en;q=0.8' },
+    destination: 'http://localhost/fr/',
+  },
+  {
+    name: 'bare French browser language',
+    headers: { 'accept-language': 'fr' },
+    destination: 'http://localhost/fr/',
   },
   {
     name: 'US English fallback',
@@ -86,12 +231,30 @@ describe('locale routing', () => {
     ).toBe(true);
   });
 
-  it('generates US English, UK English, and Spanish static params', () => {
-    expect(locales).toEqual(['en-US', 'en-GB', 'es']);
+  it('generates US English, UK English, Spanish, Simplified Chinese, Traditional Chinese, German, Dutch, Brazilian Portuguese, Italian, and French static params', () => {
+    expect(locales).toEqual([
+      'en-US',
+      'en-GB',
+      'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+      'it',
+      'fr',
+    ]);
     expect(getStaticLocaleParams()).toEqual([
       { locale: 'en-US' },
       { locale: 'en-GB' },
       { locale: 'es' },
+      { locale: 'zh-Hans' },
+      { locale: 'zh-Hant' },
+      { locale: 'de' },
+      { locale: 'nl' },
+      { locale: 'pt-BR' },
+      { locale: 'it' },
+      { locale: 'fr' },
     ]);
   });
 
@@ -161,6 +324,181 @@ describe('locale routing', () => {
     ).toBeUndefined();
   });
 
+  it('negotiates protocol gallery index and detail routes', () => {
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/protocol-gallery', {
+          headers: { 'accept-language': 'es-ES,es;q=0.9' },
+        }),
+      )?.toString(),
+    ).toBe('http://localhost/es/protocol-gallery/');
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/protocol-gallery/test-to-prep'),
+        'en-GB',
+      )?.toString(),
+    ).toBe('http://localhost/en-GB/protocol-gallery/test-to-prep/');
+    expect(
+      getLocaleRedirect(
+        new Request('http://localhost/es/protocol-gallery/test-to-prep/'),
+      ),
+    ).toBeUndefined();
+  });
+
+  describe('protocol gallery host', () => {
+    it('recognizes only the gallery subdomain', () => {
+      expect(isProtocolGalleryHost('protocolgallery.networkcanvas.com')).toBe(
+        true,
+      );
+      expect(isProtocolGalleryHost('networkcanvas.com')).toBe(false);
+    });
+
+    it('also recognises a configured gallery origin, so its short URLs resolve', () => {
+      expect(getConfiguredGalleryHost('https://gallery.example.test')).toBe(
+        'gallery.example.test',
+      );
+      expect(getConfiguredGalleryHost(undefined)).toBeUndefined();
+      expect(getConfiguredGalleryHost('not a url')).toBeUndefined();
+
+      expect(
+        isProtocolGalleryHost('gallery.example.test', 'gallery.example.test'),
+      ).toBe(true);
+      expect(
+        isProtocolGalleryHost(
+          'protocolgallery.networkcanvas.com',
+          'gallery.example.test',
+        ),
+      ).toBe(true);
+      expect(isProtocolGalleryHost('gallery.example.test', undefined)).toBe(
+        false,
+      );
+    });
+
+    it('negotiates a locale before anything is rewritten', () => {
+      expect(
+        getLocaleRedirect(
+          new Request(`${galleryOrigin}/`, {
+            headers: { 'accept-language': 'es-ES,es;q=0.9' },
+          }),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/es/`);
+      expect(
+        getLocaleRedirect(
+          new Request(`${galleryOrigin}/gate/`),
+          'en-GB',
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-GB/gate/`);
+    });
+
+    it('inserts the exported route prefix after the locale segment', () => {
+      expect(
+        getGalleryRewrite(new URL(`${galleryOrigin}/en-US/`))?.toString(),
+      ).toBe(`${galleryOrigin}/en-us/protocol-gallery/`);
+      expect(
+        getGalleryRewrite(new URL(`${galleryOrigin}/en-US`))?.toString(),
+      ).toBe(`${galleryOrigin}/en-us/protocol-gallery/`);
+      expect(
+        getGalleryRewrite(new URL(`${galleryOrigin}/es/gate/`))?.toString(),
+      ).toBe(`${galleryOrigin}/es/protocol-gallery/gate/`);
+    });
+
+    it('maps the RSC payloads the client router fetches', () => {
+      for (const payload of [
+        'index.txt',
+        '__next._full.txt',
+        '__next._tree.txt',
+        '__next.$d$locale.txt',
+      ]) {
+        expect(
+          getGalleryRewrite(
+            new URL(`${galleryOrigin}/en-US/gate/${payload}`),
+          )?.toString(),
+        ).toBe(`${galleryOrigin}/en-us/protocol-gallery/gate/${payload}`);
+      }
+    });
+
+    it('leaves shared site-root assets alone', () => {
+      for (const pathname of [
+        '/_next/static/app.js',
+        '/images/logo.svg',
+        '/protocols/protocol-gallery/gate/gate.netcanvas',
+        '/videos/intro.mp4',
+        '/downloads/classic/architect/6.6.0/apple-silicon',
+      ]) {
+        expect(
+          getGalleryRewrite(new URL(`${galleryOrigin}${pathname}`)),
+        ).toBeUndefined();
+      }
+    });
+
+    it('sends the exported route to its short form', () => {
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/en-US/protocol-gallery`),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/`);
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/en-US/protocol-gallery/`),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/`);
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/es/protocol-gallery/gate/?q=1#downloads`),
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/es/gate/?q=1#downloads`);
+      expect(
+        getGalleryCanonicalRedirect(new URL(`${galleryOrigin}/es/gate/`)),
+      ).toBeUndefined();
+      expect(
+        getGalleryCanonicalRedirect(
+          new URL(`${galleryOrigin}/es/protocol-gallery-archive/`),
+        ),
+      ).toBeUndefined();
+    });
+
+    it('redirects the legacy author-list URLs to their gallery slugs', () => {
+      expect(
+        getGalleryLegacyRedirect(
+          new URL(
+            `${galleryOrigin}/protocol/oser-c-batty-e-booty-m-eddens-k-knudsen-h-perry-b-rockett-m-staton-m`,
+          ),
+          'en-US',
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/en-US/gate/`);
+      expect(
+        getGalleryLegacyRedirect(
+          new URL(
+            `${galleryOrigin}/protocol/manderson-l-brear-m-rusere-f-farrell-m-g%C3%B3mez-oliv%C3%A9-f-berkman-l-kahn-k-harling-g/`,
+          ),
+          'es',
+        )?.toString(),
+      ).toBe(`${galleryOrigin}/es/kaya/`);
+    });
+
+    it('maps every legacy URL onto a study in the gallery', async () => {
+      const slugs = new Set(
+        (await loadProtocolGallery()).map((protocol) => protocol.slug),
+      );
+
+      expect(
+        Object.values(legacyGallerySlugs).filter((slug) => !slugs.has(slug)),
+      ).toEqual([]);
+    });
+
+    it('leaves unknown legacy URLs to the ordinary 404', () => {
+      expect(
+        getGalleryLegacyRedirect(
+          new URL(`${galleryOrigin}/protocol/nobody-a`),
+          'en-US',
+        ),
+      ).toBeUndefined();
+      expect(
+        getGalleryLegacyRedirect(new URL(`${galleryOrigin}/gate/`), 'en-US'),
+      ).toBeUndefined();
+    });
+  });
+
   it('recognizes locale paths after Netlify normalizes their casing', () => {
     expect(
       getLocaleRedirect(new Request('http://localhost/en-us/get-started/')),
@@ -188,5 +526,97 @@ describe('locale routing', () => {
         ),
       ),
     ).toBeUndefined();
+  });
+});
+
+describe('edge handler', () => {
+  // Only the members the handler reaches for; the rest of Netlify's Context
+  // is irrelevant to routing.
+  const makeContext = () => {
+    const next = vi.fn(async () => new Response('next'));
+    const rewrite = vi.fn(
+      async (url: string | URL) =>
+        new Response(null, { headers: { 'x-rewrite': String(url) } }),
+    );
+    const context = {
+      cookies: { get: () => undefined },
+      next,
+      rewrite,
+    };
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    return { context: context as unknown as Context, next, rewrite };
+  };
+
+  it('rewrites localized gallery paths through the platform, not by returning a URL', async () => {
+    const { context, next, rewrite } = makeContext();
+
+    const response = await localeRedirect(
+      new Request(`${galleryOrigin}/en-US/gate/`),
+      context,
+    );
+
+    expect(response).toBeInstanceOf(Response);
+    expect(rewrite).toHaveBeenCalledTimes(1);
+    expect(String(rewrite.mock.calls[0]?.[0])).toBe(
+      `${galleryOrigin}/en-us/protocol-gallery/gate/`,
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('settles on the short URL when Netlify redirects mixed-case page paths to lowercase', async () => {
+    const netlifyServe = (target: string | URL) => {
+      const { pathname } = new URL(target);
+      const isPage = !/\.[^/]+$/.test(pathname);
+      if (isPage && pathname !== pathname.toLowerCase()) {
+        return Promise.resolve(
+          new Response(null, {
+            status: 301,
+            headers: { location: pathname.toLowerCase() },
+          }),
+        );
+      }
+      return Promise.resolve(new Response('served', { status: 200 }));
+    };
+    const context = {
+      cookies: { get: () => undefined },
+      next: () => Promise.resolve(new Response('next', { status: 200 })),
+      rewrite: netlifyServe,
+    };
+
+    for (const locale of locales) {
+      for (const path of ['/', '/gate/', '/gate/index.txt']) {
+        const start = `${galleryOrigin}/${locale}${path}`;
+        let url = start;
+        let response: Response | undefined;
+
+        for (let hop = 0; hop < 5; hop += 1) {
+          response = await localeRedirect(
+            new Request(url),
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            context as unknown as Context,
+          );
+          const location = response.headers.get('location');
+          if (response.status < 300 || response.status >= 400 || !location) {
+            break;
+          }
+          url = new URL(location, url).toString();
+        }
+
+        expect(response?.status, start).toBe(200);
+        expect(url, start).toBe(start);
+      }
+    }
+  });
+
+  it('continues normally off the gallery host', async () => {
+    const { context, next, rewrite } = makeContext();
+
+    await localeRedirect(
+      new Request('https://networkcanvas.com/en-US/get-started/'),
+      context,
+    );
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(rewrite).not.toHaveBeenCalled();
   });
 });

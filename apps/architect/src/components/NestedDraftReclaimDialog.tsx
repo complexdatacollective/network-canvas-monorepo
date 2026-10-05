@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useNestedEditorOpen } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppSelector } from '~/ducks/hooks';
@@ -8,7 +10,18 @@ import {
   getProtocolLockState,
   getProtocolReclaimChoiceRequest,
 } from '~/ducks/modules/app';
-import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
+const messages = defineMessages({
+  backToTheEditor: {
+    id: 'architect.nestedDraftReclaimDialog.backToTheEditor',
+    defaultMessage: 'Back to the Editor',
+    description: 'The label text in components / NestedDraftReclaimDialog.',
+  },
+  decideLater: {
+    id: 'architect.nestedDraftReclaimDialog.decideLater',
+    defaultMessage: 'Decide Later',
+    description: 'The label text in components / NestedDraftReclaimDialog.',
+  },
+});
 
 /**
  * Explains a reclaim that is waiting on an editor the researcher still has
@@ -35,17 +48,28 @@ import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDr
  * ProtocolLockBanner keeps explaining the situation and can raise it again.
  */
 
-const TITLE = 'An editor is still open';
+const TITLE = defineMessages({
+  message: {
+    id: 'architect.constants.components.nesteddraftreclaimdialog.title',
+    defaultMessage: 'An editor is still open',
+    description:
+      'Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx.',
+  },
+}).message;
 
-// One whole message per situation, never assembled, so both can be localised.
-// They differ in what finishing the inner editor would actually achieve, and
-// promising the wrong one is how a researcher loses work believing they saved
-// it.
-const IN_STAGE_EDITOR_DESCRIPTION =
-  'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with: anything in it is not part of this stage yet, and it exists nowhere else. Finish that editor to move its changes into this stage, or cancel it to discard them. You will then be asked what to do about your unsaved changes to this stage.';
-
-const ELSEWHERE_DESCRIPTION =
-  'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with. It was filled in from the version this tab had before, so saving it now would write those older settings over what the other tab saved. Cancel that editor to continue — if you have made changes in it, you will be asked to confirm before anything is discarded.';
+// One whole message, never assembled, so it can be localised. Every editor
+// this dialog waits on writes the canonical protocol when it is finished —
+// a write this tab cannot make — so there is one thing to say about all of
+// them.
+const DESCRIPTION = defineMessages({
+  message: {
+    id: 'architect.constants.components.nesteddraftreclaimdialog.elsewhereDescription',
+    defaultMessage:
+      'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with. It was filled in from the version this tab had before, so saving it now would write those older settings over what the other tab saved. Cancel that editor to continue — if you have made changes in it, you will be asked to confirm before anything is discarded.',
+    description:
+      'Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx.',
+  },
+}).message;
 
 const NestedDraftReclaimDialog = () => {
   const { openDialog, closeDialog } = useDialog();
@@ -53,10 +77,6 @@ const NestedDraftReclaimDialog = () => {
   const blocked = useAppSelector(
     (state) => getProtocolLockState(state) === 'reclaim-blocked',
   );
-  // Whether finishing the inner editor would write the stage editor's own draft
-  // (safe, and the way to keep the work) or the canonical protocol (refused —
-  // see DialogForm). Read at ask time, like everything else here.
-  const inStageEditor = useAppSelector(getStageEditorCodebookTransactionOpen);
   // Bumped by ProtocolLockBanner when the researcher asks to see the
   // explanation again after dismissing it.
   const choiceRequest = useAppSelector(getProtocolReclaimChoiceRequest);
@@ -65,8 +85,8 @@ const NestedDraftReclaimDialog = () => {
 
   // Read at the moment they are used, so a changed identity cannot restart the
   // effect and stack a second dialog on the first.
-  const latest = useRef({ closeDialog, inStageEditor, openDialog });
-  latest.current = { closeDialog, inStageEditor, openDialog };
+  const latest = useRef({ closeDialog, openDialog });
+  latest.current = { closeDialog, openDialog };
 
   const openDialogId = useRef<string | null>(null);
 
@@ -89,10 +109,8 @@ const NestedDraftReclaimDialog = () => {
         type: 'choice',
         intent: 'info',
         size: 'readable',
-        title: TITLE,
-        description: latest.current.inStageEditor
-          ? IN_STAGE_EDITOR_DESCRIPTION
-          : ELSEWHERE_DESCRIPTION,
+        title: createElement(AppMessage, { message: TITLE }),
+        description: createElement(AppMessage, { message: DESCRIPTION }),
         actions: {
           // Both actions merely close this, because only the editor itself can
           // validate a Finish or say what a Cancel would discard — duplicating
@@ -101,8 +119,16 @@ const NestedDraftReclaimDialog = () => {
           // going next, and `cancel` is also what Escape and the backdrop
           // resolve to, so leaving it unlabelled would hide a route out that
           // exists either way.
-          primary: { label: 'Back to the Editor', value: 'return' as const },
-          cancel: { label: 'Decide Later', value: null },
+          primary: {
+            label: createElement(AppMessage, {
+              message: messages.backToTheEditor,
+            }),
+            value: 'return' as const,
+          },
+          cancel: {
+            label: createElement(AppMessage, { message: messages.decideLater }),
+            value: null,
+          },
         },
       });
       if (openDialogId.current === id) openDialogId.current = null;

@@ -9,11 +9,11 @@ import {
   stepsBetween,
   todayYmd,
   truncateToResolution,
-} from './generateNetwork/constraints/dateWindow';
+} from './generateNetwork/constraints/dateWindow.ts';
 import type {
   ConstrainedVariable,
   VariableConstraints,
-} from './generateNetwork/constraints/types';
+} from './generateNetwork/constraints/types.ts';
 import {
   booleanDomainValues,
   categoricalSelectionAt,
@@ -27,8 +27,8 @@ import {
   selectionSizeRange,
   TEXT_ALPHABET_SIZE,
   textDrawLength,
-} from './generateNetwork/constraints/valueSpace';
-import type { VariableEntry } from './types';
+} from './generateNetwork/constraints/valueSpace.ts';
+import type { VariableEntry } from './types.ts';
 
 const DISTINCT_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 

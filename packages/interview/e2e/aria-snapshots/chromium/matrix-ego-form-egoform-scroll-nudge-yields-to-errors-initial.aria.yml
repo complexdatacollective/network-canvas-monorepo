@@ -20,6 +20,7 @@
   - text: Question 9
   - textbox "Question 9"
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

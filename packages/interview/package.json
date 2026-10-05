@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interview",
-  "version": "8.0.0",
+  "version": "9.1.0",
   "description": "Network Canvas interview engine — Shell component, session contract.",
   "license": "MIT",
   "repository": {
@@ -20,6 +20,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./contract": "./src/contract/index.ts",
+    "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
+    "./locales": "./src/locales/catalogs.ts",
     "./styles.css": "./src/styles.css"
   },
   "publishConfig": {
@@ -32,11 +34,21 @@
         "types": "./dist/contract.d.ts",
         "default": "./dist/contract.js"
       },
+      "./protocol-schema-version": {
+        "types": "./dist/protocol-schema-version.d.ts",
+        "default": "./dist/protocol-schema-version.js"
+      },
+      "./locales": {
+        "types": "./dist/locales/catalogs.d.ts",
+        "default": "./dist/locales.js"
+      },
       "./styles.css": "./dist/styles.css"
     },
     "access": "public"
   },
   "scripts": {
+    "i18n:extract": "node scripts/extract-i18n.mjs",
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
     "build": "vite build",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run --project=units",
@@ -54,6 +66,7 @@
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/network-query": "workspace:^",
     "@faker-js/faker": "catalog:",
     "@mapbox/search-js-react": "^1.6.0",
@@ -63,10 +76,10 @@
     "d3-force": "^3.0.0",
     "es-toolkit": "catalog:",
     "html-to-image": "^1.11.13",
-    "immer": "^11.1.8",
+    "immer": "^11.1.18",
     "lucide-react": "catalog:",
-    "mapbox-gl": "^3.25.0",
-    "ohash": "^2.0.11",
+    "mapbox-gl": "^3.32.0",
+    "ohash": "^2.0.12",
     "posthog-js": "catalog:",
     "react-redux": "catalog:",
     "redux-logger": "catalog:",
@@ -93,9 +106,10 @@
     "@tailwindcss/vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "^14.6.1",
+    "@testing-library/user-event": "^14.6.7",
     "@types/concaveman": "^1.1.6",
     "@types/d3-force": "^3.0.10",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -103,7 +117,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
-    "chalk": "5.6.2",
+    "chalk": "^6.0.1",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
     "playwright": "catalog:",

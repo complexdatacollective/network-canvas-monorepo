@@ -8,7 +8,7 @@ export type PresignedUploadUrl = {
   publicUrl: string;
 };
 
-export class AssetStorage extends Context.Tag('AssetStorage')<
+export class AssetStorage extends Context.Service<
   AssetStorage,
   {
     readonly generatePresignedUploadUrls: (
@@ -18,4 +18,4 @@ export class AssetStorage extends Context.Tag('AssetStorage')<
       keys: string[],
     ) => Effect.Effect<void, AssetStorageError>;
   }
->() {}
+>()('AssetStorage') {}

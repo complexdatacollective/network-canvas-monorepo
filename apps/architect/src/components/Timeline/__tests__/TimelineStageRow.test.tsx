@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Reorder } from 'motion/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { INTERFACE_NAMES } from '~/config/interfaceNames';
+import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
 
 import TimelineStageRow, { type TimelineRowStage } from '../TimelineStageRow';
 
@@ -163,7 +163,7 @@ describe('TimelineStageRow', () => {
   });
 
   /**
-   * The interface name comes from `~/config/interfaceNames`, keyed by the
+   * The interface name comes from `@codaco/protocol-builder`, keyed by the
    * schema's stage union — not from the New Stage screen's own option list,
    * which this row used to reach across into and which named six interfaces
    * differently from the stage editor registry.

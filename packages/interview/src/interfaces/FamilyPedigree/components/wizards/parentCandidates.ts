@@ -1,5 +1,9 @@
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcEdge, NcNode, RelationshipType } from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import type { FamilyEdge, GameteRole, VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';

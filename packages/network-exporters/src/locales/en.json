@@ -1,0 +1,18 @@
+{
+  "networkExporters.stage.fetching": {
+    "defaultMessage": "Fetching interview data...",
+    "description": "Export progress while retrieving stored interviews."
+  },
+  "networkExporters.stage.formatting": {
+    "defaultMessage": "Formatting sessions...",
+    "description": "Export progress while preparing session data for export."
+  },
+  "networkExporters.stage.generating": {
+    "defaultMessage": "Generating files...",
+    "description": "Export progress while creating CSV or GraphML files."
+  },
+  "networkExporters.stage.outputting": {
+    "defaultMessage": "Writing output...",
+    "description": "Export progress while writing the completed export files."
+  }
+}

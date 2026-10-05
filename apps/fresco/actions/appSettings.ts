@@ -6,20 +6,89 @@ import { after } from 'next/server';
 import { type z } from 'zod';
 import { z as zm } from 'zod/mini';
 
-import { ensureError } from '@codaco/shared-consts';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { captureEvent, flushPostHog } from '~/lib/posthog-server';
+import {
+  captureEvent,
+  captureException,
+  flushPostHog,
+} from '~/lib/posthog-server';
 import { getStorageEnvStatus } from '~/lib/storage/config';
 import { getInstallationId } from '~/queries/appSettings';
 import {
   type AppSetting,
   appSettingPreprocessedSchema,
-  createUploadThingTokenFormSchema,
+  createUploadThingSchemas,
 } from '~/schemas/appSettings';
 import { getStringValue } from '~/utils/serializeHelpers';
+
+const messages = defineMessages({
+  copyInvalidAppSetting: {
+    id: 'fresco.actions.appSettings.copyInvalidAppSetting',
+    defaultMessage: 'Invalid app setting: {value1}',
+    description:
+      'Researcher-facing actions / appSettings: Invalid app setting: value',
+  },
+  copyStorageIsConfiguredViaEnvironmentVariablesAnd: {
+    id: 'fresco.actions.appSettings.copyStorageIsConfiguredViaEnvironmentVariablesAnd',
+    defaultMessage:
+      'Storage is configured via environment variables and cannot be changed here.',
+    description:
+      'Researcher-facing actions / appSettings: Storage is configured via environment variables and cannot be changed here.',
+  },
+  copyCannotSetAppSettingToNull: {
+    id: 'fresco.actions.appSettings.copyCannotSetAppSettingToNull',
+    defaultMessage: 'Cannot set app setting to null',
+    description:
+      'Researcher-facing actions / appSettings: Cannot set app setting to null',
+  },
+  copyCannotSetAppSettingToUndefined: {
+    id: 'fresco.actions.appSettings.copyCannotSetAppSettingToUndefined',
+    defaultMessage: 'Cannot set app setting to undefined',
+    description:
+      'Researcher-facing actions / appSettings: Cannot set app setting to undefined',
+  },
+  copyInvalidValueForAppSetting: {
+    id: 'fresco.actions.appSettings.copyInvalidValueForAppSetting',
+    defaultMessage: 'Invalid value for app setting {value1}',
+    description:
+      'Researcher-facing actions / appSettings: Invalid value for app setting value',
+  },
+  copyFailedToUpdateAppSettings: {
+    id: 'fresco.actions.appSettings.copyFailedToUpdateAppSettings',
+    defaultMessage: 'Failed to update this setting.',
+    description:
+      'Researcher-facing actions / appSettings: Failed to update appSettings: value: value',
+  },
+  copyTheUploadThingTokenIsConfiguredViaThe: {
+    id: 'fresco.actions.appSettings.copyTheUploadThingTokenIsConfiguredViaThe',
+    defaultMessage:
+      'The UploadThing token is configured via the UPLOADTHING_TOKEN environment variable and cannot be changed here.',
+    description:
+      'Researcher-facing actions / appSettings: The UploadThing token is configured via the UPLOADTHING_TOKEN environment variable and cannot be changed here.',
+  },
+  copyTokenIsMissingRequiredFieldsApiKeyAppId: {
+    id: 'fresco.actions.appSettings.copyTokenIsMissingRequiredFieldsApiKeyAppId',
+    defaultMessage: 'Token is missing required fields (apiKey, appId).',
+    description:
+      'Researcher-facing actions / appSettings: Token is missing required fields (apiKey, appId).',
+  },
+  copyTokenIsNotValidMakeSureYou: {
+    id: 'fresco.actions.appSettings.copyTokenIsNotValidMakeSureYou',
+    defaultMessage: 'Token is not valid. Make sure you copied the full token.',
+    description:
+      'Researcher-facing actions / appSettings: Token is not valid. Make sure you copied the full token.',
+  },
+  copyTokenVerificationFailed: {
+    id: 'fresco.actions.appSettings.copyTokenVerificationFailed',
+    defaultMessage: 'Token verification failed. Check the token and try again.',
+    description:
+      'Researcher-facing actions / appSettings: Token verification failed: value',
+  },
+});
 
 const S3_SETTING_KEYS: AppSetting[] = [
   's3Endpoint',
@@ -49,25 +118,33 @@ export async function setAppSetting<
   const session = await requireApiAuth();
 
   if (!appSettingPreprocessedSchema.shape[key]) {
-    throw new Error(`Invalid app setting: ${key}`);
+    throw new Error(
+      createMessageError(messages.copyInvalidAppSetting, { value1: key }),
+    );
   }
 
   if (isStorageSettingEnvManaged(key)) {
     throw new Error(
-      'Storage is configured via environment variables and cannot be changed here.',
+      createMessageError(
+        messages.copyStorageIsConfiguredViaEnvironmentVariablesAnd,
+      ),
     );
   }
 
   try {
     // Null values are not supported - caller should not pass null
     if (value === null) {
-      throw new Error('Cannot set app setting to null');
+      throw new Error(
+        createMessageError(messages.copyCannotSetAppSettingToNull),
+      );
     }
 
     // Convert the typed value to a database string
     // Filter out undefined values as they're not supported by getStringValue
     if (value === undefined) {
-      throw new Error('Cannot set app setting to undefined');
+      throw new Error(
+        createMessageError(messages.copyCannotSetAppSettingToUndefined),
+      );
     }
     const stringValue = getStringValue(value);
 
@@ -77,7 +154,11 @@ export async function setAppSetting<
     const validated =
       appSettingPreprocessedSchema.shape[key].safeParse(stringValue);
     if (!validated.success) {
-      throw new Error(`Invalid value for app setting ${key}`);
+      throw new Error(
+        createMessageError(messages.copyInvalidValueForAppSetting, {
+          value1: key,
+        }),
+      );
     }
 
     await prisma.appSettings.upsert({
@@ -100,18 +181,31 @@ export async function setAppSetting<
     await addEvent(
       'Setting Changed',
       `"${session.user.username}" changed "${key}" to "${displayValue}"`,
+      {
+        kind: 'settingChanged',
+        values: {
+          username: session.user.username,
+          setting: key,
+          value: displayValue,
+        },
+      },
     );
 
     return value;
   } catch (error) {
-    const e = ensureError(error);
-    throw new Error(`Failed to update appSettings: ${key}: ${e.message}`, {
-      cause: error,
-    });
+    throw new Error(
+      createMessageError(messages.copyFailedToUpdateAppSettings),
+      {
+        cause: error,
+      },
+    );
   }
 }
 
 export async function setUploadThingToken(rawData: unknown) {
+  const { createUploadThingTokenFormSchema } =
+    createUploadThingSchemas(createMessageError);
+
   await requireApiAuth();
 
   if (getStorageEnvStatus().uploadThingEnvManaged) {
@@ -119,7 +213,9 @@ export async function setUploadThingToken(rawData: unknown) {
       success: false as const,
       fieldErrors: {
         uploadThingToken: [
-          'The UploadThing token is configured via the UPLOADTHING_TOKEN environment variable and cannot be changed here.',
+          createMessageError(
+            messages.copyTheUploadThingTokenIsConfiguredViaThe,
+          ),
         ],
       },
     };
@@ -145,7 +241,9 @@ export async function setUploadThingToken(rawData: unknown) {
         success: false as const,
         fieldErrors: {
           uploadThingToken: [
-            'Token is missing required fields (apiKey, appId).',
+            createMessageError(
+              messages.copyTokenIsMissingRequiredFieldsApiKeyAppId,
+            ),
           ],
         },
       };
@@ -155,7 +253,7 @@ export async function setUploadThingToken(rawData: unknown) {
       success: false as const,
       fieldErrors: {
         uploadThingToken: [
-          'Token is not valid. Make sure you copied the full token.',
+          createMessageError(messages.copyTokenIsNotValidMakeSureYou),
         ],
       },
     };
@@ -184,8 +282,8 @@ async function verifyUploadThingToken(token: string): Promise<string | null> {
     await utapi.getUsageInfo();
     return null;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return `Token verification failed: ${message}`;
+    await captureException(error);
+    return createMessageError(messages.copyTokenVerificationFailed);
   }
 }
 

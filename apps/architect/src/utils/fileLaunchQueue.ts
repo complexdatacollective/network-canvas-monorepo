@@ -6,6 +6,8 @@
 // Safari and Firefox never define window.launchQueue; everything here is a
 // silent no-op there.
 
+import { reportError } from './reportError';
+
 let pendingFiles: File[] = [];
 let pendingReadFailures: number[] = [];
 let pendingLaunchReads = 0;
@@ -53,7 +55,7 @@ export const initFileLaunchCapture = (): void => {
 
       if (failures.length > 0) {
         for (const failure of failures) {
-          console.error('Failed to read launched file', failure.reason);
+          reportError(failure.reason, { operation: 'fileLaunchRead' });
         }
         reportLaunchReadFailure(failures.length);
       }
@@ -66,7 +68,7 @@ export const initFileLaunchCapture = (): void => {
       emit();
     })()
       .catch((error: unknown) => {
-        console.error('Failed to handle launched files', error);
+        reportError(error, { operation: 'fileLaunchHandle' });
       })
       .finally(() => {
         pendingLaunchReads -= 1;

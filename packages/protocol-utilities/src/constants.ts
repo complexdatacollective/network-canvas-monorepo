@@ -1,5 +1,8 @@
 import type {
   ComponentType,
+  EdgeColorReference,
+  NodeColorReference,
+  OrdinalColorReference,
   VariableOption,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -40,7 +43,7 @@ export const NODE_COLORS = [
   'node-color-seq-3',
   'node-color-seq-4',
   'node-color-seq-5',
-];
+] as const satisfies readonly NodeColorReference[];
 
 export const EDGE_COLORS = [
   'edge-color-seq-1',
@@ -48,7 +51,7 @@ export const EDGE_COLORS = [
   'edge-color-seq-3',
   'edge-color-seq-4',
   'edge-color-seq-5',
-];
+] as const satisfies readonly EdgeColorReference[];
 
 export const ORDINAL_COLORS = [
   'ord-color-seq-1',
@@ -61,4 +64,4 @@ export const ORDINAL_COLORS = [
   'ord-color-seq-8',
   'ord-color-seq-9',
   'ord-color-seq-10',
-];
+] as const satisfies readonly OrdinalColorReference[];

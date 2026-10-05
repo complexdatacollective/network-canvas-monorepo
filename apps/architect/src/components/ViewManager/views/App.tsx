@@ -1,7 +1,10 @@
-import { useEffect } from 'react';
+import { createElement, useEffect } from 'react';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
@@ -28,9 +31,57 @@ import {
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
 import {
-  subscribeStartupProtocolValidationFailures,
-  takeStartupProtocolValidationFailures,
+  subscribeProtocolUpgrades,
+  takeProtocolUpgrades,
+} from '~/utils/protocolUpgradeQueue';
+import {
+  subscribeStartupProtocolFailures,
+  takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
+const messages = defineMessages({
+  couldNotOpenFile: {
+    id: 'architect.viewManager.views.app.couldNotOpenFile',
+    defaultMessage: 'Could not open file',
+    description: 'The title text in components / ViewManager / views / App.',
+  },
+  launchedCouldNotBeRead: {
+    id: 'architect.viewManager.views.app.launchedCouldNotBeRead',
+    defaultMessage:
+      '{failedCount, plural, one {The launched file could not be read. It may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. They may have been moved, deleted, or become unavailable since they were opened.}}',
+    description:
+      'The description text in components / ViewManager / views / App.',
+  },
+  oK: {
+    id: 'architect.viewManager.views.app.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / ViewManager / views / App.',
+  },
+  autosaveFailed: {
+    id: 'architect.viewManager.views.app.autosaveFailed',
+    defaultMessage: 'Autosave failed',
+    description: 'The title text in components / ViewManager / views / App.',
+  },
+  protocolUpdated: {
+    id: 'architect.viewManager.views.app.protocolUpdated',
+    defaultMessage: 'Protocol updated',
+    description: 'The title text in components / ViewManager / views / App.',
+  },
+  wasMadeWithAn: {
+    id: 'architect.viewManager.views.app.wasMadeWithAn',
+    defaultMessage:
+      '"{name}" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.',
+    description:
+      'The description text in components / ViewManager / views / App.',
+  },
+});
+const finalMessages = defineMessages({
+  storageFailure: {
+    id: 'architect.app.storageFailure',
+    defaultMessage:
+      'Your recent changes could not be saved to this device, which can happen if local storage is full or unavailable. To avoid losing work, download a copy of your protocol.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 const FileLaunchFailureReporter = () => {
   const { openDialog } = useDialog();
@@ -39,13 +90,24 @@ const FileLaunchFailureReporter = () => {
     const reportFailures = () => {
       const failures = takeLaunchReadFailures();
       for (const failedCount of failures) {
-        const noun = failedCount === 1 ? 'file' : 'files';
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: 'Could not open file',
-          description: `${failedCount} launched ${noun} could not be read. The ${noun} may have been moved, deleted, or become unavailable since ${failedCount === 1 ? 'it was' : 'they were'} opened.`,
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.couldNotOpenFile,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.launchedCouldNotBeRead,
+            values: {
+              failedCount: failedCount,
+            },
+          }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
       }
     };
@@ -67,12 +129,16 @@ const AutosaveFailureReporter = () => {
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: 'Autosave failed',
-        description:
-          'Your recent changes could not be saved to this device, which ' +
-          'can happen if local storage is full or unavailable. To ' +
-          'avoid losing work, download a copy of your protocol.',
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, { message: messages.autosaveFailed }),
+        description: createElement(AppMessage, {
+          message: finalMessages.storageFailure,
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
     };
 
@@ -88,17 +154,48 @@ const StartupProtocolFailureReporter = () => {
 
   useEffect(() => {
     const reportFailures = () => {
-      for (const message of takeStartupProtocolValidationFailures()) {
+      for (const refusal of takeStartupProtocolFailures()) {
         void showProtocolOpenResultDialog({
-          result: { status: 'validation-error', message },
+          result: refusal,
           openDialog,
         });
       }
     };
 
     reportFailures();
-    return subscribeStartupProtocolValidationFailures(reportFailures);
+    return subscribeStartupProtocolFailures(reportFailures);
   }, [openDialog]);
+
+  return null;
+};
+
+/**
+ * Announces a protocol that was brought up to date while being opened.
+ *
+ * A toast, not a dialog: nothing went wrong and there is nothing to decide —
+ * the protocol opened, and this only explains why the copy in the library is
+ * no longer byte-identical to the one the researcher last saved. The other
+ * reporters here interrupt because they describe work that did NOT happen.
+ */
+const ProtocolUpgradeToaster = () => {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const announceUpgrades = () => {
+      for (const { name } of takeProtocolUpgrades()) {
+        toast({
+          variant: 'info',
+          title: <AppMessage message={messages.protocolUpdated} />,
+          description: (
+            <AppMessage message={messages.wasMadeWithAn} values={{ name }} />
+          ),
+        });
+      }
+    };
+
+    announceUpgrades();
+    return subscribeProtocolUpgrades(announceUpgrades);
+  }, [toast]);
 
   return null;
 };
@@ -112,30 +209,17 @@ const LaunchedProtocolOpener = () => {
       const [file] = takeLaunchFiles();
       if (!file) return;
 
-      // A launched file can need an upgrade, a configuration repair, or both,
-      // and each approval has to carry the earlier one forward — the same
-      // shape Home's drop/open flow uses. Each approval callback is offered
-      // only while its own flag is still unset, so an approval always advances
-      // and can never re-present the dialog it came from.
-      const open = async (approvals: {
-        migrationApproved?: boolean;
-        repairApproved?: boolean;
-      }): Promise<void> => {
+      const open = async (migrationApproved = false): Promise<void> => {
         const result = await dispatch(
-          openLocalNetcanvas({ file, ...approvals }),
+          openLocalNetcanvas({ file, migrationApproved }),
         ).unwrap();
         await showProtocolOpenResultDialog({
           result,
           openDialog,
-          onApproveMigration: approvals.migrationApproved
-            ? undefined
-            : () => open({ ...approvals, migrationApproved: true }),
-          onApproveRepair: approvals.repairApproved
-            ? undefined
-            : () => open({ ...approvals, repairApproved: true }),
+          onApproveMigration: migrationApproved ? undefined : () => open(true),
         });
       };
-      void open({});
+      void open();
     };
 
     openLaunchedProtocols();
@@ -171,6 +255,7 @@ const AppContents = () => {
       <FileLaunchFailureReporter />
       <AutosaveFailureReporter />
       <StartupProtocolFailureReporter />
+      <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be

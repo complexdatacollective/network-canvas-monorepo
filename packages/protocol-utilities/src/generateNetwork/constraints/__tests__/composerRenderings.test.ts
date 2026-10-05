@@ -11,8 +11,8 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../../generateNetwork';
-import { SyntheticDataConstraintError } from '../error';
+import { generateNetwork } from '../../../generateNetwork.ts';
+import { SyntheticDataConstraintError } from '../error.ts';
 
 const TODAY = '2026-07-27';
 

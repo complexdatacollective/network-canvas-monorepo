@@ -4,7 +4,7 @@ import { getAppSetting } from '~/queries/appSettings';
 
 import Switch from './SwitchWithOptimisticUpdate';
 
-const LimitInterviewsSwitch = async () => {
+const LimitInterviewsSwitch = async ({ label }: { label: string }) => {
   const limitInterviews = await getAppSetting('limitInterviews');
 
   if (limitInterviews === null) {
@@ -13,6 +13,7 @@ const LimitInterviewsSwitch = async () => {
 
   return (
     <Switch
+      label={label}
       initialValue={limitInterviews}
       updateValue={async (value) => {
         'use server';

@@ -2,6 +2,9 @@ import { Check, Eye, Loader2, Settings, X } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import {
   defineToolbarChild,
@@ -12,16 +15,58 @@ import {
   ToolbarSeparator,
   type ToolbarButtonProps,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import type { StageProblemsStore } from '@codaco/protocol-builder/stage-editor-contract';
 import { useIssuesToolbarControl } from '~/components/Issues';
-import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
-import { useStageDraftHistory } from '~/components/StageEditor/useStageDraftHistory';
+import { useStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { getProtocolName } from '~/selectors/protocol';
 
 import { useActionToolbar } from './ActionToolbar';
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
-import { HistoryToolbarControls } from './historyToolbarItems';
 import NavShell from './NavShell';
+const chromeMessages = defineMessages({
+  untitledProtocol: {
+    id: 'architect.chrome.projectNav.stageEditorNav.untitledProtocol',
+    defaultMessage: 'Untitled protocol',
+    description: 'The label text in components / ProjectNav / StageEditorNav.',
+  },
+});
+const messages = defineMessages({
+  finishedEditing: {
+    id: 'architect.projectNav.stageEditorNav.finishedEditing',
+    defaultMessage: 'Finished Editing',
+    description: 'Visible text in components / ProjectNav / StageEditorNav.',
+  },
+  stageEditorActions: {
+    id: 'architect.projectNav.stageEditorNav.stageEditorActions',
+    defaultMessage: 'Stage editor actions',
+    description:
+      "The 'aria-label' text in components / ProjectNav / StageEditorNav.",
+  },
+  editingActions: {
+    id: 'architect.projectNav.stageEditorNav.editingActions',
+    defaultMessage: 'Editing actions',
+    description:
+      'The aria-label text in components / ProjectNav / StageEditorNav.',
+  },
+  previewActions: {
+    id: 'architect.projectNav.stageEditorNav.previewActions',
+    defaultMessage: 'Preview actions',
+    description:
+      'The aria-label text in components / ProjectNav / StageEditorNav.',
+  },
+  preview: {
+    id: 'architect.projectNav.stageEditorNav.preview',
+    defaultMessage: 'Preview',
+    description: 'Visible text in components / ProjectNav / StageEditorNav.',
+  },
+  previewSettings: {
+    id: 'architect.projectNav.stageEditorNav.previewSettings',
+    defaultMessage: 'Preview settings',
+    description:
+      'The aria-label text in components / ProjectNav / StageEditorNav.',
+  },
+});
 
 const previewButtonClassName =
   'bg-slate-blue! text-white! ui-enabled:hover:bg-slate-blue! ui-enabled:hover:text-white!';
@@ -29,22 +74,40 @@ const previewButtonClassName =
 type StageEditorNavProps = {
   stageName: string;
   onCancel: () => void;
-  onPreview: () => void;
-  previewLabel: string;
-  previewOptionsContent?: ReactNode;
-  isStageInvalid: boolean;
-  isOpeningPreview: boolean;
-  hasUnsavedChanges: boolean;
+};
+
+/**
+ * The stage editor's own header: where the researcher is, and the way back.
+ *
+ * Rendered above the editor rather than in its action slot, because it is a
+ * sticky bar at the top of the page and the slot sits at the foot of the form.
+ * The toolbar below is the other half of this chrome, and it does sit in the
+ * slot — it has to be inside the stage form to submit it.
+ */
+const StageEditorNav = ({ stageName, onCancel }: StageEditorNavProps) => {
+  const intl = useAppIntl();
+  const protocolName = useSelector(getProtocolName);
+
+  const breadcrumbItems: BreadcrumbItem[] = [
+    {
+      label:
+        protocolName ?? intl.formatMessage(chromeMessages.untitledProtocol),
+      onClick: onCancel,
+    },
+    { label: stageName },
+  ];
+
+  return <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />;
 };
 
 /**
  * "Finished Editing" submits the stage form. The gating is the browser's:
  * `useForm` validates every registered field and only calls `onSubmit` when
- * they all pass — identical to the explicit `submit()` dispatch this replaces.
- * Opening the issues panel here covers a repeat attempt, where `submitFailed`
- * and the error set are unchanged so the auto-open effect does not re-fire.
+ * they all pass. Opening the issues panel here covers a repeat attempt, where
+ * the error set is unchanged so the auto-open effect does not re-fire.
  */
 type FinishedEditingControlProps = {
+  formId: string;
   openIssues: () => void;
   isSubmitting: boolean;
   canCommit: boolean;
@@ -53,15 +116,17 @@ type FinishedEditingControlProps = {
 
 const FinishedEditingControl = defineToolbarChild(
   function FinishedEditingControl({
+    formId,
     openIssues,
     isSubmitting,
     canCommit,
     ref,
   }: FinishedEditingControlProps) {
+    const intl = useAppIntl();
     return (
       <ToolbarButton
         ref={ref}
-        form={STAGE_FORM_ID}
+        form={formId}
         type="submit"
         variant="default"
         color="primary"
@@ -71,63 +136,79 @@ const FinishedEditingControl = defineToolbarChild(
         aria-busy={isSubmitting}
         onClick={openIssues}
       >
-        Finished Editing
+        {intl.formatMessage(messages.finishedEditing)}
       </ToolbarButton>
     );
   },
 );
 
-const StageEditorNav = ({
-  stageName,
+export type StageEditorToolbarProps = Readonly<{
+  /** The DOM id of the stage form this toolbar's save control submits. */
+  formId: string;
+  /** Whether the editor opened on a stage this tab may not write. */
+  readOnly: boolean;
+  /** The refusals no section answers for, for the issues panel. */
+  problems: StageProblemsStore;
+  onCancel: () => void;
+  onPreview: () => void;
+  previewLabel: string;
+  previewOptionsContent?: ReactNode;
+  isStageInvalid: boolean;
+  isOpeningPreview: boolean;
+}>;
+
+/**
+ * The stage editor's actions, published to the protocol toolbar.
+ *
+ * Rendered inside the editor's action slot, which is inside the stage form: the
+ * save control is a `<button form={formId} type="submit">` and the issues
+ * panel lists that form's own field errors, so neither can be assembled from
+ * outside it.
+ */
+export const StageEditorToolbar = ({
+  formId,
+  readOnly,
+  problems,
   onCancel,
   onPreview,
   previewLabel,
   previewOptionsContent,
   isStageInvalid,
   isOpeningPreview,
-  hasUnsavedChanges,
-}: StageEditorNavProps) => {
-  const protocolName = useSelector(getProtocolName);
-  const { canUndo, canRedo, undo, redo } = useStageDraftHistory();
-  const { control: issuesControl, openIssues } = useIssuesToolbarControl();
+}: StageEditorToolbarProps) => {
+  const intl = useAppIntl();
+  const { control: issuesControl, openIssues } =
+    useIssuesToolbarControl(problems);
   const [previewOptionsOpen, setPreviewOptionsOpen] = useState(false);
   const isSubmitting = useFormStore((state) => state.isSubmitting);
+  const hasUnsavedChanges = useStageDraft((beacon) => beacon.dirty);
   // A tab demoted while it was in the stage editor keeps that editor (see
   // ProtocolRouteGuard) so the draft is not thrown away, but it must not be
   // able to commit: this is the one action that claims to make work durable,
-  // and the library write behind it would be dropped.
+  // and the library write behind it would be dropped. `readOnly` is the same
+  // answer given by the host at the moment the stage was opened, which is what
+  // a tab that was already demoted then gets.
   // ProtocolLockBanner sits directly above and names the ways forward.
-  const canCommit = useProtocolAccessMode() === 'editable';
-
-  const breadcrumbItems: BreadcrumbItem[] = [
-    { label: protocolName ?? 'Untitled protocol', onClick: onCancel },
-    { label: stageName },
-  ];
-
-  const showHistoryActions = canUndo || canRedo;
+  const accessMode = useProtocolAccessMode();
+  const canCommit = !readOnly && accessMode === 'editable';
 
   const toolbarProps = useMemo(
     () => ({
-      'aria-label': 'Stage editor actions',
-      'leadingActions': showHistoryActions ? (
-        <HistoryToolbarControls
-          key="history-controls"
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={undo}
-          onRedo={redo}
-        />
-      ) : undefined,
+      'aria-label': intl.formatMessage(messages.stageEditorActions),
       'children': [
         issuesControl,
         issuesControl ? <ToolbarSeparator key="issues-separator" /> : null,
-        <ToolbarGroup key="stage-editing" aria-label="Editing actions">
+        <ToolbarGroup
+          key="stage-editing"
+          aria-label={intl.formatMessage(messages.editingActions)}
+        >
           <ToolbarButton icon={<X />} onClick={onCancel}>
-            Cancel
+            {intl.formatMessage(commonMessages.cancel)}
           </ToolbarButton>
           {hasUnsavedChanges ? (
             <FinishedEditingControl
               key="finished-editing"
+              formId={formId}
               openIssues={openIssues}
               isSubmitting={isSubmitting}
               canCommit={canCommit}
@@ -137,7 +218,7 @@ const StageEditorNav = ({
         <ToolbarSeparator key="stage-preview-separator" />,
         <ToolbarGroup
           key="stage-preview"
-          aria-label="Preview actions"
+          aria-label={intl.formatMessage(messages.previewActions)}
           className="gap-[0.16em]"
         >
           <ToolbarButton
@@ -148,7 +229,9 @@ const StageEditorNav = ({
             }
             onClick={onPreview}
           >
-            {isOpeningPreview ? previewLabel : 'Preview'}
+            {isOpeningPreview
+              ? previewLabel
+              : intl.formatMessage(messages.preview)}
           </ToolbarButton>
           <ToolbarPopover
             open={previewOptionsOpen}
@@ -156,7 +239,7 @@ const StageEditorNav = ({
             contentProps={{ side: 'top', align: 'end' }}
             trigger={
               <ToolbarIconButton
-                aria-label="Preview settings"
+                aria-label={intl.formatMessage(messages.previewSettings)}
                 className={`${previewButtonClassName} relative rounded-l-none! focus-visible:z-10 [&>.lucide]:-translate-x-0.5`}
                 disabled={!previewOptionsContent}
                 icon={<Settings />}
@@ -170,8 +253,7 @@ const StageEditorNav = ({
     }),
     [
       canCommit,
-      canRedo,
-      canUndo,
+      formId,
       hasUnsavedChanges,
       isOpeningPreview,
       isStageInvalid,
@@ -183,15 +265,13 @@ const StageEditorNav = ({
       previewLabel,
       previewOptionsContent,
       previewOptionsOpen,
-      redo,
-      showHistoryActions,
-      undo,
+      intl,
     ],
   );
 
   useActionToolbar(toolbarProps);
 
-  return <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />;
+  return null;
 };
 
 export default StageEditorNav;

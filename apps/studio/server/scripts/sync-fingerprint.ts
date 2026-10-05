@@ -1,9 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { computeSchemaFingerprint } from './apply.ts';
+import { renderSchemaDocs, writeSchemaDocs } from './schema-docs.ts';
 
-const fingerprint = await computeSchemaFingerprint();
+const artifacts = await renderSchemaDocs();
 
 writeFileSync(
   fileURLToPath(new URL('../src/db/fingerprint.generated.ts', import.meta.url)),
@@ -12,9 +12,11 @@ writeFileSync(
     '// Resync after any schema or sidecar change:',
     '//   pnpm --filter @codaco/studio-server sync-fingerprint',
     'export const SCHEMA_FINGERPRINT =',
-    `  '${fingerprint}';`,
+    `  '${artifacts.fingerprint}';`,
     '',
   ].join('\n'),
 );
+writeSchemaDocs(artifacts);
 
-console.log(`Fingerprint: ${fingerprint}`);
+console.log(`Fingerprint: ${artifacts.fingerprint}`);
+console.log('Wrote the Studio ERD and README schema section.');

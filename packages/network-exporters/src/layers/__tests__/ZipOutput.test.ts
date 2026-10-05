@@ -120,12 +120,12 @@ describe('makeZipOutput', () => {
     });
 
     const exit = await Effect.runPromise(
-      program.pipe(Effect.provide(makeZipOutput(sink)), Effect.either),
+      program.pipe(Effect.provide(makeZipOutput(sink)), Effect.result),
     );
 
-    expect(exit._tag).toBe('Left');
-    if (exit._tag === 'Left') {
-      expect(exit.left).toBeInstanceOf(OutputError);
+    expect(exit._tag).toBe('Failure');
+    if (exit._tag === 'Failure') {
+      expect(exit.failure).toBeInstanceOf(OutputError);
     }
   });
 
@@ -155,22 +155,22 @@ describe('makeZipOutput', () => {
     const program = Effect.gen(function* () {
       const out = yield* Output;
       const handle = yield* out.begin();
-      const writeExit = yield* Effect.either(
+      const writeExit = yield* Effect.result(
         out.writeEntry(handle, { name: 'boom.txt', data: throwingSource() }),
       );
-      expect(writeExit._tag).toBe('Left');
-      if (writeExit._tag === 'Left') {
-        expect(writeExit.left).toBeInstanceOf(OutputError);
+      expect(writeExit._tag).toBe('Failure');
+      if (writeExit._tag === 'Failure') {
+        expect(writeExit.failure).toBeInstanceOf(OutputError);
       }
       // end() must still complete (not hang) even though the stream was aborted.
-      return yield* Effect.either(out.end(handle));
+      return yield* Effect.result(out.end(handle));
     });
 
     const endExit = await Effect.runPromise(
       program.pipe(Effect.provide(makeZipOutput(sink))),
     );
     // We don't care whether end() succeeds or fails - only that it resolves promptly.
-    expect(['Left', 'Right']).toContain(endExit._tag);
+    expect(['Failure', 'Success']).toContain(endExit._tag);
   });
 
   it('abort settles a sink awaiting more chunks instead of stranding it', async () => {
@@ -242,8 +242,8 @@ describe('makeZipOutput', () => {
     const program = Effect.gen(function* () {
       const out = yield* Output;
       const handle = yield* out.begin();
-      const writeFiber = yield* Effect.fork(
-        Effect.either(
+      const writeFiber = yield* Effect.forkChild(
+        Effect.result(
           out.writeEntry(handle, {
             name: 'big.csv',
             data: endlessSource(),
@@ -259,7 +259,7 @@ describe('makeZipOutput', () => {
     const writeExit = await Effect.runPromise(
       program.pipe(Effect.provide(makeZipOutput(sink))),
     );
-    expect(writeExit._tag).toBe('Left');
+    expect(writeExit._tag).toBe('Failure');
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(producerClosed).toBe(true);
   });

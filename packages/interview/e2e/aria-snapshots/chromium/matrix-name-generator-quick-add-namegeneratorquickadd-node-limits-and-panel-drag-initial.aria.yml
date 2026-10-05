@@ -4,12 +4,13 @@
   - button "Prior contacts":
     - heading "Prior contacts" [level=3]
   - listbox "Prior contacts":
-    - option "Mohammad Crist"
+    - option "Nikita Crist"
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - button "Add a person":
     - img "Add a person"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

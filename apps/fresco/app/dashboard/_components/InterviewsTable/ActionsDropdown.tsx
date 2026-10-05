@@ -7,11 +7,14 @@ import {
   FileIcon,
   MoreHorizontal,
 } from 'lucide-react';
-import Link from 'next/link';
 import { hash as objectHash } from 'ohash';
 import { useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,9 +27,40 @@ import { DeleteInterviewsDialog } from '~/app/dashboard/interviews/_components/D
 import { ExportInterviewsDialog } from '~/app/dashboard/interviews/_components/ExportInterviewsDialog';
 import type { GetInterviewsQuery } from '~/queries/interviews';
 
+const messages = defineMessages({
+  openMenu: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.openMenu',
+    defaultMessage: 'Open menu',
+    description:
+      'Researcher-facing InterviewsTable / ActionsDropdown: Open menu',
+  },
+  actions: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.actions',
+    defaultMessage: 'Actions',
+    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Actions',
+  },
+  export: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.export',
+    defaultMessage: 'Export',
+    description: 'Researcher-facing InterviewsTable / ActionsDropdown: Export',
+  },
+  enterInterview: {
+    id: 'fresco.InterviewsTable.ActionsDropdown.enterInterview',
+    defaultMessage: 'Enter Interview',
+    description:
+      'Researcher-facing InterviewsTable / ActionsDropdown: Enter Interview',
+  },
+});
+
 type InterviewRow = GetInterviewsQuery[number];
 
-export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
+export const ActionsDropdown = ({
+  row,
+}: {
+  row: Row<DataTableFeatures, InterviewRow>;
+}) => {
+  const intl = useAppIntl();
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedInterviews, setSelectedInterviews] =
@@ -67,7 +101,7 @@ export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
           render={
             <IconButton
               variant="text"
-              aria-label="Open menu"
+              aria-label={intl.formatMessage(messages.openMenu)}
               icon={<MoreHorizontal />}
               size="sm"
             />
@@ -76,25 +110,34 @@ export const ActionsDropdown = ({ row }: { row: Row<InterviewRow> }) => {
         />
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {intl.formatMessage(messages.actions)}
+            </DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => handleDelete(row.original)}
               icon={<DeleteIcon />}
             >
-              Delete
+              {intl.formatMessage(commonMessages.delete)}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleExport(row.original)}
               icon={<FileIcon />}
             >
-              Export
+              {intl.formatMessage(messages.export)}
             </DropdownMenuItem>
           </DropdownMenuGroup>
-          <Link href={`/interview/${row.original.id}`}>
+          {/* Deliberately a full page load rather than a client-side <Link>.
+              Session replay must never run on an interview: it stores the
+              page URL — which is the participant's access credential — inside
+              its payload. A client-side navigation changes the URL and renders
+              the interview before any effect can stop a recorder that is
+              already running, whereas a fresh load re-initialises PostHog with
+              replay disabled before anything is captured. */}
+          <a href={`/interview/${row.original.id}`}>
             <DropdownMenuItem icon={<DoorOpenIcon />}>
-              Enter Interview
+              {intl.formatMessage(messages.enterInterview)}
             </DropdownMenuItem>
-          </Link>
+          </a>
         </DropdownMenuContent>
       </DropdownMenu>
     </>

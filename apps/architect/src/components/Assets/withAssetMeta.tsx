@@ -1,37 +1,27 @@
 import { get } from 'es-toolkit/compat';
-import { compose } from 'react-recompose';
-import { connect } from 'react-redux';
+import type { ComponentType } from 'react';
+import { useSelector } from 'react-redux';
 
-import type { RootState } from '~/ducks/modules/root';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { getDisplayAssetManifest } from '~/selectors/protocol';
 
-const existingMeta = {
-  name: 'Interview network',
-};
+import { assetMetadataMessages } from './assetMetadataMessages';
 
-type OwnProps = {
-  id: string;
-};
+type OwnProps = { id: string };
+type WithMetaProps = { meta: { name: string } };
 
-type WithMetaProps = {
-  meta: {
-    name: string;
+/** Selected-resource thumbnails and preview titles use the same authored metadata. */
+function withAssetMeta<P extends object>(
+  Component: ComponentType<P & WithMetaProps>,
+): ComponentType<P & OwnProps> {
+  return function AssetMeta(props: P & OwnProps) {
+    const intl = useAppIntl();
+    const assetManifest = useSelector(getDisplayAssetManifest);
+    const meta = get(assetManifest, props.id, {
+      name: intl.formatMessage(assetMetadataMessages.interviewNetwork),
+    });
+    return <Component {...props} meta={meta} />;
   };
-};
-
-const mapStateToProps = (state: RootState, { id }: OwnProps) => {
-  // Feeds the selected-resource thumbnails and the preview dialog's title, so
-  // it names the resource the same way its card in the library does.
-  const assetManifest = getDisplayAssetManifest(state);
-  const meta = get(assetManifest, id, existingMeta);
-
-  return {
-    meta,
-  };
-};
-
-const withAssetMeta = compose<WithMetaProps & OwnProps, OwnProps>(
-  connect(mapStateToProps),
-);
+}
 
 export default withAssetMeta;

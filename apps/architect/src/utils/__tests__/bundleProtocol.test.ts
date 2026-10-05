@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-import { bundleProtocol } from '../bundleProtocol';
+import { bundleProtocol, UnresolvedAssetsError } from '../bundleProtocol';
 
 const getAssetById = vi.fn();
 
@@ -47,8 +47,7 @@ describe('bundleProtocol', () => {
       Promise.resolve({ data: new Blob([`bytes-${id}`]) }),
     );
 
-    const { blob, skippedAssets } = await bundleProtocol(protocol);
-    expect(skippedAssets).toEqual([]);
+    const blob = await bundleProtocol(protocol);
 
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const exported = JSON.parse(
@@ -82,8 +81,7 @@ describe('bundleProtocol', () => {
       Promise.resolve({ data: new Blob([`bytes-${id}`]) }),
     );
 
-    const { blob, skippedAssets } = await bundleProtocol(protocol);
-    expect(skippedAssets).toEqual([]);
+    const blob = await bundleProtocol(protocol);
 
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const exported = JSON.parse(
@@ -110,7 +108,7 @@ describe('bundleProtocol', () => {
     expect(assetEntries).toHaveLength(2);
   });
 
-  it('skips unresolvable assets and reports them instead of throwing (F10)', async () => {
+  it('refuses to write a file when an asset cannot be read (F10)', async () => {
     const protocol = makeProtocol({
       'id-ok': asset('image', 'good.jpg', 'Good asset'),
       'id-missing': asset('image', 'gone.jpg', 'Missing asset'),
@@ -122,24 +120,28 @@ describe('bundleProtocol', () => {
         : Promise.resolve(undefined),
     );
 
-    const { blob, skippedAssets } = await bundleProtocol(protocol);
-
-    expect(skippedAssets).toEqual([
-      { id: 'id-missing', name: 'Missing asset' },
-    ]);
-
-    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-    const exported = JSON.parse(
-      (await zip.file('protocol.json')?.async('string')) ?? '{}',
-    ) as CurrentProtocol;
-
-    // The resolvable asset is exported; the missing one is dropped from the
-    // manifest so the file re-imports cleanly.
-    expect(exported.assetManifest?.['id-ok']).toBeDefined();
-    expect(exported.assetManifest?.['id-missing']).toBeUndefined();
+    // Omitting the asset would drop its manifest entry while the stages that
+    // reference it keep pointing at the id, and the schema rejects a dangling
+    // asset reference — so the "partial" file would not open anywhere.
+    await expect(bundleProtocol(protocol)).rejects.toBeInstanceOf(
+      UnresolvedAssetsError,
+    );
   });
 
-  it('reports a non-apikey asset whose data is a string as skipped', async () => {
+  it('names every unreadable asset, not just the first', async () => {
+    const protocol = makeProtocol({
+      'id-a': asset('image', 'a.jpg', 'First missing'),
+      'id-b': asset('image', 'b.jpg', 'Second missing'),
+    });
+
+    getAssetById.mockResolvedValue(undefined);
+
+    await expect(bundleProtocol(protocol)).rejects.toMatchObject({
+      assetNames: ['First missing', 'Second missing'],
+    });
+  });
+
+  it('refuses a non-apikey asset whose stored data is a string', async () => {
     const protocol = makeProtocol({
       'id-str': asset('image', 'weird.jpg', 'Stringy asset'),
     });
@@ -148,15 +150,9 @@ describe('bundleProtocol', () => {
       Promise.resolve({ data: 'not-a-blob' }),
     );
 
-    const { blob, skippedAssets } = await bundleProtocol(protocol);
-
-    expect(skippedAssets).toEqual([{ id: 'id-str', name: 'Stringy asset' }]);
-
-    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-    const exported = JSON.parse(
-      (await zip.file('protocol.json')?.async('string')) ?? '{}',
-    ) as CurrentProtocol;
-    expect(exported.assetManifest?.['id-str']).toBeUndefined();
+    await expect(bundleProtocol(protocol)).rejects.toMatchObject({
+      assetNames: ['Stringy asset'],
+    });
   });
 
   it('keeps apikey manifest entries without bundling a file', async () => {
@@ -164,8 +160,7 @@ describe('bundleProtocol', () => {
       'id-key': { type: 'apikey', value: 'secret', name: 'Mapbox' },
     } as CurrentProtocol['assetManifest']);
 
-    const { blob, skippedAssets } = await bundleProtocol(protocol);
-    expect(skippedAssets).toEqual([]);
+    const blob = await bundleProtocol(protocol);
     expect(getAssetById).not.toHaveBeenCalled();
 
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());

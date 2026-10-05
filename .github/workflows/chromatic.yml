@@ -41,6 +41,11 @@ concurrency:
   group: chromatic-${{ github.event_name }}-${{ (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.sha) || github.event.pull_request.head.ref || github.event.workflow_run.pull_requests[0].number || github.ref_name || github.run_id }}
   cancel-in-progress: true
 
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   # GitHub required contexts apply to every PR targeting main, not only release
   # PRs. Emit all three external UI Test statuses without publishing snapshots
@@ -87,7 +92,7 @@ jobs:
           echo "current=true" >> "$GITHUB_OUTPUT"
       # This privileged status-only path deliberately avoids shared caches and
       # installs only the three Chromatic workspaces from trusted code.
-      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -138,11 +143,11 @@ jobs:
           wait "$interview_pid" || result=1
           wait "$interviewer_pid" || result=1
 
-          node scripts/chromatic-observability.mjs \
+          node scripts/ci/chromatic-observability.mjs \
             fresco-ui "$RUNNER_TEMP/chromatic-fresco-ui.log" skipped
-          node scripts/chromatic-observability.mjs \
+          node scripts/ci/chromatic-observability.mjs \
             interview "$RUNNER_TEMP/chromatic-interview.log" skipped
-          node scripts/chromatic-observability.mjs \
+          node scripts/ci/chromatic-observability.mjs \
             interviewer "$RUNNER_TEMP/chromatic-interviewer.log" skipped
           exit "$result"
       - name: Upload Chromatic diagnostic logs
@@ -226,7 +231,7 @@ jobs:
               }
             }')
           else
-            selection=$(node scripts/chromatic-affected.mjs \
+            selection=$(node scripts/ci/chromatic-affected.mjs \
               --base "$BEFORE_SHA" \
               --head "$head_sha" \
               --main "origin/$DEFAULT_BRANCH" \
@@ -323,7 +328,7 @@ jobs:
             wait "$pid" || result=1
           done
           for project in "${projects[@]}"; do
-            node scripts/chromatic-observability.mjs \
+            node scripts/ci/chromatic-observability.mjs \
               "$project" "$RUNNER_TEMP/chromatic-$project.log" skipped
           done
           exit "$result"
@@ -370,7 +375,7 @@ jobs:
       - name: Summarize Chromatic build
         if: always()
         run: >-
-          node scripts/chromatic-observability.mjs
+          node scripts/ci/chromatic-observability.mjs
           fresco-ui
           "$RUNNER_TEMP/chromatic-fresco-ui.log"
           affected
@@ -417,7 +422,7 @@ jobs:
       - name: Summarize Chromatic build
         if: always()
         run: >-
-          node scripts/chromatic-observability.mjs
+          node scripts/ci/chromatic-observability.mjs
           interview
           "$RUNNER_TEMP/chromatic-interview.log"
           affected
@@ -464,7 +469,7 @@ jobs:
       - name: Summarize Chromatic build
         if: always()
         run: >-
-          node scripts/chromatic-observability.mjs
+          node scripts/ci/chromatic-observability.mjs
           interviewer
           "$RUNNER_TEMP/chromatic-interviewer.log"
           affected

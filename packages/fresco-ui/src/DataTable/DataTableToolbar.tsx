@@ -1,25 +1,43 @@
 'use client';
 
-import type { Table } from '@tanstack/react-table';
+import type { RowData, Table } from '@tanstack/react-table';
 import { Search, X } from 'lucide-react';
 import { type ReactNode } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button } from '../Button';
 import InputField from '../form/fields/InputField';
 import { DataTableFacetedFilter } from './DataTableFacetedFilter';
+import { type DataTableFeatures } from './features';
 import {
   type DataTableFilterableColumn,
   type DataTableSearchableColumn,
 } from './types';
 
-type DataTableToolbarProps<TData> = {
-  table: Table<TData>;
+const messages = defineMessages({
+  searchPlaceholder: {
+    id: 'frescoUi.dataTableToolbar.searchPlaceholder',
+    defaultMessage: 'Filter {title}...',
+    description:
+      'Placeholder of a column search box in the table toolbar; {title} is the host-supplied column heading.',
+  },
+  clearFilters: {
+    id: 'frescoUi.dataTableToolbar.clearFilters',
+    defaultMessage: 'Clear Filters',
+    description: 'Button that removes every active table filter.',
+  },
+});
+
+type DataTableToolbarProps<TData extends RowData> = {
+  table: Table<DataTableFeatures, TData>;
   filterableColumns?: DataTableFilterableColumn<TData>[];
   searchableColumns?: DataTableSearchableColumn<TData>[];
   children?: ReactNode;
 };
 
-export function DataTableToolbar<TData>({
+export function DataTableToolbar<TData extends RowData>({
   table,
   filterableColumns = [],
   searchableColumns = [],
@@ -27,7 +45,8 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
-  const isFiltered = table.getState().columnFilters?.length > 0;
+  const intl = useAppIntl();
+  const isFiltered = table.atoms.columnFilters.get().length > 0;
 
   if (
     searchableColumns.length === 0 &&
@@ -49,7 +68,9 @@ export function DataTableToolbar<TData>({
                 prefixComponent={<Search />}
                 name="Filter"
                 className="tablet-landscape:min-w-0 tablet-landscape:flex-1 tablet-landscape:max-w-xl w-full min-w-fit"
-                placeholder={`Filter ${searchCol.title}...`}
+                placeholder={intl.formatMessage(messages.searchPlaceholder, {
+                  title: searchCol.title ?? '',
+                })}
                 value={
                   (table
                     .getColumn(String(searchCol.id))
@@ -80,7 +101,7 @@ export function DataTableToolbar<TData>({
           onClick={() => table.resetColumnFilters()}
           icon={<X className="size-4" aria-hidden="true" />}
         >
-          Clear Filters
+          {intl.formatMessage(messages.clearFilters)}
         </Button>
       )}
       {children}

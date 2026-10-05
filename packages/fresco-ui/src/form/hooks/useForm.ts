@@ -1,3 +1,5 @@
+'use client';
+
 import {
   type SyntheticEvent,
   useCallback,
@@ -5,8 +7,19 @@ import {
   useRef,
 } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+
 import type { FlattenedErrors, FormConfig } from '../store/types';
 import useFormStore from './useFormStore';
+
+const messages = defineMessages({
+  submitFailed: {
+    id: 'frescoUi.form.submitFailed',
+    defaultMessage: 'An error occurred while submitting the form.',
+    description:
+      'Form-level error shown when the submit handler itself throws, so it produced no message of its own.',
+  },
+});
 
 export function useForm(config: FormConfig) {
   const registeredRef = useRef(false);
@@ -132,7 +145,7 @@ export function useForm(config: FormConfig) {
         requestErrorFocus();
       } catch {
         setErrors({
-          formErrors: ['An error occurred while submitting the form.'],
+          formErrors: [createMessageError(messages.submitFailed)],
           fieldErrors: {},
         });
       } finally {

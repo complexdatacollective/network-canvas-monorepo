@@ -3,6 +3,7 @@
 import { LocateFixed, ZoomIn, ZoomOut } from 'lucide-react';
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   SegmentedToolbar,
   ToolbarGroup,
@@ -10,6 +11,7 @@ import {
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
+import { messages } from '../messages';
 import {
   canZoomIn,
   canZoomOut,
@@ -48,6 +50,7 @@ export default function ZoomableViewport({
   onBackgroundClick,
   onEscape,
 }: ZoomableViewportProps) {
+  const intl = useAppIntl();
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const pendingScroll = useRef<PendingScroll | null>(null);
@@ -160,24 +163,26 @@ export default function ZoomableViewport({
         size="lg"
         className="absolute right-4 bottom-4 z-10"
       >
-        <ToolbarGroup aria-label="Zoom controls">
+        <ToolbarGroup aria-label={intl.formatMessage(messages.zoomControls)}>
           <ToolbarIconButton
-            aria-label="Zoom out"
+            aria-label={intl.formatMessage(messages.zoomOut)}
             icon={<ZoomOut />}
             disabled={!canZoomOut(zoom)}
             onClick={() => changeZoom(zoomOut(zoom))}
           />
           <ToolbarIconButton
-            aria-label="Zoom in"
+            aria-label={intl.formatMessage(messages.zoomIn)}
             icon={<ZoomIn />}
             disabled={!canZoomIn(zoom)}
             onClick={() => changeZoom(zoomIn(zoom))}
           />
         </ToolbarGroup>
         <ToolbarSeparator />
-        <ToolbarGroup aria-label="Viewport controls">
+        <ToolbarGroup
+          aria-label={intl.formatMessage(messages.viewportControls)}
+        >
           <ToolbarIconButton
-            aria-label="Reset zoom"
+            aria-label={intl.formatMessage(messages.resetZoom)}
             icon={<LocateFixed />}
             onClick={handleReset}
           />

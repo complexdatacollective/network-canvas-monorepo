@@ -93,7 +93,7 @@ export function Tabs({
             layout={layout}
             hasEndContent
           />
-          <div className="ml-auto shrink-0">{headerEnd}</div>
+          <div className="ms-auto shrink-0">{headerEnd}</div>
         </div>
       ) : (
         <TabRail tabs={tabs} aria-label={ariaLabel} layout={layout} />
@@ -182,7 +182,7 @@ function Tab({
       className={cx(
         'font-heading focusable relative z-10 flex cursor-pointer items-center gap-3',
         'border-0 bg-transparent px-4 py-3 text-sm leading-tight font-extrabold',
-        layout === 'side' && 'w-full text-left',
+        layout === 'side' && 'w-full text-start',
         layout === 'top' && 'shrink-0 justify-center text-center',
         TAB_RADIUS,
         'text-text/80 data-[selected]:text-text',

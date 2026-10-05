@@ -54,7 +54,7 @@ export const Available: Story = {
     status: 'available',
     availableVersion: '8.0.0-beta.4',
     unsavedWorkCaveat:
-      'Reloading updates this tab and any other open Architect tabs; unsaved changes in progress will be lost.',
+      'Installing the update will reload only this tab. Other open Architect tabs will keep running until they are reloaded.',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -64,6 +64,11 @@ export const Available: Story = {
     await screen.findByRole('dialog');
     await expect(
       await screen.findByText(/A brighter sociogram/i),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByText(
+        'Installing the update will reload only this tab. Other open Architect tabs will keep running until they are reloaded.',
+      ),
     ).toBeInTheDocument();
     const install = await screen.findByRole('button', {
       name: 'Install and reload',

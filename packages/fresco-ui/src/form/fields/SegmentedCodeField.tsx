@@ -1,4 +1,9 @@
+'use client';
+
 import { useCallback, useEffect, useRef } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   controlVariants,
@@ -7,7 +12,7 @@ import {
   stateVariants,
   textSizeVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx, type VariantProps } from '../../utils/cva';
+import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -17,49 +22,54 @@ import { getInputState } from '../utils/getInputState';
 // inherited size, and a size class directly on the input would be
 // displaced by that rule instead of respected. See InputField for the
 // same wrapper-owns-size convention.
-const segmentGroupVariants = compose(
-  textSizeVariants,
-  cva({
-    base: cx('flex max-w-full items-center'),
-    variants: {
-      size: {
-        sm: 'gap-1.5',
-        md: 'gap-2',
-        lg: 'gap-2.5',
-        xl: 'gap-3',
-      },
+const segmentGroupOwnVariants = cva({
+  base: cx('flex max-w-full min-w-0 items-center'),
+  variants: {
+    size: {
+      sm: 'gap-1.5',
+      md: 'gap-2',
+      lg: 'gap-2.5',
+      xl: 'gap-3',
     },
-    defaultVariants: {
-      size: 'md',
-    },
-  }),
-);
+  },
+  defaultVariants: {
+    size: 'md',
+  },
+});
 
-const segmentVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  stateVariants,
-  interactiveStateVariants,
-  cva({
-    base: cx(
-      'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
-      '[font-size:inherit]', // Size comes from segmentGroupVariants on the wrapper
-      'focusable',
-      'placeholder:text-input-contrast/30',
-    ),
-    variants: {
-      size: {
-        sm: 'size-10',
-        md: 'size-12',
-        lg: 'size-13',
-        xl: 'size-14',
-      },
+const segmentGroupVariants = cva({
+  composes: [textSizeVariants, segmentGroupOwnVariants],
+});
+
+const segmentOwnVariants = cva({
+  base: cx(
+    'font-monospace aspect-square min-w-0 rounded-sm text-center caret-transparent ring-0',
+    '[font-size:inherit]', // Size comes from segmentGroupVariants on the wrapper
+    'focusable',
+    'placeholder:text-input-contrast/30',
+  ),
+  variants: {
+    size: {
+      sm: 'size-10',
+      md: 'size-12',
+      lg: 'size-13',
+      xl: 'size-14',
     },
-    defaultVariants: {
-      size: 'md',
-    },
-  }),
-);
+  },
+  defaultVariants: {
+    size: 'md',
+  },
+});
+
+const segmentVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    stateVariants,
+    interactiveStateVariants,
+    segmentOwnVariants,
+  ],
+});
 
 const separatorVariants = cva({
   base: cx('text-input-contrast/30 font-bold select-none'),
@@ -73,6 +83,30 @@ const separatorVariants = cva({
   },
   defaultVariants: {
     size: 'md',
+  },
+});
+
+// The masked and unmasked segment names are two whole sentences rather than a
+// shared stem plus an appended ", hidden": where the mask is mentioned, and
+// whether it is a trailing clause at all, is a decision each translation makes.
+const messages = defineMessages({
+  codeInput: {
+    id: 'frescoUi.segmentedCodeField.codeInput',
+    defaultMessage: 'Code input',
+    description:
+      'Accessible name of the group of single-character boxes a code is typed into, when the caller describes it with nothing else.',
+  },
+  segment: {
+    id: 'frescoUi.segmentedCodeField.segment',
+    defaultMessage: 'Digit {position, number} of {total, number}',
+    description:
+      'Accessible name of one box in a segmented code field; {position} is its place in the code and {total} the number of boxes.',
+  },
+  sensitiveSegment: {
+    id: 'frescoUi.segmentedCodeField.sensitiveSegment',
+    defaultMessage: 'Digit {position, number} of {total, number}, hidden',
+    description:
+      'Accessible name of one box in a segmented code field whose characters are masked, as a PIN’s are.',
   },
 });
 
@@ -106,6 +140,7 @@ type SegmentedCodeFieldProps = CreateFormFieldProps<
 >;
 
 function SegmentedCodeField(props: SegmentedCodeFieldProps) {
+  const intl = useAppIntl();
   const {
     segments,
     characterSet = 'numeric',
@@ -130,9 +165,25 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   // fieldset's test id.
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const pendingAutoFocus = useRef(Boolean(autoFocus));
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
 
-  const chars = value.split('').slice(0, segments);
+  // A retry can mount the fresh control while the form is still submitting.
+  // Native autofocus is ignored on a disabled input; honor that one request
+  // when it becomes enabled, without refocusing later renders or locale changes.
+  useEffect(() => {
+    if (!autoFocus || disabled || !pendingAutoFocus.current) return;
+    const firstInput = inputRefs.current[0];
+    if (!firstInput) return;
+    firstInput.focus();
+    pendingAutoFocus.current = false;
+  }, [autoFocus, disabled]);
+
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a string renders as an empty code.
+  const code = typeof value === 'string' ? value : '';
+  const chars = code.split('').slice(0, segments);
 
   const focusSegment = useCallback(
     (index: number) => {
@@ -151,10 +202,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   );
 
   useEffect(() => {
-    if (value.length === segments && onComplete) {
-      onComplete(value);
+    if (code.length === segments && onComplete) {
+      onComplete(code);
     }
-  }, [value, segments, onComplete]);
+  }, [code, segments, onComplete]);
 
   const handleInput = useCallback(
     (index: number, inputValue: string) => {
@@ -271,7 +322,11 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   return (
     <fieldset
       className={cx(segmentGroupVariants({ size }), className)}
-      aria-label={rest['aria-describedby'] ? undefined : 'Code input'}
+      aria-label={
+        rest['aria-describedby']
+          ? undefined
+          : intl.formatMessage(messages.codeInput)
+      }
       data-testid={name ? `segmented-code-${name}` : undefined}
     >
       {Array.from({ length: segments }, (_, i) => (
@@ -293,11 +348,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
             placeholder={'\u00B7'}
             disabled={disabled}
             readOnly={readOnly}
-            aria-label={
-              sensitive
-                ? `Digit ${String(i + 1)} of ${String(segments)}, hidden`
-                : `Digit ${String(i + 1)} of ${String(segments)}`
-            }
+            aria-label={intl.formatMessage(
+              sensitive ? messages.sensitiveSegment : messages.segment,
+              { position: i + 1, total: segments },
+            )}
             aria-invalid={rest['aria-invalid']}
             aria-describedby={i === 0 ? rest['aria-describedby'] : undefined}
             aria-required={i === 0 ? rest['aria-required'] : undefined}

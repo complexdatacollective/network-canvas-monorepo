@@ -2,7 +2,7 @@
   - button "Alex"
   - button "Sam"
   - text: How often do you interact?
-  - radiogroup:
+  - radiogroup "How often do you interact?":
     - radio "Never"
     - text: Never
     - radio "Yearly"
@@ -20,6 +20,7 @@
     - radio "Constantly"
     - text: Constantly
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

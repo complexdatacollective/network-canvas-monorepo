@@ -1,3 +1,5 @@
+'use client';
+
 import { Dialog } from '@base-ui/react/dialog';
 import {
   type HTMLMotionProps,

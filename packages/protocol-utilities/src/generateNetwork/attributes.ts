@@ -6,16 +6,16 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { VariableEntry } from '../types';
+import type { VariableEntry } from '../types.ts';
 import {
   type EntityScopeRef,
   generateEntityAttributes,
   scopeKey,
   uniqueSlotMembers,
-} from './constraints/generateEntityAttributes';
-import type { EntityConstraints } from './constraints/types';
-import type { GenerationContext } from './context';
-import type { PromptFixedValues } from './nodes';
+} from './constraints/generateEntityAttributes.ts';
+import type { EntityConstraints } from './constraints/types.ts';
+import type { GenerationContext } from './context.ts';
+import type { PromptFixedValues } from './nodes.ts';
 
 export function toVariableEntry(id: string, variable: Variable): VariableEntry {
   const options =

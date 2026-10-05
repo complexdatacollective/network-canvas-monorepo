@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { compose } from 'react-recompose';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { GridLayout } from '@codaco/fresco-ui/collection/layout/GridLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
@@ -8,9 +10,72 @@ import SegmentedSwitcher, {
   type SegmentedOption,
 } from '@codaco/fresco-ui/SegmentedSwitcher';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 
 import AssetCard from './AssetCard';
+import { useUnresolvedAssetIds } from './useUnresolvedAssets';
 import withAssets from './withAssets';
+const configMessages = defineMessages({
+  all: {
+    id: 'architect.assetBrowser.assets.config.all',
+    defaultMessage: 'All',
+    description:
+      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+  },
+  image: {
+    id: 'architect.assetBrowser.assets.config.image',
+    defaultMessage: 'Image',
+    description:
+      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+  },
+  video: {
+    id: 'architect.assetBrowser.assets.config.video',
+    defaultMessage: 'Video',
+    description:
+      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+  },
+  audio: {
+    id: 'architect.assetBrowser.assets.config.audio',
+    defaultMessage: 'Audio',
+    description:
+      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+  },
+  network: {
+    id: 'architect.assetBrowser.assets.config.network',
+    defaultMessage: 'Network',
+    description:
+      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+  },
+  geoJSON: {
+    id: 'architect.assetBrowser.assets.config.geoJSON',
+    defaultMessage: 'GeoJSON',
+    description:
+      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+  },
+  aPIKey: {
+    id: 'architect.assetBrowser.assets.config.aPIKey',
+    defaultMessage: 'API key',
+    description:
+      'Presentation label or description in components/AssetBrowser/Assets.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  filterResourcesByType: {
+    id: 'architect.assetBrowser.assets.filterResourcesByType',
+    defaultMessage: 'Filter resources by type',
+    description: 'The aria-label text in components / AssetBrowser / Assets.',
+  },
+  resourceLibrary: {
+    id: 'architect.assetBrowser.assets.resourceLibrary',
+    defaultMessage: 'Resource library',
+    description: 'The aria-label text in components / AssetBrowser / Assets.',
+  },
+  noResourcesToDisplay: {
+    id: 'architect.assetBrowser.assets.noResourcesToDisplay',
+    defaultMessage: 'No resources to display.',
+    description: 'Visible text in components / AssetBrowser / Assets.',
+  },
+});
 
 type AssetTypeValue =
   | 'image'
@@ -22,14 +87,14 @@ type AssetTypeValue =
 
 type AssetFilterValue = 'all' | AssetTypeValue;
 
-const ASSET_TYPES: SegmentedOption<AssetFilterValue>[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Image', value: 'image' },
-  { label: 'Video', value: 'video' },
-  { label: 'Audio', value: 'audio' },
-  { label: 'Network', value: 'network' },
-  { label: 'GeoJSON', value: 'geojson' },
-  { label: 'API key', value: 'apikey' },
+const ASSET_TYPES: MessageConfig<SegmentedOption<AssetFilterValue>>[] = [
+  { label: configMessages.all, value: 'all' },
+  { label: configMessages.image, value: 'image' },
+  { label: configMessages.video, value: 'video' },
+  { label: configMessages.audio, value: 'audio' },
+  { label: configMessages.network, value: 'network' },
+  { label: configMessages.geoJSON, value: 'geojson' },
+  { label: configMessages.aPIKey, value: 'apikey' },
 ];
 
 type AssetType = {
@@ -49,6 +114,7 @@ type AssetsProps = {
   onDelete?: ((id: string, isUsed: boolean) => void) | null;
   onDownload?: (id: string) => void;
   onPreview?: (id: string) => void;
+  onReplace?: (id: string) => void;
   disableDelete?: boolean;
   selected?: string | null;
 };
@@ -62,9 +128,12 @@ const Assets = ({
   onDelete = null,
   onDownload,
   onPreview,
+  onReplace,
   disableDelete = false,
   selected = null,
 }: AssetsProps) => {
+  const intl = useAppIntl();
+  const unresolvedAssetIds = useUnresolvedAssetIds();
   const handleDelete = disableDelete ? null : onDelete;
   const selectedAssetType = (assetType ?? 'all') as AssetFilterValue;
 
@@ -90,9 +159,18 @@ const Assets = ({
         return;
       }
 
+      // Activating the card is a second route to Preview, so hiding the button
+      // is not enough: it would open a preview of bytes that are known not to
+      // exist, with a download that cannot work. Send the researcher to the
+      // one action that resolves it instead.
+      if (unresolvedAssetIds.has(selectedKey)) {
+        onReplace?.(selectedKey);
+        return;
+      }
+
       onPreview?.(selectedKey);
     },
-    [onPreview, onSelect],
+    [onPreview, onReplace, onSelect, unresolvedAssetIds],
   );
 
   const renderItem = useCallback(
@@ -104,21 +182,30 @@ const Assets = ({
         source={asset.source}
         type={asset.type}
         isUsed={asset.isUsed}
+        isUnresolved={unresolvedAssetIds.has(asset.id)}
         itemProps={itemProps}
         onPreview={onPreview}
         onDownload={asset.type === 'apikey' ? null : onDownload}
         onDelete={handleDelete}
+        onReplace={onReplace}
       />
     ),
-    [handleDelete, onDownload, onPreview, selected],
+    [
+      handleDelete,
+      onDownload,
+      onPreview,
+      onReplace,
+      selected,
+      unresolvedAssetIds,
+    ],
   );
 
   return (
     <div className="flex min-h-0 flex-col gap-5">
       {!type && (
         <SegmentedSwitcher
-          aria-label="Filter resources by type"
-          options={ASSET_TYPES}
+          aria-label={intl.formatMessage(messages.filterResourcesByType)}
+          options={formatConfig(ASSET_TYPES, intl)}
           value={selectedAssetType}
           onValueChange={handleAssetTypeChange}
           size="md"
@@ -126,7 +213,7 @@ const Assets = ({
         />
       )}
       <Collection
-        aria-label="Resource library"
+        aria-label={intl.formatMessage(messages.resourceLibrary)}
         items={assets}
         keyExtractor={(asset) => asset.id}
         textValueExtractor={(asset) => asset.name}
@@ -140,8 +227,8 @@ const Assets = ({
         className="!flex-none"
         viewportClassName="pr-3"
         emptyState={
-          <Paragraph margin="none" className="text-muted py-10">
-            No resources to display.
+          <Paragraph emphasis="muted" margin="none" className="py-10">
+            {intl.formatMessage(messages.noResourcesToDisplay)}
           </Paragraph>
         }
         fade
@@ -160,6 +247,7 @@ type OwnProps = {
   onDelete?: ((id: string, isUsed: boolean) => void) | null;
   onDownload?: (id: string) => void;
   onPreview?: (id: string) => void;
+  onReplace?: (id: string) => void;
   disableDelete?: boolean;
 };
 

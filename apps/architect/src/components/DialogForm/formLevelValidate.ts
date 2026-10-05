@@ -5,17 +5,16 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 
 /**
- * Context surfaced to a form-level `validate` function (see
- * DialogArrayField's `editorValidate`): the committed array index of the row
- * being edited, so a sibling-duplicate check can exclude that row. A new
- * (not-yet-committed) item reports no index.
+ * Context surfaced to a form-level `validate` function: the committed array
+ * index of the row being edited, so a sibling-duplicate check can exclude that
+ * row. A new (not-yet-committed) item reports no index.
  */
 export type FormLevelValidateContext = { editIndex?: number };
 
 /**
  * A form-level validator run at the top of onSubmit, ahead of the caller's
- * own onSubmit (DialogArrayField's `editorValidate`). A non-empty result
- * short-circuits the submit with those field errors.
+ * own onSubmit. A non-empty result short-circuits the submit with those field
+ * errors.
  */
 export type FormLevelValidate = (
   values: Record<string, FieldValue>,
@@ -49,7 +48,7 @@ const normalizeFieldErrors = (
  * non-empty validate result short-circuits to `{success: false, fieldErrors}`
  * without invoking onSubmit, so it flows through fresco-ui's normal invalid-
  * submit path (`onSubmitInvalid` / `focusFirstError`) exactly like a
- * field-level validation failure. Used by both DialogForm and AppForm.
+ * field-level validation failure.
  */
 export function withFormLevelValidate(
   onSubmit: LenientSubmitHandler,

@@ -1,7 +1,10 @@
+'use client';
+
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
@@ -30,6 +33,7 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { interfaceMessages } from '../messages';
 import IntroPanel from '../SlidesForm/IntroPanel';
 import {
   getNodePair,
@@ -51,6 +55,7 @@ const choiceVariants = {
 type DyadCensusProps = StageProps<'DyadCensus'>;
 
 export default function DyadCensus(props: DyadCensusProps) {
+  const intl = useAppIntl();
   const { stage, getNavigationHelpers } = props;
   const { moveForward } = getNavigationHelpers();
   const dispatch = useAppDispatch();
@@ -111,11 +116,17 @@ export default function DyadCensus(props: DyadCensusProps) {
   const [isTouched, setIsTouched] = useState(false);
   const [isChanged, setIsChanged] = useState(false);
 
-  // Reset touch state when pair or prompt changes
-  useEffect(() => {
+  // Reset touch state when pair or prompt changes. Done during render rather
+  // than in an effect: an effect would leave one committed render in which the
+  // new pair is on screen while the previous pair's touch state still stands,
+  // and the auto-advance effect below reads exactly that pair of values.
+  const touchScope = `${pairIndex}:${promptIndex}`;
+  const [touchedScope, setTouchedScope] = useState(touchScope);
+  if (touchedScope !== touchScope) {
+    setTouchedScope(touchScope);
     setIsTouched(false);
     setIsChanged(false);
-  }, [pairIndex, promptIndex]);
+  }
 
   const track = useTrack();
   useEffect(() => {
@@ -132,7 +143,9 @@ export default function DyadCensus(props: DyadCensusProps) {
         isMet: isIntroduction || isAnswered,
         kind: 'comparison_response_required',
         toast: {
-          description: 'Please select a response before continuing.',
+          description: (
+            <AppMessage message={interfaceMessages.selectResponse} />
+          ),
           variant: 'destructive',
           anchor: 'forward',
         },
@@ -339,8 +352,14 @@ export default function DyadCensus(props: DyadCensusProps) {
                     value={displayedEdge ?? undefined}
                     onChange={setEdge}
                     options={[
-                      { label: 'Yes', value: true },
-                      { label: 'No', value: false },
+                      {
+                        label: intl.formatMessage(interfaceMessages.yes),
+                        value: true,
+                      },
+                      {
+                        label: intl.formatMessage(interfaceMessages.no),
+                        value: false,
+                      },
                     ]}
                     noReset
                     aria-labelledby={`${pairLabelId} ${promptLabelId}`}

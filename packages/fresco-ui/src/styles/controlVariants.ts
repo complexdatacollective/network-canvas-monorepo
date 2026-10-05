@@ -1,4 +1,4 @@
-import { compose, cva, cx } from '../utils/cva';
+import { cva, cx } from '../utils/cva';
 
 // Small size variants for controls that should use a smaller scale, such as checkboxes
 export const smallSizeVariants = cva({
@@ -59,38 +59,39 @@ export const sliderTrackVariants = cva({
   },
 });
 
+const sliderThumbOwnVariants = cva({
+  base: cx(
+    // Positioning - base-ui sets --slider-thumb-position
+    'absolute top-1/2 aspect-square -translate-1/2',
+    'left-(--slider-thumb-position)',
+    // Appearance
+    'block rounded-full',
+    // focusable-within: the nested <input type="range"> receives focus, not the div
+    'focusable-within outline-primary',
+    'transition-colors duration-200',
+  ),
+  variants: {
+    state: {
+      normal: 'bg-primary cursor-grab active:cursor-grabbing',
+      pristine: 'bg-primary cursor-grab opacity-40 active:cursor-grabbing',
+      disabled:
+        'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
+      readOnly:
+        'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
+      invalid: 'bg-destructive cursor-grab active:cursor-grabbing',
+    },
+  },
+  defaultVariants: {
+    state: 'normal',
+  },
+});
+
 // Keeps its own fill and state colours so a thumb styled with this alone still
 // looks like a thumb — `./styles/controlVariants` is a published entry point and
 // consumers may use it without the surface variant below.
-export const sliderThumbVariants = compose(
-  smallSizeVariants,
-  cva({
-    base: cx(
-      // Positioning - base-ui sets --slider-thumb-position
-      'absolute top-1/2 aspect-square -translate-1/2',
-      'left-(--slider-thumb-position)',
-      // Appearance
-      'block rounded-full',
-      // focusable-within: the nested <input type="range"> receives focus, not the div
-      'focusable-within outline-primary',
-      'transition-colors duration-200',
-    ),
-    variants: {
-      state: {
-        normal: 'bg-primary cursor-grab active:cursor-grabbing',
-        pristine: 'bg-primary cursor-grab opacity-40 active:cursor-grabbing',
-        disabled:
-          'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_30%,currentColor)]',
-        readOnly:
-          'pointer-events-none bg-[color-mix(in_oklch,var(--input-contrast)_50%,currentColor)]',
-        invalid: 'bg-destructive cursor-grab active:cursor-grabbing',
-      },
-    },
-    defaultVariants: {
-      state: 'normal',
-    },
-  }),
-);
+export const sliderThumbVariants = cva({
+  composes: [smallSizeVariants, sliderThumbOwnVariants],
+});
 
 // The thumb's animated surface, rendered as a child of the thumb rather than on
 // the thumb itself. base-ui registers the thumb element in the slider's
@@ -173,6 +174,25 @@ export const heightVariants = cva({
       md: 'h-12',
       lg: 'h-16',
       xl: 'h-20',
+    },
+  },
+  defaultVariants: {
+    size: 'md',
+  },
+});
+
+// Explicit square widths for icon-only controls, one per heightVariants step.
+// Shipped Safari does not derive a flex item's width from `aspect-ratio` and
+// a definite height inside nested flex rows — it computes 0 and the control
+// vanishes — so the width the ratio implies is stated outright. Keep this
+// scale in lockstep with heightVariants above.
+export const squareSizeVariants = cva({
+  variants: {
+    size: {
+      sm: 'w-10',
+      md: 'w-12',
+      lg: 'w-16',
+      xl: 'w-20',
     },
   },
   defaultVariants: {
@@ -269,7 +289,7 @@ export const stateVariants = cva({
 // options) need the opposite — compose this alongside `stateVariants` so they
 // stop advertising hover/press affordances for an activation they swallow.
 // Declares the same `state` keys as `stateVariants` (rather than `readOnly`
-// alone) so `compose()` keeps the full `state` union on the composed variant
+// alone) so `composes` keeps the full `state` union on the composed variant
 // function instead of narrowing it to whichever key this contributes to.
 export const inertReadOnlyVariants = cva({
   variants: {
@@ -427,11 +447,16 @@ export const nativeSelectVariants = cva({
     'disabled:bg-transparent', // Prevent browser default disabled background from overriding wrapper
     'bg-no-repeat',
     'bg-[length:1.2em_1.2em]',
-    'bg-right',
+    // The chevron belongs at the inline end, on the same edge as the padding
+    // that reserves room for it. `background-position` has no logical
+    // keywords, so that edge is two physical declarations rather than one
+    // logical one; drop the RTL half and the arrow sits on top of the value
+    // while the reserved space opens up on the other side.
+    'bg-right rtl:bg-left',
     // Light scheme: dark chevron
     "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%230f172a%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')]",
     // Dark scheme: light chevron
     "in-[.scheme-dark]:bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23f8fafc%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')]",
-    'pr-[1.5em]', // Right padding to prevent text from overlapping with dropdown arrow
+    'pe-[1.5em]', // Inline-end padding keeps text clear of the dropdown arrow
   ),
 });

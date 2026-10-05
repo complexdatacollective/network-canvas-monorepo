@@ -1,3 +1,5 @@
+'use client';
+
 import concaveman from 'concaveman';
 import { useEffect, useRef } from 'react';
 

@@ -1,10 +1,16 @@
-import { useEffect } from 'react';
+import { createElement, useEffect } from 'react';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import {
+  type MessageDescriptor,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
-import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
+import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import {
@@ -12,12 +18,145 @@ import {
   getStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
-import { resetDraft } from '~/ducks/modules/stageEditorDraft';
-import type { AppDispatch } from '~/ducks/store';
-import { store } from '~/ducks/store';
+import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
-import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
+const utilityMessages = defineMessages({
+  returnToStartScreen: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.returnToStartScreen',
+    defaultMessage: 'Return to Start Screen',
+    description: 'The label text in hooks / useProtocolNavGuard.',
+  },
+  returnAndDownloadNow: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.returnAndDownloadNow',
+    defaultMessage: 'Return and download now',
+    description: 'The label text in hooks / useProtocolNavGuard.',
+  },
+  discardUnsavedChanges: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.discardUnsavedChanges',
+    defaultMessage: 'Discard unsaved changes?',
+    description: 'The title text in hooks / useProtocolNavGuard.',
+  },
+  discardChangesAndReturn: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.discardChangesAndReturn',
+    defaultMessage: 'Discard Changes and Return',
+    description: 'The label text in hooks / useProtocolNavGuard.',
+  },
+  returnToStartScreenb2364: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.returnToStartScreenb2364',
+    defaultMessage: 'Return to start screen?',
+    description: 'The title text in hooks / useProtocolNavGuard.',
+  },
+  discardUnsavedStageChanges: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.discardUnsavedStageChanges',
+    defaultMessage: 'Discard unsaved stage changes?',
+    description: 'The title text in hooks / useProtocolNavGuard.',
+  },
+  discardChangesAndLeave: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.discardChangesAndLeave',
+    defaultMessage: 'Discard Changes and Leave',
+    description: 'The label text in hooks / useProtocolNavGuard.',
+  },
+});
+const leaveDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  MessageDescriptor
+> = defineMessages({
+  'saved': {
+    id: 'architect.constants.hooks.useprotocolnavguard.leavedescriptions.saved',
+    defaultMessage:
+      "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'open-elsewhere': {
+    id: 'architect.constants.hooks.useprotocolnavguard.leavedescriptions.openElsewhere',
+    defaultMessage:
+      'This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so returning to the start screen will not change your protocol.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'reclaim-blocked': {
+    id: 'architect.constants.hooks.useprotocolnavguard.leavedescriptions.reclaimBlocked',
+    defaultMessage:
+      'Nothing has been saved in this tab since the protocol was opened in another one. Returning to the start screen now will leave your protocol exactly as that tab saved it.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'storage-unavailable': {
+    id: 'architect.constants.hooks.useprotocolnavguard.leavedescriptions.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+});
+const discardDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  MessageDescriptor
+> = defineMessages({
+  'saved': {
+    id: 'architect.constants.hooks.useprotocolnavguard.discarddescriptions.saved',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'open-elsewhere': {
+    id: 'architect.constants.hooks.useprotocolnavguard.discarddescriptions.openElsewhere',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'reclaim-blocked': {
+    id: 'architect.constants.hooks.useprotocolnavguard.discarddescriptions.reclaimBlocked',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you return to the start screen now, those changes will be discarded and that saved version will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'storage-unavailable': {
+    id: 'architect.constants.hooks.useprotocolnavguard.discarddescriptions.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Returning to the start screen now discards all of it.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+});
+export const stageDiscardDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  MessageDescriptor
+> = defineMessages({
+  'saved': {
+    id: 'architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.saved',
+    defaultMessage:
+      'Changes made in this stage have not been saved to the protocol. If you leave the stage editor now, those changes will be discarded and the last saved version of the stage will remain.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'open-elsewhere': {
+    id: 'architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.openElsewhere',
+    defaultMessage:
+      'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave the stage editor now, those changes will be discarded.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'reclaim-blocked': {
+    id: 'architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.reclaimBlocked',
+    defaultMessage:
+      'Changes made in this stage cannot be saved over the version the other tab saved. If you leave the stage editor now, those changes will be discarded, along with any attributes you added or edited while it was open, and that saved version will be loaded here.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+  'storage-unavailable': {
+    id: 'architect.constants.hooks.useprotocolnavguard.stagediscarddescriptions.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Leaving the stage editor now discards them.',
+    description:
+      'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
+  },
+});
 
 // Shared mutable state read by this hook and the Router's aroundNav.
 // - bypass: flipped on while we're performing the confirmed navigation so the
@@ -177,19 +316,6 @@ export const getLeavePersistence = (state: RootState): LeavePersistence => {
 
 // One whole string per persistence state: the dialog has to describe what is
 // actually true of the user's work, and sentence fragments cannot be localised.
-const leaveDescriptions: Record<
-  Exclude<LeavePersistence, 'no-protocol'>,
-  string
-> = {
-  'saved':
-    "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
-  'open-elsewhere':
-    'This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so returning to the start screen will not change your protocol.',
-  'reclaim-blocked':
-    'Nothing has been saved in this tab since the protocol was opened in another one. Returning to the start screen now will leave your protocol exactly as that tab saved it.',
-  'storage-unavailable':
-    'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.',
-};
 
 // The same, for leaving the PROTOCOL with uncommitted edits. Neither the stage
 // draft nor an open nested editor's draft is ever persisted, so what differs
@@ -199,19 +325,6 @@ const leaveDescriptions: Record<
 // a researcher meets when the unsaved work is a half-typed variable in the
 // Codebook's type editor or a Resources editor, where no stage is involved at
 // all. One whole string per state, so none of this has to be assembled.
-const discardDescriptions: Record<
-  Exclude<LeavePersistence, 'no-protocol'>,
-  string
-> = {
-  'saved':
-    'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
-  'open-elsewhere':
-    'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.',
-  'reclaim-blocked':
-    'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you return to the start screen now, those changes will be discarded and that saved version will remain available.',
-  'storage-unavailable':
-    'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Returning to the start screen now discards all of it.',
-};
 
 // Leaving with unsaved work in a nested editor, without leaving the protocol —
 // navigating from the Codebook to the timeline with a half-typed variable
@@ -220,26 +333,20 @@ const discardDescriptions: Record<
 // is the editor's own draft, and the lock state cannot change that outcome.
 // Claiming anything about the protocol's saved state here would be inventing a
 // promise this navigation does not make.
-const NESTED_DRAFT_DISCARD_DESCRIPTION =
-  'You have unsaved changes in an editor that is still open. If you leave now, those changes will be discarded and the rest of your protocol will be left as it is.';
+const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
+  message: {
+    id: 'architect.constants.hooks.useprotocolnavguard.nestedDraftDiscardDescription',
+    defaultMessage:
+      'You have unsaved changes in an editor that is still open. If you leave now, those changes will be discarded and the rest of your protocol will be left as it is.',
+    description:
+      'Researcher-facing status or validation message. Context: hooks/useProtocolNavGuard.ts.',
+  },
+}).message;
 
 // The same again for LEAVING THE STAGE EDITOR rather than the protocol: the
 // stage draft is discarded either way, but what remains behind it differs, and
 // a tab that cannot save must not be told its protocol is fine. One whole
 // string per state, so none of this has to be assembled.
-export const stageDiscardDescriptions: Record<
-  Exclude<LeavePersistence, 'no-protocol'>,
-  string
-> = {
-  'saved':
-    'Changes made in this stage have not been saved to the protocol. If you leave the stage editor now, those changes will be discarded and the last saved version of the stage will remain.',
-  'open-elsewhere':
-    'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave the stage editor now, those changes will be discarded.',
-  'reclaim-blocked':
-    'Changes made in this stage cannot be saved over the version the other tab saved. If you leave the stage editor now, those changes will be discarded, along with any attributes you added or edited while it was open, and that saved version will be loaded here.',
-  'storage-unavailable':
-    'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Leaving the stage editor now discards them.',
-};
 
 // Opens the leave-editor confirmation. On confirm, clears the active protocol
 // and runs `performLeave` with the guard's bypass flag set so the navigation
@@ -247,8 +354,8 @@ export const stageDiscardDescriptions: Record<
 // in flight.
 //
 // `draftDirty` reflects whether the stage editor holds uncommitted edits. The
-// stage draft is not persisted (see rememberedKeys in store.ts), so leaving with
-// a dirty draft uses a separate discard dialog and resets the draft on confirm.
+// editor's document lives in its form and is not persisted, so leaving with a
+// dirty editor uses a separate discard dialog.
 //
 // `persistence` selects the pristine-editor copy. The reassuring "saved
 // automatically" wording is only true when this tab actually owns the saved
@@ -267,11 +374,15 @@ export const promptLeaveEditor = async (
   guardState.prompting = true;
   try {
     const leaveAction = {
-      label: 'Return to Start Screen',
+      label: createElement(AppMessage, {
+        message: utilityMessages.returnToStartScreen,
+      }),
       value: 'leave' as const,
     };
     const downloadAction = {
-      label: 'Return and download now',
+      label: createElement(AppMessage, {
+        message: utilityMessages.returnAndDownloadNow,
+      }),
       value: 'download-and-leave' as const,
     };
     // When nothing can be written to this device, downloading is the only way
@@ -281,32 +392,46 @@ export const promptLeaveEditor = async (
     const action = draftDirty
       ? await openDialog({
           type: 'choice',
-          title: 'Discard unsaved changes?',
-          description: discardDescriptions[persistence],
+          title: createElement(AppMessage, {
+            message: utilityMessages.discardUnsavedChanges,
+          }),
+          description: createElement(AppMessage, {
+            message: discardDescriptions[persistence],
+          }),
           intent: 'warning',
           size: 'readable',
           actions: {
             primary: {
-              label: 'Discard Changes and Return',
+              label: createElement(AppMessage, {
+                message: utilityMessages.discardChangesAndReturn,
+              }),
               value: 'discard-and-leave' as const,
             },
             cancel: {
-              label: 'Cancel',
+              label: createElement(AppMessage, {
+                message: commonMessages.cancel,
+              }),
               value: null,
             },
           },
         })
       : await openDialog({
           type: 'choice',
-          title: 'Return to start screen?',
-          description: leaveDescriptions[persistence],
+          title: createElement(AppMessage, {
+            message: utilityMessages.returnToStartScreenb2364,
+          }),
+          description: createElement(AppMessage, {
+            message: leaveDescriptions[persistence],
+          }),
           intent: unsaved ? 'warning' : 'default',
           size: 'readable',
           actions: {
             primary: unsaved ? downloadAction : leaveAction,
             secondary: unsaved ? leaveAction : downloadAction,
             cancel: {
-              label: 'Cancel',
+              label: createElement(AppMessage, {
+                message: commonMessages.cancel,
+              }),
               value: null,
             },
           },
@@ -326,9 +451,6 @@ export const promptLeaveEditor = async (
 
     guardState.bypass = true;
     try {
-      if (draftDirty) {
-        dispatch(resetDraft(null));
-      }
       dispatch(clearActiveProtocol());
       await performLeave();
     } finally {
@@ -344,46 +466,54 @@ export const promptLeaveEditor = async (
 // draft, or a nested editor left open anywhere (the Codebook's type editor, a
 // Resources editor), which is not gated on the stage-editor path at all. On
 // confirm, runs `performLeave` with the bypass flag set so the navigation isn't
-// re-guarded, clearing the stage draft only when that draft is what is being
-// discarded. Skips if a prompt is already in flight, so a single Back can never
-// stack two confirmations.
+// re-guarded. Skips if a prompt is already in flight, so a single Back can
+// never stack two confirmations.
 const promptDiscardDraft = async (
-  dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void,
   // Whether the STAGE editor's own draft is what is being discarded. A dirty
   // editor elsewhere (the Codebook's type editor, a Resources editor) is just
-  // as lossy and must still prompt — but resetting the stage draft for it would
-  // throw away uncommitted stage work the researcher never navigated away from.
-  resetStageDraft = true,
+  // as lossy and must still prompt, but it is not the stage the copy names.
+  isStageEditorDraft = true,
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
     const persistence = getLeavePersistence(store.getState());
-    // `resetStageDraft` already distinguishes the two situations that reach
-    // here, so it also selects the copy. Naming the stage — and describing what
-    // will be reloaded into it — is only honest when the stage editor's own
-    // draft is what is being discarded.
+    // `isStageEditorDraft` distinguishes the two situations that reach here, so
+    // it selects the copy. Naming the stage — and describing what will be
+    // reloaded into it — is only honest when the stage editor's own draft is
+    // what is being discarded.
     const confirmed = await openDialog({
       type: 'choice',
-      title: resetStageDraft
-        ? 'Discard unsaved stage changes?'
-        : 'Discard unsaved changes?',
-      description: resetStageDraft
-        ? stageDiscardDescriptions[
-            persistence === 'no-protocol' ? 'saved' : persistence
-          ]
-        : NESTED_DRAFT_DISCARD_DESCRIPTION,
+      title: isStageEditorDraft
+        ? createElement(AppMessage, {
+            message: utilityMessages.discardUnsavedStageChanges,
+          })
+        : createElement(AppMessage, {
+            message: utilityMessages.discardUnsavedChanges,
+          }),
+      description: isStageEditorDraft
+        ? createElement(AppMessage, {
+            message:
+              stageDiscardDescriptions[
+                persistence === 'no-protocol' ? 'saved' : persistence
+              ],
+          })
+        : createElement(AppMessage, {
+            message: NESTED_DRAFT_DISCARD_DESCRIPTION,
+          }),
       intent: 'warning',
       size: 'readable',
       actions: {
         primary: {
-          label: 'Discard Changes and Leave',
+          label: createElement(AppMessage, {
+            message: utilityMessages.discardChangesAndLeave,
+          }),
           value: true,
         },
         cancel: {
-          label: 'Cancel',
+          label: createElement(AppMessage, { message: commonMessages.cancel }),
           value: false,
         },
       },
@@ -393,9 +523,6 @@ const promptDiscardDraft = async (
 
     guardState.bypass = true;
     try {
-      if (resetStageDraft) {
-        dispatch(resetDraft(null));
-      }
       performLeave();
     } finally {
       guardState.bypass = false;
@@ -481,15 +608,13 @@ export const useProtocolNavGuard = () => {
       // overview) with uncommitted edits: intra-/protocol nav that the
       // leavingProtocol check misses. Only prompt when the draft is actually
       // dirty, so ordinary Back from a pristine editor navigates freely.
-      // The mirror of the stage form's values is debounced, so an edit made
-      // in the last moment before Back is not in Redux yet. Without this the
-      // guard reads a pristine draft and discards that edit silently.
-      flushStageLiveValues();
+      // The editor publishes its draft as it changes, so this reading includes
+      // the edit made in the moment before Back.
       const leavingDirtyStageEditor =
         !leavingProtocol &&
         isStageEditorPath(oldPath) &&
         !isStageEditorPath(newPath) &&
-        getLiveStageDraftDirty(store.getState());
+        readStageDraft().dirty;
 
       // A dirty nested editor is unsaved work wherever it is open, and any pop
       // unmounts it. Deliberately NOT gated on the stage-editor path: the
@@ -531,10 +656,9 @@ export const useProtocolNavGuard = () => {
       if (leavingProtocol) {
         // A multi-step Back can jump straight from the stage editor to '/'. That
         // takes this branch, but the uncommitted (unpersisted) draft would still
-        // be lost — so surface it and reset the draft on confirm.
+        // be lost — so surface it.
         const draftDirty =
-          (isStageEditorPath(oldPath) &&
-            getLiveStageDraftDirty(store.getState())) ||
+          (isStageEditorPath(oldPath) && readStageDraft().dirty) ||
           hasDirtyNestedDraft();
         void promptLeaveEditor(
           dispatch,
@@ -550,7 +674,6 @@ export const useProtocolNavGuard = () => {
       }
 
       void promptDiscardDraft(
-        dispatch,
         openDialog,
         () => setLocation(newPath),
         leavingDirtyStageEditor,

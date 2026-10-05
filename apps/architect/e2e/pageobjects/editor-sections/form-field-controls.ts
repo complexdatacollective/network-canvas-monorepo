@@ -1,50 +1,28 @@
-import { type Locator, type Page } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
-import { typeInlineRun } from '../stage-editor.js';
-import {
-  createVariableViaSpotlight,
-  fillOptionRows,
-  type OptionRow,
-} from './variables.js';
+import { writeRichText } from '../rich-text.js';
+import { inventAttributeInFieldDialog } from './forms.js';
+import { type OptionRow } from './variables.js';
 
-// Extended form-field authoring for the 'Edit Field' dialog
-// (sections/Form/FieldFields.tsx) — the full-parameter sibling of forms.ts's
-// minimal addFormField. Facts verified against source:
-// - The codebook variable is created ONLY at dialog submit
-//   (withFormHandlers.handleChangeFields → createVariableAsync), assembled
-//   from the chosen Input control's derived type plus whatever
-//   options/parameters/validation the dialog holds — configure everything
-//   BEFORE clicking 'Add', and pick the Input control before options/
-//   parameters/validation (a component change nulls all three).
-// - 'Input control' is a native select (labels from config/variables.ts:
-//   'Text Input', 'Text Area', 'DatePicker', 'Toggle Button Group',
-//   'Radio Group', 'LikertScale', 'VisualAnalogScale', 'Checkbox Group',
-//   'BooleanChoice', …).
-// - DatePicker writes parameters:{type:'full'} by default (mount effect);
-//   'Start range' is a native date input reached via getByLabel.
-// - VisualAnalogScale exposes required 'Minimum label'/'Maximum label'
-//   plain inputs.
-// - BooleanChoice seeds options [{label:'Yes',value:true},
-//   {label:'No',value:false,negative:true}]; labels are block RichText
-//   fields both named 'Label' (scoped via their data-field-name); the
-//   negative switches are 'Style Option One as negative' / 'Style Option
-//   Two as negative'. A toggle click writes the boolean explicitly and the
-//   key can never be removed once written — so: omit → never touch,
-//   explicit false on option one → click twice (on→off), explicit false on
-//   option two → click once (its default is true).
-// - Field dialogs render validation inline without a master section toggle;
-//   each rule, including 'Required', has its own switch.
+// Extended form-field authoring — the full-parameter sibling of forms.ts's
+// minimal `addFormField`. Both drive `@codaco/protocol-builder`'s
+// `FormFieldsSection`.
+
 export type BooleanOptionSpec = {
+  /** The words this answer shows the participant. */
   label: string;
-  // 'omit' → never touch the toggle (option one only — option two defaults
-  // to true); true → leave option two untouched; false → explicit false.
+  // 'omit' → leave the switch where the editor put it; otherwise require it
+  // to end up in the named state.
   negative: 'omit' | boolean;
 };
 
 export type FormFieldSpec = {
   variableName: string;
   promptText: string;
+  /** A `CONTROL_LABELS` label — see forms.ts's `VARIABLE_TYPE_FOR_CONTROL`. */
   inputControl: string;
+  /** Only where the control does not already say it. */
+  variableType?: string;
   options?: OptionRow[];
   booleanOptions?: { positive: BooleanOptionSpec; negative: BooleanOptionSpec };
   scalarParameters?: { minLabel: string; maxLabel: string };
@@ -52,50 +30,102 @@ export type FormFieldSpec = {
   required?: boolean;
 };
 
-async function replaceRichTextContent(
-  page: Page,
-  editorBox: Locator,
-  text: string,
-): Promise<void> {
-  await editorBox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('Delete');
-  await typeInlineRun(page, text);
+/**
+ * Open the rules a participant's answer has to satisfy, for the attribute the
+ * given form-field dialog collects, and hand back the section holding them.
+ *
+ * A nested, toggleable "Validation" section at the end of the field dialog, as
+ * Architect had it (`sections/ValidationSection.tsx`) — not a dialog of its
+ * own, and with no submit: the rules belong to the CODEBOOK attribute and each
+ * answerable change is written to it as the researcher makes it. The section is
+ * rendered only against an attribute that exists, which is what makes this
+ * reachable from a reopened field and not from the dialog that invents one.
+ *
+ * Switched on if it is not already: an attribute that arrives carrying rules
+ * has it open, and clicking then would clear them.
+ */
+export async function openValidationSection(dialog: Locator): Promise<Locator> {
+  const label = 'Validation';
+  const toggle = dialog.getByRole('switch', { name: label, exact: true });
+  await expect(toggle).toBeVisible();
+  if ((await toggle.getAttribute('aria-checked')) !== 'true') {
+    await toggle.click();
+  }
+  const rules = dialog.getByRole('region', { name: label, exact: true });
+  await expect(rules).toBeVisible();
+  return rules;
 }
 
-async function setBooleanOption(
-  page: Page,
+async function fillInlineOptions(
   dialog: Locator,
-  index: 0 | 1,
+  rows: readonly OptionRow[],
+): Promise<void> {
+  const values = dialog.getByRole('region', {
+    name: 'Choice values',
+    exact: true,
+  });
+  for (const row of rows) {
+    await values
+      .getByRole('button', { name: 'Create new option', exact: true })
+      .click();
+    await writeRichText(
+      values.getByRole('textbox', { name: 'Label', exact: true }),
+      row.label,
+    );
+    await values
+      .getByRole('textbox', { name: 'Value', exact: true })
+      .fill(row.value);
+    await values
+      .getByRole('button', { name: 'Finish editing option', exact: true })
+      .click();
+  }
+}
+
+function controlSettings(dialog: Locator): Locator {
+  return dialog.getByRole('region', { name: 'Control settings', exact: true });
+}
+
+/**
+ * One of a yes/no attribute's two answers.
+ *
+ * `records` is the value the answer stores — the editor names its controls for
+ * that rather than for a position, because which of the two reads as "yes" is
+ * the researcher's to write. The quotation marks in those names are the
+ * typographic pair the catalog uses (`VariableBooleanAnswerFields`'s
+ * `answerLabel`/`negativeLabel`), not the ASCII one.
+ *
+ * Takes whichever surface holds the pair — the row's own dialog, or the
+ * codebook editor — because the same fieldset is rendered in both.
+ *
+ * The words are markdown, and the sample protocol's consent answers are the
+ * reason it matters: they read `**Yes**. I wish to participate…`, so the
+ * emphasis has to be typed into the box for the protocol to hold a bold run
+ * rather than four escaped asterisks.
+ */
+async function setBooleanAnswer(
+  editor: Locator,
+  records: 'true' | 'false',
   spec: BooleanOptionSpec,
 ): Promise<void> {
-  await replaceRichTextContent(
-    page,
-    dialog
-      .locator(`[data-field-name="options[${index}].label"]`)
-      .getByRole('textbox'),
+  await writeRichText(
+    editor.getByRole('textbox', {
+      name: `Label for “${records}”`,
+      exact: true,
+    }),
     spec.label,
   );
-  const toggleName =
-    index === 0
-      ? 'Style Option One as negative'
-      : 'Style Option Two as negative';
-  if (index === 0) {
-    if (spec.negative === false) {
-      // Defaults to no key; on→off writes an explicit false.
-      await dialog.getByRole('switch', { name: toggleName }).click();
-      await dialog.getByRole('switch', { name: toggleName }).click();
-    } else if (spec.negative === true) {
-      await dialog.getByRole('switch', { name: toggleName }).click();
-    }
-  } else {
-    // Option two defaults to negative: true.
-    if (spec.negative === false) {
-      await dialog.getByRole('switch', { name: toggleName }).click();
-    } else if (spec.negative === 'omit') {
-      throw new Error('option two always carries a negative key (seeded true)');
-    }
+  if (spec.negative === 'omit') return;
+  const negative = editor.getByRole('switch', {
+    name: `Style “${records}” as negative`,
+    exact: true,
+  });
+  // Driven to a state rather than clicked a counted number of times: the
+  // editor seeds these from the codebook, so a click count only lands on the
+  // right answer for one starting position.
+  if ((await negative.isChecked()) !== spec.negative) {
+    await negative.click();
   }
+  await expect(negative).toBeChecked({ checked: spec.negative });
 }
 
 export async function addConfiguredFormField(
@@ -103,69 +133,82 @@ export async function addConfiguredFormField(
   spec: FormFieldSpec,
 ): Promise<void> {
   const page = section.page();
-  const dialog = page.getByRole('dialog', { name: 'Edit Field' });
 
-  const create = section.getByRole('button', {
-    name: 'Create new form field',
-    exact: true,
-  });
-  await create.click();
-  // Fresh-dialog guard (see prompts.ts): a genuinely new field dialog shows
-  // the unset variable picker. If the shared dialog form resurrected the
-  // previous field's state, cancel — forcing the unmount that destroys the
-  // form — and reopen.
-  const freshSign = dialog.getByRole('button', { name: 'Select attribute' });
-  try {
-    await freshSign.waitFor({ state: 'visible', timeout: 3_000 });
-  } catch {
-    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true });
-    await cancel.click();
-    await cancel.waitFor({ state: 'detached' });
-    await create.click();
-    await freshSign.waitFor({ state: 'visible' });
-  }
-  await createVariableViaSpotlight(page, {
+  // Phase one: the row, inventing its attribute with the options, scale labels
+  // and earliest date written inline.
+  await section
+    .getByRole('button', { name: 'Create new form field', exact: true })
+    .click();
+  const addDialog = page.getByRole('dialog', { name: 'Create form field' });
+  await inventAttributeInFieldDialog(addDialog, {
     variableName: spec.variableName,
-    until: dialog.getByRole('button', { name: 'Change attribute' }),
+    ...(spec.variableType === undefined
+      ? {}
+      : { variableType: spec.variableType }),
+    inputControl: spec.inputControl,
+    inRow: async (dialog) => {
+      if (spec.options) await fillInlineOptions(dialog, spec.options);
+      if (spec.scalarParameters) {
+        const settings = controlSettings(dialog);
+        await settings
+          .getByRole('textbox', { name: 'Minimum label', exact: true })
+          .fill(spec.scalarParameters.minLabel);
+        await settings
+          .getByRole('textbox', { name: 'Maximum label', exact: true })
+          .fill(spec.scalarParameters.maxLabel);
+      }
+      if (spec.dateMin !== undefined) {
+        await controlSettings(dialog)
+          .getByRole('textbox', { name: 'Earliest date', exact: true })
+          .fill(spec.dateMin);
+      }
+    },
   });
 
-  const prompt = page.getByRole('textbox', { name: 'Question text' });
+  const prompt = addDialog.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill(spec.promptText);
+  await addDialog.getByRole('button', { name: 'Add', exact: true }).click();
+  // Full unmount, not just hidden: phase two reopens the same dialog, and the
+  // row's own Edit control is behind this one until it has gone.
+  await addDialog.waitFor({ state: 'detached' });
 
-  await page
-    .getByLabel('Input control')
-    .selectOption({ label: spec.inputControl });
+  const needsSecondPass =
+    spec.booleanOptions !== undefined || spec.required === true;
+  if (!needsSecondPass) return;
 
-  if (spec.options) {
-    await fillOptionRows(dialog, spec.options);
-  }
+  // Phase two: the boolean answer labels and the required rule, set by
+  // reopening the saved row. The row just added is the last in the list.
+  await section
+    .getByRole('button', { name: 'Edit field', exact: true })
+    .last()
+    .click();
+  const editDialog = page.getByRole('dialog', { name: 'Edit form field' });
+  await expect(editDialog).toBeVisible();
 
-  if (spec.booleanOptions) {
-    await setBooleanOption(page, dialog, 0, spec.booleanOptions.positive);
-    await setBooleanOption(page, dialog, 1, spec.booleanOptions.negative);
-  }
-
-  if (spec.scalarParameters) {
-    await page
-      .getByRole('textbox', { name: 'Minimum label' })
-      .fill(spec.scalarParameters.minLabel);
-    await page
-      .getByRole('textbox', { name: 'Maximum label' })
-      .fill(spec.scalarParameters.maxLabel);
-  }
-
-  if (spec.dateMin) {
-    await page.getByLabel('Start range').fill(spec.dateMin);
+  const booleanOptions = spec.booleanOptions;
+  if (booleanOptions) {
+    // Authored in the ROW's own dialog rather than through a codebook editor
+    // opened from it: the words on a yes-or-no attribute's two answers are
+    // shown beside the question that asks them (`AttributeValueFields`), and
+    // the row's own save is what records them on the attribute.
+    await setBooleanAnswer(editDialog, 'true', booleanOptions.positive);
+    await setBooleanAnswer(editDialog, 'false', booleanOptions.negative);
   }
 
   if (spec.required) {
-    await dialog.getByRole('switch', { name: 'Required', exact: true }).click();
+    const rules = await openValidationSection(editDialog);
+    const required = rules.getByRole('switch', {
+      name: 'Required answer',
+      exact: true,
+    });
+    await required.click();
+    // The switch carries the rule, and the section writes it to the codebook
+    // as it moves — there is no submit to wait for, so what says the gesture
+    // landed is the switch holding it.
+    await expect(required).toBeChecked();
   }
 
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  // Full unmount, not just hidden: the shared 'editable-list-form' dialog
-  // form never reinitializes while mounted (see prompts.ts) — a
-  // back-to-back field add would otherwise reuse this field's values/id.
-  await dialog.waitFor({ state: 'detached' });
+  await editDialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await editDialog.waitFor({ state: 'detached' });
 }

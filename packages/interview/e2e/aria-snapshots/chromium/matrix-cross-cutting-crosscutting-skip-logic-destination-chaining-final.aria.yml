@@ -1,8 +1,9 @@
 - main:
-    - heading "Landing" [level=1]
-    - paragraph: The chained route ends here.
-    - navigation:
-        - button "Previous Step"
-        - progressbar "Progress indicator": x
-        - button "Next Step"
-    - region "Interview notifications"
+  - heading "Landing" [level=1]
+  - paragraph: The chained route ends here.
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

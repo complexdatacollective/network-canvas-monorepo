@@ -4,9 +4,13 @@ import {
   type Column,
   flexRender,
   type Row,
+  type RowData,
   type Table as TTable,
 } from '@tanstack/react-table';
 import { type ReactNode } from 'react';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   Table,
@@ -18,8 +22,11 @@ import {
 } from '../Table';
 import { cx } from '../utils/cva';
 import { DataTablePagination } from './DataTablePagination';
+import { type DataTableFeatures } from './features';
 
-function getColumnHighlight<TData>(column: Column<TData>) {
+function getColumnHighlight<TData extends RowData>(
+  column: Column<DataTableFeatures, TData>,
+) {
   const isSorted = column.getIsSorted();
   const isFiltered = column.getIsFiltered();
   if (isSorted && isFiltered)
@@ -31,28 +38,38 @@ function getColumnHighlight<TData>(column: Column<TData>) {
   return undefined;
 }
 
-type DataTableProps<TData> = {
-  table: TTable<TData>;
+const messages = defineMessages({
+  noResults: {
+    id: 'frescoUi.dataTable.noResults',
+    defaultMessage: 'No results.',
+    description: 'Default empty state shown when a table has no rows.',
+  },
+});
+
+type DataTableProps<TData extends RowData> = {
+  table: TTable<DataTableFeatures, TData>;
   toolbar?: ReactNode;
   floatingBar?: ReactNode;
   showPagination?: boolean;
   emptyText?: string;
-  getRowClasses?: (row: Row<TData>) => string | undefined;
+  getRowClasses?: (row: Row<DataTableFeatures, TData>) => string | undefined;
   bodyScroll?: boolean;
 };
 
-export function DataTable<TData>({
+export function DataTable<TData extends RowData>({
   table,
   toolbar,
   floatingBar,
   showPagination = true,
-  emptyText = 'No results.',
+  emptyText,
   getRowClasses,
   bodyScroll = false,
 }: DataTableProps<TData>) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
+  const intl = useAppIntl();
   const columnCount = table.getAllColumns().length;
+  const resolvedEmptyText = emptyText ?? intl.formatMessage(messages.noResults);
 
   return (
     <div className={cx('flex flex-col gap-6', bodyScroll && 'h-full min-h-0')}>
@@ -98,7 +115,7 @@ export function DataTable<TData>({
           ) : (
             <TableRow>
               <TableCell colSpan={columnCount} className="h-24 text-center">
-                {emptyText}
+                {resolvedEmptyText}
               </TableCell>
             </TableRow>
           )}

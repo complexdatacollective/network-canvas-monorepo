@@ -1,0 +1,156 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import type {
+  StageEditorComponent,
+  StageEditorProps,
+} from '../stage-editor-contract.ts';
+import { UnregisteredStageTypeError } from '../StageEditor.tsx';
+import type * as stageEditorRegistryModule from '../stageEditorRegistry.ts';
+import {
+  stageEditorRegistry,
+  stageEditorsWithHostOverrides,
+} from '../stageEditorRegistry.ts';
+import { renderStageEditor } from '../testing/renderStageEditor.tsx';
+
+/**
+ * The package registry, mocked down to two interfaces.
+ *
+ * Every interface the schema declares now has an editor, so the real registry
+ * leaves no stage type that neither the package nor a host registers — and the
+ * control below needs one, because it is what says the merge is not simply
+ * making everything renderable. Two package editors and a third interface
+ * nothing claims is the smallest registry that reaches every claim here.
+ *
+ * Only the composed registry is replaced; everything else the module exports
+ * (`stageEditorsWithHostOverrides` included) is the real one, so what is under
+ * test is the package's own merge and not a stand-in for it.
+ *
+ * The editors are built with `createElement` rather than JSX because this
+ * factory runs while the module graph is still being evaluated, before this
+ * file's own imports are guaranteed to have run.
+ */
+vi.mock('../stageEditorRegistry.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof stageEditorRegistryModule>();
+  const { createElement } = await import('react');
+  return {
+    ...actual,
+    stageEditorRegistry: Object.freeze({
+      EgoForm: () => createElement('p', null, 'the package EgoForm editor'),
+      Information: () =>
+        createElement('p', null, 'the package Information editor'),
+    }),
+  };
+});
+
+const HostInformationEditor: StageEditorComponent<'Information'> = ({
+  stageType,
+}: StageEditorProps<'Information'>) => <p>the host {stageType} editor</p>;
+
+/**
+ * A host supplies a registry to add an interface it owns or to replace one the
+ * package ships. Handed on as the whole registry to dispatch through, one
+ * naming a single interface took every other editor away with it: the stage a
+ * researcher opened next threw `UnregisteredStageTypeError` in the host, for
+ * an interface the package has an editor for.
+ */
+describe('a host registry supplied to the dispatcher', () => {
+  it('keeps the package editors for the interfaces it does not name', () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      registry: { Information: HostInformationEditor },
+    });
+
+    expect(harness.getByText('the package EgoForm editor')).toBeInTheDocument();
+  });
+
+  it('is what edits the interfaces it does name', () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      registry: { Information: HostInformationEditor },
+    });
+
+    expect(
+      harness.getByText('the host Information editor'),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the package registry alone when a host supplies none', () => {
+    const harness = renderStageEditor({ stageId: 'information-1' });
+
+    expect(
+      harness.getByText('the package Information editor'),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The control: an interface NEITHER the package nor the host has an editor
+   * for still throws, so the merge above is not simply making everything
+   * renderable.
+   *
+   * Also the only place left that reads the message. Thrown rather than
+   * reported, because there is no editor to fall back to and rendering nothing
+   * would leave a researcher on an empty page with no account of why — so the
+   * interface it could not open has to be in it. Every interface the package
+   * ships now has an editor, which is what leaves this mocked registry the one
+   * way to reach the throw at all.
+   */
+  it('still names an interface neither of them registers', () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const openSociogram = () =>
+        renderStageEditor({
+          stageId: 'sociogram-1',
+          registry: { Information: HostInformationEditor },
+        });
+
+      expect(openSociogram).toThrow(UnregisteredStageTypeError);
+      expect(openSociogram).toThrow(/"Sociogram" interface/);
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+});
+
+describe('merging a host registry over another', () => {
+  const packageInformation = stageEditorRegistry.Information;
+  const packageEgoForm = stageEditorRegistry.EgoForm;
+
+  it('takes the host entry where both name an interface', () => {
+    const merged = stageEditorsWithHostOverrides(stageEditorRegistry, {
+      Information: HostInformationEditor,
+    });
+
+    expect(merged.Information).toBe(HostInformationEditor);
+    expect(merged.EgoForm).toBe(packageEgoForm);
+  });
+
+  /**
+   * An entry a host left empty claims nothing, the same reading a family part
+   * gets: a key holding `undefined` is not a way to delete an editor the
+   * package ships.
+   */
+  it('does not let an empty host entry delete a package editor', () => {
+    const merged = stageEditorsWithHostOverrides(stageEditorRegistry, {
+      Information: undefined,
+    });
+
+    expect(merged.Information).toBe(packageInformation);
+  });
+
+  it('answers with the base itself when a host supplies nothing', () => {
+    expect(stageEditorsWithHostOverrides(stageEditorRegistry, undefined)).toBe(
+      stageEditorRegistry,
+    );
+  });
+
+  it('answers with a registry nothing can add to afterwards', () => {
+    const merged = stageEditorsWithHostOverrides(stageEditorRegistry, {
+      Information: HostInformationEditor,
+    });
+
+    expect(Object.isFrozen(merged)).toBe(true);
+  });
+});

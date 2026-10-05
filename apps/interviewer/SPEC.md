@@ -89,8 +89,10 @@ The lock screen reveals **nothing** about stored data — no protocol names, no 
 ### Auto-lock
 
 - **Idle auto-lock** with a user-configurable timeout: 1, 5, 15, 30, or 60 minutes (default 15). Not applied under "No security", since there is nothing to lock.
-- **Re-lock on extended focus loss** (losing focus for roughly 30 seconds) and whenever the tab reloads.
-- A "Lock now" action is always available in Settings.
+- **Time spent with the tab hidden counts toward that idle window** — there is no separate lock-on-blur. When the tab comes back, the app reconciles the elapsed wall-clock time against the timeout and locks immediately if the window has already passed.
+- **Locking first lets outstanding interview writes settle**, bounded at two seconds so a stalled write cannot hold the vault open past its deadline. A write is encrypted with the vault key at the moment it runs, so dropping the key mid-write would lose the answers that write carried — the wait closes that window for both the idle lock and the manual one.
+- **Re-lock whenever the tab reloads**, since the key lives only in memory.
+- A **lock action** is available in the app header whenever a security mode is configured.
 
 ### Recovery
 

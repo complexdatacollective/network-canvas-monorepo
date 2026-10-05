@@ -1,6 +1,9 @@
-import type { BiologicalSex, InheritancePattern } from '@codaco/shared-consts';
+import type {
+  BiologicalSex,
+  InheritancePattern,
+} from '@codaco/protocol-validation';
 
-import type { ValueGenerator } from '../../ValueGenerator';
+import type { ValueGenerator } from '../../ValueGenerator.ts';
 import type {
   FamilyPedigreePlan,
   FamilyPedigreeWeightedCount,
@@ -9,7 +12,7 @@ import type {
   PedigreeRelationship,
   PedigreeRelationshipToEgo,
   ResolvedFamilyPedigreeGenerationOptions,
-} from './types';
+} from './types.ts';
 
 type MutablePerson = Omit<PedigreePerson, 'affectedVariables'> & {
   affectedVariables: Set<string>;

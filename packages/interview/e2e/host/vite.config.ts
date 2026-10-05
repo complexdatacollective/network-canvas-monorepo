@@ -4,11 +4,13 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 import pkg from '../../package.json' with { type: 'json' };
 
 export default defineConfig({
   root: __dirname,
-  plugins: [react(), tailwindcss()],
+  plugins: [appI18n(), react(), tailwindcss()],
   server: { port: 4101, strictPort: true },
   preview: { port: 4101, strictPort: true },
   define: {

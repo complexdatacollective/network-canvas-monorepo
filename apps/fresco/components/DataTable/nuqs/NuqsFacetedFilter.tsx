@@ -1,8 +1,9 @@
 'use client';
-
 import { parseAsArrayOf, parseAsStringLiteral, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import ComboboxField from '@codaco/fresco-ui/form/fields/Combobox/Combobox';
 
 import { nuqsTableUrlKey, useNuqsTable } from './NuqsTableProvider';
@@ -31,11 +32,21 @@ export default function NuqsFacetedFilter<T extends string>({
   paramKey,
   values,
   getLabel = (v) => v,
-  placeholder = 'Filter...',
-  searchPlaceholder = 'Search...',
-  emptyMessage = 'No options found.',
+  placeholder: placeholderProp,
+  searchPlaceholder: searchPlaceholderProp,
+  emptyMessage: emptyMessageProp,
   className,
 }: NuqsFacetedFilterProps<T>) {
+  const intl = useAppIntl();
+  const placeholder =
+    placeholderProp ??
+    intl.formatMessage(messages.NuqsFacetedFilterplaceholder);
+  const searchPlaceholder =
+    searchPlaceholderProp ??
+    intl.formatMessage(messages.NuqsFacetedFiltersearchPlaceholder);
+  const emptyMessage =
+    emptyMessageProp ??
+    intl.formatMessage(messages.NuqsFacetedFilteremptyMessage);
   const { prefix, startTransition } = useNuqsTable();
   const urlKey = nuqsTableUrlKey(prefix, paramKey);
 
@@ -71,3 +82,23 @@ export default function NuqsFacetedFilter<T extends string>({
     />
   );
 }
+
+const messages = defineMessages({
+  NuqsFacetedFilteremptyMessage: {
+    id: 'fresco.tableFilters.NuqsFacetedFilteremptyMessage',
+    defaultMessage: 'No options found.',
+    description: 'Researcher-facing tableFilters: No options found.',
+  },
+
+  NuqsFacetedFiltersearchPlaceholder: {
+    id: 'fresco.tableFilters.NuqsFacetedFiltersearchPlaceholder',
+    defaultMessage: 'Search...',
+    description: 'Researcher-facing tableFilters: Search...',
+  },
+
+  NuqsFacetedFilterplaceholder: {
+    id: 'fresco.tableFilters.NuqsFacetedFilterplaceholder',
+    defaultMessage: 'Filter...',
+    description: 'Researcher-facing tableFilters: Filter...',
+  },
+});

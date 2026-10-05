@@ -28,15 +28,19 @@
       active-item="community"
       theme="auto"
     ></nc-site-navigation>
-    <div class="controls">
-      <button data-theme-value="light">Light</button>
-      <button data-theme-value="dark">Dark</button>
-      <button data-theme-value="auto">Auto</button>
-    </div>
-    <p style="padding: 1rem">
-      Host-page content. The header above is rendered by
-      <code>&lt;nc-site-navigation&gt;</code> inside a shadow root.
-    </p>
+    <main id="main-content">
+      <div class="controls">
+        <button data-theme-value="light">Light</button>
+        <button data-theme-value="dark">Dark</button>
+        <button data-theme-value="auto">Auto</button>
+      </div>
+      <p style="padding: 1rem">
+        Host-page content. The header above is rendered by
+        <code>&lt;nc-site-navigation&gt;</code> inside a shadow root. This
+        element carries <code>id="main-content"</code>, which is what the
+        header's skip link jumps to — press Tab from the address bar to see it.
+      </p>
+    </main>
     <script type="module">
       const nav = document.querySelector('nc-site-navigation');
       for (const button of document.querySelectorAll('[data-theme-value]')) {

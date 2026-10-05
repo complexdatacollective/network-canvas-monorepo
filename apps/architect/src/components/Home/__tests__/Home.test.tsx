@@ -1,14 +1,20 @@
 import { act, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 const openFileDialogMock = vi.hoisted(() => vi.fn());
+type DropHandler = (
+  files: File[],
+  fileRejections: { file: File; errors: { code: string; message: string }[] }[],
+) => void;
+
 const dropzoneRef = vi.hoisted(() => ({
-  onDrop: undefined as ((files: File[]) => void) | undefined,
+  onDrop: undefined as DropHandler | undefined,
 }));
 
-vi.mock('react-dropzone', () => ({
-  useDropzone: (options: { onDrop: (files: File[]) => void }) => {
+vi.mock('react-dropzone', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useDropzone: (options: { onDrop: DropHandler }) => {
     dropzoneRef.onDrop = options.onDrop;
     return {
       getRootProps: () => ({}),
@@ -27,9 +33,21 @@ vi.mock('~/components/NewProtocolDialog', () => ({
   default: () => null,
 }));
 
-vi.mock('~/components/ProjectNav/NavShell', () => ({
-  default: ({ trailing }: { trailing: ReactNode }) => <nav>{trailing}</nav>,
-}));
+// The items are `NavLink`s, which need the navigation menu around them.
+vi.mock('~/components/ProjectNav/NavShell', async () => {
+  const { NavigationMenu } = await import('@base-ui/react/navigation-menu');
+  return {
+    default: ({ items }: { items: ReactElement[] }) => (
+      <NavigationMenu.Root>
+        <NavigationMenu.List>
+          {items.map((item) => (
+            <NavigationMenu.Item key={item.key}>{item}</NavigationMenu.Item>
+          ))}
+        </NavigationMenu.List>
+      </NavigationMenu.Root>
+    ),
+  };
+});
 
 const showProtocolOpenResultDialogMock = vi.hoisted(() => vi.fn());
 
@@ -69,7 +87,7 @@ vi.mock('../TransitMap', () => ({ default: () => null }));
 import Home from '../Home';
 
 describe('<Home />', () => {
-  it('uses medium brand-colored call-to-action buttons', () => {
+  it('uses medium call-to-action buttons colored by role', () => {
     render(<Home />);
 
     const createButton = screen.getByRole('button', {
@@ -87,24 +105,17 @@ describe('<Home />', () => {
     );
     expect(openButton).toHaveClass('h-12', 'text-base');
     expect(openButton).toHaveClass(
-      '[--component-bg:var(--accent-contrast)]',
-      '[--component-text:var(--accent)]',
-      'focus:outline-accent',
+      'control-glass',
+      '[--component-bg:var(--neutral-contrast)]',
+      '[--component-text:var(--neutral-contrast)]',
     );
   });
 
-  // A .netcanvas can need BOTH an upgrade and a configuration repair. The
-  // repair approval has to carry the upgrade approval forward, or reopening
-  // the file asks for the upgrade all over again and the researcher is stuck.
-  it('carries an approved migration forward into an approved repair', async () => {
+  it('reopens a protocol after migration is approved', async () => {
     const { openLocalNetcanvas } =
       await import('~/ducks/modules/userActions/userActions');
     vi.mocked(openLocalNetcanvas).mockClear();
-    const statuses = [
-      { status: 'migration-required' },
-      { status: 'repair-required', problems: [], repairable: true },
-      { status: 'opened' },
-    ];
+    const statuses = [{ status: 'migration-required' }, { status: 'opened' }];
     dispatchMock.mockImplementation(() => ({
       unwrap: () => Promise.resolve(statuses.shift()),
     }));
@@ -113,36 +124,56 @@ describe('<Home />', () => {
       async ({
         result,
         onApproveMigration,
-        onApproveRepair,
       }: {
         result: { status: string };
         onApproveMigration?: () => Promise<void>;
-        onApproveRepair?: () => Promise<void>;
       }) => {
         if (result.status === 'migration-required')
           await onApproveMigration?.();
-        if (result.status === 'repair-required') await onApproveRepair?.();
       },
     );
 
     render(<Home />);
 
     await act(async () => {
-      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')]);
+      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')], []);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     expect(
       vi.mocked(openLocalNetcanvas).mock.calls.map(([arg]) => arg),
     ).toEqual([
-      { file: expect.any(File) },
+      { file: expect.any(File), migrationApproved: false },
       { file: expect.any(File), migrationApproved: true },
-      {
-        file: expect.any(File),
-        migrationApproved: true,
-        repairApproved: true,
-      },
     ]);
+  });
+
+  it('opens nothing when several protocols are dropped at once', async () => {
+    const { openLocalNetcanvas } =
+      await import('~/ducks/modules/userActions/userActions');
+    vi.mocked(openLocalNetcanvas).mockClear();
+    dispatchMock.mockReset();
+
+    render(<Home />);
+
+    // The shape react-dropzone (>= 19) reports for a two-file drop with
+    // `multiple: false`: the first file accepted, the surplus rejected.
+    const surplus = new File(['{}'], 'second.netcanvas');
+    await act(async () => {
+      dropzoneRef.onDrop?.(
+        [new File(['{}'], 'first.netcanvas')],
+        [
+          {
+            file: surplus,
+            errors: [{ code: 'too-many-files', message: 'Too many files' }],
+          },
+        ],
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(openLocalNetcanvas).not.toHaveBeenCalled();
+    expect(dispatchMock).not.toHaveBeenCalled();
   });
 
   it('keeps the loading overlay off while a protocol-open dialog is awaited', async () => {
@@ -163,7 +194,7 @@ describe('<Home />', () => {
     render(<Home />);
 
     await act(async () => {
-      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')]);
+      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')], []);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 

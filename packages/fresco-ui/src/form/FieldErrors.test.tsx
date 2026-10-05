@@ -1,9 +1,74 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Surface from '../layout/Surface';
 import FieldErrors from './FieldErrors';
 
 describe('FieldErrors', () => {
+  /**
+   * Revalidating an already-invalid, already-dirty field clears its stored
+   * error and writes the identical message back within the same keystroke
+   * (formStore discards on every value change, ahead of the async
+   * revalidation that restores it), so `show`/`errors` flicker to "no error"
+   * and back even though nothing the user can perceive changed. A remount
+   * driven straight off that flicker would replay `animate-shake` on every
+   * keystroke of an already-shown, unchanged message.
+   */
+  it('does not remount the error element across a same-tick clear/repopulate blip', () => {
+    const { rerender } = render(
+      <FieldErrors
+        id="field-error"
+        name="email"
+        show
+        errors={['Invalid email address']}
+      />,
+    );
+    const before = screen.getByTestId('email-field-error');
+
+    rerender(<FieldErrors id="field-error" name="email" show={false} />);
+    rerender(
+      <FieldErrors
+        id="field-error"
+        name="email"
+        show
+        errors={['Invalid email address']}
+      />,
+    );
+
+    expect(screen.getByTestId('email-field-error')).toBe(before);
+  });
+
+  it('remounts the error element when the message actually changes', () => {
+    const { rerender } = render(
+      <FieldErrors id="field-error" name="email" show errors={['Required']} />,
+    );
+    const before = screen.getByTestId('email-field-error');
+
+    rerender(
+      <FieldErrors
+        id="field-error"
+        name="email"
+        show
+        errors={['Invalid email address']}
+      />,
+    );
+
+    expect(screen.getByTestId('email-field-error')).not.toBe(before);
+  });
+
+  it('still hides the message once a clear settles rather than reversing', async () => {
+    const { rerender } = render(
+      <FieldErrors id="field-error" name="email" show errors={['Required']} />,
+    );
+    expect(screen.getByTestId('email-field-error')).toBeVisible();
+
+    rerender(<FieldErrors id="field-error" name="email" show={false} />);
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('email-field-error')).not.toBeInTheDocument(),
+    );
+  });
+
   it('renders every validation message when a field has multiple errors', () => {
     render(
       <FieldErrors
@@ -45,5 +110,40 @@ describe('FieldErrors', () => {
 
     expect(screen.queryByTestId('name-field-error')).toBeNull();
     expect(document.getElementById('field-error')).not.toBeNull();
+  });
+  it.each([
+    { where: 'a default Surface', series: 'default' as const, boxed: false },
+    { where: 'an accent Surface', series: 'accent' as const, boxed: true },
+  ])('draws the error as a box only on $where', ({ series, boxed }) => {
+    render(
+      <Surface series={series}>
+        <FieldErrors id="field-error" name="label" show errors={['Required']} />
+      </Surface>,
+    );
+
+    const error = screen.getByTestId('label-field-error');
+    expect(error.classList.contains('bg-destructive')).toBe(boxed);
+    expect(error.classList.contains('text-destructive-box-contrast')).toBe(
+      boxed,
+    );
+    expect(error.classList.contains('text-destructive-ink')).toBe(!boxed);
+  });
+
+  it('keeps an explicit variant on an accent Surface', () => {
+    render(
+      <Surface series="accent">
+        <FieldErrors
+          id="field-error"
+          name="label"
+          show
+          errors={['Required']}
+          variant="text"
+        />
+      </Surface>,
+    );
+
+    expect(screen.getByTestId('label-field-error')).not.toHaveClass(
+      'bg-destructive',
+    );
   });
 });

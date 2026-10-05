@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { expect, test } from '../fixtures/test.js';
+import { clickWhenDeckSettles } from '../helpers/deck.js';
 import {
   LEAN_E2E_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_PATH,
@@ -64,10 +65,63 @@ test.describe('protocol import & delete', () => {
     await page.getByRole('button', { name: 'Go to card 1' }).click();
     // Only the ACTIVE sample card renders its "Install sample protocol"
     // footer button.
-    await page.getByRole('button', { name: 'Install sample protocol' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Install sample protocol' }),
+    );
     await expect(page.getByText('Protocol imported')).toBeVisible({
       timeout: 15_000,
     });
+  });
+
+  test('re-enabling the sample-protocol setting leaves the installed card in place', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    // Same first-dot targeting as the install test above: with nothing
+    // installed the deck is exactly [sample, import].
+    await page.getByRole('button', { name: 'Go to card 1' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Install sample protocol' }),
+    );
+    await expect(page.getByText('Protocol imported')).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Installing switches the teaser preference off. Turning it back on must
+    // not put the teaser back over the protocol that is now installed.
+    await page.getByTestId('settings-trigger').click();
+    await page.getByRole('tab', { name: 'About' }).click();
+    const showSample = page.getByRole('switch', {
+      name: 'Show sample protocol on home screen',
+    });
+    await expect(showSample).toHaveAttribute('aria-checked', 'false');
+    await showSample.click();
+    // The switch is controlled by the persisted settings row, so this flip
+    // only lands once the write has committed.
+    await expect(showSample).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // The teaser and the installed card carry different delete controls
+    // ("Dismiss the sample protocol" vs "Delete Protocol"), which is the
+    // clearest signal of which one holds the slot.
+    const installedCardControls = async () => {
+      await expect(
+        page.getByRole('heading', { name: 'Sample Protocol' }),
+      ).toHaveCount(1);
+      await expect(
+        page.getByRole('button', { name: 'Delete Protocol' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Dismiss the sample protocol' }),
+      ).toHaveCount(0);
+    };
+    await installedCardControls();
+
+    // A reload rebuilds the deck from scratch, which is where the teaser used
+    // to reappear with no action button at all.
+    await page.reload();
+    await installedCardControls();
   });
 
   test('hides the resume notification while the case ID form is open', async ({
@@ -84,7 +138,9 @@ test.describe('protocol import & delete', () => {
     });
     await expect(resumeNotification).toBeVisible();
 
-    await page.getByRole('button', { name: 'Start new interview' }).click();
+    await clickWhenDeckSettles(
+      page.getByRole('button', { name: 'Start new interview' }),
+    );
     await expect(page.getByTestId('new-session-case-id')).toBeVisible();
     await expect(resumeNotification).not.toBeVisible();
 
@@ -108,9 +164,10 @@ test.describe('protocol import & delete', () => {
       // card's delete control sits under the next card's bounding box in the
       // deck's fanned 3D layout, which fools Playwright's actionability
       // pre-check even though a real click there is delivered correctly.
-      await page
-        .getByRole('button', { name: 'Delete Protocol' })
-        .click({ force: true });
+      await clickWhenDeckSettles(
+        page.getByRole('button', { name: 'Delete Protocol' }),
+        { force: true },
+      );
       const dialog = page.getByRole('dialog');
       await expect(
         dialog.getByRole('heading', { name: 'Delete this protocol?' }),

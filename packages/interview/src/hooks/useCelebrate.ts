@@ -1,3 +1,5 @@
+'use client';
+
 import { animate } from 'motion/react';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 

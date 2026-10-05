@@ -11,6 +11,10 @@ import {
 import { useMergeRefs } from 'react-best-merge-refs';
 
 import { cx } from './utils/cva';
+import {
+  measureHorizontalOverflow,
+  setHorizontalOverflowVariables,
+} from './utils/horizontalOverflow';
 
 type ScrollSnapType = 'mandatory' | 'proximity';
 
@@ -99,7 +103,6 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           scrollTop,
           scrollHeight,
           clientHeight,
-          scrollLeft,
           scrollWidth,
           clientWidth,
         } = viewportRef.current;
@@ -107,8 +110,6 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
         const styles = getComputedStyle(viewportRef.current);
         const padTop = Number.parseFloat(styles.paddingBlockStart);
         const padBottom = Number.parseFloat(styles.paddingBlockEnd);
-        const padLeft = Number.parseFloat(styles.paddingInlineStart);
-        const padRight = Number.parseFloat(styles.paddingInlineEnd);
 
         // Vertical overflow — subtract padding so the fade only appears
         // once content (not just padding) has scrolled past the edge.
@@ -145,20 +146,11 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
         // `fade={false}` still scrolls, and would otherwise never be reachable
         // by keyboard.
         setOverflows(hasVerticalOverflow || hasHorizontalOverflow);
-        const overflowXStart = hasHorizontalOverflow
-          ? Math.max(0, scrollLeft - padLeft)
-          : 0;
-        const overflowXEnd = hasHorizontalOverflow
-          ? Math.max(0, scrollWidth - clientWidth - scrollLeft - padRight)
-          : 0;
-
-        viewportRef.current.style.setProperty(
-          '--scroll-area-overflow-x-start',
-          `${overflowXStart}px`,
-        );
-        viewportRef.current.style.setProperty(
-          '--scroll-area-overflow-x-end',
-          `${overflowXEnd}px`,
+        setHorizontalOverflowVariables(
+          viewportRef.current,
+          measureHorizontalOverflow(viewportRef.current, {
+            excludePadding: true,
+          }),
         );
 
         const scrollbarHeight =
@@ -263,10 +255,25 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
     const isHorizontal = orientation === 'horizontal';
     const resolvedTabIndex = tabIndex ?? (overflows ? 0 : -1);
     const isNamed = !nameWhenScrollableOnly || resolvedTabIndex >= 0;
+    /**
+     * The viewport is a `<section>` — a `region` landmark once it is named —
+     * unless the caller has said what it is.
+     *
+     * `<section>` accepts almost no explicit role: a caller that scrolls a
+     * listbox, a grid or a tab list (`Collection` does exactly that) was
+     * putting a role on an element ARIA does not allow it on, which is an axe
+     * `aria-allowed-role` failure and, worse, a role a browser may decline to
+     * apply. A `<div>` has no implicit role to conflict with, and the two
+     * elements are styled identically here, so nothing moves.
+     */
+    const Viewport =
+      'role' in rest && rest.role !== undefined ? 'div' : 'section';
 
     return (
-      <div className={cx('relative flex h-full min-h-0 flex-1', className)}>
-        <section
+      <div
+        className={cx('relative isolate flex h-full min-h-0 flex-1', className)}
+      >
+        <Viewport
           ref={useMergeRefs({ viewportRef, ref })}
           tabIndex={resolvedTabIndex}
           aria-label={isNamed ? ariaLabel : undefined}
@@ -300,7 +307,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
           {...rest}
         >
           {children}
-        </section>
+        </Viewport>
       </div>
     );
   },

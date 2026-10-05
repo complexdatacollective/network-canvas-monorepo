@@ -3,8 +3,11 @@
 import { Check, ClipboardCopy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 
 // This button is rendered from StageErrorBoundary's fallback, which must
 // keep working even when the app around it is broken. Historically this
@@ -22,6 +25,7 @@ export default function CopyDebugInfoButton({
   debugInfo: string;
   className?: string;
 }) {
+  const intl = useAppIntl();
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -44,11 +48,11 @@ export default function CopyDebugInfoButton({
     <Button
       onClick={copyDebugInfoToClipboard}
       className={cx(className)}
-      title="Copy to clipboard"
+      title={intl.formatMessage(messages.copyClipboard)}
       color="primary"
       icon={copied ? <Check /> : <ClipboardCopy />}
     >
-      {copied ? 'Copied!' : 'Copy Debug Info'}
+      <AppMessage message={copied ? messages.copied : messages.copyDebugInfo} />
     </Button>
   );
 }

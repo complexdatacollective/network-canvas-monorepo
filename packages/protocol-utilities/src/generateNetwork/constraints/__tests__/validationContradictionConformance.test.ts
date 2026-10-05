@@ -9,18 +9,18 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
-import { resolveGenerationConfig } from '../../config';
-import { buildEntityConstraints } from '../buildConstraints';
-import { resolveGenerationOrder } from '../dependencyOrder';
-import { analyseFeasibility } from '../feasibility';
+import { resolveGenerationConfig } from '../../config.ts';
+import { buildEntityConstraints } from '../buildConstraints.ts';
+import { resolveGenerationOrder } from '../dependencyOrder.ts';
+import { analyseFeasibility } from '../feasibility.ts';
 import {
   differentFromGroups,
   groupComparatorEdges,
   intersectGroupConstraints,
   propagateComparatorBounds,
-} from '../groupConstraints';
-import { solvableComponents, solveComponent } from '../solver';
-import { delegatedValidationContradictions } from '../validationContradictions';
+} from '../groupConstraints.ts';
+import { solvableComponents, solveComponent } from '../solver.ts';
+import { delegatedValidationContradictions } from '../validationContradictions.ts';
 
 const TODAY = '2026-07-28';
 const config = resolveGenerationConfig({ today: TODAY });

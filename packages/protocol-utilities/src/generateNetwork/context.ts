@@ -1,10 +1,10 @@
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import type { VariableValue, NcEdge, NcNode } from '@codaco/shared-consts';
 
-import type { ValueGenerator } from '../ValueGenerator';
-import type { ResolvedGenerationConfig } from './config';
-import type { EntityConstraints } from './constraints/types';
-import type { UniqueRegistry } from './constraints/uniqueRegistry';
+import type { ValueGenerator } from '../ValueGenerator.ts';
+import type { ResolvedGenerationConfig } from './config.ts';
+import type { EntityConstraints } from './constraints/types.ts';
+import type { UniqueRegistry } from './constraints/uniqueRegistry.ts';
 
 /**
  * The concrete member of the {@link Stage} discriminated union for a given

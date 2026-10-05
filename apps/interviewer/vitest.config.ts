@@ -9,6 +9,7 @@ import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
+import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
 import { arrayBufferAssetPlugin } from './vite.renderer.config';
@@ -64,6 +65,92 @@ export default defineConfig({
             storybookScript: 'storybook dev -p 6006 --no-open',
           }),
         ],
+        // Vite's dependency scanner cannot see these: every one of them is
+        // reached only at runtime, behind the virtual project-annotations
+        // module that Storybook's setup file imports. Anything left out is
+        // discovered while the suite is already running, and the re-optimise
+        // that follows changes the `browserv` hash and reloads the page,
+        // killing in-flight module fetches — the whole suite then fails with
+        // "Failed to fetch dynamically imported module" on a cold cache
+        // while passing on a warm one.
+        //
+        // The list has to stay complete. To rebuild it, delete
+        // `node_modules/.cache/storybook/*/*/sb-vitest`, run
+        // `pnpm test:storybook`, and add every specifier the
+        // "dependencies optimized:" / "dependency optimized:" lines report.
+        // Deps owned by a workspace package are not resolvable from this
+        // root, so they need Vite's `<owner> > <dep>` form.
+        optimizeDeps: {
+          include: [
+            // Reached as this app → fresco-ui → app-i18n. Vite's
+            // `<owner> > <dep>` form has to name the owner the whole way
+            // down: a shorter specifier does not resolve from this root,
+            // and an entry Vite cannot resolve is ignored in silence.
+            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/intl-localematcher',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
+            '@base-ui/react',
+            '@base-ui/react/accordion',
+            '@base-ui/react/checkbox',
+            // Reached through `Dialog`, which reads the enclosing heading level
+            // a `Section` inside it counts down from — so every dialog these
+            // stories open now pulls in fresco-ui's `Section` and the
+            // Collapsible it is built on.
+            '@base-ui/react/collapsible',
+            '@base-ui/react/combobox',
+            '@base-ui/react/drawer',
+            '@base-ui/react/menu',
+            '@base-ui/react/popover',
+            '@base-ui/react/progress',
+            '@base-ui/react/radio',
+            '@base-ui/react/radio-group',
+            '@base-ui/react/slider',
+            '@base-ui/react/switch',
+            '@base-ui/react/toggle',
+            '@base-ui/react/toggle-group',
+            '@base-ui/react/toolbar',
+            '@base-ui/react/tooltip',
+            '@codaco/art > blobs/v2/animate',
+            '@codaco/fresco-ui > @faker-js/faker',
+            '@codaco/fresco-ui > @radix-ui/react-slot',
+            '@codaco/fresco-ui > clsx',
+            '@codaco/fresco-ui > comlink',
+            '@codaco/fresco-ui > cva',
+            '@codaco/fresco-ui > cva/config',
+            '@codaco/fresco-ui > es-toolkit',
+            '@codaco/fresco-ui > es-toolkit/compat',
+            '@codaco/fresco-ui > fuse.js',
+            '@codaco/fresco-ui > immer',
+            '@codaco/fresco-ui > nanoid',
+            '@codaco/fresco-ui > react-best-merge-refs',
+            '@codaco/fresco-ui > react-markdown',
+            '@codaco/fresco-ui > rehype-raw',
+            '@codaco/fresco-ui > rehype-sanitize',
+            '@codaco/fresco-ui > remark-gemoji',
+            '@codaco/fresco-ui > remark-gfm',
+            '@codaco/fresco-ui > tailwind-merge',
+            '@codaco/fresco-ui > usehooks-ts',
+            '@codaco/fresco-ui > zustand',
+            '@codaco/fresco-ui > zustand/middleware',
+            '@codaco/fresco-ui > zustand/middleware/immer',
+            '@codaco/fresco-ui > zustand/react/shallow',
+            '@codaco/fresco-ui > zustand/shallow',
+            '@codaco/fresco-ui > zustand/vanilla',
+            '@codaco/interview > @reduxjs/toolkit',
+            '@codaco/interview > concaveman',
+            '@codaco/interview > csvtojson',
+            '@codaco/interview > html-to-image',
+            '@codaco/interview > mapbox-gl/esm',
+            '@codaco/interview > ohash',
+            '@codaco/interview > react-redux',
+            '@codaco/interview > redux-logger',
+            'chromatic/isChromatic',
+            'jszip',
+            'zod',
+            'zod/mini',
+          ],
+        },
         test: {
           name: 'storybook',
           testTimeout: 60_000,
@@ -72,6 +159,7 @@ export default defineConfig({
             enabled: true,
             instances: [{ browser: 'chromium' }],
             headless: true,
+            viewport: BROWSER_VIEWPORT,
           },
           exclude: ['**/*.test.{ts,tsx}'],
         },

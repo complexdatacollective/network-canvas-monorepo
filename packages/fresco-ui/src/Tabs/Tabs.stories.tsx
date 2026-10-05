@@ -163,7 +163,7 @@ const meta: Meta<StoryArgs> = {
         layout={layout}
         headerEnd={
           showHeaderEnd ? (
-            <span className="text-muted text-xs font-semibold whitespace-nowrap">
+            <span className="text-xs font-semibold whitespace-nowrap text-current/70">
               {tabs.length} sections
             </span>
           ) : null

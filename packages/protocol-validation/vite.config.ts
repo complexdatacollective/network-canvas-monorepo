@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const relativeDeclarationSpecifier =
@@ -73,23 +75,34 @@ const addJsExtensionsToDeclarationSpecifiers = (
 
 export default defineConfig({
   build: {
-    // No rollup `external` config on purpose: the published bundle is fully
-    // self-contained (every runtime import — jszip, zod, ohash,
-    // @codaco/shared-consts — is inlined into dist/index.js), so the artifact
-    // runs in CLI/browser/worker contexts with nothing to install. Under this
-    // design, `dependencies` lists only what the published TYPE surface needs
-    // consumers to resolve; bundled runtime-only libs (jszip) are deliberately
-    // devDependencies. Adding an external here without reclassifying the
-    // dependency would publish a broken artifact.
+    // The optional UI subpaths externalize app-i18n; the root has no such imports.
+    rollupOptions: { external: [/^@codaco\/app-i18n(?:\/|$)/] },
+    // The published bundle is self-contained: every runtime import — jszip,
+    // zod, ohash, @codaco/shared-consts — ships inside its dist entry and
+    // shared chunks, so the published artifact runs in CLI/browser/worker
+    // contexts with nothing to install.
+    //
+    // Inlining here does not excuse a package.json declaration. Workspace
+    // consumers are source-first: they compile `src/` through their own
+    // pipeline and resolve its imports from the installed tree at runtime, and
+    // a production install (`pnpm deploy --prod`) installs only
+    // `dependencies`. So every runtime import of the source must be declared
+    // in `dependencies` even though the bundle inlines it; `devDependencies`
+    // is for build and test tooling alone.
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        messages: resolve(__dirname, 'src/messages.ts'),
+        locales: resolve(__dirname, 'src/locales/catalogs.ts'),
+      },
       name: 'ProtocolValidation',
       // the proper extensions will be added
-      fileName: 'index',
+      fileName: (_format, entryName) => `${entryName}.js`,
       formats: ['es'],
     },
   },
   plugins: [
+    appI18n({ build: 'library' }),
     dts({
       insertTypesEntry: true,
       beforeWriteFile: (filePath, content) => ({

@@ -128,4 +128,20 @@ describe('collectAssetReferences', () => {
     expect(assetIdsIn({ schemaVersion: 8, stages: [] })).toEqual([]);
     expect(assetIdsIn(undefined)).toEqual([]);
   });
+
+  it('does not index an empty value from an invalid asset-reference field', () => {
+    expect(
+      collectAssetReferences({
+        schemaVersion: 8,
+        stages: [
+          {
+            id: 'empty-asset',
+            type: 'Information',
+            title: 'Invalid asset item',
+            items: [{ id: 'item-1', type: 'asset', content: '' }],
+          },
+        ],
+      }),
+    ).toEqual([]);
+  });
 });

@@ -1,21 +1,26 @@
 import { toNumber } from 'es-toolkit/compat';
 import { Check, Pencil, Trash2 } from 'lucide-react';
 import {
+  createElement,
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ComponentType,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import {
+  ArrayFieldDragHandle,
+  type ArrayFieldItemProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import OptionLabelField from '@codaco/protocol-builder/fields/OptionLabelField';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 import {
@@ -24,18 +29,88 @@ import {
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
 import { cx } from '~/utils/cva';
-import {
-  markdownToRichTextContent,
-  richTextContentToMarkdown,
-  type RichTextContent,
-} from '~/utils/markdownAdapter';
 
 import RowField from './RowField';
+// Punctuation only, separating two unchanged researcher-authored values.
+const OPTION_VALUE_SEPARATOR = ' — ';
+const messages = defineMessages({
+  optionValue: {
+    id: 'architect.form.arrayFields.option.optionValue',
+    defaultMessage: 'option value',
+    description: 'Subject of the invalid option-value identifier guidance.',
+  },
+  removeOption: {
+    id: 'architect.form.arrayFields.option.removeOption',
+    defaultMessage: 'Remove option',
+    description: 'The title text in components / Form / arrayFields / Option.',
+  },
+  areYouSureYouWantTo: {
+    id: 'architect.form.arrayFields.option.areYouSureYouWantTo',
+    defaultMessage: 'Are you sure you want to remove this option?',
+    description:
+      'The description text in components / Form / arrayFields / Option.',
+  },
+  reorderOptionOf: {
+    id: 'architect.form.arrayFields.option.reorderOptionOf',
+    defaultMessage: 'Reorder option {value1, number} of {itemCount, number}',
+    description: 'The label text in components / Form / arrayFields / Option.',
+  },
+  untitledOption: {
+    id: 'architect.form.arrayFields.option.untitledOption',
+    defaultMessage: 'Untitled option',
+    description: 'Visible text in components / Form / arrayFields / Option.',
+  },
+  noValue: {
+    id: 'architect.form.arrayFields.option.noValue',
+    defaultMessage: 'No value',
+    description: 'Visible text in components / Form / arrayFields / Option.',
+  },
+  editOption: {
+    id: 'architect.form.arrayFields.option.editOption',
+    defaultMessage: 'Edit option {value1, number}',
+    description:
+      'Accessible edit-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
+  },
+  removeOption45a9b: {
+    id: 'architect.form.arrayFields.option.removeOption45a9b',
+    defaultMessage: 'Remove option {value1, number}',
+    description:
+      'Accessible remove-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
+  },
+  finishEditingOption: {
+    id: 'architect.form.arrayFields.option.finishEditingOption',
+    defaultMessage: 'Finish editing option',
+    description:
+      'The aria-label text in components / Form / arrayFields / Option.',
+  },
+  label: {
+    id: 'architect.form.arrayFields.option.label',
+    defaultMessage: 'Label',
+    description: 'The label text in components / Form / arrayFields / Option.',
+  },
+  enterALabel: {
+    id: 'architect.form.arrayFields.option.enterALabel',
+    defaultMessage: 'Enter a label...',
+    description:
+      'The placeholder text in components / Form / arrayFields / Option.',
+  },
+  value: {
+    id: 'architect.form.arrayFields.option.value',
+    defaultMessage: 'Value',
+    description: 'The label text in components / Form / arrayFields / Option.',
+  },
+  enterAValue: {
+    id: 'architect.form.arrayFields.option.enterAValue',
+    defaultMessage: 'Enter a value...',
+    description:
+      'The placeholder text in components / Form / arrayFields / Option.',
+  },
+});
 
 export type OptionValue = VariableOptions[number];
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
+const OptionLabelControl = OptionLabelField as ComponentType<
   Record<string, unknown>
 >;
 
@@ -75,14 +150,6 @@ const useOptionsContext = () => {
   return context;
 };
 
-const RICH_TEXT_TOOLBAR = {
-  headings: false,
-  history: true,
-  links: false,
-  lists: false,
-  thematicBreak: false,
-};
-
 const Option = ({
   item,
   index,
@@ -99,6 +166,7 @@ const Option = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<OptionValue>) => {
+  const intl = useAppIntl();
   const { arrayName, allValues, showArrayError } = useOptionsContext();
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
@@ -121,15 +189,6 @@ const Option = ({
     onEdit?.();
   }, [isBeingEdited, item.label, item.value, onEdit]);
 
-  const labelContent = useMemo(
-    () =>
-      markdownToRichTextContent(
-        typeof item.label === 'string' ? item.label : '',
-        true,
-      ),
-    [item.label],
-  );
-
   const handleFinishEditing = () => {
     if (!isOptionComplete(item)) {
       setForceShowErrors(true);
@@ -141,10 +200,16 @@ const Option = ({
 
   const handleDelete = () => {
     void confirm({
-      title: 'Remove option',
-      description: 'Are you sure you want to remove this option?',
-      confirmLabel: 'Remove option',
-      cancelLabel: 'Cancel',
+      title: createElement(AppMessage, { message: messages.removeOption }),
+      description: createElement(AppMessage, {
+        message: messages.areYouSureYouWantTo,
+      }),
+      confirmLabel: createElement(AppMessage, {
+        message: messages.removeOption,
+      }),
+      cancelLabel: createElement(AppMessage, {
+        message: commonMessages.cancel,
+      }),
       intent: 'destructive',
       onConfirm: () => onDelete?.(),
     });
@@ -169,34 +234,48 @@ const Option = ({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={`Reorder option ${index + 1} of ${itemCount}`}
+            label={intl.formatMessage(messages.reorderOptionOf, {
+              value1: index + 1,
+              itemCount: itemCount,
+            })}
           />
         )}
         <div className="min-w-0 flex-1 truncate">
           <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
-            {hasLabel ? item.label : 'Untitled option'}
+            {hasLabel
+              ? item.label
+              : intl.formatMessage(messages.untitledOption)}
           </span>
-          <span className="text-current/50"> — </span>
+          {/* Decorative separation of authored label and value. */}
+          <span className="text-current/50" aria-hidden>
+            {OPTION_VALUE_SEPARATOR}
+          </span>
           <span
             className={cx(
               'font-monospace',
               !hasValue && 'text-current/50 italic',
             )}
           >
-            {hasValue ? String(item.value) : 'No value'}
+            {hasValue
+              ? String(item.value)
+              : intl.formatMessage(messages.noValue)}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}
-            aria-label={`Edit option ${index + 1}`}
+            aria-label={intl.formatMessage(messages.editOption, {
+              value1: index + 1,
+            })}
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
           />
           <IconButton
             icon={<Trash2 />}
-            aria-label={`Remove option ${index + 1}`}
+            aria-label={intl.formatMessage(messages.removeOption45a9b, {
+              value1: index + 1,
+            })}
             color="destructive"
             disabled={interactionDisabled}
             onClick={handleDelete}
@@ -222,15 +301,16 @@ const Option = ({
       <div className="flex items-center justify-end gap-2">
         <IconButton
           icon={<Check />}
-          aria-label="Finish editing option"
-          size="lg"
+          aria-label={intl.formatMessage(messages.finishEditingOption)}
           color="primary"
           disabled={interactionDisabled}
           onClick={handleFinishEditing}
         />
         <IconButton
           icon={<Trash2 />}
-          aria-label={`Remove option ${index + 1}`}
+          aria-label={intl.formatMessage(messages.removeOption45a9b, {
+            value1: index + 1,
+          })}
           color="destructive"
           disabled={interactionDisabled}
           onClick={handleDelete}
@@ -238,28 +318,20 @@ const Option = ({
       </div>
       <RowField
         name={`${rowFieldName}.label`}
-        label="Label"
-        component={FrescoRichTextEditorField}
-        placeholder="Enter a label..."
-        changeMode="input"
-        toolbarOptions={RICH_TEXT_TOOLBAR}
-        value={labelContent}
+        label={intl.formatMessage(messages.label)}
+        component={OptionLabelControl}
+        placeholder={intl.formatMessage(messages.enterALabel)}
+        value={typeof item.label === 'string' ? item.label : ''}
         onChange={(value: unknown) => {
-          // Stored canonically so two labels that read identically are also
-          // identical bytes on export — see shared-consts' `canonical-text`.
-          const label = toCanonicalText(
-            richTextContentToMarkdown(
-              value as RichTextContent | undefined,
-              true,
-            ),
-          );
-          // The editor emits a change as it mounts; committing that would
-          // rewrite the whole array — dirtying the stage and adding a draft
-          // timeline entry — merely by opening a row. The comparison is
-          // canonical too, so opening a row whose stored label predates this
-          // normalization is not mistaken for an edit.
-          if (label === toCanonicalText(item.label ?? '')) return;
-          onUpdate?.({ label } as Partial<OptionValue>);
+          // Canonical, escaped and held to one line already: the package's
+          // `OptionLabelField` owns all three for every surface that authors an
+          // option label, and withholds the change the editor emits as it
+          // mounts — which would otherwise rewrite the whole array, dirtying
+          // the stage and adding a draft timeline entry, merely by opening a
+          // row.
+          onUpdate?.({
+            label: typeof value === 'string' ? value : '',
+          } as Partial<OptionValue>);
         }}
         validation={{ required: true, uniqueArrayAttribute: true }}
         allValues={allValues}
@@ -268,9 +340,9 @@ const Option = ({
       />
       <RowField
         name={`${rowFieldName}.value`}
-        label="Value"
+        label={intl.formatMessage(messages.value)}
         component={FrescoInputField}
-        placeholder="Enter a value..."
+        placeholder={intl.formatMessage(messages.enterAValue)}
         value={item.value}
         onChange={(value: unknown) =>
           onUpdate?.({
@@ -284,7 +356,7 @@ const Option = ({
         validation={{
           required: true,
           uniqueArrayAttribute: true,
-          allowedVariableName: 'option value',
+          allowedVariableName: intl.formatMessage(messages.optionValue),
         }}
         allValues={allValues}
         forceShowErrors={forceShowErrors}

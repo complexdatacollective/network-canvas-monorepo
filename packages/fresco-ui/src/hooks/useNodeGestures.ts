@@ -219,6 +219,9 @@ export function useNodeGestures({
   // A hold that is no longer applicable — because the label now fits, or the
   // node became disabled — must not still be counting down towards firing,
   // nor leave a suppression behind for an activation it has nothing to do with.
+  // What this cancels lives outside React — a pending timer, the pointer
+  // listeners a live gesture attached — so it belongs in an effect; the state
+  // these teardowns reset is a by-product of that, not a derived value.
   useEffect(() => {
     if (holdEnabled && !disabled) return;
     abandonHold();

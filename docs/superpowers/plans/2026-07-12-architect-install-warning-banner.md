@@ -120,7 +120,7 @@ from the alert and use warning-contrast utilities for the dismiss button.
 -      className="border-outline bg-surface-1! text-surface-1-contrast! my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!"
 +      className="border-outline my-0 shrink-0 rounded-none! border-x-0 border-t-0 border-b px-6 py-2 shadow-none!"
 @@
--          className="text-muted hover:text-surface-1-contrast inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
+-          className="text-current/70 hover:text-surface-1-contrast inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-current/10"
 +          className="text-warning-contrast/70 hover:text-warning-contrast hover:bg-warning-contrast/10 inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors"
 ```
 

@@ -195,7 +195,7 @@ describe('Cross-reference conformance', () => {
               center: [0, 0],
               initialZoom: 5,
               dataSourceAssetId: overrides.dataSourceAssetId ?? 'geoAsset',
-              color: 'node-color-seq-1',
+              color: 'ord-color-seq-1',
               targetFeatureProperty: 'name',
             },
             prompts: [

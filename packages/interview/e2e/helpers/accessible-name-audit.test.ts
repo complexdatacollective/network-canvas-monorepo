@@ -230,7 +230,7 @@ describe('committed ARIA baselines', () => {
     expect(baselines.length).toBeGreaterThan(100);
   });
 
-  it('contains exactly the unnamed controls we already know about', () => {
+  it('contains no unnamed controls', () => {
     const found = baselines
       .flatMap((path) => {
         const roles = findUnnamedControls(readFileSync(path, 'utf8'));
@@ -238,21 +238,7 @@ describe('committed ARIA baselines', () => {
       })
       .toSorted();
 
-    expect(found).toEqual([
-      // EgoForm's relative date picker: these two baselines are a STALE record.
-      // The control carries a name in the live tree (there is deliberately no
-      // KNOWN_UNNAMED_CONTROLS entry for it), and a stored bare `- textbox`
-      // matches any name, so only this audit would notice a regression. They
-      // disappear the next time these two baselines are regenerated.
-      'chromium/matrix-ego-form-egoform-field-mega-all-components-initial.aria.yml: textbox',
-      'chromium/matrix-ego-form-egoform-relative-date-range-validation-initial.aria.yml: textbox',
-      // FamilyPedigree's unlabelled pedigree-canvas control — the same source
-      // defect recorded in KNOWN_UNNAMED_CONTROLS. Fix it in the component,
-      // then delete it from both places.
-      'chromium/matrix-family-pedigree-familypedigree-boundaries-children-contributors-required-final.aria.yml: button',
-      'chromium/matrix-family-pedigree-familypedigree-boundaries-grandparents-required-blocked-final.aria.yml: button',
-      'chromium/matrix-family-pedigree-familypedigree-checklist-resting-state-final.aria.yml: button',
-    ]);
+    expect(found).toEqual([]);
   });
 });
 
@@ -300,37 +286,50 @@ describe('expectNoUnnamedControls', () => {
     expect(String(error)).toContain('gained NO accessible name');
   });
 
-  it('accepts a control recorded in KNOWN_UNNAMED_CONTROLS', async () => {
-    // The real ratchet entry, so the test breaks if that key is renamed.
-    const main = source('- main:\n  - button\n  - button "Egg Parent"');
-    await expectNoUnnamedControls(
-      main,
-      'matrix-family-pedigree-familypedigree-checklist-resting-state-final',
+  it.each([
+    'matrix-family-pedigree-familypedigree-checklist-resting-state-final',
+    'matrix-family-pedigree-familypedigree-boundaries-grandparents-required-blocked-final',
+    'matrix-family-pedigree-familypedigree-boundaries-children-contributors-required-final',
+  ])('rejects losing the repaired ego name in %s', async (key) => {
+    vi.useFakeTimers();
+    const snapshot = readFileSync(
+      resolve(
+        import.meta.dirname,
+        `../aria-snapshots/chromium/${key}.aria.yml`,
+      ),
+      'utf8',
     );
+    const egoName = /^(\s*- button) "You"(?=\s*(?:\[|:|$))/gm;
+    expect([...snapshot.matchAll(egoName)]).toHaveLength(1);
+    await expect(
+      expectNoUnnamedControls(source(snapshot), key),
+    ).resolves.toBeUndefined();
+
+    // Mutate only the in-memory snapshot. The real source and baselines stay
+    // untouched, while the public guard must refuse this lost accessible name.
+    const unnamed = snapshot.replace(egoName, '$1');
+    expect(findUnnamedControls(unnamed)).toEqual(['button']);
+    const error = await settle(expectNoUnnamedControls(source(unnamed), key));
+    expect(String(error)).toContain('observed unnamed controls: [button]');
+    expect(String(error)).toContain('recorded for this snapshot: []');
+    expect(String(error)).toContain('gained NO accessible name: button');
   });
 
-  it('still fails when a recorded snapshot gains an EXTRA unnamed control', async () => {
+  it('reports every unnamed control, including a flagged control with a value', async () => {
     vi.useFakeTimers();
-    const main = source('- main:\n  - button\n  - textbox: Teacher');
+    const main = source('- main:\n  - button\n  - textbox [invalid]: Teacher');
     const error = await settle(
       expectNoUnnamedControls(
         main,
         'matrix-family-pedigree-familypedigree-checklist-resting-state-final',
       ),
     );
-    expect(String(error)).toContain('gained NO accessible name: textbox');
-  });
-
-  it('fails when a recorded violation stops reproducing', async () => {
-    vi.useFakeTimers();
-    const main = source('- main:\n  - button "Now labelled"');
-    const error = await settle(
-      expectNoUnnamedControls(
-        main,
-        'matrix-family-pedigree-familypedigree-checklist-resting-state-final',
-      ),
+    expect(String(error)).toContain(
+      'observed unnamed controls: [button, textbox]',
     );
-    expect(String(error)).toContain('no longer reproduce: button');
+    expect(String(error)).toContain(
+      'gained NO accessible name: button, textbox',
+    );
   });
 
   it('polls, so a label that renders a tick late is not a flake', async () => {

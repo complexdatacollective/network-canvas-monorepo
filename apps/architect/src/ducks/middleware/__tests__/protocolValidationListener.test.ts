@@ -18,9 +18,16 @@ vi.mock('wouter/use-browser-location', () => ({
 // throw, while the real validateProtocolAsync thunk (which flips isValidating)
 // still runs.
 const validateProtocol = vi.fn();
-vi.mock('@codaco/protocol-validation', () => ({
-  validateProtocol: (...args: unknown[]) => validateProtocol(...args),
-}));
+// Partial: `~/config` (reached transitively) derives APP_SCHEMA_VERSION from
+// this package's own CURRENT_SCHEMA_VERSION, so a total mock would erase it.
+vi.mock('@codaco/protocol-validation', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@codaco/protocol-validation')>();
+  return {
+    ...actual,
+    validateProtocol: (...args: unknown[]) => validateProtocol(...args),
+  };
+});
 
 // Minimal activeProtocol slice mirroring the shape the selectors read
 // (present + timeline of Locus objects). setPresent simulates an edit landing.

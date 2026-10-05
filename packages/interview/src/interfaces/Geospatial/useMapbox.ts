@@ -1,6 +1,11 @@
+'use client';
+
 import type { MapMouseEvent } from 'mapbox-gl/esm';
 
-import type { MapOptions } from '@codaco/protocol-validation';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import type { ColorReference, MapOptions } from '@codaco/protocol-validation';
+
+import { getMapboxLocale, updateMapboxControlLocale } from './mapboxLocale';
 
 export type ExtendedMapOptions = MapOptions & {
   showTransit?: boolean;
@@ -32,7 +37,23 @@ const MAP_CONSTS = {
 } as const;
 
 // Map protocol color names to Tailwind CSS variable names
-const PROTOCOL_TO_THEME_VAR: Record<string, string> = {
+const PROTOCOL_TO_THEME_VAR = {
+  'node-color-seq-1': '--node-1',
+  'node-color-seq-2': '--node-2',
+  'node-color-seq-3': '--node-3',
+  'node-color-seq-4': '--node-4',
+  'node-color-seq-5': '--node-5',
+  'node-color-seq-6': '--node-6',
+  'node-color-seq-7': '--node-7',
+  'node-color-seq-8': '--node-8',
+  'edge-color-seq-1': '--edge-1',
+  'edge-color-seq-2': '--edge-2',
+  'edge-color-seq-3': '--edge-3',
+  'edge-color-seq-4': '--edge-4',
+  'edge-color-seq-5': '--edge-5',
+  'edge-color-seq-6': '--edge-6',
+  'edge-color-seq-7': '--edge-7',
+  'edge-color-seq-8': '--edge-8',
   'ord-color-seq-1': '--ord-1',
   'ord-color-seq-2': '--ord-2',
   'ord-color-seq-3': '--ord-3',
@@ -43,14 +64,6 @@ const PROTOCOL_TO_THEME_VAR: Record<string, string> = {
   'ord-color-seq-8': '--ord-8',
   'ord-color-seq-9': '--ord-9',
   'ord-color-seq-10': '--ord-10',
-  'primary-color-seq-1': '--node-1',
-  'primary-color-seq-2': '--node-2',
-  'primary-color-seq-3': '--node-3',
-  'primary-color-seq-4': '--node-4',
-  'primary-color-seq-5': '--node-5',
-  'primary-color-seq-6': '--node-6',
-  'primary-color-seq-7': '--node-7',
-  'primary-color-seq-8': '--node-8',
   'cat-color-seq-1': '--cat-1',
   'cat-color-seq-2': '--cat-2',
   'cat-color-seq-3': '--cat-3',
@@ -61,10 +74,12 @@ const PROTOCOL_TO_THEME_VAR: Record<string, string> = {
   'cat-color-seq-8': '--cat-8',
   'cat-color-seq-9': '--cat-9',
   'cat-color-seq-10': '--cat-10',
-};
+} as const satisfies Record<ColorReference, string>;
 
-const DEFAULT_COLOR_VAR = '--node-1';
 const DEFAULT_FALLBACK = 'rgb(226, 33, 91)';
+
+export const resolveProtocolThemeVariable = (color: ColorReference): string =>
+  PROTOCOL_TO_THEME_VAR[color];
 
 /**
  * Converts any CSS color (including oklch) to hex format for Mapbox compatibility.
@@ -119,6 +134,11 @@ export const useMapbox = ({
   initialSelectionValue,
   onSelectionChange,
 }: UseMapboxProps) => {
+  const intl = useAppIntl();
+  const intlRef = useRef(intl);
+  useEffect(() => {
+    intlRef.current = intl;
+  }, [intl]);
   const { isE2E } = useContractFlags();
   const captureException = useCaptureException();
   const {
@@ -199,6 +219,7 @@ export const useMapbox = ({
         zoom: initialZoom,
         style,
         accessToken,
+        locale: getMapboxLocale(intlRef.current),
       });
     } catch (err) {
       // mapbox-gl's Map constructor throws synchronously when the environment
@@ -235,7 +256,7 @@ export const useMapbox = ({
       // Read CSS variables and convert to RGB format for Mapbox GL compatibility
       // (Mapbox doesn't support oklch colors used in the theme)
       const styles = getComputedStyle(document.documentElement);
-      const colorVar = PROTOCOL_TO_THEME_VAR[color] ?? DEFAULT_COLOR_VAR;
+      const colorVar = resolveProtocolThemeVariable(color);
       const rawColor = styles.getPropertyValue(colorVar).trim();
       const ncColor = rawColor
         ? convertCssColorToHex(rawColor)
@@ -466,6 +487,11 @@ export const useMapbox = ({
     isE2E,
     captureException,
   ]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    updateMapboxControlLocale(mapRef.current, intl);
+  }, [intl]);
 
   // handle selections
   useEffect(() => {

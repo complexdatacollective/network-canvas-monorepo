@@ -1,7 +1,7 @@
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
-} from '../../src/utils/markdownAdapter.js';
+} from '@codaco/protocol-builder/markdown/markdownAdapter';
 
 // Whole-document normalizer for the sample-protocol comparison: the built
 // protocol (read back from IndexedDB) and the canonical
@@ -83,36 +83,73 @@ const pathMatches =
 //    edge-color-seq-1,6) left by types deleted and recreated during original
 //    authoring, so a from-scratch build necessarily produces the dense
 //    sequence. Prompt-level `color` (OrdinalBin) is NOT stripped — the
-//    DialogArrayField item template's `ord-color-seq-1` matches canonical and
+//    array field item template's `ord-color-seq-1` matches canonical and
 //    stays strictly compared.
-// 4. `form.fields[*].id` — DialogArrayField's `createItem` injects `id:
-//    uuid()` into every array item and `normalizeField` deliberately keeps
-//    it; the canonical form fields predate that and have none.
+// 4. `form.fields[*].id` — fresco-ui's `ArrayField` gives every row a managed
+//    id and `normalizeField` deliberately keeps it; the canonical form fields
+//    predate that and have none.
 // 5. `background.skewedTowardCenter: false` ≡ absent — the architect `Toggle`
 //    mount effect force-writes `false` for every mounted toggle ("Persist the
 //    explicit false default…", Toggle.tsx) and prune keeps `false`; the
 //    canonical Narrative background simply lacks the key. `true` still
 //    compares strictly.
 // 6. `behaviours.automaticLayout: false` ≡ absent — the Narrative template
-//    seeds `automaticLayout: true` (interfaceTemplates.ts) and toggling OFF
+//    seeds `automaticLayout: true` (protocol-builder's interfaces/templates.ts)
+//    and toggling OFF
 //    can only write `false`, never remove the key; the canonical stage
 //    predates automatic layout. A stage whose ONLY behaviour was that key
 //    (every Sociogram: the Layout Mode section always registers the field
 //    and defaults it to Manual) is left holding `behaviours: {}` once the
 //    key goes, so an emptied `behaviours` is dropped too — same shape as
-//    rule 8. A `behaviours` with any surviving key still compares strictly.
-// 7. RichText-backed strings — canonicalized on both sides (see
+//    rule 9. A `behaviours` with any surviving key still compares strictly.
+// 7. `prompts[*].highlight.allowHighlighting: false` ≡ absent — the shared
+//    Section now discards descendant fields when a toggleable section closes,
+//    so a layout-only prompt can no longer retain the explicit false written
+//    by the legacy section's close handler. Consumers treat an absent
+//    highlight configuration as highlighting disabled.
+// 8. RichText-backed strings — canonicalized on both sides (see
 //    `canonicalizeMarkdown`).
-// 8. Empty `variables: {}` on codebook entity types ≡ absent — the type
+// 9. Empty `variables: {}` on codebook entity types ≡ absent — the type
 //    editor always writes a variables map when creating a type, while the
 //    canonical file omits the key for variable-less types (know/conflict
 //    edges, the Classmate node). Non-empty maps still compare strictly.
+// 10. A boolean attribute's `options[*].negative: false` ≡ absent — the
+//    switch that styles an answer as the negative one is off by default and
+//    `@codaco/protocol-builder`'s editor writes nothing for a switch left
+//    off, while the canonical file (authored by the legacy editor, which
+//    force-wrote every toggle it mounted) carries the explicit `false`. The
+//    control that renders these reads the two the same way:
+//    `option.negative ?? false` (fresco-ui's `Boolean.tsx`). `negative: true`
+//    still compares strictly.
+// 11. A DatePicker's `parameters.type: 'full'` ≡ absent — `full` is the
+//    resolution the control is seeded with and the one every consumer
+//    assumes when the key is missing: fresco-ui's `DatePicker` destructures
+//    `type: resolutionType = 'full'`, the package reads an absent resolution
+//    back as `full` (`dateResolutionOf`), and protocol-validation's own
+//    schema-8 migration says so in as many words ("'full'/'month'/'year' (or
+//    omitted, defaulting to 'full')"). The editor writes only what was
+//    authored, so a resolution nobody changed leaves no key at all — and the
+//    `parameters` block that held nothing else goes with it, the same shape
+//    as rules 6 and 9. `month` and `year` still compare strictly.
 // ---------------------------------------------------------------------------
 
 type DeletionRule = {
   matches: PathMatcher;
   when?: (value: unknown) => boolean;
 };
+
+/**
+ * The same path under every codebook attribute, wherever attributes live.
+ *
+ * `codebook.ego.variables` is one level shallower than
+ * `codebook.node.<type>.variables`, so a rule about attributes has to be
+ * written three times or not at all.
+ */
+const variablePaths = (...tail: string[]): PathMatcher[] => [
+  pathMatches('codebook', 'node', '*', 'variables', '*', ...tail),
+  pathMatches('codebook', 'edge', '*', 'variables', '*', ...tail),
+  pathMatches('codebook', 'ego', 'variables', '*', ...tail),
+];
 
 const DELETED_PATHS: DeletionRule[] = [
   { matches: pathMatches('lastModified') },
@@ -128,10 +165,29 @@ const DELETED_PATHS: DeletionRule[] = [
     matches: pathMatches('stages', '*', 'behaviours', 'automaticLayout'),
     when: (value) => value === false,
   },
+  {
+    matches: pathMatches(
+      'stages',
+      '*',
+      'prompts',
+      '*',
+      'highlight',
+      'allowHighlighting',
+    ),
+    when: (value) => value === false,
+  },
   ...(['node', 'edge'] as const).map((entity) => ({
     matches: pathMatches('codebook', entity, '*', 'variables'),
     when: (value: unknown) =>
       isRecord(value) && Object.keys(value).length === 0,
+  })),
+  ...variablePaths('options', '*', 'negative').map((matches) => ({
+    matches,
+    when: (value: unknown) => value === false,
+  })),
+  ...variablePaths('parameters', 'type').map((matches) => ({
+    matches,
+    when: (value: unknown) => value === 'full',
   })),
 ];
 
@@ -144,6 +200,8 @@ const DELETED_PATHS: DeletionRule[] = [
  */
 const EMPTY_EQUALS_ABSENT: PathMatcher[] = [
   pathMatches('stages', '*', 'behaviours'),
+  pathMatches('stages', '*', 'prompts', '*', 'highlight'),
+  ...variablePaths('parameters'),
 ];
 
 const RICH_TEXT_PATHS: PathMatcher[] = [
@@ -318,12 +376,14 @@ export function normalizeProtocol(input: unknown): unknown {
 // gaps, its per-run timestamp) is checked as an invariant of what Architect
 // writes today instead.
 //
-// The two conditional deletions are the exception, deliberately: each fires
+// The conditional deletions are the exception, deliberately: each fires
 // only when the value IS the default it treats as equivalent to absent
-// (`skewedTowardCenter: false`, `automaticLayout: false`). A changed value
-// still compares, and for those two "written as the default" and "not written
-// at all" are indistinguishable to every consumer — so no regression survives
-// the tolerance.
+// (`skewedTowardCenter: false`, `automaticLayout: false`,
+// `allowHighlighting: false`, an option's `negative: false`, or a date
+// attribute's `parameters.type: 'full'`). A changed value
+// still compares, and for those defaults "written as the default" and "not
+// written at all" are indistinguishable to every consumer — so no regression
+// survives the tolerance.
 export function assertBuiltProtocolInvariants(built: unknown): void {
   const problems: string[] = [];
   if (!isRecord(built)) throw new Error('built protocol is not an object');
@@ -347,10 +407,11 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
   }
 
   // --- assetManifest[*].source (deleted: canonical uses opaque storage keys)
-  // Upload writes `source: file.name` and `name: file.name` from the same
-  // File, so they must agree; a source whose extension contradicts its type
-  // (the '.txt for a video' case) would break export ZIP entries and preview
-  // MIME types while still validating.
+  // An import writes `source` as a content-addressed name and `name` as the
+  // researcher's own, so the two no longer agree by construction and each is
+  // checked for what it is. The extension still has to match the type: a
+  // source whose extension contradicts it (the '.txt for a video' case) would
+  // break export ZIP entries and preview MIME types while still validating.
   const EXTENSIONS: Record<string, RegExp> = {
     image: /\.(png|svg|jpe?g|gif)$/i,
     video: /\.(mov|mp4)$/i,
@@ -369,10 +430,18 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
       problems.push(`assetManifest[${id}].source is missing`);
       continue;
     }
-    if (source !== name) {
+    // Named by its CONTENT, not by the file the researcher picked: the
+    // resource gateway hashes the bytes so that two imports of different
+    // pictures both called `portrait.png` stay two assets wherever the
+    // protocol is opened next. The researcher's own name is kept beside it,
+    // and is what the rest of this comparison reads.
+    if (!/^[0-9a-f]{64}\.[a-z0-9]+$/i.test(source)) {
       problems.push(
-        `assetManifest[${id}].source ${JSON.stringify(source)} !== name ${JSON.stringify(name)} — upload derives both from File.name`,
+        `assetManifest[${id}].source ${JSON.stringify(source)} is not a content-addressed name`,
       );
+    }
+    if (typeof name !== 'string' || name === '') {
+      problems.push(`assetManifest[${id}].name is missing`);
     }
     const expected = typeof type === 'string' ? EXTENSIONS[type] : undefined;
     if (expected && !expected.test(source)) {
@@ -411,9 +480,9 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
   }
 
   // --- stages[*].form.fields[*].id (deleted: canonical predates them)
-  // DialogArrayField mints these so ordered-list keying survives reorder and
-  // delete. PR 2 rewrites that component, so this is precisely the regression
-  // this oracle exists to catch.
+  // fresco-ui's `ArrayField` mints these so row keying survives reorder and
+  // delete, and the ids reach the saved protocol; the canonical fixture
+  // predates them.
   const stages = Array.isArray(built.stages) ? built.stages : [];
   const fieldIds = new Set<string>();
   for (const [index, stage] of stages.entries()) {
@@ -437,92 +506,4 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
       `built protocol violates invariants the comparison tolerances hide:\n- ${problems.join('\n- ')}`,
     );
   }
-}
-
-// The variables whose forced `required` the comparison is allowed to forgive:
-// exactly those a CategoricalBin prompt points at with `otherVariable`. Any
-// OTHER text variable that acquires `{required: true}` is a real regression
-// (QuickAdd's `name`, or a form variable like `visit_purpose`), and must not
-// be swallowed — see dropForcedRequiredValidation.
-function collectOtherVariableIds(protocol: unknown): Set<string> {
-  const ids = new Set<string>();
-  const stages =
-    isRecord(protocol) && Array.isArray(protocol.stages) ? protocol.stages : [];
-  for (const stage of stages) {
-    if (!isRecord(stage) || !Array.isArray(stage.prompts)) continue;
-    for (const prompt of stage.prompts) {
-      if (isRecord(prompt) && typeof prompt.otherVariable === 'string') {
-        ids.add(prompt.otherVariable);
-      }
-    }
-  }
-  return ids;
-}
-
-// Tolerance (pair-aware): the CategoricalBin other-variable creation path
-// hard-codes `validation: { required: true }` onto the text variables it
-// creates (withVariableHandlers.tsx), and the only in-editor escape hatch —
-// toggling the nested Validation section OFF inside the prompt dialog —
-// poisons the saved prompt with a schema-invalid `_modified` key (verified
-// live: the commit is rejected with 'Unrecognized key "_modified"'; only the
-// STAGE-level `_modified` is stripped at submit). The canonical file's
-// other-variables have no validation, so the forced key is dropped from the
-// BUILT side — only in the exact case the plan allows: a `type: 'text'`
-// variable whose validation is exactly `{required: true}` while the
-// canonical counterpart has no validation key at all. Everything else still
-// fails. (The QuickAdd `name` variable does NOT need this: its Validation
-// section lives in the stage form, where clearing works — see
-// editor-sections/quick-add.ts.)
-// Scoped to the `otherVariable` targets only. A blanket "any text variable
-// with exactly {required:true}" rule would also forgive a regression that
-// forced `required` onto QuickAdd's `name` or a form variable like
-// `visit_purpose` — schema-valid, so `validateProtocol` would not catch it
-// either, and the oracle would pass while the protocol had changed.
-export function dropForcedRequiredValidation(
-  built: unknown,
-  canonical: unknown,
-): unknown {
-  const forgiven = collectOtherVariableIds(built);
-
-  // `variableId` is the id of the variable object currently being walked, and
-  // it is knowable in exactly one place: a `variables` map keys its children
-  // by it. `inVariablesMap` marks the step where that is true.
-  const walk = (
-    builtValue: unknown,
-    canonicalValue: unknown,
-    variableId: string | undefined,
-    inVariablesMap: boolean,
-  ): unknown => {
-    if (Array.isArray(builtValue) && Array.isArray(canonicalValue)) {
-      return builtValue.map((item, index) =>
-        walk(item, canonicalValue[index], variableId, false),
-      );
-    }
-    if (!isRecord(builtValue) || !isRecord(canonicalValue)) {
-      return builtValue;
-    }
-    const out: Record<string, unknown> = {};
-    for (const [key, child] of Object.entries(builtValue)) {
-      if (
-        key === 'validation' &&
-        variableId !== undefined &&
-        forgiven.has(variableId) &&
-        builtValue.type === 'text' &&
-        !('validation' in canonicalValue) &&
-        isRecord(child) &&
-        Object.keys(child).length === 1 &&
-        child.required === true
-      ) {
-        continue;
-      }
-      out[key] = walk(
-        child,
-        canonicalValue[key],
-        inVariablesMap ? key : variableId,
-        key === 'variables',
-      );
-    }
-    return out;
-  };
-  return walk(built, canonical, undefined, false);
 }

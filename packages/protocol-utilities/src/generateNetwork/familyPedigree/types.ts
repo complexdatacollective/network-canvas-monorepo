@@ -3,7 +3,7 @@ import type {
   GameteRole,
   InheritancePattern,
   RelationshipType,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
 
 export type FamilyPedigreeWeightedCount = {
   value: number;

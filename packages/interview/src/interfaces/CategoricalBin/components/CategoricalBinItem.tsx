@@ -1,18 +1,32 @@
+'use client';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useRef } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Stage } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
+import BinLabel from '../../../components/BinLabel';
 import NodeList from '../../../components/NodeList';
 import { usePrompts } from '../../../components/Prompts/usePrompts';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getCurrentStageId } from '../../../selectors/session';
+import { interfaceMessages } from '../../messages';
 import BinSummary from './BinSummary';
 
 type CategoricalBinItemProps = {
@@ -71,7 +85,66 @@ export const getCatBinDropTargetId = (
   index: number,
 ) => `CATBIN_ITEM_${stageId}_${promptId}_${index}`;
 
+/**
+ * Whether the membership summary still has room beneath the label. The label is
+ * fitted to a share of the bin decided by the node count, never by layout, so
+ * the leftovers are the label's alone and reading them cannot change them.
+ */
+export const useSummaryFits = (
+  contentRef: RefObject<HTMLDivElement | null>,
+  titleRef: RefObject<HTMLHeadingElement | null>,
+  summaryTextRef: RefObject<HTMLParagraphElement | null>,
+  hasSummary: boolean,
+) => {
+  const [fits, setFits] = useState(true);
+
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    const title = titleRef.current;
+    const summaryText = summaryTextRef.current;
+    if (!content || !title || !summaryText) return undefined;
+
+    const measure = () => {
+      // The whole summary, not a line of it: a summary cut mid-line reads as a
+      // rendering fault, and the full membership is one tap away anyway.
+      const needed = summaryText.offsetHeight;
+      if (needed === 0) return;
+      const gap = Number.parseFloat(getComputedStyle(content).rowGap);
+      const available =
+        content.clientHeight -
+        title.offsetHeight -
+        (Number.isNaN(gap) ? 0 : gap);
+      setFits(available >= needed);
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    // All three are watched, for three different reasons: the bin resizes, a
+    // label that steps down a rung hands room back, and the summary's own text
+    // changes as people arrive and leave — a name replaced by a longer one can
+    // need a second line without anything else moving.
+    //
+    // The summary is watched at its text element, not at the box around it.
+    // Crowding the summary out holds that box at `block-size: 0`, which is a
+    // size that no longer changes with its content — so a hidden summary whose
+    // text later shrank could never report that it would fit again. The text
+    // inside keeps its natural height throughout.
+    //
+    // None of the three can feed back: what the summary is measured against is
+    // the room the other two leave, never its own box.
+    const observer = new ResizeObserver(measure);
+    observer.observe(content);
+    observer.observe(title);
+    observer.observe(summaryText);
+    return () => observer.disconnect();
+  }, [contentRef, titleRef, summaryTextRef, hasSummary]);
+
+  return fits;
+};
+
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
+  const intl = useAppIntl();
   const {
     index,
     label,
@@ -88,6 +161,19 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   } = usePrompts<CategoricalBinPrompts>();
   const stageId = useStageSelector(getCurrentStageId);
   const binRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const summaryTextRef = useRef<HTMLParagraphElement>(null);
+  // Announced names take the label's text, not its markdown source: a screen
+  // reader should not read the asterisks around an emphasised word.
+  const spokenLabel = useMemo(() => getMarkdownLabelText(label), [label]);
+  const hasSummary = nodes.length > 0;
+  const summaryFits = useSummaryFits(
+    contentRef,
+    titleRef,
+    summaryTextRef,
+    hasSummary,
+  );
   const celebrate = useCelebrate(binRef, {
     particleSize: 'large',
     particleColor: catColor ?? 'random',
@@ -109,7 +195,9 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   } = useDropTarget({
     id: getCatBinDropTargetId(stageId, promptId, index),
     accepts: ['NODE'],
-    announcedName: `Category: ${label}`,
+    announcedName: intl.formatMessage(interfaceMessages.categoryDrop, {
+      label: spokenLabel,
+    }),
     onDrop: handleDrop,
   });
 
@@ -159,12 +247,17 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           className={headerClasses}
           onClick={onToggleExpand}
           aria-expanded={true}
-          aria-label={`Category ${label}, ${nodes.length} items, expanded`}
+          aria-label={intl.formatMessage(
+            interfaceMessages.categoryContentsExpanded,
+            { label: spokenLabel, count: nodes.length },
+          )}
         >
-          <Heading level="h3">
+          <Heading level="h3" className="[&_strong]:font-black">
             <RenderMarkdown>{label}</RenderMarkdown>
           </Heading>
-          <span className="ml-auto text-sm opacity-60">{nodes.length}</span>
+          <span className="ml-auto text-sm opacity-60">
+            {intl.formatNumber(nodes.length)}
+          </span>
         </button>
         <div
           ref={dropRef}
@@ -176,7 +269,10 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
               id={listId}
               items={nodes}
               nodeSize="sm"
-              announcedName={`${label} category`}
+              announcedName={intl.formatMessage(
+                interfaceMessages.categoryList,
+                { label: spokenLabel },
+              )}
             />
           </motion.div>
         </div>
@@ -215,25 +311,41 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         onToggleExpand();
       }}
       aria-expanded={false}
-      aria-label={`Category ${label}, ${nodes.length} items`}
+      aria-label={intl.formatMessage(interfaceMessages.categoryContents, {
+        label: spokenLabel,
+        count: nodes.length,
+      })}
       transition={springTransition}
       variants={binItemVariants}
     >
-      <Heading level="h4">
-        <RenderMarkdown>{label}</RenderMarkdown>
-      </Heading>
-      <AnimatePresence>
-        {nodes.length > 0 && (
-          <motion.div
-            className="catbin-summary"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <BinSummary nodes={nodes} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        ref={contentRef}
+        className="catbin-content"
+        data-has-summary={hasSummary || undefined}
+      >
+        <BinLabel
+          label={label}
+          variant="circle"
+          containerRef={contentRef}
+          elementRef={titleRef}
+          // The bin reserves part of itself the moment it holds anyone, which
+          // changes the label's cap without changing the box it is fitted in.
+          refitOn={hasSummary ? 'reserved' : 'whole-bin'}
+        />
+        <AnimatePresence>
+          {hasSummary && (
+            <motion.div
+              className="catbin-summary"
+              data-crowded-out={!summaryFits || undefined}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <BinSummary ref={summaryTextRef} nodes={nodes} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 };

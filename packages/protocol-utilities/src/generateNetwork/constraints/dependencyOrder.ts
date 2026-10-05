@@ -2,7 +2,7 @@ import {
   COMPARATOR_DIRECTION,
   COMPARISON_RULES,
   type EntityConstraints,
-} from './types';
+} from './types.ts';
 
 export type GenerationOrder = {
   /**

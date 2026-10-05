@@ -1,0 +1,261 @@
+#!/usr/bin/env bash
+# Brings the reference stack up in one of its documented shapes (#1909).
+#
+#   apps/studio/stack-test/up.sh --variant reference
+#   apps/studio/stack-test/up.sh --variant external-postgres
+#   apps/studio/stack-test/up.sh --variant external-bucket
+#   apps/studio/stack-test/up.sh --variant own-proxy
+#
+# What `dev:stack` does (server/scripts/dev-stack.ts), from bash and without
+# pnpm, plus one per-variant override: write the secrets and the environment,
+# `up -d`, `run --rm migrate`, and wait for `/readyz` through whatever ingress
+# this variant is testing. The setup token `migrate` prints is captured to
+# .work/setup-token, which `assert.sh` spends.
+#
+# Images come from `build.sh`. Run `down.sh --variant <same>` afterwards.
+set -euo pipefail
+
+# shellcheck source=./lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+parse_variant "$@"
+
+hex() { openssl rand -hex "$1"; }
+
+mkdir -p "$WORK_DIR"
+# Whatever the last run left. `down.sh` keeps its diagnostics on purpose, so
+# clearing them is this script's job: a stale log read as this run's would be
+# worse than no log at all.
+rm -f "$TOKEN_FILE" "$WORK_DIR/cookies" "$WORK_DIR/migrate.log" \
+  "$WORK_DIR/nginx.conf" "$WORK_DIR/$VARIANT-ps.txt" "$WORK_DIR/$VARIANT-logs.txt"
+
+# A run this suite did not finish — an assertion that failed and was never torn
+# down, a variant interrupted — leaves containers, volumes and a network behind
+# under this project name. Starting on top of them is not a partial repeat: the
+# database already has an owner, so there is no setup token to spend, and the
+# object store was bootstrapped under credentials this run has just replaced,
+# so its bootstrap fails. `--remove-orphans` inside `down.sh` reaches another
+# variant's stubs as well as this one's. There is never a leftover worth
+# keeping here; the model is up, assert, down.
+if [ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")" ]; then
+  say "project $PROJECT still holds containers from an earlier run — removing them"
+  "$STACK_TEST_DIR/down.sh" --variant "$VARIANT" > /dev/null 2>&1 || true
+fi
+
+# ── The two file secrets ──────────────────────────────────────────────────
+#
+# Written only when absent, exactly as server/scripts/compose.ts writes them:
+# a developer who already has a `dev`/`dev:stack` value here keeps it, and
+# either value works because the same file is what Postgres is initialised
+# with and what the server reads. Compose resolves every declared secret while
+# it builds the project model, so both files have to exist before any command.
+# Directory private, files readable: the containers run unprivileged and
+# Compose bind-mounts each file as-is, so 600 on a file is EACCES inside the
+# container (found by the first Linux run of this job; macOS hid it).
+mkdir -p "$STUDIO_DIR/secrets" && chmod 700 "$STUDIO_DIR/secrets"
+if [ ! -f "$STUDIO_DIR/secrets/postgres-password" ]; then
+  hex 32 > "$STUDIO_DIR/secrets/postgres-password"
+  chmod 644 "$STUDIO_DIR/secrets/postgres-password"
+  say "wrote secrets/postgres-password"
+fi
+if [ ! -f "$STUDIO_DIR/secrets/studio-secrets-key" ]; then
+  # The shape docs/self-host/run.md documents: one `id:base64(32 bytes)`
+  # keyring entry, `k1` being the id.
+  echo "k1:$(openssl rand -base64 32)" > "$STUDIO_DIR/secrets/studio-secrets-key"
+  chmod 644 "$STUDIO_DIR/secrets/studio-secrets-key"
+  say "wrote secrets/studio-secrets-key"
+fi
+
+# ── The environment ───────────────────────────────────────────────────────
+#
+# Every variable `.env.example` carries, so the stack is interpolated from the
+# same set a self-hoster fills in. The three swap variables are always present
+# and empty for the variants that do not use them: each is read as
+# `${VAR:-<the stack's own service>}`, so empty is the reference value.
+DATABASE_URL=""
+REDIS_URL=""
+S3_ENDPOINT=""
+S3_REGION="garage"
+S3_BUCKET="studio"
+S3_ACCESS_KEY_ID="GK$(hex 12)"
+S3_SECRET_ACCESS_KEY="$(hex 32)"
+
+case "$VARIANT" in
+  external-postgres)
+    # The whole swap, and the only line of it: the password stays in
+    # `secrets/postgres-password`, which DATABASE_PASSWORD_FILE still names,
+    # and this URL carries none.
+    DATABASE_URL="postgres://studio@external-postgres:5432/studio"
+    ;;
+  external-bucket)
+    # All five, as docs/self-host/swap.md requires — including a region that
+    # is NOT the stack Garage's `garage`, so a signature that was still being
+    # computed for the stack's own store would fail rather than pass by
+    # coincidence.
+    S3_ENDPOINT="http://external-garage:3900"
+    S3_REGION="us-east-1"
+    # A different store, so different credentials. The stub imports these.
+    S3_ACCESS_KEY_ID="GK$(hex 12)"
+    S3_SECRET_ACCESS_KEY="$(hex 32)"
+    ;;
+  external-redis)
+    # The whole swap. No credentials: the guide's line is a bare
+    # `redis://host:port`, and any Redis 7-compatible server is the contract.
+    REDIS_URL="redis://external-valkey:6379"
+    ;;
+esac
+
+cat > "$ENV_FILE" <<ENV
+# Generated by apps/studio/stack-test/up.sh for variant '$VARIANT'.
+# Gitignored, and rewritten on every run. Drive the same project by hand with:
+#
+#   docker compose -p $PROJECT --env-file $ENV_FILE \\
+#     -f $STUDIO_DIR/docker-compose.yml \\
+#     -f $STUDIO_DIR/docker-compose.local.yml \\
+#     -f $STACK_TEST_DIR/variants/$VARIANT.yml ps
+STUDIO_HOSTNAME=$HOSTNAME_
+ACME_EMAIL=nobody@localhost
+STUDIO_API_IMAGE=$API_IMAGE
+STUDIO_WEB_IMAGE=$WEB_IMAGE
+STACK_SUBNET=$STACK_SUBNET
+POSTGRES_USER=studio
+POSTGRES_DB=studio
+BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+S3_REGION=$S3_REGION
+S3_BUCKET=$S3_BUCKET
+S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
+S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
+GARAGE_RPC_SECRET=$(hex 32)
+GARAGE_ADMIN_TOKEN=$(hex 32)
+DATABASE_URL=$DATABASE_URL
+S3_ENDPOINT=$S3_ENDPOINT
+REDIS_URL=$REDIS_URL
+SMTP_URL=
+EMAIL_FROM=
+# Read only by variants/external-bucket.yml, whose stub is a second Garage
+# with secrets of its own.
+EXTERNAL_GARAGE_RPC_SECRET=$(hex 32)
+EXTERNAL_GARAGE_ADMIN_TOKEN=$(hex 32)
+# Read only by variants/*, which attach the stubs to a network of their own.
+EXTERNAL_NETWORK=$EXTERNAL_NETWORK
+EXTERNAL_SUBNET=$EXTERNAL_SUBNET
+ENV
+chmod 600 "$ENV_FILE"
+say "wrote $(basename "$ENV_FILE") for variant '$VARIANT'"
+
+# ── own-proxy: the guide's nginx block, and a certificate for it ──────────
+#
+# Extracted from docs/self-host/swap.md at run time rather than copied here.
+# A copy would be a second thing to keep in step, and the point of this variant
+# is that the block an institution pastes is the block that was tested — so a
+# change to the guide changes what runs, and a guide that stops parsing fails
+# loudly below.
+if [ "$VARIANT" = "own-proxy" ]; then
+  guide="$STUDIO_DIR/docs/self-host/swap.md"
+  conf="$WORK_DIR/nginx.conf"
+  awk '/^```nginx$/ { inside = 1; next } /^```$/ { if (inside) exit } inside' \
+    "$guide" > "$conf"
+
+  # The certificate paths are NOT substituted: the generated pair is mounted
+  # at the two paths the guide names, so those lines are tested as written.
+  # Only the hostname is, because `localhost` is the one thing a test host can
+  # prove control of.
+  sed -i.bak "s/studio\.example\.org/$HOSTNAME_/g" "$conf" && rm -f "$conf.bak"
+
+  for required in \
+    'upstream studio_api { server api:3000; }' \
+    'upstream studio_web { server web:80; }' \
+    'location = /readyz' \
+    'location = /ws' \
+    'location @maintenance' \
+    "server_name $HOSTNAME_;"; do
+    grep -qF "$required" "$conf" \
+      || die "the nginx block in $guide no longer contains: $required"
+  done
+  say "extracted $(wc -l < "$conf" | tr -d ' ') lines of nginx configuration from docs/self-host/swap.md"
+
+  mkdir -p "$WORK_DIR/tls"
+  if [ ! -f "$WORK_DIR/tls/fullchain.pem" ]; then
+    openssl req -x509 -newkey rsa:2048 -nodes -days 2 \
+      -keyout "$WORK_DIR/tls/privkey.pem" \
+      -out "$WORK_DIR/tls/fullchain.pem" \
+      -subj "/CN=$HOSTNAME_" \
+      -addext "subjectAltName=DNS:$HOSTNAME_" >/dev/null 2>&1 \
+      || die "could not generate a self-signed certificate for $HOSTNAME_"
+    chmod 644 "$WORK_DIR/tls/fullchain.pem" "$WORK_DIR/tls/privkey.pem"
+    say "generated a self-signed certificate for $HOSTNAME_"
+  fi
+fi
+
+# ── Up ────────────────────────────────────────────────────────────────────
+#
+# Deliberately without `--wait`, for the reason dev-stack.ts gives: between
+# `up` and `migrate` there is no schema for `api` and `worker` to verify, so
+# both exit and are restarted. Waiting for health here would wait for a state
+# the next step has to create.
+say "starting the '$VARIANT' stack as project $PROJECT"
+compose up -d
+
+# ── Migrate, and the token it prints ──────────────────────────────────────
+say "running migrate"
+migrate_log="$WORK_DIR/migrate.log"
+if ! compose run --rm migrate > "$migrate_log" 2>&1; then
+  cat "$migrate_log"
+  die "docker compose run --rm migrate failed"
+fi
+cat "$migrate_log"
+
+# The token is the first token-shaped line after the banner. Matched by shape
+# rather than by line offset so a change to the surrounding prose does not
+# silently capture a sentence.
+token="$(awk '
+  /FIRST-RUN SETUP TOKEN/ { seen = 1; next }
+  seen {
+    candidate = $0
+    gsub(/[[:space:]]/, "", candidate)
+    if (candidate ~ /^[A-Za-z0-9_-]+$/ && length(candidate) >= 16) {
+      print candidate
+      exit
+    }
+  }
+' "$migrate_log")"
+[ -n "$token" ] \
+  || die "migrate printed no first-run setup token (see $migrate_log)"
+printf '%s\n' "$token" > "$TOKEN_FILE"
+chmod 600 "$TOKEN_FILE"
+say "captured the first-run setup token to $(basename "$TOKEN_FILE")"
+
+# nginx resolves its upstreams once, when it loads its configuration, and for
+# the whole of the window above the API is a container that keeps exiting —
+# there is no schema for it to verify yet — so its name comes and goes from
+# Docker's resolver. Waiting for it to settle and then reloading is sequencing
+# this harness, not a workaround an operator needs: a deployment brings its
+# proxy up in front of an API that is already running.
+if [ "$VARIANT" = "own-proxy" ]; then
+  say 'waiting for the API before reloading the nginx ingress'
+  api_state=''
+  for _ in $(seq 1 90); do
+    api_state="$(docker inspect -f '{{.State.Health.Status}}' \
+      "$(compose ps -q api)" 2>/dev/null || true)"
+    [ "$api_state" = 'healthy' ] && break
+    sleep 1
+  done
+  say "restarting the nginx ingress (api: ${api_state:-unknown})"
+  compose restart own-proxy
+fi
+
+# ── Ready ─────────────────────────────────────────────────────────────────
+url="$(ingress_url)"
+say "waiting for $url/readyz"
+for attempt in $(seq 1 120); do
+  code="$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/readyz" || true)"
+  if [ "$code" = "200" ]; then
+    say "$url/readyz answered 200 after ${attempt}s"
+    exit 0
+  fi
+  sleep 1
+done
+
+compose ps
+compose logs --tail 200
+die "$url/readyz did not answer 200 within 120s (last status: ${code:-none})"

@@ -1,16 +1,5 @@
+import { Download, Eye, Trash2, Upload } from 'lucide-react';
 import {
-  AudioLines,
-  Download,
-  Eye,
-  FileImage,
-  FileJson,
-  KeyRound,
-  Share2,
-  Trash2,
-  Video,
-} from 'lucide-react';
-import {
-  type ComponentType,
   type MouseEvent,
   useCallback,
   useEffect,
@@ -18,22 +7,112 @@ import {
   useState,
 } from 'react';
 
-import { Badge, type BadgeColor } from '@codaco/fresco-ui/Badge';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+// One definition, shared with the card a stage field shows for the same
+// resource.
+import {
+  RESOURCE_KIND_BADGE_COLORS,
+  RESOURCE_KIND_ICONS,
+} from '@codaco/protocol-builder/resources/components/resourceKinds';
+import { assetMetadataMessages } from '~/components/Assets/assetMetadataMessages';
 import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
 import { reportError } from '~/utils/reportError';
+const messages = defineMessages({
+  videoPreview: {
+    id: 'architect.assetBrowser.assetCard.videoPreview',
+    defaultMessage: '{name} video preview',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  preview: {
+    id: 'architect.assetBrowser.assetCard.preview',
+    defaultMessage: 'Preview {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  previewResource: {
+    id: 'architect.assetBrowser.assetCard.previewResource',
+    defaultMessage: 'Preview resource',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  download: {
+    id: 'architect.assetBrowser.assetCard.download',
+    defaultMessage: 'Download {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  downloadResource: {
+    id: 'architect.assetBrowser.assetCard.downloadResource',
+    defaultMessage: 'Download resource',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  isInUseAndCannot: {
+    id: 'architect.assetBrowser.assetCard.isInUseAndCannot',
+    defaultMessage: '{name} is in use and cannot be deleted',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  delete: {
+    id: 'architect.assetBrowser.assetCard.delete',
+    defaultMessage: 'Delete {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  thisResourceIsInUseBy: {
+    id: 'architect.assetBrowser.assetCard.thisResourceIsInUseBy',
+    defaultMessage:
+      'This resource is in use by the protocol and cannot be deleted',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  deleteResource: {
+    id: 'architect.assetBrowser.assetCard.deleteResource',
+    defaultMessage: 'Delete resource',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+  unused: {
+    id: 'architect.assetBrowser.assetCard.unused',
+    defaultMessage: 'Unused',
+    description: 'Visible text in components / AssetBrowser / AssetCard.',
+  },
+  missing: {
+    id: 'architect.assetBrowser.assetCard.missing',
+    defaultMessage: 'File missing',
+    description: 'Visible text in components / AssetBrowser / AssetCard.',
+  },
+  replace: {
+    id: 'architect.assetBrowser.assetCard.replace',
+    defaultMessage: 'Add the file for {name}',
+    description:
+      'The aria-label text in components / AssetBrowser / AssetCard.',
+  },
+  replaceResource: {
+    id: 'architect.assetBrowser.assetCard.replaceResource',
+    defaultMessage: 'Add the missing file',
+    description: 'The title text in components / AssetBrowser / AssetCard.',
+  },
+});
 
-type AssetType = 'image' | 'video' | 'audio' | 'network' | 'apikey' | 'geojson';
+type AssetType = keyof typeof RESOURCE_KIND_BADGE_COLORS;
 
 type AssetCardProps = {
   id: string;
   isCurrent?: boolean;
   isUsed?: boolean;
+  /**
+   * The protocol declares this resource but no file is stored for it — it came
+   * from an archive that did not contain one. Everything else about the
+   * resource is intact, so the card shows it and offers the one action that
+   * resolves it.
+   */
+  isUnresolved?: boolean;
   name: string;
   source?: string;
   type: AssetType;
@@ -41,34 +120,8 @@ type AssetCardProps = {
   onDelete?: ((id: string, isUsed: boolean) => void) | null;
   onDownload?: ((id: string) => void) | null;
   onPreview?: ((id: string) => void) | null;
+  onReplace?: ((id: string) => void) | null;
 };
-
-const ASSET_TYPE_LABELS: Record<AssetType, string> = {
-  image: 'Image',
-  video: 'Video',
-  audio: 'Audio',
-  network: 'Network',
-  apikey: 'API key',
-  geojson: 'GeoJSON',
-};
-
-const ASSET_TYPE_BADGE_COLORS = {
-  image: 'sea-green',
-  video: 'slate-blue',
-  audio: 'neon-coral',
-  network: 'cerulean-blue',
-  apikey: 'mustard',
-  geojson: 'sea-serpent',
-} satisfies Record<AssetType, BadgeColor>;
-
-const ASSET_TYPE_ICONS = {
-  image: FileImage,
-  video: Video,
-  audio: AudioLines,
-  network: Share2,
-  apikey: KeyRound,
-  geojson: FileJson,
-} satisfies Record<AssetType, ComponentType<{ className?: string }>>;
 
 const PREVIEW_URL_TYPES = new Set<AssetType>(['image', 'video']);
 
@@ -99,13 +152,20 @@ const useAssetPreviewUrl = (
   source: string | undefined,
   type: AssetType,
 ) => {
-  const [url, setUrl] = useState<string | null>(null);
+  // The URL is stored against the asset it was read for, so the card that is
+  // rendering now can never show the previous asset's preview: a URL that does
+  // not belong to this asset is simply not used, and there is no clearing
+  // setState racing the read that replaces it.
+  const [loaded, setLoaded] = useState<{
+    id: string;
+    source: string | undefined;
+    type: AssetType;
+    url: string;
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     let currentUrl: AssetPreviewUrl | null = null;
-
-    setUrl(null);
 
     if (!PREVIEW_URL_TYPES.has(type)) {
       return undefined;
@@ -123,7 +183,7 @@ const useAssetPreviewUrl = (
       }
 
       currentUrl = nextUrl;
-      setUrl(nextUrl.url);
+      setLoaded({ id, source, type, url: nextUrl.url });
     };
 
     void loadPreviewUrl();
@@ -136,7 +196,16 @@ const useAssetPreviewUrl = (
     };
   }, [id, source, type]);
 
-  return url;
+  if (
+    !loaded ||
+    loaded.id !== id ||
+    loaded.source !== source ||
+    loaded.type !== type
+  ) {
+    return null;
+  }
+
+  return loaded.url;
 };
 
 const stopCardSelection = (event: MouseEvent) => {
@@ -154,8 +223,9 @@ const AssetPreview = ({
   source?: string;
   type: AssetType;
 }) => {
+  const intl = useAppIntl();
   const previewUrl = useAssetPreviewUrl(id, source, type);
-  const Icon = ASSET_TYPE_ICONS[type];
+  const Icon = RESOURCE_KIND_ICONS[type];
 
   if (type === 'image' && previewUrl) {
     return (
@@ -181,7 +251,7 @@ const AssetPreview = ({
       >
         <video
           src={previewUrl}
-          aria-label={`${name} video preview`}
+          aria-label={intl.formatMessage(messages.videoPreview, { name: name })}
           className="size-full object-contain"
           muted
           playsInline
@@ -203,6 +273,7 @@ const AssetCard = ({
   id,
   isCurrent = false,
   isUsed = false,
+  isUnresolved = false,
   name,
   source,
   type,
@@ -210,9 +281,11 @@ const AssetCard = ({
   onDelete = null,
   onDownload = null,
   onPreview = null,
+  onReplace = null,
 }: AssetCardProps) => {
-  const typeLabel = ASSET_TYPE_LABELS[type];
-  const typeColor = ASSET_TYPE_BADGE_COLORS[type];
+  const intl = useAppIntl();
+  const typeLabel = intl.formatMessage(assetMetadataMessages[type]);
+  const typeColor = RESOURCE_KIND_BADGE_COLORS[type];
   const handleDelete = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
@@ -237,14 +310,35 @@ const AssetCard = ({
     [id, onDownload],
   );
 
+  const handleReplace = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation();
+      onReplace?.(id);
+    },
+    [id, onReplace],
+  );
+
   const actions = useMemo(
     () => [
-      onPreview && (
+      isUnresolved && onReplace && (
+        <IconButton
+          key="replace"
+          icon={<Upload />}
+          aria-label={intl.formatMessage(messages.replace, { name: name })}
+          title={intl.formatMessage(messages.replaceResource)}
+          color="primary"
+          variant="text"
+          size="sm"
+          onClick={handleReplace}
+          onMouseDown={stopCardSelection}
+        />
+      ),
+      !isUnresolved && onPreview && (
         <IconButton
           key="preview"
           icon={<Eye />}
-          aria-label={`Preview ${name}`}
-          title="Preview resource"
+          aria-label={intl.formatMessage(messages.preview, { name: name })}
+          title={intl.formatMessage(messages.previewResource)}
           color="info"
           variant="text"
           size="sm"
@@ -252,12 +346,12 @@ const AssetCard = ({
           onMouseDown={stopCardSelection}
         />
       ),
-      onDownload && (
+      !isUnresolved && onDownload && (
         <IconButton
           key="download"
           icon={<Download />}
-          aria-label={`Download ${name}`}
-          title="Download resource"
+          aria-label={intl.formatMessage(messages.download, { name: name })}
+          title={intl.formatMessage(messages.downloadResource)}
           color="success"
           variant="text"
           size="sm"
@@ -271,13 +365,13 @@ const AssetCard = ({
           icon={<Trash2 />}
           aria-label={
             isUsed
-              ? `${name} is in use and cannot be deleted`
-              : `Delete ${name}`
+              ? intl.formatMessage(messages.isInUseAndCannot, { name: name })
+              : intl.formatMessage(messages.delete, { name: name })
           }
           title={
             isUsed
-              ? 'This resource is in use by the protocol and cannot be deleted'
-              : 'Delete resource'
+              ? intl.formatMessage(messages.thisResourceIsInUseBy)
+              : intl.formatMessage(messages.deleteResource)
           }
           color="destructive"
           variant="text"
@@ -291,11 +385,15 @@ const AssetCard = ({
       handleDelete,
       handleDownload,
       handlePreview,
+      handleReplace,
+      isUnresolved,
       isUsed,
       name,
       onDelete,
       onDownload,
       onPreview,
+      onReplace,
+      intl,
     ],
   );
 
@@ -315,13 +413,19 @@ const AssetCard = ({
     >
       <div className="bg-surface relative h-40 shrink-0 overflow-hidden rounded-t">
         <AssetPreview id={id} name={name} source={source} type={type} />
-        {!isUsed && (
-          <Badge
-            variant="destructive"
-            className="absolute top-3 left-3 border-0"
-          >
-            Unused
+        {isUnresolved ? (
+          <Badge tone="destructive" className="absolute top-3 left-3 border-0">
+            {intl.formatMessage(messages.missing)}
           </Badge>
+        ) : (
+          !isUsed && (
+            <Badge
+              tone="destructive"
+              className="absolute top-3 left-3 border-0"
+            >
+              {intl.formatMessage(messages.unused)}
+            </Badge>
+          )
         )}
       </div>
 
@@ -338,7 +442,7 @@ const AssetCard = ({
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3">
-          <Badge color={typeColor} className="shrink-0">
+          <Badge appearance="outline" color={typeColor} className="shrink-0">
             {typeLabel}
           </Badge>
 

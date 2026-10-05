@@ -6,28 +6,37 @@ import {
   contentHash,
   manifestHash,
 } from '@codaco/studio-sync/apply';
+import { assertSectionValid } from '@codaco/studio-sync/section-validation';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
-import { sectionId } from './taxonomy.ts';
-import { inTransaction } from './transaction.ts';
-import { assertSectionValid } from './validate.ts';
+import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
 
 export class DraftStructureError extends Error {}
 
 export type StructuralResult = { manifestSeq: bigint; manifestHash: string };
 
-type HeadState = {
+export type HeadState = {
   headSeq: bigint;
   headManifestHash: string;
   sectionHashes: Record<string, string>;
 };
 
-async function lockHead(
+/**
+ * The draft's head, locked for the rest of the transaction. Every path that
+ * advances the manifest takes this first, so commits cannot fork the chain —
+ * and the protocol-builder host allocates its event cursors under it too, so
+ * one draft's events carry one gapless order.
+ */
+export async function lockDraftHead(
   client: pg.PoolClient,
+  teamId: string,
   draftId: string,
 ): Promise<HeadState> {
   const locked = await client.query(
-    `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
-    [draftId],
+    `SELECT head_seq, head_manifest_hash FROM drafts
+     WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+    [draftId, teamId],
   );
   const draft = locked.rows[0] as
     | { head_seq: string; head_manifest_hash: string }
@@ -36,8 +45,9 @@ async function lockHead(
     throw new DraftStructureError(`no draft ${draftId}`);
   }
   const head = await client.query(
-    `SELECT section_hashes FROM manifests WHERE draft_id = $1 AND seq = $2`,
-    [draftId, draft.head_seq],
+    `SELECT section_hashes FROM manifests
+     WHERE draft_id = $1 AND seq = $2 AND team_id = $3`,
+    [draftId, draft.head_seq, teamId],
   );
   const row = head.rows[0] as
     | { section_hashes: Record<string, string> }
@@ -56,11 +66,13 @@ async function lockHead(
 
 async function loadDoc(
   client: pg.PoolClient,
+  teamId: string,
   hash: string,
 ): Promise<SectionDoc> {
-  const res = await client.query(`SELECT doc FROM sections WHERE hash = $1`, [
-    hash,
-  ]);
+  const res = await client.query(
+    `SELECT doc FROM sections WHERE team_id = $1 AND hash = $2`,
+    [teamId, hash],
+  );
   const row = res.rows[0] as { doc: SectionDoc } | undefined;
   if (row === undefined) {
     throw new DraftStructureError(`missing section document ${hash}`);
@@ -82,24 +94,35 @@ function stageOrderOf(doc: SectionDoc): string[] {
 // Expiry AND an epoch bump: expiring alone would let the holder's queued
 // commits race the expiry check, and a removed-then-re-added section would
 // accept the old owner's stale edits.
-async function fenceLeases(
+export async function fenceDraftLeases(
   client: pg.PoolClient,
+  teamId: string,
   draftId: string,
   sectionIds: string[],
 ): Promise<void> {
   await client.query(
     `UPDATE leases SET epoch = epoch + 1, expires_at = clock_timestamp()
-     WHERE draft_id = $1 AND section_id = ANY($2)`,
-    [draftId, sectionIds],
+     WHERE draft_id = $1 AND section_id = ANY($2) AND team_id = $3`,
+    [draftId, sectionIds, teamId],
   );
 }
 
-async function advanceManifest(
+/**
+ * Writes and removals as one new manifest revision. Also the protocol-builder
+ * host's write path, whose `create` and compound refactors land several
+ * sections at one sequence.
+ */
+export async function advanceDraftManifest(
   client: pg.PoolClient,
+  teamId: string,
   draftId: string,
   head: HeadState,
   newSections: Record<string, SectionDoc>,
   removedSectionIds: string[],
+  // Dates the new sections for a caller that knows when the edit was made
+  // (the synthetic-data seed); a live command leaves it unset and takes the
+  // clock. Same contract as insertDraftRows.
+  createdAt?: Date,
 ): Promise<StructuralResult> {
   const sectionHashes = { ...head.sectionHashes };
   for (const id of removedSectionIds) {
@@ -109,19 +132,21 @@ async function advanceManifest(
     const hash = contentHash(doc);
     sectionHashes[id] = hash;
     await client.query(
-      `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-       ON CONFLICT (hash) DO UPDATE
-       SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-      [hash, doc],
+      `INSERT INTO sections (team_id, hash, doc, created_at)
+       VALUES ($1, $2, $3, COALESCE($4, clock_timestamp()))
+       ON CONFLICT (team_id, hash) DO UPDATE
+       SET created_at = COALESCE($4, clock_timestamp()), unreferenced_at = NULL`,
+      [teamId, hash, doc, createdAt ?? null],
     );
   }
   const newSeq = head.headSeq + 1n;
   const newManifestHash = manifestHash(sectionHashes, head.headManifestHash);
   await client.query(
-    `INSERT INTO manifests (draft_id, seq, hash, parent_hash, section_hashes)
-     VALUES ($1, $2, $3, $4, $5)`,
+    `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
     [
       draftId,
+      teamId,
       String(newSeq),
       newManifestHash,
       head.headManifestHash,
@@ -129,15 +154,23 @@ async function advanceManifest(
     ],
   );
   await client.query(
-    `UPDATE drafts SET head_seq = $2, head_manifest_hash = $3 WHERE id = $1`,
-    [draftId, String(newSeq), newManifestHash],
+    `UPDATE drafts SET head_seq = $2, head_manifest_hash = $3
+     WHERE id = $1 AND team_id = $4`,
+    [draftId, String(newSeq), newManifestHash, teamId],
   );
   return { manifestSeq: newSeq, manifestHash: newManifestHash };
 }
 
 export async function addStage(
-  db: pg.Pool,
-  params: { draftId: string; stage: SectionDoc; index?: number },
+  db: TenantDb,
+  params: {
+    draftId: string;
+    stage: SectionDoc;
+    index?: number;
+    /** When the stage was added, for a caller that must say so (the seed). */
+    createdAt?: Date;
+  },
+  client?: pg.PoolClient,
 ): Promise<StructuralResult> {
   const stageId = params.stage.id;
   if (typeof stageId !== 'string' || stageId === '') {
@@ -146,8 +179,9 @@ export async function addStage(
   const id = sectionId({ kind: 'stage', stageId });
   assertSectionValid(id, params.stage);
 
-  return inTransaction(db, async (client) => {
-    const head = await lockHead(client, params.draftId);
+  const teamId = db.teamId;
+  const add = async (transactionClient: pg.PoolClient) => {
+    const head = await lockDraftHead(transactionClient, teamId, params.draftId);
     if (head.sectionHashes[id] !== undefined) {
       throw new DraftStructureError(`stage ${stageId} already exists`);
     }
@@ -156,50 +190,134 @@ export async function addStage(
     if (orderHash === undefined) {
       throw new DraftStructureError('draft has no stageOrder section');
     }
-    const order = stageOrderOf(await loadDoc(client, orderHash));
+    const order = stageOrderOf(
+      await loadDoc(transactionClient, teamId, orderHash),
+    );
     const index = params.index ?? order.length;
     if (!Number.isInteger(index) || index < 0 || index > order.length) {
       throw new DraftStructureError(`stage index ${index} out of range`);
     }
     const newOrder = [...order];
     newOrder.splice(index, 0, stageId);
-    await fenceLeases(client, params.draftId, [orderId, id]);
-    return advanceManifest(
-      client,
+    await fenceDraftLeases(transactionClient, teamId, params.draftId, [
+      orderId,
+      id,
+    ]);
+    return advanceDraftManifest(
+      transactionClient,
+      teamId,
       params.draftId,
       head,
       { [id]: params.stage, [orderId]: { stages: newOrder } },
       [],
+      params.createdAt,
     );
-  });
+  };
+  if (client !== undefined) return add(client);
+  return runNoAuditTenantTransaction(db, 'protocol.addStage', add);
 }
 
 export async function removeStage(
-  db: pg.Pool,
-  params: { draftId: string; stageId: string },
+  db: TenantDb,
+  params: {
+    draftId: string;
+    stageId: string;
+    /** When the stage was removed, for a caller that must say so (the seed). */
+    createdAt?: Date;
+  },
 ): Promise<StructuralResult> {
   const id = sectionId({ kind: 'stage', stageId: params.stageId });
-  return inTransaction(db, async (client) => {
-    const head = await lockHead(client, params.draftId);
-    if (head.sectionHashes[id] === undefined) {
-      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+  const teamId = db.teamId;
+  return runNoAuditTenantTransaction(
+    db,
+    'protocol.removeStage',
+    async (client) => {
+      const head = await lockDraftHead(client, teamId, params.draftId);
+      if (head.sectionHashes[id] === undefined) {
+        throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+      }
+      const orderId = sectionId({ kind: 'stageOrder' });
+      const orderHash = head.sectionHashes[orderId];
+      if (orderHash === undefined) {
+        throw new DraftStructureError('draft has no stageOrder section');
+      }
+      const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
+      const newOrder = order.filter((entry) => entry !== params.stageId);
+      await fenceDraftLeases(client, teamId, params.draftId, [orderId, id]);
+      return advanceDraftManifest(
+        client,
+        teamId,
+        params.draftId,
+        head,
+        { [orderId]: { stages: newOrder } },
+        [id],
+        params.createdAt,
+      );
+    },
+  );
+}
+
+export async function moveStage(
+  db: TenantDb,
+  params: {
+    draftId: string;
+    stageId: string;
+    toIndex: number;
+    expectedRevision: bigint;
+  },
+  client?: pg.PoolClient,
+): Promise<StructuralResult> {
+  const teamId = db.teamId;
+  const move = async (transactionClient: pg.PoolClient) => {
+    const head = await lockDraftHead(transactionClient, teamId, params.draftId);
+    if (head.headSeq !== params.expectedRevision) {
+      throw new DraftStructureError(
+        `draft changed from revision ${params.expectedRevision} to ${head.headSeq}`,
+      );
     }
     const orderId = sectionId({ kind: 'stageOrder' });
     const orderHash = head.sectionHashes[orderId];
     if (orderHash === undefined) {
       throw new DraftStructureError('draft has no stageOrder section');
     }
-    const order = stageOrderOf(await loadDoc(client, orderHash));
-    const newOrder = order.filter((entry) => entry !== params.stageId);
-    await fenceLeases(client, params.draftId, [orderId, id]);
-    return advanceManifest(
-      client,
+    const order = stageOrderOf(
+      await loadDoc(transactionClient, teamId, orderHash),
+    );
+    const fromIndex = order.indexOf(params.stageId);
+    if (fromIndex === -1) {
+      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+    }
+    if (params.toIndex < 0 || params.toIndex >= order.length) {
+      throw new DraftStructureError(
+        `stage index ${params.toIndex} out of range`,
+      );
+    }
+    if (fromIndex === params.toIndex) {
+      return {
+        manifestSeq: head.headSeq,
+        manifestHash: head.headManifestHash,
+      };
+    }
+    const newOrder = [...order];
+    const [stageId] = newOrder.splice(fromIndex, 1);
+    if (stageId === undefined) {
+      throw new DraftStructureError(`no stage ${params.stageId} in draft`);
+    }
+    newOrder.splice(params.toIndex, 0, stageId);
+    await fenceDraftLeases(transactionClient, teamId, params.draftId, [
+      orderId,
+    ]);
+    return advanceDraftManifest(
+      transactionClient,
+      teamId,
       params.draftId,
       head,
       { [orderId]: { stages: newOrder } },
-      [id],
+      [],
     );
-  });
+  };
+  if (client !== undefined) return move(client);
+  return runNoAuditTenantTransaction(db, 'protocol.moveStage', move);
 }
 
 export type CodebookEntityRef =
@@ -219,7 +337,7 @@ function entitySectionId(ref: CodebookEntityRef): string {
 }
 
 export async function addCodebookEntity(
-  db: pg.Pool,
+  db: TenantDb,
   params: {
     draftId: string;
     ref: CodebookEntityRef;
@@ -228,33 +346,46 @@ export async function addCodebookEntity(
 ): Promise<StructuralResult> {
   const id = entitySectionId(params.ref);
   assertSectionValid(id, params.definition);
-  return inTransaction(db, async (client) => {
-    const head = await lockHead(client, params.draftId);
-    if (head.sectionHashes[id] !== undefined) {
-      throw new DraftStructureError(`codebook section ${id} already exists`);
-    }
-    await fenceLeases(client, params.draftId, [id]);
-    return advanceManifest(
-      client,
-      params.draftId,
-      head,
-      { [id]: params.definition },
-      [],
-    );
-  });
+  const teamId = db.teamId;
+  return runNoAuditTenantTransaction(
+    db,
+    'protocol.addCodebookEntity',
+    async (client) => {
+      const head = await lockDraftHead(client, teamId, params.draftId);
+      if (head.sectionHashes[id] !== undefined) {
+        throw new DraftStructureError(`codebook section ${id} already exists`);
+      }
+      await fenceDraftLeases(client, teamId, params.draftId, [id]);
+      return advanceDraftManifest(
+        client,
+        teamId,
+        params.draftId,
+        head,
+        { [id]: params.definition },
+        [],
+      );
+    },
+  );
 }
 
 export async function removeCodebookEntity(
-  db: pg.Pool,
+  db: TenantDb,
   params: { draftId: string; ref: CodebookEntityRef },
 ): Promise<StructuralResult> {
   const id = entitySectionId(params.ref);
-  return inTransaction(db, async (client) => {
-    const head = await lockHead(client, params.draftId);
-    if (head.sectionHashes[id] === undefined) {
-      throw new DraftStructureError(`no codebook section ${id} in draft`);
-    }
-    await fenceLeases(client, params.draftId, [id]);
-    return advanceManifest(client, params.draftId, head, {}, [id]);
-  });
+  const teamId = db.teamId;
+  return runNoAuditTenantTransaction(
+    db,
+    'protocol.removeCodebookEntity',
+    async (client) => {
+      const head = await lockDraftHead(client, teamId, params.draftId);
+      if (head.sectionHashes[id] === undefined) {
+        throw new DraftStructureError(`no codebook section ${id} in draft`);
+      }
+      await fenceDraftLeases(client, teamId, params.draftId, [id]);
+      return advanceDraftManifest(client, teamId, params.draftId, head, {}, [
+        id,
+      ]);
+    },
+  );
 }

@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { BROWSER_VIEWPORT } from '@codaco/vitest-config/modern/browser-viewport';
 import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
 
 const dirname =
@@ -56,30 +57,91 @@ export default defineConfig({
             storybookScript: 'storybook dev -p 6006 --no-open',
           }),
         ],
-        // d3-force is not reachable by Vite's static import scanner (it is
-        // only pulled in at runtime via the virtual project-annotations
-        // module). Without this, Vite discovers it as a new dependency
-        // mid-run, re-optimises the bundle, changes the `browserv` hash and
-        // invalidates in-flight fetches of setup-file-with-project-
-        // annotations.js — producing "Failed to fetch dynamically imported
-        // module" errors on every cold-cache run.
+        // Vite's dependency scanner cannot see these: every one of them is
+        // reached only at runtime, behind the virtual project-annotations
+        // module that Storybook's setup file imports. Anything left out is
+        // discovered while the suite is already running, and the re-optimise
+        // that follows changes the `browserv` hash and reloads the page,
+        // killing in-flight module fetches — the whole suite then fails with
+        // "Failed to fetch dynamically imported module" on a cold cache
+        // while passing on a warm one.
+        //
+        // The list has to stay complete. To rebuild it, delete
+        // `node_modules/.cache/storybook/*/*/sb-vitest`, run
+        // `pnpm test:storybook`, and add every specifier the
+        // "dependencies optimized:" / "dependency optimized:" lines report.
+        // Deps owned by a workspace package are not resolvable from this
+        // root, so they need Vite's `<owner> > <dep>` form — and the owner
+        // has to be named the whole way down. This package now directly owns
+        // app-i18n for its built-in messages and locale negotiation.
         optimizeDeps: {
-          include: ['d3-force'],
+          include: [
+            '@base-ui/react/accordion',
+            '@base-ui/react/checkbox',
+            // Reached through `Dialog`, which reads the enclosing heading level
+            // a `Section` inside it counts down from — so every dialog these
+            // stories open now pulls in fresco-ui's `Section` and the
+            // Collapsible it is built on.
+            '@base-ui/react/collapsible',
+            '@base-ui/react/dialog',
+            '@base-ui/react/direction-provider',
+            '@base-ui/react/menu',
+            '@base-ui/react/popover',
+            '@base-ui/react/progress',
+            '@base-ui/react/radio',
+            '@base-ui/react/slider',
+            '@base-ui/react/switch',
+            '@base-ui/react/toolbar',
+            '@codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/app-i18n > @formatjs/intl-localematcher',
+            '@codaco/app-i18n > react-intl',
+            '@codaco/app-i18n > react-intl/server',
+            '@codaco/fresco-ui > @radix-ui/react-slot',
+            '@codaco/fresco-ui > clsx',
+            '@codaco/fresco-ui > comlink',
+            '@codaco/fresco-ui > cva',
+            '@codaco/fresco-ui > cva/config',
+            '@codaco/fresco-ui > fuse.js',
+            '@codaco/fresco-ui > nanoid',
+            '@codaco/fresco-ui > react-best-merge-refs',
+            '@codaco/fresco-ui > react-markdown',
+            '@codaco/fresco-ui > rehype-raw',
+            '@codaco/fresco-ui > rehype-sanitize',
+            '@codaco/fresco-ui > remark-gemoji',
+            '@codaco/fresco-ui > remark-gfm',
+            '@codaco/fresco-ui > tailwind-merge',
+            '@codaco/fresco-ui > usehooks-ts',
+            '@codaco/protocol-validation > jszip',
+            'd3-force',
+            'zod',
+            'zustand/shallow',
+            'zustand/vanilla',
+          ],
         },
         test: {
           name: 'storybook',
           testTimeout: 60_000,
+          // These stories mount full interview shells (Redux store + search
+          // web workers); running files in parallel iframes starves the
+          // worker round-trips past any timeout (Navigation / roster filter
+          // stories fail on every loaded run) and is slower overall than
+          // sequential execution. Keep files sequential.
+          fileParallelism: false,
+          // Reuse one iframe for every file instead of building a fresh one
+          // per file. These 60 files each mount a full interview shell —
+          // WebGL canvases, mapbox maps, search workers — and the detached
+          // iframes hold their native resources long enough that the
+          // renderer dies partway through the run, taking the whole suite
+          // with it ("Browser connection was closed while running tests",
+          // on a different file each time). Reusing the iframe recycles
+          // those resources instead of accumulating 60 sets of them.
+          isolate: false,
           browser: {
             provider: playwright(),
             enabled: true,
             instances: [{ browser: 'chromium' }],
             headless: true,
-            // These stories mount full interview shells (Redux store + search
-            // web workers); running files in parallel iframes starves the
-            // worker round-trips past any timeout (Navigation / roster filter
-            // stories fail on every loaded run) and is slower overall than
-            // sequential execution. Keep files sequential.
-            fileParallelism: false,
+            viewport: BROWSER_VIEWPORT,
           },
           exclude: ['**/*.test.{ts,tsx}'],
         },

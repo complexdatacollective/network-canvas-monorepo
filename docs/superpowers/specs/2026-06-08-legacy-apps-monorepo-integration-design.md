@@ -167,8 +167,11 @@ detector (Part C.6) sees the change and fires the matching Electron build job.
 
 ## Prerequisite (not a blocker)
 
-- **`LEGACY_RELEASE_GH_TOKEN`** repository secret — a PAT with `contents:write` on
-  the external release repos. Without it the design still builds and uploads
+- **`LEGACY_RELEASE_GH_TOKEN`** repository secret — a fine-grained PAT with
+  **Contents: write** and **Workflows: write** on the external release repos (or
+  a classic PAT with `repo` and `workflow` scopes). Workflow write access is
+  required because a mirror commit may add, modify, or delete files under
+  `.github/workflows/`. Without the token the design still builds and uploads
   artifacts to the run; with it, the apps publish to their configured external
   repos. Provisioning it is required only to actually publish.
 

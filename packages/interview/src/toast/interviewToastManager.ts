@@ -1,12 +1,12 @@
 import { Toast } from '@base-ui/react/toast';
 
 /**
- * Global toast manager for interview validation/notification toasts.
+ * Fallback toast manager for standalone interview controls and tests.
  *
- * Shell wraps its own Toast.Provider around InterviewToastViewport, with
- * this manager passed in via the `toastManager` prop. Hooks and event
- * handlers anywhere call `interviewToastManager.add(...)` directly — the
- * manager is a singleton and doesn't require provider context for emission.
+ * Each Shell supplies an isolated manager through InterviewToastProvider.
+ * Controls assembled outside a Shell may use this manager with a Base UI
+ * Toast.Provider and InterviewToastViewport; hook emission remains safe when
+ * no interview toast context is available.
  *
  * @see https://base-ui.com/react/components/toast#anchored-toasts
  */

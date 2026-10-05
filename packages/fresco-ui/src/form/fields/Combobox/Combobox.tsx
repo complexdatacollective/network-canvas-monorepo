@@ -9,6 +9,9 @@ import {
   useState,
 } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Button from '../../../Button';
 import Surface from '../../../layout/Surface';
 import { usePortalContainer } from '../../../PortalContainer';
@@ -22,6 +25,61 @@ import type { FieldValueProps, InjectedFieldProps } from '../../Field/types';
 import { getInputState } from '../../utils/getInputState';
 import InputField from '../InputField';
 import { type ComboboxOption, comboboxTriggerVariants } from './shared';
+
+const messages = defineMessages({
+  placeholder: {
+    id: 'frescoUi.combobox.placeholder',
+    defaultMessage: 'Select items...',
+    description: 'Default placeholder of the multi-select combobox trigger.',
+  },
+  searchPlaceholder: {
+    id: 'frescoUi.combobox.searchPlaceholder',
+    defaultMessage: 'Search...',
+    description:
+      'Default placeholder of the search input inside the combobox popup.',
+  },
+  noItems: {
+    id: 'frescoUi.combobox.noItems',
+    defaultMessage: 'No items found.',
+    description:
+      'Default empty state shown when the combobox search matches nothing.',
+  },
+  allSelected: {
+    id: 'frescoUi.combobox.allSelected',
+    defaultMessage: 'All {plural} selected ({count, number})',
+    description:
+      'Trigger label when every option is selected; {plural} is the host-supplied plural noun (e.g. "items").',
+  },
+  someSelected: {
+    id: 'frescoUi.combobox.someSelected',
+    defaultMessage:
+      '{count, plural, =1 {# {singular} selected} other {# {plural} selected}}',
+    description:
+      'Trigger label summarising the selection; {singular} and {plural} are host-supplied noun forms (e.g. "item"/"items").',
+  },
+  defaultSingular: {
+    id: 'frescoUi.combobox.defaultSingular',
+    defaultMessage: 'item',
+    description:
+      'Default singular noun interpolated into the combobox selection summary.',
+  },
+  defaultPlural: {
+    id: 'frescoUi.combobox.defaultPlural',
+    defaultMessage: 'items',
+    description:
+      'Default plural noun interpolated into the combobox selection summary.',
+  },
+  selectAll: {
+    id: 'frescoUi.combobox.selectAll',
+    defaultMessage: 'Select All',
+    description: 'Button selecting every enabled combobox option.',
+  },
+  deselectAll: {
+    id: 'frescoUi.combobox.deselectAll',
+    defaultMessage: 'Deselect All',
+    description: 'Button clearing the combobox selection.',
+  },
+});
 
 type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
   InjectedFieldProps & {
@@ -48,6 +106,10 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
   > &
   VariantProps<typeof comboboxTriggerVariants>;
 
+// Stable empty selection, so a value of the wrong shape doesn't re-run the
+// memos below on every render.
+const EMPTY_SELECTION: (string | number)[] = [];
+
 function isComboboxOption(value: unknown): value is ComboboxOption {
   if (typeof value !== 'object' || value === null) return false;
 
@@ -60,22 +122,23 @@ function isComboboxOption(value: unknown): value is ComboboxOption {
 }
 
 function ComboboxField(props: ComboboxFieldProps) {
+  const intl = useAppIntl();
   const {
     options,
-    placeholder = 'Select items...',
-    searchPlaceholder = 'Search...',
-    emptyMessage = 'No items found.',
+    placeholder = intl.formatMessage(messages.placeholder),
+    searchPlaceholder = intl.formatMessage(messages.searchPlaceholder),
+    emptyMessage = intl.formatMessage(messages.noItems),
     showSearch = true,
     showSelectAll = true,
     showDeselectAll = true,
-    singular = 'item',
-    plural = 'items',
+    singular = intl.formatMessage(messages.defaultSingular),
+    plural = intl.formatMessage(messages.defaultPlural),
     renderOption,
     renderValue,
     size,
     className,
     onChange,
-    value = [],
+    value = EMPTY_SELECTION,
     name,
     disabled,
     readOnly,
@@ -136,22 +199,34 @@ function ComboboxField(props: ComboboxFieldProps) {
     onChange?.([]);
   };
 
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a list of chosen values renders as nothing selected.
+  const selectedValues = useMemo(
+    () => (Array.isArray(value) ? value : EMPTY_SELECTION),
+    [value],
+  );
+
   // Convert value array to selected options
   const selectedOptions = useMemo(() => {
-    return options.filter((opt) => value.includes(opt.value));
-  }, [options, value]);
+    return options.filter((opt) => selectedValues.includes(opt.value));
+  }, [options, selectedValues]);
 
   // Generate trigger label text
   const triggerLabel = useMemo(() => {
-    if (value.length === 0) return null;
-    if (value.length === options.length) {
-      return `All ${plural} selected (${options.length})`;
+    if (selectedValues.length === 0) return null;
+    if (selectedValues.length === options.length) {
+      return intl.formatMessage(messages.allSelected, {
+        plural,
+        count: options.length,
+      });
     }
-    if (value.length === 1) {
-      return `1 ${singular} selected`;
-    }
-    return `${value.length} ${plural} selected`;
-  }, [value, options.length, singular, plural]);
+    return intl.formatMessage(messages.someSelected, {
+      count: selectedValues.length,
+      singular,
+      plural,
+    });
+  }, [selectedValues, options.length, singular, plural, intl]);
 
   const state = getInputState(props);
 
@@ -186,7 +261,7 @@ function ComboboxField(props: ComboboxFieldProps) {
           state,
         })}
       >
-        <span className="flex-1 truncate text-left">
+        <span className="flex-1 truncate text-start">
           <Combobox.Value
             placeholder={
               <span className="text-input-contrast/50 italic">
@@ -202,7 +277,8 @@ function ComboboxField(props: ComboboxFieldProps) {
         </Combobox.Icon>
       </Combobox.Trigger>
       <Combobox.Portal container={portalContainer ?? undefined}>
-        <Combobox.Positioner align="start" sideOffset={10}>
+        {/* The popup layer, as `Popover`'s: this can open from inside one. */}
+        <Combobox.Positioner align="start" sideOffset={10} className="z-3000">
           <Combobox.Popup
             render={
               <Surface
@@ -277,7 +353,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                     size="sm"
                     disabled={Boolean(disabled) || Boolean(readOnly)}
                   >
-                    Select All
+                    {intl.formatMessage(messages.selectAll)}
                   </Button>
                 )}
                 {showDeselectAll && (
@@ -286,7 +362,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                     size="sm"
                     disabled={Boolean(disabled) || Boolean(readOnly)}
                   >
-                    Deselect All
+                    {intl.formatMessage(messages.deselectAll)}
                   </Button>
                 )}
               </div>

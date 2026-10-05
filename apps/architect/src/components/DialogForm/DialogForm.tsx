@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import { Layout } from '~/components/EditorLayout';
 import { useRefusedNestedCommit } from '~/hooks/useRefusedNestedCommit';
 
 import {
@@ -15,6 +17,13 @@ import {
   type LenientSubmitHandler,
 } from './formLevelValidate';
 import { useNestedDraftDialog } from './useNestedDraftDialog';
+const messages = defineMessages({
+  resizeFormAndPreviewPanes: {
+    id: 'architect.dialogForm.dialogForm.resizeFormAndPreviewPanes',
+    defaultMessage: 'Resize form and preview panes',
+    description: 'The aria-label text in components / DialogForm / DialogForm.',
+  },
+});
 
 export type DialogFormProps = {
   /** Whether the dialog is open. */
@@ -47,13 +56,12 @@ export type DialogFormProps = {
   validate?: FormLevelValidate;
   /**
    * The committed array index of the item being edited, when this dialog
-   * edits one member of a field array. Forwarded to `validate` as context —
-   * see DialogArrayField's `editorValidate`.
+   * edits one member of a field array. Forwarded to `validate` as context.
    */
   editIndex?: number;
   /**
    * Shared-layout id, for a dialog that animates out of the element that
-   * opened it (an array row's Edit button — see arrayFields/DialogArrayField).
+   * opened it (an array row's Edit button).
    */
   layoutId?: string;
   style?: React.CSSProperties;
@@ -83,7 +91,7 @@ const DialogFormBody = ({
   title,
   formId,
   submitLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel: providedCancelLabel,
   onSubmit,
   validate,
   editIndex,
@@ -94,6 +102,10 @@ const DialogFormBody = ({
   aside,
   children,
 }: DialogFormProps) => {
+  const intl = useAppIntl();
+  const cancelLabel =
+    providedCancelLabel ?? intl.formatMessage(commonMessages.cancel);
+
   const refusedCommit = useRefusedNestedCommit();
 
   /**
@@ -186,24 +198,24 @@ const DialogFormBody = ({
           min={30}
           max={70}
           stickyHandle
-          aria-label="Resize form and preview panes"
+          aria-label={intl.formatMessage(messages.resizeFormAndPreviewPanes)}
           className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
         >
-          <Layout className="min-w-0 @min-[60rem]:pr-4">
-            <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-              {children}
-            </FormWithoutProvider>
-          </Layout>
+          <FormWithoutProvider
+            id={domFormId}
+            onSubmit={handleSubmit}
+            className="min-w-0 @min-[60rem]:pr-4"
+          >
+            {children}
+          </FormWithoutProvider>
           <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
             {aside}
           </aside>
         </ResizableFlexPanel>
       ) : (
-        <Layout>
-          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-            {children}
-          </FormWithoutProvider>
-        </Layout>
+        <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+          {children}
+        </FormWithoutProvider>
       )}
     </Dialog>
   );

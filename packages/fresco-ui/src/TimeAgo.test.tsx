@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
+
+import { frescoUiCatalogs } from './locales/catalogs';
 import TimeAgo from './TimeAgo';
 
 const DAY_MS = 86400000;
@@ -27,6 +31,51 @@ function renderCapturingCommits(ui: React.ReactElement) {
 }
 
 describe('TimeAgo', () => {
+  it('changes relative and absolute timestamps with the app language', async () => {
+    const date = new Date(Date.now() - 2 * DAY_MS);
+    const view = (locale: string) => (
+      <AppI18nProvider
+        locale={locale}
+        locales={ecosystemLocales}
+        messages={frescoUiCatalogs[locale]}
+      >
+        <TimeAgo date={date} />
+      </AppI18nProvider>
+    );
+    const { rerender } = render(view('en'));
+    expect(screen.getByRole('button')).toHaveTextContent('2 days ago');
+    rerender(view('es'));
+    expect(screen.getByRole('button')).toHaveTextContent('hace 2 días');
+    const time = screen.getByRole('button').querySelector('time');
+    expect(time).toBeInTheDocument();
+    expect(time).toHaveAttribute('datetime', date.toISOString());
+    const absolute = new Intl.DateTimeFormat('es', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    }).format(date);
+    expect(time).toHaveAttribute('title', absolute);
+    const user = userEvent.setup();
+    await user.tab();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('button')).toHaveTextContent(absolute);
+  });
+
+  it('translates the less-than-one-minute timestamp', () => {
+    render(
+      <AppI18nProvider
+        locale="es"
+        locales={ecosystemLocales}
+        messages={frescoUiCatalogs.es}
+      >
+        <TimeAgo date={new Date(Date.now() - 30_000)} />
+      </AppI18nProvider>,
+    );
+    expect(screen.getByRole('button')).toHaveTextContent('ahora mismo');
+  });
+
   it('renders the relative time in the very first commit', () => {
     const commits = renderCapturingCommits(
       <TimeAgo date={new Date(Date.now() - 2 * DAY_MS)} />,

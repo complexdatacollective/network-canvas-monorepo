@@ -1,6 +1,26 @@
+'use client';
+
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { GetInterviewsQuery } from '~/queries/interviews';
+
+const messages = defineMessages({
+  entityCount: {
+    id: 'fresco.interviews.networkSummary.entityCount',
+    defaultMessage: '{name} ({count, number})',
+    description:
+      'Researcher-defined entity type name and number of entities. Preserve the name value.',
+  },
+
+  noNodesOrEdges: {
+    id: 'fresco.InterviewsTable.NetworkSummary.noNodesOrEdges',
+    defaultMessage: 'No nodes or edges',
+    description:
+      'Researcher-facing InterviewsTable / NetworkSummary: No nodes or edges',
+  },
+});
 
 // TODO: Move to shared-consts or protocol-validation
 type EdgeColorSequence =
@@ -21,39 +41,31 @@ type EdgeSummaryProps = {
 };
 
 function EdgeSummary({ color, count, typeName }: EdgeSummaryProps) {
-  /**
-   * There is a bug in the suggestCanonicalClasses rule: https://github.com/tailwindlabs/tailwindcss-intellisense/issues/1542
-   */
+  // The suggested canonical form removes CSS-required subtraction whitespace.
+  /* eslint-disable tailwindcss/enforce-canonical */
   const edgeColorClasses = cx(
     color === 'edge-color-seq-1' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-1)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-1)]',
+      '[--fill-dark:oklch(from_var(--edge-1)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-1)]',
     color === 'edge-color-seq-2' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-2)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-2)]',
+      '[--fill-dark:oklch(from_var(--edge-2)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-2)]',
     color === 'edge-color-seq-3' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-3)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-3)]',
+      '[--fill-dark:oklch(from_var(--edge-3)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-3)]',
     color === 'edge-color-seq-4' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-4)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-4)]',
+      '[--fill-dark:oklch(from_var(--edge-4)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-4)]',
     color === 'edge-color-seq-5' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-5)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-5)]',
+      '[--fill-dark:oklch(from_var(--edge-5)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-5)]',
     color === 'edge-color-seq-6' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-6)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-6)]',
+      '[--fill-dark:oklch(from_var(--edge-6)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-6)]',
     color === 'edge-color-seq-7' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-7)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-7)]',
+      '[--fill-dark:oklch(from_var(--edge-7)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-7)]',
     color === 'edge-color-seq-8' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-8)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-8)]',
+      '[--fill-dark:oklch(from_var(--edge-8)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-8)]',
     color === 'edge-color-seq-9' &&
-      // eslint-disable-next-line better-tailwindcss/enforce-canonical-classes
-      '[--fill-dark:oklch(from_var(--edge-9)_calc(l-var(--dark-mod))_c_h)] [--fill:var(--edge-9)]',
+      '[--fill-dark:oklch(from_var(--edge-9)_calc(l_-_var(--dark-mod))_c_h)] [--fill:var(--edge-9)]',
   );
+  /* eslint-enable tailwindcss/enforce-canonical */
 
+  const intl = useAppIntl();
   return (
     <div className="flex flex-col items-center">
       <div className="flex size-8 items-center justify-center">
@@ -100,7 +112,7 @@ function EdgeSummary({ color, count, typeName }: EdgeSummaryProps) {
         </svg>
       </div>
       <span className="pt-1 text-xs">
-        {typeName} ({count})
+        {intl.formatMessage(messages.entityCount, { name: typeName, count })}
       </span>
     </div>
   );
@@ -111,13 +123,15 @@ const NetworkSummary = ({
 }: {
   network: GetInterviewsQuery[number]['network'];
 }) => {
+  const intl = useAppIntl();
+
   const nodeSummaries = network.nodes.map(
     ({ type: nodeType, count, name, color }) => (
       <div className="flex flex-col items-center" key={nodeType}>
         <Node
           size="xxs"
           color={color as NodeColorSequence}
-          label={count.toLocaleString()}
+          label={intl.formatNumber(count)}
         />
         <span className="pt-1 text-xs">{name}</span>
       </div>
@@ -140,7 +154,11 @@ const NetworkSummary = ({
     .filter(Boolean);
 
   if (nodeSummaries.length === 0 && edgeSummaries.length === 0) {
-    return <div className="text-xs">No nodes or edges</div>;
+    return (
+      <div className="text-xs">
+        {intl.formatMessage(messages.noNodesOrEdges)}
+      </div>
+    );
   }
 
   return (

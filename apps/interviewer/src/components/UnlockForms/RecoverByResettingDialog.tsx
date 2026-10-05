@@ -1,13 +1,49 @@
 import { useId } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import ResetFormWhenClosed from '@codaco/fresco-ui/form/ResetFormWhenClosed';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { useAuth } from '~/lib/auth/AuthContext';
+
+const messages = defineMessages({
+  resetAllAppData: {
+    id: 'interviewer.recoverByResettingDialog.resetAllAppData',
+    defaultMessage: 'Reset all app data?',
+    description: 'The title label in Interviewer Recover By Resetting Dialog.',
+  },
+  thisPermanentlyDeletesEveryProtocolAndRecorded: {
+    id: 'interviewer.recoverByResettingDialog.thisPermanentlyDeletesEveryProtocolAndRecorded',
+    defaultMessage:
+      'This permanently deletes every protocol and recorded interview on this device. It cannot be undone, and the existing data cannot be recovered.',
+    description:
+      'The description label in Interviewer Recover By Resetting Dialog.',
+  },
+  permanentlyDelete: {
+    id: 'interviewer.recoverByResettingDialog.permanentlyDelete',
+    defaultMessage: 'Permanently delete',
+    description: 'Visible copy in Interviewer Recover By Resetting Dialog.',
+  },
+  deleting: {
+    id: 'interviewer.recoverByResettingDialog.deleting',
+    defaultMessage: 'Deleting…',
+    description:
+      'The submittingText label in Interviewer Recover By Resetting Dialog.',
+  },
+  theAppDataCouldNotBeReset: {
+    id: 'interviewer.recoverByResettingDialog.theAppDataCouldNotBeReset',
+    defaultMessage: 'The app data could not be reset.',
+    description:
+      'User-facing message in Interviewer Recover By Resetting Dialog.',
+  },
+});
 
 export type RecoverByResettingDialogProps = {
   open: boolean;
@@ -25,19 +61,29 @@ export function RecoverByResettingDialog({
   onCancel,
   onReset,
 }: RecoverByResettingDialogProps) {
-  if (!open) return null;
-
+  // Kept mounted and closed by `open`, NOT unmounted: the exit animation is
+  // run by the `AnimatePresence` inside the dialog, so returning null here —
+  // which is what this did — took the animation away with it and the dialog
+  // vanished instead of closing. `ResetFormWhenClosed` is what then stops the
+  // form outliving the dialog, since the store sits outside it.
   return (
     <FormStoreProvider>
-      <RecoverByResettingDialogContent onCancel={onCancel} onReset={onReset} />
+      <ResetFormWhenClosed open={open} />
+      <RecoverByResettingDialogContent
+        open={open}
+        onCancel={onCancel}
+        onReset={onReset}
+      />
     </FormStoreProvider>
   );
 }
 
 function RecoverByResettingDialogContent({
+  open,
   onCancel,
   onReset,
-}: Omit<RecoverByResettingDialogProps, 'open'>) {
+}: RecoverByResettingDialogProps) {
+  const intl = useAppIntl();
   const { revoke } = useAuth();
   const formId = useId();
   const isSubmitting = useFormStore((state) => state.isSubmitting);
@@ -47,23 +93,25 @@ function RecoverByResettingDialogContent({
 
   return (
     <Dialog
-      open
-      title="Reset all app data?"
-      description="This permanently deletes every protocol and recorded interview on this device. It cannot be undone, and the existing data cannot be recovered."
+      open={open}
+      title={intl.formatMessage(messages.resetAllAppData)}
+      description={intl.formatMessage(
+        messages.thisPermanentlyDeletesEveryProtocolAndRecorded,
+      )}
       accent="destructive"
       closeDialog={cancel}
       dismissible={!isSubmitting}
       footer={
         <>
           <Button type="button" disabled={isSubmitting} onClick={cancel}>
-            Cancel
+            {intl.formatMessage(commonMessages.cancel)}
           </Button>
           <SubmitButton
             form={formId}
             color="destructive"
-            submittingText="Deleting…"
+            submittingText={intl.formatMessage(messages.deleting)}
           >
-            Permanently delete
+            {intl.formatMessage(messages.permanentlyDelete)}
           </SubmitButton>
         </>
       }
@@ -76,12 +124,16 @@ function RecoverByResettingDialogContent({
             onReset?.();
             return { success: true };
           } catch (error) {
+            // Only the generic translated message below reaches the user; this
+            // recovery flow runs while the device may be locked out (pre-unlock),
+            // when analytics is not reliably available, so the console is the
+            // only place the raw cause survives for debugging.
+            // oxlint-disable-next-line no-console -- only diagnostic for this locked-out recovery flow; analytics is not reliably available here
+            console.error('App data reset failed', error);
             return {
               success: false,
               formErrors: [
-                error instanceof Error
-                  ? error.message
-                  : 'The app data could not be reset.',
+                createMessageError(messages.theAppDataCouldNotBeReset),
               ],
             };
           }

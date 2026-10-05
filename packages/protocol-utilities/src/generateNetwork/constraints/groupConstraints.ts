@@ -1,28 +1,28 @@
-import type { VariableEntry, VariableOptionInput } from '../../types';
+import type { VariableEntry, VariableOptionInput } from '../../types.ts';
 import {
   addSteps,
   type DateResolution,
   dateValueResolution,
   EARLIEST_OFFERED_DATE,
   LATEST_OFFERED_DATE,
-} from './dateWindow';
+} from './dateWindow.ts';
 import {
   canonicalComparatorEdges,
   type ComparatorEdge,
   KEY_SEPARATOR,
-} from './dependencyOrder';
+} from './dependencyOrder.ts';
 import type {
   ConstrainedVariable,
   EntityConstraints,
   VariableConstraints,
-} from './types';
+} from './types.ts';
 import {
   booleanDomainValues,
   decimalGrid,
   decimalGridStep,
   numberDrawBounds,
   scalarDrawGrid,
-} from './valueSpace';
+} from './valueSpace.ts';
 
 /**
  * Keeps whichever of two bounds is tighter. Dates are compared as strings,

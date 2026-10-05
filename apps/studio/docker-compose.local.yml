@@ -1,0 +1,98 @@
+# The `dev:stack` override of the reference stack (#1909).
+#
+#   pnpm --filter @codaco/studio-server dev:stack
+#
+# which is `docker compose -p studio-stack --env-file .env.local
+# -f docker-compose.yml -f docker-compose.local.yml up -d` followed by
+# `run --rm migrate`. It runs every container `docker-compose.yml` declares —
+# Traefik, the maintenance page, both Studio images, the `migrate` one-shot —
+# on `https://localhost`, so an upgrade, a routing change or the first-run
+# screen can be exercised before it reaches a self-hoster. `scripts/dev-stack.ts`
+# writes the `.env.local` it is interpolated from.
+#
+# This is a development file. It is never applied to a deployment, and
+# `docker-compose.yml` is not modified by it: everything below is either an
+# addition or a restatement of a block whose production value would be wrong on
+# a laptop.
+#
+# Three differences from what a self-hoster runs, and no others:
+#
+#   1. Traefik asks a certificate authority that does not exist, so it serves
+#      its own default self-signed certificate (`curl -k`, or a browser
+#      warning). Anything else would have every `dev:stack` on every developer's
+#      machine asking Let's Encrypt for a certificate for `localhost`, which it
+#      will not issue and whose refusals are rate-limited per account.
+#   2. A Mailpit container stands in for an SMTP provider, exactly as it does
+#      in the development lane, so sign-in mail can be read.
+#   3. Both Studio images can be built from this checkout rather than pulled,
+#      so `docker compose build` works against the same project `dev:stack`
+#      brings up.
+
+services:
+  traefik:
+    # Restated IN FULL, deliberately. A Compose override replaces a `command`
+    # list rather than appending to it, so every flag the production file sets
+    # has to be here or it is lost — which is the whole reason this block is
+    # long. The only line that differs from `docker-compose.yml` is the
+    # `caServer` below; keep the rest in step with it.
+    command:
+      - --entryPoints.web.address=:80
+      - --entryPoints.web.http.redirections.entryPoint.to=websecure
+      - --entryPoints.web.http.redirections.entryPoint.scheme=https
+      - --entryPoints.websecure.address=:443
+      - --certificatesResolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesResolvers.le.acme.storage=/acme/acme.json
+      - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
+      # A dead address on this container's own loopback: discard port 9, which
+      # nothing listens on. The routers still name the `le` resolver, so
+      # Traefik tries, fails to reach any CA, and falls back to the default
+      # self-signed certificate it generates for itself — which is what makes
+      # `https://localhost` work offline and without an account. Pointing it at
+      # Let's Encrypt's staging endpoint instead would still need a publicly
+      # resolvable hostname.
+      - --certificatesResolvers.le.acme.caServer=https://127.0.0.1:9/directory
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --api=false
+      - --global.checkNewVersion=false
+      - --global.sendAnonymousUsage=false
+      - --log.level=INFO
+
+  # Sign-in and invitation mail, as in the development lane. `.env.local`
+  # points SMTP_URL here, so the worker sends over SMTP exactly as it would to
+  # a real transport.
+  #
+  # Its ports are published on an EPHEMERAL loopback port rather than 1025 and
+  # 8025: those are the development lane's, and taking them would mean
+  # `pnpm dev` and `dev:stack` could not both be up. Ask Docker which port the
+  # inbox landed on —
+  #
+  #   docker compose -p studio-stack port mailpit 8025
+  #
+  # — which `dev:stack` also prints. SMTP is not published at all: nothing
+  # outside this network sends through it.
+  mailpit:
+    image: axllent/mailpit:v1.28@sha256:c6cf0b06eb516a0b80a8a5251f945c131e6beb8396112964404f62856487f5bd
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1::8025'
+
+  # `image` and `build` together: Compose builds only when the tag is absent,
+  # so `dev:stack` (which builds both images first) reuses what it built, and
+  # `docker compose … build` against this project rebuilds them. The context is
+  # the monorepo root — relative to this file's directory, which is what
+  # Compose resolves a build context against.
+  api:
+    build: &studio-api-build
+      context: ../..
+      dockerfile: apps/studio/Dockerfile
+      target: studio-api
+  worker:
+    build: *studio-api-build
+  migrate:
+    build: *studio-api-build
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/studio/Dockerfile
+      target: studio-web

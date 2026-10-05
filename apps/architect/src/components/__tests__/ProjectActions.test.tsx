@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ToolbarButton } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import { ActionToolbarProvider } from '../ProjectNav/ActionToolbar';
 import ProjectActions from '../ProjectNav/ProjectActions';
@@ -119,12 +120,6 @@ const createTestStore = ({
       // ProjectActions now reads draft undo/redo state via useProtocolUndoRedo.
       // On the '/protocol' route the draft scope is inactive, but the hook
       // still reads these selectors unconditionally, so the slice must exist.
-      stageEditorDraft: (
-        state = {
-          history: { past: [], present: null, timeline: [], future: [] },
-          ui: { restoring: false, initialValues: null },
-        },
-      ) => state,
     },
   });
 
@@ -401,9 +396,11 @@ describe('<ProjectActions />', () => {
 
     const successCall = openDialogMock.mock.calls.find(
       ([config]) =>
-        (config as { type?: string; title?: string }).type === 'acknowledge' &&
-        (config as { type?: string; title?: string }).title ===
-          'Protocol source saved',
+        (config as { type?: string; title?: ReactNode }).type ===
+          'acknowledge' &&
+        renderQueuedMessage(
+          (config as { type?: string; title?: ReactNode }).title,
+        ) === 'Protocol source saved',
     );
     expect(successCall).toBeDefined();
   });

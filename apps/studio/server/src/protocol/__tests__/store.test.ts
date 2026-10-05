@@ -1,40 +1,47 @@
 import { randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { SectionValidationFailedError } from '@codaco/studio-sync/section-validation';
 import {
   LeaseRejectedError,
-  SyncServer,
   UnknownDraftError,
   UnknownSectionError,
 } from '@codaco/studio-sync/server';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
+import { testCipher } from '../../__tests__/support/secrets.ts';
+import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../asset-keys.ts';
 import {
   DraftStructureError,
   addCodebookEntity,
   addStage,
+  moveStage,
   removeCodebookEntity,
   removeStage,
 } from '../draft-structure.ts';
 import { ProtocolStore } from '../store.ts';
 import { createProtocolSyncServer } from '../sync.ts';
-import { SectionValidationFailedError } from '../validate.ts';
 import {
+  TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
+  makeTestSyncServer,
   storeDb,
   waitForLockWait,
 } from './helpers.ts';
 
 describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   let db: pg.Pool;
+  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(db);
+    ({ db, tenantDb, dispose } = await makeStoreSchema());
+    store = new ProtocolStore(tenantDb, testCipher());
   });
   afterAll(async () => {
     await dispose();
@@ -45,6 +52,82 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       protocol: baseProtocol(),
     });
     expect(await store.getDraftDocument(draftId)).toEqual(baseProtocol());
+  });
+
+  it('createProtocol returns the same draft for a repeated creation identity', async () => {
+    const protocolId = randomUUID();
+    const draftId = randomUUID();
+    const params = { protocol: baseProtocol(), protocolId, draftId };
+
+    await expect(store.createProtocol(params)).resolves.toEqual({
+      protocolId,
+      draftId,
+    });
+    await expect(store.createProtocol(params)).resolves.toEqual({
+      protocolId,
+      draftId,
+    });
+
+    const rows = await db.query(
+      `SELECT count(*)::int AS count FROM protocol_drafts
+       WHERE protocol_id = $1 AND draft_id = $2`,
+      [protocolId, draftId],
+    );
+    expect(rows.rows[0]).toEqual({ count: 1 });
+  });
+
+  it('createProtocol can participate in an existing transaction and reports idempotence', async () => {
+    const protocolId = randomUUID();
+    const draftId = randomUUID();
+    const params = { protocol: baseProtocol(), protocolId, draftId };
+
+    await tenantDb.transaction(async (client) => {
+      await expect(store.createProtocol(params, client)).resolves.toEqual({
+        protocolId,
+        draftId,
+        created: true,
+      });
+      await expect(store.createProtocol(params, client)).resolves.toEqual({
+        protocolId,
+        draftId,
+        created: false,
+      });
+    });
+
+    expect(await store.getDraftDocument(draftId)).toEqual(baseProtocol());
+  });
+
+  it('createProtocol rolls back with its supplied transaction', async () => {
+    const protocolId = randomUUID();
+    const draftId = randomUUID();
+
+    await expect(
+      tenantDb.transaction(async (client) => {
+        await store.createProtocol(
+          { protocol: baseProtocol(), protocolId, draftId },
+          client,
+        );
+        throw new Error('rollback create');
+      }),
+    ).rejects.toThrow('rollback create');
+
+    await expect(
+      store.getProtocolDraftMetadata(protocolId, draftId),
+    ).rejects.toThrow(/no draft/);
+  });
+
+  it('reads protocol draft metadata without loading section documents', async () => {
+    const { protocolId, draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const getDraftSections = vi.spyOn(store, 'getDraftSections');
+
+    await expect(
+      store.getProtocolDraftMetadata(protocolId, draftId),
+    ).resolves.toMatchObject({ id: protocolId, draftId });
+    expect(getDraftSections).not.toHaveBeenCalled();
+
+    getDraftSections.mockRestore();
   });
 
   it('createProtocol rejects a section that fails write-time validation', async () => {
@@ -59,7 +142,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stage:nameGenerator1', 'tab-1');
     expect(lease).not.toBeNull();
     await sync.commit({
@@ -76,12 +159,48 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(document.stages[0]!.label).toBe('Renamed');
   });
 
+  it('sync commits can share an existing transaction and preserve deduplication', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = makeTestSyncServer(tenantDb);
+    const lease = await sync.acquire(draftId, 'settings', 'transaction-tab');
+    expect(lease).not.toBeNull();
+    const params = {
+      draftId,
+      sectionId: 'settings',
+      owner: 'transaction-tab',
+      epoch: lease!.epoch,
+      clientSeq: 1n,
+      commands: [
+        { op: 'set' as const, key: 'description', value: 'Transactional' },
+      ],
+    };
+
+    await expect(
+      tenantDb.transaction(async (client) => {
+        const result = await sync.commit(params, client);
+        expect(result.deduped).toBe(false);
+        throw new Error('rollback commit');
+      }),
+    ).rejects.toThrow('rollback commit');
+
+    const committed = await tenantDb.transaction((client) =>
+      sync.commit(params, client),
+    );
+    expect(committed.deduped).toBe(false);
+    const replayed = await tenantDb.transaction((client) =>
+      sync.commit(params, client),
+    );
+    expect(replayed).toEqual({ ...committed, deduped: true });
+  });
+
   it('addStage inserts section and order entry in one manifest advance', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
     const before = await store.getDraftSections(draftId);
-    const result = await addStage(db, {
+    const result = await addStage(tenantDb, {
       draftId,
       stage: {
         id: 'info1',
@@ -108,18 +227,74 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     ]);
   });
 
+  it('structural mutations can share an existing transaction', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+
+    const result = await tenantDb.transaction(async (client) => {
+      const added = await addStage(
+        tenantDb,
+        {
+          draftId,
+          stage: {
+            id: 'transactionalInfo',
+            type: 'Information',
+            label: 'Transactional',
+            title: 'Transactional',
+            items: [],
+          },
+          index: 1,
+        },
+        client,
+      );
+      const moved = await moveStage(
+        tenantDb,
+        {
+          draftId,
+          stageId: 'transactionalInfo',
+          toIndex: 0,
+          expectedRevision: added.manifestSeq,
+        },
+        client,
+      );
+      const unchanged = await moveStage(
+        tenantDb,
+        {
+          draftId,
+          stageId: 'transactionalInfo',
+          toIndex: 0,
+          expectedRevision: moved.manifestSeq,
+        },
+        client,
+      );
+      return { added, moved, unchanged };
+    });
+
+    expect(result.moved.manifestSeq).toBe(result.added.manifestSeq + 1n);
+    expect(result.unchanged).toEqual(result.moved);
+    const document = (await store.getDraftDocument(draftId)) as {
+      stages: { id: string }[];
+    };
+    expect(document.stages.map((stage) => stage.id)).toEqual([
+      'transactionalInfo',
+      'nameGenerator1',
+      'sociogram1',
+    ]);
+  });
+
   it('addStage refuses duplicates, bad indexes, and invalid stages', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
     await expect(
-      addStage(db, {
+      addStage(tenantDb, {
         draftId,
         stage: baseProtocol().stages[0]!,
       }),
     ).rejects.toThrow(/already exists/);
     await expect(
-      addStage(db, {
+      addStage(tenantDb, {
         draftId,
         stage: {
           id: 'info2',
@@ -132,11 +307,14 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       }),
     ).rejects.toThrow(/out of range/);
     await expect(
-      addStage(db, { draftId, stage: { id: 'bad', type: 'Information' } }),
+      addStage(tenantDb, {
+        draftId,
+        stage: { id: 'bad', type: 'Information' },
+      }),
     ).rejects.toThrow(SectionValidationFailedError);
     for (const index of [1.5, Number.NaN]) {
       await expect(
-        addStage(db, {
+        addStage(tenantDb, {
           draftId,
           stage: {
             id: 'info3',
@@ -157,7 +335,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     });
     const before = await store.getDraftSections(draftId);
     const removedHash = before.sectionHashes['stage:sociogram1'];
-    await removeStage(db, { draftId, stageId: 'sociogram1' });
+    await removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
 
     const document = (await store.getDraftDocument(draftId)) as {
       stages: { id: string }[];
@@ -171,7 +349,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(row.rowCount).toBe(1);
 
     await expect(
-      removeStage(db, { draftId, stageId: 'sociogram1' }),
+      removeStage(tenantDb, { draftId, stageId: 'sociogram1' }),
     ).rejects.toThrow(DraftStructureError);
   });
 
@@ -179,7 +357,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await addCodebookEntity(db, {
+    await addCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'node', typeId: 'place' },
       definition: {
@@ -197,7 +375,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     ]);
 
     await expect(
-      addCodebookEntity(db, {
+      addCodebookEntity(tenantDb, {
         draftId,
         ref: { entity: 'node', typeId: 'place' },
         definition: {
@@ -208,7 +386,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       }),
     ).rejects.toThrow(/already exists/);
 
-    await removeCodebookEntity(db, {
+    await removeCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'node', typeId: 'place' },
     });
@@ -223,7 +401,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       protocol: baseProtocol(),
     });
     await expect(
-      addCodebookEntity(db, {
+      addCodebookEntity(tenantDb, {
         draftId,
         ref: { entity: 'node', typeId: 'person type' },
         definition: {
@@ -243,7 +421,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = createProtocolSyncServer(db);
+    const sync = createProtocolSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     const before = await store.getDraftSections(draftId);
 
@@ -267,7 +445,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = createProtocolSyncServer(db);
+    const sync = createProtocolSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stage:sociogram1', 'tab-1');
 
     await expect(
@@ -287,11 +465,11 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'editor-tab');
     expect(lease).not.toBeNull();
 
-    await addStage(db, {
+    await addStage(tenantDb, {
       draftId,
       stage: {
         id: 'infoFence',
@@ -320,7 +498,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(
       draftId,
       'codebook:edge:knows',
@@ -328,11 +506,11 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     );
     expect(lease).not.toBeNull();
 
-    await removeCodebookEntity(db, {
+    await removeCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'edge', typeId: 'knows' },
     });
-    await addCodebookEntity(db, {
+    await addCodebookEntity(tenantDb, {
       draftId,
       ref: { entity: 'edge', typeId: 'knows' },
       definition: { name: 'Knows', color: 'edge-color-seq-2' },
@@ -354,7 +532,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'commit-tab');
 
     const blocker = await db.connect();
@@ -365,12 +543,20 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const head = await store.getDraftSections(draftId);
     const advanced = { ...head.sectionHashes, settings: 'advanced-hash' };
     await blocker.query(
-      `INSERT INTO sections (hash, doc) VALUES ('advanced-hash', '{}'::jsonb)`,
+      `INSERT INTO sections (team_id, hash, doc)
+       VALUES ($1, 'advanced-hash', '{}'::jsonb)`,
+      [TEST_TEAM_ID],
     );
     await blocker.query(
-      `INSERT INTO manifests (draft_id, seq, hash, parent_hash, section_hashes)
-       VALUES ($1, $2, 'advanced-manifest', $3, $4)`,
-      [draftId, String(head.headSeq + 1n), head.headManifestHash, advanced],
+      `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
+       VALUES ($1, $5, $2, 'advanced-manifest', $3, $4)`,
+      [
+        draftId,
+        String(head.headSeq + 1n),
+        head.headManifestHash,
+        advanced,
+        TEST_TEAM_ID,
+      ],
     );
     await blocker.query(
       `UPDATE drafts SET head_seq = $2, head_manifest_hash = 'advanced-manifest'
@@ -378,7 +564,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       [draftId, String(head.headSeq + 1n)],
     );
 
-    const pending = removeStage(db, { draftId, stageId: 'sociogram1' });
+    const pending = removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
     await waitForLockWait(db);
     await blocker.query('COMMIT');
     blocker.release();
@@ -392,7 +578,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = createProtocolSyncServer(db);
+    const sync = createProtocolSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     const before = await store.getDraftSections(draftId);
 
@@ -422,7 +608,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
     await sync.commit({
       draftId,
@@ -443,9 +629,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     await sync.acquire(draftId, 'stage:sociogram1', 'editor-tab');
-    await removeStage(db, { draftId, stageId: 'sociogram1' });
+    await removeStage(tenantDb, { draftId, stageId: 'sociogram1' });
 
     await expect(
       sync.takeover(draftId, 'stage:sociogram1', 'other-tab'),
@@ -456,7 +642,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'editor-tab');
     await store.discardDraft(draftId);
 
@@ -479,7 +665,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = makeTestSyncServer(tenantDb);
     await sync.acquire(draftId, 'settings', 'tab-1');
     await store.discardDraft(draftId);
 
@@ -497,6 +683,210 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       );
       expect(res.rowCount, table).toBe(0);
     }
+  });
+
+  describe('API-key assets (#1900)', () => {
+    // Not Mapbox-token shaped, so `pnpm check:mapbox-tokens` does not read it
+    // as a committed access token; see the guard's own comment.
+    const KEY = 'map-key-not-a-real-key';
+
+    function protocolWithKey(): CurrentProtocol {
+      return {
+        ...baseProtocol(),
+        assetManifest: {
+          mapKey: { name: 'Mapbox token', type: 'apikey', value: KEY },
+        },
+      } as unknown as CurrentProtocol;
+    }
+
+    it('seals the key and stores a manifest that does not carry it', async () => {
+      const { protocolId, draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+
+      const document = await store.getDraftDocument(draftId);
+      const manifest = document.assetManifest as Record<
+        string,
+        Record<string, unknown>
+      >;
+      expect(manifest.mapKey).toEqual({
+        name: 'Mapbox token',
+        type: 'apikey',
+      });
+
+      const sealed = await db.query(
+        `SELECT key_id FROM protocol_asset_keys
+         WHERE team_id = $1 AND protocol_id = $2 AND asset_id = $3`,
+        [TEST_TEAM_ID, protocolId, 'mapKey'],
+      );
+      expect(sealed.rowCount).toBe(1);
+      await expect(
+        openAssetKey(tenantDb, testCipher(), {
+          teamId: TEST_TEAM_ID,
+          protocolId,
+          assetId: 'mapKey',
+        }),
+      ).resolves.toBe(KEY);
+    });
+
+    it('never writes the key into any section row', async () => {
+      await store.createProtocol({ protocol: protocolWithKey() });
+
+      // The whole table, because a key must not be at rest in any revision of
+      // any section — not only in the manifest the draft happens to point at.
+      const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
+      const all = (docs.rows as { doc: string }[])
+        .map((row) => row.doc)
+        .join('\n');
+      expect(all).not.toContain(KEY);
+    });
+
+    it('still refuses an import whose apikey asset has no value', async () => {
+      // Stripping must not become a way to smuggle an invalid manifest past
+      // the write-time section validation.
+      await expect(
+        store.createProtocol({
+          protocol: {
+            ...baseProtocol(),
+            assetManifest: {
+              mapKey: { name: 'Mapbox token', type: 'apikey', value: '' },
+            },
+          } as unknown as CurrentProtocol,
+        }),
+      ).rejects.toThrow(SectionValidationFailedError);
+    });
+
+    it('publishes a draft whose key is sealed, validating against the placeholder', async () => {
+      const { draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+
+      await expect(store.validateDraft(draftId)).resolves.toEqual({
+        valid: true,
+      });
+      const published = await store.publishDraft({ draftId });
+      expect(published.status).toBe('published');
+    });
+
+    it('refuses a sync commit that would write a key into the assets section', async () => {
+      // The client route for a key is `resources.stage`, which promotes it
+      // through the host and seals it. A commit carrying one is refused rather
+      // than stripped, so the editor is told instead of silently losing it.
+      const { draftId } = await store.createProtocol({
+        protocol: baseProtocol(),
+      });
+      const sync = createProtocolSyncServer(tenantDb);
+      const lease = await sync.acquire(draftId, 'assets', 'tab-1');
+      const before = await store.getDraftSections(draftId);
+
+      await expect(
+        sync.commit({
+          draftId,
+          sectionId: 'assets',
+          owner: 'tab-1',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [
+            {
+              op: 'set',
+              key: 'mapKey',
+              value: { name: 'Mapbox token', type: 'apikey', value: KEY },
+            },
+          ],
+        }),
+      ).rejects.toThrow(SectionValidationFailedError);
+
+      const after = await store.getDraftSections(draftId);
+      expect(after.headManifestHash).toBe(before.headManifestHash);
+    });
+
+    it('admits a sync commit that writes a file asset', async () => {
+      // The refusal has to be about keys, not about the assets section: a
+      // researcher adding a geojson through the same path must still work.
+      const { draftId } = await store.createProtocol({
+        protocol: baseProtocol(),
+      });
+      const sync = createProtocolSyncServer(tenantDb);
+      const lease = await sync.acquire(draftId, 'assets', 'tab-2');
+
+      await expect(
+        sync.commit({
+          draftId,
+          sectionId: 'assets',
+          owner: 'tab-2',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [
+            {
+              op: 'set',
+              key: 'map',
+              value: {
+                name: 'Districts',
+                type: 'geojson',
+                source: 'districts.geojson',
+              },
+            },
+          ],
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it('admits a sync commit on the assets section of a protocol with a sealed key', async () => {
+      // The stored manifest carries the key entry WITHOUT its value, and
+      // schema 8 requires an `apikey` asset to have one. Validating the merged
+      // section as it is stored therefore refused every later edit of the
+      // assets section — adding a geojson beside a promoted key — with an
+      // issue at [mapKey, value] that no client could ever satisfy.
+      const { draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+      const sync = createProtocolSyncServer(tenantDb);
+      const lease = await sync.acquire(draftId, 'assets', 'tab-3');
+
+      await expect(
+        sync.commit({
+          draftId,
+          sectionId: 'assets',
+          owner: 'tab-3',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [
+            {
+              op: 'set',
+              key: 'map',
+              value: {
+                name: 'Districts',
+                type: 'geojson',
+                source: 'districts.geojson',
+              },
+            },
+          ],
+        }),
+      ).resolves.toBeDefined();
+
+      // And the commit did not put the key back: the merged document the
+      // validator saw carried a placeholder, which is never written. The whole
+      // table, because the commit wrote a new revision of the section.
+      const docs = await db.query(`SELECT doc::text AS doc FROM sections`);
+      const all = (docs.rows as { doc: string }[])
+        .map((row) => row.doc)
+        .join('\n');
+      expect(all).not.toContain(KEY);
+      expect(all).not.toContain(ASSET_KEY_PLACEHOLDER);
+    });
+
+    it('returns the redacted manifest from a published version too', async () => {
+      const { draftId } = await store.createProtocol({
+        protocol: protocolWithKey(),
+      });
+      const published = await store.publishDraft({ draftId });
+      if (published.status !== 'published') {
+        throw new Error(`expected a publication, got ${published.status}`);
+      }
+
+      const document = await store.getVersionDocument(published.versionId);
+      expect(JSON.stringify(document)).not.toContain(KEY);
+    });
   });
 
   it('unknown drafts and versions surface as errors', async () => {

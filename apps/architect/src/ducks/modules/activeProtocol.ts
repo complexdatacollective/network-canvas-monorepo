@@ -9,7 +9,7 @@ import { navigate } from 'wouter/use-browser-location';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {
-  getCanonicalProtocol,
+  getProtocol,
   getCanRedo,
   getCanUndo,
   getRedoTargetPath,
@@ -21,7 +21,6 @@ import { timelineActions } from '../middleware/timeline';
 import { getProtocolOwnedHere } from './app';
 import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
-import { isStageEditorCodebookAction } from './protocol/stageEditorCodebookMeta';
 import stages from './protocol/stages';
 
 // Types
@@ -101,10 +100,7 @@ const activeProtocolSlice = createSlice({
         }
       }
 
-      // A codebook write made inside an open stage editor belongs to that
-      // editor's draft copy, not to the canonical protocol — it must not reach
-      // validation or persistence until the stage is committed (#1382).
-      if (state.codebook && !isStageEditorCodebookAction(action)) {
+      if (state.codebook) {
         const currentCodebook = current(state.codebook);
         const newCodebook = codebook(currentCodebook, action);
         if (newCodebook !== currentCodebook) {
@@ -213,13 +209,13 @@ const performTimelineOperation =
     // the timeline — would hand back a fresh object for an unchanged protocol,
     // and a refused undo would be reported, and announced, as "Change undone."
     // Reading the raw present has no cache to depend on.
-    const previousProtocol = getCanonicalProtocol(state);
+    const previousProtocol = getProtocol(state);
 
     dispatch(createAction());
 
     // Confirm from state rather than trusting the pre-flight check, so a
     // reducer that refuses can never be reported (or announced) as applied.
-    if (getCanonicalProtocol(getState()) === previousProtocol) {
+    if (getProtocol(getState()) === previousProtocol) {
       return NOT_APPLIED;
     }
 

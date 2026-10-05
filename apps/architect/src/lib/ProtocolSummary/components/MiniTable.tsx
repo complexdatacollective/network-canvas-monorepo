@@ -40,7 +40,6 @@ const MiniTable = ({
         <thead>
           <tr key="0">
             {rows[0]?.map((column, m) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: Static table headers with no unique identifiers
               <th key={`header-col-${m}`}>{column}</th>
             ))}
           </tr>
@@ -48,10 +47,8 @@ const MiniTable = ({
       )}
       <tbody>
         {[...(!rotated ? rows.slice(1) : rows)].map((row, n) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: Static table data with no unique identifiers
           <tr key={`row-${n}`}>
             {row.map((column, m) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: Static table cells with no unique identifiers
               <td key={`col-${m}`}>{column}</td>
             ))}
           </tr>

@@ -4,7 +4,7 @@ import { getAppSetting } from '~/queries/appSettings';
 
 import Switch from './SwitchWithOptimisticUpdate';
 
-const FreezeInterviewsSwitch = async () => {
+const FreezeInterviewsSwitch = async ({ label }: { label: string }) => {
   const freezeInterviewsAfterCompletion = await getAppSetting(
     'freezeInterviewsAfterCompletion',
   );
@@ -15,6 +15,7 @@ const FreezeInterviewsSwitch = async () => {
 
   return (
     <Switch
+      label={label}
       initialValue={freezeInterviewsAfterCompletion}
       updateValue={async (value) => {
         'use server';

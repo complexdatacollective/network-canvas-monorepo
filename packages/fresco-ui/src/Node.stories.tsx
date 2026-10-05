@@ -940,13 +940,11 @@ export const LabelReveal: Story = {
 
     // A hold on a clipped name shows it is underway, then reveals it in full.
     await userEvent.pointer({ keys: '[MouseLeft>]', target: clipped });
-    await waitFor(
-      () => expect(clipped.querySelector('[data-node-holding]')).not.toBeNull(),
-      { timeout: 3000 },
+    await waitFor(() =>
+      expect(clipped.querySelector('[data-node-holding]')).not.toBeNull(),
     );
-    await waitFor(
-      () => expect(openTooltip()).toHaveTextContent(beyondAnyFit.label),
-      { timeout: 3000 },
+    await waitFor(() =>
+      expect(openTooltip()).toHaveTextContent(beyondAnyFit.label),
     );
     await userEvent.pointer({ keys: '[/MouseLeft]', target: clipped });
 
@@ -1022,7 +1020,7 @@ export const GestureClassification: Story = {
 
     // A press held still is a hold — and its release is not a click either.
     await userEvent.pointer({ keys: '[MouseLeft>]', target: node });
-    await waitFor(() => expect(log()).toContain('holds:1'), { timeout: 3000 });
+    await waitFor(() => expect(log()).toContain('holds:1'));
     await userEvent.pointer({ keys: '[/MouseLeft]' });
     await new Promise((resolve) => setTimeout(resolve, 100));
     await expect(log()).toBe('clicks:1 drags:1 holds:1');
@@ -1160,7 +1158,7 @@ export const HoldToDragHandoff: Story = {
     );
 
     // The hold runs its course and reveals the clipped label.
-    await waitFor(() => expect(openPopup()).not.toBeNull(), { timeout: 2000 });
+    await waitFor(() => expect(openPopup()).not.toBeNull());
 
     // Movement past the threshold turns the gesture into a drag: the label
     // comes down rather than trailing the node, and the drag goes live.
@@ -1204,7 +1202,7 @@ export const TwoFingerHold: Story = {
 
     // One finger holds until the label appears.
     downOn(node, 21);
-    await waitFor(() => expect(openPopup()).not.toBeNull(), { timeout: 2000 });
+    await waitFor(() => expect(openPopup()).not.toBeNull());
 
     // A second finger lands on the same node and lifts again: the hold owns
     // the gesture, so the label must not be snatched away mid-read.

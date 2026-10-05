@@ -89,7 +89,6 @@ Note: for Apple Silicon users, you need to install the `electron` package manual
 | `dev:[platform]`   | Run a live-reloading build of the app, targeted at the platform you specify. Requires the live server to be running (see start task). |
 | `build:[platform]` | Compiles assets and prepares app for production on the given platform.                                                                |
 | `test`             | Runs testing suite.                                                                                                                   |
-| `generate-icons`   | Uses icon-gen package to generate iconsets and icon files for OSX and Windows.                                                        |
 | `dist:[platform]`  | Uses electron-packager or cordova to package a release for the specified platform.                                                    |
 | `lint`             | Lints the project according to our eslint configuration                                                                               |
 | `sass-lint`        | Lints the project's SASS files only, according to our sass-lint configuration.                                                        |
@@ -101,6 +100,27 @@ Note: for Apple Silicon users, you need to install the `electron` package manual
   - Currently, you can only run _one platform at a time_
 
 See below for installation, options, and information on platform specifics.
+
+## Mobile release builds
+
+The Capacitor projects in `android/` and `ios/` take their version from
+`package.json`. `pnpm version:sync`, which the `cap:sync`, `cap:run:*` and
+`cap:dev:*` scripts run first, writes the version name and a build number of
+`(major * 10000 + minor * 100 + patch) * 100` (6.6.2 -> 6060200) to both
+projects. Google Play and App Store Connect need a new, higher build number
+for every upload, so to upload the same version again, raise the last two
+digits (6060201) in both `android/app/build.gradle` (`versionCode`) and
+Xcode (_Build_). `version:sync` keeps the raised number until the version
+changes.
+
+Run `pnpm cap:sync` before building either platform.
+
+- **Android**: open `android/` in Android Studio and use _Build -> Generate
+  Signed App Bundle or APK_ with the Play upload key. Keep keystores out of
+  the repo.
+- **iOS**: open `ios/App/App.xcodeproj` in Xcode, choose the team under
+  _Signing & Capabilities_, then _Product -> Archive_ and _Distribute App_.
+  The app is iPad-only.
 
 ## Cordova Builds
 

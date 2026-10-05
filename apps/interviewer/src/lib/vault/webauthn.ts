@@ -1,4 +1,36 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+
+import { LocalizedError } from '../../i18n/messageResult';
 import { fromBase64, toBase64 } from './crypto';
+
+const messages = defineMessages({
+  enrolmentCancelled: {
+    id: 'interviewer.webauthn.enrolmentCancelled',
+    defaultMessage: 'Biometric enrolment was cancelled',
+    description: 'Administration text in Interviewer webauthn.',
+  },
+  unusableCredential: {
+    id: 'interviewer.webauthn.unusableCredential',
+    defaultMessage: 'This device did not return a usable credential',
+    description: 'Administration text in Interviewer webauthn.',
+  },
+  unsupportedSecret: {
+    id: 'interviewer.webauthn.unsupportedSecret',
+    defaultMessage:
+      "This device's authenticator can't create the biometric secret (PRF) needed to encrypt your data. Choose a PIN or passphrase instead.",
+    description: 'Administration text in Interviewer webauthn.',
+  },
+  verificationCancelled: {
+    id: 'interviewer.webauthn.verificationCancelled',
+    defaultMessage: 'Biometric verification was cancelled',
+    description: 'Administration text in Interviewer webauthn.',
+  },
+  missingSecret: {
+    id: 'interviewer.webauthn.missingSecret',
+    defaultMessage: 'This device did not return a biometric secret (PRF)',
+    description: 'Administration text in Interviewer webauthn.',
+  },
+});
 
 export type BiometricEnrollment = {
   credentialId: string; // base64url
@@ -138,10 +170,10 @@ export async function enrollBiometric(
     },
   });
   if (created == null) {
-    throw new Error('Biometric enrolment was cancelled');
+    throw new LocalizedError(messages.enrolmentCancelled);
   }
   if (!hasClientExtensions(created)) {
-    throw new Error('This device did not return a usable credential');
+    throw new LocalizedError(messages.unusableCredential);
   }
   const rawId = new Uint8Array(created.rawId);
   const credentialId = toBase64Url(rawId);
@@ -154,9 +186,7 @@ export async function enrollBiometric(
   // drop the passkey this ceremony just orphaned.
   if (created.getClientExtensionResults().prf?.enabled !== true) {
     await signalCredentialUnknown(credentialId);
-    throw new Error(
-      "This device's authenticator can't create the biometric secret (PRF) needed to encrypt your data. Choose a PIN or passphrase instead.",
-    );
+    throw new LocalizedError(messages.unsupportedSecret);
   }
 
   const prfSaltB64 = toBase64(prfSalt);
@@ -187,11 +217,11 @@ export async function readPrf(
     },
   });
   if (assertion == null) {
-    throw new Error('Biometric verification was cancelled');
+    throw new LocalizedError(messages.verificationCancelled);
   }
   const first = readPrfFirst(assertion);
   if (first == null) {
-    throw new Error('This device did not return a biometric secret (PRF)');
+    throw new LocalizedError(messages.missingSecret);
   }
   return first;
 }
