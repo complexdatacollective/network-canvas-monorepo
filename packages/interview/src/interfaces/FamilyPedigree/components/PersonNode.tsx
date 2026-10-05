@@ -1,7 +1,7 @@
 'use client';
 
 import { TriangleAlert } from 'lucide-react';
-import type { ReactNode, Ref } from 'react';
+import type { KeyboardEvent, ReactNode, Ref } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
@@ -21,6 +21,10 @@ type PersonNodeProps = {
   selected: boolean;
   hasMissingDetails: boolean;
   onActivate: () => void;
+  /** 0 for the family's single tab stop, -1 for everyone else. */
+  tabIndex: number;
+  onFocus: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
   nodeRef?: Ref<HTMLButtonElement>;
   /** Rendered after the symbol, inside its positioning box (the add menu). */
   children?: ReactNode;
@@ -36,6 +40,9 @@ export default function PersonNode({
   selected,
   hasMissingDetails,
   onActivate,
+  tabIndex,
+  onFocus,
+  onKeyDown,
   nodeRef,
   children,
 }: PersonNodeProps) {
@@ -67,6 +74,9 @@ export default function PersonNode({
         })}
         selected={selected}
         onClick={onActivate}
+        tabIndex={tabIndex}
+        onFocus={onFocus}
+        onKeyDown={onKeyDown}
       />
       {hasMissingDetails && (
         <Tooltip>

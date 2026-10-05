@@ -1,9 +1,7 @@
 'use client';
 
 import { Toolbar } from '@base-ui/react/toolbar';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import type { ReactNode } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -21,7 +19,6 @@ type AddRelativeMenuProps = {
 type MenuItem = {
   relation: Relation;
   label: MessageDescriptor;
-  icon: ReactNode;
   /** Where the button sits around the person's symbol. */
   placement: string;
 };
@@ -33,25 +30,21 @@ const ITEMS: MenuItem[] = [
   {
     relation: 'parent',
     label: messages.addParent,
-    icon: <ArrowUp className="size-5" aria-hidden />,
     placement: 'bottom-full left-1/2 mb-4 -translate-x-1/2',
   },
   {
     relation: 'sibling',
     label: messages.addSibling,
-    icon: <ArrowLeft className="size-5" aria-hidden />,
     placement: 'right-full top-1/2 mr-4 -translate-y-1/2',
   },
   {
     relation: 'partner',
     label: messages.addPartner,
-    icon: <ArrowRight className="size-5" aria-hidden />,
     placement: 'left-full top-1/2 ml-4 -translate-y-1/2',
   },
   {
     relation: 'child',
     label: messages.addChild,
-    icon: <ArrowDown className="size-5" aria-hidden />,
     placement: 'top-full left-1/2 mt-4 -translate-x-1/2',
   },
 ];
@@ -95,14 +88,13 @@ export default function AddRelativeMenu({
                 delay: reduceMotion ? 0 : index * 0.02,
               }}
               className={cx(
-                'focusable pointer-events-auto absolute flex size-20 flex-col items-center justify-center gap-0.5 rounded-full text-sm font-semibold',
+                'focusable pointer-events-auto absolute flex size-18 items-center justify-center rounded-full text-sm font-semibold',
                 'bg-surface-1 text-text elevation-medium hover:bg-primary hover:text-primary-contrast',
                 item.placement,
               )}
             />
           }
         >
-          {item.icon}
           <AppMessage message={item.label} />
         </Toolbar.Button>
       ))}

@@ -49,7 +49,6 @@ export default function PersonDrawer({
       swipeDirection="right"
     >
       <Drawer.Portal container={portalContainer ?? undefined}>
-        <Drawer.Backdrop className="fixed inset-0 bg-black/30 transition-opacity duration-300 data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <Drawer.Viewport className="pointer-events-none fixed inset-y-0 right-0 w-full max-w-md">
           <Drawer.Popup
             finalFocus={() => returnFocus()}

@@ -57,6 +57,11 @@ import {
 } from './model';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
+import {
+  ARROW_DIRECTIONS,
+  nearestInDirection,
+  type Point,
+} from './spatialNavigation';
 
 type PanelState = {
   open: boolean;
@@ -114,14 +119,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, [family.egoId, dispatch, config, currentStep]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Ego starts selected, so the add menu is visible from the outset.
-  const egoSelectedOnce = useRef(false);
+  // On a first visit — the participant alone on the canvas — they start
+  // selected, so the add menu is there from the outset.
+  const initialSelectionChecked = useRef(false);
   useEffect(() => {
-    if (family.egoId && !egoSelectedOnce.current) {
-      egoSelectedOnce.current = true;
-      setSelectedId(family.egoId);
-    }
-  }, [family.egoId]);
+    if (!family.egoId || initialSelectionChecked.current) return;
+    initialSelectionChecked.current = true;
+    if (family.people.length === 1) setSelectedId(family.egoId);
+  }, [family.egoId, family.people.length]);
   const selected = selectedId ? family.byId.get(selectedId) : undefined;
 
   const [panel, setPanel] = useState<PanelState>(null);
@@ -212,6 +217,45 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const handleActivate = (personId: string) => {
     setSelectedId(personId);
     openEdit(personId);
+  };
+
+  // Roving focus: the family is a single tab stop, and the arrow keys move
+  // between people by where they sit in the tree. Selection follows focus.
+  const tabStopId = selectedId ?? family.egoId ?? family.people[0]?.id;
+
+  const handleNodeKeyDown = (
+    personId: string,
+    event: React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    const direction = ARROW_DIRECTIONS[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    const centreOf = (element: HTMLElement): Point => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+    const current = nodeRefs.current.get(personId);
+    if (!current) return;
+    const candidates = new Map<string, Point>();
+    for (const [id, element] of nodeRefs.current) {
+      if (id !== personId) candidates.set(id, centreOf(element));
+    }
+    const next = nearestInDirection(centreOf(current), candidates, direction);
+    if (next) nodeRefs.current.get(next)?.focus();
+  };
+
+  // Clicking anywhere on the stage but a person clears the selection. The
+  // side panel is portalled out of the stage's DOM, so its clicks (which still
+  // bubble here through React) are ignored.
+  const handleStagePointerDown = (event: React.PointerEvent) => {
+    const { target, currentTarget } = event;
+    if (
+      target instanceof Element &&
+      currentTarget.contains(target) &&
+      !target.closest('[data-testid="pedigree-person"]')
+    ) {
+      setSelectedId(null);
+    }
   };
 
   const handleSubmit = async (result: PersonFormResult) => {
@@ -364,7 +408,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     : undefined;
 
   return (
-    <div className="interface flex h-full flex-col">
+    <div
+      className="interface flex h-full flex-col"
+      onPointerDown={handleStagePointerDown}
+    >
       <div className="shrink-0">
         <Prompts
           prompts={[{ id: 'pedigree', text: stage.prompt }]}
@@ -375,7 +422,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       <div
         role="region"
         aria-label={intl.formatMessage(messages.canvasLabel)}
-        className="relative min-h-0 flex-1 overflow-auto"
+        className="relative min-h-0 w-full flex-1 overflow-auto"
         onKeyDown={handleCanvasKeyDown}
         data-testid="pedigree-canvas"
       >
@@ -403,6 +450,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     missingDetailsFor(person, requiredFormVariables).length > 0
                   }
                   onActivate={() => handleActivate(personId)}
+                  tabIndex={personId === tabStopId ? 0 : -1}
+                  onFocus={() => setSelectedId(personId)}
+                  onKeyDown={(event) => handleNodeKeyDown(personId, event)}
                   nodeRef={setNodeRef(personId)}
                 >
                   {isSelected && (
