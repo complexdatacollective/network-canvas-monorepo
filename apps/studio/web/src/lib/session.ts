@@ -4,10 +4,16 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { useRouter, type AnyRouter } from '@tanstack/react-router';
+import { Predicate } from 'effect';
 import { useEffect } from 'react';
 
+import { Maintenance } from '@codaco/studio-contract/schema/errors';
+import { AUTH_NOT_CONFIGURED_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
+
 import { closeStudioEditorSessions } from '../editor/sessionLifecycle.ts';
+import { parseRetryAfter, refusalOf } from '../runtime/errors.ts';
 import { authClient } from './auth.ts';
+import { refusalRetryDelay } from './queryClient.ts';
 
 /**
  * The session could not be determined at all: the request never completed, or
@@ -27,21 +33,40 @@ type SessionState = 'signedIn' | 'signedOut';
 
 type SessionResponse = Awaited<ReturnType<typeof authClient.getSession>>;
 
+export const isSessionUnknown = (error: unknown): boolean =>
+  error instanceof ServerUnreachableError ||
+  refusalOf(error)?.kind === 'maintenance';
+
 async function fetchSessionState(): Promise<SessionState> {
   let response: SessionResponse;
+  let retryAfter: string | null = null;
   try {
-    response = await authClient.getSession();
+    response = await authClient.getSession({
+      fetchOptions: {
+        onError: ({ response: refused }) => {
+          retryAfter = refused.headers.get('retry-after');
+        },
+      },
+    });
   } catch {
     throw new ServerUnreachableError();
   }
 
   const { data, error } = response;
   if (error) {
-    // A server with no database answers /api/auth/* with 503 — the supported
-    // degradation, not a failure. That is a reachable server saying nobody is
-    // signed in, so it belongs on the sign-in page, which reads the same
-    // capability from the status query and explains it.
-    if (error.status === 503) return endedSession();
+    if (error.status === 503) {
+      // Only the not-configured 503 signs out: the proxy replaces every other 503 with its HTML page.
+      if (
+        Predicate.hasProperty(error, 'type') &&
+        error.type === AUTH_NOT_CONFIGURED_PROBLEM_TYPE
+      ) {
+        return endedSession();
+      }
+      const seconds = parseRetryAfter(retryAfter);
+      throw new Maintenance(
+        seconds === undefined ? {} : { retryAfterSeconds: seconds },
+      );
+    }
     throw new ServerUnreachableError();
   }
   return data ? 'signedIn' : endedSession();
@@ -144,7 +169,7 @@ export async function resolveSessionState(
   return await queryClient
     .fetchQuery(sessionQueryOptions)
     .catch((error: unknown) => {
-      if (!(error instanceof ServerUnreachableError)) throw error;
+      if (!isSessionUnknown(error)) throw error;
       const established = queryClient.getQueryData(
         sessionQueryOptions.queryKey,
       );
@@ -221,6 +246,7 @@ export async function revalidateSession(
 export function useSessionRevalidation(): void {
   const queryClient = useQueryClient();
   const router = useRouter();
+  useMaintenanceRevalidation();
 
   useEffect(() => {
     let inFlight = false;
@@ -236,6 +262,39 @@ export function useSessionRevalidation(): void {
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () =>
       document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [queryClient, router]);
+}
+
+export function useMaintenanceRevalidation(): void {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    const cache = queryClient.getQueryCache();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (timer !== undefined) return;
+      const state = cache.find({
+        queryKey: sessionQueryOptions.queryKey,
+        exact: true,
+      })?.state;
+      if (state?.fetchStatus !== 'idle') return;
+      if (refusalOf(state.error)?.kind !== 'maintenance') return;
+      timer = setTimeout(
+        () => {
+          timer = undefined;
+          void revalidateSession(queryClient, router);
+        },
+        refusalRetryDelay(0, state.error),
+      );
+    };
+
+    const unsubscribe = cache.subscribe(schedule);
+    schedule();
+    return () => {
+      unsubscribe();
+      if (timer !== undefined) clearTimeout(timer);
+    };
   }, [queryClient, router]);
 }
 

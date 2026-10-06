@@ -35,6 +35,7 @@ import {
 import type { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
 
 import { toTeamId } from '../lib/ids.ts';
+import { retryRefusals } from '../lib/queryClient.ts';
 import { isForbidden } from '../runtime/errors.ts';
 import { rpcInfiniteQuery, rpcQuery } from '../runtime/rpc.ts';
 
@@ -507,13 +508,6 @@ function listInput(teamId: TeamId, filters: ActivityFilters) {
 // nothing and saves a second read on every remount.
 const FILTER_OPTIONS_STALE_MS = 5 * 60 * 1000;
 
-// A permission refusal never resolves by retrying, and every denied attempt is
-// audited server-side, so a retried read writes further audit.read_denied
-// events. Shared by both audit reads.
-function retryUnlessForbidden(failureCount: number, error: unknown): boolean {
-  return !isForbidden(error) && failureCount < 3;
-}
-
 function actorText(
   intl: IntlShape,
   actor: AuditActorFilter & { label: string },
@@ -564,7 +558,8 @@ export default function TeamActivity() {
     ...rpcInfiniteQuery('audit.list', input, {
       getNextCursor: (page) => page.nextCursor ?? undefined,
     }),
-    retry: retryUnlessForbidden,
+    // A retried denied read writes another audit.read_denied event.
+    retry: retryRefusals,
   });
 
   const items = useMemo(
@@ -589,7 +584,7 @@ export default function TeamActivity() {
         enabled: activity.isSuccess,
       },
     ),
-    retry: retryUnlessForbidden,
+    retry: retryRefusals,
   });
 
   const actionOptions = useMemo(() => {
@@ -976,7 +971,7 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
       teamId: props.teamId,
       eventId: props.eventId,
     }),
-    retry: retryUnlessForbidden,
+    retry: retryRefusals,
   });
 
   if (detail.isPending) {

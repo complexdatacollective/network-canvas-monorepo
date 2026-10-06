@@ -6,6 +6,8 @@
 import { Predicate } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
+
 import { applySchema } from '../../scripts/apply.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { freePort, startEntrypoint } from './support/entrypoint.ts';
@@ -95,6 +97,7 @@ describe.skipIf(!db)('the web entrypoint', () => {
         expect(refused.status).toBe(503);
         expect(refused.headers.get('retry-after')).toBe('30');
         expect(await refused.json()).toEqual({
+          type: MAINTENANCE_PROBLEM_TYPE,
           title: 'Down for maintenance',
           status: 503,
         });

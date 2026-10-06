@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  QueryObserver,
+} from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
   act,
@@ -11,6 +15,7 @@ import {
 import { Effect } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Maintenance } from '@codaco/studio-contract/schema/errors';
 import {
   DraftId,
   ProtocolId,
@@ -21,7 +26,7 @@ import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 import { unclassifiedSurfacePaths } from '@codaco/studio-contract/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
-import { installRpcHarness } from '../../test/rpcHarness.ts';
+import { installRpcHarness, type RpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * §5.2's route table, asserted by rendering it.
@@ -320,8 +325,10 @@ const DESTINATIONS: Destination[] = [
   },
 ];
 
+let queryClient: QueryClient;
+
 function renderAt(url: string) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   const router = createAppRouter(
@@ -436,6 +443,8 @@ function menuDestinations(
 // which for the one-team fixture below is that team's studies.
 const HEADER = ['/team/$teamId', '/gallery', '/templates'];
 
+let harness: RpcHarness;
+
 beforeEach(() => {
   fixtures.deployment = { mode: 'managed', billing: false };
   fixtures.setup = { required: true };
@@ -444,7 +453,7 @@ beforeEach(() => {
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
     error: null,
   });
-  installRpcHarness({
+  harness = installRpcHarness({
     'status': () =>
       Effect.succeed({
         name: 'Network Canvas Studio',
@@ -506,6 +515,8 @@ beforeEach(() => {
  * it is a screen on an instance nobody owns and gone the moment somebody does
  * (#1909). Both halves are the guard's, so both are asserted here.
  */
+await import('../Editor.tsx');
+
 describe('first-run setup', () => {
   // A self-hosted instance throughout: `/setup` is classified self-host-only,
   // so on the managed service the topology guard refuses it before the setup
@@ -550,6 +561,52 @@ describe('first-run setup', () => {
       'href',
       '/sign-in',
     );
+  });
+});
+
+describe('an address naming an id the contract refuses', () => {
+  it.each([
+    ['/study/not-a-study/editor'],
+    ['/study/not-a-study/participants'],
+    [`/team/${'t'.repeat(256)}/activity`],
+  ])(
+    'is a not-found screen at %s, and asks the server nothing about it',
+    async (url) => {
+      renderAt(url);
+
+      expect(
+        await screen.findByRole('heading', {
+          level: 1,
+          name: 'Page not available',
+        }),
+      ).toBeInTheDocument();
+      const addressed = harness.calls.filter(({ tag }) =>
+        ['studies.get', 'studies.counts', 'audit.list'].includes(tag),
+      );
+      expect(addressed).toEqual([]);
+    },
+  );
+});
+
+describe('a read refused for maintenance', () => {
+  it('is explained above every screen of the app shell', async () => {
+    renderAt('/team/team-a');
+    await screen.findByRole('heading', { level: 1, name: 'Studies' });
+    expect(screen.queryByText(/down for maintenance/)).toBeNull();
+
+    const refused = new QueryObserver(queryClient, {
+      queryKey: ['refused-for-maintenance'],
+      queryFn: () => Promise.reject(new Maintenance({})),
+    });
+    const stop = refused.subscribe(() => undefined);
+
+    const notice = await screen.findByText(/Studio is down for maintenance/);
+    expect(notice.closest('main')).toBeNull();
+
+    act(() => stop());
+    await waitFor(() => {
+      expect(screen.queryByText(/down for maintenance/)).toBeNull();
+    });
   });
 });
 

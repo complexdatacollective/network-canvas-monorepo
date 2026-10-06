@@ -12,7 +12,7 @@ import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
-import { StudioRpcHandlers } from '../rpc/handlers.ts';
+import { StudioRpcHandlers, StudioRpcMiddleware } from '../rpc/handlers.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { AuthServiceStub } from './support/auth.ts';
 
@@ -87,6 +87,37 @@ const handlerContext = await Effect.runPromise(
     ),
   ),
 );
+
+const middlewareContext = await Effect.runPromise(
+  Effect.scoped(
+    Layer.build(
+      StudioRpcMiddleware(deps).pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            AuthServiceStub(),
+            RateLimiter.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
+
+describe('the middleware served at /rpc', () => {
+  it('provides exactly the middleware the procedures declare', () => {
+    const declared = new Set(
+      [...StudioRpcs.requests.values()].flatMap((rpc) =>
+        [...rpc.middlewares].map((middleware) => middleware.key),
+      ),
+    );
+    const provided = [...middlewareContext.mapUnsafe.entries()]
+      .filter(([, entry]: [string, unknown]) => Predicate.isFunction(entry))
+      .map(([key]) => key)
+      .toSorted();
+
+    expect(provided).toEqual([...declared].toSorted());
+  });
+});
 
 describe('the handlers served at /rpc', () => {
   it('implements every procedure StudioRpcs declares', () => {
