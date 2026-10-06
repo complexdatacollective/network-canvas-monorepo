@@ -269,33 +269,83 @@ export const EnvironmentSchema = Schema.Struct({
     },
   ),
 
+  STUDIO_OBJECT_STORE: variable(
+    Schema.Literals(['s3', 'azure-blob']).annotate(
+      refuses('must be s3 or azure-blob'),
+    ),
+    {
+      group: 'Object storage',
+      summary:
+        'Which provider holds asset bytes: `s3` (any S3-compatible store — Garage, R2, MinIO, AWS S3) or `azure-blob` (Azure Blob Storage).',
+      deployment:
+        'Unset ⇒ no object store: `/storage` answers 503 and `/readyz` has no object-store check. It selects which group of the variables below is read, and that group must be complete; any variable of the other group, or of either group while this is unset, is refused at boot.',
+      example: 's3',
+    },
+  ),
+
   S3_ENDPOINT: variable(HttpUrl, {
     group: 'Object storage',
     summary: 'S3-compatible endpoint holding content-addressed asset bytes.',
-    deployment: 'Required with the other four `S3_*` variables.',
+    deployment:
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
     example: 'https://s3.us-east-1.amazonaws.com',
   }),
   S3_REGION: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Region passed to the S3 client.',
-    deployment: 'Required with the other four `S3_*` variables.',
+    deployment:
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
     example: 'us-east-1',
   }),
   S3_BUCKET: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Bucket asset objects are written to and read from.',
-    deployment: 'Required with the other four `S3_*` variables.',
+    deployment:
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
     example: 'studio-assets',
   }),
   S3_ACCESS_KEY_ID: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Access key for the object store.',
-    deployment: 'Required with the other four `S3_*` variables.',
+    deployment:
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
   }),
   S3_SECRET_ACCESS_KEY: variable(NonEmptyString, {
     group: 'Object storage',
     summary: 'Secret key for the object store.',
-    deployment: 'Required with the other four `S3_*` variables.',
+    deployment:
+      'Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.',
+  }),
+
+  AZURE_STORAGE_ACCOUNT_URL: variable(HttpUrl, {
+    group: 'Object storage',
+    summary:
+      'Blob service endpoint of the Azure storage account holding asset bytes.',
+    deployment:
+      'With `STUDIO_OBJECT_STORE=azure-blob`, required unless `AZURE_STORAGE_CONNECTION_STRING` is set, and refused with it. Studio authenticates through Microsoft Entra ID with `DefaultAzureCredential` — on an Azure host, the managed identity it runs as — so no account key is involved: grant that identity the Storage Blob Data Contributor role on the container. Refused unless the provider is `azure-blob`.',
+    example: 'https://studioassets.blob.core.windows.net',
+  }),
+  AZURE_STORAGE_CONTAINER: variable(NonEmptyString, {
+    group: 'Object storage',
+    summary: 'Blob container asset objects are written to and read from.',
+    deployment:
+      'Required when `STUDIO_OBJECT_STORE` is `azure-blob`, and refused otherwise. The container must already exist: Studio never creates it, and `/readyz` reports the object store as failing until it does.',
+    example: 'studio-assets',
+  }),
+  AZURE_STORAGE_CONNECTION_STRING: variable(NonEmptyString, {
+    group: 'Object storage',
+    summary:
+      'Azure storage account connection string, for development and for hosts outside Azure that have no managed identity.',
+    deployment:
+      'Takes the place of `AZURE_STORAGE_ACCOUNT_URL`; setting both is refused. It carries an account key, which a deployment on Azure does not need — prefer the account URL and a managed identity there. Refused unless `STUDIO_OBJECT_STORE` is `azure-blob`.',
+  }),
+  AZURE_CLIENT_ID: variable(NonEmptyString, {
+    group: 'Object storage',
+    summary:
+      'Client ID of the user-assigned managed identity Studio authenticates to Azure Blob Storage as.',
+    deployment:
+      'Unset ⇒ the host’s system-assigned identity, or whatever else `DefaultAzureCredential` finds (workload identity, or an Azure CLI login in development). Only with `AZURE_STORAGE_ACCOUNT_URL`; refused with a connection string, which authenticates by itself.',
+    example: '00000000-0000-0000-0000-000000000000',
   }),
 
   DATABASE_URL: variable(NonEmptyString, {

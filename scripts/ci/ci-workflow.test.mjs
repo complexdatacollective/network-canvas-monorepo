@@ -1659,6 +1659,7 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   // The reference stack and every swap docs/self-host/swap.md documents.
   assert.deepEqual(variants, [
     'external-bucket',
+    'external-bucket-azure',
     'external-postgres',
     'external-redis',
     'own-proxy',
@@ -1686,6 +1687,23 @@ test('the studio-stack job runs every variant through up, assert and down', () =
     variants.length,
     'each down.sh step is if: always()',
   );
+});
+
+// The object-store contract suite inside @codaco/studio-api#test refuses to
+// skip under CI, so every job that runs that suite has to start the dev Garage
+// and Azurite before it — in the job, ahead of the suite, not merely somewhere.
+test('every job running the Studio server suite starts its object stores first', () => {
+  for (const name of ['test-studio-server', 'seed-turbo-cache']) {
+    const body = job(name);
+    assert.ok(body, `${name} job exists`);
+    const start = body.indexOf(
+      'pnpm --filter @codaco/studio-api dev:object-stores',
+    );
+    const suite = body.indexOf("turbo run '@codaco/studio-api#test'");
+    assert.ok(suite > -1, `${name} runs the Studio server suite`);
+    assert.ok(start > -1, `${name} starts the dev object stores`);
+    assert.ok(start < suite, `${name} starts them before the suite runs`);
+  }
 });
 
 test('the stack-test scripts and the workflow agree on the variant list', () => {

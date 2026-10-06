@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 
-import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
-import { Effect, Option } from 'effect';
+import { Effect, Exit, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
@@ -11,34 +10,22 @@ import { createStudio } from '../app.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { deliveryFor } from '../http/storage.ts';
+import { objectStoreFor } from '../storage/live.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { authServiceStub } from './support/auth.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
 const env = readEnv();
 
+const liveStore =
+  env.objectStore === undefined ? undefined : objectStoreFor(env.objectStore);
+
 async function storeReachable(): Promise<boolean> {
-  if (!env.s3) return false;
-  const client = new S3Client({
-    endpoint: env.s3.endpoint,
-    region: env.s3.region,
-    credentials: {
-      accessKeyId: env.s3.accessKeyId,
-      secretAccessKey: env.s3.secretAccessKey,
-    },
-    forcePathStyle: true,
-  });
-  try {
-    await Promise.race([
-      client.send(new ListBucketsCommand({})),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('probe timeout')), 3000),
-      ),
-    ]);
-    return true;
-  } catch {
-    return false;
-  }
+  if (liveStore === undefined) return false;
+  const exit = await Effect.runPromiseExit(
+    Effect.timeout(liveStore.head, '3 seconds'),
+  );
+  return Exit.isSuccess(exit);
 }
 
 const reachable = await storeReachable();
@@ -327,8 +314,7 @@ describe('asset storage when unconfigured', () => {
 });
 
 describe.skipIf(!reachable)('asset storage', () => {
-  const objectStore = env.s3 ? ObjectStore.make(env.s3) : undefined;
-  const through = objectStore ? { objectStore } : {};
+  const through = liveStore ? { objectStore: liveStore } : {};
   const bytes = bytesOf(
     `studio asset round-trip ${Math.trunc(Date.now() / 86_400_000)}`,
   );

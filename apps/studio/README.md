@@ -54,9 +54,11 @@ Three surfaces, one domain layer beneath them, none generated from another
 | `/ws`      | Sync protocol             | The SPA's editor                       | Unpublished, protocol-versioned (#1247)                                              |
 | `/storage` | Asset bytes (plain HTTP)  | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)                                    |
 
-Asset bytes live in S3-compatible object storage (#1246): Cloudflare R2 in
-the managed topology, Garage (or any S3-compatible endpoint) self-hosted and
-in development.
+Asset bytes live in an object store behind the `ObjectStore` port (#2077):
+Cloudflare R2 in the managed topology, Garage (or any S3-compatible endpoint)
+self-hosted and in development, or Azure Blob Storage where the institution's
+cloud is Azure. `STUDIO_OBJECT_STORE` picks the implementation, and one
+contract suite holds both to the same behaviour.
 Objects are keyed by content hash, so `/storage/:hash` responses are
 immutable-cacheable by construction. Files ride plain HTTP rather than the
 RPC surface — uploads must stream, retrievals must cache.
@@ -163,8 +165,14 @@ instead.
 | -------- | ------------------------- | ------------------------------------------------------- |
 | Postgres | `127.0.0.1:54318`         | database `studio_dev`, reset and reseeded on every boot |
 | Garage   | `127.0.0.1:9100`          | the S3-compatible object store; bucket `studio-dev`     |
+| Azurite  | `127.0.0.1:10100`         | the Azure Blob emulator, for the contract suite only    |
 | Valkey   | `127.0.0.1:63790`         | Redis-compatible, for rate-limit counters               |
 | Mailpit  | `127.0.0.1:1025`, `:8025` | SMTP sink and its inbox at <http://localhost:8025>      |
+
+`pnpm --filter @codaco/studio-api dev:object-stores` starts only Garage and
+Azurite, bootstraps Garage's bucket and exits — enough for the object-store
+contract suites (`src/storage/*/__tests__/`), which is what CI runs before the
+server suite.
 
 And from the checkout:
 
@@ -822,7 +830,7 @@ job priorities. A delivery state researchers can see, and a manual re-send, is
 `process.env`, and everything else takes a resolved `StudioEnv`. It validates
 in two layers: `src/env/schema.ts` is one Effect `Schema.Struct` declaring
 every variable, and `src/env/resolve.ts` applies the rules that span several at
-once (all-or-nothing `S3_*`, the `SMTP_URL`/`EMAIL_FROM` pairing, the mail
+once (one object-store provider with all of its variables, the `SMTP_URL`/`EMAIL_FROM` pairing, the mail
 transport's three-way resolution). Those two mail variables are read only by
 the process that sends mail — the worker (see
 [Background work](#background-work)) — and withheld from every other read, so
@@ -946,13 +954,18 @@ generating a half-documented entry.
 
 ### Object storage
 
-| Variable               | What it is                                                    | Development default                                                | Real deployment                                |
-| ---------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
-| `S3_ENDPOINT`          | S3-compatible endpoint holding content-addressed asset bytes. | `http://localhost:9100`                                            | Required with the other four `S3_*` variables. |
-| `S3_REGION`            | Region passed to the S3 client.                               | `garage`                                                           | Required with the other four `S3_*` variables. |
-| `S3_BUCKET`            | Bucket asset objects are written to and read from.            | `studio-dev`                                                       | Required with the other four `S3_*` variables. |
-| `S3_ACCESS_KEY_ID`     | Access key for the object store.                              | `GK000000000000000073646576`                                       | Required with the other four `S3_*` variables. |
-| `S3_SECRET_ACCESS_KEY` | Secret key for the object store.                              | `0000000000000000000000000073747564696f2d6465762d6e6f742d70726f64` | Required with the other four `S3_*` variables. |
+| Variable                          | What it is                                                                                                                         | Development default                                                | Real deployment                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `STUDIO_OBJECT_STORE`             | Which provider holds asset bytes: `s3` (any S3-compatible store — Garage, R2, MinIO, AWS S3) or `azure-blob` (Azure Blob Storage). | `s3`                                                               | Unset ⇒ no object store: `/storage` answers 503 and `/readyz` has no object-store check. It selects which group of the variables below is read, and that group must be complete; any variable of the other group, or of either group while this is unset, is refused at boot.                                                                                                                                      |
+| `S3_ENDPOINT`                     | S3-compatible endpoint holding content-addressed asset bytes.                                                                      | `http://localhost:9100`                                            | Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.                                                                                                                                                                                                                                                                                                               |
+| `S3_REGION`                       | Region passed to the S3 client.                                                                                                    | `garage`                                                           | Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.                                                                                                                                                                                                                                                                                                               |
+| `S3_BUCKET`                       | Bucket asset objects are written to and read from.                                                                                 | `studio-dev`                                                       | Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.                                                                                                                                                                                                                                                                                                               |
+| `S3_ACCESS_KEY_ID`                | Access key for the object store.                                                                                                   | `GK000000000000000073646576`                                       | Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.                                                                                                                                                                                                                                                                                                               |
+| `S3_SECRET_ACCESS_KEY`            | Secret key for the object store.                                                                                                   | `0000000000000000000000000073747564696f2d6465762d6e6f742d70726f64` | Required with the other four `S3_*` variables when `STUDIO_OBJECT_STORE` is `s3`; refused otherwise.                                                                                                                                                                                                                                                                                                               |
+| `AZURE_STORAGE_ACCOUNT_URL`       | Blob service endpoint of the Azure storage account holding asset bytes.                                                            | —                                                                  | With `STUDIO_OBJECT_STORE=azure-blob`, required unless `AZURE_STORAGE_CONNECTION_STRING` is set, and refused with it. Studio authenticates through Microsoft Entra ID with `DefaultAzureCredential` — on an Azure host, the managed identity it runs as — so no account key is involved: grant that identity the Storage Blob Data Contributor role on the container. Refused unless the provider is `azure-blob`. |
+| `AZURE_STORAGE_CONTAINER`         | Blob container asset objects are written to and read from.                                                                         | —                                                                  | Required when `STUDIO_OBJECT_STORE` is `azure-blob`, and refused otherwise. The container must already exist: Studio never creates it, and `/readyz` reports the object store as failing until it does.                                                                                                                                                                                                            |
+| `AZURE_STORAGE_CONNECTION_STRING` | Azure storage account connection string, for development and for hosts outside Azure that have no managed identity.                | —                                                                  | Takes the place of `AZURE_STORAGE_ACCOUNT_URL`; setting both is refused. It carries an account key, which a deployment on Azure does not need — prefer the account URL and a managed identity there. Refused unless `STUDIO_OBJECT_STORE` is `azure-blob`.                                                                                                                                                         |
+| `AZURE_CLIENT_ID`                 | Client ID of the user-assigned managed identity Studio authenticates to Azure Blob Storage as.                                     | —                                                                  | Unset ⇒ the host’s system-assigned identity, or whatever else `DefaultAzureCredential` finds (workload identity, or an Azure CLI login in development). Only with `AZURE_STORAGE_ACCOUNT_URL`; refused with a connection string, which authenticates by itself.                                                                                                                                                    |
 
 ### Database
 

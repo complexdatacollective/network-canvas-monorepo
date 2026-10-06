@@ -4,7 +4,7 @@ import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { AnimatePresence } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { usePortalContainer } from '../PortalContainer';
+import { PortalContainerScope, usePortalContainer } from '../PortalContainer';
 import { asFinalFocusTarget } from '../utils/finalFocus';
 import { inertOthers } from '../utils/inertOthers';
 import { ModalBackdrop } from './ModalBackdrop';
@@ -168,16 +168,31 @@ export default function Modal({
               keepMounted
             >
               {/*
-                `forceRender`, always: Base UI suppresses a backdrop whose
-                dialog is nested inside another open one, and nesting is React
-                context, so a portalled overlay opened from inside a dialog
-                counts as nested and would come up with no dimmed layer at all.
-                A nested surface dims what is behind it like any other, which
-                stacks the dim and the blur — the deeper the stack, the more
-                the page recedes, which is what the stack means.
+                Everything that portals from inside this modal goes into this
+                modal's own portal node, not the shared container: the menus,
+                selects, comboboxes, popovers and tooltips in its content, and
+                any modal nested in it. When the dialog opens, Base UI's focus
+                manager hides everything outside it with `aria-hidden`, and
+                exempts only portals nested in the dialog's portal node. A
+                menu or popover portalled beside the dialog was already
+                mounted by then (both stay mounted while closed), so it stayed
+                visible and clickable but could not be read by a screen
+                reader. See `PortalContainerScope`.
               */}
-              <ModalBackdrop forceRender className={backdropClassName} />
-              {children}
+              <PortalContainerScope container={portalNode}>
+                {/*
+                  `forceRender`, always: Base UI suppresses a backdrop whose
+                  dialog is nested inside another open one, and nesting is
+                  React context, so a portalled overlay opened from inside a
+                  dialog counts as nested and would come up with no dimmed
+                  layer at all. A nested surface dims what is behind it like
+                  any other, which stacks the dim and the blur — the deeper the
+                  stack, the more the page recedes, which is what the stack
+                  means.
+                */}
+                <ModalBackdrop forceRender className={backdropClassName} />
+                {children}
+              </PortalContainerScope>
             </BaseDialog.Portal>
           )}
         </AnimatePresence>

@@ -17,14 +17,13 @@ import { decodeEnvironment, type VariableName } from './env/schema.ts';
 // Two layers of validation, both of them declarative: `src/env/schema.ts` is
 // one Effect `Schema.Struct` saying what each variable must look like, and
 // `src/env/resolve.ts` applies the rules that span several at once
-// (all-or-nothing `S3_*`, the `SMTP_URL`/`EMAIL_FROM` pairing, the database
-// password file, the keyring).
+// (one object-store provider and all of its variables, the
+// `SMTP_URL`/`EMAIL_FROM` pairing, the database password file, the keyring).
 
 export type {
   AuthEnv,
   DbEnv,
   MailerEnv,
-  S3Env,
   SocialProvidersEnv,
   StudioEnv,
 } from './env/resolve.ts';

@@ -1,19 +1,20 @@
 # Swap an element
 
 Four parts of the stack are meant to be replaced by an institution's own
-service. Three are one line in `.env`; the fourth is a routing table.
+service. Three are set in `.env`; the fourth is a routing table.
 
-| Element          | The swap                                | Then delete                                                                                |
-| ---------------- | --------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Database         | `DATABASE_URL`                          | the `postgres` service and the `postgres-data` volume                                      |
-| Object store     | `S3_ENDPOINT` and the four other `S3_*` | `garage`, `garage-init`, their two configs, the volume, and `migrate`'s `depends_on` entry |
-| Rate-limit store | `REDIS_URL`                             | the `valkey` service and the `depends_on` entries naming it                                |
-| Ingress          | reproduce the routing table below       | the `traefik` service, the `traefik-dynamic` config and the published ports                |
+| Element                | The swap                                                                     | Then delete                                                                                      |
+| ---------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Database               | `DATABASE_URL`                                                               | the `postgres` service and the `postgres-data` volume                                            |
+| Object store           | `S3_ENDPOINT` and the four other `S3_*`                                      | `garage`, `garage-init`, their two configs, the volume, and the `depends_on` entries naming them |
+| Object store, on Azure | `STUDIO_OBJECT_STORE=azure-blob` and the `AZURE_STORAGE_*`; empty the `S3_*` | the same as above                                                                                |
+| Rate-limit store       | `REDIS_URL`                                                                  | the `valkey` service and the `depends_on` entries naming it                                      |
+| Ingress                | reproduce the routing table below                                            | the `traefik` service, the `traefik-dynamic` config and the published ports                      |
 
 Deleting the replaced service is tidying, not part of the swap: each of the
-three variables defaults to the stack's own service, so setting one points
-Studio elsewhere without a line of `docker-compose.yml` changing. The contract
-each replacement must meet is in [Requirements](./requirements.md).
+three elements defaults to the stack's own service, so setting its variables
+points Studio elsewhere without a line of `docker-compose.yml` changing. The
+contract each replacement must meet is in [Requirements](./requirements.md).
 
 ## A managed database
 
@@ -66,7 +67,8 @@ stack passes.
 
 ## A managed bucket
 
-All five or none: a partial configuration fails fast rather than half-working.
+All five, with `STUDIO_OBJECT_STORE=s3` left as `.env.example` sets it: a
+partial configuration fails fast rather than half-working.
 
 ```
 S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
@@ -85,8 +87,8 @@ Studio addresses the bucket **path-style** (`<endpoint>/<bucket>/<key>`), so the
 endpoint is the service address and not a per-bucket hostname.
 
 Then delete the `garage` and `garage-init` services, the `garage-config` and
-`garage-init` configs, the `garage-data` volume, and the `garage-init` entry in
-`migrate`'s `depends_on` — the two `GARAGE_*` variables are read only by those
+`garage-init` configs, the `garage-data` volume, and the `depends_on` entries
+naming them — `garage` in `api` and `worker`, `garage-init` in `migrate` — the two `GARAGE_*` variables are read only by those
 containers. Your provider's own mirroring or versioning replaces the volume
 copy in [Back up and restore](./backup.md).
 
@@ -95,6 +97,111 @@ This swap is exercised in CI by `apps/studio/stack-test`, variant
 network, signing for a different region, with `garage` and `garage-init` gone —
 and an asset is written through `/storage` and read back, not only probed by
 `/readyz`.
+
+## Azure Blob Storage
+
+Azure Blob Storage does not speak S3, so it is not a different endpoint for
+the swap above. You choose it by name instead:
+
+```
+STUDIO_OBJECT_STORE=azure-blob
+AZURE_STORAGE_ACCOUNT_URL=https://<account>.blob.core.windows.net
+AZURE_STORAGE_CONTAINER=studio-assets
+```
+
+And **empty every `S3_*` value**: the four `.env` came with, and
+`S3_ENDPOINT` if you set it for a managed bucket:
+
+```
+S3_ENDPOINT=
+S3_REGION=
+S3_BUCKET=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+```
+
+Studio refuses to start with any `S3_*` value set beside `azure-blob`, so a
+half-converted `.env` fails at boot rather than leaving you guessing which
+store it used. Emptying the access key also stops the compose file pointing
+`S3_ENDPOINT` at the stack's own Garage.
+
+**Create the container yourself.** Studio never creates it, and readiness
+reports the object store as failing until it exists. Keep it private: assets
+are served through Studio's own `/storage` route, never straight from the
+account.
+
+```bash
+az storage container create \
+  --account-name <account> \
+  --name studio-assets \
+  --auth-mode login
+```
+
+### Signing in with a managed identity
+
+With the account URL, Studio signs in as the **managed identity** of the
+machine it runs on — the virtual machine, or the Container App — so there is
+no account key anywhere in `.env`. Give that identity the **Storage Blob Data
+Contributor** role on the one container, not on the whole account:
+
+```bash
+# The identity's principal id. For a Container App, use
+# `az containerapp identity show` with the same arguments.
+principal=$(az vm identity show \
+  --resource-group <resource-group> --name <vm> \
+  --query principalId --output tsv)
+
+az role assignment create \
+  --assignee-object-id "$principal" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Storage Blob Data Contributor" \
+  --scope "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Storage/storageAccounts/<account>/blobServices/default/containers/studio-assets"
+```
+
+A new role assignment can take a few minutes to take effect. Until it does,
+`/readyz` names the object store as failing.
+
+If the machine has a **user-assigned** identity rather than a system-assigned
+one, say which with its client id:
+
+```
+AZURE_CLIENT_ID=<client id of the user-assigned identity>
+```
+
+### Not on Azure
+
+A host outside Azure has no managed identity to sign in as. Use a connection
+string in place of the account URL — one or the other, never both:
+
+```
+STUDIO_OBJECT_STORE=azure-blob
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=<account>;AccountKey=<key>;EndpointSuffix=core.windows.net
+AZURE_STORAGE_CONTAINER=studio-assets
+```
+
+A connection string carries the account key, so treat `.env` as the secret it
+then is. `AZURE_CLIENT_ID` has no meaning here and is refused beside one.
+
+### Then
+
+Delete the `garage` and `garage-init` services, the `garage-config` and
+`garage-init` configs, the `garage-data` volume, and the `depends_on` entries
+naming them (`garage` in `api` and `worker`, `garage-init` in `migrate`),
+exactly as for a managed bucket — and ignore the two
+`GARAGE_*` variables. Blob versioning or object replication on the account
+replaces the volume copy in [Back up and restore](./backup.md).
+
+As with the other swaps, this is tidying rather than part of the swap: until
+you delete them, the stack's Garage runs empty and `garage-init` sees
+that `STUDIO_OBJECT_STORE` is not `s3` and exits without bootstrapping it, so
+`migrate` still runs.
+
+This swap is exercised in CI by `apps/studio/stack-test`, variant
+`external-bucket-azure`: the stack runs against Azurite, Microsoft's Blob
+Storage emulator, on another network, serving an account of its own and
+signed in to with a connection string, with the `S3_*` values emptied and `garage` and `garage-init` gone — and is held to the
+same assertions as every other variant, including writing an asset through
+`/storage` and reading it back.
 
 ## An external Redis
 
