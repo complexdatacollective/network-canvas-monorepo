@@ -13,8 +13,9 @@
 //     one-second cache, so this is a bound on the cache, not a sleep.
 //  3. From then until `maintenance off` started, no tick saw a 200 — not from
 //     /readyz and not from the probe — every probe got the maintenance page
-//     (or the API's own maintenance problem; a bare 503 only while `up -d`
-//     is replacing `web`, the page's own source), and every answer the API gave
+//     (or the API's own maintenance problem; anything but a 200 is allowed
+//     only while `up -d` is replacing `web`, the page's own source), and
+//     every answer the API gave
 //     /readyz named maintenance mode, or, for a process that had not yet read
 //     the flag at all, "the server is starting". An API that named the
 //     migration lock or the schema instead was serving on those triggers
@@ -188,21 +189,23 @@ export function analyseWindow(ticks, steps) {
     );
   }
   // The page comes from `web`, so while `up -d` replaces `web` itself Traefik
-  // has no page to serve and answers its own bare 503 (seen in the first
-  // code-only run: one tick, mid-replacement). Closed either way; that step
-  // is the only one where a 503 without the page is allowed.
+  // has no page to serve: it answers its own bare 503, or nothing within the
+  // probe's bound (both seen, one tick each, in the first local runs A and
+  // B). Closed either way — rule 3's no-200 check still covers those ticks —
+  // and that step is the only one where an answer without the page passes.
   const replacingWeb = steps.filter((step) =>
     /\bup\s+-d\b.*\bweb\b/.test(step.command ?? ''),
   );
-  const unpaged = window.filter((tick) => {
-    if (tick.probeStatus !== '503') return true;
-    if (tick.probeKind === 'page' || tick.probeKind === 'problem-maintenance') {
-      return false;
-    }
-    return !replacingWeb.some(
-      (step) => tick.ts >= step.start && tick.ts <= step.end,
-    );
-  });
+  const paged = (tick) =>
+    tick.probeStatus === '503' &&
+    (tick.probeKind === 'page' || tick.probeKind === 'problem-maintenance');
+  const unpaged = window.filter(
+    (tick) =>
+      !paged(tick) &&
+      !replacingWeb.some(
+        (step) => tick.ts >= step.start && tick.ts <= step.end,
+      ),
+  );
   if (unpaged.length > 0) {
     failures.push(
       `${unpaged.length} probe(s) inside the window did not get the maintenance page (saw ${[

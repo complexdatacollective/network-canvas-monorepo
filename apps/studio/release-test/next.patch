@@ -8,9 +8,9 @@
  `;
  
  export type DeploymentState = {
---- a/apps/studio/api/src/study/schema.ts
-+++ b/apps/studio/api/src/study/schema.ts
-@@ -81,6 +81,10 @@
+--- a/apps/studio/api/src/protocol/schema.ts
++++ b/apps/studio/api/src/protocol/schema.ts
+@@ -36,6 +36,10 @@
      updatedAt: timestamp('updated_at', { withTimezone: true })
        .notNull()
        .defaultNow(),

@@ -6,7 +6,7 @@
 #
 # A copy of this checkout (tracked and untracked-but-not-ignored files, outside
 # the repository) gets next.patch — a nullable column with a default on the
-# populated `studies` table, and one changed sidecar statement — then the
+# populated `protocols` table, and one changed sidecar statement — then the
 # author's own two commands, `sync-fingerprint` and `migrate:generate`, then a
 # hand-written backfill (next-backfill.sql) sealed into the new directory with
 # `migrate:generate --seal`. The result is the next numbered migration with a

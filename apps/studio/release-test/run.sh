@@ -308,13 +308,13 @@ run_one() {
       [ "$history_after" = "$history_before,$NEXT_VERSION" ] \
         && checks+=("migrate applied $NEXT_VERSION: history is $history_after") \
         || problems+=("expected history $history_before,$NEXT_VERSION, saw $history_after")
-      local studies reached comment
-      studies="$(echo 'SELECT count(*) FROM studies;' | psql_)"
-      reached="$(echo "SELECT count(*) FROM studies WHERE release_test_probe = 'backfilled:' || id;" | psql_)"
-      if [ "$studies" -gt 0 ] && [ "$reached" = "$studies" ]; then
-        checks+=("the backfill reached all $studies seeded studies rows under FORCE RLS")
+      local rows reached comment
+      rows="$(echo 'SELECT count(*) FROM protocols;' | psql_)"
+      reached="$(echo "SELECT count(*) FROM protocols WHERE release_test_probe = 'backfilled:' || id;" | psql_)"
+      if [ "$rows" -gt 0 ] && [ "$reached" = "$rows" ]; then
+        checks+=("the backfill reached all $rows seeded protocols rows under FORCE RLS")
       else
-        problems+=("the backfill reached $reached of $studies studies rows")
+        problems+=("the backfill reached ${reached:-0} of $rows protocols rows")
       fi
       comment="$(echo "SELECT obj_description('public.deployment_state'::regclass, 'pg_class');" | psql_)"
       [ "$comment" = release-test-next ] \
