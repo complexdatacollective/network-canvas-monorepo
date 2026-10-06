@@ -1,5 +1,8 @@
 ---
 '@codaco/interview': patch
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
 ---
 
 The family pedigree no longer draws a half-sibling as a full sibling. A child
