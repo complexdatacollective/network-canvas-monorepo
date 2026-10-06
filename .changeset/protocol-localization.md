@@ -55,9 +55,10 @@ In Architect:
   write one of your own.
 - The printable protocol summary can be printed in any of the protocol's
   languages.
-- The Language Chooser is in the New Stage menu, under a new Utilities
-  capability. Its editor lists the languages participants will be offered:
-  every language the protocol is written in.
+- The New Stage menu has a new Utilities capability, which lists the
+  Information interface and the Language Chooser. The Language Chooser's
+  editor lists the languages participants will be offered: every language
+  the protocol is written in.
 - A preview opens in the language a participant with your browser would see,
   rather than in Architect's own language. A "Preview language" menu above it
   switches the interview to any of the protocol's languages while the preview

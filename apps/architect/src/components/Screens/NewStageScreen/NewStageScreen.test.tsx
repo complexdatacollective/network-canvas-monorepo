@@ -63,7 +63,7 @@ describe('New Stage screen capability filters', () => {
     }
   });
 
-  it('finds the Language Chooser under Utilities', () => {
+  it('finds Information and the Language Chooser under Utilities', () => {
     renderScreen();
 
     fireEvent.click(capabilityFilter('Utilities'));
@@ -72,7 +72,7 @@ describe('New Stage screen capability filters', () => {
       'aria-pressed',
       'true',
     );
-    expect(offeredInterfaces()).toEqual(['Language Chooser']);
+    expect(offeredInterfaces()).toEqual(['Information', 'Language Chooser']);
   });
 
   it('lists Anonymisation under Utilities when its experiment is on', () => {
@@ -81,6 +81,7 @@ describe('New Stage screen capability filters', () => {
     fireEvent.click(capabilityFilter('Utilities'));
 
     expect(offeredInterfaces()).toEqual([
+      'Information',
       'Language Chooser',
       'Anonymisation Interface',
     ]);

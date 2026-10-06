@@ -435,7 +435,7 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.UTILITIES,
-    tags: [TAGS.SHOW_MEDIA, TAGS.PROVIDE_INFORMATION],
+    tags: [TAGS.SHOW_MEDIA, TAGS.PROVIDE_INFORMATION, TAGS.UTILITIES],
     keywords:
       'instruction text participant guide intro image video audio media resource',
     type: 'Information',
