@@ -124,8 +124,7 @@ export type ParentChildConnector = {
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
-  // Relationship types plus a layout-only kind for parents with no partner.
-  edgeType: PedigreeEdgeType | 'unpartnered-parent';
+  edgeType: PedigreeEdgeType;
   segment: LineSegment;
   endpointIds?: [string | undefined, string | undefined];
 };
