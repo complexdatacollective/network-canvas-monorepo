@@ -162,7 +162,9 @@ type RenderedCatalog = Readonly<{ locale: string; messages: CatalogMessages }>;
  *
  * A switch keeps the language already on screen until the new one has
  * loaded, then changes over in one render — never through English, and
- * never with half the interface in each language.
+ * never with half the interface in each language. A switch that fails to
+ * load (offline, say) stays in the current language; choosing the language
+ * again retries.
  *
  * With nothing on screen yet there is no language to keep, so the first load
  * suspends rather than render English it would replace a moment later. A
@@ -197,9 +199,7 @@ export function useLocaleCatalog(
   }
 
   useEffect(() => {
-    // Unhandled on purpose: a switch that cannot load leaves the previous
-    // language on screen, and the rejection is the report of why.
-    if (ready === undefined) void source.load(locale);
+    if (ready === undefined) source.load(locale).catch(() => undefined);
   }, [source, locale, ready]);
 
   if (ready !== undefined) return { locale, messages: ready };
