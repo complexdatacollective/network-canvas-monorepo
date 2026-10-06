@@ -38,7 +38,8 @@ export function announceLoadingScreen(): void {
 
 // Fades out and removes the pre-React loading screen (the static branded
 // spinner injected in index.html's <head>, shown before the JS bundle parses
-// and React mounts). Called once from main.tsx after createRoot(...).render().
+// and React mounts). Called by LoadingScreenHandoff once React's first screen
+// has committed.
 //
 // The element being absent is normal (HMR remounts, or a race where the loader
 // was already removed) — the helper no-ops in that case rather than throwing.

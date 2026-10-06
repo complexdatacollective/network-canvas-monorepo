@@ -14,10 +14,8 @@ import {
   initFileLaunchCapture,
 } from './lib/pwa/fileLaunchQueue';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
-import {
-  announceLoadingScreen,
-  removeLoadingScreen,
-} from './lib/pwa/loadingScreen';
+import { announceLoadingScreen } from './lib/pwa/loadingScreen';
+import { LoadingScreenHandoff } from './lib/pwa/LoadingScreenHandoff';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
 import { initVisualViewportSizing } from './lib/pwa/visualViewportSizing';
 import {
@@ -88,16 +86,9 @@ async function startApp(): Promise<void> {
   root.render(
     <StrictMode>
       <App />
+      <LoadingScreenHandoff />
     </StrictMode>,
   );
-
-  // Hand off from the static first-paint loader (index.html's #app-loading) to
-  // React. Deferred to after the first commit paints so there's no flash of
-  // blank between the loader disappearing and React's own content (AuthGate's
-  // Spinner, then App's fade-in) painting — the loader cross-fades into the app.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(removeLoadingScreen);
-  });
 }
 
 void startApp();
