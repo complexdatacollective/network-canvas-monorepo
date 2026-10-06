@@ -1051,11 +1051,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     : null;
 
   return (
+    // The canvas fills the whole stage, edge to edge, without the padding
+    // other stages have; the prompt floats over its top, on a fade so people
+    // passing beneath it stay legible.
     <div
-      className="interface relative flex h-full flex-col"
+      className="relative flex h-full w-full flex-col"
       onPointerDown={handleStagePointerDown}
     >
-      <div className="shrink-0">
+      <div className="from-background via-background/80 pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b to-transparent px-4 pt-4 pb-10">
         <Prompts
           prompts={[{ id: 'pedigree', text: stage.prompt }]}
           currentPromptId="pedigree"

@@ -332,7 +332,7 @@ export const ParticipantChoosesFraming: Story = {
     });
     await userEvent.keyboard('{Escape}');
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    await userEvent.click(within(canvasElement).getByText(PROMPT));
+    await userEvent.click(within(canvasElement).getByTestId('pedigree-canvas'));
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   },
 };
