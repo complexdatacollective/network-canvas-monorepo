@@ -81,32 +81,21 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
-# Create user and group in a single layer.
-#
-# `su-exec` is Alpine's minimal "change user and exec" helper. The entrypoint
-# starts as root only to fix ownership of the cache directory (which it cannot
-# do once it has dropped privileges), then replaces itself with the server
-# running as `nextjs`. Because it execs rather than forks, the server still
-# becomes PID 1 and keeps receiving signals directly, so shutdown is unchanged.
+# Create user and group in a single layer
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    apk add --no-cache su-exec
+    adduser --system --uid 1001 nextjs
 
 # Copy public assets
 COPY --from=builder /app/public ./public
 
 # Create the .next directory, including the `cache` subdirectory Next writes
-# its runtime incremental cache into (the fetch cache and ISR). Next surfaces a
-# failure to write there as an unhandled rejection rather than a cache miss, so
-# a deployment that is merely running without a cache reports a crash. Seen in
-# the wild as `EACCES: permission denied, mkdir '/app/.next/cache'` and the
-# ENOENT variant.
-#
-# Creating it here settles two cases on its own: an unmounted image, and a
-# Docker *named volume* mounted at this path — the daemon initialises a named
-# volume from the image's directory, ownership included, which it cannot do for
-# a path that does not exist. A *bind* mount keeps the host's ownership instead,
-# which is what the entrypoint repairs at boot.
+# its runtime incremental cache into (the fetch cache and ISR). Creating it at
+# build time means the non-root runtime user never has to mkdir inside /app:
+# that mkdir fails on a read-only root filesystem or when a volume is mounted
+# over .next, and Next surfaces the failure as an unhandled rejection rather
+# than a cache miss, so it is reported as a crash on a deployment that is only
+# running without a cache. Seen in the wild as
+# `EACCES: permission denied, mkdir '/app/.next/cache'` and the ENOENT variant.
 RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
 
 # Copy built application with correct permissions
@@ -183,39 +172,7 @@ RUN --mount=type=cache,target=/root/.npm \
     cd /app && rm -rf /tmp/runtime /root/.cache /tmp/package.json \
       /tmp/pnpm-lock.yaml /tmp/interview-pack /tmp/codaco-interview-*.tgz
 
-# Re-assert the cache directory after the copies above, and make it writable by
-# group 0 as well as by `nextjs`.
-#
-# Platforms that impose an arbitrary UID — OpenShift, or any `runAsUser` that is
-# neither 0 nor 1001 — always place that UID in group 0, so group-0 write
-# permission is the only way such a deployment can use the cache at all. It
-# grants nothing extra inside this image: the only member of group 0 is root,
-# which can write here regardless.
-#
-# Scoped to `.next` and `.next/cache` rather than recursive, so the large
-# `.next/static` tree is neither walked nor made group-writable.
-RUN mkdir -p .next/cache && \
-    chown nextjs:nodejs .next .next/cache && \
-    chgrp 0 .next .next/cache && \
-    chmod g+rwX .next .next/cache
-
-# Switch to non-root user.
-#
-# This declaration is load-bearing beyond the default uid, which is why the
-# entrypoint's root-phase repair does NOT replace it:
-#
-#  - Kubernetes `runAsNonRoot: true` with no `runAsUser` validates the *image's*
-#    user and refuses to start the container when it is root. An image without a
-#    `USER` would fail to start on that (recommended, common) posture, rather
-#    than skipping the repair.
-#  - It holds whatever the command is. Overriding `CMD` bypasses the entrypoint
-#    altogether, so without this a `command:` override or `docker run … sh` would
-#    run as root.
-#
-# The entrypoint's root phase is therefore opt-in: it runs only when an operator
-# deliberately starts the container as root (`--user 0`, or `runAsUser: 0`) to
-# have a bind-mounted cache directory repaired, and it drops to this same user
-# before anything else — see scripts/migrate-and-start.sh.
+# Switch to non-root user
 USER nextjs
 
 EXPOSE 3000
