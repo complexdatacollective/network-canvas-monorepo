@@ -1,4 +1,5 @@
 import {
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -624,6 +625,24 @@ describe('migrate:generate', () => {
       kind: 'sealed',
       version: '0002_swap_body',
     });
+  });
+
+  it('refuses to number a migration beside a directory that is not one', async () => {
+    const dir = migrationsDir();
+    await initial(dir);
+    mkdirSync(join(dir, '0002-display-name'));
+    expect(
+      (
+        await refusal(
+          await inputsFor(dir, {
+            teams: teams(),
+            notes: notes('body'),
+            extra: extra(),
+          }),
+          { kind: 'generate', name: 'extra' },
+        )
+      ).message,
+    ).toMatch(/directories that are not migrations: 0002-display-name\./);
   });
 
   it('refuses a statement the one transaction cannot run', async () => {

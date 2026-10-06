@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -34,7 +33,11 @@ import { SCHEMA, SIDECARS } from '../src/db/schema.ts';
 import { splitStatements } from '../src/db/statements.ts';
 import { renderJobStatements } from '../src/jobs/queues.ts';
 import { schemaFingerprintOf } from './apply.ts';
-import { MIGRATIONS_DIR } from './render-migrations.ts';
+import {
+  MIGRATIONS_DIR,
+  migrationVersions,
+  MigrationsUnreadable,
+} from './render-migrations.ts';
 
 // `pnpm --filter @codaco/studio-api migrate:generate --name <slug>` (#1901).
 //
@@ -351,22 +354,20 @@ type Directory = {
 };
 
 function migrationDirectories(dir: string): Directory[] {
-  if (!existsSync(dir)) return [];
-  const found = readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => {
-      const match = MIGRATION_VERSION.exec(entry.name);
-      return match === null
-        ? []
-        : [
-            {
-              version: entry.name,
-              ordinal: Number(match[1]),
-              path: join(dir, entry.name),
-            },
-          ];
-    })
-    .toSorted((left, right) => left.ordinal - right.ordinal);
+  let versions: string[];
+  try {
+    versions = migrationVersions(dir);
+  } catch (error) {
+    if (error instanceof MigrationsUnreadable) {
+      throw new GenerateRefused(error.message);
+    }
+    throw error;
+  }
+  const found = versions.map((version) => ({
+    version,
+    ordinal: Number(MIGRATION_VERSION.exec(version)?.[1]),
+    path: join(dir, version),
+  }));
   found.forEach((directory, index) => {
     if (directory.ordinal !== index + 1) {
       throw new GenerateRefused(

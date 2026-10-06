@@ -79,6 +79,29 @@ function readMigration(dir: string, version: string): DocumentMigration {
 }
 
 /**
+ * The numbered directories under `dir`, in order. Any other directory is
+ * refused rather than skipped: a mis-named migration (`0002-x`), or one a
+ * failed `migrate:generate` left half-written (`.0002_x.pending`), would
+ * otherwise drop out of the image without a word.
+ */
+export function migrationVersions(dir: string = MIGRATIONS_DIR): string[] {
+  if (!existsSync(dir)) return [];
+  const directories = readdirSync(dir, { withFileTypes: true }).filter(
+    (entry) => entry.isDirectory(),
+  );
+  const stray = directories
+    .map((entry) => entry.name)
+    .filter((name) => !MIGRATION_VERSION.test(name))
+    .toSorted();
+  if (stray.length > 0) {
+    throw new MigrationsUnreadable(
+      `migrations/ holds directories that are not migrations: ${stray.join(', ')}. A migration directory is named NNNN_<slug>; rename or remove these.`,
+    );
+  }
+  return directories.map((entry) => entry.name).toSorted();
+}
+
+/**
  * The committed directory as the document the image carries, verified against
  * `fingerprint`. Shared with the test suites (`support/migrations.ts`), so
  * what they migrate is exactly what a build ships. No drizzle-kit here.
@@ -87,14 +110,7 @@ export function readMigrationsDocument(
   dir: string = MIGRATIONS_DIR,
   fingerprint: string = SCHEMA_FINGERPRINT,
 ): MigrationsDocument {
-  const versions = existsSync(dir)
-    ? readdirSync(dir, { withFileTypes: true })
-        .filter(
-          (entry) => entry.isDirectory() && MIGRATION_VERSION.test(entry.name),
-        )
-        .map((entry) => entry.name)
-        .toSorted()
-    : [];
+  const versions = migrationVersions(dir);
   const document: MigrationsDocument = {
     fingerprint,
     migrations: versions.map((version) => readMigration(dir, version)),
