@@ -336,7 +336,7 @@ describe.skipIf(!testDb)('the update check', () => {
       );
 
       it.effect(
-        'still records the release on an instance with no mail transport, and says so once',
+        'still records the release on an instance with no mail transport, leaves nothing claimed, and says so once per version',
         () => {
           const logs = collectLogs();
           return Effect.gen(function* () {
@@ -346,23 +346,70 @@ describe.skipIf(!testDb)('the update check', () => {
               drainWith('update-check', CHECK),
             ).pipe(Effect.provide(Mailer.layerRefuse));
             assert.strictEqual(outcomeOf(yield* refused), 'completed');
+            assert.isNull(
+              yield* notifiedVersion,
+              'no email went out, so no claim may stand',
+            );
             assert.strictEqual(outcomeOf(yield* refused), 'completed');
+            assert.isNull(yield* notifiedVersion);
 
             const row = yield* stored;
             assert.strictEqual(row?.latest_version, NEWER);
             assert.instanceOf(row?.checked_at, Date);
             assert.deepStrictEqual((yield* RecordedMail).updateNotices, []);
 
-            const lines = logs.messages.filter((line) =>
-              line.includes('no mail transport is configured'),
-            );
+            const mentioning = (version: string) =>
+              logs.messages.filter(
+                (line) =>
+                  line.includes('no mail transport is configured') &&
+                  line.includes(`Studio ${version} is available`),
+              );
             assert.strictEqual(
-              lines.length,
+              mentioning(NEWER).length,
               1,
               'two runs for one version must say it once, not twice',
             );
+
+            // A later version is news again.
+            const http = yield* RecordedHttp;
+            yield* http.reply(reply('1.2.0'));
+            assert.strictEqual(outcomeOf(yield* refused), 'completed');
+            assert.strictEqual(mentioning('1.2.0').length, 1);
+            assert.strictEqual(mentioning(NEWER).length, 1);
           }).pipe(Effect.provide(logs.layer));
         },
+      );
+
+      it.effect(
+        'emails the owner once, at the first run after mail is configured, for a version first seen without it',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const mail = yield* RecordedMail;
+
+            // First seen on an instance with no mail transport.
+            const withoutMail = Effect.flatMap(
+              enqueue('update-check', {}),
+              () => drainWith('update-check', CHECK),
+            ).pipe(Effect.provide(Mailer.layerRefuse));
+            assert.strictEqual(outcomeOf(yield* withoutMail), 'completed');
+            assert.deepStrictEqual(mail.updateNotices, []);
+
+            // The operator configures SMTP: the next daily run, same version.
+            assert.strictEqual(outcomeOf(yield* run), 'completed');
+            assert.deepStrictEqual(
+              mail.updateNotices.map((notice) => [
+                notice.email,
+                notice.version,
+              ]),
+              [['owner@example.test', NEWER]],
+            );
+            assert.strictEqual(yield* notifiedVersion, NEWER);
+
+            // And only once: the run after that finds it claimed.
+            assert.strictEqual(outcomeOf(yield* run), 'completed');
+            assert.strictEqual(mail.updateNotices.length, 1);
+          }),
       );
 
       it.effect(
