@@ -1,6 +1,6 @@
 'use client';
 
-import { Tags } from 'lucide-react';
+import { Speech } from 'lucide-react';
 import type { Ref } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -47,7 +47,7 @@ function FramingControl({
       trigger={
         <ToolbarIconButton
           aria-label={intl.formatMessage(messages.framingControlLabel)}
-          icon={<Tags />}
+          icon={<Speech />}
           data-testid="pedigree-framing"
         />
       }
