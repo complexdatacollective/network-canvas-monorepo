@@ -747,7 +747,13 @@ export function computeConnectors(
       const parentEdges = childParents.filter((pc) =>
         isPrimaryEdge(pc.edgeType),
       );
-      if (parentEdges.length < 2) continue;
+      // Determine which parent pair the child is assigned to (primary family)
+      const childFam = layout.fam[i]?.[j] ?? 0;
+
+      // A single parent's child descends from them through its family; one
+      // without a family still needs its line to that parent.
+      if (parentEdges.length === 0) continue;
+      if (parentEdges.length < 2 && childFam !== 0) continue;
 
       const parentIds = parentEdges.map((pe) => pe.parentIndex);
       const partneredParents = new Set<number>();
@@ -761,9 +767,6 @@ export function computeConnectors(
           }
         }
       }
-
-      // Determine which parent pair the child is assigned to (primary family)
-      const childFam = layout.fam[i]?.[j] ?? 0;
 
       // A child with a family descends from it, and only its partnered other
       // parents need a line of their own. A child without one (its parents

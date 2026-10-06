@@ -1073,6 +1073,29 @@ describe('partnership chains', () => {
     expectEveryCoupleAdjacent({ id, parents, partners });
   });
 
+  it('keeps a child under its parent when its donor is moved down', () => {
+    // parent's child kid was conceived with donor d; d's partner x has parents
+    // shown, so d is moved down to x's row.
+    const ped: PedigreeInput = {
+      id: ['xMum', 'xDad', 'x', 'd', 'parent', 'kid'],
+      parents: [
+        [],
+        [],
+        [sp(0), sp(1)],
+        [],
+        [],
+        [sp(4), { parentIndex: 3, edgeType: 'donor' }],
+      ],
+      partners: [couple(0, 1), couple(3, 2)],
+    };
+    const result = alignPedigree(ped);
+    const levelOf = (person: number) =>
+      result.nid.findIndex((row) => row.includes(person));
+    expect(levelOf(5)).toBe(levelOf(4) + 1);
+    const kidLevel = levelOf(5);
+    expect(result.fam[kidLevel]![result.nid[kidLevel]!.indexOf(5)]).not.toBe(0);
+  });
+
   it('seats a donor to an interior couple outside the chain', () => {
     // a – b – c – d; b + c → kid, with an egg donor.
     expectEveryCoupleAdjacent({
@@ -1394,6 +1417,32 @@ describe('a person with three partners', () => {
     expect(lines.get('p→kid2')).toBe('social');
     expect(lines.get('d→kid1')).toBe('donor');
     expect(lines.get('d→kid2')).toBe('surrogate');
+  });
+
+  it('joins a child without a family to its only parent', () => {
+    // Whatever leaves a single parent's child without a family, the parent is
+    // still joined to it.
+    const input: PedigreeInput = {
+      id: ['parent', 'kid'],
+      parents: [[], [sp(0)]],
+    };
+    const result = alignPedigree(input);
+    const level = result.nid.findIndex((row) => row.includes(1));
+    result.fam[level]![result.nid[level]!.indexOf(1)] = 0;
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      input.parents,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      input.id,
+      new Set(),
+    );
+    expect(
+      conn.auxiliaryLines.map((line) => line.endpointIds?.join('→')),
+    ).toContain('parent→kid');
   });
 
   it('joins a donor to a child whose couple cannot sit together', () => {
