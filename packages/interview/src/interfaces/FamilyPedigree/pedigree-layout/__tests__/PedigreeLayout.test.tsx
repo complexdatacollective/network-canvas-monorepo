@@ -234,9 +234,8 @@ describe('PedigreeLayout', () => {
 
     const { container } = render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
