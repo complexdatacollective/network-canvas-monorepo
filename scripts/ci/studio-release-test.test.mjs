@@ -230,6 +230,27 @@ test('a probe without the page is refused, except while web itself is replaced',
     }),
   );
   assert.equal(during.ok, true, during.failures.join('\n'));
+
+  // The allowance is that answer only: a 503 or no answer with no body the
+  // observer recognises. Anything else answering while web is replaced is
+  // refused there as anywhere in the window.
+  for (const [status, kind] of [
+    ['500', 'other'],
+    ['401', 'other'],
+    ['404', 'other'],
+    ['502', 'other'],
+  ]) {
+    const other = analyse(
+      observation({ 8500: tick(8500, '503', CLOSED, status, kind) }),
+    );
+    assert.equal(other.ok, false, `${status}/${kind} during up -d`);
+    assert.match(
+      other.failures.join('\n'),
+      new RegExp(
+        `did not get the maintenance page \\(saw ${status}/${kind}\\)`,
+      ),
+    );
+  }
 });
 
 test('a silent observer is refused, and so is an instance that never reopens', () => {
