@@ -1,10 +1,16 @@
 import { Context, Effect, Layer, Schema } from 'effect';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
+import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
+
+// Server mail is English-only. The three templates (in `smtp.ts`) are inline
+// text because Studio has no server-side message catalogue, and none is built
+// for the few messages that need one; a message that must be localised waits
+// for that catalogue rather than carrying a `locale` it ignores.
 
 export class MailNotConfigured extends Schema.TaggedError<MailNotConfigured>()(
   'MailNotConfigured',
-  { what: Schema.Literals(['sign-in email', 'invitation']) },
+  { what: Schema.Literals(['sign-in email', 'invitation', 'update notice']) },
 ) {
   override get message(): string {
     return `No SMTP transport is configured; cannot send ${this.what}`;
@@ -33,6 +39,16 @@ export type TeamInvitationInput = {
   teamLabel: string;
 };
 
+export type UpdateNoticeInput = {
+  email: string;
+  name: string;
+  version: string;
+  notesUrl: string;
+  /** Whether the release changes the database, which decides what rolling back means. */
+  schemaChange: boolean;
+  deploymentMode: DeploymentMode;
+};
+
 export class Mailer extends Context.Service<
   Mailer,
   {
@@ -41,6 +57,9 @@ export class Mailer extends Context.Service<
     ) => Effect.Effect<void, MailFailed | MailNotConfigured>;
     readonly sendTeamInvitation: (
       input: TeamInvitationInput,
+    ) => Effect.Effect<void, MailFailed | MailNotConfigured>;
+    readonly sendUpdateNotice: (
+      input: UpdateNoticeInput,
     ) => Effect.Effect<void, MailFailed | MailNotConfigured>;
   }
 >()('@studio/Mailer') {
@@ -51,6 +70,10 @@ export class Mailer extends Context.Service<
         Effect.log(`Magic link for ${email}: ${url}`),
       sendTeamInvitation: ({ email, invitationUrl, teamLabel }) =>
         Effect.log(`Invitation to ${teamLabel} for ${email}: ${invitationUrl}`),
+      sendUpdateNotice: ({ email, version, notesUrl }) =>
+        Effect.log(
+          `Studio ${version} is available; notice for ${email}: ${notesUrl}`,
+        ),
     }),
   );
 
@@ -61,6 +84,8 @@ export class Mailer extends Context.Service<
         Effect.fail(new MailNotConfigured({ what: 'sign-in email' })),
       sendTeamInvitation: () =>
         Effect.fail(new MailNotConfigured({ what: 'invitation' })),
+      sendUpdateNotice: () =>
+        Effect.fail(new MailNotConfigured({ what: 'update notice' })),
     }),
   );
 }

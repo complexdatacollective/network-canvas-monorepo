@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   boolean,
   check,
@@ -25,6 +25,19 @@ const deploymentState = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // What the worker's daily update check last read from the release manifest
+    // (#1901). Written by `recordUpdateCheck` alone; the four `latest_*` columns
+    // are one fact and move together. NULL until a check has succeeded.
+    latestVersion: text('latest_version'),
+    latestReleasedAt: timestamp('latest_released_at', { withTimezone: true }),
+    latestNotesUrl: text('latest_notes_url'),
+    latestSchemaChange: boolean('latest_schema_change'),
+    // When a check last succeeded, whether or not it found anything new.
+    checkedAt: timestamp('checked_at', { withTimezone: true }),
+    // The version the owner has been emailed about, or is being emailed about:
+    // `claimNotification` sets it before the send, which is what makes the
+    // email once per version. Cleared again when the send did not happen.
+    notifiedVersion: text('notified_version'),
   },
   (table) => [
     check('deployment_state_singleton_check', sql`${table.id} = 1`),
@@ -35,6 +48,15 @@ const deploymentState = pgTable(
               AND (${table.reason} IS NULL
                    OR (char_length(${table.reason}) BETWEEN 1 AND 280
                        AND ${table.reason} ~ '[^[:space:]]')))`,
+    ),
+    check(
+      'deployment_state_latest_release_check',
+      sql`(${table.latestVersion} IS NULL) = (${table.latestReleasedAt} IS NULL)
+          AND (${table.latestVersion} IS NULL) = (${table.latestNotesUrl} IS NULL)
+          AND (${table.latestVersion} IS NULL) = (${table.latestSchemaChange} IS NULL)
+          AND (${table.latestVersion} IS NULL
+               OR ${table.latestVersion} ~ '^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$')
+          AND (${table.latestNotesUrl} IS NULL OR ${table.latestNotesUrl} ~ '^https://')`,
     ),
   ],
 );
@@ -65,7 +87,22 @@ const STATE_COLUMNS = {
   updatedAt: deploymentState.updatedAt,
 };
 
-const theRow = (rows: ReadonlyArray<DeploymentState>) =>
+const RELEASE_COLUMNS = {
+  version: deploymentState.latestVersion,
+  releasedAt: deploymentState.latestReleasedAt,
+  notesUrl: deploymentState.latestNotesUrl,
+  schemaChange: deploymentState.latestSchemaChange,
+};
+
+/** The newest release the daily update check has recorded (#1901). */
+export type LatestRelease = {
+  readonly version: string;
+  readonly releasedAt: Date;
+  readonly notesUrl: string;
+  readonly schemaChange: boolean;
+};
+
+const theRow = <Row>(rows: ReadonlyArray<Row>) =>
   rows[0] === undefined
     ? Effect.die(new Error('deployment_state has no row'))
     : Effect.succeed(rows[0]);
@@ -76,27 +113,67 @@ const theRow = (rows: ReadonlyArray<DeploymentState>) =>
  */
 const READ_STATEMENT_TIMEOUT = '1s';
 
+/**
+ * The whole row in one statement, so the flag and the recorded release share
+ * the one bounded read and the one scope that opens it.
+ */
 const readRow = Effect.fn('db.deploymentState.read')(function* () {
   const { tx, sql: client } = yield* Transaction;
   yield* client`select set_config('statement_timeout', ${READ_STATEMENT_TIMEOUT}, true)`;
   const rows = yield* tx
-    .select(STATE_COLUMNS)
+    .select({ ...STATE_COLUMNS, release: RELEASE_COLUMNS })
     .from(deploymentState)
     .where(eq(deploymentState.id, 1));
   return yield* theRow(rows);
 }, sqlErrorsOnly);
 
+type Snapshot = Effect.Success<ReturnType<typeof readRow>>;
+
+const stateOf = ({
+  maintenance,
+  reason,
+  updatedAt,
+}: Snapshot): DeploymentState => ({ maintenance, reason, updatedAt });
+
+/** Null until a check has recorded a release; the four columns move together. */
+const releaseOf = ({ release }: Snapshot): LatestRelease | null =>
+  release.version === null ||
+  release.releasedAt === null ||
+  release.notesUrl === null ||
+  release.schemaChange === null
+    ? null
+    : {
+        version: release.version,
+        releasedAt: release.releasedAt,
+        notesUrl: release.notesUrl,
+        schemaChange: release.schemaChange,
+      };
+
+const readSnapshot = (): Effect.Effect<Snapshot, SqlError.SqlError, Database> =>
+  UntenantedScope.open(readRow());
+
 export const readDeploymentState = (): Effect.Effect<
   DeploymentState,
   SqlError.SqlError,
   Database
-> => UntenantedScope.open(readRow());
+> => Effect.map(readSnapshot(), stateOf);
 
 export const readDeploymentStateAsMaintenance = (): Effect.Effect<
   DeploymentState,
   SqlError.SqlError,
   MaintenanceDatabase
-> => MaintenanceScope.open(readRow());
+> => Effect.map(MaintenanceScope.open(readRow()), stateOf);
+
+/**
+ * What the worker's update check last recorded, or null when it has recorded
+ * nothing yet (a fresh instance, or one whose manifest has never been
+ * reachable). Read by the application role, bounded like `readDeploymentState`.
+ */
+export const readLatestRelease = (): Effect.Effect<
+  LatestRelease | null,
+  SqlError.SqlError,
+  Database
+> => Effect.map(readSnapshot(), releaseOf);
 
 export const setMaintenance: (
   window: MaintenanceWindow,
@@ -114,4 +191,74 @@ export const setMaintenance: (
     .where(eq(deploymentState.id, 1))
     .returning(STATE_COLUMNS);
   return yield* theRow(rows);
+}, sqlErrorsOnly);
+
+/**
+ * Record what the manifest said. Touches the `latest_*` columns and
+ * `checked_at` and nothing else: the maintenance flag, its reason and
+ * `updated_at` (which dates the flag) are not this write's to move.
+ */
+export const recordUpdateCheck: (
+  release: LatestRelease,
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'db.deploymentState.recordUpdateCheck',
+)(function* (release: LatestRelease) {
+  const { tx } = yield* Transaction;
+  yield* tx
+    .update(deploymentState)
+    .set({
+      latestVersion: release.version,
+      latestReleasedAt: release.releasedAt,
+      latestNotesUrl: release.notesUrl,
+      latestSchemaChange: release.schemaChange,
+      checkedAt: sql`now()`,
+    })
+    .where(eq(deploymentState.id, 1));
+}, sqlErrorsOnly);
+
+/**
+ * Take the right to email the owner about `version`. True exactly once per
+ * version: the row is claimed only when it does not already name this version,
+ * and the `RETURNING` is what says whether this call was the one that did.
+ */
+export const claimNotification: (
+  version: string,
+) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
+  'db.deploymentState.claimNotification',
+)(function* (version: string) {
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .update(deploymentState)
+    .set({ notifiedVersion: version })
+    .where(
+      and(
+        eq(deploymentState.id, 1),
+        sql`${deploymentState.notifiedVersion} IS DISTINCT FROM ${version}`,
+      ),
+    )
+    .returning({ notifiedVersion: deploymentState.notifiedVersion });
+  return rows.length === 1;
+}, sqlErrorsOnly);
+
+/**
+ * Give a claim back because the email was not sent. Compare-and-reset: only a
+ * row still naming `version` is cleared, so it cannot undo a later claim. NULL
+ * rather than the version before it is equivalent, because only the latest
+ * version is ever claimed.
+ */
+export const releaseNotificationClaim: (
+  version: string,
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'db.deploymentState.releaseNotificationClaim',
+)(function* (version: string) {
+  const { tx } = yield* Transaction;
+  yield* tx
+    .update(deploymentState)
+    .set({ notifiedVersion: null })
+    .where(
+      and(
+        eq(deploymentState.id, 1),
+        eq(deploymentState.notifiedVersion, version),
+      ),
+    );
 }, sqlErrorsOnly);

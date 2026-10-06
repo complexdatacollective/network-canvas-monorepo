@@ -91,13 +91,25 @@ describe('job payload policy', () => {
     expect(codecAdmits('sign-in-email', grown)).toBe(false);
   });
 
-  it.each(['protocol-store-gc', 'denied-attempts-summary'] as const)(
-    'admits an empty object from another realm on %s',
-    (queue) => {
-      expect(codecAdmits(queue, runInNewContext('({})'))).toBe(true);
-      expect(codecAdmits(queue, Object.create(null))).toBe(true);
-    },
-  );
+  it('admits only an empty object on the update check, as identifiers', () => {
+    expect(JOB_PAYLOAD_POLICY['update-check']).toEqual({ kind: 'identifiers' });
+    expect(codecAdmits('update-check', {})).toBe(true);
+    // Nothing the instance knows may ride a job whose worker then contacts a
+    // host outside the instance.
+    expect(codecAdmits('update-check', { instanceId: randomUUID() })).toBe(
+      false,
+    );
+    expect(codecAdmits('update-check', { version: '1.0.0' })).toBe(false);
+  });
+
+  it.each([
+    'protocol-store-gc',
+    'denied-attempts-summary',
+    'update-check',
+  ] as const)('admits an empty object from another realm on %s', (queue) => {
+    expect(codecAdmits(queue, runInNewContext('({})'))).toBe(true);
+    expect(codecAdmits(queue, Object.create(null))).toBe(true);
+  });
 
   it.each(
     QUEUE_NAMES.filter(

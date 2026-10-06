@@ -1,5 +1,5 @@
 import { Effect, Layer, Option, Ref, Schema } from 'effect';
-import { HttpRouter } from 'effect/http';
+import { FetchHttpClient, HttpRouter } from 'effect/http';
 
 import { MaintenanceDatabase, ReadinessDatabase } from '../db/client.ts';
 import { type DbEnv, Environment } from '../env.ts';
@@ -126,6 +126,9 @@ function workerWith(db: DbEnv) {
         Layer.provide(MaintenanceState.layerMaintenance),
         Layer.provide(JobQueueMetrics.layer()),
         Layer.provide(JobHandlersLive),
+        // The update check's manifest fetch, which contacts the one host
+        // `update/manifest.ts` names.
+        Layer.provide(FetchHttpClient.layer),
         Layer.provide(DeniedAttemptsStore.layer),
         // Paused until the gate's first reading: a worker that booted
         // fetching could claim before that reading said "maintenance".
