@@ -1,17 +1,15 @@
 import {
   createInitialNetwork,
+  currentProtocolToPayload,
   type InterviewPayload,
   type ProtocolPayload,
-  type ResolvedAsset,
   type SessionPayload,
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
-  type CurrentProtocol,
   detectSchemaVersion,
   extractProtocolFromZip,
   getMigrationInfo,
-  hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
   validateProtocol,
@@ -40,24 +38,6 @@ export type PreviewInstallFailure =
 export type PreviewInstallResult =
   | { ok: true; install: PreviewProtocolInstall }
   | { ok: false; reason: PreviewInstallFailure };
-
-function toProtocolPayload(protocol: CurrentProtocol): ProtocolPayload {
-  const { assetManifest, ...rest } = protocol;
-  const assets = Object.entries(assetManifest ?? {}).map<ResolvedAsset>(
-    ([assetId, asset]) =>
-      asset.type === 'apikey'
-        ? { assetId, name: asset.name, type: 'apikey', value: asset.value }
-        : { assetId, name: asset.name, type: asset.type, source: asset.source },
-  );
-
-  return {
-    ...rest,
-    id: crypto.randomUUID(),
-    hash: hashProtocol(protocol),
-    importedAt: new Date().toISOString(),
-    assets,
-  };
-}
 
 /**
  * Mirrors the Interviewer's import pipeline (extract, migrate to the Shell's
@@ -107,7 +87,10 @@ export async function installPreviewProtocol(
   return {
     ok: true,
     install: {
-      protocol: toProtocolPayload(validation.data),
+      protocol: currentProtocolToPayload(validation.data, {
+        id: crypto.randomUUID(),
+        importedAt: new Date().toISOString(),
+      }),
       assets: new Map(extracted.assets.map(({ id, data }) => [id, data])),
       migrated,
     },

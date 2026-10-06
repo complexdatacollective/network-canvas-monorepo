@@ -9,13 +9,12 @@ import {
   CurrentProtocolSchema,
   extractProtocol,
   missingAssetsError,
-  hashProtocol,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { currentProtocolToPayload } from '../../src/contract/protocolPayload.js';
 import type {
   ProtocolPayload,
-  ResolvedAsset,
   SessionPayload,
 } from '../../src/contract/types.js';
 import type { SyntheticPayloadResult } from '../helpers/synthetic-payload.js';
@@ -25,13 +24,6 @@ import type { SyntheticPayloadResult } from '../helpers/synthetic-payload.js';
 export type SessionSeed = {
   network?: SessionPayload['network'];
   stageMetadata?: SessionPayload['stageMetadata'];
-};
-
-type AssetEntry = {
-  name: string;
-  type: string;
-  source?: string;
-  value?: string;
 };
 
 type InstalledProtocol = {
@@ -113,27 +105,16 @@ export class ProtocolFixture {
       }
     }
 
-    const assets = this.buildResolvedAssets(rewrittenProtocol);
-
-    const payload: ProtocolPayload = {
-      ...rewrittenProtocol,
+    const payload = currentProtocolToPayload(rewrittenProtocol, {
       id: protocolId,
-      hash: hashProtocol(rewrittenProtocol),
       importedAt: new Date().toISOString(),
-      assets,
-    };
+    });
 
     await this.installProtocolInHost(payload);
 
-    for (const asset of assets) {
-      if (asset.type === 'apikey') continue;
-      const manifestEntry = rewrittenProtocol.assetManifest?.[asset.assetId];
-      const source =
-        manifestEntry && 'source' in manifestEntry
-          ? manifestEntry.source
-          : undefined;
-      if (!source) continue;
-      const resolvedUrl = `${this.assetServerUrl}/${protocolId}/${source}`;
+    for (const asset of payload.assets) {
+      if (!asset.source) continue;
+      const resolvedUrl = `${this.assetServerUrl}/${protocolId}/${asset.source}`;
       await this.page.evaluate(
         ([id, url]: [string, string]) => window.__test.setAssetUrl(id, url),
         [asset.assetId, resolvedUrl] as [string, string],
@@ -156,13 +137,10 @@ export class ProtocolFixture {
     const protocolJson = JSON.parse(await fs.readFile(protocolPath, 'utf8'));
     const protocol = CurrentProtocolSchema.parse(protocolJson);
     const protocolId = uuid();
-    const payload: ProtocolPayload = {
-      ...protocol,
+    const payload = currentProtocolToPayload(protocol, {
       id: protocolId,
-      hash: hashProtocol(protocol),
       importedAt: new Date().toISOString(),
-      assets: [],
-    };
+    });
 
     await this.installProtocolInHost(payload);
 
@@ -175,53 +153,6 @@ export class ProtocolFixture {
       codebook: protocol.codebook,
       assetBasePath: `${this.assetServerUrl}/${protocolId}`,
     };
-  }
-
-  private buildResolvedAssets(protocol: CurrentProtocol): ResolvedAsset[] {
-    if (!protocol.assetManifest) return [];
-
-    const assets: ResolvedAsset[] = [];
-    const validTypes = [
-      'image',
-      'video',
-      'audio',
-      'network',
-      'geojson',
-    ] as const;
-    type ValidType = (typeof validTypes)[number];
-
-    function isAssetEntry(entry: unknown): entry is AssetEntry {
-      return typeof entry === 'object' && entry !== null && 'type' in entry;
-    }
-
-    function isValidType(t: string): t is ValidType {
-      return (validTypes as readonly string[]).includes(t);
-    }
-
-    for (const [assetId, entry] of Object.entries(protocol.assetManifest)) {
-      if (!isAssetEntry(entry)) continue;
-
-      if (entry.type === 'apikey') {
-        assets.push({
-          assetId,
-          name: entry.name,
-          type: 'apikey',
-          value: typeof entry.value === 'string' ? entry.value : undefined,
-        });
-        continue;
-      }
-
-      if (!entry.source) continue;
-      if (!isValidType(entry.type)) continue;
-
-      assets.push({
-        assetId,
-        name: entry.name,
-        type: entry.type,
-      });
-    }
-
-    return assets;
   }
 
   private installProtocolInHost(payload: ProtocolPayload): Promise<void> {

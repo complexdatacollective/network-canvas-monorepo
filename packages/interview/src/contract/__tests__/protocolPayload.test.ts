@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  hashProtocol,
+} from '@codaco/protocol-validation';
 
-import { currentProtocolToPayload } from '../currentProtocolToPayload';
+import { currentProtocolToPayload } from '../protocolPayload';
+
+const identity = {
+  id: 'protocol-version-1',
+  importedAt: '2026-10-06T09:00:00.000Z',
+};
 
 function makeBaseProtocol(
   overrides: Partial<CurrentProtocol> = {},
@@ -19,17 +27,36 @@ function makeBaseProtocol(
 }
 
 describe('currentProtocolToPayload', () => {
-  it('assigns a fresh uuid, ISO importedAt, and a stable hash', () => {
-    const protocol = makeBaseProtocol();
-    const a = currentProtocolToPayload(protocol);
-    const b = currentProtocolToPayload(protocol);
-    expect(a.id).toMatch(/^[0-9a-f-]{36}$/);
-    expect(b.id).not.toBe(a.id);
-    expect(() => new Date(a.importedAt).toISOString()).not.toThrow();
-    expect(a.hash).toBe(b.hash); // hash is content-derived; uuid/timestamp are not in the hash input
+  it('carries the identity the caller supplies', () => {
+    const payload = currentProtocolToPayload(makeBaseProtocol(), identity);
+    expect(payload.id).toBe(identity.id);
+    expect(payload.importedAt).toBe(identity.importedAt);
   });
 
-  it('transforms file assetManifest entries into ResolvedAsset[] using source as name', () => {
+  it('produces identical output for the same protocol and identity', () => {
+    const protocol = makeBaseProtocol({
+      assetManifest: {
+        'asset-1': {
+          id: 'asset-1',
+          name: 'logo',
+          type: 'image',
+          source: 'logo.png',
+        },
+      },
+    });
+    expect(JSON.stringify(currentProtocolToPayload(protocol, identity))).toBe(
+      JSON.stringify(currentProtocolToPayload(protocol, identity)),
+    );
+  });
+
+  it('hashes the protocol structure', () => {
+    const protocol = makeBaseProtocol();
+    expect(currentProtocolToPayload(protocol, identity).hash).toBe(
+      hashProtocol(protocol),
+    );
+  });
+
+  it('keeps the display name and the source filename of file assets', () => {
     const payload = currentProtocolToPayload(
       makeBaseProtocol({
         assetManifest: {
@@ -41,13 +68,14 @@ describe('currentProtocolToPayload', () => {
           },
         },
       }),
+      identity,
     );
     expect(payload.assets).toEqual([
-      { assetId: 'asset-1', name: 'logo.png', type: 'image' },
+      { assetId: 'asset-1', name: 'logo', type: 'image', source: 'logo.png' },
     ]);
   });
 
-  it('transforms apikey assetManifest entries with embedded value', () => {
+  it('carries the value of apikey assets', () => {
     const payload = currentProtocolToPayload(
       makeBaseProtocol({
         assetManifest: {
@@ -59,6 +87,7 @@ describe('currentProtocolToPayload', () => {
           },
         },
       }),
+      identity,
     );
     expect(payload.assets).toEqual([
       {
@@ -71,7 +100,7 @@ describe('currentProtocolToPayload', () => {
   });
 
   it('omits assetManifest from the payload', () => {
-    const payload = currentProtocolToPayload(makeBaseProtocol());
+    const payload = currentProtocolToPayload(makeBaseProtocol(), identity);
     expect('assetManifest' in payload).toBe(false);
   });
 
@@ -82,7 +111,7 @@ describe('currentProtocolToPayload', () => {
       },
     });
     const before = JSON.stringify(protocol);
-    currentProtocolToPayload(protocol);
+    currentProtocolToPayload(protocol, identity);
     expect(JSON.stringify(protocol)).toBe(before);
   });
 });
