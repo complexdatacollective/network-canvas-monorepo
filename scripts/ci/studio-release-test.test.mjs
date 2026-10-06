@@ -495,11 +495,15 @@ test('only what existed before is compared, and every loss or change is a differ
       { id: 'p1', name: 'One', release_test_probe: 'backfilled:p1' },
       { id: 'p3', name: 'Three' },
     ],
+    // A table the upgrade created is not a difference; a row in it is.
+    'public.created_empty': [],
+    'public.created_filled': [{ id: 'c1', name: 'Inserted by the backfill' }],
   });
   const found = differences(before, after).map(({ kind, table, column }) =>
     [kind, table, column].filter(Boolean).join(' '),
   );
   assert.deepEqual(found.sort(), [
+    'row-added public.created_filled',
     'row-added public.protocols',
     'row-lost public.protocols',
     'table-lost public.teams',

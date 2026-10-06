@@ -696,6 +696,10 @@ describe('migrate:generate', () => {
     for (const delta of [
       'ALTER TABLE "fx_notes" ADD COLUMN "code" text NOT NULL;',
       'alter table public.fx_notes add code text not null;',
+      // A comma inside a type modifier or a quoted literal does not end the
+      // column's clause.
+      'ALTER TABLE "fx_notes" ADD COLUMN "code" numeric(10,2) NOT NULL;',
+      `ALTER TABLE "fx_notes" ADD COLUMN "code" text CHECK ("code" IN ('a,b', 'c')) NOT NULL;`,
       'ALTER TABLE "fx_notes" ADD COLUMN "code" text;\nALTER TABLE "fx_notes" ALTER COLUMN "code" SET NOT NULL;',
     ]) {
       write('delta.sql', `${header}${delta}\n`);

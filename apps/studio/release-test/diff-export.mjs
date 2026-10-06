@@ -6,12 +6,12 @@
 //
 // Exits 1, after writing <out.json>, on any difference no mask accounts for.
 //
-// The rule: only what existed before is compared. A table, a row or a column
-// present after and not before is what an upgrade is allowed to add — a new
-// column from the delta is expected — and is reported only when it is a ROW
-// (rows appearing are data, and need a reason). Everything the before-export
-// held must still be there with the same value: a lost table, a lost row, a
-// lost column or a changed value is a difference.
+// The rule: a table or a column present after and not before is what an
+// upgrade is allowed to add — a new column or table from the delta is
+// expected — but a ROW present after and not before is data, and needs a
+// reason, in any table, including one the upgrade created. Everything the
+// before-export held must still be there with the same value: a lost table, a
+// lost row, a lost column or a changed value is a difference.
 //
 // MASKS are the exceptions, and each one names why. A mask is added only
 // after a run has shown the change it covers (its `seen` line says which),
@@ -170,6 +170,19 @@ export function differences(before, after) {
           after: row,
         });
       }
+    }
+  }
+  // A table the upgrade created held no rows before it, so every row it holds
+  // now was added.
+  for (const [table, { rows: afterRows }] of after) {
+    if (before.has(table)) continue;
+    for (const [key, row] of afterRows) {
+      found.push({
+        kind: 'row-added',
+        table,
+        key: JSON.parse(key),
+        after: row,
+      });
     }
   }
   return found;

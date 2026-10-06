@@ -523,7 +523,7 @@ function setsNotNullUnfilled(delta: string, column: string): boolean {
     'i',
   );
   const added = new RegExp(
-    `\\bADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?${identifier(name)}\\s([^,]*)`,
+    `\\bADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?${identifier(name)}\\s`,
     'i',
   );
   const tightened = new RegExp(
@@ -534,13 +534,39 @@ function setsNotNullUnfilled(delta: string, column: string): boolean {
     const text = statement.replace(/--[^\n]*/g, '');
     if (!onTable.test(text)) return false;
     if (tightened.test(text)) return true;
-    const clause = added.exec(text)?.[1];
+    const match = added.exec(text);
+    const clause =
+      match === null
+        ? undefined
+        : columnClause(text, match.index + match[0].length);
     return (
       clause !== undefined &&
       /\bNOT\s+NULL\b/i.test(clause) &&
       !/\bDEFAULT\b/i.test(clause)
     );
   });
+}
+
+/**
+ * The column definition starting at `from`, up to the comma that ends it: the
+ * first comma outside parentheses and quotes, so a type modifier such as
+ * `numeric(10,2)` or a quoted default does not cut the clause short.
+ */
+function columnClause(text: string, from: number): string {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let index = from; index < text.length; index += 1) {
+    const char = text[index];
+    if (quote !== null) {
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') quote = char;
+    else if (char === '(') depth += 1;
+    else if (char === ')') depth -= 1;
+    else if (char === ',' && depth === 0) return text.slice(from, index);
+  }
+  return text.slice(from);
 }
 
 async function generate(

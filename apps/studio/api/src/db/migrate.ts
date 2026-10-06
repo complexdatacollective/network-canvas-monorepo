@@ -422,14 +422,28 @@ class MigrationCommitFailed extends Schema.TaggedError<MigrationCommitFailed>()(
   }
 }
 
+/**
+ * The failure's SQLSTATE, or null when Postgres sent none. A SQLSTATE is five
+ * digits or capital letters in one of Postgres's classes — a digit-led class,
+ * or F0, HV, P0 or XX (Appendix A). Any other `code` on the error chain — a
+ * socket's `ECONNRESET` or `EPIPE`, a driver's own tag — was raised on this
+ * side of the connection, so it says nothing about what the server did.
+ */
+const SQLSTATE = /^(?:[0-9][0-9A-Z]|F0|HV|P0|XX)[0-9A-Z]{3}$/;
+
+const postgresState = (cause: unknown): string | null => {
+  const code = sqlState(cause);
+  return code !== undefined && SQLSTATE.test(code) ? code : null;
+};
+
 const refusalReason = (cause: unknown, code: string | null): string =>
   code === null || NAMED_OBJECT_CLASSES.has(code.slice(0, 2))
     ? (deepestMessage(cause) ?? String(cause))
     : UNSHOWN_REASON;
 
-const commitFailed = (cause: unknown) => {
+export const commitFailed = (cause: unknown): MigrationCommitFailed => {
   if (cause instanceof MigrationCommitFailed) return cause;
-  const code = sqlState(cause) ?? null;
+  const code = postgresState(cause);
   return new MigrationCommitFailed({
     code,
     reason: refusalReason(cause, code),
@@ -451,7 +465,7 @@ const runStatement = (
   client.unsafe(statement).pipe(
     Effect.catchTag('SqlError', (cause) =>
       Effect.flatMap(Effect.exit(client.unsafe('select 1')), (probe) => {
-        const code = sqlState(cause) ?? null;
+        const code = postgresState(cause);
         return Effect.fail(
           new MigrationStatementFailed({
             ...site,
