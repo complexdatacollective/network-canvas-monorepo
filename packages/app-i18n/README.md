@@ -125,8 +125,10 @@ The source merges and caches one locale at a time:
 - `attempt(locale)` returns the load the locale already has, including its
   last failed attempt, and starts one only if there is none. Suspend on this
   rather than `load`: a render that suspends on `load` would start a new
-  attempt every time React retries it, and never settle. A failed `load` (a preload before the first render, say) is not handed on, so
-  the first attempt after one still tries afresh.
+  attempt every time React retries it, and never settle. A `load` an attempt
+  joined while it was in flight counts as an attempt. One that failed before
+  any attempt joined it (a preload before the first render, say) is not handed
+  on, so the first attempt after it still tries afresh.
 - `peek(locale)` returns the merged catalog once it has loaded, otherwise
   `undefined`. A locale no package translates (English, the pseudo-locale) is
   always ready with an empty catalog.

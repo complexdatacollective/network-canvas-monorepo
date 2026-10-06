@@ -136,6 +136,20 @@ describe('createCatalogSource', () => {
     expect(es).toHaveBeenCalledTimes(2);
   });
 
+  it('hands on a failed load that an attempt joined while it was in flight', async () => {
+    const es = vi
+      .fn<() => Promise<{ default: CatalogMessages }>>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockImplementation(() => moduleOf({ 'a.x': 'uno' }));
+    const source = createCatalogSource({ es });
+
+    const preload = source.load('es');
+    expect(source.attempt('es')).toBe(preload);
+    await expect(preload).rejects.toThrow('offline');
+    expect(source.attempt('es')).toBe(preload);
+    expect(es).toHaveBeenCalledOnce();
+  });
+
   it('replaces a failed load with a fresh one on the next load', async () => {
     const es = vi
       .fn<() => Promise<{ default: CatalogMessages }>>()
