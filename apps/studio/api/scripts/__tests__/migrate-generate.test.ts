@@ -40,7 +40,14 @@ import { readMigrationsDocument } from '../render-migrations.ts';
 const notes = (
   columns: 'body' | 'text' | 'none' | 'required-body',
   indexName = 'fx_notes_team_idx',
-  code: 'none' | 'required' | 'defaulted' | 'nullable' = 'none',
+  code:
+    | 'none'
+    | 'required'
+    | 'defaulted'
+    | 'nullable'
+    | 'nullable-defaulted'
+    | 'identity'
+    | 'nullable-integer' = 'none',
 ) =>
   pgTable(
     'fx_notes',
@@ -55,6 +62,13 @@ const notes = (
         ? { code: text('code').notNull().default('none') }
         : {}),
       ...(code === 'nullable' ? { code: text('code') } : {}),
+      ...(code === 'nullable-defaulted'
+        ? { code: text('code').default('none') }
+        : {}),
+      ...(code === 'nullable-integer' ? { code: integer('code') } : {}),
+      ...(code === 'identity'
+        ? { code: integer('code').generatedAlwaysAsIdentity() }
+        : {}),
     },
     (table) => [
       index(indexName).on(table.team),
@@ -519,7 +533,7 @@ describe('migrate:generate', () => {
       { kind: 'generate', name: 'code' },
     );
     expect(added.message).toContain(
-      'This change makes [public.fx_notes.code] NOT NULL with no default',
+      'This change makes [public.fx_notes.code] NOT NULL over rows a deployed database may already hold',
     );
     expect(added.message).toMatch(/--hand-written/);
     expect(added.message).toMatch(/SET NOT NULL/);
@@ -541,6 +555,10 @@ describe('migrate:generate', () => {
       [
         'nullable',
         { teams: teams(), notes: notes('body', undefined, 'nullable') },
+      ],
+      [
+        'identity',
+        { teams: teams(), notes: notes('body', undefined, 'identity') },
       ],
       [
         'new_table',
@@ -566,6 +584,79 @@ describe('migrate:generate', () => {
     }
   });
 
+  // A default fills existing rows only when ADD COLUMN creates the column: an
+  // existing column keeps its NULLs through SET DEFAULT, and the SET NOT NULL
+  // drizzle-kit writes after it fails on the first one.
+  it('refuses to tighten an existing nullable column whatever default or identity it has or gains', async () => {
+    for (const [name, from, to] of [
+      ['existing_default', 'nullable-defaulted', 'defaulted'],
+      ['gains_default', 'nullable', 'defaulted'],
+      ['gains_identity', 'nullable-integer', 'identity'],
+    ] as const) {
+      const dir = migrationsDir();
+      await generateMigrationDirectory(
+        await inputsFor(dir, {
+          teams: teams(),
+          notes: notes('body', undefined, from),
+        }),
+        { kind: 'generate', name: 'initial' },
+      );
+      const before = listing(dir);
+      const refused = await refusal(
+        await inputsFor(dir, {
+          teams: teams(),
+          notes: notes('body', undefined, to),
+        }),
+        { kind: 'generate', name },
+      );
+      expect(refused.message, name).toContain(
+        'This change makes [public.fx_notes.code] NOT NULL over rows',
+      );
+      expect(listing(dir), name).toEqual(before);
+    }
+  });
+
+  // A hand-written rename shows as a drop and an add, so the added column may
+  // carry the dropped one's NULLs; its default fills nothing then.
+  it('treats an added column as the possible rename of a nullable one its table loses', async () => {
+    const renamed = pgTable('fx_notes', {
+      id: integer('id').primaryKey(),
+      team: text('team').notNull(),
+      text: text('text').notNull().default(''),
+    });
+    const header = async (
+      from: Record<string, unknown>,
+      to: Record<string, unknown> = { teams: teams(), notes: renamed },
+    ) => {
+      const dir = migrationsDir();
+      await generateMigrationDirectory(await inputsFor(dir, from), {
+        kind: 'generate',
+        name: 'initial',
+      });
+      await generateMigrationDirectory(await inputsFor(dir, to), {
+        kind: 'generate',
+        name: 'rename',
+        handWritten: true,
+      });
+      return read(dir, '0002_rename', 'delta.sql');
+    };
+    expect(await header(V1)).toContain(
+      'NOT NULL over rows a deployed database may already hold: public.fx_notes.text.',
+    );
+    // From a NOT NULL column there is no NULL to carry.
+    expect(
+      await header({ teams: teams(), notes: notes('required-body') }),
+    ).not.toContain('NOT NULL over rows');
+    // A created table may be the rename of one the change drops.
+    const squads = pgTable('fx_squads', {
+      id: text('id').primaryKey(),
+      name: text('name').notNull().default(''),
+    });
+    expect(await header(V1, { notes: notes('body'), squads })).toContain(
+      'NOT NULL over rows a deployed database may already hold: public.fx_squads.name.',
+    );
+  });
+
   it('seals a NOT NULL column only with a backfill, and only when the delta leaves it nullable', async () => {
     const dir = migrationsDir();
     await initial(dir);
@@ -580,7 +671,7 @@ describe('migrate:generate', () => {
     });
     const header = read(dir, '0002_code', 'delta.sql');
     expect(header).toContain(
-      'NOT NULL with no default on an existing table: public.fx_notes.code.',
+      'NOT NULL over rows a deployed database may already hold: public.fx_notes.code.',
     );
 
     const write = (name: string, content: string) =>
@@ -591,7 +682,7 @@ describe('migrate:generate', () => {
       `${header}ALTER TABLE "fx_notes" ADD COLUMN "code" text;\n`,
     );
     expect((await refusal(inputs, { kind: 'seal' })).message).toMatch(
-      /0002_code makes \[public\.fx_notes\.code\] NOT NULL with no default on an existing table, and has no backfill\.sql/,
+      /0002_code makes \[public\.fx_notes\.code\] NOT NULL over rows a deployed database may already hold, and has no backfill\.sql/,
     );
 
     const backfill = [

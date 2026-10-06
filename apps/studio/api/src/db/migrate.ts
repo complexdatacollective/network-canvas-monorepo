@@ -334,16 +334,30 @@ const abbreviated = (statement: string): string => {
 };
 
 /**
- * SQLSTATE class 22, data exception: a cast, a range or a format that one
- * value failed. Postgres's message for it can quote that value — a stored row
- * of the operator's study data — so the code and the class are reported
- * instead (#1901 FX-6). Every other class names a constraint, a column or a
- * relation, never a value, and keeps Postgres's message.
+ * Postgres's message is reported only for the SQLSTATE classes whose messages
+ * Postgres composes from the names of schema objects — a constraint, a column,
+ * a relation, a lock, a setting — and never from a row's values (#1901 FX-6).
+ * Every other code is reported by itself: a data exception (class 22) can quote
+ * the stored value that failed, and a PL/pgSQL `RAISE` (class P0) carries
+ * whatever its trigger interpolated, which in Studio's sidecars includes stored
+ * keys and identifiers. A failure with no SQLSTATE did not come from Postgres
+ * and keeps its message.
  */
-const DATA_EXCEPTION_CLASS = '22';
+const NAMED_OBJECT_CLASSES: ReadonlySet<string> = new Set([
+  '08', // connection exception
+  '0A', // feature not supported
+  '23', // integrity constraint violation
+  '25', // invalid transaction state
+  '40', // transaction rollback
+  '42', // syntax error or access rule violation
+  '53', // insufficient resources
+  '54', // program limit exceeded
+  '55', // object not in prerequisite state
+  '57', // operator intervention
+]);
 
-const DATA_EXCEPTION_REASON =
-  "a data exception. Postgres's message is not shown, because it can quote the value that failed; run the statement against a copy of the database to see it";
+const UNSHOWN_REASON =
+  "Postgres's message is not shown, because for this SQLSTATE it can quote stored values; run the statement against a copy of the database to see it";
 
 /**
  * A statement of a migration that Postgres refused, named down to the
@@ -409,9 +423,9 @@ class MigrationCommitFailed extends Schema.TaggedError<MigrationCommitFailed>()(
 }
 
 const refusalReason = (cause: unknown, code: string | null): string =>
-  code?.startsWith(DATA_EXCEPTION_CLASS)
-    ? DATA_EXCEPTION_REASON
-    : (deepestMessage(cause) ?? String(cause));
+  code === null || NAMED_OBJECT_CLASSES.has(code.slice(0, 2))
+    ? (deepestMessage(cause) ?? String(cause))
+    : UNSHOWN_REASON;
 
 const commitFailed = (cause: unknown) => {
   if (cause instanceof MigrationCommitFailed) return cause;

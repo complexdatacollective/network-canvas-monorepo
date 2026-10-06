@@ -89,19 +89,32 @@ migration is sealed, against the same snapshot diff.
 
 ## Making a column NOT NULL
 
-A column that becomes NOT NULL with no default, on a table the previous
-release already has (added that way, or tightened), passes on the empty
-database every test builds and fails on any deployment whose table has a row.
-The generator refuses it and names the column. Write it by hand instead:
+Postgres fills existing rows only when it creates a column: `ADD COLUMN` with
+a `DEFAULT` or an identity writes a value into every row, and a new table has
+no rows. A column that already exists keeps the values it holds, NULLs
+included, whatever default it has or gains: `SET DEFAULT` changes no row. So
+a migration needs a backfill whenever a column becomes NOT NULL over rows a
+deployed database may already hold:
+
+- a column added to an existing table as NOT NULL with no default or identity;
+- an existing nullable column made NOT NULL, with or without a default, and
+  also when it becomes an identity column;
+- a column or table created where the change also drops a nullable one, since
+  a hand-written rename shows as exactly that, and its default fills nothing.
+
+Each passes on the empty database every test builds and fails on any
+deployment with a NULL there. The generator refuses it and names the column. A
+generated column is exempt: Postgres computes it for every row. Write it by
+hand instead:
 
 1. `migrate:generate --name <slug> --hand-written`.
-2. In `delta.sql`, add the column **without** NOT NULL.
+2. In `delta.sql`, add or alter the column **without** NOT NULL.
 3. In `backfill.sql`, fill it ([Backfills](#backfills)), then
    `ALTER TABLE … ALTER COLUMN … SET NOT NULL;` as the last statement.
 4. `migrate:generate --seal`.
 
 `--seal` refuses such a migration without a `backfill.sql`, and refuses a
-`delta.sql` that already sets the column NOT NULL. A column whose existing
+`delta.sql` that already sets the column NOT NULL. A new column whose existing
 rows can all take one constant needs no backfill: give it a `DEFAULT` in the
 schema and the generator writes it.
 
@@ -361,9 +374,13 @@ deliberately, then run `migrate:generate` and confirm it reports no change.
 A statement Postgres refuses is reported with its migration, file, position
 and text, Postgres's SQLSTATE and message, and whether the transaction rolled
 back (it always has, unless a file got past the transaction-control refusal).
-A data exception (SQLSTATE class 22: a failed cast, an out-of-range value) is
-reported by its code alone, because its message can quote the stored value
-that failed. `Applied …` is printed only once the commit has returned.
+Postgres's message is shown only for the SQLSTATE classes it words from the
+names of schema objects (a constraint, a column, a relation, a lock). Every
+other failure is reported by its code alone, because its message can quote
+stored values: a data exception (class 22: a failed cast, an out-of-range
+value) quotes the value that failed, and a PL/pgSQL `RAISE` (class P0) carries
+whatever its trigger interpolated. To see the message, run the statement
+against a copy of the database. `Applied …` is printed only once the commit has returned.
 A keyring that cannot open what the upgraded database stores is refused before
 the commit, so it, too, leaves the database at its previous release.
 

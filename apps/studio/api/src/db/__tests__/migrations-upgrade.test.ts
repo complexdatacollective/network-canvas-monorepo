@@ -568,7 +568,8 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
         _tag: 'MigrationStatementFailed',
         artefact: 'backfill.sql',
         position: 'at the end of the file',
-        reason: expect.stringMatching(/must answer every item/),
+        // The consent check's raise, shown by its SQLSTATE alone.
+        code: 'P0001',
       });
     },
     CASE_TIMEOUT_MS,
@@ -599,7 +600,8 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
         _tag: 'MigrationStatementFailed',
         artefact: 'backfill.sql',
         position: 'statement 4 of 5',
-        reason: expect.stringMatching(/must answer every item/),
+        // The consent check's raise, shown by its SQLSTATE alone.
+        code: 'P0001',
         rolledBack: true,
       });
     },

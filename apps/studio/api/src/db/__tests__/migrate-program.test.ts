@@ -152,11 +152,28 @@ describe.skipIf(!db)('the migrate command', () => {
     CASE_TIMEOUT_MS,
   );
 
-  // #1901 FX-6: a data exception's message can quote the value that failed,
-  // and that value is a row of the operator's study data.
-  it(
-    'reports a data exception by its code and class, never the value Postgres quotes',
-    async () => {
+  // #1901 FX-6: outside the classes Postgres words from object names, a
+  // message can quote a stored value — a data exception the value that failed,
+  // a PL/pgSQL RAISE whatever its trigger interpolated — and that value is a
+  // row of the operator's study data.
+  it.each([
+    {
+      failure: 'a data exception',
+      backfill: 'SELECT name::int FROM teams;',
+      statement: 'SELECT name::int FROM teams',
+      code: '22P02',
+    },
+    {
+      failure: 'a PL/pgSQL RAISE that interpolates a stored value',
+      backfill:
+        "DO $$ BEGIN RAISE EXCEPTION 'stored %', (SELECT name FROM teams WHERE id = 'team-migrate-cast'); END $$;",
+      statement:
+        "DO $$ BEGIN RAISE EXCEPTION 'stored %', (SELECT name FROM teams WHERE id = 'team-migrate-cast'); END $$",
+      code: 'P0001',
+    },
+  ])(
+    'reports $failure by its code alone, never the value in the message',
+    async ({ backfill, statement, code: sqlState }) => {
       const scratch = await releasedDatabase();
       const before = await history(scratch.pool);
       const value = 'Alice Example';
@@ -165,19 +182,19 @@ describe.skipIf(!db)('the migrate command', () => {
         ['team-migrate-cast', value],
       );
 
-      const casting = release({
-        slug: 'casting',
+      const failing = release({
+        slug: 'failing',
         delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
-        backfill: 'SELECT name::int FROM teams;',
+        backfill,
       });
-      const version = casting.migrations.at(-1)?.version;
-      const { code, output } = await migrate(scratch, casting);
+      const version = failing.migrations.at(-1)?.version;
+      const { code, output } = await migrate(scratch, failing);
 
       expect(code).toBe(1);
       expect(output).toContain(
         [
-          `Migration ${version} failed in backfill.sql, statement 1 of 1: SELECT name::int FROM teams`,
-          "Postgres refused it (22P02): a data exception. Postgres's message is not shown, because it can quote the value that failed; run the statement against a copy of the database to see it",
+          `Migration ${version} failed in backfill.sql, statement 1 of 1: ${statement.length > 80 ? `${statement.slice(0, 79)}…` : statement}`,
+          `Postgres refused it (${sqlState}): Postgres's message is not shown, because for this SQLSTATE it can quote stored values; run the statement against a copy of the database to see it`,
           NOTHING_APPLIED,
         ].join('\n'),
       );

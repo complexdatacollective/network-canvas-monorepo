@@ -232,45 +232,85 @@ function hasValue(entity: Entity, name: string): boolean {
   return value !== null && value !== undefined;
 }
 
+/** Each table's columns (`schema.table` → column name → column). */
+function columnsByTable(snapshot: Snapshot): Map<string, Map<string, Entity>> {
+  const tables = new Map<string, Map<string, Entity>>();
+  for (const table of tablesIn(snapshot)) tables.set(table, new Map());
+  for (const entity of snapshot.ddl) {
+    if (entity.entityType !== 'columns') continue;
+    const table = `${field(entity, 'schema')}.${field(entity, 'table')}`;
+    const columns = tables.get(table) ?? new Map<string, Entity>();
+    columns.set(entity.name, entity);
+    tables.set(table, columns);
+  }
+  return tables;
+}
+
 /**
- * Columns (`schema.table.column`) of a table the previous snapshot has that
- * become NOT NULL with no default: added that way, or tightened. The
+ * Columns (`schema.table.column`) that become NOT NULL over rows a deployed
+ * database may already hold, with nothing in the delta to fill them. The
  * generated `ALTER` passes on the empty database every suite builds and fails
- * on any deployment whose table has a row, so each one needs a backfill that
- * fills it before the constraint is set.
+ * on any deployment with a NULL there, so each one needs a backfill that fills
+ * it before the constraint is set.
+ *
+ * Postgres fills existing rows only when it creates the column: `ADD COLUMN`
+ * with a default or an identity writes a value into every row, and a table it
+ * creates has none. A column that carries stored values over keeps them, NULLs
+ * included, whatever default or identity it gains: `SET DEFAULT` touches no
+ * row, and `SET NOT NULL` (or identity's own NOT NULL check) fails on the
+ * first NULL. So a NOT NULL column is filled only when it was NOT NULL before,
+ * or was created now with a value for every row.
+ *
+ * The diff cannot see a hand-written rename, which shows as a drop and a
+ * create, so a created column or table is also checked as the rename of each
+ * one the change removes in its place. A generated column is exempt: Postgres
+ * computes it for every row (drizzle-kit drops and re-adds a column that
+ * becomes one), and no backfill can write it.
  */
 export function unfilledColumns(prev: Snapshot, cur: Snapshot): string[] {
-  const before = tablesIn(prev);
-  const previous = new Map(
-    prev.ddl
-      .filter((entity) => entity.entityType === 'columns')
-      .map((entity) => [entityKey(entity), entity]),
-  );
+  const was = columnsByTable(prev);
+  const now = columnsByTable(cur);
+  const removedTables = [...was.keys()].filter((table) => !now.has(table));
+  const notNull = (entity: Entity) => Reflect.get(entity, 'notNull') === true;
+
+  // Whether `column`, read as a column of `source` in the previous snapshot,
+  // can reach the new constraint with a row it never filled.
+  const unfilledFrom = (column: Entity, table: string, source: string) => {
+    const previous = was.get(source) ?? new Map<string, Entity>();
+    const same = previous.get(column.name);
+    if (same !== undefined) return !notNull(same);
+    if (!hasValue(column, 'default') && !hasValue(column, 'identity')) {
+      return true;
+    }
+    const kept = now.get(table) ?? new Map<string, Entity>();
+    return [...previous.values()].some(
+      (lost) => !kept.has(lost.name) && !notNull(lost),
+    );
+  };
+
   return cur.ddl
     .filter(
       (entity) =>
         entity.entityType === 'columns' &&
-        before.has(`${field(entity, 'schema')}.${field(entity, 'table')}`) &&
-        Reflect.get(entity, 'notNull') &&
-        !hasValue(entity, 'default') &&
-        !hasValue(entity, 'generated') &&
-        !hasValue(entity, 'identity'),
+        notNull(entity) &&
+        !hasValue(entity, 'generated'),
     )
     .filter((entity) => {
-      const was = previous.get(entityKey(entity));
-      return was === undefined || !Reflect.get(was, 'notNull');
+      const table = `${field(entity, 'schema')}.${field(entity, 'table')}`;
+      const sources = was.has(table) ? [table] : removedTables;
+      return sources.some((source) => unfilledFrom(entity, table, source));
     })
     .map(qualified)
     .toSorted();
 }
 
 const NOT_NULL_RECIPE =
-  'In delta.sql add the column without NOT NULL; in backfill.sql fill it (as studio_maintenance, see migrations/README.md) and then ALTER TABLE … ALTER COLUMN … SET NOT NULL.';
+  'In delta.sql add or alter the column without NOT NULL; in backfill.sql fill it (as studio_maintenance, see migrations/README.md) and then ALTER TABLE … ALTER COLUMN … SET NOT NULL.';
 
 function unfilledRefusal(columns: readonly string[]): GenerateRefused {
   return new GenerateRefused(
     [
-      `This change makes [${columns.join(', ')}] NOT NULL with no default on a table a deployed database already has rows in, where the generated ALTER would fail.`,
+      `This change makes [${columns.join(', ')}] NOT NULL over rows a deployed database may already hold, where the generated ALTER would fail on a NULL: a default fills existing rows only for a column the change adds.`,
       `Re-run with --hand-written --name <slug>. ${NOT_NULL_RECIPE} Then run --seal.`,
     ].join('\n'),
   );
@@ -558,7 +598,7 @@ async function generate(
         ...(unfilled.length === 0
           ? []
           : [
-              `NOT NULL with no default on an existing table: ${unfilled.join(', ')}.`,
+              `NOT NULL over rows a deployed database may already hold: ${unfilled.join(', ')}.`,
               NOT_NULL_RECIPE,
             ]),
         'Write the statements below, then run:',
@@ -675,7 +715,7 @@ async function seal(
   if (unfilled.length > 0) {
     if (backfill === undefined) {
       throw new GenerateRefused(
-        `${newest.version} makes [${unfilled.join(', ')}] NOT NULL with no default on an existing table, and has no backfill.sql to fill it. ${NOT_NULL_RECIPE}`,
+        `${newest.version} makes [${unfilled.join(', ')}] NOT NULL over rows a deployed database may already hold, and has no backfill.sql to fill them. ${NOT_NULL_RECIPE}`,
       );
     }
     const constrained = unfilled.filter((column) =>

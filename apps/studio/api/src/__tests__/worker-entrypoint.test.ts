@@ -200,7 +200,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       );
       try {
         await worker.waitForOutput(
-          /the deployment is in maintenance: the job worker has stopped claiming jobs/,
+          /maintenance mode is on: Upgrading: the job worker has stopped claiming jobs/,
           MAINTENANCE_WAIT_MS,
         );
       } finally {
@@ -208,7 +208,10 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           'update deployment_state set maintenance = false, reason = null',
         );
       }
-      await worker.waitForOutput(/maintenance is over/, MAINTENANCE_WAIT_MS);
+      await worker.waitForOutput(
+        /the deployment is open again/,
+        MAINTENANCE_WAIT_MS,
+      );
 
       worker.child.kill('SIGTERM');
       // The process exits 130 — `NodeRuntime.runMain`'s code for an interruption

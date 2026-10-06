@@ -3,6 +3,8 @@ import { Deferred, Duration, Effect, Layer, MutableRef, Option } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
+import type { SchemaState } from '../../db/schema.ts';
+import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
 import { MaintenanceState } from '../../platform/maintenance-state.ts';
 import { applyMaintenanceWindow } from '../../programs/maintenance.ts';
@@ -22,6 +24,56 @@ import {
 } from './support.ts';
 
 const db = await reachableDb();
+
+const CURRENT: SchemaState = { kind: 'current' };
+
+const STALE: SchemaState = {
+  kind: 'stale',
+  reason: 'mismatch',
+  found: 'a-later-build',
+  appliedAt: new Date(0),
+};
+
+/**
+ * The gate over the API's own closure rule, with every reading but the flag's
+ * injected: `lockHeld` and `schema` stand in for `migrationLockHeld` and
+ * `SchemaStatus.read`.
+ */
+const gateOver = (
+  probes: {
+    readonly maintenance?: MutableRef.MutableRef<boolean>;
+    readonly lockHeld?: MutableRef.MutableRef<boolean>;
+    readonly schema?: MutableRef.MutableRef<SchemaState>;
+  },
+  config?: Parameters<typeof JobMaintenanceGate.layer>[0],
+) => {
+  const { lockHeld, schema } = probes;
+  return JobMaintenanceGate.layer(config).pipe(
+    Layer.provide(
+      MaintenanceTriggers.layerWith({
+        lockHeld:
+          lockHeld === undefined
+            ? Effect.succeed(false)
+            : Effect.sync(() => MutableRef.get(lockHeld)),
+        schema:
+          schema === undefined
+            ? Effect.succeed(CURRENT)
+            : Effect.sync(() => MutableRef.get(schema)),
+      }),
+    ),
+    Layer.provide(
+      probes.maintenance === undefined
+        ? MaintenanceState.layerOff
+        : MaintenanceState.layerTest(probes.maintenance),
+    ),
+  );
+};
+
+/** The triggers the deployment-state cases want: the flag alone, read live. */
+const openTriggers = MaintenanceTriggers.layerWith({
+  lockHeld: Effect.succeed(false),
+  schema: Effect.succeed(CURRENT),
+});
 
 describe.skipIf(!db)('the maintenance gate', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (it) => {
@@ -60,7 +112,7 @@ describe.skipIf(!db)('the maintenance gate', () => {
           yield* tick;
           assert.deepStrictEqual(calls, [true, false]);
           assert.strictEqual(logs.messages.length, 1);
-          assert.include(logs.messages[0]!, 'in maintenance');
+          assert.include(logs.messages[0]!, 'maintenance mode is on');
           assert.include(logs.messages[0]!, 'stopped claiming jobs');
 
           yield* tick;
@@ -72,10 +124,9 @@ describe.skipIf(!db)('the maintenance gate', () => {
           yield* tick;
           assert.deepStrictEqual(calls, [true, false, true]);
           assert.strictEqual(logs.messages.length, 2);
-          assert.include(logs.messages[1]!, 'maintenance is over');
+          assert.include(logs.messages[1]!, 'claiming jobs again');
         }).pipe(
-          Effect.provide(JobMaintenanceGate.layer()),
-          Effect.provide(MaintenanceState.layerTest(maintenance)),
+          Effect.provide(gateOver({ maintenance })),
           Effect.provide(recording(calls)),
         );
       }).pipe(Effect.provide(layerWorker()), Effect.provide(logs.layer));
@@ -92,14 +143,144 @@ describe.skipIf(!db)('the maintenance gate', () => {
             yield* tick;
             assert.deepStrictEqual(calls, [false]);
             assert.strictEqual(logs.messages.length, 1);
-            assert.include(logs.messages[0]!, 'in maintenance');
+            assert.include(logs.messages[0]!, 'maintenance mode is on');
           }).pipe(
-            Effect.provide(JobMaintenanceGate.layer()),
-            Effect.provide(MaintenanceState.layerTest(maintenance)),
+            Effect.provide(gateOver({ maintenance })),
             Effect.provide(recording(calls)),
           );
         }).pipe(Effect.provide(layerWorker()), Effect.provide(logs.layer));
       },
+    );
+
+    it.effect(
+      'stops claiming on a schema that is not this build’s and resumes once it is current, with the flag off throughout',
+      () => {
+        const logs = collectLogs();
+        const schema = MutableRef.make<SchemaState>(CURRENT);
+        const calls: boolean[] = [];
+        return Effect.gen(function* () {
+          yield* Effect.gen(function* () {
+            assert.deepStrictEqual(calls, [true]);
+
+            MutableRef.set(schema, STALE);
+            yield* tick;
+            assert.deepStrictEqual(calls, [true, false]);
+            assert.strictEqual(logs.messages.length, 1);
+            assert.include(logs.messages[0]!, 'not this build');
+            assert.include(logs.messages[0]!, 'stopped claiming jobs');
+
+            // Still closed, for a different reason: the log says so once,
+            // and fetching is not set again.
+            MutableRef.set(schema, { kind: 'absent' });
+            yield* tick;
+            yield* tick;
+            assert.deepStrictEqual(calls, [true, false]);
+            assert.strictEqual(logs.messages.length, 2);
+            assert.include(logs.messages[1]!, 'no Studio schema');
+
+            MutableRef.set(schema, CURRENT);
+            yield* tick;
+            assert.deepStrictEqual(calls, [true, false, true]);
+            assert.strictEqual(logs.messages.length, 3);
+            assert.include(logs.messages[2]!, 'claiming jobs again');
+          }).pipe(
+            Effect.provide(gateOver({ schema })),
+            Effect.provide(recording(calls)),
+          );
+        }).pipe(Effect.provide(layerWorker()), Effect.provide(logs.layer));
+      },
+    );
+
+    it.effect(
+      'stops claiming while the migration lock is held and resumes once it is released, with the flag off throughout',
+      () => {
+        const logs = collectLogs();
+        const lockHeld = MutableRef.make(false);
+        const calls: boolean[] = [];
+        return Effect.gen(function* () {
+          yield* Effect.gen(function* () {
+            assert.deepStrictEqual(calls, [true]);
+
+            MutableRef.set(lockHeld, true);
+            yield* tick;
+            assert.deepStrictEqual(calls, [true, false]);
+            assert.strictEqual(logs.messages.length, 1);
+            assert.include(logs.messages[0]!, 'migration is running');
+            assert.include(logs.messages[0]!, 'stopped claiming jobs');
+
+            MutableRef.set(lockHeld, false);
+            yield* tick;
+            assert.deepStrictEqual(calls, [true, false, true]);
+            assert.include(logs.messages[1]!, 'claiming jobs again');
+          }).pipe(
+            Effect.provide(gateOver({ lockHeld })),
+            Effect.provide(recording(calls)),
+          );
+        }).pipe(Effect.provide(layerWorker()), Effect.provide(logs.layer));
+      },
+    );
+
+    it.effect(
+      'leaves a job unclaimed on a running worker through a migration and on the schema it leaves behind',
+      () =>
+        TestClock.withLive(
+          Effect.gen(function* () {
+            yield* clearQueue;
+            const lockHeld = MutableRef.make(false);
+            const schema = MutableRef.make<SchemaState>(CURRENT);
+
+            yield* Effect.gen(function* () {
+              const worker = yield* JobWorker;
+              yield* worker.work('invitation-delivery', () =>
+                Effect.succeed('completed' as const),
+              );
+              yield* Layer.build(
+                gateOver(
+                  { lockHeld, schema },
+                  { pollInterval: Duration.millis(50) },
+                ),
+              );
+
+              // `migrate` takes the lock against the running worker, and
+              // leaves a schema this worker's build did not write.
+              MutableRef.set(lockHeld, true);
+              yield* Effect.sleep(WINDOW);
+              yield* enqueueDelivery();
+              yield* Effect.sleep(WINDOW);
+              const [during] = yield* readJobs('invitation-delivery');
+              assert.strictEqual(during?.state, 'created');
+              assert.strictEqual(during?.attempts, 0);
+
+              MutableRef.set(schema, STALE);
+              MutableRef.set(lockHeld, false);
+              yield* Effect.sleep(WINDOW);
+              const [after] = yield* readJobs('invitation-delivery');
+              assert.strictEqual(after?.state, 'created');
+              assert.strictEqual(after?.attempts, 0);
+
+              // The control: the same worker claims it once the schema is
+              // its own again.
+              MutableRef.set(schema, CURRENT);
+              const worked = yield* awaitJobState(
+                'invitation-delivery',
+                'completed',
+                Duration.seconds(5),
+              );
+              assert.isTrue(Option.isSome(worked));
+            }).pipe(
+              Effect.scoped,
+              Effect.provide(
+                layerWorker({
+                  background: true,
+                  listen: false,
+                  pollInterval: Duration.millis(50),
+                  startPaused: true,
+                }),
+              ),
+            );
+          }).pipe(Effect.provide(layerJobs)),
+        ),
+      30_000,
     );
 
     it.effect(
@@ -131,7 +312,7 @@ describe.skipIf(!db)('the maintenance gate', () => {
                 Layer.build(
                   JobMaintenanceGate.layer({
                     pollInterval: Duration.millis(50),
-                  }),
+                  }).pipe(Layer.provide(openTriggers)),
                 ).pipe(Effect.provide(held)),
               );
               yield* Effect.sleep(Duration.millis(500));
@@ -214,7 +395,7 @@ describe.skipIf(!db)(
                 yield* Layer.build(
                   JobMaintenanceGate.layer({
                     pollInterval: Duration.millis(50),
-                  }),
+                  }).pipe(Layer.provide(openTriggers)),
                 ).pipe(Effect.provide(MaintenanceState.layerMaintenance));
 
                 // A job in flight when the window opens.
@@ -271,7 +452,7 @@ describe.skipIf(!db)(
                 );
                 assert.isTrue(
                   logs.messages.some((line) =>
-                    line.includes('maintenance is over'),
+                    line.includes('claiming jobs again'),
                   ),
                 );
               }).pipe(

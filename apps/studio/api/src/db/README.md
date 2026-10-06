@@ -189,8 +189,10 @@ session_user`, so a backfill's `SET LOCAL ROLE studio_maintenance` must end
   with `RESET ROLE`), changed `search_path` or the team or erasure setting, or
   left a trigger not firing; a backfill may change no trigger and no table's
   row-level security. A statement Postgres refuses is reported with its
-  migration, file, position, text, SQLSTATE and message (a data exception by
-  its code alone).
+  migration, file, position, text, SQLSTATE and message — the message only for
+  the SQLSTATE classes Postgres words from object names, so a data exception or
+  a PL/pgSQL raise, which can quote stored values, is reported by its code
+  alone.
 - It runs on `@effect/sql-pg`, which has **no simple-query path**: every
   statement goes through Parse/Bind/Execute, and a multi-command string is
   refused (SQLSTATE 42601). So every artefact is cut by `splitStatements`

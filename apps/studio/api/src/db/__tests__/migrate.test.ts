@@ -1086,7 +1086,9 @@ describe.skipIf(!db)('migrate', () => {
             slug: 'team_check',
             delta: [
               'CREATE TABLE probe_rows (id int PRIMARY KEY);',
-              `CREATE FUNCTION probe_rows_team() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'fired under team %', current_setting('app.team_id', true); END; $$ LANGUAGE plpgsql;`,
+              // The report shows a raise by its SQLSTATE alone, so the code
+              // says which team the check fired under.
+              `CREATE FUNCTION probe_rows_team() RETURNS trigger AS $$ BEGIN IF current_setting('app.team_id', true) = 'probe-team' THEN RAISE EXCEPTION 'fired' USING ERRCODE = 'P0003'; END IF; RAISE EXCEPTION 'fired' USING ERRCODE = 'P0004'; END; $$ LANGUAGE plpgsql;`,
               'CREATE CONSTRAINT TRIGGER probe_rows_team AFTER INSERT ON probe_rows DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION probe_rows_team();',
             ].join('\n'),
             backfill: [
@@ -1100,7 +1102,7 @@ describe.skipIf(!db)('migrate', () => {
           _tag: 'MigrationStatementFailed',
           artefact: 'backfill.sql',
           position: 'at the end of the file',
-          reason: 'fired under team probe-team',
+          code: 'P0003',
         });
       },
       CASE_TIMEOUT_MS,
@@ -1168,7 +1170,7 @@ describe.skipIf(!db)('migrate', () => {
       // the operator is told so.
       expect(failure.state).toBe('P0001');
       expect(failure.message.split('\n')).toEqual([
-        "The migration's COMMIT failed (P0001): refused at commit",
+        "The migration's COMMIT failed (P0001): Postgres's message is not shown, because for this SQLSTATE it can quote stored values; run the statement against a copy of the database to see it",
         'Nothing was applied: the transaction rolled back, and the database is as it was before migrate ran.',
       ]);
       // The run got as far as the commit.
