@@ -151,9 +151,9 @@ export const messages = defineMessages({
   parentLinkKindLabel: {
     id: 'interview.familyPedigree.parentLinkKindLabel',
     defaultMessage:
-      '{parentIsYou, select, true {How are you their parent?} other {{personIsYou, select, true {How is {parent} your parent?} other {How is {parent} their parent?}}}}',
+      '{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}',
     description:
-      'Question in the details panel about one of the family member’s parents. {parent} is the parent’s name or “Unnamed”. Options are the kinds of parent.',
+      'Question in the details panel about one of the family member’s parents, as the start of a sentence that the chosen option completes: “Father is your… Adoptive parent”. {parent} is the parent’s name, or how they are related to the participant (such as “Father”) when unnamed; “their” is the family member whose details are open. Options are the kinds of parent: “Biological parent”, “Adoptive parent”, “Step or social parent”, “Egg or sperm donor”, “Surrogate”.',
   },
   parentCarriedLabel: {
     id: 'interview.familyPedigree.parentCarriedLabel',
@@ -352,9 +352,9 @@ export const messages = defineMessages({
   },
   framingControlLabel: {
     id: 'interview.familyPedigree.framingControlLabel',
-    defaultMessage: 'Words for your family',
+    defaultMessage: 'Wording',
     description:
-      'Accessible name and tooltip of the toolbar button that opens the choice of words for family members.',
+      'Short label of the toolbar button, shown beside its icon, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief.',
   },
   framingChoiceTitle: {
     id: 'interview.familyPedigree.framingChoiceTitle',
@@ -592,15 +592,15 @@ export const messages = defineMessages({
   },
   pointerTool: {
     id: 'interview.familyPedigree.pointerTool',
-    defaultMessage: 'Add and edit people',
+    defaultMessage: 'Add and edit',
     description:
-      'Toolbar button (icon only; this is its name and tooltip). While it is on, selecting a person opens their details and shows buttons to add their relatives.',
+      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting a person opens their details and shows buttons to add their relatives.',
   },
   connectTool: {
     id: 'interview.familyPedigree.connectTool',
-    defaultMessage: 'Connect two people',
+    defaultMessage: 'Connect',
     description:
-      'Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then another connects them, for relatives added separately.',
+      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then another connects them, for relatives added separately.',
   },
   connectHint: {
     id: 'interview.familyPedigree.connectHint',
@@ -670,9 +670,9 @@ export const messages = defineMessages({
   },
   disconnectTool: {
     id: 'interview.familyPedigree.disconnectTool',
-    defaultMessage: 'Remove a connection',
+    defaultMessage: 'Disconnect',
     description:
-      'Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree.',
+      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree.',
   },
   disconnectHint: {
     id: 'interview.familyPedigree.disconnectHint',

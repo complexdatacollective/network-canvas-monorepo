@@ -136,8 +136,8 @@
     "description": "Heading of the menu that appears after selecting two people to connect. first and second are their names or how they are related to the participant."
   },
   "interview.familyPedigree.connectTool": {
-    "defaultMessage": "Connect two people",
-    "description": "Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then another connects them, for relatives added separately."
+    "defaultMessage": "Connect",
+    "description": "Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then another connects them, for relatives added separately."
   },
   "interview.familyPedigree.connectedParentAnnouncement": {
     "defaultMessage": "{relationship} ({kind})",
@@ -168,8 +168,8 @@
     "description": "Shown under the toolbar, and read out, when the participant selects two people to disconnect who have no connection between them. first and second are their names or how they are related to the participant."
   },
   "interview.familyPedigree.disconnectTool": {
-    "defaultMessage": "Remove a connection",
-    "description": "Toolbar button (icon only; this is its name and tooltip). While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree."
+    "defaultMessage": "Disconnect",
+    "description": "Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree."
   },
   "interview.familyPedigree.disconnectedAnnouncement": {
     "defaultMessage": "{firstIsYou, select, true {The connection between you and “{second}” was removed.} other {The connection between “{first}” and “{second}” was removed.}}",
@@ -216,8 +216,8 @@
     "description": "Heading of the popover, opened from the stage’s toolbar, that asks which words to use for family members. Open when the participant first reaches the stage."
   },
   "interview.familyPedigree.framingControlLabel": {
-    "defaultMessage": "Words for your family",
-    "description": "Accessible name and tooltip of the toolbar button that opens the choice of words for family members."
+    "defaultMessage": "Wording",
+    "description": "Short label of the toolbar button, shown beside its icon, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief."
   },
   "interview.familyPedigree.gender.differentIdentity": {
     "defaultMessage": "A different identity",
@@ -340,8 +340,8 @@
     "description": "Question in the side panel for adding a parent: how the new person is a parent of the selected family member."
   },
   "interview.familyPedigree.parentLinkKindLabel": {
-    "defaultMessage": "{parentIsYou, select, true {How are you their parent?} other {{personIsYou, select, true {How is {parent} your parent?} other {How is {parent} their parent?}}}}",
-    "description": "Question in the details panel about one of the family member’s parents. {parent} is the parent’s name or “Unnamed”. Options are the kinds of parent."
+    "defaultMessage": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}",
+    "description": "Question in the details panel about one of the family member’s parents, as the start of a sentence that the chosen option completes: “Father is your… Adoptive parent”. {parent} is the parent’s name, or how they are related to the participant (such as “Father”) when unnamed; “their” is the family member whose details are open. Options are the kinds of parent: “Biological parent”, “Adoptive parent”, “Step or social parent”, “Egg or sperm donor”, “Surrogate”."
   },
   "interview.familyPedigree.parentPartnerLabel": {
     "defaultMessage": "Are they the partner of another parent?",
@@ -360,8 +360,8 @@
     "description": "Note in the side panel for adding a sibling, shown when the selected person has no parents yet."
   },
   "interview.familyPedigree.pointerTool": {
-    "defaultMessage": "Add and edit people",
-    "description": "Toolbar button (icon only; this is its name and tooltip). While it is on, selecting a person opens their details and shows buttons to add their relatives."
+    "defaultMessage": "Add and edit",
+    "description": "Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting a person opens their details and shows buttons to add their relatives."
   },
   "interview.familyPedigree.preferNotToSay": {
     "defaultMessage": "Prefer not to say",

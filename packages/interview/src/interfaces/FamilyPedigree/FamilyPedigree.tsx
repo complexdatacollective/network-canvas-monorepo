@@ -28,6 +28,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
 import {
   SegmentedToolbar,
+  ToolbarButton,
   ToolbarIconButton,
   ToolbarSeparator,
   ToolbarToggleGroup,
@@ -1292,6 +1293,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           )}
           {/* Rises into place when the stage first loads. */}
           <motion.div
+            // No wider than the stage, so a toolbar that does not fit scrolls.
+            className="max-w-full min-w-0"
             initial={reduceMotion ? false : { y: '150%', opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             // A heavy spring, damped just short of settling straight, so it
@@ -1325,24 +1328,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     if (isTool(next)) chooseTool(next);
                   }}
                 >
-                  <ToolbarIconButton
+                  <ToolbarButton
+                    className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
                     value="pointer"
-                    aria-label={intl.formatMessage(messages.pointerTool)}
                     icon={<MousePointer2 />}
                     data-testid="pedigree-tool-pointer"
-                  />
-                  <ToolbarIconButton
+                  >
+                    {intl.formatMessage(messages.pointerTool)}
+                  </ToolbarButton>
+                  <ToolbarButton
+                    className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
                     value="connect"
-                    aria-label={intl.formatMessage(messages.connectTool)}
                     icon={<Waypoints />}
                     data-testid="pedigree-tool-connect"
-                  />
-                  <ToolbarIconButton
+                  >
+                    {intl.formatMessage(messages.connectTool)}
+                  </ToolbarButton>
+                  <ToolbarButton
+                    className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
                     value="disconnect"
-                    aria-label={intl.formatMessage(messages.disconnectTool)}
                     icon={<Unlink />}
                     data-testid="pedigree-tool-disconnect"
-                  />
+                  >
+                    {intl.formatMessage(messages.disconnectTool)}
+                  </ToolbarButton>
                 </ToolbarToggleGroup>
               )}
               {!nomination && participantFraming && <ToolbarSeparator />}

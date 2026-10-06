@@ -8,7 +8,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import {
   defineToolbarChild,
-  ToolbarIconButton,
+  ToolbarButton,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { FramingId } from '@codaco/protocol-validation';
@@ -49,11 +49,13 @@ function FramingControl({
         onOpenChange(next);
       }}
       trigger={
-        <ToolbarIconButton
-          aria-label={intl.formatMessage(messages.framingControlLabel)}
+        <ToolbarButton
+          className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
           icon={<Speech />}
           data-testid="pedigree-framing"
-        />
+        >
+          {intl.formatMessage(messages.framingControlLabel)}
+        </ToolbarButton>
       }
       contentProps={{
         side: 'top',

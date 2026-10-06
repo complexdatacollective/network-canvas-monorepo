@@ -490,7 +490,7 @@ export const ParticipantChoosesFraming: Story = {
     }
     // Neither Escape nor a press elsewhere on the stage closes it.
     const trigger = within(canvasElement).getByRole('button', {
-      name: 'Words for your family',
+      name: 'Wording',
     });
     await userEvent.keyboard('{Escape}');
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
@@ -522,9 +522,7 @@ export const ParticipantChangesFraming: Story = {
       await canvas.findByRole('button', { name: /^Egg parent/ }),
     ).toBeVisible();
 
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Words for your family' }),
-    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Wording' }));
     await userEvent.click(
       await body.findByRole('option', {
         name: /Mother, father, sister, brother/,
