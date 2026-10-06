@@ -919,3 +919,130 @@ describe('a participant with two partners', () => {
     expect(socialLines).toHaveLength(1);
   });
 });
+
+describe('partnership chains', () => {
+  const step = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'social',
+  });
+  const couple = (a: number, b: number) => ({
+    partnerIndex1: a,
+    partnerIndex2: b,
+    isActive: true,
+  });
+
+  // Every recorded partnership is drawn between adjacent partners: the
+  // partnership line and the couple's line of descent need it.
+  const expectEveryCoupleAdjacent = (ped: PedigreeInput) => {
+    const result = alignPedigree(ped);
+    for (const { partnerIndex1: a, partnerIndex2: b } of ped.partners ?? []) {
+      const levelA = result.nid.findIndex((row) => row.includes(a));
+      const levelB = result.nid.findIndex((row) => row.includes(b));
+      expect(levelA, `${ped.id[a]} and ${ped.id[b]}`).toBe(levelB);
+      const colA = result.nid[levelA]!.indexOf(a);
+      const colB = result.nid[levelB]!.indexOf(b);
+      expect(Math.abs(colA - colB), `${ped.id[a]} beside ${ped.id[b]}`).toBe(1);
+    }
+  };
+
+  it('keeps a chain through a person with a sibling together', () => {
+    // mum + dad → you, sib. chris – you – alex – alexsFormer.
+    expectEveryCoupleAdjacent({
+      id: ['mum', 'dad', 'you', 'sib', 'chris', 'alex', 'alexsFormer'],
+      parents: [[], [], [sp(0), sp(1)], [sp(0), sp(1)], [], [], []],
+      partners: [couple(0, 1), couple(2, 4), couple(2, 5), couple(5, 6)],
+    });
+  });
+
+  it('keeps a chain hanging from one end of a sibling together', () => {
+    // mum + dad → you, sib. you – alex – alexsFormer.
+    expectEveryCoupleAdjacent({
+      id: ['mum', 'dad', 'you', 'sib', 'alex', 'alexsFormer'],
+      parents: [[], [], [sp(0), sp(1)], [sp(0), sp(1)], [], []],
+      partners: [couple(0, 1), couple(2, 4), couple(4, 5)],
+    });
+  });
+
+  it('keeps a chain together where it crosses two sibships', () => {
+    // mum + dad → you, sib; gm + gd → alex, alexsSib.
+    // you – alex – alexsFormer – theirPartner.
+    expectEveryCoupleAdjacent({
+      id: [
+        'mum',
+        'dad',
+        'gm',
+        'gd',
+        'you',
+        'sib',
+        'alex',
+        'alexsSib',
+        'alexsFormer',
+        'theirPartner',
+      ],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [sp(0), sp(1)],
+        [sp(0), sp(1)],
+        [sp(2), sp(3)],
+        [sp(2), sp(3)],
+        [],
+        [],
+      ],
+      partners: [
+        couple(0, 1),
+        couple(2, 3),
+        couple(4, 6),
+        couple(6, 8),
+        couple(8, 9),
+      ],
+    });
+  });
+
+  it('seats a donor beside a couple without splitting the chain', () => {
+    // you – alex – alexsFormer; you + alex → child, with an egg donor.
+    expectEveryCoupleAdjacent({
+      id: ['you', 'alex', 'alexsFormer', 'donor', 'child'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [sp(0), sp(1), { parentIndex: 3, edgeType: 'donor' }],
+      ],
+      partners: [couple(0, 1), couple(1, 2)],
+    });
+    expectEveryCoupleAdjacent({
+      id: ['alexsFormer', 'alex', 'you', 'donor', 'child'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [sp(1), sp(2), { parentIndex: 3, edgeType: 'donor' }],
+      ],
+      partners: [couple(0, 1), couple(1, 2)],
+    });
+  });
+
+  it('gives a child two equally strong couples the first one recorded', () => {
+    // parent – stepA and parent – stepB; the child is parent's biological
+    // child and a social child of both step-parents.
+    const childOf = (partners: PedigreeInput['partners']) => {
+      const ped: PedigreeInput = {
+        id: ['parent', 'stepA', 'stepB', 'child'],
+        parents: [[], [], [], [sp(0), step(1), step(2)]],
+        partners,
+      };
+      const result = alignPedigree(ped);
+      const level = result.nid.findIndex((row) => row.includes(3));
+      const fam = result.fam[level]![result.nid[level]!.indexOf(3)]!;
+      const above = result.nid[level - 1]!;
+      return [above[fam - 1], above[fam]].toSorted((a, b) => a! - b!);
+    };
+    expect(childOf([couple(0, 1), couple(0, 2)])).toStrictEqual([0, 1]);
+    expect(childOf([couple(0, 2), couple(0, 1)])).toStrictEqual([0, 2]);
+  });
+});

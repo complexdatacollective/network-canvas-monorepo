@@ -403,6 +403,39 @@ function buildConstraintBlocks(
       (sp) => !inRealSibship.has(sp) && !assigned.has(sp),
     );
 
+  // The partnerships joining `nodes` to one another.
+  const couplesAmong = (nodes: number[]): number[][] =>
+    graph.partnerGroups
+      .filter((pg) => pg.members.every((m) => nodes.includes(m)))
+      .map((pg) => pg.members);
+
+  // People joined to `start` by partnerships, nearest first, one array per
+  // step away. The first step takes any partner `canJoin` admits; later steps
+  // continue only through people who are not in a real sibship, since a
+  // sibling's own sibship holds it in place.
+  const partnerLevels = (
+    start: number,
+    canJoin: (node: number) => boolean,
+  ): number[][] => {
+    const seen = new Set([start]);
+    const levels: number[][] = [];
+    let frontier = [start];
+    while (frontier.length > 0) {
+      const next: number[] = [];
+      for (const node of frontier) {
+        if (node !== start && inRealSibship.has(node)) continue;
+        for (const partner of spousesOf.get(node) ?? []) {
+          if (seen.has(partner) || !canJoin(partner)) continue;
+          seen.add(partner);
+          next.push(partner);
+        }
+      }
+      if (next.length > 0) levels.push(next);
+      frontier = next;
+    }
+    return levels;
+  };
+
   // 1. One block per real sibship: siblings in index order, with each married
   //    sibling's attachable spouse(s) beside it so couples stay adjacent while
   //    the sibship stays contiguous. A sibling that anchors TWO OR MORE marriages
@@ -410,10 +443,41 @@ function buildConstraintBlocks(
   //    spouse non-adjacent and silently drop that marriage line. A single spouse
   //    goes on the outer side (the leftmost sibling's to its left, later siblings'
   //    to their right) to keep the block compact.
+  //
+  //    When a spouse has partners of their own, the sibling's partnerships form
+  //    a chain; the whole chain joins the block in chain order, so no couple in
+  //    it is left outside to be split (a sibling at the end of the chain keeps
+  //    the rest of it on the outer side).
   for (const members of realSibships) {
     const siblings = members.toSorted((a, b) => a - b);
     const ordered: number[] = [];
     siblings.forEach((sib, idx) => {
+      const attached = partnerLevels(
+        sib,
+        (node) => !inRealSibship.has(node) && !assigned.has(node),
+      ).flat();
+      const chain =
+        attached.length > 1
+          ? partnershipChain(
+              [sib, ...attached],
+              couplesAmong([sib, ...attached]),
+            )
+          : null;
+      if (chain) {
+        assigned.add(sib);
+        for (const node of attached) assigned.add(node);
+        const atEnd = chain[0] === sib || chain.at(-1) === sib;
+        const endingAtSibling = chain[0] === sib ? chain.toReversed() : chain;
+        if (!atEnd) {
+          ordered.push(...chain);
+        } else if (idx === 0) {
+          ordered.push(...endingAtSibling);
+        } else {
+          ordered.push(...endingAtSibling.toReversed());
+        }
+        return;
+      }
+
       const spouses = attachableSpouses(sib).toSorted((a, b) => a - b);
       assigned.add(sib);
       for (const sp of spouses) assigned.add(sp);
@@ -437,28 +501,23 @@ function buildConstraintBlocks(
   // Put the partnered member of the left block at its right boundary and the
   // partnered member of the right block at its left boundary. The combined
   // block can still move or reverse as one unit during crossing minimization.
-  // If an anchor already has a partner inside its block, carry that partner with
-  // it so a two-partnership chain remains contiguous around the anchor.
+  // If an anchor already has partners inside its block, carry them with it,
+  // nearest first, so a chain of partnerships remains contiguous from the
+  // anchor inward.
   const movePartnerAnchorToBoundary = (
     nodes: number[],
     anchor: number,
     boundary: 'left' | 'right',
   ): number[] => {
-    const partnersInBlock = graph.partnerGroups
-      .filter((pg) => pg.members.includes(anchor))
-      .flatMap((pg) => pg.members.filter((member) => member !== anchor))
-      .filter(
-        (partner, index, partners) =>
-          nodes.includes(partner) && partners.indexOf(partner) === index,
-      );
-    const boundaryNodes = new Set([anchor, ...partnersInBlock]);
+    const levels = partnerLevels(anchor, (node) => nodes.includes(node));
+    const boundaryNodes = new Set([anchor, ...levels.flat()]);
     const remaining = nodes.filter((node) => !boundaryNodes.has(node));
 
     if (boundary === 'left') {
-      return [anchor, ...partnersInBlock, ...remaining];
+      return [anchor, ...levels.flat(), ...remaining];
     }
 
-    return [...remaining, ...partnersInBlock, anchor];
+    return [...remaining, ...levels.toReversed().flat(), anchor];
   };
 
   for (const pg of graph.partnerGroups) {
