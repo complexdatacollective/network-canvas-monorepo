@@ -87,15 +87,27 @@ export function localizedFromText(
   return { [localization.defaultLocale]: escapeMessageText(text) };
 }
 
+/**
+ * The declared languages at least one of `values` has no translation for, in
+ * declared order. A participant reading in such a language meets fallback text
+ * somewhere in what the values make up together.
+ */
+export function missingLocalesAcross(
+  values: readonly unknown[],
+  localization: ProtocolLocalization,
+): LocaleTag[] {
+  const translated = values.map((value) => asLocalizedString(value) ?? {});
+  return localization.locales.filter((locale) =>
+    translated.some((translations) => !Object.hasOwn(translations, locale)),
+  );
+}
+
 /** The declared languages `value` has no translation for, in declared order. */
 export function missingLocales(
   value: unknown,
   localization: ProtocolLocalization,
 ): LocaleTag[] {
-  const translations = asLocalizedString(value) ?? {};
-  return localization.locales.filter(
-    (locale) => !Object.hasOwn(translations, locale),
-  );
+  return missingLocalesAcross([value], localization);
 }
 
 export function localeDirection(locale: LocaleTag): 'ltr' | 'rtl' {

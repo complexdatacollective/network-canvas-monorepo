@@ -46,7 +46,7 @@ export default function StageNameField({
         {label}
       </FieldLabel>
       <StageNameInput {...fieldProps} onFieldBlur={onBlur} />
-      <EditingLanguageSwitcher value={translations} className="mt-1" />
+      <EditingLanguageSwitcher values={[translations]} className="mt-1" />
       {/*
         Mounted whether or not it holds anything: the control already describes
         it, and a region that appeared with its message would not be there to

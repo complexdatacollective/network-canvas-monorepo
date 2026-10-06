@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,7 +24,10 @@ import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
 import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
-import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
+import {
+  ProtocolLocalizationProvider,
+  useEditingLanguage,
+} from '../../../localization/ProtocolLocalization.tsx';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -148,6 +152,12 @@ function ParentResponseProbe() {
       </output>
     </>
   );
+}
+
+/** The editing language the provider holds, for a test of what moves it. */
+function EditingLanguageProbe() {
+  const { locale } = useEditingLanguage();
+  return <output data-testid="editing-language">{locale}</output>;
 }
 
 const expectUnchangedParent = () => {
@@ -682,6 +692,213 @@ describe('FieldPreviewPane', () => {
     expect(
       screen.getByText('How old are you?').closest('[lang]'),
     ).toHaveAttribute('lang', 'en');
+  });
+
+  describe('language menu', () => {
+    const BILINGUAL: ProtocolLocalization = {
+      defaultLocale: 'en',
+      locales: ['en', 'es'],
+    };
+
+    const translated = (english: string, spanish: string) => ({
+      en: english,
+      es: spanish,
+    });
+
+    /**
+     * A list attribute the row is inventing, every word of it written in both
+     * languages unless a case says otherwise.
+     */
+    const frequencyRow = (overrides: Record<string, unknown> = {}) => ({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'frequency',
+      _component: 'RadioGroup',
+      prompt: translated('How often?', '¿Con qué frecuencia?'),
+      hint: translated('Pick one.', 'Elige una.'),
+      _options: [
+        { label: translated('Daily', 'Diario'), value: 'daily' },
+        { label: translated('Weekly', 'Semanal'), value: 'weekly' },
+      ],
+      ...overrides,
+    });
+
+    const languageMenu = () =>
+      screen.getByRole('button', { name: /Editing language/ });
+
+    async function chooseLanguage(name: RegExp) {
+      const user = userEvent.setup();
+      await user.click(languageMenu());
+      await user.click(await screen.findByRole('menuitemradio', { name }));
+    }
+
+    /** The languages the open menu tags "Missing", as their language tags. */
+    async function languagesMarkedMissing() {
+      const user = userEvent.setup();
+      await user.click(languageMenu());
+      const items = await screen.findAllByRole('menuitemradio');
+      const marked = items
+        .filter((item) => within(item).queryByText('Missing') !== null)
+        .map((item) => item.querySelector('[lang]')?.getAttribute('lang'));
+      await user.keyboard('{Escape}');
+      return marked;
+    }
+
+    it('draws no language menu for a protocol written in one language', () => {
+      renderPreview({ variable: 'age', prompt: en('How old are you?') });
+
+      expect(
+        screen.queryByRole('button', { name: /Editing language/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers the protocol’s languages in the pane’s own region', () => {
+      const preview = renderPreview(
+        { variable: 'age', prompt: translated('How old?', '¿Qué edad?') },
+        { localization: BILINGUAL },
+      );
+
+      expect(
+        within(preview).getByRole('button', { name: /Editing language/ }),
+      ).toBeVisible();
+    });
+
+    it('captions the field in the language chosen from the preview', async () => {
+      renderPreview(
+        {
+          variable: 'age',
+          prompt: translated('How old are you?', '¿Cuántos años tienes?'),
+        },
+        { localization: BILINGUAL },
+      );
+      expect(
+        screen.getByRole('spinbutton', { name: 'How old are you?' }),
+      ).toBeVisible();
+
+      await chooseLanguage(/^español/i);
+
+      expect(
+        screen.getByRole('spinbutton', { name: '¿Cuántos años tienes?' }),
+      ).toBeVisible();
+      expect(
+        screen.getByText('¿Cuántos años tienes?').closest('[lang]'),
+      ).toHaveAttribute('lang', 'es');
+    });
+
+    it('shows a participant’s fallback text, in the fallback’s language, where a translation is missing', async () => {
+      // The fallback is Spanish and the pane's own language is English, so the
+      // language the text is tagged with can only have come from the fallback.
+      renderPreview(
+        { variable: 'age', prompt: { es: '¿Cuántos años tienes?' } },
+        { localization: { defaultLocale: 'es', locales: ['es', 'en'] } },
+      );
+
+      await chooseLanguage(/^english/i);
+
+      expect(languageMenu()).toHaveTextContent('English');
+      expect(
+        screen.getByRole('spinbutton', { name: '¿Cuántos años tienes?' }),
+      ).toBeVisible();
+      expect(
+        screen.getByText('¿Cuántos años tienes?').closest('[lang]'),
+      ).toHaveAttribute('lang', 'es');
+    });
+
+    it('shows each answer’s label in the chosen language', async () => {
+      renderPreview(frequencyRow(), { localization: BILINGUAL });
+      expect(screen.getByText('Daily')).toBeVisible();
+
+      await chooseLanguage(/^español/i);
+
+      expect(screen.getByText('Diario')).toBeVisible();
+      expect(screen.queryByText('Daily')).not.toBeInTheDocument();
+    });
+
+    it('moves every localized field to the language chosen from the preview', async () => {
+      renderPreview(
+        { variable: 'age', prompt: translated('How old?', '¿Qué edad?') },
+        {
+          localization: BILINGUAL,
+          fields: <EditingLanguageProbe />,
+        },
+      );
+      expect(screen.getByTestId('editing-language')).toHaveTextContent('en');
+
+      await chooseLanguage(/^español/i);
+
+      expect(screen.getByTestId('editing-language')).toHaveTextContent('es');
+    });
+
+    it.each([
+      ['every word is written in both languages', frequencyRow(), []],
+      [
+        'the caption has no Spanish',
+        frequencyRow({ prompt: en('How often?') }),
+        ['es'],
+      ],
+      [
+        'the hint has no Spanish',
+        frequencyRow({ hint: en('Pick one.') }),
+        ['es'],
+      ],
+      [
+        'one answer’s label has no Spanish',
+        frequencyRow({
+          _options: [
+            { label: translated('Daily', 'Diario'), value: 'daily' },
+            { label: en('Weekly'), value: 'weekly' },
+          ],
+        }),
+        ['es'],
+      ],
+      [
+        'only the Spanish is written',
+        frequencyRow({
+          prompt: { es: '¿Con qué frecuencia?' },
+          hint: { es: 'Elige una.' },
+          _options: [{ label: { es: 'Diario' }, value: 'daily' }],
+        }),
+        ['en'],
+      ],
+    ])(
+      'tags the languages that lack a translation when %s',
+      async (_case, row, expected) => {
+        renderPreview(row, { localization: BILINGUAL });
+
+        expect(await languagesMarkedMissing()).toEqual(expected);
+        if (expected.length === 0) {
+          expect(screen.queryByText(/translations? missing/)).toBeNull();
+        } else {
+          expect(screen.getByText('1 translation missing')).toBeVisible();
+        }
+      },
+    );
+
+    it('does not count a hint nobody has written as a missing translation', async () => {
+      const { hint: _hint, ...withoutHint } = frequencyRow();
+      renderPreview(withoutHint, { localization: BILINGUAL });
+
+      expect(await languagesMarkedMissing()).toEqual([]);
+    });
+
+    it('does not count an answer with no label yet, which the preview does not show', async () => {
+      renderPreview(
+        frequencyRow({
+          _options: [
+            { label: translated('Daily', 'Diario'), value: 'daily' },
+            { value: 'weekly' },
+          ],
+        }),
+        { localization: BILINGUAL },
+      );
+
+      expect(await languagesMarkedMissing()).toEqual([]);
+    });
+
+    it('does not count the stand-in for a question nobody has written', async () => {
+      renderPreview({ variable: 'age' }, { localization: BILINGUAL });
+
+      expect(await languagesMarkedMissing()).toEqual([]);
+    });
   });
 
   it('offers nothing to answer before the protocol’s languages are known', () => {

@@ -13,12 +13,16 @@ import {
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { languageMessages, useLanguageName } from './languageNames.ts';
-import { localeDirection, missingLocales } from './localizedText.ts';
+import { localeDirection, missingLocalesAcross } from './localizedText.ts';
 import { useEditingLanguage } from './ProtocolLocalization.tsx';
 
 export type EditingLanguageSwitcherProps = Readonly<{
-  /** The localized string being edited, so each language can say whether it is translated. */
-  value: unknown;
+  /**
+   * The localized strings being edited or previewed, so each language can say
+   * whether it is translated. A language is missing when any of them has no
+   * translation in it; with none to check, nothing is.
+   */
+  values: readonly unknown[];
   disabled?: boolean;
   className?: string;
 }>;
@@ -32,7 +36,7 @@ export type EditingLanguageSwitcherProps = Readonly<{
  * nothing to choose between, and draws nothing.
  */
 export function EditingLanguageSwitcher({
-  value,
+  values,
   disabled = false,
   className,
 }: EditingLanguageSwitcherProps) {
@@ -48,7 +52,7 @@ export function EditingLanguageSwitcher({
     return null;
   }
 
-  const missing = new Set(missingLocales(value, localization));
+  const missing = new Set(missingLocalesAcross(values, localization));
 
   return (
     <div className={cx('flex flex-wrap items-center gap-2', className)}>

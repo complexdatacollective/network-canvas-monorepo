@@ -35,6 +35,7 @@ import {
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
 import type { RowValues } from '../../form/rowDialog.tsx';
+import { EditingLanguageSwitcher } from '../../localization/EditingLanguageSwitcher.tsx';
 import {
   asLocalizedString,
   localizedFromText,
@@ -482,11 +483,24 @@ export default function FieldPreviewPane({
     variableType,
   ]);
 
+  // The words the participant is shown in this field, for the language menu to
+  // say which languages leave some of them untranslated. What the researcher
+  // has not written is left out: an absent hint has no translations to lack,
+  // and counting it would make every language missing.
+  const shownTexts = [
+    authoredCopy,
+    hint,
+    ...(field?.options ?? []).map((option) => option.label),
+  ].filter((text) => text !== undefined);
+
   return (
     <section aria-labelledby={headingId}>
-      <Heading id={headingId} level="h3" margin="none">
-        {intl.formatMessage(messages.title)}
-      </Heading>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <Heading id={headingId} level="h3" margin="none">
+          {intl.formatMessage(messages.title)}
+        </Heading>
+        <EditingLanguageSwitcher values={shownTexts} />
+      </div>
       <Paragraph className="mt-2 max-w-[65ch]">
         {intl.formatMessage(messages.description)}
       </Paragraph>

@@ -15,7 +15,7 @@ export const languageMessages = defineMessages({
     id: 'protocolBuilder.localization.editingLanguage',
     defaultMessage: 'Editing language',
     description:
-      'Accessible name of the menu that chooses which of the protocol languages the researcher is writing text in.',
+      'Accessible name of the menu that chooses which of the protocol languages the researcher is writing text in, or previewing a form field in.',
   },
   defaultLanguage: {
     id: 'protocolBuilder.localization.defaultLanguage',
@@ -27,14 +27,14 @@ export const languageMessages = defineMessages({
     id: 'protocolBuilder.localization.missingTranslation',
     defaultMessage: 'Missing',
     description:
-      'Tag beside a protocol language in the language menu when the text being edited has no translation in that language.',
+      'Tag beside a protocol language in the language menu when the text being edited has no translation in that language. In the preview of a form field the menu covers all the text the preview shows, and the tag appears when any of it has no translation in that language.',
   },
   missingCount: {
     id: 'protocolBuilder.localization.missingCount',
     defaultMessage:
       '{count, plural, one {# translation missing} other {# translations missing}}',
     description:
-      'Shown beside the language menu of a text field: how many of the protocol languages this text has no translation in.',
+      'Shown beside the language menu of a text field or of a form field’s preview: how many of the protocol languages this text, or any of the text the preview shows, has no translation in.',
   },
   notTranslated: {
     id: 'protocolBuilder.localization.notTranslated',

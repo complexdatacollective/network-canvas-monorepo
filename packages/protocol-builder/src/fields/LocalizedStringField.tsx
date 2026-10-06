@@ -79,7 +79,7 @@ export function LocalizedStringField({
 
   return (
     <div className="flex flex-col gap-2">
-      <EditingLanguageSwitcher value={value} />
+      <EditingLanguageSwitcher values={[value]} />
       <div key={locale} lang={locale} dir={localeDirection(locale)}>
         {children({
           value: translationText(value, locale),
