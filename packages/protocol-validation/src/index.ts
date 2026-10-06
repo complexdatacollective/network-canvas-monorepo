@@ -68,6 +68,7 @@ export {
   type LocaleTag,
   type LocalizationDeclaration,
 } from './localization/localeTag.ts';
+export { escapeMarkdownText } from './localization/markdownText.ts';
 export {
   escapeMessageText,
   messageText,

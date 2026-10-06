@@ -169,7 +169,7 @@
   "architect.codebook.usage.validation": "Used as validation for \"{name}\"",
   "architect.codebook.usageColumn.notInUse": "not in use",
   "architect.codebook.variableLabelDialog.label": "Attribute label",
-  "architect.codebook.variableLabelDialog.labelHint": "A readable label for the attribute “{name}”. It is not translated. A Network Composer field with no caption of its own shows this label to participants.",
+  "architect.codebook.variableLabelDialog.labelHint": "A readable label for the attribute “{name}”. It is not translated.",
   "architect.codebook.variableLabelDialog.title": "Edit attribute label",
   "architect.codebook.variableList.name": "Name",
   "architect.codebook.variableList.noAttributes": "No attributes.",

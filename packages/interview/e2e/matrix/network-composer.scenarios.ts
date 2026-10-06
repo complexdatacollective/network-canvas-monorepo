@@ -1103,7 +1103,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
                 label: 'Last contact',
                 parameters: { before: 30, after: 0 },
               },
-              // No label → falls back to the codebook variable's own name.
+              // No label → the builder captions it with the variable's name.
               { variable: occupation.id, component: 'TextArea' },
             ],
           },
@@ -1134,7 +1134,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         await composer.getNode('Pat').click();
         await expect(composer.inspectorPanel).toBeVisible();
 
-        // Label handling: custom label, codebook-name fallback, and hint.
+        // Label handling: custom label, the variable-name caption, and hint.
         await expect(composer.getField(matrixRefs.fullName)).toContainText(
           'How old?',
         );

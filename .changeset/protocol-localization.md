@@ -28,7 +28,9 @@ How an interview picks its language:
   protocol's languages, marked so that screen readers pronounce it correctly.
 - Participants see a node or edge type's label, which can be translated,
   rather than its name. A Narrative preset switcher lists highlighted
-  attributes by the translated labels the preset gives them.
+  attributes by the translated labels the preset gives them, and a Network
+  Composer field shows its own translated caption rather than the attribute's
+  label.
 
 In Architect:
 
@@ -48,6 +50,9 @@ In Architect:
 - Each attribute a Narrative preset highlights has a label of its own, which
   participants see in the preset switcher. You write and translate it in the
   Narrative stage editor; it starts as the attribute's name.
+- Each Network Composer form field needs a caption, which can be translated.
+  Choosing the field's attribute fills in its name as the caption, until you
+  write one of your own.
 - The printable protocol summary can be printed in any of the protocol's
   languages.
 - The Language Chooser is in the New Stage menu, under a new Utilities

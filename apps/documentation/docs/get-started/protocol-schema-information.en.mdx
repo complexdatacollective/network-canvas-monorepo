@@ -2,7 +2,7 @@
 title: Protocol Schema Information
 wip: false
 navOrder: 3
-date: 5th October 2026
+date: 6th October 2026
 ---
 
 ## Summary
@@ -104,6 +104,7 @@ Before you run a schema 9 protocol, make sure the app you run it in has been upd
 - **Protocols in more than one language.** A protocol now lists the languages it is written in, and one of them is its default language. Every text participants see, such as stage names, prompts, form fields, response options and Information screens, can have a translation in each of these languages. When a text has no translation in the participant's language, they see it in the default language instead. See [Translating Your Protocol](/en/design-protocols/translating-your-protocol).
 - **Labels for node types, edge types and attributes.** The codebook now keeps the words participants are shown for each node type and edge type separately from its name. The label can be translated, while the name, which your exported data uses, stays the same in every language. Each attribute has a label too, a readable name in plain text that isn't translated.
 - **Labels for highlighted Narrative attributes.** Each attribute a [Narrative](/en/design-protocols/interface-documentation/narrative) preset highlights has its own label, which participants see in the preset switcher and which can be translated.
+- **Labels for Network Composer fields.** Every field of a [Network Composer](/en/design-protocols/interface-documentation/network-composer) form needs a label, which participants see and which can be translated.
 - **New "[Language Chooser](/en/design-protocols/interface-documentation/language-chooser)" interface.** A screen where participants choose which of the protocol's languages the rest of the interview is shown in.
 - **The interview language in exported data.** Each exported interview records the language it was shown in. See [Interview language](/en/analyze-data/data-export#interview-language).
 
@@ -116,6 +117,7 @@ Migrating a protocol from schema 8 to schema 9 keeps all of its content, and exi
 - marks all the text participants see as written in an unspecified language (the language code `und`), because older protocols don't record which language they are written in. This becomes the protocol's only language, and its default. Open the protocol in Architect to say which language it really is (see [Identifying the language of an older protocol](/en/design-protocols/translating-your-protocol#identifying-the-language-of-an-older-protocol)).
 - gives every node type, edge type and attribute a label, which starts as its name.
 - gives every attribute a Narrative preset highlights a label, which starts as the attribute's name.
+- gives every Network Composer field that has no label one, which starts as the attribute's name.
 
 ## Schema version 8
 

@@ -19,6 +19,9 @@
 - A Narrative preset still takes `highlight` as a list of variable IDs, and
   writes each one as `{ variable, label }`, with the variable's name as the
   label in the default language.
+- A Network Composer form field always has a caption: the `label` you pass,
+  or else its variable's name in the default language, escaped so that
+  markdown shows it as written.
 - `addStage('LanguageChooser')` adds a language chooser stage.
 
 **Breaking:** the text in a built protocol is a `LocalizedString`, not a

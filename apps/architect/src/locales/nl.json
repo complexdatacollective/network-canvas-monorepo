@@ -169,7 +169,7 @@
   "architect.codebook.usage.validation": "Gebruikt als validatie voor “{name}”",
   "architect.codebook.usageColumn.notInUse": "niet in gebruik",
   "architect.codebook.variableLabelDialog.label": "Attribuutlabel",
-  "architect.codebook.variableLabelDialog.labelHint": "Een leesbaar label voor het attribuut “{name}”. Het wordt niet vertaald. Een veld in de Netwerkbouwer zonder eigen bijschrift toont dit label aan deelnemers.",
+  "architect.codebook.variableLabelDialog.labelHint": "Een leesbaar label voor het attribuut “{name}”. Het wordt niet vertaald.",
   "architect.codebook.variableLabelDialog.title": "Attribuutlabel bewerken",
   "architect.codebook.variableList.name": "Naam",
   "architect.codebook.variableList.noAttributes": "Geen attributen.",

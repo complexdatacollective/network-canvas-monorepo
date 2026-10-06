@@ -63,12 +63,11 @@ type FieldMetadata = Variable extends infer V
         parameters?: Record<string, unknown>;
         variable: string;
         /**
-         * The caption authored for this field on the stage, absent when none
-         * was. This — never `label` — is what may be repeated back to a
-         * participant away from the field itself, e.g. by a comparison
-         * validator.
+         * The caption authored for this field on the stage. This — never
+         * `label` — is what may be repeated back to a participant away from
+         * the field itself, e.g. by a comparison validator.
          */
-        authoredLabel?: LocalizedString;
+        authoredLabel: LocalizedString;
         hint?: LocalizedString;
         showValidationHints?: boolean;
       }
@@ -116,8 +115,7 @@ const createFieldMetadata = (
     }
 
     // Shared form fields caption with a required `prompt`; NetworkComposer
-    // fields carry an optional `label` instead, falling back to the codebook
-    // variable's label so an unlabelled attribute still reads naturally.
+    // fields with a required `label`.
     const authoredLabel = 'prompt' in field ? field.prompt : field.label;
 
     // The control (component) and its parameters may live on the stage field
@@ -162,7 +160,7 @@ const createFieldMetadata = (
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,
-      ...(authoredLabel !== undefined ? { authoredLabel } : {}),
+      authoredLabel,
       hint,
       showValidationHints,
     };

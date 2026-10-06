@@ -156,14 +156,76 @@ const baseStageWithComponent = {
 };
 
 describe('ComposerFormFieldSchema', () => {
-  it('accepts a nodeForm field that carries a component and omits label', () => {
+  it('accepts a nodeForm field that carries a component and a caption', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'age',
+            label: localized('How old are they?'),
+            component: ComponentTypes.Number,
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a nodeForm field with no caption, anchored at its label', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,
       nodeForm: {
         fields: [{ variable: 'age', component: ComponentTypes.Number }],
       },
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'nodeForm',
+      'fields',
+      0,
+      'label',
+    ]);
+  });
+
+  it('rejects an edge form field with no caption, anchored at its label', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      edges: [
+        {
+          id: 'friends',
+          subject: { entity: 'edge', type: 'friend' },
+          form: {
+            fields: [{ variable: 'closeness', component: ComponentTypes.Text }],
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'edges',
+      0,
+      'form',
+      'fields',
+      0,
+      'label',
+    ]);
+  });
+
+  it('rejects a caption with an empty translation', () => {
+    const result = networkComposerStage.safeParse({
+      ...baseStageWithComponent,
+      nodeForm: {
+        fields: [
+          {
+            variable: 'age',
+            label: { en: '' },
+            component: ComponentTypes.Number,
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(false);
   });
 
   it('accepts an empty nodeForm.fields array', () => {
@@ -185,7 +247,15 @@ describe('ComposerFormFieldSchema', () => {
   it('rejects a nodeForm field with an unknown component', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,
-      nodeForm: { fields: [{ variable: 'age', component: 'NotAControl' }] },
+      nodeForm: {
+        fields: [
+          {
+            variable: 'age',
+            label: localized('age'),
+            component: 'NotAControl',
+          },
+        ],
+      },
     });
     expect(result.success).toBe(false);
   });
@@ -243,6 +313,7 @@ describe('ComposerFormFieldSchema', () => {
         fields: [
           {
             variable: 'birth_date',
+            label: localized('birth_date'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year', min: '2020-05-03' },
           },
@@ -263,6 +334,7 @@ describe('ComposerFormFieldSchema', () => {
         fields: [
           {
             variable: 'birth_year',
+            label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year', min: '0099' },
           },
@@ -282,6 +354,7 @@ describe('ComposerFormFieldSchema', () => {
         fields: [
           {
             variable: 'birth_date',
+            label: localized('birth_date'),
             component: ComponentTypes.DatePicker,
             parameters: { max: '0000-12-31' },
           },
@@ -298,6 +371,7 @@ describe('ComposerFormFieldSchema', () => {
         fields: [
           {
             variable: 'birth_date',
+            label: localized('birth_date'),
             component: ComponentTypes.DatePicker,
             parameters: { min: '2021-06-01', max: '2020-01-01' },
           },
@@ -318,6 +392,7 @@ describe('ComposerFormFieldSchema', () => {
             fields: [
               {
                 variable: 'met_date',
+                label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
                 parameters: { before: -1 },
               },
@@ -340,6 +415,7 @@ describe('ComposerFormFieldSchema', () => {
             fields: [
               {
                 variable: 'met_date',
+                label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
                 parameters: { anchor: '0000-12-31' },
               },
@@ -362,6 +438,7 @@ describe('ComposerFormFieldSchema', () => {
             fields: [
               {
                 variable: 'met_date',
+                label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
                 parameters: { anchor: '0001-01-01' },
               },
@@ -384,6 +461,7 @@ describe('ComposerFormFieldSchema', () => {
             fields: [
               {
                 variable: 'met_date',
+                label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
                 parameters: { anchor: '0099-12-31' },
               },
@@ -402,6 +480,7 @@ describe('ComposerFormFieldSchema', () => {
         fields: [
           {
             variable: 'birth_year',
+            label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year', min: '1990', max: '2020' },
           },
@@ -415,6 +494,7 @@ describe('ComposerFormFieldSchema', () => {
             fields: [
               {
                 variable: 'met_date',
+                label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
                 parameters: { anchor: '2020-01-01', before: 180, after: 0 },
               },
@@ -433,6 +513,7 @@ describe('ComposerFormFieldSchema', () => {
         fields: [
           {
             variable: 'closeness',
+            label: localized('closeness'),
             component: ComponentTypes.VisualAnalogScale,
             parameters: {
               minLabel: localized('Distant'),
@@ -460,11 +541,13 @@ describe('ComposerFormSchema duplicate variables', () => {
         fields: [
           {
             variable: 'birth_year',
+            label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year', min: '1990', max: '1990' },
           },
           {
             variable: 'birth_year',
+            label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year', min: '2000', max: '2000' },
           },
@@ -488,8 +571,16 @@ describe('ComposerFormSchema duplicate variables', () => {
           subject: { entity: 'edge', type: 'knows' },
           form: {
             fields: [
-              { variable: 'met_date', component: ComponentTypes.DatePicker },
-              { variable: 'met_date', component: ComponentTypes.DatePicker },
+              {
+                variable: 'met_date',
+                label: localized('met_date'),
+                component: ComponentTypes.DatePicker,
+              },
+              {
+                variable: 'met_date',
+                label: localized('met_date'),
+                component: ComponentTypes.DatePicker,
+              },
             ],
           },
         },
@@ -513,14 +604,26 @@ describe('ComposerFormSchema duplicate variables', () => {
     const result = networkComposerStage.safeParse({
       ...baseStageWithComponent,
       nodeForm: {
-        fields: [{ variable: 'note', component: ComponentTypes.Text }],
+        fields: [
+          {
+            variable: 'note',
+            label: localized('note'),
+            component: ComponentTypes.Text,
+          },
+        ],
       },
       edges: [
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
           form: {
-            fields: [{ variable: 'note', component: ComponentTypes.Text }],
+            fields: [
+              {
+                variable: 'note',
+                label: localized('note'),
+                component: ComponentTypes.Text,
+              },
+            ],
           },
         },
       ],
@@ -533,8 +636,16 @@ describe('ComposerFormSchema duplicate variables', () => {
       ...baseStageWithComponent,
       nodeForm: {
         fields: [
-          { variable: 'age', component: ComponentTypes.Number },
-          { variable: 'name', component: ComponentTypes.Text },
+          {
+            variable: 'age',
+            label: localized('age'),
+            component: ComponentTypes.Number,
+          },
+          {
+            variable: 'name',
+            label: localized('name'),
+            component: ComponentTypes.Text,
+          },
         ],
       },
     });

@@ -1245,6 +1245,42 @@ describe('SyntheticInterview', () => {
       expect(result.success).toBe(true);
     });
 
+    it('captions a field given no label with its variable name, as markdown that shows it as written', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const nickname = person.addVariable({
+        type: 'text',
+        name: 'nick_name',
+        component: 'Text',
+      });
+      const knows = si.addEdgeType({ name: 'Knows' });
+      const note = knows.addVariable({
+        type: 'text',
+        name: 'Note',
+        component: 'Text',
+      });
+      const stage = si.addStage('NetworkComposer', {
+        subject: { entity: 'node', type: person.id },
+      });
+      stage.addNodeFormField({ variable: nickname.id, component: 'Text' });
+      stage.addEdgeType({
+        type: knows.id,
+        form: { fields: [{ variable: note.id, component: 'Text' }] },
+      });
+
+      const builtStage = si.getProtocol().stages[0] as {
+        nodeForm: { fields: { label: unknown }[] };
+        edges: { form: { fields: { label: unknown }[] } }[];
+      };
+      expect(builtStage.nodeForm.fields[0]?.label).toEqual({
+        'en-US': 'nick\\_name',
+      });
+      expect(builtStage.edges[0]?.form.fields[0]?.label).toEqual({
+        'en-US': 'Note',
+      });
+      expect(stageSchema.safeParse(builtStage).success).toBe(true);
+    });
+
     it('rejects duplicate edge subject types via the schema refinement', () => {
       const si = new SyntheticInterview(2);
       const friendship = si.addEdgeType({ name: 'Friendship' });

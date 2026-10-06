@@ -39,8 +39,9 @@ const ComposerComponentSchema = z.enum([
 // not on the codebook variable, so the same variable can render with different
 // controls in different stages. The runtime side panel reads the control from
 // this field (see interview/src/selectors/forms.ts). `label` captions the
-// field in the drawer; it is optional — the drawer falls back to the codebook
-// variable's label, which is plain text and not translated.
+// field in the drawer. It is required and non-empty, like a shared form
+// field's `prompt`: the codebook variable's own label is plain text that is
+// never translated, so it cannot stand in for a caption the participant reads.
 const composerFormFieldShape = {
   // Architect assigns a stable id (uuid) on creation so the editor's
   // OrderedList / motion Reorder keying survives reorder + delete; it is
@@ -50,7 +51,7 @@ const composerFormFieldShape = {
     subject: 'stageSubject',
     usage: 'validatedAttribute',
   }),
-  label: localizedString(z.string(), 'markdown').optional(),
+  label: localizedString(z.string().min(1), 'markdown'),
   hint: localizedString(z.string(), 'markdown').optional(),
   showValidationHints: z.boolean().optional(),
 };

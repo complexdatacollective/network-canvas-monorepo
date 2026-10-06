@@ -3,6 +3,7 @@ import { invariant } from 'es-toolkit';
 import {
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
+  escapeMarkdownText,
   escapeMessageText,
   type LocalizedString,
   messageText,
@@ -1282,7 +1283,7 @@ export class SyntheticInterview {
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
-      label: input.label ?? variable?.name ?? 'Field',
+      label: input.label ?? escapeMarkdownText(variable?.name ?? variableId),
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
       ...(input.showValidationHints !== undefined
         ? { showValidationHints: input.showValidationHints }
@@ -1309,7 +1310,7 @@ export class SyntheticInterview {
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
-      label: input.label ?? variable?.name ?? 'Field',
+      label: input.label ?? escapeMarkdownText(variable?.name ?? variableId),
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
       ...(input.showValidationHints !== undefined
         ? { showValidationHints: input.showValidationHints }
@@ -2505,9 +2506,7 @@ export class SyntheticInterview {
       ...(field.parameters
         ? { parameters: this.localizedParameters(field.parameters) }
         : {}),
-      ...(field.label !== undefined
-        ? { label: this.localized(field.label) }
-        : {}),
+      label: this.localized(field.label),
       ...(field.hint !== undefined ? { hint: this.localized(field.hint) } : {}),
     };
   }

@@ -9,9 +9,8 @@ import { useResolveLocalizedString } from '../localization/ProtocolLocalizationP
 /**
  * The shape every authored field has in common: the variable it collects, and
  * whichever of `label`/`prompt` its schema happens to call the caption.
- * `FormField` carries `prompt`, `ComposerFormField` carries an optional
- * `label`; widened to plain `string` so both branded and unbranded variable
- * references fit.
+ * `FormField` carries `prompt`, `ComposerFormField` carries `label`; widened
+ * to plain `string` so both branded and unbranded variable references fit.
  */
 type AuthoredField = {
   variable: string;

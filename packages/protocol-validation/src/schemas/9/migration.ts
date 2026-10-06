@@ -1,3 +1,4 @@
+import { escapeMarkdownText } from '../../localization/markdownText.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
 import {
@@ -49,6 +50,21 @@ const addCodebookLabels = (codebook: unknown) => {
   if (isRecord(codebook.ego)) addLabels(codebook.ego.variables);
 };
 
+/** The attribute definitions of the entity type a stage subject names. */
+const subjectVariables = (
+  codebook: unknown,
+  entity: 'node' | 'edge',
+  subject: unknown,
+): Record<string, unknown> => {
+  const types =
+    isRecord(codebook) && isRecord(codebook[entity]) ? codebook[entity] : {};
+  const type = isRecord(subject) ? subject.type : undefined;
+  const definition = typeof type === 'string' ? types[type] : undefined;
+  return isRecord(definition) && isRecord(definition.variables)
+    ? definition.variables
+    : {};
+};
+
 /**
  * A schema 8 Narrative legend showed each highlighted attribute's name, so
  * each highlight keeps that name as its label. The attribute is looked up on
@@ -58,26 +74,58 @@ const addCodebookLabels = (codebook: unknown) => {
 const addHighlightLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   const { codebook } = protocol;
-  const nodeTypes =
-    isRecord(codebook) && isRecord(codebook.node) ? codebook.node : {};
   for (const stage of protocol.stages) {
     if (!isRecord(stage) || stage.type !== 'Narrative') continue;
     if (!Array.isArray(stage.presets)) continue;
-    const subjectType = isRecord(stage.subject)
-      ? stage.subject.type
-      : undefined;
-    const nodeType =
-      typeof subjectType === 'string' ? nodeTypes[subjectType] : undefined;
-    const variables =
-      isRecord(nodeType) && isRecord(nodeType.variables)
-        ? nodeType.variables
-        : {};
+    const variables = subjectVariables(codebook, 'node', stage.subject);
     for (const preset of stage.presets) {
       if (!isRecord(preset) || !Array.isArray(preset.highlight)) continue;
       preset.highlight = preset.highlight.map((variable: unknown) =>
         typeof variable === 'string'
           ? { variable, label: nameOrKey(variables[variable], variable) }
           : variable,
+      );
+    }
+  }
+};
+
+const addFieldCaptions = (
+  form: unknown,
+  variables: Record<string, unknown>,
+) => {
+  if (!isRecord(form) || !Array.isArray(form.fields)) return;
+  for (const field of form.fields) {
+    if (!isRecord(field) || typeof field.variable !== 'string') continue;
+    if (field.label !== undefined && field.label !== '') continue;
+    field.label = escapeMarkdownText(
+      nameOrKey(variables[field.variable], field.variable),
+    );
+  }
+};
+
+/**
+ * A schema 8 Network Composer field with no caption, or an empty one, was
+ * captioned with its attribute's name, so the field keeps that name as its
+ * caption, which schema 9 requires. The caption is markdown, so the name is
+ * escaped to render as written. The attribute is looked up on the stage
+ * subject's node type for the node form and on each edge type for its form,
+ * and its id stands in for a missing or empty name.
+ */
+const addComposerCaptions = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'NetworkComposer') continue;
+    addFieldCaptions(
+      stage.nodeForm,
+      subjectVariables(codebook, 'node', stage.subject),
+    );
+    if (!Array.isArray(stage.edges)) continue;
+    for (const edge of stage.edges) {
+      if (!isRecord(edge)) continue;
+      addFieldCaptions(
+        edge.form,
+        subjectVariables(codebook, 'edge', edge.subject),
       );
     }
   }
@@ -137,6 +185,7 @@ const migrationV8toV9 = createMigration({
     const migrated = structuredClone(doc);
     addCodebookLabels(migrated.codebook);
     addHighlightLabels(migrated);
+    addComposerCaptions(migrated);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.

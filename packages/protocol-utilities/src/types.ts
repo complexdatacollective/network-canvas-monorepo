@@ -248,7 +248,7 @@ export type NetworkComposerFormFieldEntry = {
   variable: string;
   component: ComponentType;
   parameters?: Record<string, unknown>;
-  label?: TextInput;
+  label: TextInput;
   hint?: TextInput;
   showValidationHints?: boolean;
 };
@@ -466,8 +466,8 @@ export type FormFieldInput = {
 };
 
 // Input for NetworkComposer attribute fields, which caption with `label`
-// (optional; the runtime falls back to the variable's name) instead of the
-// shared fields' `prompt`.
+// instead of the shared fields' `prompt`. Without one, the field is captioned
+// with its variable's name.
 export type NetworkComposerFormFieldInput = {
   variable?: string;
   label?: TextInput;

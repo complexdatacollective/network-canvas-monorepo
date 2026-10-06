@@ -320,24 +320,35 @@ describe('FieldPreviewPane', () => {
 
     cleanup();
 
-    // No authored label, so the attribute's own name stands in — which is the
-    // composer's rule and never the form family's.
+    // No label written yet. The attribute's own name is never a caption, so
+    // the stand-in the form family uses stands in here too.
     renderPreview(
       { variable: 'age', component: 'Number' },
       { mode: 'composer' },
     );
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Your question will appear here.',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Age' }),
+    ).not.toBeInTheDocument();
   });
 
   it('treats a caption of nothing but spaces as nothing authored', () => {
     // The same rule the interview applies: `authoredFieldLabel` trims before
     // deciding whether the researcher wrote anything, so a stray space is not
-    // a caption and the participant meets the fallback rather than a blank.
+    // a caption.
     renderPreview(
       { variable: 'age', component: 'Number', label: en('   ') },
       { mode: 'composer' },
     );
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Your question will appear here.',
+      }),
+    ).toBeVisible();
 
     cleanup();
 
@@ -346,7 +357,11 @@ describe('FieldPreviewPane', () => {
       { variable: 'age', component: 'Number', label: en('') },
       { mode: 'composer' },
     );
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Your question will appear here.',
+      }),
+    ).toBeVisible();
 
     cleanup();
 
@@ -609,12 +624,13 @@ describe('FieldPreviewPane', () => {
         variable: CREATE_NEW_ATTRIBUTE,
         _newVariableName: 'favouriteFood',
         component: 'Text',
+        label: en('Favourite food'),
       },
       { mode: 'composer' },
     );
 
     expect(
-      screen.getByRole('textbox', { name: 'favouriteFood' }),
+      screen.getByRole('textbox', { name: 'Favourite food' }),
     ).toBeVisible();
     expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument();
   });

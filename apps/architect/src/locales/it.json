@@ -169,7 +169,7 @@
   "architect.codebook.usage.validation": "Usato come convalida per «{name}»",
   "architect.codebook.usageColumn.notInUse": "non in uso",
   "architect.codebook.variableLabelDialog.label": "Etichetta dell’attributo",
-  "architect.codebook.variableLabelDialog.labelHint": "Un’etichetta leggibile per l’attributo «{name}». Non viene tradotta. Un campo del Compositore di reti senza una didascalia propria mostra questa etichetta alle persone partecipanti.",
+  "architect.codebook.variableLabelDialog.labelHint": "Un’etichetta leggibile per l’attributo «{name}». Non viene tradotta.",
   "architect.codebook.variableLabelDialog.title": "Modifica l’etichetta dell’attributo",
   "architect.codebook.variableList.name": "Nome",
   "architect.codebook.variableList.noAttributes": "Nessun attributo.",

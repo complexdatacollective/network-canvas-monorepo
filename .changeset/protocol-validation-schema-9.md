@@ -49,8 +49,10 @@ Schema 9:
   or edge type's label is wrapped like any other text, and a variable's stays
   plain text. A Narrative preset's `highlight` list of variable IDs becomes a
   list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ und: <text> }`. An empty
-  optional text that schema 9 requires to be non-empty is removed, as are
+  its ID) and wrapped as `{ und: <text> }`. A Network Composer form field with
+  no caption, or an empty one, gets its attribute's name (or its ID) as one,
+  escaped so that markdown shows it as written, and wrapped the same way. An
+  empty optional text that schema 9 requires to be non-empty is removed, as are
   Network Composer scale end labels that were not strings. Its two migration
   notes tell researchers what the new version allows and how to set the
   protocol's real language.
@@ -99,9 +101,13 @@ Localization:
   language from a list of preferences, in order, matching Chinese by script);
   `canonicalizeLocale`; `getLocaleMetadata` (a language's own name and text
   direction); `analyzeProtocolLocalization` (missing translations);
-  `collectLocalizedStrings`; `escapeMessageText` and `messageText`.
+  `collectLocalizedStrings`; `escapeMessageText` and `messageText`;
+  `escapeMarkdownText` (turns plain text into markdown that shows it as
+  written).
 - A Network Composer form field is now a union on `component`, so its scale
-  end labels are localized fields of their own.
+  end labels are localized fields of their own. Its `label`, the caption
+  participants read, is required and non-empty, since the attribute's own
+  label is not translated.
 
 Participant data files (rosters):
 

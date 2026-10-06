@@ -25,6 +25,7 @@ describe('form field id retention', () => {
     const result = ComposerFormFieldSchema.safeParse({
       id: 'a-stable-uuid',
       variable: 'personName',
+      label: localized('Name?'),
       component: 'Text',
     });
 

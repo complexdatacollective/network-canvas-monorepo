@@ -7,10 +7,11 @@ Protocol page explains how to choose the language a protocol is written in,
 add and remove languages, set the default language, find and fill missing
 translations, identify the language of a protocol upgraded from an earlier
 version, preview and print each language, and how participants get their
-language. It explains that node type, edge type and Narrative highlight
-labels are translated while attribute labels are plain text, and the
-Narrative and Network Composer pages say where each label is shown. A new
-page documents the Language Chooser interface. The preview,
+language. It explains that node type, edge type, Narrative highlight and
+Network Composer field labels are translated while attribute labels are plain
+text that participants don't see, and the Narrative and Network Composer pages
+say where each label is shown and that every Network Composer field needs a
+label. A new page documents the Language Chooser interface. The preview,
 Fresco and Interviewer guides describe how an interview's language follows
 the participant's browser rather than a settings menu, the Data Export page
 and the Export Data Dictionary describe the new interview language column,

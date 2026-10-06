@@ -28,9 +28,9 @@ const messages = defineMessages({
   hint: {
     id: 'architect.codebook.variableLabelDialog.labelHint',
     defaultMessage:
-      'A readable label for the attribute “{name}”. It is not translated. A Network Composer field with no caption of its own shows this label to participants.',
+      'A readable label for the attribute “{name}”. It is not translated.',
     description:
-      'Hint under the attribute label field. name is the attribute’s name, which the exported data uses. Network Composer is the name of an interview interface.',
+      'Hint under the attribute label field. name is the attribute’s name, which the exported data uses.',
   },
 });
 

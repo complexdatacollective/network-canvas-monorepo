@@ -1651,10 +1651,6 @@
     "defaultMessage": "Select an attribute and input control to preview this field.",
     "description": "Shown in place of the preview of a form field while the two things it would need to render — which attribute the answer is recorded under, and which control collects it — have not both been chosen."
   },
-  "protocolBuilder.fieldPreview.placeholderLabel": {
-    "defaultMessage": "Attribute label",
-    "description": "Stands in for the label of a network composer’s form field in its preview, while the researcher has authored none and the attribute it collects has no name to borrow."
-  },
   "protocolBuilder.fieldPreview.placeholderQuestion": {
     "defaultMessage": "Your question will appear here.",
     "description": "Stands in for the question of a form field in its preview, while the researcher has not written one yet."
@@ -2969,15 +2965,15 @@
   },
   "protocolBuilder.networkCanvas.formFieldMissingAttribute": {
     "defaultMessage": "{attributeId} — this attribute is no longer in the codebook",
-    "description": "How a network composer form field reads in the list when the attribute it records into has been deleted from the codebook and the field has no question of its own to be named by. attributeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted."
+    "description": "How a network composer form field reads in the list when the attribute it records into has been deleted from the codebook: in place of its question when it has none, and as a warning badge under the question when it has one. attributeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted."
   },
   "protocolBuilder.networkCanvas.formFieldNoun": {
     "defaultMessage": "form field",
     "description": "What one row of a network composer’s form list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
   },
   "protocolBuilder.networkCanvas.formFieldQuestionHint": {
-    "defaultMessage": "What the participant is asked. Leave it empty to use the attribute’s own name.",
-    "description": "Guidance under the question box of a network composer form field. The attribute’s name is the researcher-facing name the codebook records it under."
+    "defaultMessage": "What the participant is asked. It starts as the attribute’s name; change it to the words the participant should read.",
+    "description": "Guidance under the question box of a network composer form field. The box is filled in with the attribute’s name when the attribute is chosen; the attribute’s name is the researcher-facing name the codebook records it under, and it is never translated, so the question is what the participant reads."
   },
   "protocolBuilder.networkCanvas.formFieldQuestionLabel": {
     "defaultMessage": "Question",
@@ -2986,6 +2982,10 @@
   "protocolBuilder.networkCanvas.formFieldQuestionPlaceholder": {
     "defaultMessage": "Enter your question…",
     "description": "Placeholder inside the empty question box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionRequired": {
+    "defaultMessage": "Write what the participant is asked for this field.",
+    "description": "Refusal shown when a network composer form field is saved with an empty question box."
   },
   "protocolBuilder.networkCanvas.formFieldRecordsAttribute": {
     "defaultMessage": "Records the attribute “{attributeName}”",

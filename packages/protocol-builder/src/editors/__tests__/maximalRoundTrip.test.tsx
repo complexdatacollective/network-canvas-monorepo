@@ -333,6 +333,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
                 id: 'composer-edge-field-1',
                 variable: 'closeness',
                 component: 'LikertScale',
+                label: { 'en-US': 'How close are you?' },
               },
             ],
           },

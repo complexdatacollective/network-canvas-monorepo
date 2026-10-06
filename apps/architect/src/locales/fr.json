@@ -169,7 +169,7 @@
   "architect.codebook.usage.validation": "Utilisé pour la validation de « {name} »",
   "architect.codebook.usageColumn.notInUse": "non utilisé",
   "architect.codebook.variableLabelDialog.label": "Libellé de l’attribut",
-  "architect.codebook.variableLabelDialog.labelHint": "Un libellé lisible pour l’attribut « {name} ». Il n’est pas traduit. Un champ du Compositeur de réseau sans légende propre présente ce libellé aux personnes participantes.",
+  "architect.codebook.variableLabelDialog.labelHint": "Un libellé lisible pour l’attribut « {name} ». Il n’est pas traduit.",
   "architect.codebook.variableLabelDialog.title": "Modifier le libellé de l’attribut",
   "architect.codebook.variableList.name": "Nom",
   "architect.codebook.variableList.noAttributes": "Aucun attribut.",

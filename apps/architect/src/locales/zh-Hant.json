@@ -169,7 +169,7 @@
   "architect.codebook.usage.validation": "用作「{name}」的驗證",
   "architect.codebook.usageColumn.notInUse": "未使用",
   "architect.codebook.variableLabelDialog.label": "屬性標籤",
-  "architect.codebook.variableLabelDialog.labelHint": "屬性「{name}」的易讀標籤。此標籤不會被翻譯。網絡編輯器中沒有自身標題的欄位會向參與者顯示此標籤。",
+  "architect.codebook.variableLabelDialog.labelHint": "屬性「{name}」的易讀標籤。此標籤不會被翻譯。",
   "architect.codebook.variableLabelDialog.title": "編輯屬性標籤",
   "architect.codebook.variableList.name": "名稱",
   "architect.codebook.variableList.noAttributes": "沒有屬性。",

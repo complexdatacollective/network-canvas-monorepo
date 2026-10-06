@@ -209,7 +209,6 @@ export default function useProtocolForm({
     // by the same rule `variableLabels` applies, so the field falls back to
     // the codebook variable's own label, which is not translated.
     const label =
-      field.authoredLabel !== undefined &&
       authoredFieldLabel(resolve(field.authoredLabel).text) !== undefined
         ? field.authoredLabel
         : untranslated(field.label);

@@ -307,6 +307,13 @@ describe('useProtocolForm stageSubject', () => {
  */
 describe('useProtocolForm variableLabels', () => {
   it('carries only authored participant-facing text', () => {
+    // A NetworkComposer field whose caption is blank: the codebook variable's
+    // name must NOT stand in for one.
+    const blankCaptionField: ComposerFormField = {
+      variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
+      label: { en: '   ' },
+      component: 'Text',
+    };
     const { result } = renderHook(
       () =>
         useProtocolForm({
@@ -315,12 +322,7 @@ describe('useProtocolForm variableLabels', () => {
               variable: asEntityAttributeReference(NAME_VAR),
               prompt: { en: 'What is your name?' },
             },
-            // A NetworkComposer field with no authored label: the codebook
-            // variable's name must NOT stand in for one.
-            {
-              variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
-              component: 'Text',
-            } as ComposerFormField,
+            blankCaptionField,
           ],
           subject: { entity: 'node', type: NODE_TYPE },
         }),

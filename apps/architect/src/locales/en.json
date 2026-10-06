@@ -680,8 +680,8 @@
     "description": "Label of the field holding the readable label of an attribute, as opposed to the attribute name the exported data uses."
   },
   "architect.codebook.variableLabelDialog.labelHint": {
-    "defaultMessage": "A readable label for the attribute “{name}”. It is not translated. A Network Composer field with no caption of its own shows this label to participants.",
-    "description": "Hint under the attribute label field. name is the attribute’s name, which the exported data uses. Network Composer is the name of an interview interface."
+    "defaultMessage": "A readable label for the attribute “{name}”. It is not translated.",
+    "description": "Hint under the attribute label field. name is the attribute’s name, which the exported data uses."
   },
   "architect.codebook.variableLabelDialog.title": {
     "defaultMessage": "Edit attribute label",

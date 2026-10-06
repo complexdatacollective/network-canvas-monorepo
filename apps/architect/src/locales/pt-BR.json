@@ -169,7 +169,7 @@
   "architect.codebook.usage.validation": "Usado como validação de “{name}”",
   "architect.codebook.usageColumn.notInUse": "não utilizado",
   "architect.codebook.variableLabelDialog.label": "Rótulo do atributo",
-  "architect.codebook.variableLabelDialog.labelHint": "Um rótulo legível para o atributo “{name}”. Ele não é traduzido. Um campo do Compositor de redes sem legenda própria mostra este rótulo a participantes.",
+  "architect.codebook.variableLabelDialog.labelHint": "Um rótulo legível para o atributo “{name}”. Ele não é traduzido.",
   "architect.codebook.variableLabelDialog.title": "Editar rótulo do atributo",
   "architect.codebook.variableList.name": "Nome",
   "architect.codebook.variableList.noAttributes": "Nenhum atributo.",

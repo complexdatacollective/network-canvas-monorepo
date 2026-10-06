@@ -93,12 +93,6 @@ const messages = defineMessages({
     description:
       'Notice shown in the preview of a form field bound to an attribute the codebook already holds, because the control and the rules belong to that attribute rather than to this one question.',
   },
-  placeholderLabel: {
-    id: 'protocolBuilder.fieldPreview.placeholderLabel',
-    defaultMessage: 'Attribute label',
-    description:
-      'Stands in for the label of a network composer’s form field in its preview, while the researcher has authored none and the attribute it collects has no name to borrow.',
-  },
   placeholderQuestion: {
     id: 'protocolBuilder.fieldPreview.placeholderQuestion',
     defaultMessage: 'Your question will appear here.',
@@ -151,10 +145,9 @@ const isInputControl = (value: unknown): value is ComponentType =>
  *
  * `@codaco/interview`'s `authoredFieldLabel` TRIMS the caption as resolved in
  * the interview language before deciding whether anything was authored, so a
- * caption of nothing but spaces is nothing authored and the participant meets
- * the fallback — the attribute's label in a composer, the stand-in sentence in
- * a form. Asked of the text a participant in the editing language would be
- * shown, fallback included.
+ * caption of nothing but spaces is nothing authored, and the preview shows the
+ * stand-in it shows for a caption not yet written. Asked of the text a
+ * participant in the editing language would be shown, fallback included.
  *
  * Replicated rather than imported: that helper is internal to the runtime and
  * its root entry does not export it. `FieldPreviewPane.test.tsx` pins the
@@ -261,10 +254,10 @@ export type FieldPreviewPaneProps = Readonly<{
   /**
    * Which family's row this is.
    *
-   * The two ask the participant differently: a form field asks a question, and
-   * a network composer's field labels one box of a form the participant is
-   * filling in — so what stands in while nothing is authored differs, and so
-   * does where the chosen control lives.
+   * The two keep their caption and their control in different places: a form
+   * field's caption is its `prompt` and its control is written to the
+   * codebook, while a network composer's field carries a `label` and a control
+   * of its own.
    */
   mode?: 'form' | 'composer';
   /** The row as the dialog opened on it; see {@link RowValues}. */
@@ -376,24 +369,13 @@ export default function FieldPreviewPane({
         : undefined;
 
   // The caption as written, in every language, where it says anything in the
-  // language being edited; otherwise what the participant meets instead.
+  // language being edited; otherwise a stand-in until it is written.
   const authored = mode === 'composer' ? draft.label : draft.prompt;
   const authoredCopy = isAuthored(localize(authored).text)
     ? asLocalizedString(authored)
     : undefined;
-  const heldLabel: unknown = Reflect.get(codebookVariable ?? {}, 'label');
-  const codebookLabel =
-    typeof heldLabel === 'string' && heldLabel !== '' ? heldLabel : undefined;
   const caption: LocalizedString | string =
-    authoredCopy ??
-    (mode === 'composer'
-      ? (codebookLabel ??
-        inventedName ??
-        // The sentinel is not a name: a composer row that is inventing and has
-        // been given no name yet borrows the stand-in, as an unnamed row does.
-        (inventing ? undefined : variableId) ??
-        intl.formatMessage(messages.placeholderLabel))
-      : intl.formatMessage(messages.placeholderQuestion));
+    authoredCopy ?? intl.formatMessage(messages.placeholderQuestion);
   const label = typeof caption === 'string' ? caption : localize(caption).text;
   const hint = asLocalizedString(draft.hint);
   const languages =

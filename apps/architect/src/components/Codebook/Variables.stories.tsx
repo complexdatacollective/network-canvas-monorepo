@@ -163,11 +163,11 @@ const BilingualStore = ({ children }: { children: ReactNode }) => {
 };
 
 /**
- * The label button beside each attribute edits the words participants are
- * shown for it, in each of the protocol's languages. The editor opens in the
- * default language; the French label is written beside the English.
+ * The label button beside each attribute edits a readable label for
+ * researchers. Participants never see it, so even in a protocol written in
+ * several languages it is plain text, with no language menu.
  */
-export const EditLabelInSeveralLanguages: Story = {
+export const PlainLabelInSeveralLanguages: Story = {
   args: { variables: variables.filter(({ id }) => id === SHORT_NAME_ID) },
   decorators: [
     (Story) => (
@@ -184,38 +184,20 @@ export const EditLabelInSeveralLanguages: Story = {
       );
       return canvas.findByRole('textbox', { name: 'Attribute label' });
     };
-    const chooseFrench = async () => {
-      const trigger = canvas.getByRole('button', { name: /Editing language/ });
-      await userEvent.click(trigger);
-      // The menu portals beside the modal dialog rather than inside it, so the
-      // dialog hides it from the accessibility tree.
-      await userEvent.click(
-        await canvas.findByRole('menuitemradio', {
-          name: /^français/,
-          hidden: true,
-        }),
-      );
-      // The menu returns focus to its trigger at the end of its exit
-      // animation; typing before then would land on the trigger.
-      await waitFor(async () => {
-        await expect(trigger).toHaveFocus();
-      });
-    };
+    const label = await openLabel();
+    await expect(label).toHaveValue('Age');
+    await expect(
+      canvas.queryByRole('button', { name: /Editing language/ }),
+    ).toBeNull();
+    await expect(canvas.getByText(/It is not translated\./)).toBeVisible();
 
-    await expect(await openLabel()).toHaveValue('Age');
-    await chooseFrench();
-    const french = canvas.getByRole('textbox', { name: 'Attribute label' });
-    await expect(french).toHaveValue('');
-    await userEvent.type(french, 'Âge');
+    await userEvent.clear(label);
+    await userEvent.type(label, 'Age in years');
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }));
     await waitFor(async () => {
       await expect(canvas.queryByRole('dialog')).toBeNull();
     });
 
-    await expect(await openLabel()).toHaveValue('Age');
-    await chooseFrench();
-    await expect(
-      canvas.getByRole('textbox', { name: 'Attribute label' }),
-    ).toHaveValue('Âge');
+    await expect(await openLabel()).toHaveValue('Age in years');
   },
 };

@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import {
   createContext,
   type ReactNode,
@@ -23,7 +24,8 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import type { Stage } from '@codaco/protocol-validation';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import { escapeMarkdownText, type Stage } from '@codaco/protocol-validation';
 
 import {
   useCodebookSectionDocument,
@@ -59,7 +61,7 @@ import {
 import ComposerParametersField, {
   type ComposerParameters,
 } from '../../fields/ComposerParametersField.tsx';
-import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
+import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   createdUnassigned,
   type CreateOptionOutcome,
@@ -84,8 +86,14 @@ import {
 } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
-import { asLocalizedString } from '../../localization/localizedText.ts';
-import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
+import {
+  asLocalizedString,
+  localizedFromText,
+} from '../../localization/localizedText.ts';
+import {
+  useLocalizedText,
+  useProtocolLocalization,
+} from '../../localization/ProtocolLocalization.tsx';
 import {
   type CodebookSubject,
   variablesForSubject,
@@ -1130,6 +1138,47 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
     [setRowValue],
   );
 
+  /**
+   * The caption starts as the attribute's name.
+   *
+   * The attribute's own label is plain text that is never translated, so the
+   * field carries a caption of its own, written as markdown that shows the name
+   * as written. A later pick moves a caption that is still empty, or still the
+   * previous attribute's name; one the researcher has written is theirs. A pick
+   * that names no attribute yet leaves the caption alone.
+   */
+  const localization = useProtocolLocalization();
+  const caption = useRowValue(LABEL_FIELD);
+  const attributeName =
+    chosen === NEW_VARIABLE
+      ? inventedName
+      : chosen === undefined
+        ? undefined
+        : variables[chosen]?.name;
+  const seenAttributeName = useRef(attributeName);
+  useEffect(() => {
+    const previous = seenAttributeName.current;
+    if (
+      localization === undefined ||
+      attributeName === undefined ||
+      attributeName.trim() === '' ||
+      previous === attributeName
+    ) {
+      return;
+    }
+    seenAttributeName.current = attributeName;
+    const captionFrom = (name: string) =>
+      localizedFromText(localization, escapeMarkdownText(name));
+    const current = asLocalizedString(caption);
+    if (
+      current !== undefined &&
+      (previous === undefined || !isEqual(current, captionFrom(previous)))
+    ) {
+      return;
+    }
+    setRowValue(LABEL_FIELD, captionFrom(attributeName));
+  }, [attributeName, caption, localization, setRowValue]);
+
   return (
     <>
       <Field<typeof VariablePickerField>
@@ -1223,17 +1272,20 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
           />
         </RevealWhenChosen>
       )}
-      <Field<typeof LocalizedInputField>
+      <Field<typeof LocalizedRichTextField>
         name={LABEL_FIELD}
-        component={LocalizedInputField}
+        component={LocalizedRichTextField}
+        singleLine
         label={intl.formatMessage(messages.questionLabel)}
         hint={intl.formatMessage(messages.questionHint)}
         placeholder={intl.formatMessage(messages.questionPlaceholder)}
         initialValue={asLocalizedString(item[LABEL_FIELD])}
+        required={intl.formatMessage(messages.questionRequired)}
       />
-      <Field<typeof LocalizedInputField>
+      <Field<typeof LocalizedRichTextField>
         name={HINT_FIELD}
-        component={LocalizedInputField}
+        component={LocalizedRichTextField}
+        singleLine
         label={intl.formatMessage(messages.helpLabel)}
         hint={intl.formatMessage(messages.helpHint)}
         placeholder={intl.formatMessage(messages.helpPlaceholder)}
@@ -1292,30 +1344,36 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
   const control = controlsForType(attribute?.type ?? '').find(
     ({ value }) => value === item[COMPONENT_FIELD],
   );
+  /*
+    The stored id where the codebook no longer defines the attribute, as every
+    other preview in this package names a reference it cannot resolve: "Empty
+    field" said the row asked for nothing, and a caption alone hides a
+    reference only the researcher can repair.
+  */
+  const lostAttribute =
+    variableId !== undefined && attribute === undefined
+      ? intl.formatMessage(messages.missingAttribute, {
+          attributeId: variableId,
+        })
+      : undefined;
+  const lostUnderCaption = lostAttribute !== undefined && label.text !== '';
 
   return (
     <div className="flex flex-col gap-2.5">
-      {/*
-        The stored id where the codebook no longer defines the attribute, as
-        every other preview in this package names a reference it cannot
-        resolve: "Empty field" said the row asked for nothing, when what it
-        asks for is a reference only the researcher can repair.
-      */}
       {label.text === '' ? (
         <span>
           {attribute?.name ??
-            (variableId === undefined
-              ? intl.formatMessage(messages.emptyPreview)
-              : intl.formatMessage(messages.missingAttribute, {
-                  attributeId: variableId,
-                }))}
+            lostAttribute ??
+            intl.formatMessage(messages.emptyPreview)}
         </span>
       ) : (
-        <span lang={label.lang} dir={label.dir}>
+        <RenderMarkdown render={<div lang={label.lang} dir={label.dir} />}>
           {label.text}
-        </span>
+        </RenderMarkdown>
       )}
-      {(attribute !== undefined || control !== undefined) && (
+      {(attribute !== undefined ||
+        control !== undefined ||
+        lostUnderCaption) && (
         <div className="flex flex-wrap gap-2.5">
           {/* A whole sentence rather than an assembled fragment: what reads
               naturally around an attribute's name is not the same in every
@@ -1327,6 +1385,7 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
               })}
             </Badge>
           )}
+          {lostUnderCaption && <Badge tone="warning">{lostAttribute}</Badge>}
           {/* The control's own name, not a sentence built round it. */}
           {control !== undefined && (
             <Badge>{intl.formatMessage(control.label)}</Badge>

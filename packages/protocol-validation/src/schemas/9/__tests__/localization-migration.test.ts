@@ -347,6 +347,104 @@ describe('v8 to v9 localization migration', () => {
     });
   });
 
+  describe('Network Composer captions', () => {
+    const composerPath = (document: unknown) => stagePath(document, 'composer');
+    const nodeFieldPath = (document: unknown, index: number) => [
+      ...composerPath(document),
+      'nodeForm',
+      'fields',
+      index,
+    ];
+    const edgeFieldPath = (document: unknown) => [
+      ...composerPath(document),
+      'edges',
+      0,
+      'form',
+      'fields',
+      0,
+    ];
+    const removeCaption = (document: unknown, at: Path) => {
+      const field = getAt(document, at);
+      if (!isRecord(field)) throw new Error('Fixture has no composer field');
+      delete field.label;
+    };
+
+    it('captions a node field that has none with its attribute name, in the undetermined language', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 1);
+      removeCaption(document, field);
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        und: 'Nickname',
+      });
+    });
+
+    it('captions an edge field with the attribute name its edge type gives', () => {
+      const document = schema8Protocol();
+      const field = edgeFieldPath(document);
+      removeCaption(document, field);
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        und: 'Note',
+      });
+    });
+
+    it('replaces an empty caption rather than leaving the field without one', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 0);
+      setAt(document, [...field, 'label'], '');
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        und: 'Closeness',
+      });
+    });
+
+    it('keeps a caption the field already has', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 1);
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        und: 'Nickname?',
+      });
+    });
+
+    it('uses the attribute id when the attribute has no name or is missing', () => {
+      const document = schema8Protocol();
+      const named = nodeFieldPath(document, 1);
+      const missing = nodeFieldPath(document, 0);
+      removeCaption(document, named);
+      removeCaption(document, missing);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '',
+      );
+      setAt(document, [...missing, 'variable'], 'removed');
+
+      const migrated = migrateStep(document);
+      expect(getAt(migrated, [...named, 'label'])).toEqual({ und: 'nickname' });
+      expect(getAt(migrated, [...missing, 'label'])).toEqual({
+        und: 'removed',
+      });
+    });
+
+    it('escapes the attribute name so markdown shows it as written', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 1);
+      removeCaption(document, field);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '*first_name* {nick}',
+      );
+
+      const label = getAt(migrateStep(document), [...field, 'label']);
+      expect(label).toEqual({
+        und: escapeMessageText('\\*first\\_name\\* {nick}'),
+      });
+    });
+  });
+
   describe('empty text', () => {
     it('keeps empty text where the field accepts it', () => {
       const document = schema8Protocol();

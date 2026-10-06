@@ -169,7 +169,7 @@
   "architect.codebook.usage.validation": "Als Validierung für „{name}“ verwendet",
   "architect.codebook.usageColumn.notInUse": "nicht verwendet",
   "architect.codebook.variableLabelDialog.label": "Attributbezeichnung",
-  "architect.codebook.variableLabelDialog.labelHint": "Eine lesbare Bezeichnung für das Attribut „{name}“. Sie wird nicht übersetzt. Ein Feld im Netzwerkeditor ohne eigene Beschriftung zeigt Teilnehmenden diese Bezeichnung.",
+  "architect.codebook.variableLabelDialog.labelHint": "Eine lesbare Bezeichnung für das Attribut „{name}“. Sie wird nicht übersetzt.",
   "architect.codebook.variableLabelDialog.title": "Attributbezeichnung bearbeiten",
   "architect.codebook.variableList.name": "Name",
   "architect.codebook.variableList.noAttributes": "Keine Attribute.",

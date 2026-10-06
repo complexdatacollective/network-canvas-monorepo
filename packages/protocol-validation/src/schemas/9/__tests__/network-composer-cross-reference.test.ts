@@ -175,6 +175,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.DatePicker,
               parameters: { type: 'year' },
             },
@@ -209,6 +210,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
               fields: [
                 {
                   variable: 'edge_event_a',
+                  label: localized('edge_event_a'),
                   component: ComponentTypes.DatePicker,
                   parameters: { type: 'month' },
                 },
@@ -243,11 +245,13 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.DatePicker,
               parameters: { type: 'year' },
             },
             {
               variable: 'event_b',
+              label: localized('event_b'),
               component: ComponentTypes.DatePicker,
               parameters: { type: 'year' },
             },
@@ -270,7 +274,11 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
         ...baseStage,
         nodeForm: {
           fields: [
-            { variable: 'event_a', component: ComponentTypes.DatePicker },
+            {
+              variable: 'event_a',
+              label: localized('event_a'),
+              component: ComponentTypes.DatePicker,
+            },
           ],
         },
       }),
@@ -334,7 +342,11 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
         ...baseStage,
         nodeForm: {
           fields: [
-            { variable: 'event_a', component: ComponentTypes.DatePicker },
+            {
+              variable: 'event_a',
+              label: localized('event_a'),
+              component: ComponentTypes.DatePicker,
+            },
           ],
         },
       }),
@@ -353,6 +365,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.DatePicker,
               parameters: { type: 'month' },
             },
@@ -387,6 +400,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.DatePicker,
               parameters: { min: '2020-01-01' },
             },
@@ -417,6 +431,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.RelativeDatePicker,
               parameters: { anchor: '2020-01-01' },
             },
@@ -447,6 +462,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.DatePicker,
               parameters: { type: 'year' },
             },
@@ -512,11 +528,13 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.DatePicker,
               parameters: { min: '2020-01-01', max: '2020-01-01' },
             },
             {
               variable: 'event_b',
+              label: localized('event_b'),
               component: ComponentTypes.DatePicker,
               parameters: { min: '2020-06-01', max: '2020-06-01' },
             },
@@ -569,11 +587,13 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
           fields: [
             {
               variable: 'event_a',
+              label: localized('event_a'),
               component: ComponentTypes.DatePicker,
               parameters: { min: '2020-01-01', max: '2020-01-01' },
             },
             {
               variable: 'event_b',
+              label: localized('event_b'),
               component: ComponentTypes.DatePicker,
               parameters: { min: '2020-06-01', max: '2020-06-01' },
             },
@@ -641,7 +661,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
-          { variable: 'age', component: ComponentTypes.DatePicker },
+          {
+            variable: 'age',
+            label: localized('age'),
+            component: ComponentTypes.DatePicker,
+          },
         ]),
       ),
     );
@@ -666,7 +690,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
-          { variable: 'category', component: ComponentTypes.Number },
+          {
+            variable: 'category',
+            label: localized('category'),
+            component: ComponentTypes.Number,
+          },
         ]),
       ),
     );
@@ -684,7 +712,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
-          { variable: 'layoutPosition', component: ComponentTypes.Text },
+          {
+            variable: 'layoutPosition',
+            label: localized('layoutPosition'),
+            component: ComponentTypes.Text,
+          },
         ]),
       ),
     );
@@ -712,6 +744,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
                 fields: [
                   {
                     variable: 'duration',
+                    label: localized('duration'),
                     component: ComponentTypes.RadioGroup,
                   },
                 ],
@@ -751,7 +784,9 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
             type: 'datetime',
           },
         },
-        nodeFormOnly([{ variable: 'event_a', component }]),
+        nodeFormOnly([
+          { variable: 'event_a', label: localized('event_a'), component },
+        ]),
       ),
     );
     expect(
@@ -774,7 +809,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
       const result = ProtocolSchemaV9.safeParse(
         composerProtocolWithPersonVariables(
           {},
-          nodeFormOnly([{ variable, component }]),
+          nodeFormOnly([{ variable, label: localized(variable), component }]),
         ),
       );
       expect(
@@ -797,7 +832,9 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
             type: 'boolean',
           },
         },
-        nodeFormOnly([{ variable: 'is_close', component }]),
+        nodeFormOnly([
+          { variable: 'is_close', label: localized('is_close'), component },
+        ]),
       ),
     );
     expect(
@@ -825,7 +862,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
           },
         },
         nodeFormOnly([
-          { variable: 'is_close', component: ComponentTypes.Boolean },
+          {
+            variable: 'is_close',
+            label: localized('is_close'),
+            component: ComponentTypes.Boolean,
+          },
         ]),
       ),
     );
@@ -856,7 +897,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
           },
         },
         nodeFormOnly([
-          { variable: 'is_close', component: ComponentTypes.Toggle },
+          {
+            variable: 'is_close',
+            label: localized('is_close'),
+            component: ComponentTypes.Toggle,
+          },
         ]),
       ),
     );
@@ -877,7 +922,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
           },
         },
         nodeFormOnly([
-          { variable: 'warmth', component: ComponentTypes.VisualAnalogScale },
+          {
+            variable: 'warmth',
+            label: localized('warmth'),
+            component: ComponentTypes.VisualAnalogScale,
+          },
         ]),
       ),
     );
@@ -894,7 +943,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
       composerProtocolWithPersonVariables(
         {},
         nodeFormOnly([
-          { variable: 'not_in_codebook', component: ComponentTypes.DatePicker },
+          {
+            variable: 'not_in_codebook',
+            label: localized('not_in_codebook'),
+            component: ComponentTypes.DatePicker,
+          },
         ]),
       ),
     );
@@ -969,6 +1022,7 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
         composerStage('nc1', [
           {
             variable: 'event_a',
+            label: localized('event_a'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year' },
           },
@@ -976,6 +1030,7 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
         composerStage('nc2', [
           {
             variable: 'event_b',
+            label: localized('event_b'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year' },
           },
@@ -996,11 +1051,13 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
         composerStage('nc1', [
           {
             variable: 'event_a',
+            label: localized('event_a'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year' },
           },
           {
             variable: 'event_b',
+            label: localized('event_b'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'month' },
           },
@@ -1023,12 +1080,17 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
         composerStage('nc1', [
           {
             variable: 'event_a',
+            label: localized('event_a'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year' },
           },
         ]),
         composerStage('nc2', [
-          { variable: 'age', component: ComponentTypes.Number },
+          {
+            variable: 'age',
+            label: localized('age'),
+            component: ComponentTypes.Number,
+          },
         ]),
       ]),
     );
@@ -1091,7 +1153,13 @@ describe('NetworkComposer overlay baseline tracks the visible subset', () => {
           ...baseStage,
           id: 'nc1',
           nodeForm: {
-            fields: [{ variable: 'event_a', ...pinned('2020-01-01') }],
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                ...pinned('2020-01-01'),
+              },
+            ],
           },
           edges: [],
         },
@@ -1100,7 +1168,11 @@ describe('NetworkComposer overlay baseline tracks the visible subset', () => {
           id: 'nc2',
           nodeForm: {
             fields: [
-              { variable: 'event_c', component: ComponentTypes.DatePicker },
+              {
+                variable: 'event_c',
+                label: localized('event_c'),
+                component: ComponentTypes.DatePicker,
+              },
             ],
           },
           edges: [],
@@ -1185,6 +1257,7 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
 
   const floorField = {
     variable: 'event_a',
+    label: localized('event_a'),
     component: ComponentTypes.DatePicker,
     parameters: { min: '2020-01-01' },
   };
@@ -1225,7 +1298,11 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
         ...baseStage,
         nodeForm: {
           fields: [
-            { variable: 'age', component: ComponentTypes.Number },
+            {
+              variable: 'age',
+              label: localized('age'),
+              component: ComponentTypes.Number,
+            },
             floorField,
           ],
         },
@@ -1253,7 +1330,11 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
         ...baseStage,
         nodeForm: {
           fields: [
-            { variable: 'event_a', component: ComponentTypes.DatePicker },
+            {
+              variable: 'event_a',
+              label: localized('event_a'),
+              component: ComponentTypes.DatePicker,
+            },
           ],
         },
         edges: [],
@@ -1333,7 +1414,13 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
         {
           ...baseStage,
           nodeForm: {
-            fields: [{ variable: 'age', component: ComponentTypes.Number }],
+            fields: [
+              {
+                variable: 'age',
+                label: localized('age'),
+                component: ComponentTypes.Number,
+              },
+            ],
           },
           edges: [],
         },

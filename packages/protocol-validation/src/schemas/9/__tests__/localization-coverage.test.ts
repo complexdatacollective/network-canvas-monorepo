@@ -126,7 +126,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   // The composer's own scale end labels are separate sites from the codebook
   // scalar's, and override them.
-  site(stage(7, 'nodeForm', 'fields', 0, 'label'), 'markdown', true),
+  site(stage(7, 'nodeForm', 'fields', 0, 'label'), 'markdown'),
   site(stage(7, 'nodeForm', 'fields', 0, 'hint'), 'markdown', true),
   site(
     stage(7, 'nodeForm', 'fields', 0, 'parameters', 'minLabel'),
@@ -138,8 +138,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     'markdown',
     true,
   ),
-  site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown', true),
-  site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown', true),
+  site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown'),
+  site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown'),
 
   site(stage(8, 'introductionPanel', 'title'), 'plain'),
   site(stage(8, 'introductionPanel', 'text'), 'markdown'),

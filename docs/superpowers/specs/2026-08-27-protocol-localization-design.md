@@ -1,7 +1,7 @@
 # Protocol Localization and Locale Resolution Design
 
 **Status:** Implemented on `feat/protocol-localization`. This document
-reflects the implementation as of 5 October 2026. The design reviewed on
+reflects the implementation as of 6 October 2026. The design reviewed on
 2026-08-27 was revised during implementation; see Revisions.
 
 **Scope:** Protocol schema 9, protocol-authored participant-facing strings,
@@ -82,13 +82,19 @@ where the repository records one.
 13. **Attribute labels are plain text, and Narrative highlights carry their own
     localized labels.** The proposal gave every codebook variable a localized
     `label`. The product owner revised this: participants never read an
-    attribute's label except as a fallback caption, so it is a plain,
-    non-empty string that is not translated. The one place participants did
-    read attribute labels, the Narrative preset switcher, now takes its text
-    from the preset: `highlight` is a list of `{ variable, label }` whose
-    `label` is localized and edited in the Narrative stage editor (§5.5, §9.2,
-    §10.1). A Network Composer field with no caption of its own still shows the
-    attribute's label, untranslated.
+    attribute's label, so it is a plain, non-empty string that is not
+    translated. The one place participants did read attribute labels, the
+    Narrative preset switcher, now takes its text from the preset: `highlight`
+    is a list of `{ variable, label }` whose `label` is localized and edited in
+    the Narrative stage editor (§5.5, §9.2, §10.1).
+14. **A Network Composer field always carries its own caption.** A field's
+    `label` stayed optional, as in schema 8, and the interview captioned a
+    field without one with the attribute's label, which revision 13 leaves
+    untranslated. The product owner pushed the localization to the interface
+    configuration instead: `label` is a required, non-empty localized string,
+    the stage editor starts it as the attribute's name when the attribute is
+    chosen, and the migration fills a missing or empty one from the
+    attribute's name (§5.5, §9.2, §10.1).
 
 ## 1. Summary
 
@@ -395,10 +401,13 @@ localized `label`. The stage editor starts a newly ticked attribute's label as
 the attribute's name in the default language, and requires one.
 
 A variable's `label` is a required, non-empty plain string, not a
-`LocalizedString`. It is a readable name for researchers and is not
-translated. The interview shows it to a participant only as the caption of a
-Network Composer field that has no `label` of its own, marked as written in the
-protocol's default language.
+`LocalizedString`. It is a readable name for researchers, is not translated,
+and is not shown to participants.
+
+A Network Composer form field's `label`, the caption participants read above
+its control, is a required, non-empty markdown `LocalizedString`, so every
+field carries text that can be translated rather than borrowing the
+attribute's label.
 
 A Network Composer form field is a union on `component`. The Visual Analog
 Scale branch gives `parameters.minLabel` and `parameters.maxLabel` typed,
@@ -1078,6 +1087,13 @@ the same page as plain text, with no language menu, and never counts as a
 missing translation. The label of each attribute a Narrative preset highlights
 is a localized field in the preset dialog of the Narrative stage editor.
 
+A Network Composer field's caption is a required localized field in the
+field dialog of the Network Composer stage editor. Choosing the field's
+attribute fills the caption with the attribute's name in the default language,
+escaped so that markdown shows it as written. A later choice replaces a caption
+that is still empty or still the previous attribute's name, and keeps one the
+researcher has written.
+
 Coverage warnings are owned by the actual field when editing that field. Global
 aggregation is added to `selectors/issues.ts`, whose existing contract already
 represents valid-but-probably-unintended protocol issues
@@ -1131,14 +1147,19 @@ guess English from the product's history or the device locale. It therefore:
    `{ variable, label }`, the label being `{ "und": name }` from the variable's
    name on the stage subject's node type, or the id when that name is missing
    or empty, since schema 8 showed the name in the preset switcher;
-6. drops a Network Composer scale end label that is not a string, because the
+6. gives a Network Composer form field with a missing or empty `label` one
+   taken from its attribute's name on the stage's node type or the edge's
+   type, or the variable id when that name is missing or empty, escaped as
+   markdown that shows it as written and wrapped as `{ "und": message }`, since
+   schema 8 showed the attribute's name there;
+7. drops a Network Composer scale end label that is not a string, because the
    interview only ever rendered string labels there;
-7. keeps existing attribute names exactly as they are, because schema 9 also
+8. keeps existing attribute names exactly as they are, because schema 9 also
    allows names in any script;
-8. preserves option values, ids, references, stage count and order, codebook
+9. preserves option values, ids, references, stage count and order, codebook
    keys, and collected answer shapes; and
-9. records two migration notes: what the new version allows in attribute names,
-   and that Architect's Languages page identifies the language.
+10. records two migration notes: what the new version allows in attribute
+    names, and that Architect's Languages page identifies the language.
 
 This obeys the migration invariants already documented in the migration
 chain: stages are not added, removed, or reordered, and collected values do
