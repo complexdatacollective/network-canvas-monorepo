@@ -102,6 +102,20 @@ describe('the committed migrations document', () => {
     expect(refusalOf(dropped).message).toMatch(/no sidecars\.sql|records/);
   });
 
+  it('is refused when its manifest records an artefact the migration does not carry', () => {
+    const extra = changing(committed, 0, (migration) => ({
+      ...migration,
+      manifest: {
+        ...migration.manifest,
+        artefacts: {
+          ...migration.manifest.artefacts,
+          'extra.sql': 'a'.repeat(64),
+        },
+      },
+    }));
+    expect(refusalOf(extra).message).toMatch(/manifest records .*extra\.sql/);
+  });
+
   it('is refused when a manifest’s combined hash was edited', () => {
     const edited = changing(committed, 0, (migration) => ({
       ...migration,

@@ -299,7 +299,11 @@ function verifyMigration(migration: DocumentMigration, index: number): void {
       refuse(`Migration ${version} has no ${required}.`);
     }
   }
-  if (canonicalOrder(recorded).join('\n') !== expected.join('\n')) {
+  // Every recorded key, before canonicalOrder (which keeps only names it
+  // knows) can drop one: an unknown key would otherwise pass here, be left out
+  // of the combined hash, and still be written to the history, where the next
+  // image would read it as an edit.
+  if ([...recorded].sort().join('\n') !== [...expected].sort().join('\n')) {
     refuse(
       `Migration ${version}'s manifest records ${recorded.join(', ')}, but the migration carries ${expected.join(', ')}.`,
     );
