@@ -191,17 +191,13 @@
     "defaultMessage": "Their family",
     "description": "Heading of the questions in a family member’s details about whether they have siblings or children."
   },
-  "interview.familyPedigree.framingChoiceContinue": {
-    "defaultMessage": "Continue",
-    "description": "Button that confirms the chosen words for family members and closes the dialog."
-  },
   "interview.familyPedigree.framingChoiceDescription": {
-    "defaultMessage": "Choose the words you would like us to use for the people in your family. Either way, you will be asked about the same people.",
-    "description": "Explanation under the title of the dialog asking which words to use for family members."
+    "defaultMessage": "Choose the words you would like us to use for the people in your family. You can change this at any time.",
+    "description": "Explanation under the heading of the popover asking which words to use for family members."
   },
   "interview.familyPedigree.framingChoiceGamete": {
     "defaultMessage": "Egg parent, sperm parent, sibling",
-    "description": "Option in the dialog asking which words to use for family members: words that do not depend on anyone’s gender."
+    "description": "Option in the popover asking which words to use for family members: words that do not depend on anyone’s gender."
   },
   "interview.familyPedigree.framingChoiceGameteDescription": {
     "defaultMessage": "Words that do not depend on anyone’s gender. Biological parents are described by whether they gave the egg or the sperm, and everyone else with words like grandparent or parent’s sibling.",
@@ -209,7 +205,7 @@
   },
   "interview.familyPedigree.framingChoiceGendered": {
     "defaultMessage": "Mother, father, sister, brother",
-    "description": "Option in the dialog asking which words to use for family members: the usual words, chosen by each person’s gender."
+    "description": "Option in the popover asking which words to use for family members: the usual words, chosen by each person’s gender."
   },
   "interview.familyPedigree.framingChoiceGenderedDescription": {
     "defaultMessage": "Words that follow each person’s gender, such as grandmother, uncle or niece. Anyone who is neither a woman nor a man is described with words like parent or sibling.",
@@ -217,7 +213,11 @@
   },
   "interview.familyPedigree.framingChoiceTitle": {
     "defaultMessage": "How should we describe your family?",
-    "description": "Title of a dialog shown when the participant first reaches the family pedigree, asking which words to use for family members."
+    "description": "Heading of the popover, opened from the stage’s toolbar, that asks which words to use for family members. Open when the participant first reaches the stage."
+  },
+  "interview.familyPedigree.framingControlLabel": {
+    "defaultMessage": "Words for your family",
+    "description": "Accessible name and tooltip of the toolbar button that opens the choice of words for family members."
   },
   "interview.familyPedigree.gender.differentIdentity": {
     "defaultMessage": "A different identity",

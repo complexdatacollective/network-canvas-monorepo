@@ -67,7 +67,7 @@ import AddRelativeMenu from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
 import ConnectMenu, { type ConnectPair } from './components/ConnectMenu';
 import ConnectorPreview from './components/ConnectorPreview';
-import FramingChoiceDialog from './components/FramingChoiceDialog';
+import FramingControl from './components/FramingControl';
 import PersonDrawer from './components/PersonDrawer';
 import PersonForm, {
   type PersonDraft,
@@ -309,15 +309,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // A person is shown by name, or by how they are related to the participant
   // when their name is not known, in the words of the stage's framing. A
-  // stage may leave the framing to the participant, who is asked once; until
-  // they answer, the words that assume no gender are used.
+  // stage may leave the framing to the participant, who can change it from
+  // the toolbar at any time. The choice is open when the stage loads until
+  // they have made it, and until then the words that assume no gender are
+  // used.
   const stageMetadata = useStageSelector(getStageMetadata);
   const chosenFraming = isFamilyPedigreeStageMetadata(stageMetadata)
     ? stageMetadata.framing
     : undefined;
   const framingSetting = stage.framing ?? 'gendered';
-  const askFraming =
-    framingSetting === 'participantPreference' && chosenFraming === undefined;
+  const participantFraming = framingSetting === 'participantPreference';
+  const [framingOpen, setFramingOpen] = useState(
+    participantFraming && chosenFraming === undefined,
+  );
   const framing =
     framingSetting === 'participantPreference'
       ? (chosenFraming ?? 'gamete')
@@ -975,7 +979,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         />
       </div>
       {measurementContainer}
-      <FramingChoiceDialog open={askFraming} onChoose={chooseFraming} />
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div
           role="region"
@@ -1118,6 +1121,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 data-testid="pedigree-tool-disconnect"
               />
             </ToolbarToggleGroup>
+            {participantFraming && <ToolbarSeparator />}
+            {participantFraming && (
+              <FramingControl
+                value={chosenFraming}
+                onChange={chooseFraming}
+                open={framingOpen}
+                onOpenChange={setFramingOpen}
+              />
+            )}
             {progress && completeness && <ToolbarSeparator />}
             {progress && completeness && (
               <CompletenessTracker

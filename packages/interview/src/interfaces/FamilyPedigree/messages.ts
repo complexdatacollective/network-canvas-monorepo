@@ -334,24 +334,30 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
   },
+  framingControlLabel: {
+    id: 'interview.familyPedigree.framingControlLabel',
+    defaultMessage: 'Words for your family',
+    description:
+      'Accessible name and tooltip of the toolbar button that opens the choice of words for family members.',
+  },
   framingChoiceTitle: {
     id: 'interview.familyPedigree.framingChoiceTitle',
     defaultMessage: 'How should we describe your family?',
     description:
-      'Title of a dialog shown when the participant first reaches the family pedigree, asking which words to use for family members.',
+      'Heading of the popover, opened from the stage’s toolbar, that asks which words to use for family members. Open when the participant first reaches the stage.',
   },
   framingChoiceDescription: {
     id: 'interview.familyPedigree.framingChoiceDescription',
     defaultMessage:
-      'Choose the words you would like us to use for the people in your family. Either way, you will be asked about the same people.',
+      'Choose the words you would like us to use for the people in your family. You can change this at any time.',
     description:
-      'Explanation under the title of the dialog asking which words to use for family members.',
+      'Explanation under the heading of the popover asking which words to use for family members.',
   },
   framingChoiceGendered: {
     id: 'interview.familyPedigree.framingChoiceGendered',
     defaultMessage: 'Mother, father, sister, brother',
     description:
-      'Option in the dialog asking which words to use for family members: the usual words, chosen by each person’s gender.',
+      'Option in the popover asking which words to use for family members: the usual words, chosen by each person’s gender.',
   },
   framingChoiceGenderedDescription: {
     id: 'interview.familyPedigree.framingChoiceGenderedDescription',
@@ -364,7 +370,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.framingChoiceGamete',
     defaultMessage: 'Egg parent, sperm parent, sibling',
     description:
-      'Option in the dialog asking which words to use for family members: words that do not depend on anyone’s gender.',
+      'Option in the popover asking which words to use for family members: words that do not depend on anyone’s gender.',
   },
   framingChoiceGameteDescription: {
     id: 'interview.familyPedigree.framingChoiceGameteDescription',
@@ -372,12 +378,6 @@ export const messages = defineMessages({
       'Words that do not depend on anyone’s gender. Biological parents are described by whether they gave the egg or the sperm, and everyone else with words like grandparent or parent’s sibling.',
     description:
       'Explanation of the option to describe family members without reference to gender.',
-  },
-  framingChoiceContinue: {
-    id: 'interview.familyPedigree.framingChoiceContinue',
-    defaultMessage: 'Continue',
-    description:
-      'Button that confirms the chosen words for family members and closes the dialog.',
   },
   siblingKindLabel: {
     id: 'interview.familyPedigree.siblingKindLabel',

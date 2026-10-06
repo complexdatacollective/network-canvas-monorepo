@@ -213,10 +213,10 @@ export const FirstVisit: Story = {
 };
 
 /**
- * The stage leaves the framing to the participant, who is asked which words
- * to use before anything else. The dialog cannot be dismissed, and Continue
- * waits for a choice. The answer is kept in the stage's metadata, so it is
- * asked only once.
+ * The stage leaves the framing to the participant. The choice opens from the
+ * toolbar when the stage first loads; choosing applies at once and closes it,
+ * and the toolbar button reopens it to change the words. The answer is kept
+ * in the stage's metadata, so it opens by itself only until it is answered.
  */
 export const ParticipantChoosesFraming: Story = {
   args: { framing: 'participantPreference' },
@@ -238,30 +238,31 @@ export const ParticipantChoosesFraming: Story = {
     />
   ),
   play: async ({ canvasElement }) => {
-    // The dialog is portalled outside the story's root.
-    const body = within(canvasElement.ownerDocument.body);
-    const dialog = await body.findByRole('dialog', {
-      name: 'How should we describe your family?',
-    });
-    const proceed = within(dialog).getByRole('button', { name: 'Continue' });
-    await expect(proceed).toBeDisabled();
-    await userEvent.click(
-      within(dialog).getByRole('option', {
-        name: /Egg parent, sperm parent, sibling/,
-      }),
-    );
-    await userEvent.click(proceed);
-    await waitFor(() =>
-      expect(
-        body.queryByRole('dialog', {
-          name: 'How should we describe your family?',
-        }),
-      ).toBeNull(),
-    );
-    // Unnamed parents are now described by the gamete they gave.
     const canvas = within(canvasElement);
+    // The popover is portalled outside the story's root.
+    const body = within(canvasElement.ownerDocument.body);
+    const title = 'How should we describe your family?';
+    await body.findByText(title);
+    await userEvent.click(
+      body.getByRole('option', { name: /Egg parent, sperm parent, sibling/ }),
+    );
+    await waitFor(() => expect(body.queryByText(title)).toBeNull());
+    // Unnamed parents are now described by the gamete they gave.
     await expect(
       await canvas.findByRole('button', { name: /^Egg parent/ }),
+    ).toBeVisible();
+
+    // The toolbar reopens the choice, to change the words.
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Words for your family' }),
+    );
+    await userEvent.click(
+      await body.findByRole('option', {
+        name: /Mother, father, sister, brother/,
+      }),
+    );
+    await expect(
+      await canvas.findByRole('button', { name: /^Mother/ }),
     ).toBeVisible();
   },
 };
