@@ -70,6 +70,9 @@
         // Run by name from `pnpm check:mapbox-tokens`; its own test spawns it
         // as a process rather than importing it, so nothing imports it at all.
         "scripts/buildtime/check-mapbox-tokens.mjs",
+        // Studio's upgrade lane (#1901): run with node by the lane's shell
+        // scripts (apps/studio/release-test/*.sh), which knip cannot parse.
+        "apps/studio/release-test/*.mjs",
         // Recognising scripts/vitest.config.ts turns on knip's vitest plugin
         // for the root workspace, which widens the analysis to .claude/ and
         // .agents/. The files below are invoked by name from skill markdown,

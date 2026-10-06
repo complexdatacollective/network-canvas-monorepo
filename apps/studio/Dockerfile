@@ -6,8 +6,8 @@
 #
 #                  serve            HTTP, RPC and the WebSocket endpoint
 #                  worker           background jobs and cron schedules (#1895)
-#                  migrate          create this build's schema in an empty
-#                                   database, once per deployment
+#                  migrate          apply this build's migrations, once per
+#                                   deployment
 #                  maintenance on   close the instance to users (#1901)
 #                  maintenance off  reopen it
 #                  rotate-secrets   re-encrypt every stored secret under the

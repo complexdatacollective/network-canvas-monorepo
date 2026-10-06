@@ -7,6 +7,11 @@
 **/.env
 **/.env.*
 !**/.env.example
+# Studio's stack secrets (the keyring and the Postgres password) for the same
+# reason; only the directory's README and .gitignore are tracked.
+apps/studio/secrets/*
+!apps/studio/secrets/README.md
+!apps/studio/secrets/.gitignore
 **/node_modules
 **/dist
 **/dist-web
