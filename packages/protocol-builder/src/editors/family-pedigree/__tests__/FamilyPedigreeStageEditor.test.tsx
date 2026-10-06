@@ -397,6 +397,69 @@ describe('the attribute slots', () => {
   });
 });
 
+describe('the gender identity options, which this stage manages', () => {
+  const OPTIONS = (harness: StageEditorHarness): unknown => {
+    const variables =
+      harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables;
+    const gender = isRecord(variables) ? variables.genderIdentity : undefined;
+    return isRecord(gender) ? gender.options : undefined;
+  };
+
+  it('edits them from the stage, and the words follow the options that remain', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    await screen.findByRole('combobox', {
+      name: 'Words for Prefer not to say',
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit options' }),
+    );
+    const dialog = within(
+      await screen.findByRole('dialog', {
+        name: 'Edit gender identity options',
+      }),
+    );
+    // Editable here: this stage is the one that manages them.
+    expect(
+      dialog.getByRole('button', { name: 'Create new option' }),
+    ).toBeEnabled();
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Remove option 6' }),
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    await waitFor(() => expect(OPTIONS(harness)).toHaveLength(5));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('combobox', { name: 'Words for Prefer not to say' }),
+      ).toBeNull(),
+    );
+    const request = await harness.submit();
+    const terms = nodeConfigurationOf(request?.stageDocument)
+      .genderIdentityTerms as { value: string }[];
+    expect(terms.map((term) => term.value)).not.toContain('preferNotToSay');
+    expect(terms).toHaveLength(5);
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('offers no way to edit them to a spectator', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      editor: familyPedigreeEditor,
+      readOnly: true,
+    });
+    await harness.opened();
+    await screen.findByRole('combobox', { name: 'Words for Woman' });
+
+    expect(screen.queryByRole('button', { name: 'Edit options' })).toBeNull();
+  });
+});
+
 describe('the completeness requirement', () => {
   const switchOn = async (harness: StageEditorHarness) => {
     await harness.user.click(

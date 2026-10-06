@@ -16,6 +16,7 @@ import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import StageManagedOptionsEditor from '../../../sections/StageManagedOptionsEditor.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
@@ -162,16 +163,30 @@ export default function NodeConfigurationSection() {
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftSlotMap}
           />
-          {genderOptions !== undefined && (
-            <Field<typeof GenderIdentityTermsField>
-              name={NODE_CONFIGURATION_PATHS.genderIdentityTerms}
-              component={GenderIdentityTermsField}
-              label={intl.formatMessage(messages.genderTermsLabel)}
-              hint={intl.formatMessage(messages.genderTermsHint)}
-              options={genderOptions}
-              initialValue={committedTerms}
-            />
-          )}
+          {genderOptions !== undefined &&
+            personSubject !== null &&
+            typeof genderVariableId === 'string' && (
+              <>
+                <StageManagedOptionsEditor
+                  subject={personSubject}
+                  variableId={genderVariableId}
+                  allowedVariableTypes={['categorical']}
+                  hint={intl.formatMessage(messages.genderOptionsEditHint)}
+                  buttonLabel={intl.formatMessage(messages.genderOptionsEdit)}
+                  dialogTitle={intl.formatMessage(
+                    messages.genderOptionsEditTitle,
+                  )}
+                />
+                <Field<typeof GenderIdentityTermsField>
+                  name={NODE_CONFIGURATION_PATHS.genderIdentityTerms}
+                  component={GenderIdentityTermsField}
+                  label={intl.formatMessage(messages.genderTermsLabel)}
+                  hint={intl.formatMessage(messages.genderTermsHint)}
+                  options={genderOptions}
+                  initialValue={committedTerms}
+                />
+              </>
+            )}
           <SlotVariableField
             name={NODE_CONFIGURATION_PATHS.sexAssignedAtBirthVariable}
             label={messages.sexAssignedAtBirthLabel}

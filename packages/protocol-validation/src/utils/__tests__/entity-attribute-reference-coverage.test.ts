@@ -54,9 +54,10 @@ const countTagged = (
 const EXPECTED_TAGGED_FIELD_COUNT = 39;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
-// owns. Both drive protocol-level rules and Architect's pickers/option
-// editors, so adding a structural slot without listing it here — or listing
-// one that no longer exists — fails.
+// owns, and every slot whose option LIST a stage manages. All drive
+// protocol-level rules and Architect's pickers/option editors, so adding a
+// structural slot without listing it here — or listing one that no longer
+// exists — fails.
 const EXPECTED_EXCLUSIVE_SLOTS = [
   'familyPedigree.completeness.relativesNotRecordedVariable',
   'familyPedigree.edgeConfiguration.currentPartnerVariable',
@@ -69,6 +70,10 @@ const EXPECTED_OWNED_OPTION_SETS = [
   'pedigreeRelationship',
   'pedigreeRelativesNotRecorded',
   'pedigreeSexAssignedAtBirth',
+];
+
+const EXPECTED_STAGE_MANAGED_OPTION_OWNERS = [
+  'the kin words each option takes',
 ];
 
 // The descriptors themselves, by the same traversal as countTagged.
@@ -149,5 +154,25 @@ describe('entity-attribute reference coverage', () => {
       .map((descriptor) => descriptor.ownedOptions)
       .filter((set) => set !== undefined);
     expect([...new Set(sets)].toSorted()).toEqual(EXPECTED_OWNED_OPTION_SETS);
+  });
+
+  it('declares exactly the expected stage-managed option lists', () => {
+    const owners = collectDescriptors(CurrentProtocolSchema)
+      .map((descriptor) => descriptor.stageManagedOptions?.owner)
+      .filter((owner): owner is string => owner !== undefined);
+    expect([...new Set(owners)].toSorted()).toEqual(
+      EXPECTED_STAGE_MANAGED_OPTION_OWNERS,
+    );
+  });
+
+  // Managing a variable's options is not owning the variable: other stages
+  // stay free to write it, so no stage-managed slot may also be exclusive, and
+  // none may claim an interface-owned fixed option set.
+  it('keeps stage-managed options independent of exclusivity and fixed sets', () => {
+    for (const descriptor of collectDescriptors(CurrentProtocolSchema)) {
+      if (!descriptor.stageManagedOptions) continue;
+      expect(descriptor.exclusive).toBeUndefined();
+      expect(descriptor.ownedOptions).toBeUndefined();
+    }
   });
 });

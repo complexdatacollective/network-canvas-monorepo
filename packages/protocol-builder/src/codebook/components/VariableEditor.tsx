@@ -82,6 +82,7 @@ import {
   validateParameters,
   type ParameterShape,
 } from '../variableParameters.ts';
+import { stageManagedOptionsNote } from '../variableRoles.ts';
 import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
 import { rulesSurvivingTypeChange } from '../variableValidation.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
@@ -323,6 +324,16 @@ type VariableEditorCommonProps = Readonly<{
   onDraftChange?(draft: CodebookVariableDraft): void;
   allowedVariableTypes?: readonly VariableType[];
   lockedOptions?: readonly VariableOption[] | null;
+  /**
+   * The stages that manage this attribute's options, by label, when the editor
+   * is opened from anywhere but a stage that does (see
+   * `useStageManagedOptionsLock`, which a host asks).
+   *
+   * The options are then shown read-only under a note naming those stages, and
+   * a save leaves them alone: they are the stage's to change, because it
+   * decides what each one means. Absent or empty, the options edit as usual.
+   */
+  managedByStages?: readonly string[] | null;
   readOnly?: boolean;
   title?: string;
   /**
@@ -399,6 +410,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     onDraftChange,
     allowedVariableTypes,
     lockedOptions = null,
+    managedByStages = null,
     readOnly = false,
     chrome = 'page',
     footerSlot = null,
@@ -457,9 +469,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const parameterShape = parameterShapeFor(draft.type, draft.component);
   // Which list of answers this attribute holds, on the same terms.
   const optionsShape = optionsShapeFor(draft.type, draft.component);
+  // Whether a stage manages the options, which makes them its to write and
+  // not this editor's: they are shown, and a save leaves them as they are.
+  const stageManaged = managedByStages !== null && managedByStages.length > 0;
   const replaceProperties = variableEditorReplaceProperties(
     typeChanged,
     parameterShape,
+    stageManaged,
   );
   const submittedDraft =
     props.mode === 'create'
@@ -469,13 +485,16 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           parameterShape,
           optionsShape,
         )
-      : draftOwnedByVariableEditor(
-          draft,
-          seededDraft.options,
-          lockedOptions !== null,
-          typeChanged,
-          parameterShape,
-          optionsShape,
+      : withoutStageManagedOptions(
+          draftOwnedByVariableEditor(
+            draft,
+            seededDraft.options,
+            lockedOptions !== null,
+            typeChanged,
+            parameterShape,
+            optionsShape,
+          ),
+          stageManaged,
         );
   const hasOptions = optionsShape === 'choice';
   // Whether the two-answer fieldset is the right editor for what this
@@ -486,7 +505,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const booleanAnswersEditable = heldAnswersReason === null;
   const booleanAnswers = readBooleanAnswers(draft.options);
   const heldBooleanAnswers = readHeldBooleanAnswers(draft.options);
-  const optionsLocked = lockedOptions !== null || draft.readOnly === true;
+  const optionsLocked =
+    lockedOptions !== null || draft.readOnly === true || stageManaged;
   const interactionDisabled = readOnly || busy;
   const unchangedUpdate =
     props.mode === 'update' &&
@@ -911,7 +931,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {optionsLocked ? (
                 <LockedOptions
                   options={options}
-                  caption={intl.formatMessage(messages.lockedOptionsCaption)}
+                  caption={
+                    stageManaged
+                      ? stageManagedOptionsNote(managedByStages, intl)
+                      : intl.formatMessage(messages.lockedOptionsCaption)
+                  }
                 />
               ) : (
                 <div className="flex flex-col gap-4">
@@ -1138,6 +1162,19 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   );
 }
 
+/**
+ * An options list a stage manages is not this editor's to write, so a save of
+ * the rest of the attribute leaves it exactly as the host holds it.
+ */
+function withoutStageManagedOptions(
+  draft: CodebookVariableDraft,
+  stageManaged: boolean,
+): CodebookVariableDraft {
+  if (!stageManaged) return draft;
+  const { options: _options, ...rest } = draft;
+  return rest;
+}
+
 function draftWithLockedOptions(
   draft: CodebookVariableDraft,
   lockedOptions: readonly VariableOption[] | null,
@@ -1261,11 +1298,12 @@ function draftWithSeededResolution(
 function variableEditorReplaceProperties(
   includeTypeMetadata: boolean,
   parameterShape: ParameterShape | null,
+  stageManagedOptions: boolean,
 ): readonly string[] {
   return [
     ...new Set([
       ...VARIABLE_EDITOR_PROPERTIES,
-      ...OPTIONS_OWNED_PROPERTIES,
+      ...(stageManagedOptions ? [] : OPTIONS_OWNED_PROPERTIES),
       ...(includeTypeMetadata ? TYPE_OWNED_PROPERTIES : []),
       ...(parameterShape === null ? [] : PARAMETER_OWNED_PROPERTIES),
     ]),

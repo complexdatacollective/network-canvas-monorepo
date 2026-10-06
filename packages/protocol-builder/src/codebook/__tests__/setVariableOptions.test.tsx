@@ -86,13 +86,14 @@ const write = async (
   variableId: string,
   options: unknown,
   subject: CodebookSubject = FAMILY_MEMBER,
+  stageId: 'family-pedigree-1' | 'name-generator-1' = 'family-pedigree-1',
 ): Promise<{
   harness: ReturnType<typeof renderStageEditor>;
   outcome: () => string;
   before: unknown;
 }> => {
   const harness = renderStageEditor({
-    stageId: 'family-pedigree-1',
+    stageId,
     sections: (
       <WriteOptions
         subject={subject}
@@ -176,5 +177,65 @@ describe('writing the answers an attribute offers', () => {
     expect(harness.host.store.read(sectionIdForCodebookSubject(knows))).toEqual(
       before,
     );
+  });
+
+  /**
+   * The pedigree manages the gender identity options, because the words each
+   * takes live on the stage. Another stage's editor may not write them, and a
+   * refused write changes nothing.
+   */
+  describe('a list a stage manages', () => {
+    const WITH_A_NEW_OPTION = [
+      { value: 'woman', label: 'Woman' },
+      { value: 'man', label: 'Man' },
+      { value: 'agender', label: 'Agender' },
+    ];
+
+    it('is refused from another stage’s editor, naming the stage that manages it', async () => {
+      const { harness, outcome, before } = await write(
+        'genderIdentity',
+        WITH_A_NEW_OPTION,
+        FAMILY_MEMBER,
+        'name-generator-1',
+      );
+
+      await waitFor(() =>
+        expect(outcome()).toBe(
+          'refused: These options are managed by the “Family Pedigree” stage, which decides the kin words each one takes. Edit them there.',
+        ),
+      );
+      expect(harness.host.store.read(familyMemberSection)).toEqual(before);
+    });
+
+    it('is written from the editor of the stage that manages it', async () => {
+      const { harness, outcome } = await write(
+        'genderIdentity',
+        WITH_A_NEW_OPTION,
+      );
+
+      await waitFor(() => expect(outcome()).toBe('written'));
+      const variables = harness.protocolSections()[familyMemberSection]
+        ?.variables as Record<string, { options?: unknown }> | undefined;
+      expect(variables?.genderIdentity?.options).toEqual(WITH_A_NEW_OPTION);
+    });
+
+    it('leaves another attribute of the same type editable', async () => {
+      const { outcome } = await write(
+        'sexAssignedAtBirth',
+        [
+          { value: 'female', label: 'Female' },
+          { value: 'male', label: 'Male' },
+          { value: 'intersex', label: 'Intersex' },
+          { value: 'unknown', label: 'Don’t know' },
+          { value: 'preferNotToSay', label: 'Prefer not to say' },
+        ],
+        FAMILY_MEMBER,
+        'name-generator-1',
+      );
+
+      // Not managed by the stage (it has its own interface-owned set), so the
+      // managed-options refusal is not the answer: this list is unchanged.
+      await waitFor(() => expect(outcome()).toBe('unchanged'));
+    });
   });
 });

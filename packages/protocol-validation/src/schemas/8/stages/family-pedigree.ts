@@ -56,17 +56,26 @@ export const NodeConfigurationSchema = z.strictObject({
   // options; `genderIdentityTerms` says which kinship words each takes. (A
   // person's symbol is the person type's codebook shape, which the researcher
   // may map to this or to sex assigned at birth.)
+  //
+  // The options are managed by this stage: they can be added, removed,
+  // relabelled or re-valued only from a pedigree stage that binds the attribute
+  // (see `stageManagedOptions`), so `genderIdentityTerms` cannot drift from
+  // them. Other parts of the protocol may still write the attribute.
   genderIdentityVariable: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
     requireType: ['categorical'],
+    stageManagedOptions: {
+      owner: 'the kin words each option takes',
+    },
   }),
   // Which kinship words each option of the gender identity attribute takes
   // (mother or father, sister or brother, parent or sibling). An option not
   // listed takes neutral words. `unknown` marks an option meaning the person's
   // gender is not known, so a biological parent is named from their sex
-  // assigned at birth ("biological mother"). Every `value` must be one of the
-  // attribute's options, and none may be listed twice.
+  // assigned at birth ("biological mother"). A `value` that is not (or is no
+  // longer) one of the attribute's options is ignored by the interview, as if
+  // the option had been left out; none may be listed twice.
   genderIdentityTerms: z.array(GenderIdentityTermSchema),
   // Categorical attribute holding sex assigned at birth.
   sexAssignedAtBirthVariable: entityAttributeReference({

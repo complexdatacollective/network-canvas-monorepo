@@ -46,6 +46,25 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Title of the dialog that creates a new text attribute for family members’ names.',
   },
+  genderOptionsEdit: {
+    id: 'protocolBuilder.pedigree.genderOptionsEdit',
+    defaultMessage: 'Edit options',
+    description:
+      'Button that opens the editor for the options of the gender identity attribute, so the researcher can add, remove, relabel or change them.',
+  },
+  genderOptionsEditTitle: {
+    id: 'protocolBuilder.pedigree.genderOptionsEditTitle',
+    defaultMessage: 'Edit gender identity options',
+    description:
+      'Title of the dialog in which the researcher edits the options of the gender identity attribute.',
+  },
+  genderOptionsEditHint: {
+    id: 'protocolBuilder.pedigree.genderOptionsEditHint',
+    defaultMessage:
+      'These options can only be changed here. Anywhere else in the protocol they are shown read-only.',
+    description:
+      'Explains why the button that edits the gender identity options is on this stage: the options belong to the stage because it decides which kinship words each one takes.',
+  },
   genderIdentityLabel: {
     id: 'protocolBuilder.pedigree.genderIdentityLabel',
     defaultMessage: 'Gender identity',
@@ -55,9 +74,9 @@ export const familyPedigreeMessages = defineMessages({
   genderIdentityHint: {
     id: 'protocolBuilder.pedigree.genderIdentityHint',
     defaultMessage:
-      'Records each person’s gender identity. You choose the options this attribute offers, and below say which words each one takes.',
+      'Records each person’s gender identity. This stage manages the options this attribute offers, so you edit them here and say below which words each one takes.',
     description:
-      'Guidance under the gender identity attribute control. The options are the researcher’s own; the control that follows chooses the kinship words each takes.',
+      'Guidance under the gender identity attribute control. The options are the researcher’s own, and are edited only from this stage; the control that follows chooses the kinship words each takes.',
   },
   genderIdentityCreateLabel: {
     id: 'protocolBuilder.pedigree.genderIdentityCreateLabel',

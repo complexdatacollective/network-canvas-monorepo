@@ -670,6 +670,62 @@ describe('a prompt whose attribute’s values an interface owns', () => {
 });
 
 /**
+ * A prompt binned by an attribute whose OPTIONS a stage manages.
+ *
+ * The Family Pedigree decides which kin words each gender identity option
+ * takes, so the options are its to change. A categorical bin may still assign
+ * the attribute (the attribute stays on offer, and writing it is not
+ * restricted), but the bins are shown rather than edited, under a note naming
+ * the stage that manages them.
+ */
+describe('a prompt whose attribute’s options a stage manages', () => {
+  const MANAGED_NOTE =
+    'These options are managed by the “Family Pedigree” stage, which decides the kin words each one takes. Edit them there.';
+
+  it('offers the attribute, and shows its options read-only under a note naming the stage', async () => {
+    const harness = renderStageEditor(
+      openStage({
+        label: 'Categorical Bin',
+        subject: { entity: 'node', type: 'family_member' },
+        prompts: [
+          {
+            id: 'prompt-a',
+            text: 'Which of these are they?',
+            variable: 'genderIdentity',
+          },
+        ],
+      }),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    const managed = await screen.findByRole('table', { name: MANAGED_NOTE });
+    expect(
+      within(managed)
+        .getAllByRole('row')
+        .map((row) =>
+          within(row)
+            .queryAllByRole('cell')
+            .map((cell) => cell.textContent ?? ''),
+        )
+        .filter((cells) => cells.length > 0),
+    ).toEqual([
+      ['Woman', 'woman'],
+      ['Man', 'man'],
+      ['Non-binary', 'nonBinary'],
+      ['A different identity', 'differentIdentity'],
+      ['Don’t know', 'unknown'],
+      ['Prefer not to say', 'preferNotToSay'],
+    ]);
+    expect(
+      screen.queryByRole('button', { name: 'Create new option' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
  * The follow-up bin is the one place in this interface where the participant
  * TYPES an answer, so the attribute's own rules are all that stand between
  * them and an answer the study cannot use. Architect edits them right there,

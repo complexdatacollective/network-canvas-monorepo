@@ -100,6 +100,28 @@ describe('readFamily', () => {
     expect(read('e')).toEqual([undefined, undefined]);
   });
 
+  test('ignores words given for an option the attribute no longer has', () => {
+    // The attribute's options are edited before the stage that owns their words
+    // is saved, so the stage can briefly list words for an option that is gone.
+    // The entry is never read: it takes someone's answer to match it.
+    const family = readFamily(
+      [
+        person('a', { gender: ['woman'] }),
+        person('b', { gender: ['agender'] }),
+      ],
+      [],
+      {
+        ...config,
+        genderIdentityTerms: [
+          ...config.genderIdentityTerms,
+          { value: 'removedOption', words: 'masculine' },
+        ],
+      },
+    );
+    expect(family.byId.get('a')?.genderWords).toBe('feminine');
+    expect(family.byId.get('b')?.genderWords).toBe('neutral');
+  });
+
   test('ignores links of unknown kinds or to people of another type', () => {
     const family = readFamily(
       [person('a'), person('b')],

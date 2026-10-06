@@ -205,21 +205,16 @@ describe('FamilyPedigree in a whole protocol', () => {
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
-  it('rejects gender identity words for an option the attribute does not have', () => {
+  it('accepts gender identity words for an option the attribute does not have', () => {
+    // The attribute's options are edited before the stage that owns their words
+    // is saved, so a stale entry is not an error; the interview ignores it.
     const result = ProtocolSchemaV8.safeParse(
       protocolWith(base, [
         { value: 'woman', label: 'Woman' },
         { value: 'man', label: 'Man' },
       ]),
     );
-    expect(result.success).toBe(false);
-    expect(
-      result.error?.issues.some((issue) =>
-        issue.message.includes(
-          'gender identity words are given for "nonBinary", which is not one of the options of attribute "Gender"',
-        ),
-      ),
-    ).toBe(true);
+    expect(result.error?.issues ?? null).toBeNull();
   });
 
   it('requires each nomination prompt variable to be a boolean', () => {

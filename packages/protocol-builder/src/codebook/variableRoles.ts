@@ -1,4 +1,8 @@
-import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
@@ -7,6 +11,7 @@ import {
   type EntityTypeReferenceHit,
   findExclusiveVariableSlots,
   findInterfaceOwnedOptionBindings,
+  findStageManagedOptionBindings,
   findVariableRoleConflicts,
   INTERFACE_OWNED_OPTION_SETS,
   type InterfaceOwnedOptionSetKey,
@@ -21,7 +26,7 @@ import type {
 } from '../protocol-context.ts';
 
 /**
- * The two refusals this module writes.
+ * The refusals and notices this module writes.
  *
  * Encoded rather than formatted: both are returned as a plain `string` to a
  * caller that puts them in a field's error region, so the words are chosen in
@@ -52,6 +57,16 @@ const messages = defineMessages({
   },
 });
 
+const stageManagedOptionsMessages = defineMessages({
+  stageManagedOptions: {
+    id: 'protocolBuilder.codebookVariable.stageManagedOptions',
+    defaultMessage:
+      '{count, plural, one {These options are managed by the {stageLabels} stage, which decides the kin words each one takes. Edit them there.} other {These options are managed by the stages {stageLabels}, which decide the kin words each one takes. Edit them in any of those stages.}}',
+    description:
+      'Shown in place of the editable list of allowed answers of an attribute (a codebook variable) whose answers belong to one or more interview steps, and as the refusal when a change to them is attempted anywhere else. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kin words are the family words (mother, brother, parent) a family-tree step uses for each answer.',
+  },
+});
+
 export type WriterClass = 'validated' | 'unvalidated';
 
 export type VariableRoleMap = Readonly<
@@ -79,6 +94,22 @@ export type ExclusiveVariableSlotMap = Readonly<
 
 export type InterfaceOwnedOptionMap = Readonly<
   Record<string, InterfaceOwnedOptionSetKey>
+>;
+
+/**
+ * The stages that manage one variable's OPTION LIST, by the variable's key.
+ *
+ * Derived from the saved stages every time it is asked, never stored: removing
+ * a stage or unbinding the variable releases the options. See
+ * `StageManagedOptionsDescriptor`.
+ */
+export type StageManagedOptionOwner = Readonly<{
+  stageId: string;
+  stageLabel: string;
+}>;
+
+export type StageManagedOptionMap = Readonly<
+  Record<string, readonly StageManagedOptionOwner[]>
 >;
 
 type VariableOption = Readonly<{ value: string }>;
@@ -282,6 +313,89 @@ export function buildInterfaceOwnedOptionMap(
   }
   return Object.freeze(Object.fromEntries(map));
 }
+
+export function buildStageManagedOptionMap(
+  context: ProtocolBuilderProtocolContext,
+): StageManagedOptionMap {
+  const map = new Map<string, StageManagedOptionOwner[]>();
+  for (const binding of findStageManagedOptionBindings(protocolFrom(context))) {
+    const subject = normalizeSubject(binding.subject);
+    if (subject === undefined) continue;
+    const key = variableRoleKey(subject, binding.variableId);
+    const owners = map.get(key) ?? [];
+    if (!owners.some((owner) => owner.stageId === binding.stageId)) {
+      owners.push({
+        stageId: binding.stageId,
+        stageLabel: binding.stageLabel,
+      });
+    }
+    map.set(key, owners);
+  }
+  return Object.freeze(
+    Object.fromEntries(
+      [...map].map(([key, owners]) => [key, Object.freeze(owners)]),
+    ),
+  );
+}
+
+/**
+ * The stage labels to name when a variable's options may not be edited from
+ * where the researcher is, or `undefined` when they may.
+ *
+ * `editingFrom` lists the stages whose editor the researcher is working in: the
+ * stage's id, plus the managed bindings its UNSAVED draft makes, so a stage
+ * that binds the variable only in its draft still counts as an owner. Any one
+ * owner may edit the options, so being in an owning stage's editor lifts the
+ * lock for all of them.
+ */
+export const stageManagedOptionsLock = (
+  map: StageManagedOptionMap,
+  subject: CodebookSubject,
+  variableId: string,
+  editingFrom?: Readonly<{
+    stageId: string;
+    draftBindings: ReadonlySet<string>;
+  }>,
+): readonly string[] | undefined => {
+  if (variableId === '') return undefined;
+  const key = variableRoleKey(subject, variableId);
+  const owners = map[key];
+  if (owners === undefined || owners.length === 0) return undefined;
+  if (
+    editingFrom !== undefined &&
+    (editingFrom.draftBindings.has(key) ||
+      owners.some((owner) => owner.stageId === editingFrom.stageId))
+  ) {
+    return undefined;
+  }
+  return owners.map((owner) => owner.stageLabel);
+};
+
+/**
+ * The note naming the stages that manage an option list, as the plain text it
+ * is shown in. Whole sentence from one descriptor; the labels are the
+ * researcher's own and go in as values.
+ */
+export const stageManagedOptionsNote = (
+  stageLabels: readonly string[],
+  intl: Pick<IntlShape, 'formatMessage'>,
+): string =>
+  intl.formatMessage(stageManagedOptionsMessages.stageManagedOptions, {
+    count: stageLabels.length,
+    stageLabels: quotedLabels(stageLabels),
+  });
+
+/** The same sentence, encoded to be returned as a refusal and decoded later. */
+export const stageManagedOptionsRefusal = (
+  stageLabels: readonly string[],
+): string =>
+  createMessageError(stageManagedOptionsMessages.stageManagedOptions, {
+    count: stageLabels.length,
+    stageLabels: quotedLabels(stageLabels),
+  });
+
+const quotedLabels = (stageLabels: readonly string[]): string =>
+  stageLabels.map((label) => `“${label}”`).join(', ');
 
 /**
  * Removes structural attributes owned by an interface while preserving a

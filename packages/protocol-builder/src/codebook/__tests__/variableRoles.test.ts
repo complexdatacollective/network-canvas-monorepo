@@ -10,6 +10,7 @@ import {
   buildEntityTypeUsageIndex,
   buildExclusiveVariableSlotMap,
   buildInterfaceOwnedOptionMap,
+  buildStageManagedOptionMap,
   buildVariableRoleMap,
   buildVariableUsageIndex,
   entityTypeUsageKey,
@@ -22,6 +23,7 @@ import {
   interfaceOwnedOptionsIssue,
   interfaceOwnedPickIssue,
   lockedVariableOptions,
+  stageManagedOptionsLock,
   variableRoleConflicts,
   variableRoleKey,
 } from '../variableRoles.ts';
@@ -315,6 +317,87 @@ describe('variable role helpers', () => {
     expect(lockedVariableOptions(variables, 'missing')).toBeUndefined();
     expect(lockedVariableOptions(variables, undefined)).toBeUndefined();
     expect(lockedVariableOptions(undefined, 'stamped')).toBeUndefined();
+  });
+
+  /**
+   * Which stages manage a variable's options is derived from the stages that
+   * bind it. Nothing is stored in the codebook, so removing the stage releases
+   * them, and sex assigned at birth (a fixed set, not a managed one) is not
+   * among them.
+   */
+  describe('options a stage manages', () => {
+    const GENDER_KEY = variableRoleKey(FAMILY_SUBJECT, 'genderIdentity');
+
+    it('derives the managing stages from the stages that bind the variable', () => {
+      const map = buildStageManagedOptionMap(
+        protocolContextFromSections(familySections()),
+      );
+
+      expect(map[GENDER_KEY]).toEqual([
+        { stageId: FAMILY_STAGE_ID, stageLabel: 'Family Pedigree' },
+      ]);
+      expect(
+        map[variableRoleKey(FAMILY_SUBJECT, 'sexAssignedAtBirth')],
+      ).toBeUndefined();
+    });
+
+    it('holds nothing once no stage binds the variable', () => {
+      const released = protocolContextFromSections({
+        ...familySections(),
+        [sectionId({ kind: 'stage', stageId: FAMILY_STAGE_ID })]: {
+          id: FAMILY_STAGE_ID,
+          type: 'FamilyPedigree',
+          label: 'Family Pedigree',
+          subject: FAMILY_SUBJECT,
+          prompt: 'Build your family',
+          nodeConfiguration: {
+            nameVariable: 'name',
+            sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
+            egoVariable: 'isEgo',
+          },
+          edgeConfiguration: {
+            type: 'family-edge',
+            kindVariable: 'relationshipKind',
+            gestationalCarrierVariable: 'isGestationalCarrier',
+            currentPartnerVariable: 'isCurrentPartner',
+          },
+        },
+      });
+
+      expect(buildStageManagedOptionMap(released)).toEqual({});
+    });
+
+    it('locks the options everywhere but an owning stage’s editor', () => {
+      const map = buildStageManagedOptionMap(
+        protocolContextFromSections(familySections()),
+      );
+      const ask = (
+        editingFrom?: Parameters<typeof stageManagedOptionsLock>[3],
+      ) =>
+        stageManagedOptionsLock(
+          map,
+          FAMILY_SUBJECT,
+          'genderIdentity',
+          editingFrom,
+        );
+
+      // The codebook's own editor, and any other stage.
+      expect(ask()).toEqual(['Family Pedigree']);
+      expect(ask({ stageId: 'another', draftBindings: new Set() })).toEqual([
+        'Family Pedigree',
+      ]);
+      // The stage that binds it, and a stage whose unsaved draft does.
+      expect(
+        ask({ stageId: FAMILY_STAGE_ID, draftBindings: new Set() }),
+      ).toBeUndefined();
+      expect(
+        ask({ stageId: 'new-stage', draftBindings: new Set([GENDER_KEY]) }),
+      ).toBeUndefined();
+      // Another attribute of the same type is not managed.
+      expect(
+        stageManagedOptionsLock(map, FAMILY_SUBJECT, 'isEgo'),
+      ).toBeUndefined();
+    });
   });
 
   it('keeps colon-containing subjects and variables in distinct keys', () => {

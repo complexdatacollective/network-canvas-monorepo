@@ -388,6 +388,12 @@ describe('no create control sits beside an attribute picker', () => {
    * the codebook for the KIND of answer as well as the name, which only that
    * editor has a control for. Both hand what they open to the picker, and the
    * sweep above is what holds them to it.
+   *
+   * The last assertion names the only modules that mount the editor at all.
+   * `sections/StageManagedOptionsEditor.tsx` is the second: it opens the editor
+   * in update mode for an attribute whose options a stage manages, and offers
+   * no way to create one, so it is neither the picker's escalation path nor
+   * something an interface editor can do on its own.
    */
   it('lets no interface editor reach the codebook’s attribute editor directly', () => {
     const namedIn = (area: string, specifier: RegExp): string[] =>
@@ -407,7 +413,10 @@ describe('no create control sits beside an attribute picker', () => {
 
     expect(
       namedIn('', /from '[^']*codebook\/components\/VariableEditor\.tsx'/u),
-    ).toEqual(['sections/create-variable/useCreateVariableEditor.tsx']);
+    ).toEqual([
+      'sections/StageManagedOptionsEditor.tsx',
+      'sections/create-variable/useCreateVariableEditor.tsx',
+    ]);
   });
 });
 

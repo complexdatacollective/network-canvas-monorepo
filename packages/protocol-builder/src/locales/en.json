@@ -1191,6 +1191,10 @@
     "defaultMessage": "Save attribute",
     "description": "Button that saves the changes to an existing attribute (a codebook variable)."
   },
+  "protocolBuilder.codebookVariable.stageManagedOptions": {
+    "defaultMessage": "{count, plural, one {These options are managed by the {stageLabels} stage, which decides the kin words each one takes. Edit them there.} other {These options are managed by the stages {stageLabels}, which decide the kin words each one takes. Edit them in any of those stages.}}",
+    "description": "Shown in place of the editable list of allowed answers of an attribute (a codebook variable) whose answers belong to one or more interview steps, and as the refusal when a change to them is attempted anywhere else. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kin words are the family words (mother, brother, parent) a family-tree step uses for each answer."
+  },
   "protocolBuilder.codebookVariable.submittingStatus": {
     "defaultMessage": "Saving attribute.",
     "description": "Announced to screen reader users while the attribute is being saved. Not shown on screen."
@@ -3536,8 +3540,8 @@
     "description": "Title of the dialog that creates a new categorical attribute for gender identity, starting from a suggested list of options the researcher can edit."
   },
   "protocolBuilder.pedigree.genderIdentityHint": {
-    "defaultMessage": "Records each person’s gender identity. You choose the options this attribute offers, and below say which words each one takes.",
-    "description": "Guidance under the gender identity attribute control. The options are the researcher’s own; the control that follows chooses the kinship words each takes."
+    "defaultMessage": "Records each person’s gender identity. This stage manages the options this attribute offers, so you edit them here and say below which words each one takes.",
+    "description": "Guidance under the gender identity attribute control. The options are the researcher’s own, and are edited only from this stage; the control that follows chooses the kinship words each takes."
   },
   "protocolBuilder.pedigree.genderIdentityLabel": {
     "defaultMessage": "Gender identity",
@@ -3566,6 +3570,18 @@
   "protocolBuilder.pedigree.genderOptionWoman": {
     "defaultMessage": "Woman",
     "description": "Label of the suggested “woman” option when a new gender identity attribute is created. The researcher may rename it."
+  },
+  "protocolBuilder.pedigree.genderOptionsEdit": {
+    "defaultMessage": "Edit options",
+    "description": "Button that opens the editor for the options of the gender identity attribute, so the researcher can add, remove, relabel or change them."
+  },
+  "protocolBuilder.pedigree.genderOptionsEditHint": {
+    "defaultMessage": "These options can only be changed here. Anywhere else in the protocol they are shown read-only.",
+    "description": "Explains why the button that edits the gender identity options is on this stage: the options belong to the stage because it decides which kinship words each one takes."
+  },
+  "protocolBuilder.pedigree.genderOptionsEditTitle": {
+    "defaultMessage": "Edit gender identity options",
+    "description": "Title of the dialog in which the researcher edits the options of the gender identity attribute."
   },
   "protocolBuilder.pedigree.genderTermsHint": {
     "defaultMessage": "Family members are described with kinship words such as mother, brother or aunt. Choose the words each gender identity takes. An option with neutral words is described as a parent, sibling or child.",

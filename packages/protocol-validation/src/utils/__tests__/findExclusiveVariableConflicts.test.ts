@@ -9,7 +9,10 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/8/family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../../schemas/8/schema.ts';
-import { findExclusiveVariableConflicts } from '../findExclusiveVariableConflicts.ts';
+import {
+  findExclusiveVariableConflicts,
+  findStageManagedOptionBindings,
+} from '../findExclusiveVariableConflicts.ts';
 
 type Stage = Record<string, unknown>;
 
@@ -285,5 +288,58 @@ describe('findExclusiveVariableConflicts', () => {
 
   it('returns nothing for a non-object input', () => {
     expect(findExclusiveVariableConflicts(null)).toEqual([]);
+  });
+});
+
+describe('findStageManagedOptionBindings', () => {
+  it('names the stage that binds the gender identity attribute, with its label', () => {
+    const protocol = protocolWith([familyPedigree()]);
+    expect(findStageManagedOptionBindings(protocol)).toEqual([
+      {
+        subject: { entity: 'node', type: 'family_member' },
+        variableId: 'genderIdentity',
+        descriptor: { owner: 'the kin words each option takes' },
+        stageId: 'fp1',
+        stageLabel: 'Family Pedigree',
+        path: ['stages', 0, 'nodeConfiguration', 'genderIdentityVariable'],
+      },
+    ]);
+  });
+
+  it('returns one binding per stage when several stages bind the variable', () => {
+    const protocol = protocolWith([
+      familyPedigree(),
+      familyPedigree({ id: 'fp2', label: 'Second family' }),
+    ]);
+    expect(
+      findStageManagedOptionBindings(protocol).map(
+        (binding) => binding.stageId,
+      ),
+    ).toEqual(['fp1', 'fp2']);
+  });
+
+  it('does not bind variables that other stages merely write', () => {
+    // A stage that only WRITES the variable (a form field asking it) does not
+    // manage its options, and the pedigree's binding does not make the
+    // variable exclusive: both are accepted together.
+    const protocol = protocolWith([
+      familyPedigree(),
+      {
+        id: 'ask',
+        label: 'Ask gender',
+        type: 'NameGenerator',
+        subject: { entity: 'node', type: 'family_member' },
+        form: {
+          fields: [{ variable: 'genderIdentity', prompt: 'Gender?' }],
+        },
+        prompts: [{ id: 'p1', text: 'Name people' }],
+      },
+    ]);
+    expect(
+      findStageManagedOptionBindings(protocol).map(
+        (binding) => binding.stageId,
+      ),
+    ).toEqual(['fp1']);
+    expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
   });
 });

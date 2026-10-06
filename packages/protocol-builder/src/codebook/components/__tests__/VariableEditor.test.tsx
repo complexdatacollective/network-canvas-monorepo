@@ -83,7 +83,10 @@ const APPLIED: CodebookWriteOutcome = {
   sectionId: PERSON_SECTION,
 };
 
-type SubmitDocument = (document: SectionDoc) => Promise<CodebookWriteOutcome>;
+type SubmitDocument = (
+  document: SectionDoc,
+  ownedProperties?: readonly string[],
+) => Promise<CodebookWriteOutcome>;
 
 const submitting = (
   outcome: CodebookWriteOutcome = APPLIED,
@@ -282,6 +285,95 @@ describe('VariableEditor', () => {
       name: 'ranking',
       type: 'ordinal',
       options: existing.options,
+    });
+  });
+
+  /**
+   * Some stages manage the options of an attribute they bind, because they
+   * decide what each option means. From anywhere but such a stage the options
+   * are shown, naming the stage, and a save of the rest of the attribute
+   * leaves them exactly as they are.
+   */
+  describe('options a stage manages', () => {
+    const MANAGED = {
+      name: 'gender',
+      type: 'categorical',
+      options: [
+        { label: 'Woman', value: 'woman' },
+        { label: 'Man', value: 'man' },
+      ],
+    } as const;
+
+    const openManaged = (
+      onSubmitDocument: ReturnType<typeof vi.fn<SubmitDocument>>,
+      managedByStages: readonly string[] | null,
+    ) =>
+      render(
+        <VariableEditor
+          openId="managed"
+          mode="update"
+          subject={SUBJECT}
+          authoritativeDocument={personDocument({ gender: MANAGED })}
+          variableId="gender"
+          initialDraft={MANAGED}
+          managedByStages={managedByStages}
+          onSubmitDocument={onSubmitDocument}
+          onComplete={() => undefined}
+        />,
+      );
+
+    it('shows them read-only under a note naming the stage', () => {
+      openManaged(submitting(), ['Family Pedigree']);
+
+      const table = screen.getByRole('table', {
+        name: 'These options are managed by the “Family Pedigree” stage, which decides the kin words each one takes. Edit them there.',
+      });
+      expect(within(table).getByText('Woman')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Create new option' }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole('textbox', { name: 'Option 1 label' }),
+      ).toBeNull();
+    });
+
+    it('names every stage that manages them', () => {
+      openManaged(submitting(), ['Family', 'Household']);
+
+      expect(
+        screen.getByRole('table', {
+          name: 'These options are managed by the stages “Family”, “Household”, which decide the kin words each one takes. Edit them in any of those stages.',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('leaves the options out of what a save writes', async () => {
+      const user = userEvent.setup();
+      const onSubmitDocument = submitting();
+      openManaged(onSubmitDocument, ['Family Pedigree']);
+
+      const name = screen.getByRole('textbox', { name: /attribute name/i });
+      await user.clear(name);
+      await user.type(name, 'gender_identity');
+      await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+      await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+      // The options the host held are carried through untouched: the save
+      // asked for the name alone, so `options` is not among the properties it
+      // owns.
+      expect(onSubmitDocument.mock.calls[0]?.[1]).not.toContain('options');
+      expect(submittedVariables(onSubmitDocument).gender).toEqual({
+        ...MANAGED,
+        name: 'gender_identity',
+      });
+    });
+
+    it('edits them as usual when no stage manages them', () => {
+      openManaged(submitting(), null);
+
+      expect(
+        screen.getByRole('button', { name: 'Create new option' }),
+      ).toBeEnabled();
     });
   });
 

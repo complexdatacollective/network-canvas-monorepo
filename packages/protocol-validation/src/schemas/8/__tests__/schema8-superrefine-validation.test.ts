@@ -2739,7 +2739,10 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects words for a value that is not an option of the gender identity attribute', () => {
+    it('accepts words for a value the attribute no longer has', () => {
+      // The attribute's options are edited in the codebook before the stage
+      // that owns their words is saved, so a stale entry is not an error; the
+      // interview ignores it.
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
           genderIdentityOptions: [
@@ -2752,23 +2755,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           ],
         }),
       );
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find((i) =>
-          i.message.includes(
-            'gender identity words are given for "agender", which is not one of the options of attribute "Gender"',
-          ),
-        );
-        expect(issue).toBeDefined();
-        expect(issue?.path).toEqual([
-          'stages',
-          0,
-          'nodeConfiguration',
-          'genderIdentityTerms',
-          1,
-          'value',
-        ]);
-      }
+      expect(result.success).toBe(true);
     });
 
     it('rejects words given twice for one option', () => {

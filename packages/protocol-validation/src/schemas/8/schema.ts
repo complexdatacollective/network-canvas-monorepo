@@ -683,41 +683,28 @@ const ProtocolSchema = z
     }
 
     // A Family Pedigree stage's gender identity terms map the options of its
-    // gender identity attribute to kinship words, so each must name an option
-    // the attribute really has, and no option may be mapped twice. A missing
-    // or retyped attribute is reported by the reference validator above.
+    // gender identity attribute to kinship words, and no option may be mapped
+    // twice. A term for a value the attribute does not have is NOT an error:
+    // the attribute's options are edited in the codebook before the stage that
+    // owns the words is saved, so the two are briefly out of step while a
+    // researcher works, and the interview ignores such a term. A missing or
+    // retyped attribute is reported by the reference validator above.
     protocol.stages.forEach((stage, stageIndex) => {
       if (stage.type !== 'FamilyPedigree') return;
-      const { genderIdentityVariable, genderIdentityTerms } =
-        stage.nodeConfiguration;
-      const variable = getVariablesForSubject(protocol.codebook, stage.subject)[
-        genderIdentityVariable
-      ];
-      if (variable?.type !== 'categorical') return;
-      const optionValues = new Set<string | number>(
-        variable.options.map((option) => option.value),
-      );
       const seen = new Set<string | number>();
-      genderIdentityTerms.forEach((term, termIndex) => {
-        const path = [
-          'stages',
-          stageIndex,
-          'nodeConfiguration',
-          'genderIdentityTerms',
-          termIndex,
-          'value',
-        ];
-        if (!optionValues.has(term.value)) {
-          ctx.addIssue({
-            code: 'custom' as const,
-            message: `Family Pedigree gender identity words are given for "${term.value}", which is not one of the options of attribute "${variable.name}". Remove it, or add the option to the attribute.`,
-            path,
-          });
-        } else if (seen.has(term.value)) {
+      stage.nodeConfiguration.genderIdentityTerms.forEach((term, termIndex) => {
+        if (seen.has(term.value)) {
           ctx.addIssue({
             code: 'custom' as const,
             message: `Family Pedigree gender identity words are given more than once for "${term.value}". Each option takes one set of words.`,
-            path,
+            path: [
+              'stages',
+              stageIndex,
+              'nodeConfiguration',
+              'genderIdentityTerms',
+              termIndex,
+              'value',
+            ],
           });
         }
         seen.add(term.value);

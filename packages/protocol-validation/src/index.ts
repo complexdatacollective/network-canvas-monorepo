@@ -122,7 +122,9 @@ export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
   findInterfaceOwnedOptionBindings,
+  findStageManagedOptionBindings,
   type InterfaceOwnedOptionBinding,
+  type StageManagedOptionBinding,
 } from './utils/findExclusiveVariableConflicts.ts';
 export {
   asEntityAttributeReference,
