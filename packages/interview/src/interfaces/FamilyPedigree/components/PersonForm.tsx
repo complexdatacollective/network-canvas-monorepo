@@ -91,6 +91,7 @@ const ROLE = {
   partnershipCurrent: 'pedigreePartnershipCurrent',
   alsoParentOf: 'pedigreeAlsoParentOf',
   sharedParents: 'pedigreeSharedParents',
+  sharedParentCount: 'pedigreeSharedParentCount',
   otherParent: 'pedigreeOtherParent',
   childKind: 'pedigreeChildKind',
   carrier: 'pedigreeCarrier',
@@ -119,7 +120,7 @@ type PersonFormProps = {
   formFields: FormField[];
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
-  askAbout?: { siblings: boolean; children: boolean };
+  askAbout?: { siblings: boolean; children: boolean; required: boolean };
   /** Add only: called with the person being added whenever the answers
    * that decide how they are drawn change. */
   onDraftChange?: (draft: PersonDraft) => void;
@@ -375,7 +376,7 @@ function RelativesQuestions({
   displayName,
 }: {
   person: Person;
-  askAbout: { siblings: boolean; children: boolean };
+  askAbout: { siblings: boolean; children: boolean; required: boolean };
   displayName: (personId: string) => string;
 }) {
   const intl = useAppIntl();
@@ -406,6 +407,7 @@ function RelativesQuestions({
           name={ROLE.hasSiblings}
           label={intl.formatMessage(messages.hasSiblingsQuestion, args)}
           options={options}
+          required={askAbout.required}
           initialValue={initial(RELATIVES_NOT_RECORDED.siblings)}
         />
       )}
@@ -415,6 +417,7 @@ function RelativesQuestions({
           name={ROLE.hasChildren}
           label={intl.formatMessage(messages.hasChildrenQuestion, args)}
           options={options}
+          required={askAbout.required}
           initialValue={initial(RELATIVES_NOT_RECORDED.children)}
         />
       )}
@@ -752,10 +755,18 @@ function readRequest(
     }
     case 'sibling': {
       const shared = asStringArray(values[ROLE.sharedParents]);
+      const count = asString(values[ROLE.sharedParentCount]);
       return {
         relation,
-        sharedParentIds:
-          shared.length > 0 ? shared : primaryParentsOf(family, anchor.id),
+        sharedParentIds: shared.filter((id) => id !== UNKNOWN),
+        unshownSharedParents:
+          count === '1'
+            ? 1
+            : count === '2'
+              ? 2
+              : shared.includes(UNKNOWN)
+                ? 1
+                : 0,
       };
     }
   }
@@ -1109,22 +1120,55 @@ function SiblingFields({
 }) {
   const intl = useAppIntl();
   const parents = primaryParentsOf(family, anchor.id);
+  const args = {
+    isYou: anchor.isEgo ? 'true' : 'false',
+    name: displayName(anchor.id),
+  };
 
+  // Two unnamed parents are added for someone with none; the sibling may
+  // share one of them or both.
   if (parents.length === 0) {
     return (
-      <p className="text-text/80">
-        <AppMessage message={messages.placeholderParentsNote} />
-      </p>
+      <Field
+        component={RadioGroupField}
+        name={ROLE.sharedParentCount}
+        label={intl.formatMessage(messages.sharedParentCountLabel, args)}
+        hint={intl.formatMessage(messages.placeholderParentsNote)}
+        options={[
+          {
+            value: '2',
+            label: intl.formatMessage(messages.sharedParentCountBoth),
+          },
+          {
+            value: '1',
+            label: intl.formatMessage(messages.sharedParentCountOne),
+          },
+        ]}
+        required
+        initialValue="2"
+      />
     );
   }
 
+  // A parent not yet shown can be shared too, and is added for both.
   return (
     <Field
       component={CheckboxGroupField}
       name={ROLE.sharedParents}
       label={intl.formatMessage(messages.sharedParentsLabel)}
-      options={parents.map((id) => ({ value: id, label: displayName(id) }))}
-      initialValue={parents}
+      options={[
+        ...parents.map((id) => ({ value: id, label: displayName(id) })),
+        ...(parents.length < 2
+          ? [
+              {
+                value: UNKNOWN,
+                label: intl.formatMessage(messages.sharedParentUnshown, args),
+              },
+            ]
+          : []),
+      ]}
+      required
+      initialValue={parents.length < 2 ? [...parents, UNKNOWN] : parents}
     />
   );
 }

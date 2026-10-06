@@ -294,8 +294,11 @@ export type AddRelativeRequest =
     }
   | {
       relation: 'sibling';
-      /** The anchor's parents the sibling shares. Ignored when they have none. */
+      /** The anchor's parents the sibling shares. */
       sharedParentIds: readonly string[];
+      /** How many of the anchor's parents not yet shown the sibling also
+       * shares; each is added, unnamed, as a parent of both. */
+      unshownSharedParents: number;
     };
 
 export type PlannedPerson = { id: string; details: PersonDetails };
@@ -414,44 +417,50 @@ export function planAddRelative({
     }
     case 'sibling': {
       const anchorParents = primaryParentsOf(family, anchorId);
-      if (anchorParents.length === 0) {
-        // Siblings hang from shared parents; create an unnamed couple for the
-        // participant to fill in later.
-        const first = createId();
-        const second = createId();
-        people.push({ id: first, details: {} }, { id: second, details: {} });
+      const anchorLinks = parentLinksOf(family, anchorId);
+      const shared = request.sharedParentIds.filter((id) =>
+        anchorParents.includes(id),
+      );
+      // Siblings hang from the parents they share. Someone without parents
+      // is given two, unnamed, for the participant to fill in later; someone
+      // with one is given a second when the sibling shares it.
+      const placeholderCount =
+        anchorParents.length === 0
+          ? 2
+          : Math.min(request.unshownSharedParents, 2 - anchorParents.length);
+      const placeholders = Array.from({ length: placeholderCount }, createId);
+      for (const id of placeholders) {
+        people.push({ id, details: {} });
+        links.push({ source: id, target: anchorId, kind: 'biological' });
+      }
+      const [first, second, ...others] = [...anchorParents, ...placeholders];
+      if (placeholders.length > 0 && first && second && others.length === 0) {
         links.push({
           source: first,
           target: second,
           kind: 'partner',
           isCurrentPartner: true,
         });
-        for (const parentId of [first, second]) {
-          links.push({
-            source: parentId,
-            target: anchorId,
-            kind: 'biological',
-          });
-          links.push({
-            source: parentId,
-            target: newPersonId,
-            kind: 'biological',
-          });
-        }
-        break;
       }
-      const shared = request.sharedParentIds.filter((id) =>
-        anchorParents.includes(id),
+      // A sibling shares at least one parent; with none chosen, all of them.
+      const sharedPlaceholders = placeholders.slice(
+        0,
+        anchorParents.length === 0
+          ? Math.max(1, request.unshownSharedParents)
+          : request.unshownSharedParents,
       );
-      for (const parentId of shared.length > 0 ? shared : anchorParents) {
-        const anchorLink = parentLinksOf(family, anchorId).find(
-          (link) => link.source === parentId,
-        );
+      const sharesNone = shared.length === 0 && sharedPlaceholders.length === 0;
+      for (const parentId of sharesNone ? anchorParents : shared) {
         links.push({
           source: parentId,
           target: newPersonId,
-          kind: anchorLink?.kind ?? 'biological',
+          kind:
+            anchorLinks.find((link) => link.source === parentId)?.kind ??
+            'biological',
         });
+      }
+      for (const id of sharedPlaceholders) {
+        links.push({ source: id, target: newPersonId, kind: 'biological' });
       }
       break;
     }

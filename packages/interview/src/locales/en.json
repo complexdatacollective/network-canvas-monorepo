@@ -99,6 +99,10 @@
     "defaultMessage": "Is this child…",
     "description": "Question in the side panel for adding a child: how the child is related to their parents. Followed by the options below."
   },
+  "interview.familyPedigree.childrenAnsweredAnnouncement": {
+    "defaultMessage": "{answer, select, none {{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}} other {{isYou, select, true {Recorded that you don’t know whether you have biological children.} other {Recorded that you don’t know whether “{name}” has biological children.}}}}",
+    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no children or that the participant does not know. name is the person’s name or how they are related to the participant."
+  },
   "interview.familyPedigree.connectAlreadyConnected": {
     "defaultMessage": "{firstIsYou, select, true {You and “{second}” are already connected.} other {“{first}” and “{second}” are already connected.}}",
     "description": "Shown under the toolbar, and read out, when the participant selects two people to connect who are already connected. first and second are their names or how they are related to the participant."
@@ -216,11 +220,11 @@
     "description": "Answer to whether a family member has siblings or children: yes, and the participant will add them."
   },
   "interview.familyPedigree.hasSiblingsQuestion": {
-    "defaultMessage": "{isYou, select, true {Do you have any brothers or sisters?} other {Does {name} have any brothers or sisters?}}",
+    "defaultMessage": "{isYou, select, true {Do you have any biological brothers or sisters, including half-brothers and half-sisters?} other {Does {name} have any biological brothers or sisters, including half-brothers and half-sisters?}}",
     "description": "Question in a family member’s details. Answering yes means the participant will add them to the family tree. Includes half-siblings who share one biological parent."
   },
   "interview.familyPedigree.itemChildren": {
-    "defaultMessage": "{isYou, select, true {Add your children, or say you have none} other {Add children for “{name}”, or say they have none}}",
+    "defaultMessage": "{isYou, select, true {Add your biological children, or say you have none} other {Add biological children for “{name}”, or say they have none}}",
     "description": "Item in the list of family members still needed: the person’s biological children, or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.itemDetails": {
@@ -232,7 +236,7 @@
     "description": "Item in the list of family members still needed. missing is how many biological parents the person still needs (1 or 2). name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor."
   },
   "interview.familyPedigree.itemSiblings": {
-    "defaultMessage": "{isYou, select, true {Add your brothers and sisters, or say you have none} other {Add brothers and sisters for “{name}”, or say they have none}}",
+    "defaultMessage": "{isYou, select, true {Add your biological brothers and sisters, or say you have none} other {Add biological brothers and sisters for “{name}”, or say they have none}}",
     "description": "Item in the list of family members still needed: the person’s siblings (including half-siblings), or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.missingDetails": {
@@ -395,9 +399,29 @@
     "defaultMessage": "{isYou, select, true {Some answers are unavailable because they do not fit how you are connected to your children. To choose one, change or remove that connection first.} other {Some answers are unavailable because they do not fit how this person is connected to their children. To choose one, change or remove that connection first.}}",
     "description": "Hint under the sex assigned at birth question when some answers contradict the person’s recorded children: for example, a child cannot have two biological parents who were both assigned male at birth."
   },
+  "interview.familyPedigree.sharedParentCountBoth": {
+    "defaultMessage": "Both parents",
+    "description": "Option: the new sibling shares both parents (a full sibling)."
+  },
+  "interview.familyPedigree.sharedParentCountLabel": {
+    "defaultMessage": "{isYou, select, true {How many parents do they share with you?} other {How many parents do they share with “{name}”?}}",
+    "description": "Question in the side panel for adding a sibling to someone with no parents yet. name is that person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.sharedParentCountOne": {
+    "defaultMessage": "One parent",
+    "description": "Option: the new sibling shares one parent (a half-sibling)."
+  },
+  "interview.familyPedigree.sharedParentUnshown": {
+    "defaultMessage": "{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}",
+    "description": "Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them."
+  },
   "interview.familyPedigree.sharedParentsLabel": {
     "defaultMessage": "Which parents do they share?",
     "description": "Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names."
+  },
+  "interview.familyPedigree.siblingsAnsweredAnnouncement": {
+    "defaultMessage": "{answer, select, none {{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}} other {{isYou, select, true {Recorded that you don’t know whether you have biological brothers or sisters.} other {Recorded that you don’t know whether “{name}” has biological brothers or sisters.}}}}",
+    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings or that the participant does not know. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.stillTogetherLabel": {
     "defaultMessage": "{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}",
@@ -410,6 +434,10 @@
   "interview.familyPedigree.toolsLabel": {
     "defaultMessage": "Family tree tools",
     "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people."
+  },
+  "interview.familyPedigree.trackerAnswerNone": {
+    "defaultMessage": "None",
+    "description": "Button under an item in the list of family members still needed, for siblings or children: there are none. The item’s text names the person and the relatives."
   },
   "interview.familyPedigree.trackerComplete": {
     "defaultMessage": "Your family tree has everything needed. You can continue.",

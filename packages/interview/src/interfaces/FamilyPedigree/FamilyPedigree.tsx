@@ -419,6 +419,45 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Each item in the list leads to where it is resolved: adding the missing
   // parent, or the person's details, which ask about their siblings and
   // children.
+  // Answering from the list that a person has no siblings or children, or
+  // that the participant doesn't know, records it as the details panel's
+  // question would.
+  const handleTrackerAnswer = async (
+    item: CompletenessItem,
+    answer: 'none' | 'unknown',
+  ) => {
+    const variable = config.relativesNotRecordedVariable;
+    const person = family.byId.get(item.personId);
+    if (!variable || !person) return;
+    if (item.kind !== 'siblings' && item.kind !== 'children') return;
+    const group = RELATIVES_NOT_RECORDED[item.kind];
+    const recorded = person.relativesNotRecorded.filter(
+      (value) => value !== group.none && value !== group.unknown,
+    );
+    await dispatch(
+      updateNode({
+        nodeId: person.id,
+        attributePatch: {
+          set: { [variable]: [...recorded, group[answer]] },
+          unset: [],
+        },
+        currentStep,
+      }),
+    );
+    setAnnouncement(
+      intl.formatMessage(
+        item.kind === 'siblings'
+          ? messages.siblingsAnsweredAnnouncement
+          : messages.childrenAnsweredAnnouncement,
+        {
+          answer,
+          isYou: person.isEgo ? 'true' : 'false',
+          name: displayName(person.id),
+        },
+      ),
+    );
+  };
+
   const handleTrackerItem = (item: CompletenessItem) => {
     const person = family.byId.get(item.personId);
     if (!person) return;
@@ -1063,6 +1102,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 family={family}
                 displayName={displayName}
                 onItemSelect={handleTrackerItem}
+                onItemAnswer={
+                  config.relativesNotRecordedVariable
+                    ? (item, answer) => void handleTrackerAnswer(item, answer)
+                    : undefined
+                }
               />
             )}
           </SegmentedToolbar>
@@ -1131,7 +1175,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             displayName={displayName}
             askAbout={
               panel.mode.kind === 'edit' && progress
-                ? relativesToAskAbout(family, progress, panel.mode.person.id)
+                ? {
+                    ...relativesToAskAbout(
+                      family,
+                      progress,
+                      panel.mode.person.id,
+                    ),
+                    required: completeness?.enforcement === 'required',
+                  }
                 : undefined
             }
             onDraftChange={handleDraftChange}

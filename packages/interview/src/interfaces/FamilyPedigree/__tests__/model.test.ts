@@ -239,6 +239,7 @@ describe('planAddRelative', () => {
     const result = plan(family, 'ego', {
       relation: 'sibling',
       sharedParentIds: [],
+      unshownSharedParents: 2,
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
     expect(result.people[1]!.details).toEqual({});
@@ -252,10 +253,53 @@ describe('planAddRelative', () => {
     expect(result.links).toHaveLength(5);
   });
 
+  test('a half sibling of someone without parents shares one of the two added', () => {
+    const family = readFamily([person('ego')], [], config);
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: [],
+      unshownSharedParents: 1,
+    });
+    expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
+    const parentsOf = (id: string) =>
+      result.links
+        .filter(
+          (planned) => planned.kind !== 'partner' && planned.target === id,
+        )
+        .map((planned) => planned.source);
+    expect(parentsOf('ego')).toEqual(['new-1', 'new-2']);
+    expect(parentsOf('added')).toEqual(['new-1']);
+  });
+
+  test('a sibling can share a parent not yet shown', () => {
+    const family = readFamily(
+      [person('ego'), person('mum')],
+      [link('mum', 'ego', 'biological')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: [],
+      unshownSharedParents: 1,
+    });
+    expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1']);
+    expect(result.links).toEqual([
+      { source: 'new-1', target: 'ego', kind: 'biological' },
+      {
+        source: 'mum',
+        target: 'new-1',
+        kind: 'partner',
+        isCurrentPartner: true,
+      },
+      { source: 'new-1', target: 'added', kind: 'biological' },
+    ]);
+  });
+
   test('a half sibling shares only the chosen parent, with the same kind', () => {
     const result = plan(nuclearFamily(), 'ego', {
       relation: 'sibling',
       sharedParentIds: ['mum'],
+      unshownSharedParents: 0,
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },

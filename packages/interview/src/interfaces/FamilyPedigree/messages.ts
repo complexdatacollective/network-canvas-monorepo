@@ -448,14 +448,14 @@ export const messages = defineMessages({
   itemSiblings: {
     id: 'interview.familyPedigree.itemSiblings',
     defaultMessage:
-      '{isYou, select, true {Add your brothers and sisters, or say you have none} other {Add brothers and sisters for “{name}”, or say they have none}}',
+      '{isYou, select, true {Add your biological brothers and sisters, or say you have none} other {Add biological brothers and sisters for “{name}”, or say they have none}}',
     description:
       'Item in the list of family members still needed: the person’s siblings (including half-siblings), or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
   },
   itemChildren: {
     id: 'interview.familyPedigree.itemChildren',
     defaultMessage:
-      '{isYou, select, true {Add your children, or say you have none} other {Add children for “{name}”, or say they have none}}',
+      '{isYou, select, true {Add your biological children, or say you have none} other {Add biological children for “{name}”, or say they have none}}',
     description:
       'Item in the list of family members still needed: the person’s biological children, or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
   },
@@ -475,7 +475,7 @@ export const messages = defineMessages({
   hasSiblingsQuestion: {
     id: 'interview.familyPedigree.hasSiblingsQuestion',
     defaultMessage:
-      '{isYou, select, true {Do you have any brothers or sisters?} other {Does {name} have any brothers or sisters?}}',
+      '{isYou, select, true {Do you have any biological brothers or sisters, including half-brothers and half-sisters?} other {Does {name} have any biological brothers or sisters, including half-brothers and half-sisters?}}',
     description:
       'Question in a family member’s details. Answering yes means the participant will add them to the family tree. Includes half-siblings who share one biological parent.',
   },
@@ -680,5 +680,50 @@ export const messages = defineMessages({
       '{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}',
     description:
       'Option: both parents of the new child are its biological parents. first and second are their names or how they are related to the participant.',
+  },
+  trackerAnswerNone: {
+    id: 'interview.familyPedigree.trackerAnswerNone',
+    defaultMessage: 'None',
+    description:
+      'Button under an item in the list of family members still needed, for siblings or children: there are none. The item’s text names the person and the relatives.',
+  },
+  siblingsAnsweredAnnouncement: {
+    id: 'interview.familyPedigree.siblingsAnsweredAnnouncement',
+    defaultMessage:
+      '{answer, select, none {{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}} other {{isYou, select, true {Recorded that you don’t know whether you have biological brothers or sisters.} other {Recorded that you don’t know whether “{name}” has biological brothers or sisters.}}}}',
+    description:
+      'Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings or that the participant does not know. name is the person’s name or how they are related to the participant.',
+  },
+  childrenAnsweredAnnouncement: {
+    id: 'interview.familyPedigree.childrenAnsweredAnnouncement',
+    defaultMessage:
+      '{answer, select, none {{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}} other {{isYou, select, true {Recorded that you don’t know whether you have biological children.} other {Recorded that you don’t know whether “{name}” has biological children.}}}}',
+    description:
+      'Screen reader announcement after answering, from the list of family members still needed, that a person has no children or that the participant does not know. name is the person’s name or how they are related to the participant.',
+  },
+  sharedParentCountLabel: {
+    id: 'interview.familyPedigree.sharedParentCountLabel',
+    defaultMessage:
+      '{isYou, select, true {How many parents do they share with you?} other {How many parents do they share with “{name}”?}}',
+    description:
+      'Question in the side panel for adding a sibling to someone with no parents yet. name is that person’s name or how they are related to the participant.',
+  },
+  sharedParentCountBoth: {
+    id: 'interview.familyPedigree.sharedParentCountBoth',
+    defaultMessage: 'Both parents',
+    description:
+      'Option: the new sibling shares both parents (a full sibling).',
+  },
+  sharedParentCountOne: {
+    id: 'interview.familyPedigree.sharedParentCountOne',
+    defaultMessage: 'One parent',
+    description: 'Option: the new sibling shares one parent (a half-sibling).',
+  },
+  sharedParentUnshown: {
+    id: 'interview.familyPedigree.sharedParentUnshown',
+    defaultMessage:
+      '{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}',
+    description:
+      'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them.',
   },
 });
