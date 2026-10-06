@@ -492,21 +492,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // side panel leaves uncovered. Someone being added, and the panel itself,
   // are drawn a moment after the panel opens, so this waits for both.
   // Closing the panel takes back the room made for it: the person moves to
-  // the middle of the whole canvas, unless the participant has since moved
-  // the view themselves. Someone whose addition was cancelled is gone by
-  // then, so the person they were being added to takes their place.
+  // the middle of the whole canvas. (While it is open, the panel holds
+  // pointer input away from the canvas, so the view is as it left it.)
+  // Someone whose addition was cancelled is gone by then, so the person they
+  // were being added to takes their place.
   const panelAnchorId =
     panel?.mode.kind === 'add' ? panel.mode.anchor.id : selectedId;
-  const panelCentred = useRef<{
-    id: string;
-    anchorId: string;
-    moves: number;
-  } | null>(null);
+  const panelCentred = useRef<{ id: string; anchorId: string } | null>(null);
   useEffect(() => {
     if (!selectedId) {
       const centred = panelCentred.current;
       panelCentred.current = null;
-      if (!centred || panZoom.userMoveCount() !== centred.moves) return;
+      if (!centred) return;
       const element =
         nodeRefs.current.get(centred.id) ??
         nodeRefs.current.get(centred.anchorId);
@@ -534,7 +531,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       panelCentred.current = {
         id: selectedId,
         anchorId: panelAnchorId ?? selectedId,
-        moves: panZoom.userMoveCount(),
       };
     };
     frame = requestAnimationFrame(centre);
@@ -1354,7 +1350,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   }}
                 >
                   <ToolbarButton
-                    className="flex-col gap-0.5 px-3 text-xs [&>.lucide]:h-5"
+                    className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
                     value="pointer"
                     icon={<MousePointer2 />}
                     data-testid="pedigree-tool-pointer"
@@ -1362,7 +1358,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     {intl.formatMessage(messages.pointerTool)}
                   </ToolbarButton>
                   <ToolbarButton
-                    className="flex-col gap-0.5 px-3 text-xs [&>.lucide]:h-5"
+                    className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
                     value="connect"
                     icon={<Waypoints />}
                     data-testid="pedigree-tool-connect"
@@ -1370,7 +1366,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     {intl.formatMessage(messages.connectTool)}
                   </ToolbarButton>
                   <ToolbarButton
-                    className="flex-col gap-0.5 px-3 text-xs [&>.lucide]:h-5"
+                    className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
                     value="disconnect"
                     icon={<Unlink />}
                     data-testid="pedigree-tool-disconnect"

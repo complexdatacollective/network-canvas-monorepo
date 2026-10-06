@@ -264,8 +264,7 @@ const offCentre = (element: HTMLElement, canvasElement: HTMLElement) => {
 
 /**
  * Opening someone's details moves them beside the panel; closing it moves
- * them back to the middle of the canvas. If the participant has moved the
- * view themselves meanwhile, it stays where they left it.
+ * them back to the middle of the canvas.
  */
 export const PanelClosesRecentred: Story = {
   render: (args) => (
@@ -278,8 +277,6 @@ export const PanelClosesRecentred: Story = {
       canvasElement.ownerDocument.querySelector(
         '[data-testid="pedigree-person-panel"]',
       );
-    // The family opens whole; let its first fit settle.
-    await new Promise((resolve) => setTimeout(resolve, 600));
 
     await userEvent.click(father);
     await waitFor(() => expect(panel()).not.toBeNull());
@@ -298,36 +295,6 @@ export const PanelClosesRecentred: Story = {
       { timeout: 3000 },
     );
     await waitFor(() => expect(panel()).toBeNull());
-
-    // Zoomed by the participant while the panel is open, closing leaves the
-    // view alone. (The open panel holds pointer input away from the canvas,
-    // so this wheel is sent to the canvas directly.)
-    await userEvent.click(father);
-    await waitFor(() => expect(panel()).not.toBeNull());
-    await waitFor(
-      () => expect(offCentre(father, canvasElement).x).toBeLessThan(-100),
-      { timeout: 3000 },
-    );
-    const viewport = canvas.getByTestId('pedigree-canvas');
-    const box = viewport.getBoundingClientRect();
-    fireEvent.wheel(viewport, {
-      deltaY: 100,
-      deltaMode: 0,
-      clientX: box.left + 20,
-      clientY: box.top + box.height / 2,
-    });
-    // The zoom reaches the page on the next frame.
-    const transform = () =>
-      getComputedStyle(viewport.lastElementChild as HTMLElement).transform;
-    const zoomedFrom = transform();
-    await waitFor(() => expect(transform()).not.toBe(zoomedFrom));
-    const beforeClose = offCentre(father, canvasElement);
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(panel()).toBeNull());
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    const afterClose = offCentre(father, canvasElement);
-    await expect(Math.abs(afterClose.x - beforeClose.x)).toBeLessThan(2);
-    await expect(Math.abs(afterClose.y - beforeClose.y)).toBeLessThan(2);
   },
 };
 
