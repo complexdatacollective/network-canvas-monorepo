@@ -4,7 +4,7 @@
 # closed while it ran.
 #
 #   apps/studio/release-test/run.sh              # build, then runs A and B (and C)
-#   apps/studio/release-test/run.sh --skip-build # reuse .work/images.env
+#   apps/studio/release-test/run.sh --skip-build # reuse $WORK_DIR/images.env
 #   apps/studio/release-test/run.sh --runs A     # one run
 #
 # Runs, each on a fresh stack torn down afterwards:

@@ -4,7 +4,7 @@
 #
 #   apps/studio/release-test/build.sh
 #
-# Writes .work/images.env:
+# Writes $WORK_DIR/images.env (lib.sh; outside the checkout):
 #
 #   CANDIDATE_API / CANDIDATE_WEB   this checkout, built by stack-test/build.sh
 #   CODE_API / CODE_WEB             the same images plus one LABEL: new digests,

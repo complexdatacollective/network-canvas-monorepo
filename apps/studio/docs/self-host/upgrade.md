@@ -31,7 +31,7 @@ Then confirm the instance is back:
 
 ```bash
 curl https://studio.example.org/readyz
-# {"status":"ok","checks":{"db":"ok","limiter":"ok","auth":"ok","objectStore":"ok","schema":"ok","maintenance":"ok"}}
+# {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok"}}
 ```
 
 This block is not only documentation. Studio's release test runs these lines
@@ -44,7 +44,10 @@ Step by step:
 1. **`maintenance on`** closes the instance to users. Every API, RPC, WebSocket
    and storage request except `/healthz` and `/readyz` receives the maintenance
    page with 503, no procedure runs, and the worker stops fetching jobs while
-   in-flight ones finish. `--no-deps` because this only writes a flag to the
+   in-flight ones finish. The API reads the flag within a second; the worker
+   checks it every second, so it can claim a job for up to about two seconds
+   after the command returns — a job that then runs to completion, like any
+   other in flight. `--no-deps` because this only writes a flag to the
    database: it needs no other service started on its account. A reason is
    optional — `maintenance on Upgrading to 1.4` — and `/readyz` repeats it.
 2. **Back up.** Now, while nothing is writing. [Back up and

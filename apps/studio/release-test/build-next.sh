@@ -11,7 +11,7 @@
 # hand-written backfill (next-backfill.sql) sealed into the new directory with
 # `migrate:generate --seal`. The result is the next numbered migration with a
 # delta, a backfill and changed sidecars, built into a studio-api image and
-# pushed to the lane's registry as NEXT_API in .work/images.env.
+# pushed to the lane's registry as NEXT_API in $WORK_DIR/images.env.
 #
 # Needs this checkout's installed dependencies: the generator is drizzle-kit,
 # which no image carries. That is the release author's toolchain, not the
