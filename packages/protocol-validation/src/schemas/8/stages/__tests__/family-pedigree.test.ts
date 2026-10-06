@@ -84,6 +84,17 @@ describe('familyPedigreeStage', () => {
     expect(familyPedigreeStage.safeParse(base).success).toBe(true);
   });
 
+  it('accepts each framing, or leaving it to the participant', () => {
+    for (const framing of ['gendered', 'gamete', 'participantPreference']) {
+      expect(familyPedigreeStage.safeParse({ ...base, framing }).success).toBe(
+        true,
+      );
+    }
+    expect(
+      familyPedigreeStage.safeParse({ ...base, framing: 'neutral' }).success,
+    ).toBe(false);
+  });
+
   it('accepts researcher-defined person fields', () => {
     expect(
       familyPedigreeStage.safeParse({

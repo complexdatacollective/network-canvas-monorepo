@@ -5,7 +5,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type {
-  FramingId,
+  FramingSetting,
   PedigreeCompletenessScope,
   PedigreeGenderIdentity,
   PedigreeRelationshipKind,
@@ -50,7 +50,7 @@ type StoryOptions = {
   family?: Family;
   withFormFields?: boolean;
   completeness?: Completeness;
-  framing?: FramingId;
+  framing?: FramingSetting;
 };
 
 function buildInterview({
@@ -132,7 +132,7 @@ function PedigreeStory({
 }
 
 type StoryArgs = {
-  framing: FramingId;
+  framing: FramingSetting;
   requirement: PedigreeCompletenessScope | 'none';
   enforcement: Completeness['enforcement'];
 };
@@ -150,9 +150,9 @@ const meta: Meta<StoryArgs> = {
   argTypes: {
     framing: {
       control: 'inline-radio',
-      options: ['gendered', 'gamete'],
+      options: ['gendered', 'gamete', 'participantPreference'],
       description:
-        'The words unnamed family members are described by. gendered: mother, father, grandmother… · gamete: egg parent, sperm parent, grandparent…',
+        'The words unnamed family members are described by. gendered: mother, father, grandmother… · gamete: egg parent, sperm parent, grandparent… · participantPreference: the participant chooses between them when they first reach the stage',
     },
     requirement: {
       control: 'select',
@@ -209,6 +209,60 @@ export const FirstVisit: Story = {
         canvas.getByTestId(`pedigree-menu-${relation}`),
       ).toBeVisible();
     }
+  },
+};
+
+/**
+ * The stage leaves the framing to the participant, who is asked which words
+ * to use before anything else. The dialog cannot be dismissed, and Continue
+ * waits for a choice. The answer is kept in the stage's metadata, so it is
+ * asked only once.
+ */
+export const ParticipantChoosesFraming: Story = {
+  args: { framing: 'participantPreference' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          { id: 'ego', name: 'Ari', gender: 'nonBinary', ego: true },
+          { id: 'mum', gender: 'woman', sex: 'female' },
+          { id: 'dad', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    // The dialog is portalled outside the story's root.
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole('dialog', {
+      name: 'How should we describe your family?',
+    });
+    const proceed = within(dialog).getByRole('button', { name: 'Continue' });
+    await expect(proceed).toBeDisabled();
+    await userEvent.click(
+      within(dialog).getByRole('option', {
+        name: /Egg parent, sperm parent, sibling/,
+      }),
+    );
+    await userEvent.click(proceed);
+    await waitFor(() =>
+      expect(
+        body.queryByRole('dialog', {
+          name: 'How should we describe your family?',
+        }),
+      ).toBeNull(),
+    );
+    // Unnamed parents are now described by the gamete they gave.
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: /^Egg parent/ }),
+    ).toBeVisible();
   },
 };
 

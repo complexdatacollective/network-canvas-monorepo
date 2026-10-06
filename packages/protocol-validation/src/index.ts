@@ -73,7 +73,9 @@ export * from './schemas/index.ts';
 // version it targets defines.
 export {
   FRAMING_IDS,
+  FRAMING_SETTINGS,
   type FramingId,
+  type FramingSetting,
   PEDIGREE_COMPLETENESS_SCOPES,
   PEDIGREE_GENDER_IDENTITIES,
   PEDIGREE_GENDER_IDENTITY_OPTIONS,

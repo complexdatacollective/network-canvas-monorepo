@@ -23,9 +23,11 @@ import {
   ToolbarSeparator,
   ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import type { FramingId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  isFamilyPedigreeStageMetadata,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -41,6 +43,7 @@ import {
   getNetworkEdges,
   getNetworkNodes,
   getNodeColorSelector,
+  getStageMetadata,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import {
@@ -50,6 +53,7 @@ import {
   deleteNode,
   updateEdge,
   updateNode,
+  updateStageMetadata,
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
@@ -63,6 +67,7 @@ import AddRelativeMenu from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
 import ConnectMenu, { type ConnectPair } from './components/ConnectMenu';
 import ConnectorPreview from './components/ConnectorPreview';
+import FramingChoiceDialog from './components/FramingChoiceDialog';
 import PersonDrawer from './components/PersonDrawer';
 import PersonForm, {
   type PersonDraft,
@@ -303,8 +308,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
 
   // A person is shown by name, or by how they are related to the participant
-  // when their name is not known.
-  const framing = stage.framing ?? 'gendered';
+  // when their name is not known, in the words of the stage's framing. A
+  // stage may leave the framing to the participant, who is asked once; until
+  // they answer, the words that assume no gender are used.
+  const stageMetadata = useStageSelector(getStageMetadata);
+  const chosenFraming = isFamilyPedigreeStageMetadata(stageMetadata)
+    ? stageMetadata.framing
+    : undefined;
+  const framingSetting = stage.framing ?? 'gendered';
+  const askFraming =
+    framingSetting === 'participantPreference' && chosenFraming === undefined;
+  const framing =
+    framingSetting === 'participantPreference'
+      ? (chosenFraming ?? 'gamete')
+      : framingSetting;
+  const chooseFraming = useCallback(
+    (chosen: FramingId) => {
+      dispatch(
+        updateStageMetadata({ currentStep, metadata: { framing: chosen } }),
+      );
+    },
+    [dispatch, currentStep],
+  );
   const labels = useMemo(() => labelFamily(shown, framing), [shown, framing]);
   const displayName = useCallback(
     (personId: string) => {
@@ -950,6 +975,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         />
       </div>
       {measurementContainer}
+      <FramingChoiceDialog open={askFraming} onChoose={chooseFraming} />
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div
           role="region"

@@ -334,6 +334,51 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
   },
+  framingChoiceTitle: {
+    id: 'interview.familyPedigree.framingChoiceTitle',
+    defaultMessage: 'How should we describe your family?',
+    description:
+      'Title of a dialog shown when the participant first reaches the family pedigree, asking which words to use for family members.',
+  },
+  framingChoiceDescription: {
+    id: 'interview.familyPedigree.framingChoiceDescription',
+    defaultMessage:
+      'Choose the words you would like us to use for the people in your family. Either way, you will be asked about the same people.',
+    description:
+      'Explanation under the title of the dialog asking which words to use for family members.',
+  },
+  framingChoiceGendered: {
+    id: 'interview.familyPedigree.framingChoiceGendered',
+    defaultMessage: 'Mother, father, sister, brother',
+    description:
+      'Option in the dialog asking which words to use for family members: the usual words, chosen by each person’s gender.',
+  },
+  framingChoiceGenderedDescription: {
+    id: 'interview.familyPedigree.framingChoiceGenderedDescription',
+    defaultMessage:
+      'Words that follow each person’s gender, such as grandmother, uncle or niece. Anyone who is neither a woman nor a man is described with words like parent or sibling.',
+    description:
+      'Explanation of the option to describe family members by their gender.',
+  },
+  framingChoiceGamete: {
+    id: 'interview.familyPedigree.framingChoiceGamete',
+    defaultMessage: 'Egg parent, sperm parent, sibling',
+    description:
+      'Option in the dialog asking which words to use for family members: words that do not depend on anyone’s gender.',
+  },
+  framingChoiceGameteDescription: {
+    id: 'interview.familyPedigree.framingChoiceGameteDescription',
+    defaultMessage:
+      'Words that do not depend on anyone’s gender. Biological parents are described by whether they gave the egg or the sperm, and everyone else with words like grandparent or parent’s sibling.',
+    description:
+      'Explanation of the option to describe family members without reference to gender.',
+  },
+  framingChoiceContinue: {
+    id: 'interview.familyPedigree.framingChoiceContinue',
+    defaultMessage: 'Continue',
+    description:
+      'Button that confirms the chosen words for family members and closes the dialog.',
+  },
   siblingKindLabel: {
     id: 'interview.familyPedigree.siblingKindLabel',
     defaultMessage: 'To the parents they share, are they…',

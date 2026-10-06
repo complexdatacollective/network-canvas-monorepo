@@ -195,3 +195,15 @@ export type PedigreeCompletenessScope =
 export const FRAMING_IDS = ['gendered', 'gamete'] as const;
 
 export type FramingId = (typeof FRAMING_IDS)[number];
+
+/**
+ * The stage's framing setting: one of the framings, or
+ * `participantPreference`, which asks the participant to choose between them
+ * when they first reach the stage.
+ */
+export const FRAMING_SETTINGS = [
+  ...FRAMING_IDS,
+  'participantPreference',
+] as const;
+
+export type FramingSetting = (typeof FRAMING_SETTINGS)[number];

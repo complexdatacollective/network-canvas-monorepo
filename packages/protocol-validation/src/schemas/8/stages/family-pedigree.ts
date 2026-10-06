@@ -7,7 +7,7 @@ import {
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import {
-  FRAMING_IDS,
+  FRAMING_SETTINGS,
   PEDIGREE_COMPLETENESS_SCOPES,
 } from '../family-pedigree-values.ts';
 import { baseStageSchema } from './base.ts';
@@ -145,8 +145,9 @@ export const familyPedigreeStage = baseStageSchema.extend({
   prompt: z.string().min(1),
   personAttributes: PersonAttributesSchema,
   relationship: RelationshipConfigSchema,
-  // Which words describe family members. Absent: `gendered`.
-  framing: z.enum(FRAMING_IDS).optional(),
+  // Which words describe family members, or `participantPreference` to let
+  // the participant choose. Absent: `gendered`.
+  framing: z.enum(FRAMING_SETTINGS).optional(),
   // Absent: the participant may continue with any family they have drawn.
   completeness: CompletenessSchema.optional(),
   // Researcher-defined person fields, asked after the interface's own.

@@ -20,9 +20,20 @@ const NetworkComposerStageMetadataSchema = z.object({
   automaticLayout: z.boolean(),
 });
 
+// FamilyPedigree persists the framing a participant chose, when the stage lets
+// them choose (`framing: 'participantPreference'`), so they are asked once.
+// The values are schema 8's FRAMING_IDS, which this package cannot import.
+const FamilyPedigreeStageMetadataSchema = z.object({
+  framing: z.enum(['gendered', 'gamete']),
+});
+
 export const StageMetadataSchema = z.record(
   z.string(), // stage ID
-  z.union([DyadCensusStageMetadataSchema, NetworkComposerStageMetadataSchema]),
+  z.union([
+    DyadCensusStageMetadataSchema,
+    NetworkComposerStageMetadataSchema,
+    FamilyPedigreeStageMetadataSchema,
+  ]),
 );
 
 export type StageMetadata = z.infer<typeof StageMetadataSchema>;
@@ -35,3 +46,9 @@ export const isNetworkComposerStageMetadata = (
   value: unknown,
 ): value is z.infer<typeof NetworkComposerStageMetadataSchema> =>
   NetworkComposerStageMetadataSchema.safeParse(value).success;
+
+// Validate-and-narrow a persisted metadata entry to the FamilyPedigree shape.
+export const isFamilyPedigreeStageMetadata = (
+  value: unknown,
+): value is z.infer<typeof FamilyPedigreeStageMetadataSchema> =>
+  FamilyPedigreeStageMetadataSchema.safeParse(value).success;
