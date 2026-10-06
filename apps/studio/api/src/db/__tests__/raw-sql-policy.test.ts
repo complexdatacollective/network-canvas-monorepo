@@ -245,7 +245,27 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   },
   [`${SERVER}/db/migrate.ts › db.migrate`]: {
     count: 3,
-    why: 'the session advisory lock, its release, and the split schema install',
+    why: 'the session advisory lock, its release, and each split statement of a pending migration’s artefacts',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.probe`]: {
+    count: 1,
+    why: '`to_regclass` over the history table, the stamp and a runtime-built identifier list (no FROM)',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.readStamp`]: {
+    count: 1,
+    why: 'the stamp read the probe gates, on a table that may not exist yet when the module is written',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.assertRole`]: {
+    count: 1,
+    why: '`current_user` against `session_user` after each artefact (no FROM), so a backfill cannot leave the upgrade running as another role',
+  },
+  [`${SERVER}/db/history.ts › db.history.create`]: {
+    count: 1,
+    why: '`CREATE TABLE IF NOT EXISTS public.studio_migrations`: DDL for a table kept outside SCHEMA, which drizzle-kit therefore never renders',
+  },
+  [`${SERVER}/db/history.ts › db.history.revoke`]: {
+    count: 1,
+    why: '`REVOKE ALL` on the history table from both application roles: DCL, which the builder has no form for',
   },
   [`${SERVER}/db/schema.ts › db.checkSchema`]: {
     count: 2,
@@ -350,8 +370,8 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the node-postgres `installJobSchema`, over the same split statement list as the Effect path',
   },
   [`${SCRIPTS}/apply.ts`]: {
-    count: 16,
-    why: 'the node-postgres schema apply and local reset: the advisory lock and its release, the stamp probe and clear, the sidecars, the transaction around the job schema and stamp, the schema drops, and the scratch sweep over `pg_namespace` and `pg_database`',
+    count: 18,
+    why: 'the node-postgres schema apply and local reset: the advisory lock and its release, the migration-history probe and count that refuse a migrated database, the stamp probe and clear, the sidecars, the transaction around the job schema and stamp, the schema drops, and the scratch sweep over `pg_namespace` and `pg_database`',
   },
   [`${SCRIPTS}/protocol-demo.ts`]: {
     count: 1,
@@ -384,6 +404,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   [`${SCRIPTS}/seed/teams.ts`]: {
     count: 3,
     why: 'the seed’s installation row and better-auth credential accounts, whose quoted camel-case columns the seed writes directly',
+  },
+  [`${SERVER}/__tests__/support/migrations.ts`]: {
+    count: 3,
+    why: 'the non-superuser owner login the runner suites connect as, and the scratch databases it owns: bootstrap, create and drop',
   },
   [`${SERVER}/__tests__/support/postgres.ts`]: {
     count: 4,

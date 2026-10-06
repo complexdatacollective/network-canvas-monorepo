@@ -142,6 +142,27 @@ describe('every entry', () => {
       expect(packages.has('redis'), entry).toBe(false);
     }
   });
+  it('carries none of the checkout lane: no drizzle-kit, no schema scripts', () => {
+    // The image installs production dependencies only; the scripts that push,
+    // render and generate the schema run from a checkout (#1901 step 6).
+    const CHECKOUT_LANE = [
+      'drizzle-kit',
+      'drizzle-kit/api-postgres',
+      'scripts/apply.ts',
+      'scripts/apply-schema.ts',
+      'scripts/render-migrations.ts',
+      'scripts/migrate-generate.ts',
+    ];
+    for (const entry of Object.keys(ENTRIES)) {
+      const graph = moduleGraph(entry);
+      expect(graph.modules.size, entry).toBeGreaterThan(1);
+      expect(reached(graph, CHECKOUT_LANE), entry).toEqual([]);
+      expect(
+        [...graph.modules].filter((path) => path.startsWith('scripts/')),
+        entry,
+      ).toEqual([]);
+    }
+  });
   it('reaches no Hono, no oRPC and no WebSocket library of its own', () => {
     for (const entry of Object.keys(ENTRIES)) {
       expect([...moduleGraph(entry).packages].filter(foreign), entry).toEqual(
@@ -449,8 +470,16 @@ describe('the migrate process', () => {
         'drizzle-kit',
         'drizzle-kit/api-postgres',
         'scripts/apply.ts',
+        'scripts/render-migrations.ts',
+        'scripts/migrate-generate.ts',
       ]),
     ).toEqual([]);
+  });
+
+  it('verifies and records the migrations it applies', () => {
+    expect(
+      reached(graph, ['src/db/migrations-document.ts', 'src/db/history.ts']),
+    ).toEqual(['src/db/migrations-document.ts', 'src/db/history.ts']);
   });
 
   it('serves nothing', () => {
