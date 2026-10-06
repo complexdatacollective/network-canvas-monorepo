@@ -5,12 +5,16 @@ import { TestClock } from 'effect/testing';
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
 import { MaintenanceState } from '../../platform/maintenance-state.ts';
+import { applyMaintenanceWindow } from '../../programs/maintenance.ts';
 import { JobMaintenanceGate } from '../maintenance.ts';
 import { JobWorker } from '../worker.ts';
 import {
   awaitJobState,
+  awaitTrue,
   clearQueue,
   enqueueDelivery,
+  enqueueSweep,
+  layerDeliveryHarness,
   layerJobs,
   layerQueueHarness,
   layerWorker,
@@ -164,3 +168,127 @@ describe.skipIf(!db)('the maintenance gate', () => {
     );
   });
 });
+
+/**
+ * How long a job enqueued during the window is left unclaimed before the case
+ * says nobody claimed it. A negative assertion has no event to await, so a
+ * bounded wait is the oracle: twenty of the worker's 50 ms polls and twenty of
+ * the gate's, which a worker still fetching would not survive (it claims within
+ * one poll).
+ */
+const WINDOW = Duration.seconds(1);
+
+/**
+ * #1901 step 8, end to end in one process: the flag is the `deployment_state`
+ * row, written by the `maintenance on|off` program's own effect and read back
+ * through the worker's `MaintenanceState.layerMaintenance` (one-second cache),
+ * driving a real background worker. Nothing is a control ref.
+ */
+describe.skipIf(!db)(
+  'the maintenance window, over the deployment state',
+  () => {
+    layer(layerDeliveryHarness, { excludeTestServices: true })(
+      'with a running worker',
+      (it) => {
+        it.effect(
+          'finishes the job in flight, holds the one enqueued in the window, and works it once the flag clears, without a restart',
+          () => {
+            const logs = collectLogs();
+            return Effect.gen(function* () {
+              yield* clearQueue;
+              const started = yield* Deferred.make<void>();
+              const release = yield* Deferred.make<void>();
+
+              yield* Effect.gen(function* () {
+                const worker = yield* JobWorker;
+                yield* worker.work('invitation-delivery', () =>
+                  Effect.gen(function* () {
+                    yield* Deferred.succeed(started, undefined);
+                    yield* Deferred.await(release);
+                    return 'completed' as const;
+                  }),
+                );
+                yield* worker.work('denied-attempts-summary', () =>
+                  Effect.succeed('completed' as const),
+                );
+                yield* Layer.build(
+                  JobMaintenanceGate.layer({
+                    pollInterval: Duration.millis(50),
+                  }),
+                ).pipe(Effect.provide(MaintenanceState.layerMaintenance));
+
+                // A job in flight when the window opens.
+                yield* enqueueDelivery();
+                yield* Deferred.await(started).pipe(
+                  Effect.timeout(Duration.seconds(5)),
+                );
+
+                yield* applyMaintenanceWindow({
+                  maintenance: true,
+                  reason: 'Upgrading',
+                });
+                const paused = yield* awaitTrue(
+                  Effect.sync(() =>
+                    logs.messages.some((line) =>
+                      line.includes('stopped claiming jobs'),
+                    ),
+                  ),
+                  Duration.seconds(5),
+                );
+                assert.isTrue(Option.isSome(paused), 'the gate never paused');
+
+                // A job enqueued during the window is not claimed while it lasts.
+                yield* enqueueSweep;
+                yield* Effect.sleep(WINDOW);
+                const [held] = yield* readJobs('denied-attempts-summary');
+                assert.strictEqual(held?.state, 'created');
+                assert.strictEqual(held?.attempts, 0);
+
+                // The job in flight finishes inside the window.
+                yield* Deferred.succeed(release, undefined);
+                const finished = yield* awaitJobState(
+                  'invitation-delivery',
+                  'completed',
+                  Duration.seconds(5),
+                );
+                assert.isTrue(
+                  Option.isSome(finished),
+                  'the job in flight did not finish during the window',
+                );
+                const [stillHeld] = yield* readJobs('denied-attempts-summary');
+                assert.strictEqual(stillHeld?.state, 'created');
+
+                // Clearing the flag resumes this same worker.
+                yield* applyMaintenanceWindow({ maintenance: false });
+                const worked = yield* awaitJobState(
+                  'denied-attempts-summary',
+                  'completed',
+                  Duration.seconds(10),
+                );
+                assert.isTrue(
+                  Option.isSome(worked),
+                  'the job enqueued during the window was never worked',
+                );
+                assert.isTrue(
+                  logs.messages.some((line) =>
+                    line.includes('maintenance is over'),
+                  ),
+                );
+              }).pipe(
+                Effect.scoped,
+                Effect.provide(
+                  layerWorker({
+                    background: true,
+                    listen: false,
+                    pollInterval: Duration.millis(50),
+                  }),
+                ),
+              );
+            }).pipe(Effect.provide(logs.layer));
+          },
+          30_000,
+        );
+      },
+    );
+  },
+);

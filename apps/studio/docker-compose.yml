@@ -307,9 +307,13 @@ services:
       garage:
         condition: service_started
 
-  # `docker compose run --rm migrate`. Creates this build's schema in an empty
-  # database, is a no-op against a current one, and refuses one another build
-  # created. On an instance that still has no owner it also prints the
+  # `docker compose run --rm migrate`. Applies, in one transaction, every
+  # migration this image carries that the database has not recorded: all of
+  # them to an empty database, none to a current one. It refuses, changing
+  # nothing, a database a newer release migrated, one whose recorded history
+  # differs from the image's, or one with Studio's tables and no history; the
+  # message names the remedy. The upgrade sequence is
+  # docs/self-host/upgrade.md. On an instance that still has no owner it also prints the
   # first-run setup token, so its output is worth reading rather than only its
   # exit code. It bootstraps Garage first, through the dependency below, so a
   # first run is one command.

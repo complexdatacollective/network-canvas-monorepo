@@ -233,8 +233,11 @@ table missing a column this build expects would fail at the claim rather than
 at boot.
 
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
-  `mismatch` or `unstamped`). A database carrying the tables with no
-  fingerprint is refused rather than adopted: the SQL that built it is unknown.
+  `mismatch` or `unstamped`). Anything but `current` keeps the process closed
+  (`platform/schema-gate.ts`) until it is: the API answers with the maintenance
+  page and the worker claims nothing. A database carrying the tables with no
+  fingerprint is never adopted — the SQL that built it is unknown — and
+  `migrate` refuses it.
 
 Test suites take a different path. `TestDatabaseLive`
 (`src/__tests__/support/database.ts`) runs the composed statements into a
