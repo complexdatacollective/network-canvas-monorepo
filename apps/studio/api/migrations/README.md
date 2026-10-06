@@ -300,11 +300,25 @@ so the generator, `--seal`, the build and `migrate` itself refuse:
 - `SET CONSTRAINTS ALL`, which would change the constraints of every later
   file in the transaction (see [Backfills](#backfills)); name the constraints.
 
-For an index, create it normally in the migration; if a table is large enough
-that the lock matters, say so in `NOTES.md` for operators to build it
-concurrently first. For a new
-enum value, change the column to `text` with a CHECK, or create a new type and
-switch to it.
+For an index, create it normally in the migration. The instance is closed for
+the whole upgrade, so the build's lock blocks nobody; on a large table it
+lengthens the maintenance window instead. To keep a long build out of the
+window, the migration's statement must tolerate an index that already exists,
+which the generator's does not:
+
+1. Write the migration by hand ([above](#writing-a-migration-by-hand)), with
+   `CREATE INDEX IF NOT EXISTS <name> ON …` in `delta.sql`, and seal it.
+2. In `NOTES.md`, give operators the same statement with `CONCURRENTLY` and
+   the same name and definition, to run before the upgrade.
+3. Tell them, in the same note, to check it afterwards
+   (`SELECT indisvalid FROM pg_index WHERE indexrelid = '<name>'::regclass;`)
+   and to `DROP INDEX CONCURRENTLY <name>;` if it is not valid. A concurrent
+   build that fails leaves an invalid index behind, which `IF NOT EXISTS`
+   would skip just as it skips a valid one.
+
+An instance whose operator built nothing first builds the index inside the
+window, as usual. For a new enum value, change the column to `text` with a
+CHECK, or create a new type and switch to it.
 
 ## Once merged, a migration is frozen
 
