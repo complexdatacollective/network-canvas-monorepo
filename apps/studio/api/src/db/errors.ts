@@ -147,3 +147,23 @@ export function deepestMessage(value: unknown): string | undefined {
   }
   return deepest;
 }
+
+/**
+ * What a reading taken on a timer logs when it fails: one line naming the
+ * failure, with the stack at debug, not the stack in the line. A process that
+ * waits on a database that has never been provisioned fails every such reading
+ * for as long as it waits; the schema gate has already said so once, with the
+ * remedy, so a missing role is debug as well rather than one more warning per
+ * reading, each carrying a stack trace (#1901).
+ */
+export const logFailedReading = (
+  message: string,
+  cause: Cause.Cause<unknown>,
+): Effect.Effect<void> => {
+  const reason = deepestMessage(Cause.squash(cause)) ?? 'unknown failure';
+  const line = `${message}: ${reason}`;
+  return Effect.andThen(
+    isMissingRole(cause) ? Effect.logDebug(line) : Effect.logWarning(line),
+    Effect.logDebug(Cause.pretty(cause)),
+  );
+};
