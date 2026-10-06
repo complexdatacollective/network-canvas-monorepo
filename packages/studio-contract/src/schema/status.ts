@@ -37,3 +37,18 @@ export const PublicInstanceStatus = Schema.Struct({
   version: Schema.String,
 }).annotate({ identifier: 'Status' });
 export type PublicInstanceStatus = (typeof PublicInstanceStatus)['Type'];
+
+/**
+ * The one release the instance's owner is told about (#1901). Deliberately
+ * narrow: the version, where its notes are, when it came out, and whether it
+ * changes the database, which is what decides how an upgrade can be undone.
+ * The question is answered `null` for everyone but the owner, and for an owner
+ * whose instance is already on (or ahead of) the newest release.
+ */
+export const UpdateAvailable = Schema.Struct({
+  version: Schema.String,
+  releasedAt: Schema.Date,
+  notesUrl: Schema.String,
+  schemaChange: Schema.Boolean,
+}).annotate({ identifier: 'UpdateAvailable' });
+export type UpdateAvailable = (typeof UpdateAvailable)['Type'];
