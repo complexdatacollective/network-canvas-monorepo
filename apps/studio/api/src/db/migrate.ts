@@ -198,7 +198,7 @@ const abbreviated = (statement: string): string => {
  * the runner's transaction the session is aborted and the run rolls back
  * whole; a session that still answers had already left it.
  */
-export class MigrationStatementFailed extends Schema.TaggedError<MigrationStatementFailed>()(
+class MigrationStatementFailed extends Schema.TaggedError<MigrationStatementFailed>()(
   'MigrationStatementFailed',
   {
     version: Schema.String,
