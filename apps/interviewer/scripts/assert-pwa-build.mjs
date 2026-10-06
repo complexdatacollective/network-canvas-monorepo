@@ -243,12 +243,12 @@ for (const { prefix, purpose, precache } of deferredChunks) {
 }
 
 // Faker should reach the bundle only through the synthetic generator chunk.
-// Its core module carries this documentation URL. Finding it in the initial
-// load means something imports the generator statically, or that
+// Its core module carries this deprecation-warning prefix. Finding it in the
+// initial load means something imports the generator statically, or that
 // @codaco/protocol-utilities lost `"sideEffects": false` (a module-level
 // invariant in its ValueGenerator.ts otherwise keeps faker alive). Not finding
 // it anywhere means Faker reworded the message and the marker needs updating.
-const FAKER_MARKER = 'https://fakerjs.dev/';
+const FAKER_MARKER = '[@faker-js/faker]: ';
 const fakerChunks = jsAssets.filter((f) =>
   readFileSync(path.join(assetsDir, f), 'utf8').includes(FAKER_MARKER),
 );
