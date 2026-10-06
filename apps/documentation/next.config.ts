@@ -16,6 +16,13 @@ const networkCanvasUrl =
     ? `https://deploy-preview-${process.env.REVIEW_ID}--networkcanvasdotdev.netlify.app`
     : undefined);
 
+// The year the bundle was built, inlined into every bundle so the prerendered
+// HTML and the client's hydration render the same text. Reading the clock during
+// render instead makes a static export mismatch for any visitor whose local year
+// differs from the build machine's — guaranteed for everyone from 1 January
+// until the next deploy — which React reports as the #418 hydration error.
+const buildYear = String(new Date().getFullYear());
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   ...(process.env.NODE_ENV === 'development'
@@ -43,9 +50,12 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  env: networkCanvasUrl
-    ? { NEXT_PUBLIC_NETWORK_CANVAS_URL: networkCanvasUrl }
-    : {},
+  env: {
+    ...(networkCanvasUrl
+      ? { NEXT_PUBLIC_NETWORK_CANVAS_URL: networkCanvasUrl }
+      : {}),
+    NEXT_PUBLIC_BUILD_YEAR: buildYear,
+  },
   typedRoutes: true,
   /** We already do linting and typechecking as separate tasks in CI */
   typescript: { ignoreBuildErrors: true },

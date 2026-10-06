@@ -3755,7 +3755,14 @@ jobs:
           NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
           NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
         run: |
-          pnpm exec turbo run build --filter=@codaco/documentation
+          # The footer's copyright year. It is baked into the static export, and
+          # turbo's hash covers declared environment variables rather than the
+          # clock, so without passing it a build cached before 1 January could be
+          # replayed for this deploy and publish the previous year. Declared in
+          # `turbo.json`'s `env` for this task, which is what makes it part of the
+          # cache key.
+          NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+            pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
       - name: Deploy documentation to production
         if: steps.guard.outputs.skip != 'true'
@@ -3823,7 +3830,11 @@ jobs:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
-          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+          # See the note on the documentation build: the footer year has to reach
+          # the build, or a cached export can carry the previous year across
+          # 1 January. netlify-cli runs the build here, so it is passed to that.
+          json=$(NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+                 npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
@@ -4196,7 +4207,11 @@ jobs:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
-          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+          # See the note on the documentation build: the footer year has to reach
+          # the build, or a cached export can carry the previous year across
+          # 1 January. netlify-cli runs the build here, so it is passed to that.
+          json=$(NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+                 npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
