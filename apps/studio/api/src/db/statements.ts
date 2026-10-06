@@ -195,3 +195,44 @@ export function splitStatements(script: string): readonly string[] {
   flush(script.length);
   return statements;
 }
+
+/**
+ * What Postgres reads as SQL syntax in `statement`: every comment and every
+ * quoted span — a string literal, a quoted identifier, a dollar-quoted body —
+ * becomes one space, so a keyword can be searched for without matching the
+ * same word inside a value, a name or a function body. Read by the same
+ * scanners as `splitStatements`, so the two never disagree about where a
+ * quote or a comment ends.
+ */
+export function executableText(statement: string): string {
+  let text = '';
+  let index = 0;
+  while (index < statement.length) {
+    const character = statement[index]!;
+    let end = -1;
+    if (character === '-' && statement[index + 1] === '-') {
+      end = scanLineComment(statement, index);
+    } else if (character === '/' && statement[index + 1] === '*') {
+      end = scanBlockComment(statement, index);
+    } else if (character === "'") {
+      const previous = statement[index - 1];
+      const escapes =
+        (previous === 'E' || previous === 'e') &&
+        !isNameCharacter(statement[index - 2]);
+      end = scanSingleQuoted(statement, index, escapes);
+    } else if (character === '"') {
+      end = scanDoubleQuoted(statement, index);
+    } else if (character === '$' && !isNameCharacter(statement[index - 1])) {
+      const bodyStart = dollarQuoteBodyStart(statement, index);
+      if (bodyStart !== -1) end = scanDollarQuoted(statement, index, bodyStart);
+    }
+    if (end === -1) {
+      text += character;
+      index += 1;
+    } else {
+      text += ' ';
+      index = end;
+    }
+  }
+  return text;
+}

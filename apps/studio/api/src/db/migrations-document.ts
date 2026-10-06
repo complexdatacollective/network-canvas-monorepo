@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { Schema } from 'effect';
 
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
-import { splitStatements } from './statements.ts';
+import { executableText, splitStatements } from './statements.ts';
 
 // The numbered migrations under `apps/studio/api/migrations/` reach the image
 // as one JSON document, `dist/migrations.json`, rendered at build time by
@@ -139,41 +139,6 @@ export function hashArtefacts(
   return { artefacts, combined: combinedHash(artefacts) };
 }
 
-function withoutComments(statement: string): string {
-  return statement.replace(/--[^\n\r]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
-/** Past whitespace and comments, block comments nesting as Postgres nests them. */
-function commandStart(statement: string): string {
-  let index = 0;
-  while (index < statement.length) {
-    if (/\s/.test(statement[index]!)) {
-      index += 1;
-    } else if (statement.startsWith('--', index)) {
-      // A carriage return ends the comment too, as Postgres reads it.
-      const end = statement.slice(index).search(/[\n\r]/);
-      index = end === -1 ? statement.length : index + end + 1;
-    } else if (statement.startsWith('/*', index)) {
-      let depth = 1;
-      index += 2;
-      while (index < statement.length && depth > 0) {
-        if (statement.startsWith('/*', index)) {
-          depth += 1;
-          index += 2;
-        } else if (statement.startsWith('*/', index)) {
-          depth -= 1;
-          index += 2;
-        } else {
-          index += 1;
-        }
-      }
-    } else {
-      break;
-    }
-  }
-  return statement.slice(index);
-}
-
 /**
  * Every statement that opens, ends, nests or reconfigures a transaction. The
  * runner owns the one transaction a run applies in: an inner `COMMIT` would
@@ -212,14 +177,16 @@ const NO_TRANSACTION_CONTROL =
  */
 export function forbiddenStatement(script: string): ForbiddenStatement | null {
   for (const statement of splitStatements(script)) {
-    const command = commandStart(statement);
+    // Only what Postgres executes: a keyword inside a comment, a string, a
+    // quoted name or a function body is not a command.
+    const text = executableText(statement);
+    const command = text.trimStart();
     if (TRANSACTION_CONTROL.test(command)) {
       return { statement, remedy: NO_TRANSACTION_CONTROL };
     }
     if (ALL_CONSTRAINTS.test(command)) {
       return { statement, remedy: NAME_THE_CONSTRAINTS };
     }
-    const text = withoutComments(statement);
     if (/\bCONCURRENTLY\b/i.test(text)) {
       return { statement, remedy: SPLIT_ACROSS_RELEASES };
     }

@@ -227,6 +227,31 @@ describe('the committed migrations document', () => {
     expect(forbiddenStatement(`${statement};`)).toBeNull();
   });
 
+  // Only executable SQL is classified: the same words inside a string, a
+  // quoted name or a function body are values, not commands.
+  it.each([
+    "UPDATE drafts SET note = 'run concurrently'",
+    "COMMENT ON TABLE drafts IS 'ALTER TYPE mood ADD VALUE happy'",
+    "UPDATE drafts SET note = E'built \\'concurrently\\''",
+    'SELECT 1 AS "concurrently"',
+    "CREATE FUNCTION f() RETURNS text AS $body$ SELECT 'CREATE INDEX CONCURRENTLY' $body$ LANGUAGE sql",
+  ])(
+    'admits a statement whose quoted text only mentions one: %j',
+    (statement) => {
+      expect(forbiddenStatement(`${statement};`)).toBeNull();
+    },
+  );
+
+  // A `--` inside a quoted name is not a comment, so it cannot hide the rest
+  // of the line from the check.
+  it('sees a command past a quoted name that carries a comment marker', () => {
+    expect(
+      forbiddenStatement(`ALTER TYPE "my--type" ADD VALUE 'happy';`),
+    ).toMatchObject({
+      remedy: expect.stringMatching(/split it across two releases/),
+    });
+  });
+
   // #1901 FX-7: read as one chunk, the COMMIT after a CR-only comment would
   // hide behind the comment from this check.
   it('sees a COMMIT after a comment ended by a carriage return', () => {
