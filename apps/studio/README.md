@@ -89,12 +89,11 @@ Postgres, and the audit denied-attempts window was a `Map`.
 
 There is a limit per scope, where a scope is a surface plus the kind of subject
 it is counted against: sign-in per client address and per email; invitation
-acceptance per token; participant redemption per address and per link, and
-participant sync writes per session (declared here, enforced when the
-participant routes land with #1899); RPC per user and per team; storage reads
-per address; the public API per address (an `Authorization` header is not a
-subject until a token is validated, #1899), and its reference page per address
-again; and WebSocket upgrades per user.
+acceptance per token; participant redemption per address and per participant
+link, and participant session reads and sync writes per session; RPC per user
+and per team; storage reads per address; the public API per address (an
+`Authorization` header is not a subject until a token is validated, #1899), and
+its reference page per address again; and WebSocket upgrades per user.
 
 Every limit is a constant in `api/src/rate-limit/scopes.ts` — the count, the
 window, and why that number — and none of them is configurable. They are

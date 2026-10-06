@@ -1,5 +1,6 @@
 import { AccountRpcs } from './account.ts';
 import { AuditRpcs } from './audit.ts';
+import { ParticipantRpcs } from './participant.ts';
 import { ProtocolsRpcs } from './protocols.ts';
 import { SetupRpcs } from './setup.ts';
 import { StatusRpcs } from './status.ts';
@@ -13,6 +14,7 @@ export class StudioRpcs extends StatusRpcs.merge(
   StudiesRpcs,
   ProtocolsRpcs,
   AuditRpcs,
+  ParticipantRpcs,
 ) {}
 
 export const RPC_PATH = '/rpc';

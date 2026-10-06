@@ -191,3 +191,39 @@ export const audited = <A, E, R>(
     }
     return outcome.value;
   }).pipe(Effect.withSpan(name));
+
+export type AuditedAsResult<A> = {
+  readonly actor: AuditActor['Service'];
+  readonly result: AuditedResult<A>;
+};
+
+export const auditedAs = <A, E, R>(
+  name: string,
+  access: TeamAccess,
+  body: Effect.Effect<AuditedAsResult<A>, E, R>,
+) =>
+  Effect.gen(function* () {
+    const requestId = yield* RequestId;
+    return yield* TenantScope.open(
+      access,
+      Effect.gen(function* () {
+        yield* lockTeam(access.teamId);
+        const teamLabel = yield* lockedTeamLabel(access.teamId);
+        const { actor, result } = yield* body;
+        if (result._tag === 'Unchanged') return result.value;
+
+        const context = AuditContext.of({
+          teamId: access.teamId,
+          teamLabel,
+          actorKind: actor.kind,
+          actorId: actor.id,
+          actorLabel: actor.label,
+          requestId,
+        });
+        for (const event of result.events) {
+          yield* appendRequired(context, stamp(context, event, 'succeeded'));
+        }
+        return result.value;
+      }),
+    );
+  }).pipe(Effect.withSpan(name));

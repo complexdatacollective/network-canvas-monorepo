@@ -11,6 +11,7 @@ import {
   RedeemResult,
   SessionEnded,
   SessionInput,
+  SessionOutOfDate,
   SessionPayload,
   SessionTakenOver,
   SyncInput,
@@ -26,19 +27,34 @@ const redeem = Rpc.make('participant.redeem', {
 const session = Rpc.make('participant.session', {
   payload: SessionInput,
   success: SessionPayload,
-  error: Schema.Union([SessionEnded, SessionTakenOver]),
+  error: Schema.Union([
+    SessionEnded,
+    SessionTakenOver,
+    LinkUnavailable,
+    RateLimited,
+  ]),
 });
 
 const sync = Rpc.make('participant.sync', {
   payload: SyncInput,
   success: SyncResult,
-  error: Schema.Union([SessionEnded, SessionTakenOver, RateLimited]),
+  error: Schema.Union([
+    SessionEnded,
+    SessionTakenOver,
+    LinkUnavailable,
+    RateLimited,
+  ]),
 });
 
 const finish = Rpc.make('participant.finish', {
   payload: FinishInput,
   success: FinishResult,
-  error: Schema.Union([SessionEnded, SessionTakenOver]),
+  error: Schema.Union([
+    SessionEnded,
+    SessionTakenOver,
+    SessionOutOfDate,
+    LinkUnavailable,
+  ]),
 });
 
 // Two groups: `.middleware()` applies to every rpc added so far, and

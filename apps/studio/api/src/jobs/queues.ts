@@ -107,6 +107,7 @@ const JOB_PAYLOAD_CODECS: {
   'denied-attempts-summary': codec(
     JOB_PAYLOAD_SCHEMAS['denied-attempts-summary'],
   ),
+  'session-completed': codec(JOB_PAYLOAD_SCHEMAS['session-completed']),
 };
 
 export function payloadCodec<Queue extends JobQueueName>(

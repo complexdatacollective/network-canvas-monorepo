@@ -36,6 +36,7 @@ const WORKED = [
 
 const UNWORKED = [
   'invitation-delivery-dead-letter',
+  'session-completed',
 ] as const satisfies readonly JobQueueName[];
 
 describe('the queues this deployment declares', () => {

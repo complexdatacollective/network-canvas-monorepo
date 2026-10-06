@@ -15,6 +15,7 @@ import {
   RedeemResult,
   SessionEnded,
   SessionInput,
+  SessionOutOfDate,
   SessionPayload,
   SessionTakenOver,
   SyncInput,
@@ -120,6 +121,33 @@ describe('the participant payloads', () => {
     expect(encoded).toEqual(sessionPayload);
   });
 
+  it.each([
+    ['a node id', { nodes: [{ ...network.nodes[0], _uid: 'n'.repeat(129) }] }],
+    [
+      'a node type',
+      { nodes: [{ ...network.nodes[0], type: 't'.repeat(129) }] },
+    ],
+    [
+      'an edge endpoint',
+      { edges: [{ ...network.edges[0], to: 'n'.repeat(129) }] },
+    ],
+    ['the ego id', { ego: { ...network.ego, _uid: 'e'.repeat(129) } }],
+  ])(
+    'refuses %s past the 128 characters the database stores',
+    (_label, change) => {
+      expect(() =>
+        Schema.decodeUnknownSync(SyncInput)({
+          holderEpoch: 0,
+          revision: '1',
+          stageIndex: 0,
+          stageId: null,
+          network: { ...network, ...change },
+          stageMetadata: {},
+        }),
+      ).toThrow();
+    },
+  );
+
   it('keeps the protocol document whole', () => {
     expect(roundTrips(SessionPayload, sessionPayload)).toHaveProperty(
       'protocol',
@@ -140,6 +168,11 @@ describe('the participant errors', () => {
       'LinkUnavailable',
       LinkUnavailable,
       new LinkUnavailable({ state: 'finished' }),
+    ],
+    [
+      'SessionOutOfDate',
+      SessionOutOfDate,
+      new SessionOutOfDate({ revision: '4' }),
     ],
   ] as const)('%s round-trips', (_name, schema, error) => {
     const decoded = Schema.decodeUnknownSync(schema)(

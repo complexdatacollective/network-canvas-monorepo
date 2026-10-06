@@ -51,17 +51,19 @@ export const RATE_LIMITS = {
   // link.
   invitation_accept: { max: 10, windowMs: 10 * MINUTE },
   // A lab runs several interviews from one address, so this is deliberately
-  // loose; the per-link limit below is what protects a single link. Enforced
-  // when the participant routes land (#1899).
+  // loose; the per-link limit below is what protects a participant's link.
   participant_redeem_address: { max: 20, windowMs: 10 * MINUTE },
-  // A link is redeemed once, so five covers a reload and a lost response while
-  // making a link identifier not worth guessing. Enforced when the participant
-  // routes land (#1899).
+  // A participant's own link is opened by one person, so five covers a reload
+  // and a lost response. Not charged for an anonymous link: a whole study
+  // shares it, and the per-address limit above is what protects it.
   participant_redeem_link: { max: 5, windowMs: 10 * MINUTE },
   // Ten writes a second is far above what answering questions produces and far
-  // below what a script replaying a session could. Enforced when the
-  // participant routes land (#1899).
+  // below what a script replaying a session could.
   participant_sync: { max: 600, windowMs: 1 * MINUTE },
+  // A page reads its session once, and again when its tab regains focus; each
+  // read decrypts the protocol's keys and validates it, so this is far above a
+  // person and far below a script replaying reads.
+  participant_session: { max: 60, windowMs: 1 * MINUTE },
   // The app issues a burst of calls per screen, so this is a ceiling on a
   // runaway client rather than a budget a person can feel: ten calls a second
   // sustained is more than any screen needs.

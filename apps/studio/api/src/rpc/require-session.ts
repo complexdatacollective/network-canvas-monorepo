@@ -17,6 +17,7 @@ import {
 import { Database } from '../db/client.ts';
 import { TenantScope } from '../db/tenant.ts';
 import { presentedTokenTeamAccess } from '../interview/access.ts';
+import { participantAuditActor } from '../interview/actor.ts';
 import { findSessionByTokenHash } from '../interview/store.ts';
 import { parsePresentedToken } from '../interview/token.ts';
 import { transportHeaders } from './request-headers.ts';
@@ -63,11 +64,7 @@ export const RequireSessionLive: Layer.Layer<RequireSession, never, Database> =
             ),
             Effect.provideService(
               AuditActor,
-              AuditActor.of({
-                kind: 'participant',
-                id: session.sessionId,
-                label: session.participantCode ?? session.sessionId.slice(0, 8),
-              }),
+              participantAuditActor(session.sessionId, session.participantCode),
             ),
           );
         });

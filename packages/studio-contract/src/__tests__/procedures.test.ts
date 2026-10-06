@@ -9,6 +9,10 @@ const STUDIO_TAGS = [
   'audit.get',
   'audit.list',
   'me',
+  'participant.finish',
+  'participant.redeem',
+  'participant.session',
+  'participant.sync',
   'protocols.addInformationStage',
   'protocols.create',
   'protocols.draft',
@@ -39,6 +43,10 @@ const STUDIO_MIDDLEWARE: Record<
   'audit.get': [AUTHENTICATED],
   'audit.list': [AUTHENTICATED],
   'me': [AUTHENTICATED],
+  'participant.finish': [REQUIRE_SESSION],
+  'participant.redeem': [],
+  'participant.session': [REQUIRE_SESSION],
+  'participant.sync': [REQUIRE_SESSION],
   'protocols.addInformationStage': [AUTHENTICATED],
   'protocols.create': [AUTHENTICATED, TEAM_ADMINISTRATION],
   'protocols.draft': [AUTHENTICATED],
@@ -54,13 +62,6 @@ const STUDIO_MIDDLEWARE: Record<
   'team.cancelInvitation': [AUTHENTICATED],
   'team.createInvitation': [AUTHENTICATED],
   'team.updateMemberRole': [AUTHENTICATED],
-};
-
-const PARTICIPANT_MIDDLEWARE: Record<string, ReadonlyArray<string>> = {
-  'participant.redeem': [],
-  'participant.session': [REQUIRE_SESSION],
-  'participant.sync': [REQUIRE_SESSION],
-  'participant.finish': [REQUIRE_SESSION],
 };
 
 type DeclaredRpc = {
@@ -111,18 +112,19 @@ describe('ParticipantRpcs', () => {
     ]);
   });
 
-  it.each(Object.entries(PARTICIPANT_MIDDLEWARE))(
-    'declares the expected middleware on %s',
-    (tag, expected) => {
-      expect(middlewareKeys(ParticipantRpcs.requests, tag)).toEqual([
-        ...expected,
-      ]);
-    },
-  );
+  it.each(
+    Object.entries(STUDIO_MIDDLEWARE).filter(([tag]) =>
+      tag.startsWith('participant.'),
+    ),
+  )('declares the expected middleware on %s', (tag, expected) => {
+    expect(middlewareKeys(ParticipantRpcs.requests, tag)).toEqual([
+      ...expected,
+    ]);
+  });
 
-  it('is not merged into the rpc plane, because nothing serves it yet', () => {
+  it('is merged into the rpc plane', () => {
     for (const tag of ParticipantRpcs.requests.keys()) {
-      expect(StudioRpcs.requests.has(tag)).toBe(false);
+      expect(StudioRpcs.requests.has(tag)).toBe(true);
     }
   });
 });
