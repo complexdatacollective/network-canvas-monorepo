@@ -1,10 +1,9 @@
-import { commonCatalogs } from '@codaco/app-i18n/common';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
 import {
+  createCatalogSource,
   defineAppLocales,
-  mergeCatalogs,
-  type CatalogMessages,
 } from '@codaco/app-i18n/locales';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 
 import { supportedLocales, type Locale } from './locales';
 
@@ -29,30 +28,18 @@ export const siteAppLocales = defineAppLocales(
   })),
 );
 
-export const siteAppCatalogs: Readonly<Record<Locale, CatalogMessages>> = {
-  'en-US': {},
-  'en-GB': mergeCatalogs(
-    commonCatalogs['en-GB'] ?? {},
-    frescoUiCatalogs['en-GB'] ?? {},
-  ),
-  'es': mergeCatalogs(commonCatalogs.es ?? {}, frescoUiCatalogs.es ?? {}),
-  'zh-Hans': mergeCatalogs(
-    commonCatalogs['zh-Hans'] ?? {},
-    frescoUiCatalogs['zh-Hans'] ?? {},
-  ),
-  'zh-Hant': mergeCatalogs(
-    commonCatalogs['zh-Hant'] ?? {},
-    frescoUiCatalogs['zh-Hant'] ?? {},
-  ),
-  'de': mergeCatalogs(commonCatalogs.de ?? {}, frescoUiCatalogs.de ?? {}),
-  'nl': mergeCatalogs(commonCatalogs.nl ?? {}, frescoUiCatalogs.nl ?? {}),
-  'pt-BR': mergeCatalogs(
-    commonCatalogs['pt-BR'] ?? {},
-    frescoUiCatalogs['pt-BR'] ?? {},
-  ),
-  'it': mergeCatalogs(commonCatalogs.it ?? {}, frescoUiCatalogs.it ?? {}),
-  'fr': mergeCatalogs(commonCatalogs.fr ?? {}, frescoUiCatalogs.fr ?? {}),
-};
+/**
+ * The shared-package messages the site renders (common, then fresco-ui), one
+ * locale at a time. Only the server loads from it: the locale layout hands its
+ * locale's catalog to the client provider as props. The locale switcher's
+ * import of this module puts the loaders in the client graph too, but only as
+ * async chunks nothing there requests. `en-US`, which no package translates,
+ * resolves to an empty catalog.
+ */
+export const siteAppCatalogSource = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+);
 
 export function getLocaleDirection(locale: Locale) {
   return directions[locale];

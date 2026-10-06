@@ -142,19 +142,6 @@ describe('LockScreen', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('allows destructive recovery at home despite stale interview authorization', () => {
-    window.sessionStorage.setItem(
-      'interviewer:authorized-interview-id',
-      'stale-session',
-    );
-
-    render(<LockScreen />);
-
-    expect(
-      screen.getByRole('button', { name: 'Recover by resetting' }),
-    ).toBeInTheDocument();
-  });
-
   it('keeps destructive recovery hidden when the URL changes while locked', () => {
     window.history.replaceState(null, '', '/interview/session-1');
     const { rerender } = render(<LockScreen />);

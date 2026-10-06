@@ -168,8 +168,15 @@ jobs:
 
           # flag <package>: true if any file in the package's workspace dep
           # tree changed between PREV and CURR, false otherwise.
+          # A name that resolves to no workspace fails the step.
           flag() {
             local pkg=$1
+            local paths
+            if ! paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json \
+              | jq -r '.packages.items[].path') || [[ -z "$paths" ]]; then
+              echo "::error::detect: '${pkg}' names no workspace package" >&2
+              return 1
+            fi
             if [[ "$FORCE_RUN" == "true" || "$WORKFLOW_CHANGED" == "true" ]]; then
               echo true; return
             fi
@@ -178,9 +185,6 @@ jobs:
             if [[ -z "$PREV" ]]; then
               echo true; return
             fi
-            local paths
-            paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json 2>/dev/null \
-              | jq -r '.packages.items[].path')
             local pathspec=()
             while IFS= read -r p; do
               [[ -n "$p" ]] && pathspec+=("$p")
@@ -203,7 +207,7 @@ jobs:
           # the job unrun. The guide is in the list because own-proxy extracts
           # its nginx configuration from it at run time: editing that block
           # changes what the job runs.
-          studio=$(flag @codaco/studio-server)
+          studio=$(flag @codaco/studio-api)
           if [[ "$studio" != "true" && -n "$PREV" ]] \
             && ! git diff --quiet "$PREV" "$CURR" -- \
               apps/studio/Dockerfile \
@@ -575,6 +579,9 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          # Parallel suites drop ~100-table schemas at once; the default of 64
+          # runs out of shared memory.
+          POSTGRES_INITDB_ARGS: --set=max_locks_per_transaction=256
         ports:
           - 54318:5432
         options: >-
@@ -610,10 +617,24 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Starts the dev Garage and Azurite from the dev compose stack (project
+      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
+      # suite inside the Studio server suite runs against both and, like the
+      # Postgres and Valkey suites, refuses to skip under CI; the `asset
+      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
+      # for want of a store, now runs too. A step rather than a `services:`
+      # entry because Garage needs a mounted configuration file and a bootstrap
+      # one-shot, which the compose stack already defines. `continue-on-error`
+      # and an `id:` like the seeding steps below, so a failure here is
+      # reported by name rather than only as the Studio suite failing after it.
+      - name: Start the dev object stores
+        id: object-stores
+        continue-on-error: true
+        run: pnpm --filter @codaco/studio-api dev:object-stores
       # Seeded on its own first, for the reason the `test` job gives: this
       # suite's assertions are wall-clock budgets, and turbo kills the
       # in-flight tasks when any task in the run fails. On 2026-09-06 a
-      # protocol-builder failure here killed @codaco/studio-server#test
+      # protocol-builder failure here killed @codaco/studio-api#test
       # mid-run, so main's tip seeded no cache entry for it and every PR built
       # on that tip had to execute the suite itself.
       #
@@ -623,7 +644,7 @@ jobs:
       # what motivated splitting it out of `test` in the first place.
       - name: Seed the Studio server suite
         id: studio-server
-        run: pnpm exec turbo run '@codaco/studio-server#test'
+        run: pnpm exec turbo run '@codaco/studio-api#test'
         continue-on-error: true
       # Fresco's `build` script is a bare `next build`, whose env.js validates
       # the full deployment env at config load; this job has no Fresco
@@ -659,7 +680,7 @@ jobs:
       # take > rebases the form once the protocol takes the save`, which
       # failed at 5161 ms and — under the old `--continue=never` default —
       # would have cancelled every other queued suite's cache seed along with
-      # it. Not applied to the `@codaco/studio-server#test` run above:
+      # it. Not applied to the `@codaco/studio-api#test` run above:
       # `--continue` governs how a multi-task run treats one task's failure,
       # and a single-task run has nothing else queued behind it to protect.
       - name: Run tests
@@ -691,6 +712,7 @@ jobs:
       - name: Report seed step outcomes
         if: always()
         env:
+          OBJECT_STORES_OUTCOME: ${{ steps.object-stores.outcome }}
           STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
           BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
@@ -698,12 +720,14 @@ jobs:
           {
             echo "### Turbo cache seed outcomes"
             echo
+            echo "- object stores: $OBJECT_STORES_OUTCOME"
             echo "- studio-server: $STUDIO_SERVER_OUTCOME"
             echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
             echo "- test: $TEST_OUTCOME"
           } >> "$GITHUB_STEP_SUMMARY"
           failed=false
           for result in \
+            "object stores=$OBJECT_STORES_OUTCOME" \
             "studio-server=$STUDIO_SERVER_OUTCOME" \
             "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
             "test=$TEST_OUTCOME"; do
@@ -792,7 +816,7 @@ jobs:
       - name: Check the committed Studio schema docs are current
         id: studio-schema-docs
         continue-on-error: true
-        run: pnpm --filter @codaco/studio-server check:schema-docs
+        run: pnpm --filter @codaco/studio-api check:schema-docs
       - name: Check changed public package versions are unoccupied on npm
         id: npm_versions
         continue-on-error: true
@@ -900,6 +924,9 @@ jobs:
         env:
           POSTGRES_PASSWORD: spike
           POSTGRES_DB: studio_dev
+          # Parallel suites drop ~100-table schemas at once; the default of 64
+          # runs out of shared memory.
+          POSTGRES_INITDB_ARGS: --set=max_locks_per_transaction=256
         ports:
           - 54318:5432
         options: >-
@@ -938,6 +965,16 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Starts the dev Garage and Azurite from the dev compose stack (project
+      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
+      # suite inside the Studio server suite runs against both and, like the
+      # Postgres and Valkey suites, refuses to skip under CI; the `asset
+      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
+      # for want of a store, now runs too. A step rather than a `services:`
+      # entry because Garage needs a mounted configuration file and a bootstrap
+      # one-shot, which the compose stack already defines.
+      - name: Start the dev object stores
+        run: pnpm --filter @codaco/studio-api dev:object-stores
       - name: Run the Studio server suite
         # The only workspace suite whose assertions are wall-clock budgets
         # rather than logic. The one that a starved event loop actually
@@ -991,7 +1028,7 @@ jobs:
         # `continue-on-error` — as its own job its verdict is its own, and it
         # can no longer hide behind, or be hidden by, the workspace suite's
         # result.
-        run: pnpm exec turbo run '@codaco/studio-server#test'
+        run: pnpm exec turbo run '@codaco/studio-api#test'
 
   # The Studio deployment stack, run the way a self-hoster runs it and once for
   # each documented swap with the swapped element replaced by a stub (#1909).
@@ -1014,9 +1051,9 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio == 'true'
     runs-on: ubuntu-latest
-    # The build is most of this. Four variant cycles cost about a minute each
-    # once the images exist; a cold build of studio-api is the rest, and the
-    # GitHub Actions cache below is what keeps it off the critical path on
+    # The build is most of this. The six variant cycles cost about a minute
+    # each once the images exist; a cold build of studio-api is the rest, and
+    # the GitHub Actions cache below is what keeps it off the critical path on
     # every run after the first.
     timeout-minutes: 40
     steps:
@@ -1095,6 +1132,14 @@ jobs:
         if: always()
         run: apps/studio/stack-test/down.sh --variant external-bucket
 
+      - name: A swapped object store (Azure Blob)
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket-azure
+          apps/studio/stack-test/assert.sh --variant external-bucket-azure
+      - name: Tear down the swapped object store (Azure Blob)
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-bucket-azure
+
       - name: A swapped rate-limit store
         run: |
           apps/studio/stack-test/up.sh --variant external-redis
@@ -1171,7 +1216,7 @@ jobs:
           - shard: 1
           - shard: 2
           # packages/studio-sync's conformance suite is the only workspace
-          # suite outside @codaco/studio-server that needs a database, and it
+          # suite outside @codaco/studio-api that needs a database, and it
           # refuses to skip under CI. Its shard starts one; the others do not
           # pay for it. `services:` cannot be varied per matrix leg, so the
           # container is started by a step instead — measured at 24s of
@@ -1272,7 +1317,7 @@ jobs:
           # affected selector below would run art on every pull request
           # whether or not the diff touched it. Negations subtract from that
           # union, which is the intersection a shard actually wants — the same
-          # mechanism that already kept @codaco/studio-server out. That suite
+          # mechanism that already kept @codaco/studio-api out. That suite
           # is now excluded by simply belonging to no bucket, so every shard
           # negates it and the split cannot be undone by editing one shard.
           #
@@ -1344,11 +1389,11 @@ jobs:
           # pull request that invalidated six packages at once (#2023, run
           # 36858613676, both attempts). Hence job-wide rather than per call.
           #
-          # The `!@codaco/studio-server` negation SHARD_FILTERS carries: that
+          # The `!@codaco/studio-api` negation SHARD_FILTERS carries: that
           # suite runs as its own `test-studio-server` job (see the comment
           # there for why), on its own runner in parallel with these. Without
           # the exclusion both the `--affected` pass and the full-suite
-          # fallback below would still select `@codaco/studio-server#test` as
+          # fallback below would still select `@codaco/studio-api#test` as
           # a cache miss — turbo has no notion that a sibling job already
           # claimed it — and run the wall-clock-budgeted suite again, on a
           # runner it was carved out specifically to avoid sharing.
@@ -3043,8 +3088,6 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
-    env:
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3164,10 +3207,10 @@ jobs:
           - product: Studio
             slug: studio
             package_args: >-
-              --package '@codaco/studio-client'
-              --package '@codaco/studio-rpc'
-              --package '@codaco/studio-server'
+              --package '@codaco/studio-api'
+              --package '@codaco/studio-contract'
               --package '@codaco/studio-sync'
+              --package '@codaco/studio-web'
     runs-on: ubuntu-latest
     concurrency:
       group: product-release-pr-${{ matrix.slug }}
@@ -3311,10 +3354,9 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
-      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+    # No job-level secrets: every credential is scoped to the one step that
+    # consumes it, so setup actions, the install, and the release action never
+    # see the Netlify token or the build-time values.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3352,6 +3394,8 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
+          VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
         run: pnpm exec turbo run build --filter=@codaco/architect
       # After the turbo-cached build so a cache-restored dist still gets THIS
       # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
@@ -3360,6 +3404,8 @@ jobs:
         run: node apps/architect/scripts/write-build-info.mjs
       - name: Deploy architect to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect \
@@ -3406,8 +3452,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3448,6 +3492,8 @@ jobs:
         run: pnpm exec turbo run build --filter=@codaco/interviewer
       - name: Deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/interviewer \
@@ -3493,8 +3539,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3524,6 +3568,8 @@ jobs:
         run: pnpm exec turbo run build --filter=@codaco/background-creator
       - name: Deploy Background Creator to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/background-creator \
@@ -3676,13 +3722,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
-      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
-      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
-      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
-      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3710,11 +3749,25 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
+          NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
+          NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
+          NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
+          NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
         run: |
-          pnpm exec turbo run build --filter=@codaco/documentation
+          # The footer's copyright year. It is baked into the static export, and
+          # turbo's hash covers declared environment variables rather than the
+          # clock, so without passing it a build cached before 1 January could be
+          # replayed for this deploy and publish the previous year. Declared in
+          # `turbo.json`'s `env` for this task, which is what makes it part of the
+          # cache key.
+          NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+            pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
       - name: Deploy documentation to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/documentation \
@@ -3749,8 +3802,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3775,10 +3826,15 @@ jobs:
         # products these cannot be narrowed past this step. They stay off the
         # job so nothing before or after this step can read them.
         env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
-          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+          # See the note on the documentation build: the footer year has to reach
+          # the build, or a cached export can carry the previous year across
+          # 1 January. netlify-cli runs the build here, so it is passed to that.
+          json=$(NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+                 npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
@@ -4131,7 +4187,6 @@ jobs:
       group: apps-release-networkcanvas.com-production
       cancel-in-progress: false
     env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       # Classic release metadata is an external build input, so it cannot be
       # represented in Turbo's source hash. Always execute the static build.
       TURBO_FORCE: 'true'
@@ -4148,10 +4203,15 @@ jobs:
         # netlify-cli performs the build (--build), so the credentials cannot be
         # narrowed past this step; they stay off the job regardless.
         env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
-          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+          # See the note on the documentation build: the footer year has to reach
+          # the build, or a cached export can carry the previous year across
+          # 1 January. netlify-cli runs the build here, so it is passed to that.
+          json=$(NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+                 npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .

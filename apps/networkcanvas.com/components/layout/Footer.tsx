@@ -15,6 +15,17 @@ import {
   websitePageHref,
 } from '~/lib/siteUrls';
 
+/**
+ * The copyright year comes from `next.config.ts`, which inlines the build's year
+ * into both the server and client bundles. Both apps are `output: 'export'`, so
+ * reading the clock here instead would bake the build machine's year into the
+ * HTML and then recompute it during hydration — a text mismatch, and React #418,
+ * for every visitor whose local year differs from the build's. Falling back to an
+ * empty string is the safe direction to be wrong in: the year reads as missing
+ * rather than disagreeing between the two renders.
+ */
+const buildYear = process.env.NEXT_PUBLIC_BUILD_YEAR ?? '';
+
 export function Footer({ host = 'website' }: { host?: SiteHost }) {
   const t = useTranslations('Footer');
   const locale = useLocale();
@@ -54,7 +65,7 @@ export function Footer({ host = 'website' }: { host?: SiteHost }) {
     <SharedSiteFooter
       brand={<Logo />}
       links={links}
-      copyright={t('copyright', { year: new Date().getFullYear() })}
+      copyright={t('copyright', { year: buildYear })}
       socialLinks={socialLinks}
       extraContent={<SiteLocaleSwitcher />}
     />

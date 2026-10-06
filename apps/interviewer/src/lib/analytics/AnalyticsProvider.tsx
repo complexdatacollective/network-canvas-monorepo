@@ -1,4 +1,4 @@
-import type { PostHog } from 'posthog-js';
+import type { PostHog } from 'posthog-js/dist/module.no-external';
 import {
   createContext,
   useCallback,

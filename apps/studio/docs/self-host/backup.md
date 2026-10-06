@@ -66,8 +66,9 @@ this machine that a lost host would not take with it.
 
 The volume is `studio_garage-data` because the compose file names the project
 `studio`; `docker volume ls` confirms it. If you have
-[swapped in a managed bucket](./swap.md), that step is your provider's mirroring
-or versioning instead, and there is no volume to copy.
+[swapped in a managed bucket or Azure Blob Storage](./swap.md), that step is
+your provider's mirroring or versioning instead, and there is no volume to
+copy.
 
 **Take it while the instance is closed** where you can — step 1 of
 [the upgrade sequence](./upgrade.md) exists partly for this. A scheduled backup
@@ -90,7 +91,7 @@ late or a sweep that runs just before one would otherwise close the gap.
 If you must back up less often than daily, the grace has to be raised past your
 interval first. Say so plainly: **it is a constant in the source today**, not a
 variable — `PROTOCOL_STORE_GC_BOUNDS.sectionGraceMs` in
-`apps/studio/server/src/jobs/handlers/protocol-store-gc.ts` — so raising it
+`apps/studio/api/src/jobs/handlers/protocol-store-gc.ts` — so raising it
 means building your own `studio-api` image from a patched checkout. Backing up
 daily is much the easier answer.
 

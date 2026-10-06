@@ -1,0 +1,1152 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { Effect } from 'effect';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { TeamId } from '@codaco/studio-contract/schema/ids';
+import {
+  AUTH_NOT_CONFIGURED_PROBLEM_TYPE,
+  MAINTENANCE_PROBLEM_TYPE,
+} from '@codaco/studio-contract/schema/problem';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+
+import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
+import { authClient } from '../../lib/auth.ts';
+import {
+  reportUnauthorizedResponse,
+  sessionQueryOptions,
+} from '../../lib/session.ts';
+import { createAppRouter } from '../../router.tsx';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
+
+vi.mock('../../lib/auth.ts', () => ({
+  authClient: {
+    getSession: vi.fn(),
+    useSession: vi.fn(),
+    useListOrganizations: vi.fn(),
+    useActiveOrganization: vi.fn(),
+    useActiveMember: vi.fn(),
+    organization: { setActive: vi.fn(), list: vi.fn() },
+    signIn: { magicLink: vi.fn(), social: vi.fn(), email: vi.fn() },
+    signOut: vi.fn(),
+  },
+}));
+
+const STATUS: InstanceStatus = {
+  name: 'Network Canvas Studio',
+  version: '0.1.0',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
+  deployment: { mode: 'managed', billing: false },
+  // This instance has an owner: first-run setup (#1909) is closed everywhere
+  // except the screen that is for it.
+  setup: { required: false },
+};
+let currentStatus: InstanceStatus = STATUS;
+
+const mocked = vi.mocked(authClient, true);
+
+type GetSessionResult = Awaited<ReturnType<typeof authClient.getSession>>;
+type UseSessionResult = ReturnType<typeof authClient.useSession>;
+type MagicLinkResult = Awaited<ReturnType<typeof authClient.signIn.magicLink>>;
+type SocialResult = Awaited<ReturnType<typeof authClient.signIn.social>>;
+type EmailPasswordResult = Awaited<ReturnType<typeof authClient.signIn.email>>;
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
+
+const TEAM = { id: 'team-a', name: 'Alpha research team' };
+
+const SESSION = {
+  user: {
+    id: 'user-1',
+    email: 'researcher@example.com',
+    emailVerified: true,
+    name: 'Researcher',
+  },
+  session: { id: 'session-1', activeOrganizationId: TEAM.id },
+};
+
+/** The team route the one-team fixture below lands on (§6.4). */
+const LANDING = `/team/${TEAM.id}`;
+
+const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
+
+const signedIn = { data: SESSION, error: null } as unknown as GetSessionResult;
+const signedOut = { data: null, error: null } as unknown as GetSessionResult;
+const notConfigured = {
+  data: null,
+  error: {
+    type: AUTH_NOT_CONFIGURED_PROBLEM_TYPE,
+    title: 'Authentication Not Configured',
+    status: 503,
+    statusText: 'Service Unavailable',
+  },
+} as unknown as GetSessionResult;
+
+type GetSessionOptions = Parameters<typeof authClient.getSession>[0];
+type OnError = NonNullable<
+  NonNullable<NonNullable<GetSessionOptions>['fetchOptions']>['onError']
+>;
+
+function inMaintenance(retryAfterSeconds: number, body = true) {
+  return async (options?: GetSessionOptions): Promise<GetSessionResult> => {
+    const refused = {
+      response: new Response(null, {
+        status: 503,
+        headers: { 'retry-after': String(retryAfterSeconds) },
+      }),
+    } as unknown as Parameters<OnError>[0];
+    await options?.fetchOptions?.onError?.(refused);
+    return {
+      data: null,
+      error: body
+        ? {
+            type: MAINTENANCE_PROBLEM_TYPE,
+            title: 'Down for maintenance',
+            status: 503,
+            statusText: 'Service Unavailable',
+          }
+        : { status: 503, statusText: 'Service Unavailable' },
+    } as unknown as GetSessionResult;
+  };
+}
+
+const MAINTENANCE_NOTICE = /Studio is down for maintenance\. This page will/;
+/**
+ * `authClient.useSession()` is no longer part of the app shell — `AppLayout`
+ * reads the guard's own query instead (§6.2). It is still mocked because
+ * `AcceptInvitation`, on the focused branch, calls it, and one test navigates
+ * through that route.
+ */
+const sessionNone = {
+  data: null,
+  isPending: false,
+  error: null,
+} as unknown as UseSessionResult;
+
+function renderWithClientAt(path: string) {
+  // One client behind both the router's guards and the components: the
+  // session guard reads what a component's `queryClient.clear()` removes.
+  const queryClient = new QueryClient();
+  const router = createAppRouter(
+    createMemoryHistory({ initialEntries: [path] }),
+    queryClient,
+  );
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return { queryClient, router, ...view };
+}
+
+function renderAt(path: string) {
+  return renderWithClientAt(path).router;
+}
+
+/**
+ * The app shell, rendered. The header no longer names the researcher — the
+ * session query the guard resolves carries only signedIn/signedOut (§6.2) —
+ * so the account menu's trigger is the shell's unconditional control.
+ */
+function findAppShell() {
+  return screen.findByRole('button', { name: 'Account' });
+}
+
+/** Sign out moved into the account menu (§5.5). */
+async function clickSignOut() {
+  fireEvent.click(await findAppShell());
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
+}
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  currentStatus = STATUS;
+  installRpcHarness({
+    'status': () => Effect.succeed(currentStatus),
+    'me': () =>
+      Effect.succeed({
+        userId: 'user-1',
+        email: 'researcher@example.org',
+        emailVerified: true,
+        name: 'Researcher',
+        locale: null,
+        teams: [{ teamId: TeamId.make(TEAM.id), role: 'owner' }],
+      }),
+    'studies.list': () => Effect.succeed([]),
+  });
+  mocked.getSession.mockResolvedValue(signedOut);
+  mocked.organization.list.mockResolvedValue({
+    data: [TEAM],
+    error: null,
+  } as unknown as Awaited<ReturnType<typeof authClient.organization.list>>);
+  mocked.organization.setActive.mockResolvedValue({
+    data: null,
+    error: null,
+  } as unknown as Awaited<
+    ReturnType<typeof authClient.organization.setActive>
+  >);
+  mocked.useSession.mockReturnValue(sessionNone);
+  mocked.useListOrganizations.mockReturnValue({
+    data: [TEAM],
+    isPending: false,
+    error: null,
+  } as unknown as ReturnType<typeof authClient.useListOrganizations>);
+  mocked.useActiveOrganization.mockReturnValue({
+    data: TEAM,
+    isPending: false,
+    error: null,
+    refetch: vi.fn(),
+  } as unknown as ReturnType<typeof authClient.useActiveOrganization>);
+  mocked.useActiveMember.mockReturnValue({
+    data: { id: 'member-1', organizationId: TEAM.id, role: 'owner' },
+    isPending: false,
+    error: null,
+    refetch: vi.fn(),
+  } as unknown as ReturnType<typeof authClient.useActiveMember>);
+});
+
+describe('route guard', () => {
+  it('redirects signed-out visitors to the sign-in page', async () => {
+    const router = renderAt(LANDING);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Sign in' }),
+      ).toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toBe('/sign-in');
+  });
+
+  it('renders the app shell for a signed-in researcher', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    renderAt(LANDING);
+    expect(await findAppShell()).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Studio' })).toBeInTheDocument();
+  });
+
+  it('costs one call to the auth client, from the guard alone', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    renderAt(LANDING);
+    await findAppShell();
+
+    // The guard's `fetchQuery` is the whole session channel. `useSession()`
+    // was the second one: it subscribes to better-auth's own
+    // `/api/auth/get-session` fetch, which is a request the guard has already
+    // made and cached, on every single page load. Any call at all reopens it,
+    // so the assertion is zero rather than a count.
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+    expect(mocked.useSession).not.toHaveBeenCalled();
+  });
+
+  it('shows the error screen, not sign-in, when the session check cannot reach the server', async () => {
+    mocked.getSession.mockRejectedValue(new Error('network down'));
+    const router = renderAt(LANDING);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/The server could not be reached/),
+      ).toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toBe(LANDING);
+  });
+
+  it('leaves a visitor on the sign-in page when the server cannot be reached', async () => {
+    // The app branch turns "we could not ask" into the error screen, because a
+    // researcher who may still be signed in must not be bounced out. The
+    // sign-in page's guard asks a different question — "are you already signed
+    // in?" — and not knowing the answer is no reason to take the page away
+    // from someone who came here to sign in, which is what letting
+    // ServerUnreachableError out of this guard would do.
+    mocked.getSession.mockRejectedValue(new Error('network down'));
+    const router = renderAt('/sign-in');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Sign in' }),
+      ).toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toBe('/sign-in');
+    expect(
+      screen.queryByText(/The server could not be reached/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('sends a visitor to sign-in, not the error screen, when auth is switched off', async () => {
+    mocked.getSession.mockResolvedValue(notConfigured);
+    currentStatus = {
+      ...STATUS,
+      auth: {
+        enabled: false,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: [],
+      },
+    };
+    const router = renderAt(LANDING);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in is not available on this server/),
+      ).toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toBe('/sign-in');
+  });
+
+  it('asks the auth endpoint once, however many times the tree is entered', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const router = renderAt(LANDING);
+    await findAppShell();
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+
+    // Out of the authenticated tree and back into it, twice. Every entry runs
+    // the app branch's guard; only the first costs a request, because the
+    // guard reads one query rather than probing per navigation.
+    for (const _visit of [1, 2]) {
+      await act(() =>
+        router.navigate({
+          to: '/invitations/$invitationId',
+          params: { invitationId: INVITATION_ID },
+        }),
+      );
+      await act(() =>
+        router.navigate({ to: '/team/$teamId', params: { teamId: TEAM.id } }),
+      );
+    }
+
+    await findAppShell();
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-asks the auth endpoint when a procedure refuses with 401', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const router = renderAt(LANDING);
+    await findAppShell();
+    expect(mocked.getSession).toHaveBeenCalledTimes(1);
+
+    // The cookie has gone, and the 401 path re-running the guard is now the
+    // only thing that can notice.
+    mocked.getSession.mockResolvedValue(signedOut);
+    await act(() => reportUnauthorizedResponse());
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+    // Three asks, and each one is a different question. The guard's, on
+    // arrival. The 401 path's re-ask, which is what this test is about. And
+    // the sign-in route's own guard, because establishing that the session
+    // had ended cleared the cache — including the answer — so "are you
+    // already signed in?" has to be asked again rather than answered from a
+    // cache the previous researcher filled.
+    expect(mocked.getSession).toHaveBeenCalledTimes(3);
+  });
+
+  it('bounces an already-signed-in visitor off their sign-in page', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const router = renderAt('/sign-in');
+    // §6.4's landing resolution, not `/`, which is marketing under the
+    // managed topology and a redirect under self-hosted (§10.4).
+    await waitFor(() => expect(router.state.location.pathname).toBe(LANDING));
+  });
+
+  it('leaves a signed-in visitor on the sign-in page when their teams cannot be read', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.organization.list.mockRejectedValue(new Error('network down'));
+    const router = renderAt('/sign-in');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Sign in' }),
+      ).toBeInTheDocument(),
+    );
+    // Not knowing where they belong is no reason to replace the page they
+    // are standing on with the error screen, and no reason to guess
+    // `/no-team` — which would be a lie about their memberships.
+    expect(router.state.location.pathname).toBe('/sign-in');
+  });
+});
+
+describe('a session check during a maintenance window', () => {
+  it('keeps a revalidated researcher in the app and their editor session open', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockImplementation(inMaintenance(30));
+      await act(() => reportUnauthorizedResponse());
+
+      expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(LANDING);
+      expect(await findAppShell()).toBeInTheDocument();
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
+  it('keeps them there when the tab comes back during the window, behind the proxy’s page too', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockImplementation(inMaintenance(30, false));
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(LANDING);
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
+  it('asks again once the interval the server named has passed', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const { router } = renderWithClientAt(LANDING);
+    await findAppShell();
+
+    mocked.getSession.mockImplementation(inMaintenance(1));
+    await act(() => reportUnauthorizedResponse());
+    expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+
+    mocked.getSession.mockResolvedValue(signedOut);
+    await waitFor(
+      () => expect(router.state.location.pathname).toBe('/sign-in'),
+      { timeout: 3_000 },
+    );
+  });
+
+  it('waits at most an hour to ask again, however long the server names', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    renderWithClientAt(LANDING);
+    await findAppShell();
+    const timers = vi.spyOn(globalThis, 'setTimeout');
+    try {
+      mocked.getSession.mockImplementation(inMaintenance(5 * 7 * 24 * 60 * 60));
+      await act(() => reportUnauthorizedResponse());
+      expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+
+      const delays = timers.mock.calls.map(([, delay]) => delay ?? 0);
+      expect(delays).toContain(60 * 60 * 1000);
+      expect(Math.max(...delays)).toBeLessThanOrEqual(2 ** 31 - 1);
+    } finally {
+      timers.mockRestore();
+    }
+  });
+
+  it('explains the window on a cold entry rather than sending them to sign in', async () => {
+    mocked.getSession.mockImplementation(inMaintenance(30));
+    const router = renderAt(LANDING);
+
+    expect(
+      await screen.findByText(
+        'Studio is down for maintenance. Reload this page in a few minutes.',
+      ),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(LANDING);
+  });
+
+  it('says so on the sign-in page', async () => {
+    mocked.getSession.mockImplementation(inMaintenance(30));
+    const router = renderAt('/sign-in');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(MAINTENANCE_NOTICE)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/sign-in');
+  });
+
+  it('still signs a researcher out when the server has no sign-in at all', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockResolvedValue(notConfigured);
+      await act(() => reportUnauthorizedResponse());
+
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe('/sign-in'),
+      );
+      expect(close).toHaveBeenCalled();
+      expect(screen.queryByText(MAINTENANCE_NOTICE)).toBeNull();
+    } finally {
+      unregister();
+    }
+  });
+});
+
+describe('sign-out', () => {
+  it('clears private queries when a live session expires', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const { queryClient, router } = renderWithClientAt(LANDING);
+    await findAppShell();
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+
+    // The session ends mid-session. With no second live channel to notice it,
+    // the one query the guard resolves is where it surfaces: a procedure
+    // answers 401, the handler invalidates that query, and the shell reads
+    // the refetched answer from the same cache entry the guard wrote.
+    mocked.getSession.mockResolvedValue(signedOut);
+    await act(() => reportUnauthorizedResponse());
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+  });
+
+  /**
+   * And this tab's editor session, which the sign-out path never runs for.
+   *
+   * A session that expires, or that is ended in another tab, never goes
+   * through `shell/useSignOut.ts` — the app shell's guard is where it is
+   * learnt, and where the cache belonging to the researcher who has gone is
+   * dropped. The socket the protocol editor talks its host over belongs to
+   * them just as surely: the server reads the account once, when the socket is
+   * opened, so a socket left behind is one the next account to sign in on this
+   * tab would be editing, and be audited, through.
+   */
+  it('ends this tab’s editor session when a live session expires', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockResolvedValue(signedOut);
+      await act(() => reportUnauthorizedResponse());
+
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe('/sign-in'),
+      );
+      // Called, rather than called once: the seam is every answer of "nobody
+      // is signed in", and the guard and the sign-in page it redirects to both
+      // ask. Ending a session already ended is a no-op.
+      expect(close).toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
+  /**
+   * And on a page with no guard behind it at all.
+   *
+   * A marketing page is on the site branch, where the shell's own entry is the
+   * only reader of the session (`shell/SiteLayout.tsx`) and nothing guards the
+   * route. A researcher can open the editor, walk out to a public page, be
+   * signed out from another tab, and sign in here as somebody else — and the
+   * socket the editor left open, upgraded under the account that has gone,
+   * would be the one the next account edits and is audited through.
+   */
+  it('ends this tab’s editor session on a page the app shell does not guard', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { queryClient, router } = renderWithClientAt('/');
+      await waitFor(() =>
+        expect(queryClient.getQueryData(sessionQueryOptions.queryKey)).toBe(
+          'signedIn',
+        ),
+      );
+      // The site branch, with no app route matched and so no guard to run.
+      expect(router.state.location.pathname).toBe('/');
+      expect(
+        screen.queryByRole('button', { name: 'Account' }),
+      ).not.toBeInTheDocument();
+
+      // Signed out in another tab, learnt when this one comes back.
+      mocked.getSession.mockResolvedValue(signedOut);
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await waitFor(() =>
+        expect(queryClient.getQueryData(sessionQueryOptions.queryKey)).toBe(
+          'signedOut',
+        ),
+      );
+
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      unregister();
+    }
+  });
+
+  it('closes editor sessions before clearing authentication', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const closed = deferred<void>();
+    const close = vi.fn(() => closed.promise);
+    const unregister = registerStudioEditorSession(close);
+    mocked.signOut.mockResolvedValue({
+      data: { success: true },
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
+    const { queryClient } = renderWithClientAt(LANDING);
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+
+    await clickSignOut();
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(mocked.signOut).not.toHaveBeenCalled();
+
+    closed.resolve();
+    await waitFor(() => expect(mocked.signOut).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['private-draft'])).toBeUndefined(),
+    );
+    unregister();
+  });
+
+  it('signs out in the order the sequence requires', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const events: string[] = [];
+    let pathnameWhenEditorClosed: string | undefined;
+    const unregister = registerStudioEditorSession(() => {
+      events.push('closeEditorSessions');
+      pathnameWhenEditorClosed = router.state.location.pathname;
+      return Promise.resolve();
+    });
+    mocked.signOut.mockImplementation(() => {
+      events.push('signOut');
+      return Promise.resolve({
+        data: { success: true },
+        error: null,
+      }) as ReturnType<typeof authClient.signOut>;
+    });
+    const { queryClient, router } = renderWithClientAt(LANDING);
+    await findAppShell();
+    queryClient.setQueryData(['private-draft'], { name: 'Private draft' });
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== 'removed') return;
+      if (!events.includes('clearCache')) events.push('clearCache');
+    });
+
+    await clickSignOut();
+
+    // Navigate, verify the location actually changed, close editor sessions,
+    // sign out, clear. Every step depends on the one before it: leaving the
+    // editor route is what settles its blocker, the lease must be released
+    // while the cookie is still valid, and the cache must not be emptied
+    // until the server has confirmed the session is gone — a failed sign-out
+    // leaves the researcher signed in and working.
+    await waitFor(() =>
+      expect(events).toEqual(['closeEditorSessions', 'signOut', 'clearCache']),
+    );
+    // `/account`, not `/`: `/` is marketing under managed and a redirect
+    // under self-hosted, and a redirect would make "did we actually leave?"
+    // compare against a URL the router never commits (§10.4).
+    expect(pathnameWhenEditorClosed).toBe('/account');
+    unsubscribe();
+    unregister();
+  });
+
+  it('signs out from the account area itself', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.signOut.mockImplementation(() => {
+      // The cookie is gone from here on, which is what makes the sign-in page
+      // the end of this sequence rather than a bounce back to the landing.
+      mocked.getSession.mockResolvedValue(signedOut);
+      return Promise.resolve({
+        data: { success: true },
+        error: null,
+      }) as ReturnType<typeof authClient.signOut>;
+    });
+    const router = renderAt('/account');
+    await findAppShell();
+
+    // The sequence navigates to `/account` to settle the editor's blocker,
+    // and a researcher who is already there is the case where "did my own
+    // navigation commit?" is hardest to answer: the address does not change,
+    // so nothing about the location distinguishes arriving from staying. The
+    // generation token the navigation carries is what does.
+    await clickSignOut();
+
+    await waitFor(() => expect(mocked.signOut).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/sign-in'),
+    );
+  });
+
+  it('stays put and reports failure when sign-out does not complete', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    mocked.signOut.mockResolvedValue({
+      data: null,
+      error: { status: 500 },
+    } as unknown as Awaited<ReturnType<typeof authClient.signOut>>);
+    const router = renderAt(LANDING);
+    await clickSignOut();
+    await waitFor(() =>
+      expect(screen.getByText(/Sign-out did not complete/)).toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toBe('/account');
+  });
+});
+
+describe('sign-in page', () => {
+  it.each([INVITATION_ID, 'a'.repeat(255)])(
+    'returns to invitation %# after sign-in',
+    async (invitationId) => {
+      mocked.signIn.magicLink.mockResolvedValue({
+        data: { status: true },
+        error: null,
+      } as unknown as MagicLinkResult);
+      renderAt(`/sign-in?invitationId=${encodeURIComponent(invitationId)}`);
+      const email = await screen.findByLabelText(/Email address/);
+      fireEvent.change(email, {
+        target: { value: 'researcher@example.com' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Send sign-in link' }),
+      );
+      await waitFor(() =>
+        expect(mocked.signIn.magicLink).toHaveBeenCalledWith(
+          expect.objectContaining({
+            callbackURL: `/invitations/${invitationId}`,
+          }),
+        ),
+      );
+    },
+  );
+
+  it.each(['has space', 'a'.repeat(256)])(
+    'returns to sign-in, not invitation %#, when the invitation id is malformed',
+    async (invitationId) => {
+      mocked.signIn.magicLink.mockResolvedValue({
+        data: { status: true },
+        error: null,
+      } as unknown as MagicLinkResult);
+      renderAt(`/sign-in?invitationId=${encodeURIComponent(invitationId)}`);
+      const email = await screen.findByLabelText(/Email address/);
+      fireEvent.change(email, {
+        target: { value: 'researcher@example.com' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Send sign-in link' }),
+      );
+      await waitFor(() =>
+        expect(mocked.signIn.magicLink).toHaveBeenCalledWith(
+          expect.objectContaining({ callbackURL: '/sign-in' }),
+        ),
+      );
+      expect(mocked.signIn.magicLink).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          callbackURL: expect.stringMatching(/^\/invitations\//),
+        }),
+      );
+    },
+  );
+
+  it.each(['has space', 'a'.repeat(256)])(
+    'lands a signed-in visitor where they belong, not on invitation %#, when the invitation id is malformed',
+    async (invitationId) => {
+      mocked.getSession.mockResolvedValue(signedIn);
+      const router = renderAt(
+        `/sign-in?invitationId=${encodeURIComponent(invitationId)}`,
+      );
+      await waitFor(() => expect(router.state.location.pathname).toBe(LANDING));
+    },
+  );
+
+  it('sends a magic link and confirms where it went', async () => {
+    mocked.signIn.magicLink.mockResolvedValue({
+      data: { status: true },
+      error: null,
+    } as unknown as MagicLinkResult);
+    renderAt('/sign-in');
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/We sent a sign-in link to researcher@example.com/),
+      ).toBeInTheDocument(),
+    );
+    expect(mocked.signIn.magicLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'researcher@example.com',
+        callbackURL: '/sign-in',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Use a different email address' }),
+    );
+    expect(await screen.findByLabelText(/Email address/)).toBeInTheDocument();
+  });
+
+  it('sends the researcher where they belong when the link is opened', async () => {
+    // The end of the sign-in journey, walked rather than asserted about: the
+    // page hands better-auth a URL, better-auth's verify redirect is a full
+    // document load at it, and this follows the one the page actually gave.
+    //
+    // `/` cannot be that URL. On a managed deployment it renders marketing
+    // signed in or out (§10.4), so a researcher who has just proved who they
+    // are lands back on the public page and has to press "Sign in" again —
+    // and no assertion about the callback string alone would have said so.
+    mocked.signIn.magicLink.mockResolvedValue({
+      data: { status: true },
+      error: null,
+    } as unknown as MagicLinkResult);
+    renderAt('/sign-in');
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+    await waitFor(() => expect(mocked.signIn.magicLink).toHaveBeenCalled());
+
+    const callbackURL = mocked.signIn.magicLink.mock.calls[0]?.[0].callbackURL;
+    if (typeof callbackURL !== 'string') {
+      throw new Error('the sign-in page passed no callback URL');
+    }
+
+    cleanup();
+    mocked.getSession.mockResolvedValue(signedIn);
+    const router = renderAt(callbackURL);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Studies' }),
+    ).toBeInTheDocument();
+    expect(router.state.resolvedLocation?.pathname).toBe(LANDING);
+  });
+
+  it('rejects a malformed email before any request is made', async () => {
+    renderAt('/sign-in');
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'not-an-email' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Enter a valid email address/),
+      ).toBeInTheDocument(),
+    );
+    expect(mocked.signIn.magicLink).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed send inside the form', async () => {
+    mocked.signIn.magicLink.mockResolvedValue({
+      data: null,
+      error: { status: 500 },
+    } as unknown as MagicLinkResult);
+    renderAt('/sign-in');
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/The sign-in email could not be sent/),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it('reports a failed send when the request never completes', async () => {
+    mocked.signIn.magicLink.mockRejectedValue(new Error('network down'));
+    renderAt('/sign-in');
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/The sign-in email could not be sent/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText(/We sent a sign-in link/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers no email form when neither magic-link nor a password is available', async () => {
+    currentStatus = {
+      ...STATUS,
+      auth: {
+        ...STATUS.auth,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: ['google'],
+      },
+    };
+    renderAt('/sign-in');
+    expect(
+      await screen.findByRole('button', { name: 'Continue with Google' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Email address/)).not.toBeInTheDocument();
+    expect(screen.queryByText('or')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the password form when the server cannot send mail', async () => {
+    // magicLink is gated on the mailer being configured; emailAndPassword is
+    // not (app.ts), so a broken mailer alone leaves password sign-in intact
+    // — the researcher gets the password form directly, with no toggle back
+    // to a magic link that is not actually offered.
+    currentStatus = {
+      ...STATUS,
+      auth: { ...STATUS.auth, magicLink: false, socialProviders: [] },
+    };
+    renderAt('/sign-in');
+    // Password-only is the RESOLVED state; the optimistic pre-resolution
+    // render shows the magic-link form instead (magicLink defaults true
+    // while `auth` is undefined), so waiting on the email field alone would
+    // resolve against that transient render instead of this one.
+    expect(await screen.findByLabelText(/Password/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email address/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /magic link instead/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('says so when no sign-in method is available at all', async () => {
+    currentStatus = {
+      ...STATUS,
+      auth: {
+        enabled: true,
+        magicLink: false,
+        emailAndPassword: false,
+        socialProviders: [],
+      },
+    };
+    renderAt('/sign-in');
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in is not available on this server/),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByLabelText(/Email address/)).not.toBeInTheDocument();
+  });
+
+  it('explains an expired link when the verify redirect carries an error', async () => {
+    renderAt('/sign-in?error=EXPIRED_TOKEN');
+    await waitFor(() =>
+      expect(
+        screen.getByText(/That sign-in link is no longer valid/),
+      ).toBeInTheDocument(),
+    );
+  });
+});
+
+describe('password sign-in', () => {
+  it('switches to the password form and back', async () => {
+    renderAt('/sign-in');
+    // Both `magicLink` and `emailAndPassword` default conservatively before
+    // the status query resolves ('Send sign-in link' renders optimistically,
+    // the toggle does not) — findByRole here is what waits for that data.
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    expect(await screen.findByLabelText(/Password/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Send sign-in link' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Sign in with a magic link instead',
+      }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Send sign-in link' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Password/)).not.toBeInTheDocument();
+  });
+
+  it('signs in with a password and lands where the researcher belongs', async () => {
+    mocked.signIn.email.mockResolvedValue({
+      data: { token: 'session-token' },
+      error: null,
+    } as unknown as EmailPasswordResult);
+    const router = renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'correct horse battery staple' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe(LANDING));
+    expect(mocked.signIn.email).toHaveBeenCalledWith({
+      email: 'researcher@example.com',
+      password: 'correct horse battery staple',
+    });
+  });
+
+  it('reports a generic error for a wrong password', async () => {
+    mocked.signIn.email.mockResolvedValue({
+      data: null,
+      error: { status: 401 },
+    } as unknown as EmailPasswordResult);
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText(/Email address/), {
+      target: { value: 'researcher@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'wrong' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/That email or password is not correct/),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it('reports a failed sign-in when the request never completes', async () => {
+    mocked.signIn.email.mockRejectedValue(new Error('network down'));
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Sign in with a password instead',
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText(/Email address/), {
+      target: { value: 'researcher@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/), {
+      target: { value: 'whatever' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Sign-in did not complete/)).toBeInTheDocument(),
+    );
+  });
+});
+
+describe('OAuth sign-in', () => {
+  const withProviders: InstanceStatus = {
+    ...STATUS,
+    auth: { ...STATUS.auth, socialProviders: ['google', 'microsoft'] },
+  };
+
+  it('offers exactly the configured providers', async () => {
+    currentStatus = withProviders;
+    renderAt('/sign-in');
+    expect(
+      await screen.findByRole('button', { name: 'Continue with Google' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Continue with Microsoft' }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers no provider buttons when none are configured', async () => {
+    renderAt('/sign-in');
+    await screen.findByLabelText(/Email address/);
+    expect(
+      screen.queryByRole('button', { name: /Continue with/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('starts the provider round trip', async () => {
+    currentStatus = withProviders;
+    mocked.signIn.social.mockResolvedValue({
+      data: {
+        url: 'https://accounts.google.com/o/oauth2/auth',
+        redirect: true,
+      },
+      error: null,
+    } as unknown as SocialResult);
+    renderAt('/sign-in');
+    // Held across the click: re-querying by role while the pending spinner
+    // is mounted trips a jsdom bug resolving its calc() font-size.
+    const button = await screen.findByRole('button', {
+      name: 'Continue with Google',
+    });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(mocked.signIn.social).toHaveBeenCalledWith(
+        // The same callback the magic link uses, and for the same reason: the
+        // provider's redirect back is a document load, and it has to land
+        // somewhere that reads the new session (§6.4, §10.4).
+        expect.objectContaining({
+          provider: 'google',
+          callbackURL: '/sign-in',
+        }),
+      ),
+    );
+    expect(button).toBeDisabled();
+  });
+
+  it('reports a failed start and re-enables the buttons', async () => {
+    currentStatus = withProviders;
+    mocked.signIn.social.mockResolvedValue({
+      data: null,
+      error: { status: 500 },
+    } as unknown as SocialResult);
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Continue with Microsoft' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in could not be started/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Continue with Microsoft' }),
+    ).toBeEnabled();
+  });
+
+  it('re-enables the buttons when starting the round trip rejects outright', async () => {
+    currentStatus = withProviders;
+    mocked.signIn.social.mockRejectedValue(new Error('network down'));
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Continue with Microsoft' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in could not be started/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Continue with Microsoft' }),
+    ).toBeEnabled();
+  });
+
+  it('explains an OAuth error carried on the redirect back', async () => {
+    renderAt('/sign-in?error=access_denied');
+    await waitFor(() =>
+      expect(screen.getByText(/Sign-in did not complete/)).toBeInTheDocument(),
+    );
+  });
+});

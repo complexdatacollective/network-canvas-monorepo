@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -241,83 +241,124 @@ describe('StepUpAuthProvider callback stability', () => {
 });
 
 describe('StepUpAuthProvider interview authorization', () => {
-  it('preserves the authorized interview across a hard-refresh remount', async () => {
+  // Mirrors AuthGate: the routed child mounts only once auth is unlocked, and
+  // reads the authorization from a passive effect as InterviewRoute's enter
+  // gate does.
+  function GatedEnterGate({
+    onRead,
+  }: {
+    onRead: (authorized: string | null) => void;
+  }) {
+    const { getAuthorizedInterviewId } = useStepUpAuth();
+    useEffect(() => {
+      onRead(getAuthorizedInterviewId());
+    }, [getAuthorizedInterviewId, onRead]);
+    return null;
+  }
+
+  function renderGated(onRead: (authorized: string | null) => void) {
+    const gated = () => (
+      <Harness>
+        <AuthorizationProbe />
+        {mockAuth.kind === 'unlocked' && <GatedEnterGate onRead={onRead} />}
+      </Harness>
+    );
+    const view = render(gated());
+    return { rerenderGated: () => view.rerender(gated()) };
+  }
+
+  it('authorizes the interview the app was unlocked on before its enter gate runs', () => {
     window.history.replaceState({}, '', '/interview/s1');
-    const firstMount = render(
-      <Harness>
-        <AuthorizationProbe />
-      </Harness>,
-    );
-
-    await act(async () => {
-      screen.getByText('authorize-s1').click();
-    });
-    firstMount.unmount();
-
-    render(
-      <Harness>
-        <AuthorizationProbe />
-      </Harness>,
-    );
-
-    expect(screen.getByTestId('authorized-interview')).toHaveTextContent('s1');
-  });
-
-  it('clears stale interview authorization when unlocked on the home route', async () => {
-    const firstMount = render(
-      <Harness>
-        <AuthorizationProbe />
-      </Harness>,
-    );
-    await act(async () => {
-      screen.getByText('authorize-s1').click();
-    });
-    firstMount.unmount();
+    const onRead = vi.fn();
+    const { rerenderGated } = renderGated(onRead);
 
     mockAuth = { kind: 'unlocked', mode: 'pin' };
-    const homeMount = render(
-      <Harness>
-        <AuthorizationProbe />
-      </Harness>,
-    );
+    rerenderGated();
 
-    await waitFor(() =>
-      expect(
-        window.sessionStorage.getItem('interviewer:authorized-interview-id'),
-      ).toBeNull(),
-    );
-    homeMount.rerender(
-      <Harness>
-        <AuthorizationProbe />
-      </Harness>,
-    );
+    expect(onRead).toHaveBeenCalledTimes(1);
+    expect(onRead).toHaveBeenCalledWith('s1');
+  });
+
+  it('ignores an authorization value planted in sessionStorage', () => {
+    window.sessionStorage.setItem('interviewer:authorized-interview-id', 's1');
+    window.history.replaceState({}, '', '/interview/s1');
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    const onRead = vi.fn();
+
+    renderGated(onRead);
+
+    expect(onRead).toHaveBeenCalledWith(null);
+  });
+
+  it('does not authorize an interview when the unlock happens elsewhere', async () => {
+    const onRead = vi.fn();
+    const { rerenderGated } = renderGated(onRead);
+
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    rerenderGated();
+    expect(onRead).toHaveBeenLastCalledWith(null);
+
+    // Navigating into an interview afterwards is not an unlock on its route.
+    await act(async () => {
+      window.history.pushState({}, '', '/interview/s1');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    rerenderGated();
     expect(screen.getByTestId('authorized-interview')).toHaveTextContent(
       'none',
     );
   });
 
-  it('clears persisted interview authorization after a destructive reset', async () => {
-    const firstMount = render(
+  it('clears stale interview authorization when unlocked on the home route', () => {
+    const view = render(
       <Harness>
         <AuthorizationProbe />
       </Harness>,
     );
-    await act(async () => {
+    act(() => {
       screen.getByText('authorize-s1').click();
     });
-    firstMount.unmount();
 
-    mockAuth = { kind: 'unconfigured' };
-    const resetMount = render(<Harness />);
-    await waitFor(() => expect(window.sessionStorage.length).toBe(0));
-    resetMount.unmount();
-
-    mockAuth = { kind: 'locked', mode: 'pin' };
-    render(
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    view.rerender(
       <Harness>
         <AuthorizationProbe />
       </Harness>,
     );
+    view.rerender(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+
+    expect(screen.getByTestId('authorized-interview')).toHaveTextContent(
+      'none',
+    );
+  });
+
+  it('clears interview authorization after a destructive reset', () => {
+    window.history.replaceState({}, '', '/interview/s1');
+    const view = render(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    act(() => {
+      screen.getByText('authorize-s1').click();
+    });
+
+    mockAuth = { kind: 'unconfigured' };
+    view.rerender(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+    view.rerender(
+      <Harness>
+        <AuthorizationProbe />
+      </Harness>,
+    );
+
     expect(screen.getByTestId('authorized-interview')).toHaveTextContent(
       'none',
     );

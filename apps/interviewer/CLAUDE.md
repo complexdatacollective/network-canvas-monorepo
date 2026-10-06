@@ -25,7 +25,7 @@ pnpm test:storybook    # vitest run --project=storybook
 pnpm storybook         # Storybook dev server on :6006
 ```
 
-`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, or if a critical JS chunk (interview engine, entry point) or responsive stage-preview image got silently dropped from the Workbox precache manifest. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
+`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, if a critical JS chunk (interview engine, entry point), a per-language locale chunk, or a responsive stage-preview image got silently dropped from the Workbox precache manifest, or if a locale chunk is missing or loaded statically. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
 
 ## Source Surface
 
@@ -49,7 +49,7 @@ One entry per directory. Per-file granularity rots; per-directory framing tells 
   _Touch when:_ Auth flow changes, idle-timeout behaviour, step-up auth. Four modes exist, never combined (see Conventions).
 - **`src/lib/db/`** — Dexie-backed storage. `api.ts` (the only surface routes/components should import), `db.ts` (Dexie schema: `protocols`, `sessions`, `assets`, `settings` tables; DB name `'interviewer'`), `protocols.ts` + `sessions.ts` (Dexie repos), `recordCrypto.ts` (field-level encrypt/decrypt for the sensitive parts of each row using the session DEK), `sessionKey.ts` (in-memory-only session DEK holder), `types.ts` (`StoredProtocol`, `StoredSession`, `StoredSettings`, `StoredAsset`).
   _Touch when:_ Any data read/write. Always go through `api.ts`.
-- **`src/lib/protocol/`** — `importProtocol.ts` — the full `.netcanvas` pipeline: pick file → JSZip extract → schema-version detect → `migrateProtocol` (if needed) → `validateProtocol` → `hashProtocol` → `saveProtocol`. `useProtocolImport.ts` — pending-import state hook. `protocolRequiresInternet.ts` — flags protocols containing a Geospatial stage. `sampleProtocol.ts`, `bundledProtocols.ts`, `bundledDevelopmentProtocol.ts`, `bundledAssets.ts`.
+- **`src/lib/protocol/`** — `importProtocol.ts` — the full `.netcanvas` pipeline: pick file → JSZip extract → schema-version detect → `migrateProtocol` (if needed) → `validateProtocol` → `hashProtocol` → `saveProtocol`. `useProtocolImport.ts` — pending-import state hook. `protocolRequiresInternet.ts` — flags protocols containing a Geospatial stage. `sampleProtocol.ts` (sample card metadata only), `bundledSampleProtocol.ts` (lazy-loaded sample document + inlined media; precached, kept out of the initial load), `bundledDevelopmentProtocol.ts`, `bundledAssets.ts`.
   _Touch when:_ Protocol import bug, pending-import card behavior, schema-version bump, or the online-map warning.
 - **`src/lib/export/`** — `exportSessions.ts` — Effect 3 program wiring `@codaco/network-exporters` to renderer-side repositories + a Blob sink, surfacing per-stage progress via an event queue.
   _Touch when:_ Export pipeline changes (GraphML/CSV options, screen-coordinate pixels, archive layout).
@@ -67,7 +67,7 @@ One entry per directory. Per-file granularity rots; per-directory framing tells 
   _Touch when:_ Asset resolution bugs in the interview engine.
 - **`src/styles/`** — `globals.css` — Tailwind base + interview-mode token block. TODO note in-file: move tokens into `@codaco/tailwind-config`.
   _Touch when:_ Token additions/changes for interview-mode visual treatment.
-- **`vite.config.ts`** — The PWA build: `VitePWA` (`generateSW`, `registerType: 'prompt'`), precache size ceiling raised for the interview-engine chunk (which bundles mapbox-gl), `globIgnores` for the dev-only bundled-protocol chunk, `manualChunks` splitting out the interview engine, Mapbox tile requests set `NetworkOnly`.
+- **`vite.config.ts`** — The PWA build: `VitePWA` (`generateSW`, `registerType: 'prompt'`), precache size ceiling raised for the interview-engine chunk (which bundles mapbox-gl), `globIgnores` for the dev-only bundled-protocol chunk, `manualChunks` splitting out the interview engine and giving each UI language its own lazily loaded chunk (`locale-<tag>` for the app's catalogs, `interview-locale-<tag>` for the interview runtime's), Mapbox tile requests set `NetworkOnly`.
   _Touch when:_ PWA manifest/caching behaviour, chunking, precache size limits.
 
 ## Why this structure

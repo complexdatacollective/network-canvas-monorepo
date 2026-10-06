@@ -17,9 +17,14 @@ import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import type { Codebook, NodeColorReference } from '@codaco/protocol-validation';
+import type {
+  Codebook,
+  FramingId,
+  NodeColorReference,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  isFamilyPedigreeStageMetadata,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -95,33 +100,46 @@ type SourceStageConfig = {
  * a FamilyPedigree (a misconfigured protocol — the view then renders empty).
  */
 function makeSourceConfigSelector(sourceStageId: string) {
-  return createSelector(getStages, getCodebook, (stages, codebook) => {
-    const source = stages.find(
-      (s) => s.id === sourceStageId && s.type === 'FamilyPedigree',
-    );
-    if (!source || source.type !== 'FamilyPedigree') {
-      return null;
-    }
+  return createSelector(
+    getStages,
+    getCodebook,
+    getActiveSession,
+    (stages, codebook, session) => {
+      const sourceIndex = stages.findIndex(
+        (s) => s.id === sourceStageId && s.type === 'FamilyPedigree',
+      );
+      const source = stages[sourceIndex];
+      if (!source || source.type !== 'FamilyPedigree') {
+        return null;
+      }
 
-    const { nodeConfig, edgeConfig } = source;
-    const config: SourceStageConfig = {
-      nodeType: nodeConfig.type,
-      edgeType: edgeConfig.type,
-      nodeLabelVariable: nodeConfig.nodeLabelVariable,
-      egoVariable: nodeConfig.egoVariable,
-      relationshipVariable: nodeConfig.relationshipVariable,
-      relationshipTypeVariable: edgeConfig.relationshipTypeVariable,
-      isActiveVariable: edgeConfig.isActiveVariable,
-      isGestationalCarrierVariable: edgeConfig.isGestationalCarrierVariable,
-      gameteRoleVariable: edgeConfig.gameteRoleVariable,
-      biologicalSexVariable: nodeConfig.biologicalSexVariable,
-    };
+      const { nodeConfig, edgeConfig } = source;
+      const config: SourceStageConfig = {
+        nodeType: nodeConfig.type,
+        edgeType: edgeConfig.type,
+        nodeLabelVariable: nodeConfig.nodeLabelVariable,
+        egoVariable: nodeConfig.egoVariable,
+        relationshipVariable: nodeConfig.relationshipVariable,
+        relationshipTypeVariable: edgeConfig.relationshipTypeVariable,
+        isActiveVariable: edgeConfig.isActiveVariable,
+        isGestationalCarrierVariable: edgeConfig.isGestationalCarrierVariable,
+        gameteRoleVariable: edgeConfig.gameteRoleVariable,
+        biologicalSexVariable: nodeConfig.biologicalSexVariable,
+      };
 
-    const shapeDefinition =
-      (codebook as Codebook).node?.[nodeConfig.type]?.shape ?? null;
+      const shapeDefinition =
+        (codebook as Codebook).node?.[nodeConfig.type]?.shape ?? null;
+      const metadata = session?.stageMetadata?.[sourceIndex];
+      const framing: FramingId =
+        source.framing?.mode === 'fixed'
+          ? source.framing.value
+          : ((isFamilyPedigreeStageMetadata(metadata)
+              ? metadata.selectedFraming
+              : undefined) ?? 'gamete');
 
-    return { config, shapeDefinition };
-  });
+      return { config, shapeDefinition, framing };
+    },
+  );
 }
 
 // The node and edge ids the source FamilyPedigree committed to its private
@@ -339,11 +357,11 @@ export default function NarrativePedigreeView({
       nodesMap,
       edgesMap,
       variableConfig,
-      'gamete',
+      sourceConfig?.framing ?? 'gamete',
       egoId,
       intl,
     );
-  }, [nodesMap, edgesMap, variableConfig, egoId, intl]);
+  }, [nodesMap, edgesMap, variableConfig, sourceConfig?.framing, egoId, intl]);
 
   const resolveShape = (node: NcNode): NodeShape => {
     if (!sourceConfig?.shapeDefinition) return 'square';

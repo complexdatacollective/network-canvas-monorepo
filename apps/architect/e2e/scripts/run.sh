@@ -30,11 +30,12 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 # VITE_DISABLE_ANALYTICS=true skips analytics.ts's posthog.init entirely. The
-# production CSP allows PostHog's controlled relay under both connect-src and
-# script-src, but E2E must not depend on live analytics requests or their
-# non-deterministic timing. Reuse the app's build-time analytics gate (already
-# used by vitest and the Netlify PR-preview build — see vite.config.ts /
-# netlify.toml) so the build under test never initializes PostHog at all.
+# production CSP allows PostHog's controlled relay under connect-src only
+# (script-src is 'self'; the analytics extensions ship in the app bundle), but
+# E2E must not depend on live analytics requests or their non-deterministic
+# timing. Reuse the app's build-time analytics gate (already used by vitest
+# and the Netlify PR-preview build — see vite.config.ts / netlify.toml) so the
+# build under test never initializes PostHog at all.
 # Visual baselines are amd64-truth: glyph advance widths differ subtly
 # between the image's amd64 and arm64 builds, which moves text wrap points in
 # the print documents — an arm64-generated baseline is a whole line-height off

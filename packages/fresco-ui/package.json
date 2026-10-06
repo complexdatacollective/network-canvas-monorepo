@@ -46,6 +46,7 @@
     "./IdentityMark": "./src/IdentityMark.tsx",
     "./Kbd": "./src/Kbd.tsx",
     "./Label": "./src/Label.tsx",
+    "./LocaleLoadFailureToast": "./src/LocaleLoadFailureToast.tsx",
     "./Modal": "./src/Modal/index.tsx",
     "./Modal/ModalBackdrop": "./src/Modal/ModalBackdrop.tsx",
     "./Modal/ModalOpener": "./src/Modal/ModalOpener.ts",
@@ -323,6 +324,10 @@
       "./Label": {
         "types": "./dist/Label.d.ts",
         "default": "./dist/Label.js"
+      },
+      "./LocaleLoadFailureToast": {
+        "types": "./dist/LocaleLoadFailureToast.d.ts",
+        "default": "./dist/LocaleLoadFailureToast.js"
       },
       "./Modal": {
         "types": "./dist/Modal/index.d.ts",

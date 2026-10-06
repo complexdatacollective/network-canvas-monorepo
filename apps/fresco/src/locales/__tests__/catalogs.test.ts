@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -16,7 +17,10 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { frescoLocales } from '~/i18n/locales';
-import { frescoCatalogs } from '~/src/locales/catalogs';
+import {
+  frescoCatalogLoaders,
+  frescoCatalogSource,
+} from '~/src/locales/catalogs';
 import de from '~/src/locales/de.json';
 import enGb from '~/src/locales/en-GB.json';
 import es from '~/src/locales/es.json';
@@ -50,6 +54,9 @@ const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
 const italianSources = readTranslationSources(localesDir, 'it');
 const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
+// What the app renders: every package's catalog for the locale, merged.
+const mergedEs = await frescoCatalogSource.load('es');
+const mergedEnGb = await frescoCatalogSource.load('en-GB');
 
 describe('Fresco researcher message catalogs', () => {
   it('extracts all researcher source directories without stale, missing, or duplicate descriptors', async () => {
@@ -78,8 +85,21 @@ describe('Fresco researcher message catalogs', () => {
     ]);
     for (const { locale } of frescoLocales) {
       expect(ecosystemLocales.map((entry) => entry.locale)).toContain(locale);
-      expect(Object.keys(frescoCatalogs)).toContain(locale);
     }
+    // English renders from its descriptors; every other advertised locale
+    // has a catalog to load, and nothing unadvertised does.
+    expect(Object.keys(frescoCatalogLoaders).toSorted()).toEqual(
+      frescoLocales
+        .map(({ locale }) => locale)
+        .filter((locale) => locale !== 'en')
+        .toSorted(),
+    );
+  });
+
+  it('loads each committed catalog through its own loader', async () => {
+    expect(await checkCatalogLoaders(localesDir, frescoCatalogLoaders)).toEqual(
+      [],
+    );
   });
 
   it('requires complete Spanish and matching ICU arguments and rich text tags', () => {
@@ -123,7 +143,7 @@ describe('Fresco researcher message catalogs', () => {
   });
 
   it('renders app and common Spanish through the merged production catalog', () => {
-    const intl = createAppIntl({ locale: 'es', messages: frescoCatalogs.es });
+    const intl = createAppIntl({ locale: 'es', messages: mergedEs });
     expect(
       intl.formatMessage({
         id: 'fresco.NavigationBar.settings',
@@ -135,7 +155,7 @@ describe('Fresco researcher message catalogs', () => {
   });
 
   it('uses the independently reviewed Spanish singular and plural count forms', () => {
-    const intl = createAppIntl({ locale: 'es', messages: frescoCatalogs.es });
+    const intl = createAppIntl({ locale: 'es', messages: mergedEs });
     const interviewCounts = en['fresco.participants.table.interviewCounts'];
     const generated =
       en['fresco.settings.SyntheticInterviewDataSection.interviewsGenerated'];
@@ -166,7 +186,7 @@ describe('Fresco researcher message catalogs', () => {
   it('formats British overrides and source fallbacks in the selected locale', () => {
     const intl = createAppIntl({
       locale: 'en-GB',
-      messages: frescoCatalogs['en-GB'],
+      messages: mergedEnGb,
     });
     expect(
       intl.formatMessage({
@@ -191,7 +211,7 @@ describe('Fresco researcher message catalogs', () => {
     expect(recruitment).toHaveLength(2);
     const intl = createAppIntl({
       locale: 'en-GB',
-      messages: frescoCatalogs['en-GB'],
+      messages: mergedEnGb,
     });
     for (const [id, message] of recruitment) {
       const descriptor = { ...message, id };
@@ -217,7 +237,7 @@ describe('Fresco researcher message catalogs', () => {
     expect(
       createAppIntl({
         locale: 'es',
-        messages: frescoCatalogs.es,
+        messages: mergedEs,
       }).formatMessage(descriptor, values),
     ).toContain(
       'no podrá iniciar una entrevista nueva ni reanudar ninguna otra entrevista incompleta',

@@ -1,10 +1,5 @@
 import '@testing-library/jest-dom/vitest';
 
-/**
- * The contract's transport tests declare the node environment — jsdom's
- * `FormData` is invisible to Node's `Response`, so a staged file's multipart
- * body never survives the encode — and there is nothing to stub there.
- */
 if (typeof window !== 'undefined') {
   stubBrowserAPIsJsdomLacks();
 }

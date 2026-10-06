@@ -34,8 +34,9 @@
  *    so the parent dialog stays fully exposed while a child picker is open.
  *
  * WHAT IT DOES NOT DO. It does not re-derive the boundary by walking ancestors:
- * every modal in the app portals into one shared container, so an ancestor walk
- * never separates one modal from its sibling. It mirrors Base UI's own
+ * modals opened beside one another (through `useDialog`, or from separate
+ * components) all portal into one shared container, so an ancestor walk never
+ * separates one modal from its sibling. It mirrors Base UI's own
  * algorithm instead — build the keep-set as the ancestor path of each inside
  * element, then walk `document.body` collecting every node that is not on that
  * path — with the inside element being the modal's own Base UI portal node.
@@ -43,9 +44,10 @@
  * guards keep working; every other portal node (a sibling modal, a stale one
  * still animating out) falls outside and is inerted.
  *
- * Popups opened AFTER the sweep — a Select, Combobox, Popover or Tooltip inside
- * the dialog — create their portal node later, so they are not in the snapshot
- * and are never inerted. This matches Base UI's own snapshot semantics.
+ * Popups inside the dialog (a Select, Combobox, Popover or Tooltip) and modals
+ * declared inside it portal into the modal's own portal node, because `Modal`
+ * points `usePortalContainer` at it. They are inside the boundary whenever they
+ * mount, so they are never inerted.
  *
  * ONE NARROW EXCEPTION. A pure snapshot also leaves anything the APP mounts
  * afterwards exposed. Architect's protocol-lock banner is a direct child of the
@@ -59,8 +61,10 @@
  *
  * The narrowing is what keeps the paragraph above true. `#root`, `<body>` and
  * the shared portal container are all on the keep path and all contain the
- * modal, and a NESTED modal's portal node is added under the portal container
- * after this sweep ran: observing them would inert the dialog on top. An exempt
+ * modal, and a modal opened over this one adds its portal node under the shared
+ * container after this sweep ran: observing them would inert the dialog on top.
+ * (A modal declared inside this one is added under this modal's portal node,
+ * which is inside the boundary and never observed.) An exempt
  * live region is not observed for the same reason the walk stops at one — its
  * first message arrives as an appended element (`FieldErrors` mounts the error
  * box into an always-present region), and inerting that is exactly the

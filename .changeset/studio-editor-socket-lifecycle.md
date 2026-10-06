@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': patch
+'@codaco/studio-web': patch
 ---
 
 Keep the protocol editor working across a dropped connection, and close its

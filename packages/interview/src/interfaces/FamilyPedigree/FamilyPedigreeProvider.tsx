@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import type { FramingId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  isFamilyPedigreeStageMetadata,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -69,8 +70,13 @@ export const FamilyPedigreeProvider = ({
   const gameteRoleVariable = useStageSelector(getGameteRoleVariable);
   const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
   const framingConfig = useStageSelector(getFramingConfig);
+  const stageMetadata = useStageSelector(getStageMetadata);
   const initialFraming: FramingId | null =
-    framingConfig.mode === 'fixed' ? framingConfig.value : null;
+    framingConfig.mode === 'fixed'
+      ? framingConfig.value
+      : ((isFamilyPedigreeStageMetadata(stageMetadata)
+          ? stageMetadata.selectedFraming
+          : undefined) ?? null);
 
   const variableConfig: VariableConfig = {
     nodeType,
@@ -90,7 +96,6 @@ export const FamilyPedigreeProvider = ({
   // and remember which were already in Redux so finalize doesn't duplicate
   // them. Once the pedigree has committed its private membership, also drop
   // same-typed alters nominated in later stages, which are not part of it.
-  const stageMetadata = useStageSelector(getStageMetadata);
   const memberIds = pedigreeMemberIds(stageMetadata);
   const seededNodes = nodes.filter(
     (node) =>

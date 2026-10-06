@@ -4,9 +4,10 @@
 #   apps/studio/stack-test/up.sh --variant reference
 #   apps/studio/stack-test/up.sh --variant external-postgres
 #   apps/studio/stack-test/up.sh --variant external-bucket
+#   apps/studio/stack-test/up.sh --variant external-bucket-azure
 #   apps/studio/stack-test/up.sh --variant own-proxy
 #
-# What `dev:stack` does (server/scripts/dev-stack.ts), from bash and without
+# What `dev:stack` does (api/scripts/dev-stack.ts), from bash and without
 # pnpm, plus one per-variant override: write the secrets and the environment,
 # `up -d`, `run --rm migrate`, and wait for `/readyz` through whatever ingress
 # this variant is testing. The setup token `migrate` prints is captured to
@@ -44,7 +45,7 @@ fi
 
 # ── The two file secrets ──────────────────────────────────────────────────
 #
-# Written only when absent, exactly as server/scripts/compose.ts writes them:
+# Written only when absent, exactly as api/scripts/compose.ts writes them:
 # a developer who already has a `dev`/`dev:stack` value here keeps it, and
 # either value works because the same file is what Postgres is initialised
 # with and what the server reads. Compose resolves every declared secret while
@@ -71,7 +72,9 @@ fi
 # Every variable `.env.example` carries, so the stack is interpolated from the
 # same set a self-hoster fills in. The three swap variables are always present
 # and empty for the variants that do not use them: each is read as
-# `${VAR:-<the stack's own service>}`, so empty is the reference value.
+# `${VAR:-<the stack's own service>}`, so empty is the reference value. The
+# Azure Blob variables are always present too, and empty everywhere but the
+# variant that selects that provider; every other variant names `s3`.
 DATABASE_URL=""
 REDIS_URL=""
 S3_ENDPOINT=""
@@ -79,6 +82,17 @@ S3_REGION="garage"
 S3_BUCKET="studio"
 S3_ACCESS_KEY_ID="GK$(hex 12)"
 S3_SECRET_ACCESS_KEY="$(hex 32)"
+STUDIO_OBJECT_STORE="s3"
+AZURE_STORAGE_ACCOUNT_URL=""
+AZURE_STORAGE_CONTAINER=""
+AZURE_STORAGE_CONNECTION_STRING=""
+AZURE_CLIENT_ID=""
+# The account variants/external-bucket-azure.yml's Azurite serves, generated
+# like every other credential here. Azurite's account-name rule is a storage
+# account's: 3-24 lowercase letters and digits. The key is any base64 string;
+# 32 random bytes is the shape a real account key has.
+EXTERNAL_AZURITE_ACCOUNT="stacktest$(hex 4)"
+EXTERNAL_AZURITE_KEY="$(openssl rand -base64 32)"
 
 case "$VARIANT" in
   external-postgres)
@@ -97,6 +111,22 @@ case "$VARIANT" in
     # A different store, so different credentials. The stub imports these.
     S3_ACCESS_KEY_ID="GK$(hex 12)"
     S3_SECRET_ACCESS_KEY="$(hex 32)"
+    ;;
+  external-bucket-azure)
+    # What docs/self-host/swap.md tells an Azure deployer to write, with the
+    # connection-string fallback in place of the account URL: there is no
+    # managed identity off Azure. Every `S3_*` value is emptied rather
+    # than left at the reference's, because the guide says to and because the
+    # server refuses any of them beside `azure-blob` — and an empty access key
+    # is what turns the compose file's `S3_ENDPOINT` default off.
+    STUDIO_OBJECT_STORE="azure-blob"
+    AZURE_STORAGE_CONTAINER="studio-assets"
+    AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=$EXTERNAL_AZURITE_ACCOUNT;AccountKey=$EXTERNAL_AZURITE_KEY;BlobEndpoint=http://external-azurite:10000/$EXTERNAL_AZURITE_ACCOUNT;"
+    S3_ENDPOINT=""
+    S3_REGION=""
+    S3_BUCKET=""
+    S3_ACCESS_KEY_ID=""
+    S3_SECRET_ACCESS_KEY=""
     ;;
   external-redis)
     # The whole swap. No credentials: the guide's line is a bare
@@ -130,12 +160,24 @@ GARAGE_ADMIN_TOKEN=$(hex 32)
 DATABASE_URL=$DATABASE_URL
 S3_ENDPOINT=$S3_ENDPOINT
 REDIS_URL=$REDIS_URL
+STUDIO_OBJECT_STORE=$STUDIO_OBJECT_STORE
+AZURE_STORAGE_ACCOUNT_URL=$AZURE_STORAGE_ACCOUNT_URL
+AZURE_STORAGE_CONTAINER=$AZURE_STORAGE_CONTAINER
+# Single-quoted, so Compose reads it literally: a connection string is a list
+# of name=value pairs separated by semicolons, and its base64 key can carry a
+# slash, a plus and trailing equals signs of its own.
+AZURE_STORAGE_CONNECTION_STRING='$AZURE_STORAGE_CONNECTION_STRING'
+AZURE_CLIENT_ID=$AZURE_CLIENT_ID
 SMTP_URL=
 EMAIL_FROM=
 # Read only by variants/external-bucket.yml, whose stub is a second Garage
 # with secrets of its own.
 EXTERNAL_GARAGE_RPC_SECRET=$(hex 32)
 EXTERNAL_GARAGE_ADMIN_TOKEN=$(hex 32)
+# Read only by variants/external-bucket-azure.yml, whose stub is Azurite
+# serving this one account.
+EXTERNAL_AZURITE_ACCOUNT=$EXTERNAL_AZURITE_ACCOUNT
+EXTERNAL_AZURITE_KEY=$EXTERNAL_AZURITE_KEY
 # Read only by variants/*, which attach the stubs to a network of their own.
 EXTERNAL_NETWORK=$EXTERNAL_NETWORK
 EXTERNAL_SUBNET=$EXTERNAL_SUBNET

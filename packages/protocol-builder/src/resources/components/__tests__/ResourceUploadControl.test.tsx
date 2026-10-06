@@ -9,10 +9,10 @@ const CHOOSE_FILE = 'Choose a file from your computer';
 
 describe('ResourceUploadControl', () => {
   it('does not look pressable while its input is disabled', async () => {
-    const { client, protocolId } = createResourceHost();
+    const { adapter, protocolId } = createResourceHost();
 
     renderInResourceContext(
-      client,
+      adapter,
       protocolId,
       <ResourceUploadControl kind="image" onStaged={vi.fn()} disabled />,
     );

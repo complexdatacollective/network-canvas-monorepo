@@ -74,6 +74,13 @@
         "CONTEXT",
         "REVIEW_ID",
         "SITE_URL",
+        // The footer's copyright year. `next.config.ts` falls back to the
+        // build machine's year when this is unset, and that value is baked into
+        // the static export — so without declaring it here a build cached
+        // before 1 January could be replayed for a deployment made after it,
+        // publishing the previous year. Setting it in the deploy environment is
+        // what makes a new year invalidate the cache.
+        "NEXT_PUBLIC_BUILD_YEAR",
         // See the note on the generic build task's `env`.
         "POSTHOG_PERSONAL_API_KEY",
         "POSTHOG_PROJECT_ID"
@@ -130,7 +137,7 @@
       ],
       "outputs": ["dist/**"]
     },
-    "@codaco/studio-client#build": {
+    "@codaco/studio-web#build": {
       "dependsOn": ["^topo"],
       "inputs": [
         "index.html",
@@ -150,7 +157,7 @@
     // `studio-api migrate` executes, from `scripts/apply.ts`. Without these a
     // change to the rendering would replay a cached bundle carrying the old
     // statements.
-    "@codaco/studio-server#build": {
+    "@codaco/studio-api#build": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
@@ -238,6 +245,13 @@
         "NODE_ENV",
         "NEXT_PUBLIC_DOCUMENTATION_URL",
         "NEXT_PUBLIC_PROTOCOL_GALLERY_URL",
+        // The footer's copyright year. `next.config.ts` falls back to the
+        // build machine's year when this is unset, and that value is baked into
+        // the static export — so without declaring it here a build cached
+        // before 1 January could be replayed for a deployment made after it,
+        // publishing the previous year. Setting it in the deploy environment is
+        // what makes a new year invalidate the cache.
+        "NEXT_PUBLIC_BUILD_YEAR",
         "CONTEXT",
         "REVIEW_ID",
         // See the note on the generic build task's `env`.
@@ -557,13 +571,12 @@
       "outputs": []
     },
     // The Vite configs compiled by the apps' node tsconfigs import the shared
-    // plugin sources under scripts/ (and apps/studio/scripts/), so those files
-    // must be typecheck inputs or a cached result can hide an error in them.
-    "@codaco/studio-client#typecheck": {
+    // plugin sources under scripts/, so those files must be typecheck inputs
+    // or a cached result can hide an error in them.
+    "@codaco/studio-web#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "*.config.ts",
         "tsconfig*.json",
@@ -572,11 +585,10 @@
       "env": ["NODE_ENV"],
       "outputs": []
     },
-    "@codaco/studio-server#typecheck": {
+    "@codaco/studio-api#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "scripts/**",
         "*.config.ts",
@@ -665,7 +677,7 @@
       ],
       "outputs": []
     },
-    "@codaco/studio-server#test": {
+    "@codaco/studio-api#test": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",

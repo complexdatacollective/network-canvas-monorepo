@@ -39,9 +39,6 @@ const LOCAL_PRESENCE = {
 
 /**
  * A one-consumer queue an event source pushes into and a generator drains.
- *
- * The pinned oRPC has no publisher helper, so `watchProtocol` needs its own
- * bridge from this log's synchronous publish to an async iterator.
  */
 class EventQueue {
   #buffer: LoggedEvent[] = [];
@@ -101,6 +98,7 @@ export class ProtocolRevisions {
   #emitting = true;
   /** Writes run one at a time, so `create` mints against a settled store. */
   #writes: Promise<unknown> = Promise.resolve();
+  readonly #unsubscribe: () => void;
 
   constructor(store: ArchitectStore) {
     this.#store = store;
@@ -110,9 +108,13 @@ export class ProtocolRevisions {
       mode: 'viewing',
     };
     this.#seed();
-    store.subscribe(() => {
+    this.#unsubscribe = store.subscribe(() => {
       if (this.#emitting) this.#refresh();
     });
+  }
+
+  dispose(): void {
+    this.#unsubscribe();
   }
 
   sectionIds(): ProtocolSectionId[] {

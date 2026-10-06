@@ -8,26 +8,27 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   LeaseRejectedError,
-  type SyncServer,
+  SectionRejectedError,
   UnknownSectionError,
 } from '../server.ts';
-import type { TenantDb } from '../tenant.ts';
 import {
   assertLinearChain,
   dbAvailable,
   expireLease,
   makeDraft,
   makeServer,
+  type RunTenant,
+  type SyncFacade,
 } from './helpers.ts';
 
 describe.skipIf(!dbAvailable)('lease state machine', () => {
   let db: Pool;
   let dispose: () => Promise<void>;
-  let tenantDb: TenantDb;
-  let server: SyncServer;
+  let run: RunTenant;
+  let server: SyncFacade;
 
   beforeAll(async () => {
-    ({ db, tenantDb, server, dispose } = await makeServer('sync_lease'));
+    ({ db, run, server, dispose } = await makeServer('sync_lease'));
   });
 
   afterAll(async () => {
@@ -58,7 +59,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     const draft = await makeDraft(server);
     const first = await server.acquire(draft, 'stage-1', 'tab-A');
     expect(first?.epoch).toBe(1n);
-    await expireLease(tenantDb, draft, 'stage-1');
+    await expireLease(run, draft, 'stage-1');
     // The same owner after expiry is a fresh claim: pre-sleep in-flight
     // commits must be fenced out, so the epoch advances.
     const again = await server.acquire(draft, 'stage-1', 'tab-A');
@@ -71,7 +72,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     expect(a?.epoch).toBe(1n);
 
     // Laptop A sleeps past expiry; B observes the lease as free and takes over.
-    await expireLease(tenantDb, draft, 'stage-1');
+    await expireLease(run, draft, 'stage-1');
     const b = await server.acquire(draft, 'stage-1', 'tab-B');
     expect(b?.epoch).toBe(2n);
 
@@ -104,7 +105,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
   it('late heartbeat cannot resurrect an expired lease', async () => {
     const draft = await makeDraft(server);
     const a = await server.acquire(draft, 'stage-1', 'tab-A');
-    await expireLease(tenantDb, draft, 'stage-1');
+    await expireLease(run, draft, 'stage-1');
 
     // The late heartbeat arrives before any takeover — it must still fail:
     // another client may already have observed the lease as free.
@@ -118,7 +119,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
   it('expiry-window write: commit after expiry but before takeover is rejected (epoch alone is not sufficient)', async () => {
     const draft = await makeDraft(server);
     await server.acquire(draft, 'stage-1', 'tab-A');
-    await expireLease(tenantDb, draft, 'stage-1');
+    await expireLease(run, draft, 'stage-1');
 
     // No takeover has happened — owner and epoch still match. Only the
     // commit-time expires_at check stands between a slept laptop and a
@@ -200,7 +201,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
   it('racing acquires on an expired lease admit exactly one winner', async () => {
     const draft = await makeDraft(server);
     await server.acquire(draft, 'stage-1', 'tab-A');
-    await expireLease(tenantDb, draft, 'stage-1');
+    await expireLease(run, draft, 'stage-1');
 
     const contenders = Array.from({ length: 8 }, (_, i) => `contender-${i}`);
     const results = await Promise.all(
@@ -210,5 +211,100 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     expect(winners).toHaveLength(1);
     expect(winners[0]?.epoch).toBe(2n);
     await assertLinearChain(server, draft);
+  });
+
+  describe('the acquire CAS truth table', () => {
+    type LeaseRow = { owner: string; epoch: string; expires_at: Date };
+
+    const leaseRow = async (draft: string): Promise<LeaseRow> => {
+      const res = await db.query(
+        `SELECT owner, epoch, expires_at FROM leases
+         WHERE draft_id = $1 AND section_id = 'stage-1'`,
+        [draft],
+      );
+      const row = res.rows[0] as LeaseRow | undefined;
+      if (row === undefined) throw new Error('no lease row');
+      return row;
+    };
+
+    it('case 1 — same owner, live lease: keeps its epoch and refreshes the TTL', async () => {
+      const draft = await makeDraft(server);
+      const first = await server.acquire(draft, 'stage-1', 'tab-A');
+      expect(first?.epoch).toBe(1n);
+      const before = await leaseRow(draft);
+
+      const again = await server.acquire(draft, 'stage-1', 'tab-A');
+      expect(again?.epoch).toBe(1n);
+      const after = await leaseRow(draft);
+      expect(after.epoch).toBe(before.epoch);
+      expect(after.owner).toBe('tab-A');
+      expect(after.expires_at.getTime()).toBeGreaterThan(
+        before.expires_at.getTime(),
+      );
+      expect(again?.expiresAt.getTime()).toBe(after.expires_at.getTime());
+    });
+
+    it('case 2 — same owner, expired lease: bumps the epoch', async () => {
+      const draft = await makeDraft(server);
+      expect((await server.acquire(draft, 'stage-1', 'tab-A'))?.epoch).toBe(1n);
+      await expireLease(run, draft, 'stage-1');
+      const before = await leaseRow(draft);
+
+      const again = await server.acquire(draft, 'stage-1', 'tab-A');
+      expect(again?.epoch).toBe(2n);
+      const after = await leaseRow(draft);
+      expect(after.owner).toBe('tab-A');
+      expect(after.epoch).toBe('2');
+      expect(after.expires_at.getTime()).toBeGreaterThan(
+        before.expires_at.getTime(),
+      );
+    });
+
+    it('case 3 — another owner, expired lease: takes over and bumps the epoch', async () => {
+      const draft = await makeDraft(server);
+      expect((await server.acquire(draft, 'stage-1', 'tab-A'))?.epoch).toBe(1n);
+      await expireLease(run, draft, 'stage-1');
+
+      const b = await server.acquire(draft, 'stage-1', 'tab-B');
+      expect(b?.epoch).toBe(2n);
+      const after = await leaseRow(draft);
+      expect(after.owner).toBe('tab-B');
+      expect(after.epoch).toBe('2');
+    });
+
+    it('case 4 — another owner, live lease: refused, and the held lease is untouched', async () => {
+      const draft = await makeDraft(server);
+      expect((await server.acquire(draft, 'stage-1', 'tab-A'))?.epoch).toBe(1n);
+      const before = await leaseRow(draft);
+
+      expect(await server.acquire(draft, 'stage-1', 'tab-B')).toBeNull();
+
+      const after = await leaseRow(draft);
+      expect(after.owner).toBe('tab-A');
+      expect(after.epoch).toBe(before.epoch);
+      expect(after.expires_at.getTime()).toBe(before.expires_at.getTime());
+    });
+
+    it('hands the epoch back as a bigint, whatever the driver decoded', async () => {
+      const draft = await makeDraft(server);
+      const lease = await server.acquire(draft, 'stage-1', 'tab-A');
+      expect(typeof lease?.epoch).toBe('bigint');
+      const renewed = await server.renew(draft, 'stage-1', 'tab-A', 1n);
+      expect(typeof renewed?.epoch).toBe('bigint');
+      const taken = await server.takeover(draft, 'stage-1', 'tab-B');
+      expect(typeof taken?.epoch).toBe('bigint');
+    });
+  });
+});
+
+describe('SectionRejectedError', () => {
+  it('describes a cause that cannot be converted to a string', () => {
+    const hostile = Object.create(null) as object;
+    const error = new SectionRejectedError({
+      sectionId: 'stage-1',
+      cause: hostile,
+    });
+    expect(() => error.message).not.toThrow();
+    expect(error.message).toContain('stage-1');
   });
 });

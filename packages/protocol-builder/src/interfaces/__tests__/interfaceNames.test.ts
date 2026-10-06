@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { INTERFACE_NAMES, interfaceDisplayName } from '../interfaceNames.ts';
 
 const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
+
+const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
 describe('INTERFACE_NAMES', () => {
   it('names every stage type the schema defines', () => {
@@ -51,7 +54,7 @@ describe('interfaceDisplayName', () => {
 it('localizes display names without altering persisted protocol-name defaults', () => {
   const intl = createAppIntl({
     locale: 'es',
-    messages: protocolBuilderCatalogs.es,
+    messages: spanishMessages,
   });
   expect(interfaceDisplayName('NetworkComposer', intl)).toBe(
     'Compositor de redes',

@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
-import { protocolValidationCatalogs } from '../../locales/catalogs.ts';
+import { protocolValidationCatalogLoaders } from '../../locales/catalogs.ts';
 import { formatMigrationNotes } from '../../messages.ts';
 import { getMigrationInfo } from '../migrate-protocol.ts';
 
 const en = createAppIntl({ locale: 'en' });
 const es = createAppIntl({
   locale: 'es',
-  messages: protocolValidationCatalogs.es,
+  messages: await loadCatalog('es', protocolValidationCatalogLoaders),
 });
 const notes = getMigrationInfo(4, 8).notes;
 

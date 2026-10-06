@@ -1,17 +1,22 @@
-import { createORPCClient } from '@orpc/client';
-import { RPCLink } from '@orpc/client/websocket';
-import { RPCHandler } from '@orpc/server/websocket';
+import { Context, Effect, Layer, ManagedRuntime, Queue } from 'effect';
+import * as NetAddress from 'effect/net/NetAddress';
+import * as RpcClient from 'effect/rpc/RpcClient';
+import * as RpcSerialization from 'effect/rpc/RpcSerialization';
+import * as RpcServer from 'effect/rpc/RpcServer';
+import * as Socket from 'effect/socket/Socket';
+import * as SocketServer from 'effect/socket/SocketServer';
+
+import { makeRpcAdapter } from '@codaco/effect-query/adapter';
 import {
-  WebSocket as WebSocketClient,
-  WebSocketServer,
-  type RawData,
-  type WebSocket as NodeWebSocket,
-} from 'ws';
+  ProtocolBuilderGroup,
+  type ProtocolBuilderClient,
+  type ProtocolBuilderRpcs,
+} from '@codaco/protocol-builder-core/contract';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-
+import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import {
   createInMemoryHost,
+  hostSessionFor,
   type InMemoryHost,
   type InMemoryHostSeed,
 } from './createInMemoryHost.ts';
@@ -19,90 +24,130 @@ import type { HostPrincipal } from './protocolStore.ts';
 
 export type WebSocketHost = Readonly<{
   host: InMemoryHost;
-  /** The same contract, reached over a real socket rather than in process. */
-  client: ProtocolBuilderClient;
-  /** Kills the server's side of the socket, as a lost connection does. */
+  adapter: ProtocolBuilderAdapter;
   dropConnection(): void;
   close(): Promise<void>;
 }>;
 
-/**
- * The in-memory host served over a Node WebSocket, so a test can watch the
- * package behave against the transport Studio will use.
- */
+const MAX_FRAME_BYTES = 101 * 1024 * 1024;
+
+const serialization = RpcSerialization.layerSchemaBinary({
+  maxFrameSize: MAX_FRAME_BYTES,
+});
+
+class WireClient extends Context.Service<WireClient, ProtocolBuilderClient>()(
+  '@codaco/protocol-builder/testing/WireClient',
+) {}
+
+type Link = Readonly<{ cut: (reason: Error) => void }>;
+
+function pipe() {
+  let controller: TransformStreamDefaultController<Uint8Array> | undefined;
+  const stream = new TransformStream<Uint8Array, Uint8Array>(
+    {
+      start: (started) => {
+        controller = started;
+      },
+    },
+    undefined,
+    { highWaterMark: 1024 },
+  );
+  return {
+    stream,
+    fail: (reason: Error) => controller?.error(reason),
+  };
+}
+
 export async function createWebSocketHost(
   seed: InMemoryHostSeed,
   principal?: HostPrincipal,
 ): Promise<WebSocketHost> {
   const host = createInMemoryHost(seed);
-  const handler = new RPCHandler(host.router);
-  const server = new WebSocketServer({ port: 0 });
-  const serverSockets = new Set<NodeWebSocket>();
-  const context = {
-    principal: principal ?? {
-      sessionId: 'wire-session',
-      userId: 'wire-user',
-      displayName: 'Wire',
-    },
-  };
+  const incoming = Effect.runSync(Queue.unbounded<Socket.Socket>());
+  const links = new Set<Link>();
 
-  server.on('connection', (socket) => {
-    serverSockets.add(socket);
-    socket.on('message', (data, isBinary) => {
-      void handler.message(socket, decodeFrame(data, isBinary), { context });
-    });
-    socket.on('close', () => {
-      serverSockets.delete(socket);
-      void handler.close(socket);
-    });
+  const socketServer = Layer.succeed(SocketServer.SocketServer)({
+    address: NetAddress.unixPathAddress('in-memory'),
+    run: (handler) =>
+      Effect.forever(
+        Effect.flatMap(Queue.take(incoming), (socket) =>
+          Effect.forkChild(handler(socket)),
+        ),
+      ),
   });
 
-  await new Promise<void>((resolve) => server.once('listening', resolve));
-  const address = server.address();
-  if (address === null || typeof address === 'string') {
-    throw new Error('the WebSocket test server did not take a port');
-  }
-  const url = `ws://127.0.0.1:${address.port}`;
+  const server = RpcServer.layer(ProtocolBuilderGroup, {
+    disableFatalDefects: true,
+  }).pipe(
+    Layer.provide(RpcServer.layerProtocolSocketServer),
+    Layer.provide([socketServer, serialization]),
+    Layer.provide([
+      host.handlers,
+      hostSessionFor(
+        principal ?? {
+          sessionId: 'wire-session',
+          userId: 'wire-user',
+          displayName: 'Wire',
+        },
+      ),
+    ]),
+  );
+  const serverRuntime = ManagedRuntime.make(server);
+  await serverRuntime.runPromise(Effect.void);
 
-  const clientSockets = new Set<NodeWebSocket>();
-  const link = new RPCLink({
-    connect: () => {
-      const socket = new WebSocketClient(url);
-      clientSockets.add(socket);
-      return socket;
-    },
-    reconnect: { enabled: true, delay: () => 10 },
+  const connect = Effect.gen(function* () {
+    const toServer = pipe();
+    const toClient = pipe();
+    const link: Link = {
+      cut: (reason) => {
+        links.delete(link);
+        toServer.fail(reason);
+        toClient.fail(reason);
+      },
+    };
+    links.add(link);
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => link.cut(new Error('the client closed its socket'))),
+    );
+    const serverSide = yield* Socket.fromTransformStream(
+      Effect.succeed({
+        readable: toServer.stream.readable,
+        writable: toClient.stream.writable,
+      }),
+    );
+    yield* Queue.offer(incoming, serverSide);
+    return {
+      readable: toClient.stream.readable,
+      writable: toServer.stream.writable,
+    };
   });
+
+  const client = Layer.effect(WireClient)(
+    RpcClient.make(ProtocolBuilderGroup, { flatten: true }),
+  ).pipe(
+    Layer.provide(
+      RpcClient.layerProtocolSocket({ retryTransientErrors: false }),
+    ),
+    Layer.provide([
+      Layer.effect(Socket.Socket)(Socket.fromTransformStream(connect)),
+      serialization,
+    ]),
+  );
+  const clientRuntime = ManagedRuntime.make(client);
 
   return {
     host,
-    client: createORPCClient<ProtocolBuilderClient>(link),
+    adapter: makeRpcAdapter<ProtocolBuilderRpcs, WireClient, WireClient>({
+      runtime: clientRuntime,
+      client: WireClient,
+    }),
     dropConnection: () => {
-      for (const socket of serverSockets) socket.terminate();
-      serverSockets.clear();
+      for (const link of links) link.cut(new Error('the connection dropped'));
     },
     close: async () => {
-      for (const socket of clientSockets) socket.close();
-      for (const socket of serverSockets) socket.terminate();
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => (error ? reject(error) : resolve()));
-      });
+      await clientRuntime.dispose();
+      for (const link of links) link.cut(new Error('the host closed'));
+      await serverRuntime.dispose();
     },
   };
-}
-
-/**
- * `ws` delivers a frame as a Buffer (or a list of them) whichever kind it is,
- * while the handler wants an ArrayBuffer for a binary frame and a string for a
- * text one.
- */
-function decodeFrame(data: RawData, isBinary: boolean): string | ArrayBuffer {
-  const bytes = new Uint8Array(
-    Buffer.isBuffer(data)
-      ? data
-      : Array.isArray(data)
-        ? Buffer.concat(data)
-        : Buffer.from(data),
-  );
-  return isBinary ? bytes.buffer : new TextDecoder().decode(bytes);
 }

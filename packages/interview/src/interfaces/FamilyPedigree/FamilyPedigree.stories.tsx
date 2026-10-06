@@ -10,6 +10,7 @@ import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {
   clickGetStarted,
   clickNext,
+  expectQuickStartComplete,
   getDialog,
   selectEgoSex,
   setFieldInput,
@@ -408,14 +409,14 @@ const scenarioRender = () => {
 };
 
 export const NuclearFamily: ScenarioStory = {
-  tags: ['!test'],
   args: { scaffoldingText: '' },
   render: scenarioRender,
   play: async () => {
     await clickGetStarted();
 
-    // About you (EgoSexStep)
-    await selectEgoSex();
+    // About you (EgoSexStep). Recorded male at birth, so the children step can
+    // pre-select both gamete providers for the children with Sophia.
+    await selectEgoSex('male');
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -452,13 +453,21 @@ export const NuclearFamily: ScenarioStory = {
     await setFieldInput('childWithPartner[1].biologicalSex', 'male');
     await setFieldInput('childWithPartner[1].gender_identity', 'man');
 
-    // Both children should show the egg/sperm parent selectors; nuclear-family
-    // defaults (You → egg, Sophia → sperm) are already valid, so no changes needed.
+    // Both children show the egg/sperm parent selectors, pre-selected from the
+    // parents' sex recorded at birth (Sophia → egg, You → sperm), so no changes
+    // are needed.
     const childrenDialog = await getDialog();
     expect(within(childrenDialog).getAllByText('Egg Parent')).toHaveLength(2);
     expect(within(childrenDialog).getAllByText('Sperm Parent')).toHaveLength(2);
 
     await clickNext();
+    await expectQuickStartComplete([
+      'Linda',
+      'Robert',
+      'Sophia',
+      'Olivia',
+      'Liam',
+    ]);
   },
 };
 
@@ -493,6 +502,7 @@ export const SingleParent: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickNext();
+    await expectQuickStartComplete(['Linda', 'Sperm Parent']);
   },
 };
 
@@ -535,6 +545,7 @@ export const SameSexMothers: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickNext();
+    await expectQuickStartComplete(['Linda', 'Patricia', 'Sperm Donor']);
   },
 };
 
@@ -576,6 +587,7 @@ export const SpermDonor: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickNext();
+    await expectQuickStartComplete(['Linda', 'Carlos', 'Patricia']);
   },
 };
 
@@ -620,6 +632,7 @@ export const BlendedFamily: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickNext();
+    await expectQuickStartComplete(['Susan', 'Robert', 'Karen']);
   },
 };
 
@@ -662,18 +675,19 @@ export const TransParent: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickNext();
+    await expectQuickStartComplete(['Alex', 'Priya', 'Sperm Donor']);
   },
 };
 
 export const NonBinaryEgo: ScenarioStory = {
-  tags: ['!test'],
   args: { scaffoldingText: '' },
   render: scenarioRender,
   play: async () => {
     await clickGetStarted();
 
-    // About you (EgoSexStep)
-    await selectEgoSex();
+    // About you (EgoSexStep). A non-binary participant recorded male at birth,
+    // whose non-binary partner Sam was recorded female at birth.
+    await selectEgoSex('male');
 
     // Egg parent step
     await setFieldInput('egg-parent.is-donor', false);
@@ -707,12 +721,14 @@ export const NonBinaryEgo: ScenarioStory = {
     await setFieldInput('childWithPartner[0].biologicalSex', 'male');
     await setFieldInput('childWithPartner[0].gender_identity', 'non_binary');
 
-    // Confirm the egg/sperm parent selectors are present; defaults are valid.
+    // Confirm the egg/sperm parent selectors are present, pre-selected from the
+    // parents' sex recorded at birth (Sam → egg, You → sperm).
     const childDialog = await getDialog();
     expect(within(childDialog).getByText('Egg Parent')).toBeTruthy();
     expect(within(childDialog).getByText('Sperm Parent')).toBeTruthy();
 
     await clickNext();
+    await expectQuickStartComplete(['Tomoko', 'Kenji', 'Sam', 'Kai']);
   },
 };
 
@@ -782,6 +798,12 @@ export const AdoptedIn: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickNext();
+    await expectQuickStartComplete([
+      'James',
+      'Barbara',
+      'Egg Parent',
+      'Sperm Parent',
+    ]);
   },
 };
 
@@ -822,6 +844,7 @@ export const SingleParentTwoDonors: ScenarioStory = {
     // Partner and children
     await setFieldInput('hasPartner', false);
     await clickNext();
+    await expectQuickStartComplete(['Mum', 'Egg Donor', 'Sperm Donor']);
   },
 };
 
@@ -893,7 +916,6 @@ export const DiseaseNomination: ScenarioStory = {
 };
 
 export const WithPartnerAndChildren: ScenarioStory = {
-  tags: ['!test'],
   args: { scaffoldingText: '' },
   render: scenarioRender,
   play: async () => {
@@ -944,5 +966,12 @@ export const WithPartnerAndChildren: ScenarioStory = {
     expect(within(childrenDialog).getAllByText('Sperm Parent')).toHaveLength(2);
 
     await clickNext();
+    await expectQuickStartComplete([
+      'Linda',
+      'Robert',
+      'James',
+      'Daniel',
+      'Emma',
+    ]);
   },
 };

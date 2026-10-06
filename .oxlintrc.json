@@ -159,7 +159,7 @@
         "packages/protocol-validation/src/**",
         "packages/protocol-utilities/src/**",
         "packages/protocol-builder/src/**",
-        "apps/studio/client/src/**"
+        "apps/studio/web/src/**"
       ],
       "rules": {
         "formatjs/enforce-description": "error",
@@ -174,7 +174,7 @@
       // unfinished work: the Studio client is converted end to end, so a
       // bare literal in its JSX is a string somebody forgot. The other apps
       // turn this on as their own conversions complete.
-      "files": ["apps/studio/client/src/**"],
+      "files": ["apps/studio/web/src/**"],
       "rules": {
         "formatjs/no-literal-string-in-jsx": "error"
       }
@@ -208,7 +208,7 @@
       // has no business knowing about (whether this run is CI); and
       // `src/__tests__/support/entrypoint.ts`, which forwards this process's
       // whole environment to a child so the child is a deployment-shaped run
-      // of an entrypoint. `apps/studio/server/scripts/**` is deliberately
+      // of an entrypoint. `apps/studio/api/scripts/**` is deliberately
       // outside the rule: a script that hands its environment to a child
       // process has nothing to validate.
       //
@@ -216,7 +216,7 @@
       // oxlint only sees `process.env` reached through the global, so a file
       // that did `import process from 'node:process'` would read the
       // environment with the rule none the wiser.
-      "files": ["apps/studio/server/src/**"],
+      "files": ["apps/studio/api/src/**"],
       "plugins": ["node"],
       "rules": {
         "node/no-process-env": "error",
@@ -226,6 +226,10 @@
             "paths": [
               {
                 "name": "node:process",
+                "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
+              },
+              {
+                "name": "process",
                 "message": "Use the `process` global here. Importing it hides `process.env` from the no-process-env rule that keeps src/env.ts the only environment boundary."
               }
             ]

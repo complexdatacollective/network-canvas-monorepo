@@ -5,12 +5,12 @@
 #   apps/studio/stack-test/down.sh --variant reference
 #
 # `--profile migrate` is not optional. `migrate` depends on `garage-init` — and
-# on the external-bucket variant's own one-shot — so Compose creates those as
+# on the external-bucket variants' own one-shots — so Compose creates those as
 # ordinary containers rather than `--rm` ones, and a plain `down` leaves them
 # behind holding the network. The next `up` then fails against a container
 # attached to a network that no longer exists. They are not orphans either
 # (the files still declare them), so `--remove-orphans` does not reach them.
-# See the same note on `down` in server/scripts/dev-stack.ts.
+# See the same note on `down` in api/scripts/dev-stack.ts.
 #
 # Volumes always go: a variant cycle must start from an empty database, or the
 # first-run setup this suite asserts would already be spent.
@@ -29,7 +29,7 @@ if [ ! -f "$ENV_FILE" ]; then
   mkdir -p "$WORK_DIR"
   cat > "$ENV_FILE" <<ENV
 # Written by down.sh: up.sh never got as far as writing this file. The values
-# are placeholders — `down` reads only the names.
+# are placeholders — docker compose down reads only the names.
 STUDIO_HOSTNAME=$HOSTNAME_
 ACME_EMAIL=nobody@localhost
 STUDIO_API_IMAGE=$API_IMAGE
@@ -47,10 +47,17 @@ GARAGE_ADMIN_TOKEN=unused
 DATABASE_URL=
 S3_ENDPOINT=
 REDIS_URL=
+STUDIO_OBJECT_STORE=s3
+AZURE_STORAGE_ACCOUNT_URL=
+AZURE_STORAGE_CONTAINER=
+AZURE_STORAGE_CONNECTION_STRING=
+AZURE_CLIENT_ID=
 SMTP_URL=
 EMAIL_FROM=
 EXTERNAL_GARAGE_RPC_SECRET=unused
 EXTERNAL_GARAGE_ADMIN_TOKEN=unused
+EXTERNAL_AZURITE_ACCOUNT=unused
+EXTERNAL_AZURITE_KEY=unused
 EXTERNAL_NETWORK=$EXTERNAL_NETWORK
 EXTERNAL_SUBNET=$EXTERNAL_SUBNET
 ENV

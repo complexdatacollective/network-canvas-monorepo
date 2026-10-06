@@ -84,7 +84,11 @@
       "ignoreDependencies": [
         "@playwright/test",
         // Resolved by @posthog/plugin-utils and spawned by path at build time.
-        "@posthog/cli"
+        "@posthog/cli",
+        // Netlify's edge bundler resolves npm imports from the base directory's
+        // node_modules only, so networkcanvas.com's locale edge function needs
+        // it installed at the repository root.
+        "@formatjs/intl-localematcher"
       ]
     },
     "apps/networkcanvas.com": {
@@ -237,16 +241,22 @@
         "@utils/*": ["./src/utils/*"]
       }
     },
-    "apps/studio/client": {
+    "apps/studio/web": {
       "entry": ["index.html!"],
       "vite": true,
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "apps/studio/server": {
-      // The image's third entry (#1909). src/index.ts and src/worker.ts are
-      // found through the `dev` script, which runs both from source; migrate
-      // is a one-shot no script starts, so it is named here.
-      "entry": ["scripts/auth-cli-config.ts!", "src/migrate.ts!"],
+    "apps/studio/api": {
+      // The image's one-shot entries (#1909, #1901). src/index.ts and
+      // src/worker.ts are found through the `dev` script, which runs both from
+      // source, and src/rotate-secrets.ts through its own script; migrate and
+      // maintenance are one-shots no script starts from source, so they are
+      // named here.
+      "entry": [
+        "scripts/auth-cli-config.ts!",
+        "src/migrate.ts!",
+        "src/maintenance.ts!"
+      ],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {

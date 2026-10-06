@@ -670,8 +670,12 @@ export const RightToLeft: Story = {
     await expect(rtlStyles.paddingLeft).toBe(ltrStyles.paddingRight);
     await expect(rtlStyles.paddingRight).toBe('0px');
 
-    // And so does the chevron, which is what has to be said twice.
+    // And so does the chevron, which is what has to be said twice. The LTR
+    // value is exact: only `100%` keeps the chevron on the control's right
+    // edge as its width changes. The RTL value is the one place the builds
+    // differ: the published build minifies `left` to `0`, which the browser
+    // serialises as `0px` where the source's `left` reads back as `0%`.
     await expect(ltrStyles.backgroundPositionX).toBe('100%');
-    await expect(rtlStyles.backgroundPositionX).toBe('0%');
+    await expect(['0%', '0px']).toContain(rtlStyles.backgroundPositionX);
   },
 };

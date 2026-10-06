@@ -1,20 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Effect } from 'effect';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
+import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -23,6 +27,12 @@ import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts
 import { useCodebookSectionWrite } from '../writes.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
+
+const catalogs = createCatalogSource(
+  commonCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+);
+await catalogs.load('es');
 
 const EGO = sectionId({ kind: 'codebookEgo' });
 const SUBJECT = { entity: 'ego' } as const;
@@ -87,11 +97,11 @@ function AddAnEgoAttribute() {
 
 const renderAdding = (
   host: InMemoryHost,
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   locale?: string,
 ) => {
   const tree = (
-    <ProtocolBuilder client={client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={adapter} protocolId={host.protocolId}>
       <AddAnEgoAttribute />
     </ProtocolBuilder>
   );
@@ -102,10 +112,7 @@ const renderAdding = (
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={mergeCatalogs(
-          commonCatalogs[locale] ?? {},
-          protocolBuilderCatalogs[locale] ?? {},
-        )}
+        messages={catalogs.peek(locale)}
         manageDocument={false}
       >
         {tree}
@@ -136,7 +143,7 @@ describe('the first attribute asked of the participant', () => {
     // write has to answer for, not a section that happens to be empty.
     expect(host.store.has(EGO)).toBe(false);
 
-    const { user, said } = renderAdding(host, host.client);
+    const { user, said } = renderAdding(host, host.adapter);
     await user.click(
       screen.getByRole('button', {
         name: 'Add an attribute about the participant',
@@ -190,32 +197,25 @@ describe('the first attribute asked of the participant', () => {
 });
 
 /**
- * A client whose `create` a collaborator gets in front of.
- *
  * The race the refusal is about, made to happen: this editor's acquire is
  * answered "no such section", and by the time its create arrives the section
- * exists. `create` takes no lock, so this is the only thing standing between
+ * exists. `Create` takes no lock, so this is the only thing standing between
  * two researchers adding the participant's first attribute at once.
  */
-function racedByACollaborator(host: InMemoryHost): ProtocolBuilderClient {
-  const create: ProtocolBuilderClient['create'] = async (input, options) => {
-    if (!host.store.has(EGO)) {
-      await host.asCollaborator(ANA).create({
-        protocolId: host.protocolId,
-        requestId: 'ana-adds-the-first-attribute',
-        kind: 'codebookEgo',
-        document: {
-          variables: { pronouns: { name: 'pronouns', type: 'text' } },
-        },
-      });
-    }
-    return host.client.create(input, options);
-  };
-  // Proxied rather than spread: a contract client's procedures are reached
-  // through property access rather than held as own properties, so a spread
-  // copy of one has no procedures on it at all.
-  return new Proxy(host.client, {
-    get: (target, property) =>
-      property === 'create' ? create : Reflect.get(target, property),
+function racedByACollaborator(host: InMemoryHost): ProtocolBuilderAdapter {
+  const collaboratorFirst = Effect.promise(async () => {
+    if (host.store.has(EGO)) return;
+    await host.asCollaborator(ANA).rpcCall('Create', {
+      protocolId: host.protocolId,
+      requestId: 'ana-adds-the-first-attribute',
+      kind: 'codebookEgo',
+      document: {
+        variables: { pronouns: { name: 'pronouns', type: 'text' } },
+      },
+    });
+  });
+  return host.adapterWith({
+    Create: (input) =>
+      Effect.flatMap(collaboratorFirst, () => host.handle.Create(input)),
   });
 }

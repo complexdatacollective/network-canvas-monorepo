@@ -10,16 +10,18 @@ import { isEqual } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 import { expect } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
-import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
+import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -33,7 +35,7 @@ import {
 } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
-import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../locales/catalogs.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
@@ -53,6 +55,7 @@ import {
   type StageEditTarget,
 } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
+import type { ProtocolBuilderAdapter } from '../state/context.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -68,6 +71,29 @@ import {
   loadFixtureStage,
 } from './protocolFixture.ts';
 import { HARNESS_PRINCIPAL, SeedProtocolCache } from './seedProtocolCache.tsx';
+
+/**
+ * The layers a host actually mounts, in the order Architect merges them.
+ * `@codaco/protocol-validation`'s is not optional: the validation rule names a
+ * researcher ticks are its descriptors, so leaving it out renders them in
+ * English under a Spanish harness and a locale sweep would read that as copy
+ * this package failed to translate.
+ *
+ * Every locale a harness can be asked for is loaded when this module is, so
+ * `renderStageEditor` stays the one synchronous call the English suite makes:
+ * a test that had to await its catalog before each mount would no longer be
+ * that call. A source rather than a hand-merged map per locale, so the merge
+ * order is written once.
+ */
+const harnessCatalogs = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+  protocolValidationCatalogLoaders,
+);
+await Promise.all(
+  ecosystemLocales.map(({ locale }) => harnessCatalogs.load(locale)),
+);
 
 /**
  * A catalog entry and a `defaultMessage` are both typed as the string OR the
@@ -92,7 +118,7 @@ const defaultSubmitLabel = (locale: string | undefined): string => {
     literal(
       locale === undefined || id === undefined
         ? undefined
-        : protocolBuilderCatalogs[locale]?.[id],
+        : harnessCatalogs.peek(locale)?.[id],
     ) ?? literal(defaultMessage);
   // Thrown rather than fallen back from: an empty name would send every
   // `submit()` in the suite looking for a button called nothing, and every
@@ -179,7 +205,7 @@ export type StageEditorHarness = RenderResult &
     /**
      * The protocol, served from memory over the package's own host contract.
      *
-     * `host.client` is what the editor is mounted over, `host.store` is what
+     * `host.adapter` is what the editor is mounted over, `host.store` is what
      * the protocol actually holds, and `host.asCollaborator` is a second
      * connection — which is a second lock owner.
      */
@@ -511,21 +537,18 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       displayName: string;
     }>[];
     /**
-     * Wraps the seeded host's own client, the way `renderResourceEditor` does,
-     * for a test about a host that holds its answer.
-     *
      * Between the editor and the host rather than inside it: this host answers
      * in a microtask, so a request that is still in flight is something only
      * the transport can be. A stubbed store method would be answering for a
      * write the host decides, and would go on compiling after the host stopped
-     * asking it the same question. Everything the wrapper does not override
+     * asking it the same question. Everything the adapter does not override
      * stays the real host's.
      *
      * NOT the way to say what is inside an imported data file: this host reads
      * the bytes it holds, so a roster's columns are seeded through
      * `assetBytes` and come back through the host's own `inspect`.
      */
-    client?: (host: InMemoryHost) => ProtocolBuilderClient;
+    adapter?: (host: InMemoryHost) => ProtocolBuilderAdapter;
   }> &
     StageEditorMounting<T> &
     StageEditorSeeding<T>;
@@ -598,18 +621,8 @@ function LocaleFrame({
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
-      // The layers a host actually mounts, in the order `architectCatalogs`
-      // merges them. `@codaco/protocol-validation`'s is not optional: the
-      // validation rule names a researcher ticks are its descriptors, so
-      // leaving it out renders them in English under a Spanish harness and a
-      // locale sweep would read that as copy this package failed to
-      // translate.
-      messages={mergeCatalogs(
-        commonCatalogs[locale] ?? {},
-        frescoUiCatalogs[locale] ?? {},
-        protocolBuilderCatalogs[locale] ?? {},
-        protocolValidationCatalogs[locale] ?? {},
-      )}
+      // The layers a host actually mounts; see `harnessCatalogs`.
+      messages={harnessCatalogs.peek(locale)}
       manageDocument={false}
     >
       {children}
@@ -653,7 +666,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;
-  const editorClient = options.client?.(host) ?? host.client;
+  const editorAdapter = options.adapter?.(host) ?? host.adapter;
 
   // Locks taken before the editor opens, which is what a collaborator holding
   // a section IS: the acquire the editor is about to make comes back read-only
@@ -688,7 +701,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       {...(options.locale === undefined ? {} : { locale: options.locale })}
     >
       <DialogProvider>
-        <ProtocolBuilder client={editorClient} protocolId={protocolId}>
+        <ProtocolBuilder adapter={editorAdapter} protocolId={protocolId}>
           <SeedProtocolCache store={store}>
             <HarnessEditor
               target={target}

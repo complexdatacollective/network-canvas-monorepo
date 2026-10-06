@@ -394,7 +394,7 @@ export class InMemoryProtocolStore {
    * The one way a section stops being held that publishes no lock event.
    * Studio renews a lease for as long as the tab is there, but a renewal that
    * the storage answers "no such row" to is a lease that ran out
-   * (`server/src/protocol-builder/runtime.ts`): an acquire that TOOK it
+   * (`apps/studio/api/src/protocol-builder/leases.ts`): an acquire that TOOK it
    * publishes its own event, and an expiry nobody took has none to publish.
    * The holder learns of it from the refusal its next save comes back with.
    */

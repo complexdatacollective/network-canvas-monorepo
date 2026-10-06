@@ -1,8 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import {
   useResourceClient,
   useStagedResources,
@@ -71,7 +70,7 @@ async function importInto(edit: OpenEdit, name: string): Promise<string> {
     name,
     source: name,
     contentType: 'application/json',
-    bytes: new TextEncoder().encode(`{"file":"${name}"}`),
+    bytes: new Uint8Array(new TextEncoder().encode(`{"file":"${name}"}`)),
   });
   if (staged.status !== 'ok') {
     throw new Error(`the host refused to stage ${name}`);
@@ -85,14 +84,14 @@ async function importInto(edit: OpenEdit, name: string): Promise<string> {
  * so, which is that dialog being cancelled.
  */
 function renderTwoEdits(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   edits: Readonly<{ stage: OpenEdit; dialog: OpenEdit }>,
 ) {
   const both = (dialogOpen: boolean) => (
     <>
       <ResourceContextFrame
-        client={client}
+        adapter={adapter}
         protocolId={protocolId}
         editId={STAGE_EDITOR}
       >
@@ -100,7 +99,7 @@ function renderTwoEdits(
       </ResourceContextFrame>
       {dialogOpen && (
         <ResourceContextFrame
-          client={client}
+          adapter={adapter}
           protocolId={protocolId}
           editId={CODEBOOK_DIALOG}
         >
@@ -129,7 +128,7 @@ describe('two edits open in one session', () => {
   it('are two different edits as far as the host is concerned', () => {
     const host = createResourceHost({ resources: [ROSTER] });
     const edits = openEdits();
-    renderTwoEdits(host.client, host.protocolId, edits);
+    renderTwoEdits(host.adapter, host.protocolId, edits);
 
     // Named here, but the rule is that they differ: an editor that minted one
     // id for the whole session would have both of these the same, and every
@@ -142,7 +141,7 @@ describe('two edits open in one session', () => {
   it('do not offer each other the files they have imported', async () => {
     const host = createResourceHost({ resources: [ROSTER] });
     const edits = openEdits();
-    renderTwoEdits(host.client, host.protocolId, edits);
+    renderTwoEdits(host.adapter, host.protocolId, edits);
 
     const inTheStage = await importInto(edits.stage, 'from-the-stage.json');
     const inTheDialog = await importInto(edits.dialog, 'from-the-dialog.json');
@@ -161,7 +160,7 @@ describe('two edits open in one session', () => {
   it('cannot discard what the other imported', async () => {
     const host = createResourceHost({ resources: [ROSTER] });
     const edits = openEdits();
-    renderTwoEdits(host.client, host.protocolId, edits);
+    renderTwoEdits(host.adapter, host.protocolId, edits);
 
     const inTheStage = await importInto(edits.stage, 'from-the-stage.json');
 
@@ -178,7 +177,7 @@ describe('two edits open in one session', () => {
     const host = createResourceHost({ resources: [ROSTER] });
     const edits = openEdits();
     const { closeTheDialog } = renderTwoEdits(
-      host.client,
+      host.adapter,
       host.protocolId,
       edits,
     );
@@ -194,10 +193,10 @@ describe('two edits open in one session', () => {
     expect(await listedTo(edits.stage)).toEqual(
       [ROSTER.id, inTheStage].toSorted(),
     );
-    expect(await stagedAtTheHost(host.client, host.protocolId)).toEqual([
+    expect(await stagedAtTheHost(host.adapter, host.protocolId)).toEqual([
       inTheStage,
     ]);
-    expect(await stagedAtTheHost(host.client, host.protocolId)).not.toContain(
+    expect(await stagedAtTheHost(host.adapter, host.protocolId)).not.toContain(
       inTheDialog,
     );
   });
@@ -209,10 +208,10 @@ describe('two edits open in one session', () => {
  * make would leave the two disagreeing, and the bytes are the host's.
  */
 async function stagedAtTheHost(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
 ): Promise<string[]> {
-  const listed = await client.resources.list({
+  const listed = await adapter.rpcCall('ResourcesList', {
     protocolId,
     editId: STAGE_EDITOR,
     status: 'staged',

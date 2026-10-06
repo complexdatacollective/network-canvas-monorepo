@@ -86,6 +86,31 @@ request() {
     | awk 'tolower($1) == "content-type:" { print $2; exit }')"
 }
 
+# The transport answers 200 whatever the call did, so assert on RPC_VERDICT.
+# The frame goes through a file: command substitution strips the trailing
+# newline ndjson framing needs.
+rpc() { # tag payload-json [extra curl args...]
+  local tag="$1" payload="$2" frame_file="$WORK_DIR/.rpc-request" exit_frame
+  shift 2
+  printf '{"_tag":"Request","id":1,"tag":"%s","payload":%s,"headers":[]}\n' \
+    "$tag" "$payload" > "$frame_file"
+  request -X POST "$URL${RPC_ROUTE:-/rpc}" \
+    -H 'Content-Type: application/ndjson' \
+    -H "Origin: $ORIGIN" \
+    "$@" \
+    --data-binary "@$frame_file"
+  exit_frame="$(printf '%s\n' "$BODY" | grep -m1 '"_tag":"Exit"' || true)"
+  if [ -n "$exit_frame" ]; then
+    RPC_EXIT="${exit_frame#*\"exit\":}"
+  else
+    RPC_EXIT=''
+  fi
+  RPC_VERDICT="$(printf '%s' "$RPC_EXIT" \
+    | sed -n 's/^{"_tag":"\([A-Za-z]*\)".*/\1/p')"
+  RPC_ERROR="$(printf '%s' "$RPC_EXIT" \
+    | sed -n 's/.*"error":{"_tag":"\([A-Za-z]*\)".*/\1/p')"
+}
+
 # The container id of one service in this project, empty when it does not
 # exist. Read from Docker's labels rather than from `compose ps`, which is
 # scoped to the services the enabled profiles select and so cannot answer
@@ -94,6 +119,12 @@ container_id() {
   docker ps -aq \
     --filter "label=com.docker.compose.project=$PROJECT" \
     --filter "label=com.docker.compose.service=$1"
+}
+
+api_address() {
+  docker inspect -f \
+    "{{(index .NetworkSettings.Networks \"${PROJECT}_default\").IPAddress}}" \
+    "$(container_id api)"
 }
 
 section() {
@@ -123,6 +154,11 @@ case "$VARIANT" in
     equals "the stack's garage-init container is gone" '' "$(container_id garage-init)"
     differs 'the stub object store is running' '' "$(container_id external-garage)"
     ;;
+  external-bucket-azure)
+    equals "the stack's garage container is gone" '' "$(container_id garage)"
+    equals "the stack's garage-init container is gone" '' "$(container_id garage-init)"
+    differs 'the stub blob store is running' '' "$(container_id external-azurite)"
+    ;;
   external-redis)
     equals "the stack's valkey container is gone" '' "$(container_id valkey)"
     # Exists, not runs: `container_id` reads Docker's labels, which is what can
@@ -145,9 +181,22 @@ equals '/ is served' 200 "$STATUS"
 contains '/ is the client shell' 'text/html' "$CONTENT_TYPE"
 
 request "$URL/rpc"
-equals '/rpc is the API' 404 "$STATUS"
+equals 'GET /rpc is not a route' 404 "$STATUS"
 contains '/rpc answers problem JSON' 'application/problem+json' "$CONTENT_TYPE"
 contains '/rpc says Not Found' '"title":"Not Found"' "$BODY"
+
+rpc status null
+equals 'POST /rpc is served' 200 "$STATUS"
+contains 'POST /rpc answers ndjson' 'application/ndjson' "$CONTENT_TYPE"
+equals 'the rpc plane serves a public procedure' Success "$RPC_VERDICT"
+
+RPC_ROUTE=/rpc/protocol-builder
+rpc ListSections '{"protocolId":"00000000-0000-4000-8000-000000000000"}'
+RPC_ROUTE=
+equals 'POST /rpc/protocol-builder refuses a caller with no session' 401 "$STATUS"
+equals 'as a problem document' 'application/problem+json' "$CONTENT_TYPE"
+contains 'naming the refusal' '"status":401' "$BODY"
+equals 'before any procedure answered' '' "$RPC_VERDICT"
 
 request "$URL/readyz"
 equals '/readyz is served' 200 "$STATUS"
@@ -185,37 +234,37 @@ pass 'the setup token was captured' "${#TOKEN} characters"
 
 setup_body() {
   cat <<JSON
-{"json":{"token":"$1","instanceName":"$INSTANCE_NAME","owner":{"name":"Stack Test Owner","email":"$OWNER_EMAIL","password":"$OWNER_PASSWORD"}}}
+{"token":"$1","instanceName":"$INSTANCE_NAME","owner":{"name":"Stack Test Owner","email":"$OWNER_EMAIL","password":"$OWNER_PASSWORD"}}
 JSON
 }
 
-request -X POST "$URL/rpc/setup/complete" \
-  -H 'Content-Type: application/json' \
-  -H "Origin: $ORIGIN" \
-  -c "$COOKIE_JAR" \
-  --data-binary "$(setup_body "$TOKEN")"
-equals 'setup completes with the printed token' 200 "$STATUS"
-contains 'setup names the instance' "$INSTANCE_NAME" "$BODY"
+rpc 'setup.complete' "$(setup_body "$TOKEN")" -c "$COOKIE_JAR"
+equals 'setup completes with the printed token' Success "$RPC_VERDICT"
+contains 'setup names the instance' "$INSTANCE_NAME" "$RPC_EXIT"
+contains 'setup signed the browser in' '"signedIn":true' "$RPC_EXIT"
 
-request -X POST "$URL/rpc/me" \
-  -H 'Content-Type: application/json' \
-  -H "Origin: $ORIGIN" \
-  -b "$COOKIE_JAR" \
-  --data-binary '{"json":{}}'
-equals "the owner's session is accepted by /rpc/me" 200 "$STATUS"
-contains '/rpc/me is the owner' "$OWNER_EMAIL" "$BODY"
+# `me` takes no payload, whose wire form is `null`; `{}` dies in the decode.
+rpc me null -b "$COOKIE_JAR"
+equals "the owner's session is accepted by \`me\`" Success "$RPC_VERDICT"
+contains '`me` is the owner' "$OWNER_EMAIL" "$RPC_EXIT"
 
-request -X POST "$URL/rpc/setup/complete" \
-  -H 'Content-Type: application/json' \
-  -H "Origin: $ORIGIN" \
-  --data-binary "$(setup_body "$TOKEN")"
-equals 'a replayed token is refused as not found' 404 "$STATUS"
+RPC_ROUTE=/rpc/protocol-builder
+rpc ListSections '{"protocolId":"00000000-0000-4000-8000-000000000000"}' \
+  -b "$COOKIE_JAR"
+RPC_ROUTE=
+equals 'the protocol-builder plane admits the owner' Failure "$RPC_VERDICT"
+equals 'and answers a missing protocol as not found' ProtocolNotFound "$RPC_ERROR"
+
+rpc 'setup.complete' "$(setup_body "$TOKEN")"
+equals 'a replayed token is refused' Failure "$RPC_VERDICT"
+equals 'and refused as not found' NotFound "$RPC_ERROR"
 
 # ── The object store, end to end ──────────────────────────────────────────
 #
-# `/readyz` proves the bucket answers HeadBucket; this proves Studio can write
-# bytes to it and read them back. For external-bucket it is the swap's whole
-# contract, exercised over the same routes the reference stack uses.
+# `/readyz` proves the bucket or container answers; this proves Studio can
+# write bytes to it and read them back. For the two object-store swaps it is
+# the swap's whole contract, exercised over the same routes the reference
+# stack uses.
 section 'the object store'
 probe="stack-test $VARIANT $(date -u +%Y-%m-%dT%H:%M:%SZ) $RANDOM"
 request -X POST "$URL/storage" \
@@ -294,18 +343,15 @@ fi
 
 # ── The maintenance window ────────────────────────────────────────────────
 #
-# `stop`, not `down`: the same container is started again afterwards and gets
-# its address back, which is what lets the nginx variant recover without a
-# reload — the guide's block resolves its upstreams once, when nginx loads its
-# configuration, so a REPLACED container would leave it pointing at an address
-# that is no longer anybody's. That is an upgrade rather than a maintenance
-# window, and it is the upgrade guide's to cover.
+# `stop`, not `down`. Docker may still move the address, and the guide's nginx
+# block resolves upstreams once, so a moved API takes the documented reload.
 section 'the maintenance window'
+stopped_at="$(api_address)"
 compose stop api >/dev/null 2>&1
 
-request "$URL/rpc/status"
-equals '/rpc/status is 503 while the API is stopped' 503 "$STATUS"
-contains '/rpc/status is the maintenance page' 'temporarily unavailable' "$BODY"
+request "$URL/rpc"
+equals '/rpc is 503 while the API is stopped' 503 "$STATUS"
+contains '/rpc is the maintenance page' 'temporarily unavailable' "$BODY"
 
 # 502 or 504, not one or the other: a container that is gone takes its address
 # with it, so the ingress's connection attempt is refused on some runs and
@@ -322,6 +368,21 @@ request "$URL/"
 equals '/ still serves the client' 200 "$STATUS"
 
 compose start api >/dev/null 2>&1
+if [ "$VARIANT" = "own-proxy" ]; then
+  started_health=''
+  for _ in $(seq 1 90); do
+    started_health="$(docker inspect -f '{{.State.Health.Status}}' \
+      "$(container_id api)" 2>/dev/null || true)"
+    [ "$started_health" = 'healthy' ] && break
+    sleep 1
+  done
+  started_at="$(api_address)"
+  if [ "$stopped_at" != "$started_at" ]; then
+    compose exec -T own-proxy nginx -s reload >/dev/null 2>&1
+    pass 'the restarted API moved, so the ingress was reloaded' \
+      "$stopped_at -> $started_at"
+  fi
+fi
 for _ in $(seq 1 90); do
   restored="$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$URL/readyz" || true)"
   [ "$restored" = "200" ] && break
@@ -331,8 +392,8 @@ equals '/readyz recovers once the API is back' 200 "${restored:-none}"
 
 # ── own-proxy: the upgrade window, and the forwarded headers ──────────────
 #
-# The maintenance window above stops and starts one container, which keeps its
-# address. An UPGRADE replaces it — `docker compose up -d web api worker`, step
+# The maintenance window above stops and starts one container, which usually
+# keeps its address. An UPGRADE replaces it — `docker compose up -d web api worker`, step
 # 4 of docs/self-host/upgrade.md — and the replacement usually has a new one.
 # nginx resolved the name in its `upstream` block once, when it loaded, so it
 # goes on addressing the container that is gone and answers 502 until it is
@@ -346,11 +407,6 @@ equals '/readyz recovers once the API is back' 200 "${restored:-none}"
 # them. Then the forwarded headers, against the reloaded ingress.
 if [ "$VARIANT" = "own-proxy" ]; then
   section 'the upgrade window'
-  api_address() {
-    docker inspect -f \
-      "{{(index .NetworkSettings.Networks \"${PROJECT}_default\").IPAddress}}" \
-      "$(container_id api)"
-  }
   before="$(api_address)"
   compose up -d --force-recreate web api worker >/dev/null 2>&1
 

@@ -5,7 +5,7 @@ one of its own. Numbers below are from the stack as it ships — measured on a
 running instance, not estimated.
 
 Individual variables are not repeated here. They are in
-[`server/.env.example`](../../server/.env.example) and in the
+[`api/.env.example`](../../api/.env.example) and in the
 [Environment](../../README.md#environment) section of the app's README, which
 are generated from the server's environment catalogue and stay current with it.
 
@@ -71,8 +71,8 @@ instead, see [the ingress swap](./swap.md#the-ingress).
 
 ### Outbound hosts
 
-The complete list. Anything else an instance appears to contact is worth
-investigating.
+The complete list of fixed hosts. The rest are the ones you choose, below;
+anything else an instance appears to contact is worth investigating.
 
 <!-- outbound-hosts start -->
 
@@ -90,9 +90,17 @@ The same list is checked in as
 [#1897](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1897)'s
 CI job uses as its allowlist; a test fails if that file and this table disagree.
 
-**The fifth outbound host is yours: the SMTP host in `SMTP_URL`.** It is not on
-the list because there is no fixed value to name. See
-[Run the stack](./run.md#8-configure-mail).
+**The other outbound hosts are yours to choose.** They are not on the list
+because there is no fixed value to name:
+
+- **The SMTP host** in `SMTP_URL`. See
+  [Run the stack](./run.md#8-configure-mail).
+- **Any service you [swapped in](./swap.md)** for one of the stack's own: the
+  host in `DATABASE_URL`, in `S3_ENDPOINT`, or in `REDIS_URL`. For Azure Blob
+  Storage it is the storage account's blob endpoint, normally
+  `<account>.blob.core.windows.net` — the host in `AZURE_STORAGE_ACCOUNT_URL`,
+  or the one the connection string names. A managed identity gets its tokens
+  from the Azure host's own metadata endpoint, so it adds no host to allow.
 
 Two things worth knowing before your firewall team asks:
 
@@ -139,7 +147,37 @@ Each of these replaces one service in the stack. The swap itself is in
 
 ### An object store
 
-Studio uses four S3 operations and no others:
+Studio talks to its object store through one small interface, with one
+implementation per kind of store. There are two:
+
+- **Any S3-compatible store** — `STUDIO_OBJECT_STORE=s3`, as `.env.example`
+  ships. Garage, Cloudflare R2, MinIO and AWS S3 all work.
+  Google Cloud Storage works through its S3-interoperable XML API, with an
+  HMAC key as the access key pair and `https://storage.googleapis.com` as
+  `S3_ENDPOINT`; it is not one of the stores this is run against.
+- **Azure Blob Storage** — `STUDIO_OBJECT_STORE=azure-blob`. See
+  [the Azure swap](./swap.md#azure-blob-storage).
+
+Whichever you choose, this is what Studio needs of it — and all it needs:
+
+- **Content-addressed writes.** Every asset is stored once, under
+  `assets/<sha256 of its bytes>`. Uploading the same bytes again finds the
+  object already there and leaves it alone, media type included; nothing is
+  ever rewritten in place.
+- **Streaming reads**, with the stored content type and length, for
+  `/storage/:hash`. A missing object must come back as "not found", which
+  Studio answers as a 404, rather than as an error.
+- **A probe of the bucket or container**, which `/readyz` reports as
+  `objectStore`. When it is unreachable, missing, or refuses the credentials,
+  readiness names the object store as the failing check.
+- **The bucket or container already exists.** Studio never creates one.
+
+No listing, no deletion, no lifecycle rules, no bucket policy API, no
+presigning, and no public access: assets are served through Studio.
+
+#### S3-compatible stores
+
+Four S3 operations and no others:
 
 | Operation    | Used for                                                  |
 | ------------ | --------------------------------------------------------- |
@@ -148,8 +186,7 @@ Studio uses four S3 operations and no others:
 | `PutObject`  | Storing an asset's bytes                                  |
 | `GetObject`  | Serving them back on `/storage/:hash`                     |
 
-No multipart upload, no listing, no lifecycle rules, no bucket policy API, no
-presigning. Two further requirements:
+No multipart upload. Two further requirements:
 
 - **Path-style addressing** (`<endpoint>/<bucket>/<key>`). `S3_ENDPOINT` is the
   service address, not a per-bucket hostname.
@@ -157,12 +194,32 @@ presigning. Two further requirements:
   the region in the endpoint's name — R2 signs for `auto`. A mismatch is a
   signature failure on every request rather than a slow one.
 
-The five `S3_*` variables are all-or-nothing: a partial configuration fails at
-boot. With none of them set, asset routes refuse with 503 and readiness leaves
-the object store out rather than reporting it failed.
+With `STUDIO_OBJECT_STORE=s3`, the five `S3_*` variables are all-or-nothing:
+a partial configuration fails at boot.
 
-Garage and Cloudflare R2 are the two stores this is run against — Garage in the
-stack and in development, R2 by the managed platform.
+An instance with no object store at all leaves `STUDIO_OBJECT_STORE` unset
+and every `S3_*` and `AZURE_*` variable empty — clearing the `S3_*` values
+alone, beside the shipped `STUDIO_OBJECT_STORE=s3`, is a partial S3
+configuration and fails at boot. Without a store, asset routes refuse with 503
+and readiness leaves the object store out rather than reporting it failed.
+
+#### Azure Blob Storage
+
+- **One container**, named by `AZURE_STORAGE_CONTAINER`.
+- **A managed identity holding Storage Blob Data Contributor on that
+  container**, with `AZURE_STORAGE_ACCOUNT_URL` naming the account — no
+  account keys. `AZURE_CLIENT_ID` picks a user-assigned identity. A host outside
+  Azure uses `AZURE_STORAGE_CONNECTION_STRING` instead of the account URL.
+- **No `S3_*` variable set alongside it.** A mixed configuration is refused at
+  boot, as is one missing the container or naming both an account URL and a
+  connection string.
+
+#### What these are run against
+
+Garage, in the stack and in development; Cloudflare R2, by the managed
+platform; and Azurite, Microsoft's Blob Storage emulator, in development and
+CI. Every implementation passes the same contract tests, so the two kinds of
+store cannot drift apart.
 
 ### A rate-limit store
 
@@ -186,7 +243,7 @@ slot — a single logical database is what this expects.
 
 `REDIS_URL` names the store, and is the only part of this you configure. **The
 limits themselves are constants of the build**, in
-[`server/src/rate-limit/scopes.ts`](../../server/src/rate-limit/scopes.ts):
+[`api/src/rate-limit/scopes.ts`](../../api/src/rate-limit/scopes.ts):
 they are not settings, there is nothing to put in `.env`, and there is no
 supported way to change them on a self-hosted instance. A wrong number here is
 a security decision rather than a preference, and each is a ceiling a
@@ -209,6 +266,7 @@ seconds, minutes or hours:
 | `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
 | `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |
 | `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results   |
+| `api_docs`                   | `30/1m`   | `/api/v1/docs`, against the reference page becoming a bandwidth amplifier |
 | `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm       |
 
 <!-- rate-limits end -->

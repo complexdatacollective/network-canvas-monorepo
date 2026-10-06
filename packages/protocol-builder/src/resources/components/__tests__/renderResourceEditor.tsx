@@ -2,7 +2,6 @@ import { render } from '@testing-library/react';
 import { useEffect, type ReactNode } from 'react';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
@@ -15,6 +14,7 @@ import StageEditorShell, {
 import { ProtocolBuilder } from '../../../ProtocolBuilder.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { StageEditSession } from '../../../stageEdit.tsx';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import {
   ResourceClientProvider,
@@ -33,12 +33,7 @@ import {
 
 export type RenderResourceEditorOptions = ResourceHostSeed &
   Readonly<{
-    /**
-     * Wraps the seeded host's own client, for a test about a host that
-     * refuses, holds its answer, counts what it is asked, or reads more out of
-     * a file than the in-memory store does.
-     */
-    client?: (host: InMemoryHost) => ProtocolBuilderClient;
+    adapter?: (host: InMemoryHost) => ProtocolBuilderAdapter;
     /** Somebody else holds the stage, so this editor opens read-only. */
     readOnly?: boolean;
     /** The host's action chrome; a submit button, for a test that saves. */
@@ -57,8 +52,7 @@ export type RenderResourceEditorOptions = ResourceHostSeed &
  */
 export type RenderedResourceEditor = Readonly<{
   host: InMemoryHost;
-  /** The client the editor is mounted over, which may be a wrapped one. */
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   /**
    * The edit this editor has open, which is what the host holds its staged
    * files under. A test staging or discarding through the host names it.
@@ -89,7 +83,7 @@ const COLLABORATOR = {
 export function renderResourceEditor(
   options: RenderResourceEditorOptions,
 ): RenderedResourceEditor {
-  const { client: wrap, readOnly, actions, children } = options;
+  const { adapter: wrap, readOnly, actions, children } = options;
   const host = createResourceHost({
     ...(options.stageType === undefined
       ? {}
@@ -100,14 +94,15 @@ export function renderResourceEditor(
       : { resources: options.resources }),
     ...(options.nextId === undefined ? {} : { nextId: options.nextId }),
   });
-  const client = wrap === undefined ? host.client : wrap(host);
+  const adapter = wrap === undefined ? host.adapter : wrap(host);
 
   // Taken before the editor mounts, so its own acquire is answered `readOnly`
   // — the state a researcher reaches by opening a stage somebody else has.
   if (readOnly === true) {
-    void host
-      .asCollaborator(COLLABORATOR)
-      .acquireLock({ protocolId: host.protocolId, sectionId: STAGE_SECTION });
+    void host.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
+      protocolId: host.protocolId,
+      sectionId: STAGE_SECTION,
+    });
   }
 
   const store: { current: StageFormStoreApi | undefined } = {
@@ -132,7 +127,7 @@ export function renderResourceEditor(
 
   render(
     <DialogProvider>
-      <ProtocolBuilder client={client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={adapter} protocolId={host.protocolId}>
         <ResourceClientProvider editId={TEST_EDIT_ID}>
           <CaptureResourceClient />
           <StageEditSession target={{ sectionId: STAGE_SECTION }}>
@@ -153,7 +148,7 @@ export function renderResourceEditor(
 
   return {
     host,
-    client,
+    adapter,
     editId: TEST_EDIT_ID,
     formValues,
     fieldValue: (name: string): unknown => formValues()[name],
@@ -163,7 +158,7 @@ export function renderResourceEditor(
       }
       return resources.current;
     },
-    staged: () => stagedResources(client, host.protocolId, TEST_EDIT_ID),
+    staged: () => stagedResources(adapter, host.protocolId, TEST_EDIT_ID),
     manifest: () => committedManifest(host),
   };
 }

@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': patch
+'@codaco/studio-web': patch
 ---
 
 Studio now honours the operating-system "reduce motion" setting.

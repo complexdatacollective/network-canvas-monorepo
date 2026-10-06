@@ -1,33 +1,31 @@
-import { getEventMeta, isDefinedError } from '@orpc/client';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
+import { isRefusalOf } from './attempt.ts';
 import {
   lockQueryKey,
   presenceQueryKey,
   useProtocolBuilderContext,
   type LockState,
-  type ProtocolQueryUtils,
+  type ProtocolBuilderAdapter,
 } from './context.ts';
 
 const FIRST_RECONNECT_DELAY_MS = 250;
 const MAX_RECONNECT_DELAY_MS = 4_000;
 
 type ChannelDeps = Readonly<{
-  client: ProtocolBuilderClient;
-  utils: ProtocolQueryUtils;
+  adapter: ProtocolBuilderAdapter;
   queryClient: QueryClient;
   protocolId: string;
 }>;
 
-type SectionList = Readonly<{ sectionIds: ProtocolSectionId[] }>;
+type SectionList = Readonly<{ sectionIds: readonly ProtocolSectionId[] }>;
 type SectionAtRevision = Readonly<{
-  document: Record<string, unknown>;
-  revision: { sequence: bigint; contentHash: string };
+  document: Readonly<Record<string, unknown>>;
+  revision: Readonly<{ sequence: bigint; contentHash: string }>;
 }>;
 
 /**
@@ -40,24 +38,24 @@ type SectionAtRevision = Readonly<{
  * revision published during the gap from being missed.
  */
 export function useProtocolChannel(protocolId: string): void {
-  const { client, utils } = useProtocolBuilderContext();
+  const { adapter } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const controller = new AbortController();
-    const deps: ChannelDeps = { client, utils, queryClient, protocolId };
+    const deps: ChannelDeps = { adapter, queryClient, protocolId };
     void streamProtocolEvents(
-      client,
+      adapter,
       protocolId,
       (event) => applyEvent(deps, event),
       controller.signal,
     );
     return () => controller.abort();
-  }, [client, utils, queryClient, protocolId]);
+  }, [adapter, queryClient, protocolId]);
 }
 
 /**
- * Consumes `watchProtocol` until the signal aborts, resuming from the last
+ * Consumes `WatchProtocol` until the signal aborts, resuming from the last
  * cursor seen whenever the stream ends or fails.
  *
  * The wait before a resume doubles up to a cap, so a host that is down stops
@@ -69,7 +67,7 @@ export function useProtocolChannel(protocolId: string): void {
  * channel actually uses rather than a copy of it.
  */
 export async function streamProtocolEvents(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   onEvent: (event: ProtocolEvent) => void,
   signal: AbortSignal,
@@ -78,20 +76,23 @@ export async function streamProtocolEvents(
   let delay = FIRST_RECONNECT_DELAY_MS;
   while (!signal.aborted) {
     try {
-      const events = await client.watchProtocol(
+      await adapter.rpcStream(
+        'WatchProtocol',
         { protocolId, ...(since === undefined ? {} : { since }) },
-        { signal },
+        (event) => {
+          delay = FIRST_RECONNECT_DELAY_MS;
+          if (event.type !== 'presence' && event.cursor !== undefined) {
+            since = event.cursor;
+          }
+          onEvent(event);
+        },
+        signal,
       );
-      for await (const event of events) {
-        delay = FIRST_RECONNECT_DELAY_MS;
-        since = getEventMeta(event)?.id ?? since;
-        onEvent(event);
-      }
-    } catch (error) {
+    } catch (error: unknown) {
       // A refusal the contract names — no such protocol — is not going to
       // become true on the next attempt, so it ends the channel. Everything
       // else is a dropped stream, and the resume below is its recovery.
-      if (isDefinedError(error)) return;
+      if (isRefusalOf('WatchProtocol', error)) return;
     }
     if (signal.aborted) return;
     await sleep(delay, signal);
@@ -100,11 +101,12 @@ export async function streamProtocolEvents(
 }
 
 function applyEvent(deps: ChannelDeps, event: ProtocolEvent): void {
-  const { queryClient, utils, protocolId } = deps;
+  const { queryClient, adapter, protocolId } = deps;
   switch (event.type) {
     case 'revision': {
-      const key = utils.getSection.queryKey({
-        input: { protocolId, sectionId: event.sectionId },
+      const key = adapter.rpcKey('GetSection', {
+        protocolId,
+        sectionId: event.sectionId,
       });
       if (event.document === undefined) {
         queryClient.removeQueries({ queryKey: key, exact: true });
@@ -138,8 +140,8 @@ function updateSectionList(
   state: 'present' | 'removed',
   awaited = false,
 ): void {
-  const options = deps.utils.listSections.queryOptions({
-    input: { protocolId: deps.protocolId },
+  const options = deps.adapter.rpcQuery('ListSections', {
+    protocolId: deps.protocolId,
   });
   const key = options.queryKey;
   let applied = false;

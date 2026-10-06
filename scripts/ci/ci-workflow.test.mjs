@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 import { test } from 'vitest';
@@ -73,7 +74,10 @@ function job(name) {
 }
 
 test('full CI runs on PRs to main while merge groups request only quality', () => {
-  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
+  assert.match(
+    workflow,
+    /^  pull_request:\n(?: {4}#.*\n)*    branches: \[main\]$/m,
+  );
   assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
 
   for (const jobName of [
@@ -599,10 +603,7 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm check:changesets/);
   assert.match(support, /pnpm check:compat-protocols/);
   assert.match(support, /pnpm check:mapbox-tokens/);
-  assert.match(
-    support,
-    /pnpm --filter @codaco\/studio-server check:schema-docs/,
-  );
+  assert.match(support, /pnpm --filter @codaco\/studio-api check:schema-docs/);
   // Through turbo, so the guard suite is cached like every other test task.
   assert.match(support, /turbo run \/\/#test:scripts/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
@@ -1659,6 +1660,7 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   // The reference stack and every swap docs/self-host/swap.md documents.
   assert.deepEqual(variants, [
     'external-bucket',
+    'external-bucket-azure',
     'external-postgres',
     'external-redis',
     'own-proxy',
@@ -1686,6 +1688,23 @@ test('the studio-stack job runs every variant through up, assert and down', () =
     variants.length,
     'each down.sh step is if: always()',
   );
+});
+
+// The object-store contract suite inside @codaco/studio-api#test refuses to
+// skip under CI, so every job that runs that suite has to start the dev Garage
+// and Azurite before it — in the job, ahead of the suite, not merely somewhere.
+test('every job running the Studio server suite starts its object stores first', () => {
+  for (const name of ['test-studio-server', 'seed-turbo-cache']) {
+    const body = job(name);
+    assert.ok(body, `${name} job exists`);
+    const start = body.indexOf(
+      'pnpm --filter @codaco/studio-api dev:object-stores',
+    );
+    const suite = body.indexOf("turbo run '@codaco/studio-api#test'");
+    assert.ok(suite > -1, `${name} runs the Studio server suite`);
+    assert.ok(start > -1, `${name} starts the dev object stores`);
+    assert.ok(start < suite, `${name} starts them before the suite runs`);
+  }
 });
 
 test('the stack-test scripts and the workflow agree on the variant list', () => {
@@ -1722,6 +1741,67 @@ test('own-proxy has a guide block to extract its configuration from', () => {
     assert.ok(
       block.includes(required),
       `the nginx block still has: ${required}`,
+    );
+  }
+});
+
+function runDetectFlag(pkg, env) {
+  const detectJob = job('detect');
+  const definition = detectJob.match(
+    /^(?<indent> +)flag\(\) \{\n[\s\S]*?^\k<indent>\}$/m,
+  );
+  assert.ok(definition, 'detect defines flag()');
+  const body = definition[0]
+    .split('\n')
+    .map((line) => line.slice(definition.groups.indent.length))
+    .join('\n');
+  const script = [
+    'set -eo pipefail',
+    `npx() {
+      case "$*" in
+        *"--filter=@codaco/known..."*) echo '{"packages":{"items":[{"path":"packages/known"}]}}' ;;
+        *) echo "x No package found with name '$*' in workspace" >&2; return 1 ;;
+      esac
+    }`,
+    body,
+    `result=$(flag ${JSON.stringify(pkg)})`,
+    'echo "result=$result"',
+  ].join('\n');
+  return spawnSync('bash', ['-c', script], {
+    encoding: 'utf8',
+    env: {
+      PATH: process.env.PATH,
+      TURBO_VERSION: '0.0.0',
+      PREV: '',
+      CURR: 'HEAD',
+      FORCE_RUN: 'false',
+      WORKFLOW_CHANGED: 'false',
+      ...env,
+    },
+  });
+}
+
+test('detect fails closed on a flag naming no workspace package', () => {
+  const known = runDetectFlag('@codaco/known', {});
+  assert.equal(known.status, 0, known.stderr);
+  assert.match(known.stdout, /^result=true$/m);
+
+  for (const forced of [
+    {},
+    { FORCE_RUN: 'true' },
+    { WORKFLOW_CHANGED: 'true' },
+    { PREV: 'HEAD' },
+  ]) {
+    const unknown = runDetectFlag('@codaco/renamed-away', forced);
+    assert.notEqual(
+      unknown.status,
+      0,
+      `a stale name answers ${unknown.stdout} under ${JSON.stringify(forced)}`,
+    );
+    assert.doesNotMatch(unknown.stdout, /^result=/m);
+    assert.match(
+      unknown.stderr,
+      /::error::detect: '@codaco\/renamed-away' names no workspace package/,
     );
   }
 });

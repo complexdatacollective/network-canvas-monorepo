@@ -110,9 +110,12 @@ export const networkComposerStage = baseStageSchema.extend({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
   }),
-  // The layout variable that stores each node's { x, y } position.
+  // The layout variable that stores each node's { x, y } position. The canvas
+  // merges positions into node attributes under this key, so any other type
+  // would have its collected value overwritten.
   layoutVariable: entityAttributeReference({
     subject: 'stageSubject',
+    requireType: ['layout'],
     usage: 'unvalidatedAttribute',
   }),
   // Attribute form shown in the inspector when a node is selected.
@@ -124,6 +127,7 @@ export const networkComposerStage = baseStageSchema.extend({
   // directly to the node without applying the variable's validation rules.
   convexHullVariable: entityAttributeReference({
     subject: 'stageSubject',
+    requireType: ['categorical'],
     usage: 'unvalidatedAttribute',
   }).optional(),
   background: imageOrCirclesBackgroundSchema,

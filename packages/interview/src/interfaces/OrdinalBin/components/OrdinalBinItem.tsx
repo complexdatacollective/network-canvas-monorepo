@@ -158,9 +158,14 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   // `overflow-hidden` keeps the header inside the row the grid gave it: in
   // portrait the panel's implicit row otherwise grows to the tallest thing in
   // the bin, and a header centred in a row taller than the panel is pushed out
-  // through the panel's clipped edge. It is also the box BinLabel fits to.
+  // through the panel's clipped edge. It is also the box BinLabel fits to, so
+  // its floor is four lines of BinLabel's smallest header rung (`text-xs` at
+  // `leading-[1.15]`) plus the vertical padding. A whole-sentence option label
+  // needs that fourth line on a browser without a hyphenation dictionary —
+  // Chrome on Linux downloads one after install and may never have it — and a
+  // three-line floor clipped the sentence there.
   const accentClasses = cx(
-    'flex min-h-14 items-center justify-center overflow-hidden px-2 py-1 text-center',
+    'flex min-h-[calc(4*1.15*var(--text-xs)+--spacing(2))] items-center justify-center overflow-hidden px-2 py-1 text-center',
     promptColorClass,
     missingValue
       ? 'bg-surface-2'

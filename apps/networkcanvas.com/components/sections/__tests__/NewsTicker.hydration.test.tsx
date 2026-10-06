@@ -4,7 +4,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import { siteAppCatalogs, siteAppLocales } from '~/lib/i18n/appLocales';
+import { siteAppLocales } from '~/lib/i18n/appLocales';
 import { loadLocaleMessages } from '~/lib/i18n/messages';
 import type { NewsItem } from '~/lib/siteContent';
 
@@ -52,7 +52,6 @@ const serverMarkupFor = (preference: boolean | null) => {
       <AppI18nProvider
         locale="en-US"
         locales={siteAppLocales}
-        messages={siteAppCatalogs['en-US']}
         manageDocument={false}
         timeZone="UTC"
       >

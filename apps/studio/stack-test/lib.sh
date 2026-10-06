@@ -4,7 +4,7 @@
 # Sourced, never executed. Every caller sets `set -euo pipefail` itself, so a
 # failure inside a function here stops the script that called it.
 #
-# The invocation is in one place for the reason server/scripts/compose.ts gives
+# The invocation is in one place for the reason api/scripts/compose.ts gives
 # for the same thing: a second copy of the `-p`, the `-f` chain and the
 # `--env-file` is how two scripts drift into disagreeing about which files are
 # applied and which project a `down` tears apart.
@@ -23,7 +23,7 @@ PROJECT="studio-ci"
 
 # `reference` first: it is the stack a self-hoster runs, and each of the others
 # is that stack with one element replaced.
-VARIANTS=(reference external-postgres external-bucket external-redis own-proxy)
+VARIANTS=(reference external-postgres external-bucket external-bucket-azure external-redis own-proxy)
 
 # The stack's own network. Also TRUSTED_PROXIES, so it must name the network
 # the ingress is on and nothing else. .243 rather than .240 (`.env.example`),
@@ -97,7 +97,7 @@ compose() {
     "$@"
 }
 
-# Where the ingress answers for this variant. Traefik for three of them; for
+# Where the ingress answers for this variant. Traefik for all but one; for
 # own-proxy the nginx block the guide documents, on a loopback port of its own.
 ingress_url() {
   if [ "$VARIANT" = "own-proxy" ]; then

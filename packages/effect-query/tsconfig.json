@@ -1,0 +1,12 @@
+{
+  "extends": "@codaco/tsconfig/web.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    // Effect's types (error narrowing, Option/Exit guards) only behave under
+    // strictNullChecks, and every Studio package this one is built for is strict.
+    "strict": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

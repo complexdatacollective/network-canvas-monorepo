@@ -1,27 +1,4 @@
-import type { CatalogMessages } from './locales.ts';
-// Deliberately imported WITHOUT a `with { type: 'json' }` attribute, for the
-// reason `apps/fresco/fresco.config.ts` records against the same trap:
-// Storybook's Next.js Vite builder transforms this file with Next's SWC, and
-// `vite-plugin-storybook-nextjs` hardcodes `emitAssertForImportAttributes`,
-// rewriting the attribute to the legacy `assert` keyword Chromium removed.
-// Fresco's Storybook reaches this module through fresco-ui, so the attribute
-// broke every story that renders a localized component.
-//
-// The cost is that Node's own ESM loader cannot import this entry — it wants
-// the attribute — so `./common` is universal across bundlers rather than
-// literally every loader. Every consumer here bundles; a genuine Node-loaded
-// caller would need the catalog re-expressed as a module rather than JSON,
-// which is a change to the translator-facing format and not worth making for
-// a caller that does not exist.
-import de from './locales/de.json';
-import enGbOverrides from './locales/en-GB.json';
-import es from './locales/es.json';
-import fr from './locales/fr.json';
-import it from './locales/it.json';
-import nl from './locales/nl.json';
-import ptBR from './locales/pt-BR.json';
-import zhHans from './locales/zh-Hans.json';
-import zhHant from './locales/zh-Hant.json';
+import type { CatalogLoaders } from './locales.ts';
 import { defineMessages } from './messages.ts';
 
 /**
@@ -101,15 +78,24 @@ export const commonMessages = defineMessages({
  * en-GB is an override catalog: the common verb set currently has no British
  * divergences, so it is empty by design — the file exists so the layering
  * and guards cover it.
+ *
+ * The imports deliberately carry no `with { type: 'json' }` attribute.
+ * Storybook's Next.js Vite builder transforms this file with Next's SWC, and
+ * `vite-plugin-storybook-nextjs` hardcodes `emitAssertForImportAttributes`,
+ * rewriting the attribute to the legacy `assert` keyword Chromium removed —
+ * Fresco's Storybook reaches this module through fresco-ui, so the attribute
+ * broke every story that renders a localized component. The cost is that
+ * Node's own ESM loader, which wants the attribute, cannot load these
+ * catalogs; every consumer bundles.
  */
-export const commonCatalogs: Readonly<Record<string, CatalogMessages>> = {
-  'en-GB': enGbOverrides as CatalogMessages,
-  es,
-  'zh-Hans': zhHans,
-  'zh-Hant': zhHant,
-  de,
-  nl,
-  'pt-BR': ptBR,
-  it,
-  fr,
+export const commonCatalogLoaders: CatalogLoaders = {
+  'en-GB': () => import('./locales/en-GB.json'),
+  'es': () => import('./locales/es.json'),
+  'zh-Hans': () => import('./locales/zh-Hans.json'),
+  'zh-Hant': () => import('./locales/zh-Hant.json'),
+  'de': () => import('./locales/de.json'),
+  'nl': () => import('./locales/nl.json'),
+  'pt-BR': () => import('./locales/pt-BR.json'),
+  'it': () => import('./locales/it.json'),
+  'fr': () => import('./locales/fr.json'),
 };

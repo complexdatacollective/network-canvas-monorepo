@@ -8,8 +8,8 @@
 #                  worker           background jobs and cron schedules (#1895)
 #                  migrate          create this build's schema in an empty
 #                                   database, once per deployment
-#                  maintenance on   close the instance to users — a stub until
-#                  maintenance off    #1901 merges
+#                  maintenance on   close the instance to users (#1901)
+#                  maintenance off  reopen it
 #                  rotate-secrets   re-encrypt every stored secret under the
 #                                   keyring's current entry, once per rotation
 #                                   (#1900)
@@ -51,7 +51,7 @@ RUN npm install --global pnpm@11.20.0
 FROM base AS pruner
 WORKDIR /repo
 COPY . .
-RUN pnpm dlx "turbo@$(node -p "require('./package.json').devDependencies.turbo")" prune @codaco/studio-server @codaco/studio-client --docker
+RUN pnpm dlx "turbo@$(node -p "require('./package.json').devDependencies.turbo")" prune @codaco/studio-api @codaco/studio-web --docker
 
 # Install with the pruned lockfile, then build both halves and assemble a
 # production-only deployment of the server (package.json + prod node_modules).
@@ -62,24 +62,24 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
-RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
-RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
+RUN pnpm --filter @codaco/studio-web build && pnpm --filter @codaco/studio-api build
+RUN pnpm --filter @codaco/studio-api deploy --prod --legacy /deploy
 
 FROM node:24-slim AS studio-api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
-# dist/ carries the four entries and dist/schema-ddl.json beside them: the
+# dist/ carries the five entries and dist/schema-ddl.json beside them: the
 # statements `migrate` executes, rendered at build time because drizzle-kit is
 # a development dependency and `pnpm deploy --prod` installs none.
-COPY --from=builder /repo/apps/studio/server/dist ./dist
-COPY apps/studio/server/bin/studio-api /usr/local/bin/studio-api
+COPY --from=builder /repo/apps/studio/api/dist ./dist
+COPY apps/studio/api/bin/studio-api /usr/local/bin/studio-api
 USER node
 EXPOSE 3000
 ENTRYPOINT ["studio-api"]
 CMD ["serve"]
 
 FROM nginx:1.29-alpine AS studio-web
-COPY --from=builder /repo/apps/studio/client/dist /usr/share/nginx/html
-COPY apps/studio/client/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /repo/apps/studio/web/dist /usr/share/nginx/html
+COPY apps/studio/web/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

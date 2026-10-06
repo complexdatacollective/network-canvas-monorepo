@@ -2448,10 +2448,10 @@ const COMPONENT_PACKAGES = [
 const OTHER_APPLICATIONS = [
   '@codaco/architect',
   '@codaco/interviewer',
-  '@codaco/studio-client',
-  '@codaco/studio-server',
-  '@codaco/studio-rpc',
+  '@codaco/studio-api',
+  '@codaco/studio-contract',
   '@codaco/studio-sync',
+  '@codaco/studio-web',
   'posthog-proxy-worker',
 ];
 const packagesOf = new Map(
