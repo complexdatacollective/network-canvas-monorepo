@@ -147,7 +147,8 @@ export function computeConnectors(
   // A node can be horizontally adjacent to at most two partners. Preserve any
   // additional recorded partnerships with a routed connector above the row,
   // rather than silently dropping the edge or connecting the two neighbouring
-  // partners to one another.
+  // partners to one another. Partners on different rows (one partnered with
+  // their own grandchild, say) are routed above the higher of the two.
   if (partnerPairs) {
     const routedCountByLayer = new Map<number, number>();
 
@@ -159,13 +160,12 @@ export function computeConnectors(
       const firstLocation = nodeLocation.get(first);
       const secondLocation = nodeLocation.get(second);
       if (!firstLocation || !secondLocation) continue;
-      if (firstLocation.layer !== secondLocation.layer) continue;
 
       const [leftIndex, left, rightIndex, right] =
         firstLocation.x <= secondLocation.x
           ? [first, firstLocation, second, secondLocation]
           : [second, secondLocation, first, firstLocation];
-      const layer = left.layer;
+      const layer = Math.min(left.layer, right.layer);
       const routeIndex = routedCountByLayer.get(layer) ?? 0;
       routedCountByLayer.set(layer, routeIndex + 1);
       const routeY = layer - legh * (1 + routeIndex * 0.5);
@@ -232,11 +232,185 @@ export function computeConnectors(
     }
   }
 
+  // The sibling bar, uplines and twin marks of the children at whoIdx on
+  // level i (the twin marks are recorded as they are found).
+  const sibshipLines = (i: number, whoIdx: number[]) => {
+    // Compute targets (twin grouping)
+    let target: number[];
+    if (!layout.twins) {
+      target = whoIdx.map((j) => layout.pos[i]![j]!);
+    } else {
+      const twinToLeft: number[] = [0];
+      for (let k = 1; k < whoIdx.length; k++) {
+        twinToLeft.push(layout.twins[i]?.[whoIdx[k]!] ?? 0);
+      }
+      const groups: number[] = [];
+      let groupId = 0;
+      for (const ttl of twinToLeft) {
+        if (ttl === 0) groupId++;
+        groups.push(groupId);
+      }
+
+      const groupMeans = new Map<number, number[]>();
+      for (let k = 0; k < groups.length; k++) {
+        const g = groups[k]!;
+        if (!groupMeans.has(g)) groupMeans.set(g, []);
+        groupMeans.get(g)!.push(layout.pos[i]![whoIdx[k]!]!);
+      }
+      const meanMap = new Map<number, number>();
+      for (const [g, positions] of groupMeans) {
+        meanMap.set(g, positions.reduce((a, b) => a + b, 0) / positions.length);
+      }
+
+      target = groups.map((g) => meanMap.get(g)!);
+    }
+
+    // Uplines: from each child to sibling bar
+    const uplines: LineSegment[] = [];
+    for (let k = 0; k < whoIdx.length; k++) {
+      const childX = layout.pos[i]![whoIdx[k]!]!;
+      uplines.push({
+        type: 'line',
+        x1: childX,
+        y1: i + boxh / 2,
+        x2: target[k]!,
+        y2: i - legh,
+      });
+    }
+
+    // Twin indicators
+    if (layout.twins) {
+      for (let k = 0; k < whoIdx.length; k++) {
+        // The twin bar/label joins siblings k and k+1, who share a twin
+        // group target. Resolve their node ids so the connector can be
+        // dimmed by node membership in the focal view.
+        const twinColumns = [whoIdx[k], whoIdx[k + 1]];
+        const twinIds = id
+          ? twinColumns
+              .map((col) =>
+                col !== undefined ? layout.nid[i]?.[col] : undefined,
+              )
+              .filter((idx) => idx !== undefined)
+              .map((idx) => id[idx] ?? '')
+          : undefined;
+
+        if (layout.twins[i]?.[whoIdx[k]!] === 1) {
+          const temp1 = (layout.pos[i]![whoIdx[k]!]! + target[k]!) / 2;
+          const temp2 = (layout.pos[i]![whoIdx[k + 1]!]! + target[k]!) / 2;
+          twinIndicators.push({
+            type: 'twin',
+            code: 1,
+            segment: {
+              type: 'line',
+              x1: temp1,
+              y1: i - legh / 2,
+              x2: temp2,
+              y2: i - legh / 2,
+            },
+            ...(twinIds ? { twinIds } : {}),
+          });
+        }
+
+        if (layout.twins[i]?.[whoIdx[k]!] === 3) {
+          const temp1 = (layout.pos[i]![whoIdx[k]!]! + target[k]!) / 2;
+          const temp2 = (layout.pos[i]![whoIdx[k + 1]!]! + target[k]!) / 2;
+          twinIndicators.push({
+            type: 'twin',
+            code: 3,
+            label: { x: (temp1 + temp2) / 2, y: i - legh / 2 },
+            ...(twinIds ? { twinIds } : {}),
+          });
+        }
+
+        if (layout.twins[i]?.[whoIdx[k]!] === 2) {
+          twinIndicators.push({
+            type: 'twin',
+            code: 2,
+            ...(twinIds ? { twinIds } : {}),
+          });
+        }
+      }
+    }
+
+    // Sibling bar
+    const minTarget = Math.min(...target);
+    const maxTarget = Math.max(...target);
+    const siblingBar: LineSegment = {
+      type: 'line',
+      x1: minTarget,
+      y1: i - legh,
+      x2: maxTarget,
+      y2: i - legh,
+    };
+
+    return { uplines, siblingBar, minTarget, maxTarget };
+  };
+
+  // Children whose couple could not sit together have no family in the
+  // layout (fam 0). Those who share every primary parent, in the same roles,
+  // still form a sibship: a sibling bar with uplines and twin marks, though no
+  // line of descent comes down from a couple; each parent joins the bar with
+  // a line of its own. Each such sibship gets a key past every column, so it
+  // never meets a family's.
+  const familyOf = layout.fam.map((row) => [...row]);
+  const coupleless = new Set<number>();
+  for (let i = 1; i < maxlev; i++) {
+    const sibships = new Map<string, number[]>();
+    for (let j = 0; j < (layout.n[i] ?? 0); j++) {
+      if ((layout.fam[i]?.[j] ?? 0) !== 0 || layout.groupMember[i]?.[j]) {
+        continue;
+      }
+      const primary = (parents[layout.nid[i]![j]!] ?? []).filter((p) =>
+        isPrimaryEdge(p.edgeType),
+      );
+      if (primary.length === 0) continue;
+      const key = primary
+        .map((p) => `${p.parentIndex}:${p.edgeType}`)
+        .toSorted()
+        .join(',');
+      sibships.set(key, [...(sibships.get(key) ?? []), j]);
+    }
+    for (const columns of sibships.values()) {
+      if (columns.length < 2) continue;
+      const famId = maxcol + 1 + coupleless.size;
+      coupleless.add(famId);
+      for (const j of columns) familyOf[i]![j] = famId;
+    }
+  }
+
   // --- Parent-child lines ---
   for (let i = 1; i < maxlev; i++) {
-    const familyIds = [...new Set(layout.fam[i]!.filter((v) => v !== 0))];
+    const familyIds = [...new Set(familyOf[i]!.filter((v) => v !== 0))];
 
     for (const fam of familyIds) {
+      if (coupleless.has(fam)) {
+        const whoIdx = familyOf[i]!.flatMap((f, j) => (f === fam ? [j] : []));
+        const { uplines, siblingBar } = sibshipLines(i, whoIdx);
+        familySiblingBar.set(`${i},${fam}`, siblingBar);
+        const sibshipParents = (
+          parents[layout.nid[i]![whoIdx[0]!]!] ?? []
+        ).filter((p) => isPrimaryEdge(p.edgeType));
+        const childIds = id
+          ? whoIdx.map((j) => id[layout.nid[i]![j]!])
+          : undefined;
+        parentChildLines.push({
+          type: 'parent-child',
+          edgeType:
+            sibshipParents.find((p) => p.edgeType === 'biological')?.edgeType ??
+            sibshipParents[0]!.edgeType,
+          uplines,
+          siblingBar,
+          parentLink: [],
+          ...(id
+            ? {
+                parentIds: sibshipParents.map((p) => id[p.parentIndex] ?? ''),
+                uplineChildIds: childIds,
+              }
+            : {}),
+        });
+        continue;
+      }
+
       const { left: coupleLeft, right: coupleRight } = familyParentColumns(
         layout,
         i,
@@ -341,117 +515,10 @@ export function computeConnectors(
         continue;
       }
 
-      // Compute targets (twin grouping)
-      let target: number[];
-      if (!layout.twins) {
-        target = whoIdx.map((j) => layout.pos[i]![j]!);
-      } else {
-        const twinToLeft: number[] = [0];
-        for (let k = 1; k < whoIdx.length; k++) {
-          twinToLeft.push(layout.twins[i]?.[whoIdx[k]!] ?? 0);
-        }
-        const groups: number[] = [];
-        let groupId = 0;
-        for (const ttl of twinToLeft) {
-          if (ttl === 0) groupId++;
-          groups.push(groupId);
-        }
-
-        const groupMeans = new Map<number, number[]>();
-        for (let k = 0; k < groups.length; k++) {
-          const g = groups[k]!;
-          if (!groupMeans.has(g)) groupMeans.set(g, []);
-          groupMeans.get(g)!.push(layout.pos[i]![whoIdx[k]!]!);
-        }
-        const meanMap = new Map<number, number>();
-        for (const [g, positions] of groupMeans) {
-          meanMap.set(
-            g,
-            positions.reduce((a, b) => a + b, 0) / positions.length,
-          );
-        }
-
-        target = groups.map((g) => meanMap.get(g)!);
-      }
-
-      // Uplines: from each child to sibling bar
-      const uplines: LineSegment[] = [];
-      for (let k = 0; k < whoIdx.length; k++) {
-        const childX = layout.pos[i]![whoIdx[k]!]!;
-        uplines.push({
-          type: 'line',
-          x1: childX,
-          y1: i + boxh / 2,
-          x2: target[k]!,
-          y2: i - legh,
-        });
-      }
-
-      // Twin indicators
-      if (layout.twins) {
-        for (let k = 0; k < whoIdx.length; k++) {
-          // The twin bar/label joins siblings k and k+1, who share a twin
-          // group target. Resolve their node ids so the connector can be
-          // dimmed by node membership in the focal view.
-          const twinColumns = [whoIdx[k], whoIdx[k + 1]];
-          const twinIds = id
-            ? twinColumns
-                .map((col) =>
-                  col !== undefined ? layout.nid[i]?.[col] : undefined,
-                )
-                .filter((idx) => idx !== undefined)
-                .map((idx) => id[idx] ?? '')
-            : undefined;
-
-          if (layout.twins[i]?.[whoIdx[k]!] === 1) {
-            const temp1 = (layout.pos[i]![whoIdx[k]!]! + target[k]!) / 2;
-            const temp2 = (layout.pos[i]![whoIdx[k + 1]!]! + target[k]!) / 2;
-            twinIndicators.push({
-              type: 'twin',
-              code: 1,
-              segment: {
-                type: 'line',
-                x1: temp1,
-                y1: i - legh / 2,
-                x2: temp2,
-                y2: i - legh / 2,
-              },
-              ...(twinIds ? { twinIds } : {}),
-            });
-          }
-
-          if (layout.twins[i]?.[whoIdx[k]!] === 3) {
-            const temp1 = (layout.pos[i]![whoIdx[k]!]! + target[k]!) / 2;
-            const temp2 = (layout.pos[i]![whoIdx[k + 1]!]! + target[k]!) / 2;
-            twinIndicators.push({
-              type: 'twin',
-              code: 3,
-              label: { x: (temp1 + temp2) / 2, y: i - legh / 2 },
-              ...(twinIds ? { twinIds } : {}),
-            });
-          }
-
-          if (layout.twins[i]?.[whoIdx[k]!] === 2) {
-            twinIndicators.push({
-              type: 'twin',
-              code: 2,
-              ...(twinIds ? { twinIds } : {}),
-            });
-          }
-        }
-      }
-
-      // Sibling bar
-      const minTarget = Math.min(...target);
-      const maxTarget = Math.max(...target);
-      const siblingBar: LineSegment = {
-        type: 'line',
-        x1: minTarget,
-        y1: i - legh,
-        x2: maxTarget,
-        y2: i - legh,
-      };
-
+      const { uplines, siblingBar, minTarget, maxTarget } = sibshipLines(
+        i,
+        whoIdx,
+      );
       familySiblingBar.set(`${i},${fam}`, siblingBar);
 
       // Parent link
@@ -598,9 +665,9 @@ export function computeConnectors(
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
       const childId = layout.nid[i]![j]!;
       if (childId < 0) continue;
-      // A child without a family (its couple could not sit together) has no
-      // sibling bar, so each of its donors and surrogates joins it directly.
-      const famId = layout.fam[i]?.[j] ?? 0;
+      // A child with neither a family nor a sibship has no sibling bar, so
+      // each of its donors and surrogates joins it directly.
+      const famId = familyOf[i]?.[j] ?? 0;
       const famKey = `${i},${famId}`;
       if (famId !== 0) {
         familyChildCount.set(famKey, (familyChildCount.get(famKey) ?? 0) + 1);
@@ -726,14 +793,13 @@ export function computeConnectors(
     }
   }
 
-  // Group social/unpartnered-parent connections by (parentIndex, childLevel,
-  // famId) so we can decide per-parent whether to connect to the sibling bar
+  // Group direct parent connections by (parentIndex, childLevel, famId) so we can decide per-parent whether to connect to the sibling bar
   // or directly to individual children.
   const socialConnections = new Map<
     string,
     {
       parentIndex: number;
-      edgeType: 'social' | 'unpartnered-parent' | 'biological';
+      edgeType: RelationshipType;
       childLevel: number;
       famId: number;
       childColumns: number[];
@@ -783,23 +849,14 @@ export function computeConnectors(
         }
       }
 
-      const famId = layout.fam[i]?.[j] ?? 0;
+      const famId = familyOf[i]?.[j] ?? 0;
 
-      for (const parentId of parentIds) {
+      for (const parentEdge of parentEdges) {
+        const parentId = parentEdge.parentIndex;
         if (primaryFamilyIds.has(parentId)) continue;
 
-        const parentEdge = childParents.find(
-          (pc) => pc.parentIndex === parentId,
-        );
-
-        // Preserve the actual edge type so biological unpartnered parents
-        // get a solid line.
-        const edgeType: 'social' | 'unpartnered-parent' | 'biological' =
-          parentEdge?.edgeType === 'social'
-            ? 'social'
-            : parentEdge?.edgeType === 'biological'
-              ? 'biological'
-              : 'unpartnered-parent';
+        // Each line carries the parent's own relationship to the child.
+        const { edgeType } = parentEdge;
 
         // One line carries one relationship: a parent who is biological to one
         // child and social to another is grouped once for each.

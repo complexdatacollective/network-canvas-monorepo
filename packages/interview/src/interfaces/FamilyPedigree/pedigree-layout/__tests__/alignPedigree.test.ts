@@ -1509,4 +1509,159 @@ describe('a person with three partners', () => {
       ['donor', 'kidC2'],
     ]);
   });
+
+  // kidC and kidC2 are twins of the couple left apart (parent and c).
+  const twinsOfSeparatedCouple = (code: 1 | 2 | 3): PedigreeInput => ({
+    ...ped,
+    parents: [...ped.parents.slice(0, 6), [sp(0), sp(3)], [sp(0), sp(3)]],
+    relation: [{ id1: 6, id2: 7, code }],
+  });
+
+  it.each([1, 2, 3] as const)(
+    'marks twins (code %i) whose couple cannot sit together',
+    (code) => {
+      const input = twinsOfSeparatedCouple(code);
+      const result = alignPedigree(input);
+      const level = result.nid.findIndex((row) => row.includes(6));
+      for (const kid of [6, 7]) {
+        expect(result.fam[level]![result.nid[level]!.indexOf(kid)]).toBe(0);
+      }
+      const conn = computeConnectors(
+        result,
+        defaultScaling,
+        input.parents,
+        new Set(['0,3']),
+        undefined,
+        undefined,
+        undefined,
+        input.id,
+        new Set(['0,1', '0,2', '0,3']),
+      );
+      expect(
+        conn.twinIndicators.map((t) => [t.code, [...(t.twinIds ?? [])].sort()]),
+      ).toStrictEqual([[code, ['kidC', 'kidC2']]]);
+      // The twins hang from one sibling bar, which each parent joins.
+      const bars = conn.parentChildLines.filter((line) =>
+        line.uplineChildIds?.includes('kidC'),
+      );
+      expect(bars).toHaveLength(1);
+      expect(bars[0]!.uplineChildIds).toStrictEqual(
+        expect.arrayContaining(['kidC', 'kidC2']),
+      );
+      const toBar = conn.auxiliaryLines
+        .filter((line) => line.endpointIds?.[1] === undefined)
+        .map((line) => line.endpointIds?.[0]);
+      expect(toBar).toStrictEqual(expect.arrayContaining(['parent', 'c']));
+    },
+  );
+
+  it('keeps an adoptive relationship on a direct line', () => {
+    // No partnerships recorded; kidC's adoptive parents are inferred as a
+    // couple, and it is the one that cannot sit together.
+    const adoptive = (parentIndex: number): ParentConnection => ({
+      parentIndex,
+      edgeType: 'adoptive',
+    });
+    const input: PedigreeInput = {
+      id: ['parent', 'a', 'b', 'c', 'kidA', 'kidB', 'kidC'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [sp(0), sp(1)],
+        [sp(0), sp(2)],
+        [adoptive(0), adoptive(3)],
+      ],
+    };
+    const result = alignPedigree(input);
+    const level = result.nid.findIndex((row) => row.includes(6));
+    expect(result.fam[level]![result.nid[level]!.indexOf(6)]).toBe(0);
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      input.parents,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      input.id,
+      new Set(),
+    );
+    const lines = new Map(
+      conn.auxiliaryLines.map((line) => [
+        line.endpointIds?.join('→'),
+        line.edgeType,
+      ]),
+    );
+    expect(lines.get('parent→kidC')).toBe('adoptive');
+    expect(lines.get('c→kidC')).toBe('adoptive');
+  });
+});
+
+describe('partnerships that cannot share a row', () => {
+  // Rows hold everyone, each child sits below each of its primary parents,
+  // and every recorded partnership is drawn.
+  const expectLaidOut = (ped: PedigreeInput) => {
+    const result = alignPedigree(ped);
+    // Layers are 1-based, so only row 0 is left empty.
+    for (let level = 1; level < result.n.length; level++) {
+      expect(result.n[level], `row ${level} is empty`).toBeGreaterThan(0);
+    }
+    ped.parents.forEach((conns, child) => {
+      for (const p of conns) {
+        if (p.edgeType === 'donor' || p.edgeType === 'surrogate') continue;
+        expect(positionOf(result, child)!.layer).toBeGreaterThan(
+          positionOf(result, p.parentIndex)!.layer,
+        );
+      }
+    });
+    const pairs = (ped.partners ?? []).map(
+      (p) =>
+        `${Math.min(p.partnerIndex1, p.partnerIndex2)},${Math.max(p.partnerIndex1, p.partnerIndex2)}`,
+    );
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      ped.parents,
+      new Set(pairs),
+      undefined,
+      undefined,
+      undefined,
+      ped.id,
+      new Set(pairs),
+    );
+    const drawn = conn.groupLines.map((line) =>
+      [...(line.partnerIds ?? [])].sort().join(','),
+    );
+    for (const p of ped.partners ?? []) {
+      expect(drawn).toContain(
+        [ped.id[p.partnerIndex1]!, ped.id[p.partnerIndex2]!].sort().join(','),
+      );
+    }
+    return result;
+  };
+
+  it('lays out a grandparent partnered with their grandchild', () => {
+    expectLaidOut({
+      id: ['grandparent', 'parent', 'grandchild'],
+      parents: [[], [sp(0)], [sp(1)]],
+      partners: [{ partnerIndex1: 0, partnerIndex2: 2, isActive: true }],
+    });
+  });
+
+  it('lays out partnerships that would close a loop across generations', () => {
+    // a and b are partners; c is a's child and d is b's parent. c and d
+    // partnering too would need a's row both above and level with b's.
+    const result = expectLaidOut({
+      id: ['a', 'b', 'c', 'd'],
+      parents: [[], [sp(3)], [sp(0)], []],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+        { partnerIndex1: 2, partnerIndex2: 3, isActive: true },
+      ],
+    });
+    // The partnership recorded first keeps its row.
+    expect(positionOf(result, 0)!.layer).toBe(positionOf(result, 1)!.layer);
+  });
 });

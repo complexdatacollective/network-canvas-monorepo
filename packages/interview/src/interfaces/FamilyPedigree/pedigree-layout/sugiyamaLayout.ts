@@ -180,50 +180,81 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   const partnerGroups = [...groupMap.values()];
 
-  // 3b. Align partner group members to the same layer. Moving someone down to
-  // a partner's layer moves their children down with them, and a donor or
-  // surrogate is kept at least as low as the parents they contribute
-  // alongside.
-  // Each of these can unsettle another (a chain recorded from its far end, a
-  // raised partner with children of their own), so repeat until all hold.
-  // Layers only ever increase; the cap stops a family no layering can satisfy
-  // (someone partnered with their own descendant) from looping.
-  const raise = (node: number, layer: number) => {
-    if (layers[node]! >= layer) return false;
-    layers[node] = layer;
-    return true;
-  };
-  let layerChanged = true;
-  for (let pass = 0; layerChanged && pass <= n; pass++) {
-    layerChanged = false;
-    for (const group of partnerGroups) {
-      const maxLayer = Math.max(...group.members.map((m) => layers[m]!));
-      for (const m of group.members) {
-        if (raise(m, maxLayer)) layerChanged = true;
+  // 3b. Settle layers. Each child sits below its primary parents (below all
+  // of its parents when it has none); partners share a layer; and a donor or
+  // surrogate sits no higher than the parents they contribute alongside.
+  // Descent always holds. Some families cannot have every alignment as well
+  // (someone partnered with their own grandchild), so each alignment is kept
+  // only if it leaves the constraints satisfiable — in order, partnerships
+  // first — and one that would need a person above their own descendant is
+  // dropped: its people then sit on different layers.
+  // Each constraint asks that `to` sit at least `gap` layers below `from`.
+  const below: { to: number; gap: number }[][] = Array.from(
+    { length: n },
+    () => [],
+  );
+  // The constraints are unsatisfiable exactly when a cycle through `node`
+  // includes a parent-child step.
+  const onDescendingCycle = (node: number) => {
+    const seen = new Set<string>();
+    const queue: [number, boolean][] = [[node, false]];
+    while (queue.length > 0) {
+      const [at, descended] = queue.shift()!;
+      for (const { to, gap } of below[at]!) {
+        const next = descended || gap > 0;
+        if (to === node && next) return true;
+        const key = `${to},${next}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        queue.push([to, next]);
       }
     }
-    for (let i = 0; i < n; i++) {
-      const pConns = ped.parents[i]!;
-      if (pConns.length === 0) continue;
-      const primaryLayer = Math.max(
-        ...pConns
-          .filter((p) => isPrimaryEdge(p.edgeType))
-          .map((p) => layers[p.parentIndex]!),
-        -1,
+    return false;
+  };
+  const constrain = (pairs: [from: number, to: number][], gap: number) => {
+    for (const [from, to] of pairs) below[from]!.push({ to, gap });
+    // The constraints held before, so any new cycle passes through these.
+    if (gap > 0 || !pairs.some(([from]) => onDescendingCycle(from))) return;
+    for (const [from] of pairs) below[from]!.pop();
+  };
+  for (let i = 0; i < n; i++) {
+    const pConns = ped.parents[i]!;
+    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
+    for (const p of primary.length > 0 ? primary : pConns) {
+      constrain([[p.parentIndex, i]], 1);
+    }
+  }
+  for (const group of partnerGroups) {
+    const [first, ...rest] = group.members;
+    for (const m of rest) {
+      constrain(
+        [
+          [first!, m],
+          [m, first!],
+        ],
+        0,
       );
-      for (const p of pConns) {
-        if (isAuxiliaryEdge(p.edgeType) && raise(p.parentIndex, primaryLayer)) {
-          layerChanged = true;
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const pConns = ped.parents[i]!;
+    for (const aux of pConns.filter((p) => isAuxiliaryEdge(p.edgeType))) {
+      for (const p of pConns.filter((q) => isPrimaryEdge(q.edgeType))) {
+        constrain([[p.parentIndex, aux.parentIndex]], 0);
+      }
+    }
+  }
+  // Layers only ever increase, and with no cycle left to climb this settles
+  // within n passes.
+  for (let changed = true, pass = 0; changed && pass <= n; pass++) {
+    changed = false;
+    for (let from = 0; from < n; from++) {
+      for (const { to, gap } of below[from]!) {
+        if (layers[to]! < layers[from]! + gap) {
+          layers[to] = layers[from]! + gap;
+          changed = true;
         }
       }
-      // A child sits below its primary parents. A donor or surrogate moved
-      // down by a partnership of its own does not drag the child away from
-      // them; its own line reaches the child wherever it sits.
-      const parentLayer =
-        primaryLayer >= 0
-          ? primaryLayer
-          : Math.max(...pConns.map((p) => layers[p.parentIndex]!));
-      if (raise(i, parentLayer + 1)) layerChanged = true;
     }
   }
 
