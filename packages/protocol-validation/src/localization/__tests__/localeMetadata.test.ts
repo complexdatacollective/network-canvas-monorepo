@@ -13,6 +13,33 @@ const stubIntl = (overrides: { DisplayNames?: unknown; Locale?: unknown }) => {
   });
 };
 
+// Models Chromium's trimmed ICU data: it names languages only in the display
+// locales it supports, and answers for any other display locale in English.
+// `names` is keyed `<display locale>:<tag>`.
+const stubDisplayNames = (
+  supported: readonly string[],
+  names: Readonly<Record<string, string>>,
+) => {
+  stubIntl({
+    DisplayNames: class {
+      static supportedLocalesOf(locales: readonly string[]) {
+        return locales.filter((locale) => supported.includes(locale));
+      }
+
+      readonly #displayLocale: string;
+
+      constructor(locales: readonly string[]) {
+        const [requested = 'en'] = locales;
+        this.#displayLocale = supported.includes(requested) ? requested : 'en';
+      }
+
+      of(tag: string) {
+        return names[`${this.#displayLocale}:${tag}`];
+      }
+    },
+  });
+};
+
 // A runtime with neither `getTextInfo()` nor the `textInfo` accessor.
 class LocaleWithoutTextInfo {
   readonly #locale: Intl.Locale;
@@ -90,7 +117,7 @@ describe('getLocaleMetadata', () => {
           }
         },
       });
-      expect(getLocaleMetadata('es').label).toBe('es');
+      expect(getLocaleMetadata('gsw').label).toBe('gsw');
     });
 
     it('falls back to the canonical tag when DisplayNames has no name', () => {
@@ -101,11 +128,64 @@ describe('getLocaleMetadata', () => {
           }
         },
       });
-      expect(getLocaleMetadata('es').label).toBe('es');
+      expect(getLocaleMetadata('gsw').label).toBe('gsw');
     });
 
     it('falls back to the canonical tag for a malformed display locale', () => {
-      expect(getLocaleMetadata('es', 'EN_us').label).toBe('es');
+      expect(getLocaleMetadata('gsw', 'EN_us').label).toBe('gsw');
+    });
+
+    describe('when the runtime has no name for a language', () => {
+      it('names the language in English for a malformed display locale', () => {
+        expect(getLocaleMetadata('es', 'EN_us').label).toBe('Spanish');
+      });
+
+      it('uses the English name when the runtime lacks it in the display locale', () => {
+        stubDisplayNames(['en', 'de'], { 'de:cy': 'Walisisch' });
+        expect(getLocaleMetadata('bo', 'de').label).toBe('Tibetan');
+      });
+
+      it('uses the autonym when the runtime has no data for the language', () => {
+        // The runtime answers for an unsupported display locale in English.
+        stubDisplayNames(['en'], { 'en:cy': 'Welsh' });
+        expect(getLocaleMetadata('cy').label).toBe('Cymraeg');
+      });
+
+      it('uses the English name for a language that has no autonym', () => {
+        stubDisplayNames(['en'], {});
+        expect(getLocaleMetadata('aa').label).toBe('Afar');
+        expect(getLocaleMetadata('aa', 'en').label).toBe('Afar');
+      });
+
+      it('uses the English name, not the autonym, for another display locale', () => {
+        stubDisplayNames(['en', 'de'], {});
+        expect(getLocaleMetadata('cy', 'de').label).toBe('Welsh');
+      });
+
+      it('uses the table when DisplayNames is unavailable', () => {
+        stubIntl({ DisplayNames: undefined });
+        expect(getLocaleMetadata('cy').label).toBe('Cymraeg');
+        expect(getLocaleMetadata('cy', 'de').label).toBe('Welsh');
+      });
+
+      it('names a language the table lacks as it did before', () => {
+        stubDisplayNames(['en'], {
+          'en:gsw': 'Swiss German',
+          'en:es-MX': 'Mexican Spanish',
+        });
+        expect(getLocaleMetadata('gsw').label).toBe('Swiss German');
+        expect(getLocaleMetadata('es-mx').label).toBe('Mexican Spanish');
+        expect(getLocaleMetadata('wae').label).toBe('wae');
+      });
+
+      it('prefers a name the runtime has over the table', () => {
+        stubDisplayNames(['de', 'cy'], {
+          'de:bo': 'Tibetisch',
+          'cy:cy': 'Cymraeg (runtime)',
+        });
+        expect(getLocaleMetadata('bo', 'de').label).toBe('Tibetisch');
+        expect(getLocaleMetadata('cy').label).toBe('Cymraeg (runtime)');
+      });
     });
   });
 

@@ -4,8 +4,9 @@ import {
   selectProtocolLocale,
 } from '@codaco/protocol-validation';
 
-// Every ISO 639-1 language, then the regional and script variants a protocol
-// most often needs to tell apart.
+// Every ISO 639-1 language except `tw`, which CLDR names "Akan" like `ak`,
+// then the regional and script variants a protocol most often needs to tell
+// apart.
 const LANGUAGE_TAGS: readonly LocaleTag[] = [
   'aa',
   'ab',
@@ -173,7 +174,6 @@ const LANGUAGE_TAGS: readonly LocaleTag[] = [
   'tr',
   'ts',
   'tt',
-  'tw',
   'ty',
   'ug',
   'uk',

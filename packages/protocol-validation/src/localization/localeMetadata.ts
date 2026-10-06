@@ -1,3 +1,4 @@
+import { LANGUAGE_NAMES } from './languageNames.ts';
 import { canonicalizeLocale, type LocaleTag } from './localeTag.ts';
 
 export type LocaleMetadata = Readonly<{
@@ -58,25 +59,67 @@ const getDirection = (locale: LocaleTag): TextDirection => {
     : 'ltr';
 };
 
-const getLabel = (locale: LocaleTag, displayLocale: string): string => {
-  if (typeof Intl.DisplayNames !== 'function') return locale;
+// A runtime without `Intl.DisplayNames`, or one that rejects the tag, has no
+// name to offer.
+const readRuntime = <T>(read: () => T): T | undefined => {
+  if (typeof Intl.DisplayNames !== 'function') return undefined;
   try {
-    return (
-      new Intl.DisplayNames([displayLocale], { type: 'language' }).of(locale) ??
-      locale
-    );
+    return read();
   } catch (error) {
     if (error instanceof RangeError || error instanceof TypeError) {
-      return locale;
+      return undefined;
     }
     throw error;
   }
+};
+
+const runtimeSupports = (displayLocale: string): boolean =>
+  readRuntime(
+    () => Intl.DisplayNames.supportedLocalesOf([displayLocale]).length > 0,
+  ) ?? false;
+
+// `fallback: 'none'` makes an unknown name come back undefined rather than as
+// the bare tag. A display locale the runtime lacks is answered in the
+// runtime's own default locale.
+const runtimeName = (
+  locale: LocaleTag,
+  displayLocale: string,
+): string | undefined =>
+  readRuntime(() =>
+    new Intl.DisplayNames([displayLocale], {
+      type: 'language',
+      fallback: 'none',
+    }).of(locale),
+  );
+
+const getLabel = (locale: LocaleTag, displayLocale: string): string => {
+  const fromRuntime = runtimeName(locale, displayLocale);
+  if (fromRuntime !== undefined && runtimeSupports(displayLocale)) {
+    return fromRuntime;
+  }
+
+  const known = Object.hasOwn(LANGUAGE_NAMES, locale)
+    ? LANGUAGE_NAMES[locale]
+    : undefined;
+  if (known !== undefined) {
+    const [englishName, autonym] = known;
+    return displayLocale === locale ? (autonym ?? englishName) : englishName;
+  }
+
+  return fromRuntime ?? locale;
 };
 
 /**
  * Presentation data for a locale. The label defaults to the locale's own name
  * for itself (its autonym) and varies between JavaScript runtimes, so it must
  * never be persisted, validated, or hashed.
+ *
+ * A label comes from the runtime's `Intl.DisplayNames` when the runtime has
+ * data for the display locale and a name for the language. Chromium ships
+ * trimmed ICU data and lacks many names, so otherwise the label is the
+ * language's autonym (when the display locale is the language itself) or its
+ * English name from a built-in CLDR table, then the runtime's name in its own
+ * default locale, then the tag.
  */
 export function getLocaleMetadata(
   locale: string,

@@ -100,7 +100,8 @@ Localization:
   `selectProtocolLocale` and `normalizeLocalePreferences` (choose a protocol
   language from a list of preferences, in order, matching Chinese by script);
   `canonicalizeLocale`; `getLocaleMetadata` (a language's own name and text
-  direction); `analyzeProtocolLocalization` (missing translations);
+  direction, with CLDR's English name and autonym standing in where the
+  JavaScript runtime has no name for the language); `analyzeProtocolLocalization` (missing translations);
   `collectLocalizedStrings`; `escapeMessageText` and `messageText`;
   `escapeMarkdownText` (turns plain text into markdown that shows it as
   written).
