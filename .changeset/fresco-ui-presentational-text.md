@@ -21,5 +21,9 @@ Chooser stage type has a colour and icon.
 space they are given when the text they show is long. The text is cut off with
 an ellipsis instead of running past the edge of its dialog.
 
+A button whose label is too long for it now cuts the label off with an
+ellipsis at its end, instead of clipping both the start and the end of the
+label.
+
 **Breaking:** `SelectOption.lang` is removed. Pass a label in another language
 as `{ text, lang, dir }` instead, as `LocaleSelect` now does.
