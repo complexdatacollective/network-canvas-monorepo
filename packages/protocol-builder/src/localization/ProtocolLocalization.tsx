@@ -38,14 +38,19 @@ const EditingLanguageContext = createContext<EditingLanguage>(NO_LANGUAGE);
 
 export type ProtocolLocalizationProviderProps = Readonly<{
   localization: ProtocolLocalization | undefined;
+  /** The language to edit first; the default language when unset or undeclared. */
+  initialLocale?: LocaleTag;
   children?: ReactNode;
 }>;
 
 export function ProtocolLocalizationProvider({
   localization,
+  initialLocale,
   children,
 }: ProtocolLocalizationProviderProps) {
-  const [selected, setSelected] = useState<LocaleTag>();
+  const [selected, setSelected] = useState<LocaleTag | undefined>(
+    initialLocale,
+  );
   // A language removed from the protocol while it was selected falls back to
   // the default rather than leaving every field editing a language that is no
   // longer declared.

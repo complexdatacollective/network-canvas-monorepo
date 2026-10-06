@@ -26,15 +26,20 @@ type Saved = { title?: LocalizedString };
 function renderTitle({
   initialValue,
   localization = ENGLISH_AND_SPANISH,
+  initialLocale,
   required = false,
 }: {
   initialValue?: LocalizedString;
   localization?: ProtocolLocalization;
+  initialLocale?: string;
   required?: boolean;
 }) {
   const saved: { current: Saved | undefined } = { current: undefined };
   render(
-    <ProtocolLocalizationProvider localization={localization}>
+    <ProtocolLocalizationProvider
+      localization={localization}
+      initialLocale={initialLocale}
+    >
       <Form
         onSubmit={(values: Saved) => {
           saved.current = values;
@@ -69,6 +74,28 @@ describe('LocalizedStringField', () => {
     expect(input).toHaveValue("Who's {here}?");
     expect(input.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(input.closest('[dir]')).toHaveAttribute('dir', 'ltr');
+  });
+
+  it('edits the initial language first when the protocol declares it', () => {
+    renderTitle({
+      initialValue: { en: 'Hello', es: 'Hola' },
+      initialLocale: 'es',
+    });
+
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    expect(input).toHaveValue('Hola');
+    expect(input.closest('[lang]')).toHaveAttribute('lang', 'es');
+  });
+
+  it('edits the default language when the initial language is not declared', () => {
+    renderTitle({
+      initialValue: { en: 'Hello', es: 'Hola' },
+      initialLocale: 'fr',
+    });
+
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    expect(input).toHaveValue('Hello');
+    expect(input.closest('[lang]')).toHaveAttribute('lang', 'en');
   });
 
   it('writes only the editing language, escaped, and keeps the others', async () => {

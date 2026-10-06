@@ -1,25 +1,40 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
+import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
+import {
+  removeProtocolLocale,
+  setActiveProtocol,
+} from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
 import MissingTranslations from '../MissingTranslations';
 
-// French is missing the welcome title, the welcome text and the thanks title;
-// Spanish is missing only the thanks title.
+// French is missing the welcome title, both welcome texts, the thanks title
+// and the person type's label; Spanish is missing only the thanks title.
 const trilingual: CurrentProtocol = {
   name: 'Study',
   schemaVersion: 9,
   localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
   assetManifest: {},
-  codebook: { node: {}, edge: {}, ego: {} },
+  codebook: {
+    node: {
+      person: {
+        name: 'Person',
+        label: { en: 'People', es: 'Personas' },
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+      },
+    },
+    edge: {},
+    ego: {},
+  },
   stages: [
     {
       id: 'welcome',
@@ -31,6 +46,11 @@ const trilingual: CurrentProtocol = {
           id: 'intro',
           type: 'text',
           content: { en: 'Read **this** first', es: 'Lea esto primero' },
+        },
+        {
+          id: 'more',
+          type: 'text',
+          content: { en: 'Then that', es: 'Luego eso' },
         },
       ],
     },
@@ -76,53 +96,195 @@ const renderMissingTranslations = (protocol: CurrentProtocol = trilingual) => {
   return { store, onLanguageChange, headingRef, user: userEvent.setup() };
 };
 
-const addButton = (language: string, text: string) =>
-  screen.getByRole('button', {
-    name: `Add ${language} translation`,
-    description: text,
-  });
+type Rendered = ReturnType<typeof renderMissingTranslations>;
 
-const stageTitle = (
-  store: ReturnType<typeof renderMissingTranslations>['store'],
-  index: number,
-) => {
+const textButton = (name: string) => screen.getByRole('button', { name });
+
+const headingLevel = (element: HTMLElement) => Number(element.tagName.slice(1));
+
+const openText = async (user: Rendered['user'], name: string) => {
+  await user.click(textButton(name));
+  return screen.findByRole('dialog');
+};
+
+const stageTitle = (store: Rendered['store'], index: number) => {
   const stage = getProtocol(store.getState())?.stages[index];
   return stage && 'title' in stage ? stage.title : undefined;
 };
 
+const participantView = (dialog: HTMLElement) =>
+  within(
+    within(dialog).getByRole('region', { name: 'What participants see' }),
+  ).getAllByRole('listitem');
+
+const languageEntry = (dialog: HTMLElement, language: string) => {
+  const entry = participantView(dialog).find(
+    (item) => within(item).queryByText(language) !== null,
+  );
+  if (!entry) throw new Error(`No entry for ${language}`);
+  return entry;
+};
+
+const chooseEditingLanguage = async (user: Rendered['user'], name: RegExp) => {
+  await user.click(screen.getByRole('button', { name: /Editing language/ }));
+  await user.click(await screen.findByRole('menuitemradio', { name }));
+};
+
 describe('MissingTranslations', () => {
-  it('heads each place one level below the section title', () => {
+  it('lists texts by category, then by the stage or type that holds them', () => {
     renderMissingTranslations();
 
     const title = screen.getByRole('heading', { name: 'Missing translations' });
-    const place = screen.getByRole('heading', { name: /Welcome/ });
-    const titleLevel = Number(title.tagName.slice(1));
+    const stages = screen.getByRole('heading', { name: 'Stages' });
+    const codebook = screen.getByRole('heading', { name: 'Codebook' });
+    const welcome = screen.getByRole('heading', {
+      name: /^Stage 1\s*Information$/,
+    });
+    const person = screen.getByRole('heading', {
+      name: /^Node type\s*Person$/,
+    });
 
-    expect(Number(place.tagName.slice(1))).toBe(titleLevel + 1);
+    expect(headingLevel(stages)).toBe(headingLevel(title) + 1);
+    expect(headingLevel(codebook)).toBe(headingLevel(title) + 1);
+    expect(headingLevel(welcome)).toBe(headingLevel(title) + 2);
+    expect(headingLevel(person)).toBe(headingLevel(title) + 2);
+    expect(
+      screen.getByRole('heading', { name: /^Stage 2\s*Information$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Protocol' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('shows the text participants see in place of each missing translation', () => {
+  it('links each place without showing its translatable label', () => {
     renderMissingTranslations();
 
     expect(
-      screen.getByText('3 texts have no French translation.'),
-    ).toBeInTheDocument();
+      screen
+        .getAllByRole('link', { name: 'Information' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/protocol/stage/welcome', '/protocol/stage/thanks']);
+    expect(screen.getByRole('link', { name: 'Person' })).toHaveAttribute(
+      'href',
+      '/protocol/codebook?entity=node&type=person',
+    );
+    expect(screen.queryByText('Welcome')).not.toBeInTheDocument();
     expect(
-      screen.getAllByText(
-        'Participants who choose French see this English text instead:',
-      ),
-    ).toHaveLength(3);
-    const fallback = screen.getByText('Hello').closest('blockquote');
-    expect(fallback).toHaveAttribute('lang', 'en');
-    expect(fallback).toHaveAttribute('dir', 'ltr');
-    expect(screen.getAllByText('title')).toHaveLength(2);
-    expect(screen.getByText('items[0].content')).toBeInTheDocument();
+      screen.getByRole('heading', { name: /^Node type\s*Person$/ }),
+    ).not.toHaveTextContent('People');
   });
 
-  it('leaves an unidentified language out of the caption', () => {
+  it('draws a branch only where texts share part of their path', () => {
+    renderMissingTranslations();
+
+    expect(screen.getAllByRole('button', { name: /^title / })).toHaveLength(2);
+    expect(textButton('1 › content Read this first')).toBeInTheDocument();
+    expect(textButton('2 › content Then that')).toBeInTheDocument();
+    expect(screen.getByText('items')).not.toHaveAttribute('role');
+    expect(
+      screen.queryByRole('button', { name: /^items/ }),
+    ).not.toBeInTheDocument();
+    expect(textButton('label People')).toBeInTheDocument();
+  });
+
+  it('names variables and joins a run of single steps into one row', () => {
     renderMissingTranslations({
       ...trilingual,
+      stages: [],
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            label: { en: 'People', fr: 'Personnes', es: 'Personas' },
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              v1: {
+                name: 'closeness',
+                label: 'Closeness',
+                type: 'categorical',
+                options: [
+                  { label: { en: 'Close', es: 'Cerca' }, value: 1 },
+                  { label: { en: 'Distant', es: 'Lejos' }, value: 2 },
+                ],
+              },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+    });
+
+    expect(
+      screen.getByText('variables › closeness › options'),
+    ).toBeInTheDocument();
+    expect(textButton('1 › label Close')).toBeInTheDocument();
+    expect(textButton('2 › label Distant')).toBeInTheDocument();
+  });
+
+  it('previews what participants see instead, in its own language', () => {
+    renderMissingTranslations();
+
+    expect(
+      screen.getByText('5 texts have no French translation.'),
+    ).toBeInTheDocument();
+    const preview = screen.getByText('Hello');
+    expect(preview).toHaveAttribute('lang', 'en');
+    expect(preview).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText('this').tagName).toBe('STRONG');
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+  });
+
+  it('opens a dialog that edits the listed language first', async () => {
+    const { user } = renderMissingTranslations();
+
+    const dialog = await openText(user, 'title Hello');
+
+    expect(dialog).toHaveAccessibleName('Stage 1 · Information title');
+    const field = within(dialog).getByRole('textbox', { name: 'Text' });
+    expect(field).toHaveValue('');
+    expect(field.closest('[lang]')).toHaveAttribute('lang', 'fr');
+  });
+
+  it('shows what participants in each language see while the text is typed', async () => {
+    const { user } = renderMissingTranslations();
+
+    const dialog = await openText(user, 'title Hello');
+    const french = languageEntry(dialog, 'French');
+
+    expect(participantView(dialog)).toHaveLength(3);
+    expect(languageEntry(dialog, 'English')).toHaveTextContent(
+      /^English\s*Default\s*Hello$/,
+    );
+    expect(french).toHaveTextContent(
+      /^French\s*Editing\s*Hello\s*Not translated yet\. Shown in English\.$/,
+    );
+    expect(languageEntry(dialog, 'Spanish')).toHaveTextContent(
+      /^Spanish\s*Hola$/,
+    );
+    expect(within(french).getByText('Hello').closest('[lang]')).toHaveAttribute(
+      'lang',
+      'en',
+    );
+
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Text' }),
+      'Bonjour',
+    );
+
+    expect(french).toHaveTextContent(/^French\s*Editing\s*Bonjour$/);
+    expect(
+      within(french).getByText('Bonjour').closest('[lang]'),
+    ).toHaveAttribute('lang', 'fr');
+    expect(hasDirtyNestedDraft()).toBe(true);
+  });
+
+  it('notes text in an unidentified language without naming it', async () => {
+    const { user } = renderMissingTranslations({
+      ...trilingual,
       localization: { defaultLocale: 'und', locales: ['und', 'fr'] },
+      codebook: { node: {}, edge: {}, ego: {} },
       stages: [
         {
           id: 'welcome',
@@ -134,130 +296,153 @@ describe('MissingTranslations', () => {
       ],
     });
 
-    expect(
-      screen.getByText('Participants who choose French see this text instead:'),
-    ).toBeInTheDocument();
+    const dialog = await openText(user, 'title Hello');
+
+    expect(languageEntry(dialog, 'French')).toHaveTextContent(
+      /^French\s*Editing\s*Hello\s*Not translated yet\.$/,
+    );
   });
 
-  it('renders markdown text as participants see it', () => {
-    renderMissingTranslations();
-
-    expect(screen.getByText('this').tagName).toBe('STRONG');
-    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
-  });
-
-  it('saves a translation, removes its card and moves focus to the next card', async () => {
+  it('saves the translations, then moves focus to the next text', async () => {
     const { store, user } = renderMissingTranslations();
 
-    await user.click(addButton('French', 'Hello'));
-    const field = screen.getByRole('textbox', { name: 'French translation' });
-    expect(field).toHaveFocus();
-    expect(field).toHaveAttribute('lang', 'fr');
-    await user.type(field, 'Bonjour');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() =>
-      expect(stageTitle(store, 0)).toEqual({
-        en: 'Hello',
-        es: 'Hola',
-        fr: 'Bonjour',
-      }),
+    const dialog = await openText(user, 'title Hello');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Text' }),
+      'Bonjour',
     );
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(stageTitle(store, 0)).toEqual({
+      en: 'Hello',
+      es: 'Hola',
+      fr: 'Bonjour',
+    });
     expect(
       await screen.findByText('French translation saved.'),
     ).toBeInTheDocument();
-    expect(addButton('French', 'Read this first')).toHaveFocus();
     await waitFor(() =>
-      expect(screen.queryByText('Hello')).not.toBeInTheDocument(),
+      expect(textButton('1 › content Read this first')).toHaveFocus(),
     );
     expect(
-      screen.getByText('2 texts have no French translation.'),
+      screen.queryByRole('button', { name: 'title Hello' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('4 texts have no French translation.'),
     ).toBeInTheDocument();
   });
 
-  it('moves focus to the previous card after saving the last one', async () => {
-    const { user } = renderMissingTranslations();
+  it('moves focus to the next text when saving redraws its row', async () => {
+    const { user } = renderMissingTranslations({
+      ...trilingual,
+      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      codebook: { node: {}, edge: {}, ego: {} },
+      stages: [
+        {
+          id: 'gallery',
+          type: 'Information',
+          label: { en: 'Gallery', fr: 'Galerie' },
+          title: { en: 'Pictures', fr: 'Images' },
+          items: [
+            {
+              id: 'first',
+              type: 'asset',
+              content: 'first-picture',
+              description: { en: 'A garden' },
+            },
+            {
+              id: 'second',
+              type: 'asset',
+              content: 'second-picture',
+              description: { en: 'A river' },
+            },
+          ],
+        },
+      ],
+    });
 
-    await user.click(addButton('French', 'Thank you'));
+    const dialog = await openText(user, '1 › description A garden');
     await user.type(
-      screen.getByRole('textbox', { name: 'French translation' }),
-      'Merci beaucoup',
+      within(dialog).getByRole('textbox', { name: 'Text' }),
+      'Un jardin',
     );
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
-      expect(addButton('French', 'Read this first')).toHaveFocus(),
+      expect(textButton('items › 2 › description A river')).toHaveFocus(),
     );
   });
 
-  it('refuses a blank translation', async () => {
+  it('moves focus to the previous text after saving the last one', async () => {
+    const { user } = renderMissingTranslations();
+
+    const dialog = await openText(user, 'label People');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Text' }),
+      'Personnes',
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(textButton('title Thank you')).toHaveFocus());
+    expect(
+      screen.queryByRole('heading', { name: 'Codebook' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a text listed, and focus on it, while its listed translation is missing', async () => {
     const { store, user } = renderMissingTranslations();
 
-    await user.click(addButton('French', 'Hello'));
+    const dialog = await openText(user, 'title Hello');
+    await chooseEditingLanguage(user, /^español/);
+    const field = within(dialog).getByRole('textbox', { name: 'Text' });
+    await user.clear(field);
+    await user.type(field, 'Hola a todos');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(stageTitle(store, 0)).toEqual({ en: 'Hello', es: 'Hola a todos' });
+    expect(await screen.findByText('Translations saved.')).toBeInTheDocument();
+    await waitFor(() => expect(textButton('title Hello')).toHaveFocus());
+  });
+
+  it('closes without saving when nothing was changed', async () => {
+    const { store, user } = renderMissingTranslations();
+    const before = getProtocol(store.getState());
+
+    const dialog = await openText(user, 'title Hello');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(textButton('title Hello')).toHaveFocus());
+    expect(getProtocol(store.getState())).toBe(before);
+    expect(screen.queryByText('Translations saved.')).not.toBeInTheDocument();
+  });
+
+  it('returns focus to the text when the dialog is cancelled', async () => {
+    const { user } = renderMissingTranslations();
+
+    const dialog = await openText(user, 'title Hello');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(textButton('title Hello')).toHaveFocus());
+  });
+
+  it('refuses translations in a language removed while the dialog was open', async () => {
+    const { store, user } = renderMissingTranslations();
+
+    const dialog = await openText(user, 'title Hello');
     await user.type(
-      screen.getByRole('textbox', { name: 'French translation' }),
-      '   ',
+      within(dialog).getByRole('textbox', { name: 'Text' }),
+      'Bonjour',
     );
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    store.dispatch(removeProtocolLocale({ locale: 'es' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText('Write the French translation before saving.'),
+      await within(dialog).findByText(
+        'These translations could not be saved, because this text or one of its languages has been removed from the protocol. Select Cancel to close the dialog.',
+      ),
     ).toBeInTheDocument();
-    expect(stageTitle(store, 0)).toEqual({ en: 'Hello', es: 'Hola' });
-  });
-
-  it('returns focus to the Add button when the editor is cancelled', async () => {
-    const { user } = renderMissingTranslations();
-
-    await user.click(addButton('French', 'Hello'));
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(
-      screen.queryByRole('textbox', { name: 'French translation' }),
-    ).not.toBeInTheDocument();
-    expect(addButton('French', 'Hello')).toHaveFocus();
-  });
-
-  it('asks before Escape discards typed text, and keeps it when declined', async () => {
-    const { openDialog } = globalThis.__architectDialogMocks;
-    const { user } = renderMissingTranslations();
-
-    await user.click(addButton('French', 'Hello'));
-    await user.type(
-      screen.getByRole('textbox', { name: 'French translation' }),
-      'Bonj',
-    );
-    openDialog.mockResolvedValueOnce(false);
-    await user.keyboard('{Escape}');
-
-    expect(openDialog).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole('textbox', { name: 'French translation' }),
-    ).toHaveValue('Bonj');
-
-    await user.keyboard('{Escape}');
-
-    await waitFor(() => expect(addButton('French', 'Hello')).toHaveFocus());
-    expect(openDialog).toHaveBeenCalledTimes(2);
-  });
-
-  it('keeps typed text while another language is shown', async () => {
-    const { user } = renderMissingTranslations();
-
-    await user.click(addButton('French', 'Hello'));
-    await user.type(
-      screen.getByRole('textbox', { name: 'French translation' }),
-      'Bonj',
-    );
-    const picker = screen.getByRole('combobox', {
-      name: 'Show missing translations for',
-    });
-    await user.selectOptions(picker, 'Spanish (1)');
-    await user.selectOptions(picker, 'French (3)');
-
-    expect(
-      screen.getByRole('textbox', { name: 'French translation' }),
-    ).toHaveValue('Bonj');
+    expect(stageTitle(store, 0)).toEqual({ en: 'Hello' });
+    expect(dialog).toBeInTheDocument();
   });
 
   it('lists one language at a time, chosen from the languages with gaps', async () => {
@@ -272,12 +457,10 @@ describe('MissingTranslations', () => {
     expect(
       screen.getByText('1 text has no Spanish translation.'),
     ).toBeInTheDocument();
+    expect(textButton('title Thank you')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Participants who choose Spanish see this English text instead:',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('Hello')).not.toBeInTheDocument();
+      screen.queryByRole('button', { name: 'title Hello' }),
+    ).not.toBeInTheDocument();
   });
 
   it('moves on to the next language once one is fully translated', async () => {
@@ -287,12 +470,11 @@ describe('MissingTranslations', () => {
       screen.getByRole('combobox', { name: 'Show missing translations for' }),
       'Spanish (1)',
     );
-    await user.click(addButton('Spanish', 'Thank you'));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Spanish translation' }),
-      'Gracias',
-    );
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const dialog = await openText(user, 'title Thank you');
+    const field = within(dialog).getByRole('textbox', { name: 'Text' });
+    expect(field.closest('[lang]')).toHaveAttribute('lang', 'es');
+    await user.type(field, 'Gracias');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     expect(onLanguageChange).toHaveBeenLastCalledWith('fr');
     expect(
@@ -300,19 +482,54 @@ describe('MissingTranslations', () => {
         'Spanish translation saved. Every text now has a Spanish translation, so the list shows texts with no French translation instead.',
       ),
     ).toBeInTheDocument();
-    expect(headingRef.current).toHaveFocus();
+    await waitFor(() => expect(headingRef.current).toHaveFocus());
     expect(
       screen.queryByRole('combobox', { name: 'Show missing translations for' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText('3 texts have no French translation.'),
+      screen.getByText('5 texts have no French translation.'),
     ).toBeInTheDocument();
   });
 
-  it('says when every text is translated', () => {
+  it('says when every text is translated', async () => {
+    const { headingRef, user } = renderMissingTranslations({
+      ...trilingual,
+      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      codebook: { node: {}, edge: {}, ego: {} },
+      stages: [
+        {
+          id: 'welcome',
+          type: 'Information',
+          label: { en: 'Welcome', fr: 'Bienvenue' },
+          title: { en: 'Hello' },
+          items: [],
+        },
+      ],
+    });
+
+    const dialog = await openText(user, 'title Hello');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Text' }),
+      'Bonjour',
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        'French translation saved. Every text is now translated into every language.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Every text is translated into every language.'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(headingRef.current).toHaveFocus());
+  });
+
+  it('says when the protocol has one language', () => {
     renderMissingTranslations({
       ...trilingual,
       localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: { node: {}, edge: {}, ego: {} },
       stages: [],
     });
 

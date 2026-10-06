@@ -422,7 +422,7 @@ const LanguageRow = ({
             </div>
           )}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {!isDefault && (
             <Button size="sm" variant="text" onClick={makeDefault}>
               {intl.formatMessage(messages.makeDefault)}

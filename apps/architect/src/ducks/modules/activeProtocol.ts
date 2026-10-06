@@ -7,7 +7,10 @@ import {
 } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type {
+  CurrentProtocol,
+  LocalizedString,
+} from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {
   getProtocol,
@@ -29,6 +32,7 @@ import {
   relabelLocale,
   removeLocale,
   setDefaultLocale,
+  setLocalizedString,
   setTranslation,
 } from './protocol/localeOperations';
 import stages from './protocol/stages';
@@ -129,6 +133,16 @@ const activeProtocolSlice = createSlice({
           action.payload.text,
         ),
       ),
+    setProtocolLocalizedString: (
+      state,
+      action: PayloadAction<{
+        path: readonly (string | number)[];
+        value: LocalizedString;
+      }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setLocalizedString(protocol, action.payload.path, action.payload.value),
+      ),
     clearActiveProtocol: (_state) => {
       // Assets are namespaced per protocol and owned by the library; deleting a
       // protocol (deleteLibraryProtocol) removes its assets. Closing the active
@@ -196,6 +210,7 @@ export const {
   moveProtocolLocale,
   relabelProtocolLocale,
   setProtocolTranslation,
+  setProtocolLocalizedString,
 } = activeProtocolSlice.actions;
 
 export const actionCreators = {

@@ -7,6 +7,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringHit,
+  messageText,
 } from '@codaco/protocol-validation';
 import { UNSPECIFIED_LOCALE, withTranslation } from '~/utils/localizedText';
 
@@ -243,6 +244,35 @@ export const setTranslation = (
     ok: true,
     protocol: createNextState(protocol, (draft) => {
       setAtPath(draft, hit.path, withTranslation(hit.value, locale, text));
+    }),
+  };
+};
+
+/**
+ * Replaces every translation of one participant-facing text at once. `value`
+ * holds stored messages, as the localized fields write them, and `path` must
+ * be where `collectLocalizedStrings` finds that text.
+ */
+export const setLocalizedString = (
+  protocol: CurrentProtocol,
+  path: readonly (string | number)[],
+  value: LocalizedString,
+): LocaleOperationResult => {
+  const translations = Object.entries(value);
+  if (translations.some(([locale]) => !isDeclared(protocol, locale))) {
+    return fail('not-declared');
+  }
+  if (translations.every(([, message]) => messageText(message).trim() === '')) {
+    return fail('blank-text');
+  }
+  const hit = collectLocalizedStrings(protocol).find((candidate) =>
+    isSamePath(candidate.path, path),
+  );
+  if (!hit) return fail('not-localized-string');
+  return {
+    ok: true,
+    protocol: createNextState(protocol, (draft) => {
+      setAtPath(draft, hit.path, value);
     }),
   };
 };

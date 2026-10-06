@@ -1871,13 +1871,17 @@
     "defaultMessage": "Identify the language of your protocol",
     "description": "Title of the notice shown when a protocol has text whose language has not been identified."
   },
-  "architect.localization.missingTranslations.addTranslation": {
-    "defaultMessage": "Add {language} translation",
-    "description": "Button that opens a field for writing the missing translation of the text above it. language is the language of the translation."
+  "architect.localization.missingTranslations.codebook": {
+    "defaultMessage": "Codebook",
+    "description": "Heading of the part of the list of missing translations that holds the texts in the protocol’s codebook: its node types, edge types and ego."
   },
   "architect.localization.missingTranslations.complete": {
     "defaultMessage": "Every text is translated into every language.",
     "description": "Shown when no translation is missing."
+  },
+  "architect.localization.missingTranslations.defaultLanguage": {
+    "defaultMessage": "Default",
+    "description": "Badge beside the name of the protocol’s default language, in the list of what participants see in each language."
   },
   "architect.localization.missingTranslations.description": {
     "defaultMessage": "Missing translations do not stop you from saving, previewing or using the protocol. Participants see the text in another language instead.",
@@ -1887,17 +1891,13 @@
     "defaultMessage": "Edge type",
     "description": "Kind of place a missing translation is in: an edge type."
   },
+  "architect.localization.missingTranslations.editingLanguage": {
+    "defaultMessage": "Editing",
+    "description": "Badge beside the name of the language the translation field is currently editing, in the list of what participants see in each language."
+  },
   "architect.localization.missingTranslations.ego": {
     "defaultMessage": "Ego",
     "description": "Place a missing translation is in: the attributes of the ego (the participant)."
-  },
-  "architect.localization.missingTranslations.fallbackLabel": {
-    "defaultMessage": "Participants who choose {language} see this {fallback} text instead:",
-    "description": "Caption above a text that has no translation. language is the language the text is missing in; fallback is the language of the text shown below, which participants see in its place."
-  },
-  "architect.localization.missingTranslations.fallbackLabelUnspecified": {
-    "defaultMessage": "Participants who choose {language} see this text instead:",
-    "description": "Caption above a text that has no translation, when the text shown below is in a language the protocol has not identified yet. language is the language the text is missing in."
   },
   "architect.localization.missingTranslations.filterLabel": {
     "defaultMessage": "Show missing translations for",
@@ -1911,17 +1911,29 @@
     "defaultMessage": "Node type",
     "description": "Kind of place a missing translation is in: a node type."
   },
+  "architect.localization.missingTranslations.notTranslated": {
+    "defaultMessage": "Not translated yet. Shown in {fallback}.",
+    "description": "Note under the text participants see in a language the text has no translation for. fallback is the language of the text they see instead."
+  },
+  "architect.localization.missingTranslations.notTranslatedUnspecified": {
+    "defaultMessage": "Not translated yet.",
+    "description": "Note under the text participants see in a language the text has no translation for, when the text they see instead is in a language the protocol has not identified yet, or when there is no text at all."
+  },
+  "architect.localization.missingTranslations.participantView": {
+    "defaultMessage": "What participants see",
+    "description": "Heading beside the translation field, above the text participants see in each of the protocol’s languages."
+  },
+  "architect.localization.missingTranslations.placeTitle": {
+    "defaultMessage": "{place} · {name}",
+    "description": "Title of the dialog that edits a text’s translations, naming where the text is. place is the kind of place, such as “Stage 4” or “Node type”; name is the stage’s interface name or the type’s name."
+  },
   "architect.localization.missingTranslations.protocol": {
     "defaultMessage": "Protocol",
     "description": "Place a missing translation is in: the protocol itself."
   },
-  "architect.localization.missingTranslations.required": {
-    "defaultMessage": "Write the {language} translation before saving.",
-    "description": "Error shown when a missing translation is saved with no text. language is the language of the translation."
-  },
   "architect.localization.missingTranslations.saveFailed": {
-    "defaultMessage": "This translation could not be saved, because the original text or this language has been removed from the protocol. Select Cancel to close it.",
-    "description": "Error shown in a missing-translation field when the protocol no longer accepts the translation: the text it translates, or the language it is written in, was removed from the protocol. Cancel is the label of the button that closes the field."
+    "defaultMessage": "These translations could not be saved, because this text or one of its languages has been removed from the protocol. Select Cancel to close the dialog.",
+    "description": "Error shown in the dialog that edits a text’s translations when the protocol no longer accepts them: the text, or a language they are written in, was removed from the protocol. Cancel is the label of the button that closes the dialog."
   },
   "architect.localization.missingTranslations.saved": {
     "defaultMessage": "{language} translation saved.",
@@ -1939,21 +1951,29 @@
     "defaultMessage": "This protocol has one language. Add a language to start translating.",
     "description": "Shown when a protocol has only one language."
   },
-  "architect.localization.missingTranslations.stage": {
-    "defaultMessage": "Stage",
-    "description": "Kind of place a missing translation is in: a stage."
+  "architect.localization.missingTranslations.stagePosition": {
+    "defaultMessage": "Stage {position, number}",
+    "description": "Shown above the interface name of a stage that has missing translations. position is the stage’s place in the protocol, counting from 1."
+  },
+  "architect.localization.missingTranslations.stages": {
+    "defaultMessage": "Stages",
+    "description": "Heading of the part of the list of missing translations that holds the texts in the protocol’s stages."
   },
   "architect.localization.missingTranslations.summary": {
     "defaultMessage": "{count, plural, one {# text has no {language} translation.} other {# texts have no {language} translation.}}",
     "description": "Shown above the list of missing translations for one language. count is how many texts are listed; language is the language they are missing in."
   },
+  "architect.localization.missingTranslations.textLabel": {
+    "defaultMessage": "Text",
+    "description": "Label of the field, in the dialog opened from the list of missing translations, where a text is written in each of the protocol’s languages."
+  },
   "architect.localization.missingTranslations.title": {
     "defaultMessage": "Missing translations",
     "description": "Heading of the list of texts that are not translated into every language."
   },
-  "architect.localization.missingTranslations.translationLabel": {
-    "defaultMessage": "{language} translation",
-    "description": "Label of the field where a missing translation is written. language is the language of the translation."
+  "architect.localization.missingTranslations.translationsSaved": {
+    "defaultMessage": "Translations saved.",
+    "description": "Screen-reader announcement after a text’s translations are saved from the list of missing translations, when the translation the list is showing is still missing."
   },
   "architect.localization.missingTranslations.unnamed": {
     "defaultMessage": "Untitled",

@@ -11,6 +11,7 @@ import activeProtocol, {
   removeProtocolLocale,
   setActiveProtocol,
   setProtocolDefaultLocale,
+  setProtocolLocalizedString,
   setProtocolTranslation,
 } from '~/ducks/modules/activeProtocol';
 import app from '~/ducks/modules/app';
@@ -215,6 +216,68 @@ describe('protocol language reducers and undo', () => {
         path: ['stages', 0, 'label'],
         locale: 'fr',
         text: '  ',
+      }),
+    );
+
+    expect(pastLength(store)).toBe(before);
+    expect(presentOf(store)).toBe(present);
+  });
+
+  it('replaces every translation of a text in one undo step that redo replays', () => {
+    store.dispatch(relabelProtocolLocale({ from: 'und', to: 'en' }));
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+    const untranslated = presentOf(store);
+    const before = pastLength(store);
+
+    store.dispatch(
+      setProtocolLocalizedString({
+        path: ['stages', 0, 'label'],
+        value: { en: 'Hello', fr: 'Bonjour' },
+      }),
+    );
+
+    expect(pastLength(store)).toBe(before + 1);
+    expect(stageLabel(store)).toEqual({ en: 'Hello', fr: 'Bonjour' });
+    const translated = presentOf(store);
+
+    store.dispatch(timelineActions.undo());
+    expect(presentOf(store)).toEqual(untranslated);
+
+    store.dispatch(timelineActions.redo());
+    expect(presentOf(store)).toEqual(translated);
+  });
+
+  it('records nothing for a refused set of translations', () => {
+    store.dispatch(relabelProtocolLocale({ from: 'und', to: 'en' }));
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+    const before = pastLength(store);
+    const present = presentOf(store);
+
+    // Not a participant-facing text.
+    store.dispatch(
+      setProtocolLocalizedString({
+        path: ['stages', 0, 'nonexistent'],
+        value: { en: 'Hello' },
+      }),
+    );
+    // A language the protocol does not declare.
+    store.dispatch(
+      setProtocolLocalizedString({
+        path: ['stages', 0, 'label'],
+        value: { en: 'Welcome', de: 'Willkommen' },
+      }),
+    );
+    // Nothing participants would see.
+    store.dispatch(
+      setProtocolLocalizedString({
+        path: ['stages', 0, 'label'],
+        value: { en: '  ', fr: '' },
+      }),
+    );
+    store.dispatch(
+      setProtocolLocalizedString({
+        path: ['stages', 0, 'label'],
+        value: {},
       }),
     );
 

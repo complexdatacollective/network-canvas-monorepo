@@ -180,12 +180,15 @@ describe('Editing labels from the Codebook', () => {
     const store = makeStore();
     renderAttributeTable(store);
 
-    expect(screen.getByRole('link', { name: 'label' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Person' })).toHaveAttribute(
       'href',
       '/protocol/codebook?entity=node&type=person',
     );
     expect(
-      screen.queryByRole('link', { name: 'variables.age.label' }),
+      screen.getByRole('button', { name: 'label Person' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^variables/ }),
     ).not.toBeInTheDocument();
   });
 });

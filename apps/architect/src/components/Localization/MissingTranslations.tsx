@@ -1,4 +1,4 @@
-import { CircleCheck } from 'lucide-react';
+import { CircleCheck, PenLine } from 'lucide-react';
 import {
   AnimatePresence,
   motion,
@@ -10,13 +10,10 @@ import {
   createElement,
   type ReactNode,
   type RefObject,
-  useCallback,
   useId,
-  useMemo,
   useRef,
   useState,
 } from 'react';
-import { flushSync } from 'react-dom';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
@@ -26,25 +23,35 @@ import {
   type IntlShape,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import { Label } from '@codaco/fresco-ui/Label';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 import {
+  EnclosingHeadingLevel,
+  type HeadingTag,
   headingTagBelow,
   useEnclosingHeadingLevel,
 } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
+import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
+import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
+import { localeDirection } from '@codaco/protocol-builder/localization/localizedText';
+import {
+  collectLocalizedStrings,
+  type CurrentProtocol,
+  type LocaleTag,
+  type LocalizedString,
+  type LocalizedStringFormat,
+} from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
-import { confirmDiscardNestedDraft } from '~/components/DialogForm/confirmDiscardNestedDraft';
-import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
-import { setProtocolTranslation } from '~/ducks/modules/activeProtocol';
+import { setProtocolLocalizedString } from '~/ducks/modules/activeProtocol';
+import type { RootState } from '~/ducks/store';
 import {
   getLocalizationCoverage,
   getMissingTranslationGroups,
@@ -53,9 +60,9 @@ import {
   type TranslationPlace,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
-import { localizedText } from '~/utils/localizedText';
+import { translationText } from '~/utils/localizedText';
 
-import MissingTranslationCard from './MissingTranslationCard';
+import TranslationDialog from './TranslationDialog';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -101,10 +108,23 @@ const messages = defineMessages({
       'This protocol has one language. Add a language to start translating.',
     description: 'Shown when a protocol has only one language.',
   },
-  stage: {
-    id: 'architect.localization.missingTranslations.stage',
-    defaultMessage: 'Stage',
-    description: 'Kind of place a missing translation is in: a stage.',
+  stages: {
+    id: 'architect.localization.missingTranslations.stages',
+    defaultMessage: 'Stages',
+    description:
+      'Heading of the part of the list of missing translations that holds the texts in the protocol’s stages.',
+  },
+  codebook: {
+    id: 'architect.localization.missingTranslations.codebook',
+    defaultMessage: 'Codebook',
+    description:
+      'Heading of the part of the list of missing translations that holds the texts in the protocol’s codebook: its node types, edge types and ego.',
+  },
+  stagePosition: {
+    id: 'architect.localization.missingTranslations.stagePosition',
+    defaultMessage: 'Stage {position, number}',
+    description:
+      'Shown above the interface name of a stage that has missing translations. position is the stage’s place in the protocol, counting from 1.',
   },
   nodeType: {
     id: 'architect.localization.missingTranslations.nodeType',
@@ -132,6 +152,12 @@ const messages = defineMessages({
     defaultMessage: 'Untitled',
     description: 'Name shown for a stage or type that has no name.',
   },
+  placeTitle: {
+    id: 'architect.localization.missingTranslations.placeTitle',
+    defaultMessage: '{place} · {name}',
+    description:
+      'Title of the dialog that edits a text’s translations, naming where the text is. place is the kind of place, such as “Stage 4” or “Node type”; name is the stage’s interface name or the type’s name.',
+  },
   saved: {
     id: 'architect.localization.missingTranslations.saved',
     defaultMessage: '{language} translation saved.',
@@ -152,24 +178,31 @@ const messages = defineMessages({
     description:
       'Screen-reader announcement after the last missing translation in the protocol is written. language is the language of the translation.',
   },
+  translationsSaved: {
+    id: 'architect.localization.missingTranslations.translationsSaved',
+    defaultMessage: 'Translations saved.',
+    description:
+      'Screen-reader announcement after a text’s translations are saved from the list of missing translations, when the translation the list is showing is still missing.',
+  },
   saveFailed: {
     id: 'architect.localization.missingTranslations.saveFailed',
     defaultMessage:
-      'This translation could not be saved, because the original text or this language has been removed from the protocol. Select Cancel to close it.',
+      'These translations could not be saved, because this text or one of its languages has been removed from the protocol. Select Cancel to close the dialog.',
     description:
-      'Error shown in a missing-translation field when the protocol no longer accepts the translation: the text it translates, or the language it is written in, was removed from the protocol. Cancel is the label of the button that closes the field.',
+      'Error shown in the dialog that edits a text’s translations when the protocol no longer accepts them: the text, or a language they are written in, was removed from the protocol. Cancel is the label of the button that closes the dialog.',
   },
 });
 
 type FieldPath = MissingTranslationField['field'];
 
 type PlaceDetails = {
+  /** What kind of place it is, such as "Stage 4" or "Node type". */
   kind: string;
-  name: string;
+  /** The stage's interface name or the type's name; null where `kind` says it all. */
+  name: string | null;
+  stageType: string | null;
   href: string | null;
   variableNames: (id: string) => string | undefined;
-  /** Where the string at a field path is edited, if a link can open it. */
-  fieldHref: (field: FieldPath) => string | null;
 };
 
 const describePlace = (
@@ -177,132 +210,180 @@ const describePlace = (
   protocol: CurrentProtocol,
   place: TranslationPlace,
 ): PlaceDetails => {
-  const { localization, codebook } = protocol;
+  const { codebook } = protocol;
   const unnamed = intl.formatMessage(messages.unnamed);
   switch (place.kind) {
     case 'stage': {
-      const stage = protocol.stages.find(({ id }) => id === place.stageId);
+      const index = protocol.stages.findIndex(({ id }) => id === place.stageId);
+      const stage = protocol.stages[index];
       return {
-        kind: intl.formatMessage(messages.stage),
-        name: localizedText(stage?.label, localization) || unnamed,
+        kind: intl.formatMessage(messages.stagePosition, {
+          position: index + 1,
+        }),
+        name: (stage && interfaceDisplayName(stage.type, intl)) ?? unnamed,
+        stageType: stage?.type ?? null,
         href: `/protocol/stage/${place.stageId}`,
         variableNames: () => undefined,
-        fieldHref: () => null,
       };
     }
     case 'codebook': {
       const definition = codebook[place.entity]?.[place.entityType];
-      const typeHref = codebookHref({
-        entity: place.entity,
-        type: place.entityType,
-      });
       return {
         kind: intl.formatMessage(
           place.entity === 'node' ? messages.nodeType : messages.edgeType,
         ),
-        name:
-          localizedText(definition?.label, localization) ||
-          definition?.name ||
-          unnamed,
-        href: typeHref,
+        name: definition?.name || unnamed,
+        stageType: null,
+        href: codebookHref({ entity: place.entity, type: place.entityType }),
         variableNames: (id) => definition?.variables?.[id]?.name,
-        fieldHref: (field) =>
-          field.length === 1 && field[0] === 'label' ? typeHref : null,
       };
     }
     case 'ego':
       return {
         kind: intl.formatMessage(messages.ego),
-        name: '',
+        name: null,
+        stageType: null,
         href: codebookHref(),
         variableNames: (id) => codebook.ego?.variables?.[id]?.name,
-        fieldHref: () => null,
       };
     case 'protocol':
       return {
         kind: intl.formatMessage(messages.protocol),
-        name: '',
+        name: null,
+        stageType: null,
         href: null,
         variableNames: () => undefined,
-        fieldHref: () => null,
       };
   }
 };
 
+type Category = 'stages' | 'codebook' | 'protocol';
+
+const CATEGORIES: readonly Category[] = ['stages', 'codebook', 'protocol'];
+
+const categoryOf = (place: TranslationPlace): Category => {
+  if (place.kind === 'stage') return 'stages';
+  if (place.kind === 'protocol') return 'protocol';
+  return 'codebook';
+};
+
+const PATH_SEPARATOR = ' › ';
+
 /**
- * The string's path below its place, as written in the protocol file, with
- * variable ids replaced by the variable names researchers know them by.
+ * One step of a string's path, as researchers know it: an index counted from
+ * 1, and a variable's name in place of its id.
  */
+const formatSegment = (
+  intl: IntlShape,
+  field: FieldPath,
+  index: number,
+  variableNames: PlaceDetails['variableNames'],
+) => {
+  const segment = field[index];
+  if (typeof segment === 'number') return intl.formatNumber(segment + 1);
+  if (segment === undefined) return '';
+  return field[index - 1] === 'variables'
+    ? (variableNames(segment) ?? segment)
+    : segment;
+};
+
 const formatFieldPath = (
+  intl: IntlShape,
   field: FieldPath,
   variableNames: PlaceDetails['variableNames'],
 ) =>
   field
-    .map((segment, index) => {
-      if (typeof segment === 'number') return `[${segment}]`;
-      const name =
-        field[index - 1] === 'variables' ? variableNames(segment) : undefined;
-      return `${index === 0 ? '' : '.'}${name ?? segment}`;
-    })
-    .join('');
+    .map((_, index) => formatSegment(intl, field, index, variableNames))
+    .join(PATH_SEPARATOR);
 
-// Rendered inside the Section, so its element sits one level below the
-// Section's title; `level` only sets its size.
-const PlaceHeading = ({ details }: { details: PlaceDetails }) => {
-  const enclosingLevel = useEnclosingHeadingLevel();
-  const headingTag =
-    enclosingLevel === null ? 'h4' : headingTagBelow(enclosingLevel);
-  return (
-    <Heading level="h3" margin="none" render={createElement(headingTag)}>
-      {details.name && (
-        <span className="block text-sm font-normal text-current/70">
-          {details.kind}
-        </span>
-      )}
-      {details.href ? (
-        <NativeLink render={<Link href={details.href} />}>
-          {details.name || details.kind}
-        </NativeLink>
-      ) : (
-        details.name || details.kind
-      )}
-    </Heading>
-  );
+/** One text with no translation in the language the list shows. */
+type MissingText = {
+  key: string;
+  field: MissingTranslationField;
+  fallbackLocale: LocaleTag;
 };
 
-const GROUP_TRANSITION: Transition = {
-  type: 'spring',
-  duration: 0.3,
-  bounce: 0,
+type PathNode = {
+  key: string;
+  label: string;
+  /** Set where a missing text's path ends. */
+  text: MissingText | undefined;
+  children: readonly PathNode[];
 };
 
-const PlaceGroup = ({ children }: { children: ReactNode }) => {
-  const isPresent = useIsPresent();
-  const reduceMotion = useReducedMotion();
-  return (
-    <motion.li
-      className="flex flex-col gap-3"
-      aria-hidden={isPresent ? undefined : true}
-      inert={!isPresent}
-      layout="position"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={reduceMotion ? { duration: 0 } : GROUP_TRANSITION}
-    >
-      {children}
-    </motion.li>
-  );
+type TrieNode = {
+  label: string;
+  text: MissingText | undefined;
+  children: Map<string, TrieNode>;
+};
+
+/**
+ * The texts' paths below their place as a tree in which each run of steps
+ * only one text takes is a single node, so a branch is drawn only where texts
+ * part ways.
+ */
+const buildPathTree = (
+  texts: readonly MissingText[],
+  formatStep: (field: FieldPath, index: number) => string,
+): PathNode[] => {
+  const root: TrieNode = { label: '', text: undefined, children: new Map() };
+  for (const text of texts) {
+    const { field } = text.field;
+    let node = root;
+    field.forEach((segment, index) => {
+      // Stringified so an index and a key spelled with the same digits differ.
+      const id = JSON.stringify(segment);
+      const existing = node.children.get(id);
+      const child = existing ?? {
+        label: formatStep(field, index),
+        text: undefined,
+        children: new Map<string, TrieNode>(),
+      };
+      if (!existing) node.children.set(id, child);
+      node = child;
+    });
+    node.text = text;
+  }
+
+  const compress = (node: TrieNode, prefix: readonly string[]): PathNode[] =>
+    [...node.children].map(([id, child]) => {
+      const ids = [...prefix, id];
+      const labels = [child.label];
+      let current = child;
+      while (current.text === undefined && current.children.size === 1) {
+        const only = current.children.entries().next().value;
+        if (only === undefined) break;
+        const [nextId, next] = only;
+        ids.push(nextId);
+        labels.push(next.label);
+        current = next;
+      }
+      return {
+        key: ids.join('/'),
+        label: labels.join(PATH_SEPARATOR),
+        text: current.text,
+        children: compress(current, ids),
+      };
+    });
+
+  return compress(root, []);
 };
 
 /** Identifies one missing translation: a text, in one language. */
-const editorKey = (locale: LocaleTag, path: readonly (string | number)[]) =>
+const textKey = (locale: LocaleTag, path: readonly (string | number)[]) =>
   JSON.stringify([locale, path]);
 
-const withoutKey = (keys: ReadonlySet<string>, key: string) => {
-  const next = new Set(keys);
-  next.delete(key);
-  return next;
+const samePath = (
+  a: readonly (string | number)[],
+  b: readonly (string | number)[],
+) => JSON.stringify(a) === JSON.stringify(b);
+
+const sameTranslations = (a: LocalizedString, b: LocalizedString) => {
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => Object.hasOwn(b, key) && a[key] === b[key])
+  );
 };
 
 /** The first language after `locale`, in declared order, that still has gaps. */
@@ -316,13 +397,245 @@ const nextLanguageWithGaps = (
   )?.locale;
 };
 
-// A card's entry is its Add button, or its editor while that is open.
-const focusEntry = (entry: HTMLElement | undefined) => {
-  const target =
-    entry instanceof HTMLButtonElement
-      ? entry
-      : entry?.querySelector<HTMLElement>('input, [contenteditable="true"]');
-  target?.focus();
+const storedValue = (
+  state: RootState,
+  path: readonly (string | number)[],
+): LocalizedString | undefined => {
+  const protocol = getProtocol(state);
+  return protocol
+    ? collectLocalizedStrings(protocol).find((hit) => samePath(hit.path, path))
+        ?.value
+    : undefined;
+};
+
+const useHeadingTagBelow = (fallback: HeadingTag) => {
+  const enclosingLevel = useEnclosingHeadingLevel();
+  return enclosingLevel === null ? fallback : headingTagBelow(enclosingLevel);
+};
+
+const ITEM_TRANSITION: Transition = {
+  type: 'spring',
+  duration: 0.3,
+  bounce: 0,
+};
+
+/** A list item that fades in and out as texts are listed and translated. */
+const TreeItem = ({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) => {
+  const isPresent = useIsPresent();
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.li
+      className={className}
+      aria-hidden={isPresent ? undefined : true}
+      inert={!isPresent}
+      layout="position"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={reduceMotion ? { duration: 0 } : ITEM_TRANSITION}
+    >
+      {children}
+    </motion.li>
+  );
+};
+
+// A nested list draws the tree's trunk down its start edge, and each item in
+// it a short branch from the trunk to the item's first line.
+const NESTED_LIST_CLASSES =
+  'border-outline ms-3 flex flex-col gap-1 border-s ps-4';
+const NESTED_ITEM_CLASSES =
+  'before:border-outline relative before:absolute before:top-4 before:-start-4 before:w-3 before:border-t';
+
+const PlaceHeading = ({ details }: { details: PlaceDetails }) => {
+  const headingTag = useHeadingTagBelow('h4');
+  const title = details.name ?? details.kind;
+  return (
+    <Heading
+      level="h4"
+      margin="none"
+      render={createElement(headingTag)}
+      className="flex items-center gap-3"
+    >
+      {details.stageType !== null && (
+        <span className="w-16 shrink-0">
+          <StageTypeImage
+            type={details.stageType}
+            alt=""
+            ratio="4:3"
+            sizes="4rem"
+            className="w-full rounded-sm"
+          />
+        </span>
+      )}
+      <span className="flex min-w-0 flex-col">
+        {details.name !== null && (
+          <span className="text-sm font-normal text-current/70">
+            {details.kind}
+          </span>
+        )}
+        {details.href ? (
+          <NativeLink render={<Link href={details.href} />}>{title}</NativeLink>
+        ) : (
+          title
+        )}
+      </span>
+    </Heading>
+  );
+};
+
+/**
+ * What participants see in place of the missing translation, cut to two
+ * lines. Markdown keeps only its emphasis: anything else it can hold is not
+ * allowed inside a button.
+ */
+const FallbackPreview = ({
+  id,
+  text,
+  locale,
+  format,
+}: {
+  id: string;
+  text: string;
+  locale: LocaleTag;
+  format: LocalizedStringFormat;
+}) => (
+  <span
+    id={id}
+    lang={locale}
+    dir={localeDirection(locale)}
+    className="line-clamp-2 text-current/70"
+  >
+    {format === 'markdown' ? (
+      <RenderMarkdown allowedElements={['em', 'strong']}>{text}</RenderMarkdown>
+    ) : (
+      text
+    )}
+  </span>
+);
+
+type MissingTextButtonProps = {
+  text: MissingText;
+  label: string;
+  /** Keeps the button where focus can return to; returns its removal. */
+  register: (key: string, element: HTMLElement) => () => void;
+  onOpen: () => void;
+};
+
+const MissingTextButton = ({
+  text,
+  label,
+  register,
+  onOpen,
+}: MissingTextButtonProps) => {
+  const labelId = useId();
+  const previewId = useId();
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      // The path, then the preview, as separate words whatever the spans'
+      // display, which naming from content does not promise.
+      aria-labelledby={`${labelId} ${previewId}`}
+      ref={(element) => (element ? register(text.key, element) : undefined)}
+      onClick={onOpen}
+      className="focusable flex w-full items-start gap-3 rounded-sm px-2 py-1.5 text-start hover:bg-current/5"
+    >
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span
+          id={labelId}
+          dir="ltr"
+          className="font-monospace text-sm break-all"
+        >
+          {label}
+        </span>
+        <FallbackPreview
+          id={previewId}
+          text={translationText(text.field.value, text.fallbackLocale)}
+          locale={text.fallbackLocale}
+          format={text.field.format}
+        />
+      </span>
+      <PenLine aria-hidden className="mt-0.5 size-4 shrink-0 text-current/70" />
+    </button>
+  );
+};
+
+/** The listed texts' keys, in the order the tree draws them. */
+const treeKeys = (nodes: readonly PathNode[]): string[] =>
+  nodes.flatMap((node) => [
+    ...(node.text ? [node.text.key] : []),
+    ...treeKeys(node.children),
+  ]);
+
+type PathListProps = {
+  nodes: readonly PathNode[];
+  renderText: (text: MissingText, label: string) => ReactNode;
+};
+
+const PathList = ({ nodes, renderText }: PathListProps) => (
+  <ul className={NESTED_LIST_CLASSES}>
+    <AnimatePresence initial={false}>
+      {nodes.map((node) => (
+        <TreeItem key={node.key} className={NESTED_ITEM_CLASSES}>
+          {node.text ? (
+            renderText(node.text, node.label)
+          ) : (
+            <span
+              dir="ltr"
+              className="font-monospace block px-2 py-1.5 text-sm break-all text-current/70"
+            >
+              {node.label}
+            </span>
+          )}
+          {node.children.length > 0 && (
+            <PathList nodes={node.children} renderText={renderText} />
+          )}
+        </TreeItem>
+      ))}
+    </AnimatePresence>
+  </ul>
+);
+
+const CategoryHeading = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) => {
+  const headingTag = useHeadingTagBelow('h3');
+  return (
+    <>
+      <Heading level="h3" margin="none" render={createElement(headingTag)}>
+        {label}
+      </Heading>
+      <EnclosingHeadingLevel level={headingTag}>
+        {children}
+      </EnclosingHeadingLevel>
+    </>
+  );
+};
+
+/** The text being translated in the dialog, as it was when the dialog opened. */
+type Editing = {
+  /** Distinguishes each opening, so every one starts with a fresh form. */
+  session: number;
+  key: string;
+  path: readonly (string | number)[];
+  value: LocalizedString;
+  format: LocalizedStringFormat;
+  /** The language the list showed. */
+  locale: LocaleTag;
+  place: string;
+  fieldPath: string;
+  /** Every listed text, in order, for where focus goes if this one leaves. */
+  order: readonly string[];
 };
 
 type MissingTranslationsProps = {
@@ -333,12 +646,9 @@ type MissingTranslationsProps = {
 };
 
 /**
- * The texts participants see in another language, one language at a time,
- * each with a field for writing its translation in place.
- *
- * Any number of editors may be open at once, and each keeps its text while
- * another language is listed: nothing closes an editor except its own Cancel,
- * Escape or Save, so typed text is never dropped without asking.
+ * The texts participants see in another language, one language at a time, as
+ * a tree of where each sits in the protocol. Choosing a text opens a dialog
+ * for writing it in every language.
  */
 const MissingTranslations = ({
   language,
@@ -349,41 +659,16 @@ const MissingTranslations = ({
   const pickerId = useId();
   const dispatch = useAppDispatch();
   const store = useAppStore();
-  const { openDialog } = useDialog();
   const { announce } = useAccessibilityAnnouncements();
   const protocol = useSelector(getProtocol);
   const coverage = useSelector(getLocalizationCoverage);
   const groups = useSelector(getMissingTranslationGroups);
   const languageName = useLanguageName();
 
-  const [openEditors, setOpenEditors] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const [autoFocusKey, setAutoFocusKey] = useState<string | null>(null);
-  const drafts = useRef(new Map<string, string>());
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const sessions = useRef(0);
   const entries = useRef(new Map<string, HTMLElement>());
-
-  const gapKeys = useMemo(
-    () =>
-      new Set(
-        groups.flatMap(({ fields }) =>
-          fields.flatMap(({ path, gaps }) =>
-            gaps.map(({ locale }) => editorKey(locale, path)),
-          ),
-        ),
-      ),
-    [groups],
-  );
-  // An editor whose text has since been translated elsewhere (another tab, a
-  // redo) is set aside rather than closed, so it returns with its text if an
-  // undo brings the gap back.
-  const activeEditors = [...openEditors].filter((key) => gapKeys.has(key));
-
-  useNestedDraft(activeEditors.length > 0, () =>
-    activeEditors.some((key) => (drafts.current.get(key) ?? '').trim() !== ''),
-  );
-
-  const clearAutoFocus = useCallback(() => setAutoFocusKey(null), []);
 
   if (!protocol) return null;
 
@@ -394,101 +679,183 @@ const MissingTranslations = ({
     languagesWithGaps.find(({ locale }) => locale === language) ??
     languagesWithGaps[0];
 
-  const visibleGroups =
+  const places =
     shown === undefined
       ? []
       : groups.flatMap((group) => {
           const details = describePlace(intl, protocol, group.place);
-          const cards = group.fields.flatMap((field) => {
+          const texts = group.fields.flatMap((field) => {
             const gap = field.gaps.find(
               ({ locale }) => locale === shown.locale,
             );
             return gap
               ? [
                   {
-                    key: editorKey(shown.locale, field.path),
+                    key: textKey(shown.locale, field.path),
                     field,
                     fallbackLocale: gap.fallbackLocale,
                   },
                 ]
               : [];
           });
-          return cards.length > 0 ? [{ key: group.key, details, cards }] : [];
+          if (texts.length === 0) return [];
+          return [
+            {
+              key: group.key,
+              category: categoryOf(group.place),
+              details,
+              texts,
+              tree: buildPathTree(texts, (field, index) =>
+                formatSegment(intl, field, index, details.variableNames),
+              ),
+            },
+          ];
         });
-  const shownKeys = visibleGroups.flatMap(({ cards }) =>
-    cards.map(({ key }) => key),
+  const categories = CATEGORIES.flatMap((category) => {
+    const members = places.filter((place) => place.category === category);
+    return members.length > 0 ? [{ category, places: members }] : [];
+  });
+  const shownKeys = categories.flatMap(({ places: members }) =>
+    members.flatMap(({ tree }) => treeKeys(tree)),
   );
 
-  const openEditor = (key: string) => {
-    setAutoFocusKey(key);
-    setOpenEditors((keys) => new Set(keys).add(key));
+  const categoryLabel: Record<Category, string> = {
+    stages: intl.formatMessage(messages.stages),
+    codebook: intl.formatMessage(messages.codebook),
+    protocol: intl.formatMessage(messages.protocol),
   };
 
-  const closeEditor = async (key: string) => {
-    const draft = drafts.current.get(key) ?? '';
-    if (draft.trim() !== '' && !(await confirmDiscardNestedDraft(openDialog))) {
+  const openDialog = (
+    text: MissingText,
+    details: PlaceDetails,
+    locale: LocaleTag,
+  ) => {
+    sessions.current += 1;
+    setEditing({
+      session: sessions.current,
+      key: text.key,
+      path: text.field.path,
+      value: text.field.value,
+      format: text.field.format,
+      locale,
+      place:
+        details.name === null
+          ? details.kind
+          : intl.formatMessage(messages.placeTitle, {
+              place: details.kind,
+              name: details.name,
+            }),
+      fieldPath: formatFieldPath(intl, text.field.field, details.variableNames),
+      order: shownKeys,
+    });
+    setDialogOpen(true);
+  };
+
+  const announceSaved = (state: RootState, target: Editing) => {
+    const { locale, path } = target;
+    const { locales, warnings } = getLocalizationCoverage(state);
+    if (
+      warnings.some(
+        (warning) => warning.locale === locale && samePath(warning.path, path),
+      )
+    ) {
+      announce(intl.formatMessage(messages.translationsSaved));
       return;
     }
-    drafts.current.delete(key);
-    flushSync(() => setOpenEditors((keys) => withoutKey(keys, key)));
-    focusEntry(entries.current.get(key));
+
+    const name = languageName(locale);
+    if (locales.some((entry) => entry.locale === locale && entry.missing > 0)) {
+      announce(intl.formatMessage(messages.saved, { language: name }));
+      return;
+    }
+
+    const next = nextLanguageWithGaps(locales, locale);
+    if (next === undefined) {
+      announce(
+        intl.formatMessage(messages.savedEverything, { language: name }),
+      );
+      return;
+    }
+    onLanguageChange(next);
+    announce(
+      intl.formatMessage(messages.savedLanguageComplete, {
+        language: name,
+        next: languageName(next),
+      }),
+    );
   };
 
   const save = (
-    key: string,
-    path: readonly (string | number)[],
-    locale: LocaleTag,
-    text: string,
+    target: Editing,
+    value: LocalizedString,
   ): FormSubmissionResult => {
-    const before = getProtocol(store.getState());
-    dispatch(setProtocolTranslation({ path, locale, text }));
+    const before = store.getState();
+    const stored = storedValue(before, target.path);
+    if (stored !== undefined && sameTranslations(stored, value)) {
+      setDialogOpen(false);
+      return { success: true };
+    }
+
+    dispatch(setProtocolLocalizedString({ path: target.path, value }));
     const state = store.getState();
-    if (getProtocol(state) === before) {
+    if (getProtocol(state) === getProtocol(before)) {
       return {
         success: false,
         formErrors: [createMessageError(messages.saveFailed)],
       };
     }
 
-    drafts.current.delete(key);
-    setOpenEditors((keys) => withoutKey(keys, key));
-
-    const name = languageName(locale);
-    const remaining = getLocalizationCoverage(state).locales;
-    if (
-      remaining.some((entry) => entry.locale === locale && entry.missing > 0)
-    ) {
-      announce(intl.formatMessage(messages.saved, { language: name }));
-      const index = shownKeys.indexOf(key);
-      const neighbour = [shownKeys[index + 1], shownKeys[index - 1]].find(
-        (candidate) =>
-          candidate !== undefined && entries.current.has(candidate),
-      );
-      if (neighbour === undefined) {
-        headingRef.current?.focus();
-      } else {
-        focusEntry(entries.current.get(neighbour));
-      }
-      return { success: true };
-    }
-
-    const next = nextLanguageWithGaps(remaining, locale);
-    if (next === undefined) {
-      announce(
-        intl.formatMessage(messages.savedEverything, { language: name }),
-      );
-    } else {
-      onLanguageChange(next);
-      announce(
-        intl.formatMessage(messages.savedLanguageComplete, {
-          language: name,
-          next: languageName(next),
-        }),
-      );
-    }
-    headingRef.current?.focus();
+    setDialogOpen(false);
+    announceSaved(state, target);
     return { success: true };
   };
+
+  // Base UI reads this as the dialog unmounts, which can be in the same commit
+  // that removes the saved text, before this component's newer render reaches
+  // the dialog. So it reads the store and the DOM rather than this render: a
+  // text still listed has a gap in the listed language, and a button that is
+  // leaving the list is inert.
+  const returnFocus = () => {
+    if (editing === null) return headingRef.current;
+    const live = new Set(
+      getLocalizationCoverage(store.getState())
+        .warnings.filter(({ locale }) => locale === editing.locale)
+        .map(({ locale, path }) => textKey(locale, path)),
+    );
+    const index = editing.order.indexOf(editing.key);
+    const candidates = [
+      editing.key,
+      ...editing.order.slice(index + 1),
+      ...editing.order.slice(0, Math.max(index, 0)).toReversed(),
+    ];
+    for (const key of candidates) {
+      const element = live.has(key) ? entries.current.get(key) : undefined;
+      if (element?.isConnected && element.closest('[inert]') === null) {
+        return element;
+      }
+    }
+    return headingRef.current;
+  };
+
+  // A button that the tree remounts while restructuring registers before the
+  // old one's removal runs, so removal only forgets its own element.
+  const register = (key: string, element: HTMLElement) => {
+    entries.current.set(key, element);
+    return () => {
+      if (entries.current.get(key) === element) entries.current.delete(key);
+    };
+  };
+
+  const renderText =
+    (details: PlaceDetails, locale: LocaleTag) =>
+    (text: MissingText, label: string) => (
+      <MissingTextButton
+        text={text}
+        label={label}
+        register={register}
+        onOpen={() => openDialog(text, details, locale)}
+      />
+    );
 
   return (
     <Section
@@ -541,54 +908,50 @@ const MissingTranslations = ({
             })}
           </Paragraph>
           {/* Keyed by language, so switching languages swaps the list
-              outright instead of animating one language's cards out. */}
+              outright instead of animating one language's texts out. */}
           <ul key={shown.locale} className="flex flex-col gap-8">
             <AnimatePresence initial={false}>
-              {visibleGroups.map(({ key: groupKey, details, cards }) => (
-                <PlaceGroup key={groupKey}>
-                  <PlaceHeading details={details} />
-                  <ul className="flex flex-col gap-3">
-                    <AnimatePresence initial={false}>
-                      {cards.map(({ key, field, fallbackLocale }) => {
-                        const editorOpen = openEditors.has(key);
-                        return (
-                          <MissingTranslationCard
+              {categories.map(({ category, places: members }) => (
+                <TreeItem key={category} className="flex flex-col gap-3">
+                  <CategoryHeading label={categoryLabel[category]}>
+                    <ul className={NESTED_LIST_CLASSES}>
+                      <AnimatePresence initial={false}>
+                        {members.map(({ key, details, tree }) => (
+                          <TreeItem
                             key={key}
-                            value={field.value}
-                            format={field.format}
-                            locale={shown.locale}
-                            fallbackLocale={fallbackLocale}
-                            fieldPath={formatFieldPath(
-                              field.field,
-                              details.variableNames,
+                            className={`${NESTED_ITEM_CLASSES} flex flex-col gap-2 py-1`}
+                          >
+                            {category !== 'protocol' && (
+                              <PlaceHeading details={details} />
                             )}
-                            fieldHref={details.fieldHref(field.field)}
-                            editorOpen={editorOpen}
-                            initialText={drafts.current.get(key) ?? ''}
-                            autoFocus={autoFocusKey === key}
-                            entryRef={(element) => {
-                              if (element) entries.current.set(key, element);
-                              else entries.current.delete(key);
-                            }}
-                            onOpen={() => openEditor(key)}
-                            onAutoFocused={clearAutoFocus}
-                            onCancel={() => void closeEditor(key)}
-                            onSave={(text) =>
-                              save(key, field.path, shown.locale, text)
-                            }
-                            onDraftChange={(text) => {
-                              drafts.current.set(key, text);
-                            }}
-                          />
-                        );
-                      })}
-                    </AnimatePresence>
-                  </ul>
-                </PlaceGroup>
+                            <PathList
+                              nodes={tree}
+                              renderText={renderText(details, shown.locale)}
+                            />
+                          </TreeItem>
+                        ))}
+                      </AnimatePresence>
+                    </ul>
+                  </CategoryHeading>
+                </TreeItem>
               ))}
             </AnimatePresence>
           </ul>
         </div>
+      )}
+      {editing && (
+        <TranslationDialog
+          key={editing.session}
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          place={editing.place}
+          fieldPath={editing.fieldPath}
+          value={editing.value}
+          format={editing.format}
+          initialLocale={editing.locale}
+          onSave={(value) => save(editing, value)}
+          finalFocus={returnFocus}
+        />
       )}
     </Section>
   );
