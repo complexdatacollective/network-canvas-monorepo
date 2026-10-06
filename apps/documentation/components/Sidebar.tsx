@@ -4,7 +4,14 @@ import type { Route } from 'next';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type {
@@ -307,57 +314,68 @@ export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const locale = useLocale() as Locale;
   const segments = pathname.split('/');
-  const section = segments[2]! as Section;
+  const section = segments[2] as Section | undefined;
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [sidebarData, setSidebarData] = useState<TSideBar | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     fetch('/sidebar.json')
       .then((res) => res.json())
       .then((data) => setSidebarData(data as TSideBar))
       .catch((error) => {
+        // A truncated or missing sidebar.json leaves nothing to navigate with.
+        // Record that so the shell stops promising the tree is still arriving.
+        setLoadFailed(true);
         // oxlint-disable-next-line no-console -- Error logging for sidebar data loading failure
         console.error('Failed to load sidebar data:', error);
       });
   }, []);
 
+  // Rendered whenever the tree cannot be shown: while it loads, after the fetch
+  // failed, and when the URL names no section we have data for. Search still
+  // works, so the page keeps a way to reach the rest of the documentation.
+  const shell = (children?: ReactNode) => (
+    <nav className={cx('flex w-full grow flex-col', className)}>
+      <DocSearchComponent
+        backgroundTarget
+        className="tablet-landscape:flex hidden"
+      />
+      {children}
+    </nav>
+  );
+
   if (!sidebarData) {
-    return (
-      <nav className={cx('flex w-full grow flex-col', className)}>
-        <DocSearchComponent
-          backgroundTarget
-          className="tablet-landscape:flex hidden"
-        />
-        <div className="flex-1 p-2">Loading...</div>
-      </nav>
+    return shell(
+      loadFailed ? null : <div className="flex-1 p-2">Loading...</div>,
     );
   }
 
-  const sectionData = sidebarData[locale][section];
+  // `section` is the third path segment, which is only a section on a
+  // locale-prefixed documentation URL. A legacy or mistyped path (one that
+  // reached the app without being redirected, for example) puts something else
+  // there, and indexing the tree with it used to throw a TypeError that took
+  // the whole page down. Degrade to the search-only shell instead.
+  const sectionData = section ? sidebarData[locale]?.[section] : undefined;
+  if (!section || !sectionData) return shell();
+
   const formattedSidebarData = sectionData.children;
 
   const sortedSidebarItems = sortSidebarItems(
     Object.values(formattedSidebarData),
   );
 
-  return (
-    <nav className={cx('flex w-full grow flex-col', className)}>
-      <DocSearchComponent
-        backgroundTarget
-        className="tablet-landscape:flex hidden"
-      />
-
-      <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
-        {sortedSidebarItems.map((item) =>
-          renderSidebarItem(
-            item,
-            locale,
-            sidebarContainerRef,
-            section,
-            sectionData.sourceFile,
-          ),
-        )}
-      </div>
-    </nav>
+  return shell(
+    <div ref={sidebarContainerRef} className="flex-1 overflow-y-auto p-2">
+      {sortedSidebarItems.map((item) =>
+        renderSidebarItem(
+          item,
+          locale,
+          sidebarContainerRef,
+          section,
+          sectionData.sourceFile,
+        ),
+      )}
+    </div>,
   );
 }
