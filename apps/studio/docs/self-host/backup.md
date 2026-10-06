@@ -38,6 +38,8 @@ Run from the directory holding `docker-compose.yml`. The first line puts
 `.env`'s values in your shell, so the commands below name the same database and
 login the stack does.
 
+<!-- backup-take start -->
+
 ```bash
 set -a && . ./.env && set +a
 mkdir -p backup
@@ -51,24 +53,30 @@ docker compose exec -T postgres \
 docker compose exec -T postgres \
   pg_dumpall -U "$POSTGRES_USER" --globals-only > backup/globals.sql
 
-# 2. The object store: a mirror of the garage-data volume.
+# 2. The object store: a mirror of the garage service's data volume.
 docker run --rm \
-  -v studio_garage-data:/data:ro \
+  --volumes-from "$(docker compose ps -q garage):ro" \
   -v "$PWD/backup:/backup" \
-  alpine tar czf /backup/garage-data.tar.gz -C /data .
+  alpine tar czf /backup/garage-data.tar.gz -C /var/lib/garage .
 
 # 3. The keyring.
 cp secrets/studio-secrets-key backup/studio-secrets-key
 ```
 
+<!-- backup-take end -->
+
 Then encrypt `backup/` and send it off the host. It has left nothing behind on
 this machine that a lost host would not take with it.
 
-The volume is `studio_garage-data` because the compose file names the project
-`studio`; `docker volume ls` confirms it. If you have
+`--volumes-from` mounts whatever volume the `garage` container has, read-only,
+at the path Garage keeps it (`/var/lib/garage`), so the command does not depend
+on what Docker named the volume. If you have
 [swapped in a managed bucket or Azure Blob Storage](./swap.md), that step is
 your provider's mirroring or versioning instead, and there is no volume to
 copy.
+
+Studio's release test runs this block as written, inside the upgrade sequence,
+for every release that changes the upgrade path.
 
 **Take it while the instance is closed** where you can — step 1 of
 [the upgrade sequence](./upgrade.md) exists partly for this. A scheduled backup
@@ -122,9 +130,9 @@ docker compose exec -T postgres \
 # 2. The object store.
 docker compose stop garage
 docker run --rm \
-  -v studio_garage-data:/data \
+  --volumes-from "$(docker compose ps -aq garage)" \
   -v "$PWD/backup:/backup:ro" \
-  alpine sh -c 'rm -rf /data/* && tar xzf /backup/garage-data.tar.gz -C /data'
+  alpine sh -c 'rm -rf /var/lib/garage/* && tar xzf /backup/garage-data.tar.gz -C /var/lib/garage'
 docker compose start garage
 
 # 3. The keyring.
@@ -138,11 +146,12 @@ curl https://studio.example.org/readyz
 `globals.sql` will report that roles it is creating already exist, on a host
 that has run Studio before. That is expected and not a failure.
 
-If readiness comes back with a schema complaint, the backup was taken by a
-different build from the one the images now carry: put the matching image
-digests in `.env`, or run `docker compose run --rm migrate` to bring the
-restored database forward to this build. Never restore a backup and then serve
-it with a build that refuses its fingerprint — the refusal is the protection.
+If `/readyz` then names the schema — `failed: the database schema is not this
+build’s` — the backup was taken by a different release from the one the images
+now carry, and the instance stays closed rather than serve it. Put the matching
+image digests in `.env`, or run `docker compose run --rm migrate` to bring the
+restored database forward to this release. `migrate` refuses a backup taken by a
+newer release than the images, naming it; deploy that release instead.
 
 **Practise this before you need it.** A backup nobody has restored is a
 hypothesis.

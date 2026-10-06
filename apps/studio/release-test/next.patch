@@ -1,0 +1,23 @@
+--- a/apps/studio/api/src/db/deployment-state.ts
++++ b/apps/studio/api/src/db/deployment-state.ts
+@@ -69,6 +69,7 @@
+ REVOKE INSERT, DELETE, TRUNCATE ON deployment_state
+   FROM ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
+ REVOKE UPDATE ON deployment_state FROM ${TENANT_ROLES.app};
++COMMENT ON TABLE deployment_state IS 'release-test-next';
+ `;
+ 
+ export type DeploymentState = {
+--- a/apps/studio/api/src/study/schema.ts
++++ b/apps/studio/api/src/study/schema.ts
+@@ -81,6 +81,10 @@
+     updatedAt: timestamp('updated_at', { withTimezone: true })
+       .notNull()
+       .defaultNow(),
++    // The release-test lane's candidate-next column (#1901): nullable, with a
++    // default the delta applies to every existing row, and a backfill that
++    // overwrites it under the maintenance role.
++    releaseTestProbe: text('release_test_probe').default('delta-default'),
+   },
+   (table) => [
+     unique().on(table.id, table.teamId),
