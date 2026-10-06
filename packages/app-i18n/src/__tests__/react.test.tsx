@@ -532,35 +532,74 @@ describe('useLocaleCatalog', () => {
     expect(screen.getByText('Bonjour Ada')).toBeDefined();
   });
 
-  it('stays in the current language when the next one fails to load, and retries when it is chosen again', async () => {
-    const unhandled = vi.fn();
-    process.on('unhandledRejection', unhandled);
-    const fr = vi
-      .fn<() => Promise<{ default: CatalogMessages }>>()
-      .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValue({ default: french });
-    const source = createCatalogSource({
-      es: () => Promise.resolve({ default: spanish }),
-      fr,
+  describe('when the next language fails to load', () => {
+    const failingFrench = (failures: number) => {
+      const load = vi.fn<() => Promise<{ default: CatalogMessages }>>();
+      for (let i = 0; i < failures; i++) {
+        load.mockRejectedValueOnce(new Error('offline'));
+      }
+      return load.mockResolvedValue({ default: french });
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
-    await source.load('es');
-    try {
+
+    it('stays in the current language and keeps trying, waiting longer after each failure', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const unhandled = vi.fn();
+      process.on('unhandledRejection', unhandled);
+      const fr = failingFrench(2);
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr,
+      });
+      await source.load('es');
+      try {
+        const { rerender } = render(<Host source={source} locale="es" />);
+        await act(async () => rerender(<Host source={source} locale="fr" />));
+        // Node reports an unhandled rejection only once the microtasks drain.
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(fr).toHaveBeenCalledOnce();
+        expect(unhandled).not.toHaveBeenCalled();
+        expect(screen.getByText('Hola Ada')).toBeDefined();
+        expect(document.documentElement.lang).toBe('es');
+
+        await act(() => vi.advanceTimersByTimeAsync(999));
+        expect(fr).toHaveBeenCalledOnce();
+        await act(() => vi.advanceTimersByTimeAsync(1));
+        expect(fr).toHaveBeenCalledTimes(2);
+        expect(screen.getByText('Hola Ada')).toBeDefined();
+
+        await act(() => vi.advanceTimersByTimeAsync(1999));
+        expect(fr).toHaveBeenCalledTimes(2);
+        await act(() => vi.advanceTimersByTimeAsync(1));
+        expect(fr).toHaveBeenCalledTimes(3);
+        expect(screen.getByText('Bonjour Ada')).toBeDefined();
+        expect(document.documentElement.lang).toBe('fr');
+      } finally {
+        process.off('unhandledRejection', unhandled);
+      }
+    });
+
+    it('tries again as soon as the device is back online', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const fr = failingFrench(1);
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr,
+      });
+      await source.load('es');
+
       const { rerender } = render(<Host source={source} locale="es" />);
       await act(async () => rerender(<Host source={source} locale="fr" />));
-      // Node reports an unhandled rejection only once the microtasks drain.
-      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(fr).toHaveBeenCalledOnce();
-      expect(unhandled).not.toHaveBeenCalled();
-      expect(screen.getByText('Hola Ada')).toBeDefined();
-      expect(document.documentElement.lang).toBe('es');
 
-      rerender(<Host source={source} locale="es" />);
-      rerender(<Host source={source} locale="fr" />);
+      await act(async () => window.dispatchEvent(new Event('online')));
+      expect(fr).toHaveBeenCalledTimes(2);
       await act(() => source.load('fr'));
       expect(fr).toHaveBeenCalledTimes(2);
       expect(screen.getByText('Bonjour Ada')).toBeDefined();
-    } finally {
-      process.off('unhandledRejection', unhandled);
-    }
+    });
   });
 });

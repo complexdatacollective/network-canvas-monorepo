@@ -15,7 +15,8 @@ are using, instead of every translation at once. English needs no download at
 all, and starting in another language fetches that one language before the
 first screen appears, so the interface never shows English first and then
 switches. Changing language loads the new one and then switches over, keeping
-the current language on screen in the meantime. Installed offline copies of
+the current language on screen in the meantime; if the download fails, the
+switch finishes by itself once it can. Installed offline copies of
 Architect and Interviewer still hold every language, so switching works
 without a connection. A Fresco interview in another language now arrives with
 its messages, so it opens without waiting for a download, and Architect's

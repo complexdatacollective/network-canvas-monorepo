@@ -155,6 +155,9 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
 
 type RenderedCatalog = Readonly<{ locale: string; messages: CatalogMessages }>;
 
+const FIRST_RETRY_MS = 1000;
+const LONGEST_RETRY_MS = 30_000;
+
 /**
  * Which locale to render, and its messages, for a host whose catalogs load on
  * demand from a `CatalogSource`. Pass the result to `AppI18nProvider` in place
@@ -163,8 +166,10 @@ type RenderedCatalog = Readonly<{ locale: string; messages: CatalogMessages }>;
  * A switch keeps the language already on screen until the new one has
  * loaded, then changes over in one render — never through English, and
  * never with half the interface in each language. A switch that fails to
- * load (offline, say) stays in the current language; choosing the language
- * again retries.
+ * load (offline, say) stays in the current language and keeps trying: at once
+ * when the device comes back online, otherwise after a wait that doubles with
+ * each failure, up to 30 seconds. The new language arrives without being
+ * chosen again, and choosing a different one abandons it.
  *
  * With nothing on screen yet there is no language to keep, so the first load
  * suspends rather than render English it would replace a moment later. A
@@ -198,9 +203,33 @@ export function useLocaleCatalog(
     setRendered({ locale, messages: ready });
   }
 
+  // A host keeps the requested locale in its own state, so choosing the same
+  // language again changes nothing here. Counting failures is what re-arms the
+  // load below; a different locale starts from none.
+  const [failed, setFailed] = useState({ locale, count: 0 });
+  const failures = failed.locale === locale ? failed.count : 0;
+
   useEffect(() => {
-    if (ready === undefined) source.load(locale).catch(() => undefined);
-  }, [source, locale, ready]);
+    if (ready !== undefined) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const retry = () => {
+      if (active) setFailed({ locale, count: failures + 1 });
+    };
+    source.load(locale).catch(() => {
+      if (!active) return;
+      timer = setTimeout(
+        retry,
+        Math.min(FIRST_RETRY_MS * 2 ** failures, LONGEST_RETRY_MS),
+      );
+      window.addEventListener('online', retry, { once: true });
+    });
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      window.removeEventListener('online', retry);
+    };
+  }, [source, locale, ready, failures]);
 
   if (ready !== undefined) return { locale, messages: ready };
   if (rendered !== null) return rendered;
