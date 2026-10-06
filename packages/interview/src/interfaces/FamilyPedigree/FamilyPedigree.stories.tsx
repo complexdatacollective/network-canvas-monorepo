@@ -123,7 +123,10 @@ function PedigreeStory({
 
   return (
     <div className="flex h-dvh w-full">
-      <StoryInterviewShell rawPayload={rawPayload} />
+      {/* Changing the story's settings builds a new interview, so the
+          running one, with a network made against the old protocol, starts
+          over rather than carrying on. */}
+      <StoryInterviewShell key={rawPayload} rawPayload={rawPayload} />
     </div>
   );
 }
