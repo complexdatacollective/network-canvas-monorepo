@@ -240,7 +240,13 @@ supports `en`, `en-GB`, `es`, `zh-Hans`, `zh-Hant`, `de`, `nl`, `pt-BR`, `it`, a
 such as `es-MX` to `es`, `zh-CN` and `zh-SG` to `zh-Hans`, `zh-TW`, `zh-HK` and `zh-MO` to
 `zh-Hant`, `de-AT` to `de`, `nl-BE` to `nl`, `pt` or `pt-PT` to `pt-BR`, `it-CH` to `it`, and `fr-CA` to `fr`, and falls back to `en` for unsupported or malformed requests. An array
 expresses requests in preference order. No host provider or catalog is required.
-All supported messages are bundled, so switching language needs no network.
+Each language's messages are a separate chunk, loaded when an interview first
+shows that language; English needs none. A Shell mounting in a language that
+has not loaded yet shows a spinner on the interview's surface until it has,
+rather than render English first, and a later switch keeps the current
+language on screen until the new one is ready. An offline host keeps every
+language available by precaching every chunk of its build, as a PWA's service
+worker does.
 
 The setting controls package-provided buttons, menus, validation, accessibility
 labels, help, and stage controls. Protocol-authored titles, prompts, labels,
@@ -262,9 +268,11 @@ leaves the host document's language to the host.
 
 Hosts rendering exported controls outside `Shell`, such as an inline
 `ProtocolField` preview, can use `InterviewI18nProvider` from `@codaco/interview`
-with the same `requestedLocale` contract and package-owned catalogs. Hosts that
-already own a provider can instead merge `interviewCatalogs` from
-`@codaco/interview/locales` into their app catalog. Without a provider,
+with the same `requestedLocale` contract and package-owned catalogs. Unlike
+`Shell`, it brings no Suspense boundary of its own: its first render in a
+language that has not loaded yet suspends, so render it under one. Hosts that
+already own a provider can instead add `interviewCatalogLoaders` from
+`@codaco/interview/locales` to their app's catalog source. Without a provider,
 standalone controls use their English defaults.
 
 #### Analytics

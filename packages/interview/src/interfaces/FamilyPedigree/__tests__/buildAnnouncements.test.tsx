@@ -1,11 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import {
+  InterviewI18nProvider,
+  interviewCatalogSource,
+} from '../../../i18n/InterviewI18nProvider';
 import type * as sessionSelectors from '../../../selectors/session';
 import type * as interviewStore from '../../../store/store';
 import type { StageProps } from '../../../types';
@@ -165,6 +168,14 @@ const props = {
   },
   getNavigationHelpers: () => ({ moveForward: vi.fn(), moveBackward: vi.fn() }),
 } satisfies StageProps<'FamilyPedigree'>;
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('FamilyPedigree build announcements', () => {
   it('consumes add, remove and completion events while later actions use the current language', async () => {

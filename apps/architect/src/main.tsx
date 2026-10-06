@@ -18,6 +18,7 @@ import { restoreActiveProtocolAfterStoreRehydration } from './ducks/restoreActiv
 import { store, storeRehydrated } from './ducks/store';
 import { ArchitectI18nRoot } from './i18n/ArchitectI18nRoot';
 import { initializeArchitectDocument } from './i18n/documentMetadata';
+import { loadStartupLocale } from './i18n/imperative';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
@@ -32,7 +33,14 @@ import {
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
 
-initializeArchitectDocument();
+// The researcher's language is its own chunk. Fetch it now, alongside the
+// service-worker and storage awaits in startApp, rather than after them; the
+// boot screen stays in the English index.html ships with until it lands. A
+// failed load leaves startup in English instead of stopping it: the provider
+// retries when it mounts, and a second failure reaches its error boundary.
+const startupLocaleReady = loadStartupLocale()
+  .catch(() => undefined)
+  .then(() => initializeArchitectDocument());
 
 // Register before the startup update check: skipWaiting moves every existing
 // tab to the new worker, which must retain the precache for each tab's compiled
@@ -70,6 +78,9 @@ async function startApp(): Promise<void> {
   // redux-remember restores only the active library id. Load its canonical
   // protocol body from IndexedDB before mounting any direct /protocol route.
   const rehydrationResult = await storeRehydrated;
+  // Restoration reports a refused protocol through getArchitectIntl, and the
+  // first render reads the same catalog, so both wait for the language.
+  await startupLocaleReady;
   await restoreActiveProtocolAfterStoreRehydration(store, rehydrationResult);
 
   // Protocols live in IndexedDB even in a browser tab, so request the durability

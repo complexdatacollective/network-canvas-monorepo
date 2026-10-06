@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { WizardDialog } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 import { renderedMessage } from '~/testUtils/renderedMessage';
 
 const {
@@ -61,6 +61,10 @@ vi.mock('~/lib/db/api', () => ({
 }));
 
 import { useSetupWizard } from '../SetupWizardDialog';
+
+// The renders below show Spanish synchronously, as a device that has already
+// loaded it would, so its catalog loads before any of them.
+await interviewerCatalogSource.load('es');
 
 function SetupLauncher() {
   const { openSetupWizard } = useSetupWizard({ preserveExistingData: true });
@@ -182,7 +186,7 @@ it('keeps queued wizard copy reactive after opening', async () => {
     <AppI18nProvider
       locale={locale}
       locales={interviewerProductionLocales}
-      messages={interviewerCatalogs[locale]}
+      messages={interviewerCatalogSource.peek(locale)}
     >
       <h1>{step.title}</h1>
       <Content />

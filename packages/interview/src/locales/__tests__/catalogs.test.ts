@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -13,10 +14,10 @@ import {
   readTranslationSources,
   type ExtractedCatalog,
 } from '@codaco/app-i18n/catalog-guards';
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 
 import { interviewLocales } from '../../i18n/locales';
-import { interviewCatalogs } from '../catalogs';
+import { interviewCatalogLoaders } from '../catalogs';
 import de from '../de.json';
 import fr from '../fr.json';
 import ptBR from '../pt-BR.json';
@@ -35,6 +36,16 @@ const italianSources = readTranslationSources(localesDir, 'it');
 const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
+/**
+ * Every catalog this package ships, loaded through its own loaders — the path a
+ * host takes — so what a locale actually serves is what gets inspected.
+ */
+const loadedCatalogs = await Promise.all(
+  Object.keys(interviewCatalogLoaders).map((locale) =>
+    loadCatalog(locale, interviewCatalogLoaders),
+  ),
+);
+
 describe('the interview package built-in message catalogs', () => {
   it('keeps the English extraction fresh, with unique explicit IDs and translator descriptions', async () => {
     const extracted = await extractMessages(
@@ -47,7 +58,7 @@ describe('the interview package built-in message catalogs', () => {
     expect(Object.keys(committedEn).length).toBeGreaterThan(0);
     for (const id of [
       ...Object.keys(committedEn),
-      ...Object.values(interviewCatalogs).flatMap(Object.keys),
+      ...loadedCatalogs.flatMap(Object.keys),
     ]) {
       expect(id).toMatch(/^interview\./);
     }
@@ -70,7 +81,7 @@ describe('the interview package built-in message catalogs', () => {
     expect(ecosystemLocales.map(({ locale }) => locale).toSorted()).toEqual(
       declared.toSorted(),
     );
-    expect(Object.keys(interviewCatalogs).toSorted()).toEqual(
+    expect(Object.keys(interviewCatalogLoaders).toSorted()).toEqual(
       declared.filter((locale) => locale !== 'en').toSorted(),
     );
   });
@@ -130,5 +141,11 @@ describe('the interview package built-in message catalogs', () => {
     expect(Object.keys(enGb).length).toBeLessThan(
       Object.keys(committedEn).length,
     );
+  });
+
+  it('loads each locale from its own committed catalog', async () => {
+    expect(
+      await checkCatalogLoaders(localesDir, interviewCatalogLoaders),
+    ).toEqual([]);
   });
 });

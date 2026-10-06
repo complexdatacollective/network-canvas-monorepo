@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import Form from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -10,8 +11,11 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { interviewCatalogs } from '../../../locales/catalogs';
+import {
+  InterviewI18nProvider,
+  interviewCatalogSource,
+} from '../../../i18n/InterviewI18nProvider';
+import { interviewCatalogLoaders } from '../../../locales/catalogs';
 import BiologicalSexField from '../components/BiologicalSexField';
 import ParentPartnershipsStep from '../components/quickStartWizard/ParentPartnershipsStep';
 import { buildNodeOptions } from '../components/wizards/buildNodeOptions';
@@ -96,7 +100,10 @@ const edges = new Map<string, NcEdge>([
     },
   ],
 ]);
-const es = createAppIntl({ locale: 'es', messages: interviewCatalogs.es });
+const es = createAppIntl({
+  locale: 'es',
+  messages: await loadCatalog('es', interviewCatalogLoaders),
+});
 
 function familyWrapper() {
   const store = createFamilyPedigreeStore(
@@ -141,6 +148,14 @@ function PreparePartnerships() {
     </button>
   );
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('pedigree built-in localization and recorded data', () => {
   it('localizes framing, relationship fallbacks and validation while preserving stored values', () => {

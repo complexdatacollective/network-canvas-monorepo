@@ -6,6 +6,7 @@ import {
   AppI18nProvider,
   AppMessage,
   useAppIntl,
+  useLocaleCatalog,
 } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -46,7 +47,7 @@ import {
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const messages = defineMessages({
   finishConfirmationDescription: {
@@ -526,19 +527,22 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 // This queued host-specific message renders beneath Shell's package-owned
 // provider. Subscribe to the host preference explicitly so an already-open
 // confirmation follows changes without importing host catalogs into Shell.
+// The host reports the locale it is rendering, whose catalog has therefore
+// already loaded, so this reads it from the shared source without suspending.
 function InterviewFinishDescription() {
   const { locale } = useInterviewerLocale();
+  const catalog = useLocaleCatalog(interviewerCatalogSource, locale);
   const direction =
-    interviewerLocales.find((entry) => entry.locale === locale)?.direction ??
-    'ltr';
+    interviewerLocales.find((entry) => entry.locale === catalog.locale)
+      ?.direction ?? 'ltr';
   return (
     <AppI18nProvider
-      locale={locale}
+      locale={catalog.locale}
       locales={interviewerLocales}
-      messages={interviewerCatalogs[locale]}
+      messages={catalog.messages}
       manageDocument={false}
     >
-      <span lang={locale} dir={direction}>
+      <span lang={catalog.locale} dir={direction}>
         <AppMessage message={messages.finishConfirmationDescription} />
       </span>
     </AppI18nProvider>

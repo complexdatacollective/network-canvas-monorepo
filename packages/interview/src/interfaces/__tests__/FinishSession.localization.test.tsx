@@ -8,7 +8,10 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 import { ContractProvider } from '../../contract/context';
 import type { FinishHandler, InterviewPayload } from '../../contract/types';
-import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
+import {
+  InterviewI18nProvider,
+  interviewCatalogSource,
+} from '../../i18n/InterviewI18nProvider';
 import { store as createStore } from '../../store/store';
 import { SyncFlushProvider } from '../../store/SyncFlushContext';
 import FinishSession from '../FinishSession';
@@ -73,6 +76,14 @@ function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
     </AnimationProvider>
   );
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('FinishSession localized recoverable failures', () => {
   it.each(['flush', 'finish'] as const)(

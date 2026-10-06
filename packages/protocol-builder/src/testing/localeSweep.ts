@@ -1,8 +1,9 @@
 import { expect } from 'vitest';
 
-import { commonCatalogs, commonMessages } from '@codaco/app-i18n/common';
+import { commonCatalogLoaders, commonMessages } from '@codaco/app-i18n/common';
+import { loadCatalog } from '@codaco/app-i18n/locales';
 
-import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../locales/catalogs.ts';
 import enCatalog from '../locales/en.json';
 
 /**
@@ -53,6 +54,14 @@ const visibleStrings = (): string[] => {
   }
   return seen;
 };
+
+/**
+ * The two catalogs the sweep reads Spanish out of, loaded when the module is
+ * so that everything below — the indexes built at evaluation and the sweep
+ * itself — stays synchronous for the tests that call it.
+ */
+const spanishCommon = await loadCatalog('es', commonCatalogLoaders);
+const spanishBuilder = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
 const spanish = (catalog: Record<string, unknown> | undefined, id: string) => {
   const translated = catalog?.[id];
@@ -105,13 +114,13 @@ const translatableEnglish = (): ReadonlyMap<string, string> => {
       typeof descriptor.defaultMessage === 'string'
         ? descriptor.defaultMessage
         : '',
-      spanish(commonCatalogs.es, descriptor.id ?? ''),
+      spanish(spanishCommon, descriptor.id ?? ''),
     );
   }
   for (const [id, entry] of Object.entries(
     enCatalog as Record<string, { defaultMessage: string }>,
   )) {
-    add(id, entry.defaultMessage, spanish(protocolBuilderCatalogs.es, id));
+    add(id, entry.defaultMessage, spanish(spanishBuilder, id));
   }
   for (const english of sameInBoth) index.delete(english);
   return index;
@@ -147,7 +156,7 @@ const englishOnlyRuns = (): ReadonlyMap<string, string> => {
   )) {
     const english = entry.defaultMessage;
     if (!/[{}]/.test(english)) continue;
-    const translated = spanish(protocolBuilderCatalogs.es, id);
+    const translated = spanish(spanishBuilder, id);
     if (translated === undefined || translated === english) continue;
     for (const run of english.split(PATTERN_ARGUMENT)) {
       const text = collapse(run);

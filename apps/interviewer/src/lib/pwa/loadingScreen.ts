@@ -1,32 +1,39 @@
 import { commonMessages } from '@codaco/app-i18n/common';
+import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
-import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 
-import {
-  interviewerDefaultLocale,
-  interviewerProductionLocales,
-} from '../../i18n/locales';
-import { browserLanguages, readPreference } from '../../i18n/preference';
-import { interviewerCatalogs } from '../../locales/catalogs';
+import { interviewerProductionLocales } from '../../i18n/locales';
+import { startupLocale } from '../../i18n/preference';
+import { interviewerCatalogSource } from '../../locales/catalogs';
 
 // The static shell is labelled with the product name until JavaScript is
 // available. Announce its state in the same negotiated language as React,
 // before the asynchronous startup update check can delay mounting the app.
+//
+// The document's language and direction are set at once. The message waits
+// for its catalog rather than holding up startup for it, and keeps the
+// product name until then, so a non-English device never sees English
+// "Loading…" under its own `lang`; if the catalog cannot load, the product
+// name stays and main.tsx's startup handles the failure.
 export function announceLoadingScreen(): void {
   const message = document.getElementById('app-loading__message');
   if (!message) return;
-  const { locale } = resolveAppLocale({
-    stored: readPreference(),
-    requested: browserLanguages(),
-    locales: interviewerProductionLocales,
-    defaultLocale: interviewerDefaultLocale,
-  });
+  const locale = startupLocale();
   document.documentElement.lang = locale;
   document.documentElement.dir =
     interviewerProductionLocales.find((entry) => entry.locale === locale)
       ?.direction ?? 'ltr';
-  const intl = createAppIntl({ locale, messages: interviewerCatalogs[locale] });
-  message.textContent = intl.formatMessage(commonMessages.loading);
+  const announce = (messages: CatalogMessages) => {
+    const intl = createAppIntl({ locale, messages });
+    message.textContent = intl.formatMessage(commonMessages.loading);
+  };
+  // English, and a locale already loaded, need not wait a turn.
+  const loaded = interviewerCatalogSource.peek(locale);
+  if (loaded !== undefined) {
+    announce(loaded);
+    return;
+  }
+  void interviewerCatalogSource.load(locale).then(announce, () => {});
 }
 
 // Fades out and removes the pre-React loading screen (the static branded

@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   type CSSProperties,
   type ReactNode,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -18,6 +19,7 @@ import { Provider } from 'react-redux';
 import { useAppLocale } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -298,6 +300,27 @@ function Interview({
 }
 
 /**
+ * What the Shell shows while the catalog for the language it mounts in loads:
+ * the interview's own surface, so the region does not flash the host's
+ * background, and a spinner, which has no words to show in the wrong
+ * language. It matches the interview frame's box so nothing shifts when the
+ * interview replaces it.
+ */
+function LoadingInterview() {
+  return (
+    <ThemedRegion
+      theme="interview"
+      aria-busy
+      render={
+        <main className="relative flex size-full flex-1 items-center justify-center overflow-hidden" />
+      }
+    >
+      <Spinner size="lg" />
+    </ThemedRegion>
+  );
+}
+
+/**
  * `currentStep` and `onStepChange` together implement the controlled-component
  * pattern for the rendered stage index. Provide both to drive the step from
  * the host (e.g. to persist it in the URL or session storage); omit both to
@@ -548,55 +571,65 @@ const Shell = ({
     reviewMode,
   ]);
 
+  // The provider suspends the first render in a language this page has not
+  // loaded yet, so the interview never appears in English only to switch a
+  // moment later. The boundary sits below everything this component owns: the
+  // store, its flush listeners and the tracker holder are created and
+  // committed while the fallback shows, so nothing is lost or created twice
+  // when the interview mounts. A server render suspends here too and streams
+  // the interview once the catalog is in, and hydration waits for the same
+  // catalog rather than mismatch.
   return (
-    <InterviewI18nProvider
-      requestedLocale={requestedLocale}
-      localePreference={localePreference}
-      onLocaleChange={onLocaleChange}
-    >
-      <AnalyticsProvider
-        analytics={analytics}
-        posthogClient={posthogClient}
-        disableAnalytics={disableAnalytics || reviewMode === true}
-        payload={payload}
-        onTrackerChange={onTrackerChange}
+    <Suspense fallback={<LoadingInterview />}>
+      <InterviewI18nProvider
+        requestedLocale={requestedLocale}
+        localePreference={localePreference}
+        onLocaleChange={onLocaleChange}
       >
-        <Provider store={reduxStore}>
-          <SyncFlushProvider flush={reduxStore.flushSync}>
-            <ContractProvider
-              onFinish={onFinish}
-              onRequestAsset={onRequestAsset}
-              flags={flags}
-              finishConfirmationDescription={finishConfirmationDescription}
-            >
-              <CurrentStepProvider
-                currentStep={reviewEntry.currentStep}
-                onStepChange={onStepChange}
+        <AnalyticsProvider
+          analytics={analytics}
+          posthogClient={posthogClient}
+          disableAnalytics={disableAnalytics || reviewMode === true}
+          payload={payload}
+          onTrackerChange={onTrackerChange}
+        >
+          <Provider store={reduxStore}>
+            <SyncFlushProvider flush={reduxStore.flushSync}>
+              <ContractProvider
+                onFinish={onFinish}
+                onRequestAsset={onRequestAsset}
+                flags={flags}
+                finishConfirmationDescription={finishConfirmationDescription}
               >
-                <Interview
-                  onExit={onExit}
-                  hideNavigation={hideNavigation}
-                  navigationOrientation={navigationOrientation}
-                  navigationClassnames={navigationClassnames}
-                  allowStageNavigation={
-                    allowStageNavigation &&
-                    (currentStep === undefined || onStepChange !== undefined)
-                  }
-                  allowUserScaling={allowUserScaling}
-                  allowLanguageSelection={allowLanguageSelection}
-                  initialTextScale={initialTextScale}
-                  onTextScaleChange={onTextScaleChange}
-                  initialStageOverrideIndex={
-                    reviewEntry.initialStageOverrideIndex
-                  }
-                  reviewMode={reviewMode}
-                />
-              </CurrentStepProvider>
-            </ContractProvider>
-          </SyncFlushProvider>
-        </Provider>
-      </AnalyticsProvider>
-    </InterviewI18nProvider>
+                <CurrentStepProvider
+                  currentStep={reviewEntry.currentStep}
+                  onStepChange={onStepChange}
+                >
+                  <Interview
+                    onExit={onExit}
+                    hideNavigation={hideNavigation}
+                    navigationOrientation={navigationOrientation}
+                    navigationClassnames={navigationClassnames}
+                    allowStageNavigation={
+                      allowStageNavigation &&
+                      (currentStep === undefined || onStepChange !== undefined)
+                    }
+                    allowUserScaling={allowUserScaling}
+                    allowLanguageSelection={allowLanguageSelection}
+                    initialTextScale={initialTextScale}
+                    onTextScaleChange={onTextScaleChange}
+                    initialStageOverrideIndex={
+                      reviewEntry.initialStageOverrideIndex
+                    }
+                    reviewMode={reviewMode}
+                  />
+                </CurrentStepProvider>
+              </ContractProvider>
+            </SyncFlushProvider>
+          </Provider>
+        </AnalyticsProvider>
+      </InterviewI18nProvider>
+    </Suspense>
   );
 };
 

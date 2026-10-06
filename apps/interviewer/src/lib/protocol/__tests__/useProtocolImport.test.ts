@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 import { renderedMessage } from '~/testUtils/renderedMessage';
 
 import { useProtocolImport } from '../useProtocolImport';
@@ -74,7 +74,7 @@ describe('useProtocolImport', () => {
       createElement(AppI18nProvider, {
         locale: 'es',
         locales: interviewerProductionLocales,
-        messages: interviewerCatalogs.es,
+        messages: await interviewerCatalogSource.load('es'),
         manageDocument: false,
         // oxlint-disable-next-line react/no-children-prop -- The provider requires children in its props; this .ts hook test uses createElement rather than JSX.
         children: createElement(

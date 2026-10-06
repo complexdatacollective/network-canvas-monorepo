@@ -30,7 +30,10 @@ function updateDocument(intl: IntlShape, preview: boolean) {
   }
 }
 
-/** Set researcher metadata before startup storage and service-worker awaits. */
+/**
+ * Set researcher metadata as soon as the startup language has loaded, which
+ * happens alongside the startup storage and service-worker awaits.
+ */
 export function initializeArchitectDocument(preview = false) {
   updateDocument(getArchitectIntl(), preview);
 }

@@ -4,12 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
 
+import { interviewerCatalogSource } from '../../locales/catalogs';
 import {
   InterviewerI18nProvider,
   useInterviewerLocale,
 } from '../InterviewerI18nProvider';
 import { LanguageSettings } from '../LanguageSettings';
 import { LOCALE_PREFERENCE_KEY } from '../preference';
+
+// These cases are about negotiation, persistence and synchronisation, so every
+// language they reach is loaded first, as main.tsx loads the startup language
+// before the app renders; a switch then lands in the render that asked for it.
+// InterviewerI18nProvider.loading.test.tsx covers a switch that has to wait.
+await Promise.all(
+  ['es', 'en-GB'].map((locale) => interviewerCatalogSource.load(locale)),
+);
 
 function Probe({ id }: { id: string }) {
   const intl = useAppIntl();

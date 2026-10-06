@@ -8,6 +8,7 @@ import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/a
 import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 
 import App from './App';
+import { startupLocale } from './i18n/preference';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
@@ -23,6 +24,7 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './lib/storage';
+import { interviewerCatalogSource } from './locales/catalogs';
 
 announceLoadingScreen();
 
@@ -49,12 +51,20 @@ if (import.meta.hot) {
 initFileLaunchCapture();
 
 async function startApp(): Promise<void> {
-  await applyFreshLoadServiceWorkerUpdate({
-    reload: false,
-    shouldSkip: () =>
-      window.location.pathname.startsWith('/interview/') ||
-      hasPendingLaunchFiles(),
-  });
+  await Promise.all([
+    applyFreshLoadServiceWorkerUpdate({
+      reload: false,
+      shouldSkip: () =>
+        window.location.pathname.startsWith('/interview/') ||
+        hasPendingLaunchFiles(),
+    }),
+    // Load the startup language before the first render, alongside the update
+    // check rather than after it, so a non-English device never paints English
+    // first. A failure here must not stop the app mounting: the provider asks
+    // for the catalog again and suspends, and if that fails too its error
+    // boundary recovers in English.
+    interviewerCatalogSource.load(startupLocale()).catch(() => undefined),
+  ]);
 
   // Do not request at startup: Firefox may show a permission prompt, while
   // WebKit and Chromium judge silent grants using interaction/engagement

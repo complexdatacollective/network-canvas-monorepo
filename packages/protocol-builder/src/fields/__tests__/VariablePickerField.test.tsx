@@ -10,7 +10,10 @@ import {
 } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -23,7 +26,7 @@ import AssignAttributes, {
   type CreateAttributeOutcome,
 } from '../../form/arrayFields/AssignAttributes.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
@@ -44,6 +47,9 @@ import {
 } from '../VariablePickerField.tsx';
 
 const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
+
+const catalogs = createCatalogSource(protocolBuilderCatalogLoaders);
+await catalogs.load('es');
 
 const NO_VARIABLES: ReadonlySet<string> = new Set();
 
@@ -848,7 +854,7 @@ const mountControl = (locale?: string) => {
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={protocolBuilderCatalogs[locale] ?? {}}
+        messages={catalogs.peek(locale)}
       >
         {control}
       </AppI18nProvider>

@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl, useLocaleCatalog } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -23,7 +30,7 @@ import {
 import { formatConstraintConflictReason } from '@codaco/protocol-utilities/messages';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
-import { architectCatalogs } from '~/locales/catalogs';
+import { architectCatalogSource } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 import { reportError } from '~/utils/reportError';
@@ -149,9 +156,23 @@ function PreviewFinishConfirmation() {
   // Resolve this host-specific message against the Architect catalog explicitly
   // while subscribing to the Shell locale, including in an already-open dialog.
   const { locale } = useAppIntl();
+  // Usually the Shell renders Architect's own language, which startup already
+  // loaded. When it does not, that language's Architect catalog loads here.
+  // Keyed by locale so a switch suspends rather than keep the previous
+  // language: the sentence is blank for that moment instead of being the one
+  // thing in the dialog that has not changed language.
+  return (
+    <Suspense fallback={null}>
+      <PreviewFinishConfirmationText key={locale} locale={locale} />
+    </Suspense>
+  );
+}
+
+function PreviewFinishConfirmationText({ locale }: { locale: string }) {
+  const catalog = useLocaleCatalog(architectCatalogSource, locale);
   const intl = useMemo(
-    () => createAppIntl({ locale, messages: architectCatalogs[locale] }),
-    [locale],
+    () => createAppIntl({ locale: catalog.locale, messages: catalog.messages }),
+    [catalog.locale, catalog.messages],
   );
   return intl.formatMessage(messages.finishConfirmation);
 }

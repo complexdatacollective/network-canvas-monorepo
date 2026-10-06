@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { VARIABLE_TYPE_VALIDATIONS } from '@codaco/protocol-validation';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { enIntl, readMessage } from '../../testing/i18n.ts';
 import { variableRoleKey } from '../variableRoles.ts';
 import {
@@ -29,6 +30,8 @@ import {
 } from '../variableValidation.ts';
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
+
+const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
 const numberVariable = (
   name: string,
@@ -86,7 +89,7 @@ describe('variable validation options', () => {
    * them under the tag hands the second formatter the first one's words.
    */
   it('gives each formatter its own words, however the catalog behind it changed', () => {
-    const catalog = protocolBuilderCatalogs.es ?? {};
+    const catalog = spanishMessages;
     const headingsFor = (intl: IntlShape) =>
       getGroupedValidationsForVariableType('number', 'node', intl).map(
         ({ heading }) => heading,

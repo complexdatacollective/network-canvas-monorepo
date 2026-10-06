@@ -23,7 +23,7 @@ import { PostHogClientProvider } from '~/components/Providers/posthog-provider';
 import { ThemeProvider } from '~/components/Providers/theme-provider';
 import {
   getLocaleDirection,
-  siteAppCatalogs,
+  siteAppCatalogSource,
   siteAppLocales,
 } from '~/lib/i18n/appLocales';
 import { getStaticLocaleParams } from '~/lib/i18n/locales';
@@ -96,6 +96,7 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const messages = await getMessages({ locale });
+  const appMessages = await siteAppCatalogSource.load(locale);
 
   // Not <link> elements: React hoists preloads into <head> itself, emitting
   // each tag twice. crossOrigin is required even same-origin — @font-face
@@ -138,7 +139,7 @@ export default async function LocaleLayout({
                 <AppI18nProvider
                   locale={locale}
                   locales={siteAppLocales}
-                  messages={siteAppCatalogs[locale]}
+                  messages={appMessages}
                   manageDocument={false}
                   timeZone="UTC"
                 >

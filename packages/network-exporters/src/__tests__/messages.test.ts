@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
 import { stageMessages } from '../events';
-import { networkExporterCatalogs } from '../locales/catalogs';
+import { networkExporterCatalogLoaders } from '../locales/catalogs';
 import { exportStageMessages } from '../messages';
+
+const spanishMessages = await loadCatalog('es', networkExporterCatalogLoaders);
 
 describe('export stage presentation', () => {
   it('preserves the worker diagnostic English without requiring localization in the worker', () => {
@@ -23,7 +26,7 @@ describe('export stage presentation', () => {
     const english = createAppIntl({ locale: 'en' });
     const spanish = createAppIntl({
       locale: 'es',
-      messages: networkExporterCatalogs.es,
+      messages: spanishMessages,
     });
     expect(english.formatMessage(exportStageMessages.generating)).toBe(
       'Generating files...',

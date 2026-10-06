@@ -10,12 +10,13 @@ import {
   within,
 } from '@testing-library/react';
 import { Effect } from 'effect';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Me } from '@codaco/studio-contract/schema/account';
 import { TeamId } from '@codaco/studio-contract/schema/ids';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
+import { studioCatalogSource } from '../../locales/catalogs.ts';
 import { createAppRouter } from '../../router.tsx';
 import { rpcKey } from '../../runtime/rpc.ts';
 import {
@@ -147,6 +148,14 @@ function saveStatus(popup: HTMLElement) {
   if (!region) throw new Error('no status region');
   return region;
 }
+
+// Locales load on demand, and the cases below start in en-GB or switch to it.
+// Fetching its catalog up front keeps those renders synchronous, as they are in
+// the app once a locale has been fetched; `main.tsx` does the same before the
+// first paint.
+beforeAll(async () => {
+  await studioCatalogSource.load('en-GB');
+});
 
 beforeEach(() => {
   vi.clearAllMocks();

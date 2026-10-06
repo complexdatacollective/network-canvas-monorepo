@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { createCatalogSource } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { VariableNameSchema } from '@codaco/shared-consts';
 
-import { protocolBuilderCatalogs } from '../../../locales/catalogs';
+import { protocolBuilderCatalogLoaders } from '../../../locales/catalogs';
 import en from '../../../locales/en.json';
 
 const NAME_HINT = 'protocolBuilder.codebookEntity.nameHint';
@@ -15,15 +16,20 @@ const quotedExamples = (text: string) =>
     ([, example]) => example,
   );
 
-const cases = ['en', ...Object.keys(protocolBuilderCatalogs)].flatMap(
-  (locale) => (['node', 'edge'] as const).map((entity) => ({ locale, entity })),
+const translatedLocales = Object.keys(protocolBuilderCatalogLoaders);
+
+const catalogs = createCatalogSource(protocolBuilderCatalogLoaders);
+await Promise.all(translatedLocales.map((locale) => catalogs.load(locale)));
+
+const cases = ['en', ...translatedLocales].flatMap((locale) =>
+  (['node', 'edge'] as const).map((entity) => ({ locale, entity })),
 );
 
 const examplesIn = (locale: string, entity: 'node' | 'edge') =>
   quotedExamples(
     createAppIntl({
       locale,
-      messages: protocolBuilderCatalogs[locale],
+      messages: catalogs.peek(locale),
     }).formatMessage(
       {
         id: NAME_HINT,
