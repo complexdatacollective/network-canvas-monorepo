@@ -82,6 +82,7 @@ const JOB_EXECUTION = [
   'src/jobs/handlers/sign-in-email.ts',
   'src/jobs/handlers/protocol-store-gc.ts',
   'src/jobs/handlers/denied-attempts-summary.ts',
+  'src/jobs/handlers/update-check.ts',
 ];
 
 const foreign = (name: string) =>
