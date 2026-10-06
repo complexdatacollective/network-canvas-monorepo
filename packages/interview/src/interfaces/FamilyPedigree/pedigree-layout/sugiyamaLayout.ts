@@ -450,25 +450,38 @@ function buildConstraintBlocks(
   //    the rest of it on the outer side).
   for (const members of realSibships) {
     const siblings = members.toSorted((a, b) => a - b);
+    const siblingSet = new Set(siblings);
     const ordered: number[] = [];
     siblings.forEach((sib, idx) => {
-      const attached = partnerLevels(
-        sib,
-        (node) => !inRealSibship.has(node) && !assigned.has(node),
-      ).flat();
+      // Placed already, as part of an earlier sibling's chain.
+      if (assigned.has(sib)) return;
+
+      // Everyone joined to this sibling by partnerships, through people
+      // outside any sibship and through its own siblings: a chain can leave
+      // the sibship and come back to it.
+      const group = new Set([sib]);
+      const toVisit = [sib];
+      while (toVisit.length > 0) {
+        for (const partner of spousesOf.get(toVisit.pop()!) ?? []) {
+          if (group.has(partner) || assigned.has(partner)) continue;
+          if (inRealSibship.has(partner) && !siblingSet.has(partner)) continue;
+          group.add(partner);
+          toVisit.push(partner);
+        }
+      }
+      const groupNodes = [...group];
       const chain =
-        attached.length > 1
-          ? partnershipChain(
-              [sib, ...attached],
-              couplesAmong([sib, ...attached]),
-            )
+        groupNodes.length > 2
+          ? partnershipChain(groupNodes, couplesAmong(groupNodes))
           : null;
       if (chain) {
-        assigned.add(sib);
-        for (const node of attached) assigned.add(node);
+        for (const node of chain) assigned.add(node);
         const atEnd = chain[0] === sib || chain.at(-1) === sib;
         const endingAtSibling = chain[0] === sib ? chain.toReversed() : chain;
-        if (!atEnd) {
+        const holdsOtherSiblings = chain.some(
+          (node) => node !== sib && siblingSet.has(node),
+        );
+        if (!atEnd || holdsOtherSiblings) {
           ordered.push(...chain);
         } else if (idx === 0) {
           ordered.push(...endingAtSibling);
