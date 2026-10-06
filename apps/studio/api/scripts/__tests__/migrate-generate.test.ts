@@ -36,8 +36,9 @@ import { readMigrationsDocument } from '../render-migrations.ts';
 // touches the real SCHEMA or the committed migrations.
 
 const notes = (
-  columns: 'body' | 'text' | 'none',
+  columns: 'body' | 'text' | 'none' | 'required-body',
   indexName = 'fx_notes_team_idx',
+  code: 'none' | 'required' | 'defaulted' | 'nullable' = 'none',
 ) =>
   pgTable(
     'fx_notes',
@@ -45,7 +46,13 @@ const notes = (
       id: integer('id').primaryKey(),
       team: text('team').notNull(),
       ...(columns === 'body' ? { body: text('body') } : {}),
+      ...(columns === 'required-body' ? { body: text('body').notNull() } : {}),
       ...(columns === 'text' ? { text: text('text') } : {}),
+      ...(code === 'required' ? { code: text('code').notNull() } : {}),
+      ...(code === 'defaulted'
+        ? { code: text('code').notNull().default('none') }
+        : {}),
+      ...(code === 'nullable' ? { code: text('code') } : {}),
     },
     (table) => [
       index(indexName).on(table.team),
@@ -370,10 +377,23 @@ describe('migrate:generate', () => {
       join(dir, '0002_rename_body', 'delta.sql'),
       `${header}ALTER TABLE "fx_notes" RENAME COLUMN "body" TO "text";\n`,
     );
-    expect(await generateMigrationDirectory(inputs, { kind: 'seal' })).toEqual({
+    // The snapshot diff shows the old name as dropped, as it does on the
+    // generated path: the author names it, having accounted for its data.
+    expect((await refusal(inputs, { kind: 'seal' })).message).toContain(
+      'This change drops [public.fx_notes.body], and --drop names nothing.',
+    );
+    expect(
+      await generateMigrationDirectory(inputs, {
+        kind: 'seal',
+        drops: ['public.fx_notes.body'],
+      }),
+    ).toEqual({
       kind: 'sealed',
       version: '0002_rename_body',
     });
+    expect(
+      decodeManifest(read(dir, '0002_rename_body', 'manifest.json')).drops,
+    ).toEqual(['public.fx_notes.body']);
     const document = readMigrationsDocument(dir, inputs.committedFingerprint);
     expect(document.migrations.map(({ version }) => version)).toEqual([
       '0001_initial',
@@ -436,6 +456,174 @@ describe('migrate:generate', () => {
     expect(
       (await refusal(await inputsFor(dir, moved), { kind: 'seal' })).message,
     ).toMatch(/snapshot\.json is not the current Drizzle schema/);
+  });
+
+  // #1901 E-4: on the empty database every suite builds, the generated ALTER
+  // passes; on a deployment whose table has a row, it fails.
+  it('refuses a column made NOT NULL with no default on an existing table, and writes nothing', async () => {
+    const dir = migrationsDir();
+    await initial(dir);
+    const before = listing(dir);
+
+    const added = await refusal(
+      await inputsFor(dir, {
+        teams: teams(),
+        notes: notes('body', undefined, 'required'),
+      }),
+      { kind: 'generate', name: 'code' },
+    );
+    expect(added.message).toContain(
+      'This change makes [public.fx_notes.code] NOT NULL with no default',
+    );
+    expect(added.message).toMatch(/--hand-written/);
+    expect(added.message).toMatch(/SET NOT NULL/);
+
+    const tightened = await refusal(
+      await inputsFor(dir, { teams: teams(), notes: notes('required-body') }),
+      { kind: 'generate', name: 'body_required' },
+    );
+    expect(tightened.message).toContain('[public.fx_notes.body] NOT NULL');
+    expect(listing(dir)).toEqual(before);
+
+    // Each of these the generator writes: a default fills the rows, a
+    // nullable column needs nothing, and a new table has no rows.
+    for (const [name, schema] of [
+      [
+        'defaulted',
+        { teams: teams(), notes: notes('body', undefined, 'defaulted') },
+      ],
+      [
+        'nullable',
+        { teams: teams(), notes: notes('body', undefined, 'nullable') },
+      ],
+      [
+        'new_table',
+        {
+          teams: teams(),
+          notes: notes('body'),
+          extra: pgTable('fx_extra', {
+            id: integer('id').primaryKey(),
+            label: text('label').notNull(),
+          }),
+        },
+      ],
+    ] as const) {
+      const fresh = migrationsDir();
+      await initial(fresh);
+      expect(
+        await generateMigrationDirectory(await inputsFor(fresh, schema), {
+          kind: 'generate',
+          name,
+        }),
+        name,
+      ).toMatchObject({ kind: 'written', version: `0002_${name}` });
+    }
+  });
+
+  it('seals a NOT NULL column only with a backfill, and only when the delta leaves it nullable', async () => {
+    const dir = migrationsDir();
+    await initial(dir);
+    const inputs = await inputsFor(dir, {
+      teams: teams(),
+      notes: notes('body', undefined, 'required'),
+    });
+    await generateMigrationDirectory(inputs, {
+      kind: 'generate',
+      name: 'code',
+      handWritten: true,
+    });
+    const header = read(dir, '0002_code', 'delta.sql');
+    expect(header).toContain(
+      'NOT NULL with no default on an existing table: public.fx_notes.code.',
+    );
+
+    const write = (name: string, content: string) =>
+      writeFileSync(join(dir, '0002_code', name), content);
+
+    write(
+      'delta.sql',
+      `${header}ALTER TABLE "fx_notes" ADD COLUMN "code" text;\n`,
+    );
+    expect((await refusal(inputs, { kind: 'seal' })).message).toMatch(
+      /0002_code makes \[public\.fx_notes\.code\] NOT NULL with no default on an existing table, and has no backfill\.sql/,
+    );
+
+    const backfill = [
+      'SET LOCAL ROLE studio_maintenance;',
+      `UPDATE fx_notes SET code = 'legacy';`,
+      'RESET ROLE;',
+      'ALTER TABLE fx_notes ALTER COLUMN code SET NOT NULL;',
+      '',
+    ].join('\n');
+    write('backfill.sql', backfill);
+    for (const delta of [
+      'ALTER TABLE "fx_notes" ADD COLUMN "code" text NOT NULL;',
+      'alter table public.fx_notes add code text not null;',
+      'ALTER TABLE "fx_notes" ADD COLUMN "code" text;\nALTER TABLE "fx_notes" ALTER COLUMN "code" SET NOT NULL;',
+    ]) {
+      write('delta.sql', `${header}${delta}\n`);
+      expect((await refusal(inputs, { kind: 'seal' })).message, delta).toMatch(
+        /0002_code\/delta\.sql makes \[public\.fx_notes\.code\] NOT NULL before the backfill can fill it/,
+      );
+    }
+
+    write(
+      'delta.sql',
+      `${header}ALTER TABLE "fx_notes" ADD COLUMN "code" text;\n`,
+    );
+    expect(await generateMigrationDirectory(inputs, { kind: 'seal' })).toEqual({
+      kind: 'sealed',
+      version: '0002_code',
+    });
+  });
+
+  // #1901 E-5: --drop on the hand-written path is checked against the same
+  // snapshot diff as on the generated one.
+  it('refuses to seal a hand-written drop the author did not name', async () => {
+    const dir = migrationsDir();
+    await initial(dir);
+    const inputs = await inputsFor(dir, {
+      teams: teams(),
+      notes: notes('text'),
+    });
+    await generateMigrationDirectory(inputs, {
+      kind: 'generate',
+      name: 'swap_body',
+      handWritten: true,
+    });
+    const header = read(dir, '0002_swap_body', 'delta.sql');
+    // The tempting wrong delta for a rename: the data in `body` is gone.
+    writeFileSync(
+      join(dir, '0002_swap_body', 'delta.sql'),
+      `${header}ALTER TABLE "fx_notes" DROP COLUMN "body";\nALTER TABLE "fx_notes" ADD COLUMN "text" text;\n`,
+    );
+    const before = listing(dir);
+
+    for (const drops of [undefined, [], ['public.fx_notes.team']]) {
+      expect(
+        (
+          await refusal(inputs, {
+            kind: 'seal',
+            ...(drops === undefined ? {} : { drops }),
+          })
+        ).message,
+        JSON.stringify(drops),
+      ).toContain('This change drops [public.fx_notes.body]');
+    }
+    expect(listing(dir)).toEqual(before);
+
+    await generateMigrationDirectory(inputs, {
+      kind: 'seal',
+      drops: ['public.fx_notes.body'],
+    });
+    expect(
+      decodeManifest(read(dir, '0002_swap_body', 'manifest.json')).drops,
+    ).toEqual(['public.fx_notes.body']);
+    // A re-seal keeps the drops it was sealed with.
+    expect(await generateMigrationDirectory(inputs, { kind: 'seal' })).toEqual({
+      kind: 'sealed',
+      version: '0002_swap_body',
+    });
   });
 
   it('refuses a statement the one transaction cannot run', async () => {
