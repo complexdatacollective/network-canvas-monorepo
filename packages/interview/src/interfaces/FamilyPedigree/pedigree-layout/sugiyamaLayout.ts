@@ -1422,17 +1422,23 @@ function encodePedigreeLayout(
             fu.parentGroup.members.length > 1 &&
             fu.parentGroup.members.every((m) => parentSet.has(m)),
         )?.parentGroup;
+        // A family is its leftmost partner's column, and the connectors take
+        // the person beside them as the other partner, so only a couple sitting
+        // side by side can be named. A couple that could not be seated
+        // together (one of three partnerships, say) gets no family: each
+        // parent is then joined to the child directly, rather than the line of
+        // descent coming from whichever partnership sits beside the left one.
         let famCol = 0;
         if (pg) {
-          // Find leftmost member of this group in the layer above
-          let leftCol = Number.POSITIVE_INFINITY;
-          for (const m of pg.members) {
-            const loc = nodeLocation.get(m);
-            if (loc?.layer === layer - 1 && loc.col < leftCol) {
-              leftCol = loc.col;
-            }
-          }
-          if (leftCol < Number.POSITIVE_INFINITY) {
+          const cols = pg.members
+            .map((m) => nodeLocation.get(m))
+            .filter((loc) => loc?.layer === layer - 1)
+            .map((loc) => loc!.col);
+          const leftCol = Math.min(...cols);
+          if (
+            cols.length === pg.members.length &&
+            Math.max(...cols) - leftCol === cols.length - 1
+          ) {
             famCol = leftCol + 1; // 1-based
           }
         }

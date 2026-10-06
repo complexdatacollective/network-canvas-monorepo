@@ -1019,3 +1019,84 @@ describe('partnership chains', () => {
     expect(childOf([couple(0, 2), couple(0, 1)])).toStrictEqual([0, 2]);
   });
 });
+
+describe('a person with three partners', () => {
+  // One of three partnerships cannot sit side by side. parent's partners are
+  // a, b and c; kidA and kidB are children of the first two couples. kidC is
+  // the biological child of parent and c and a social child of b; kidC2 is
+  // c's and parent's only.
+  const ped: PedigreeInput = {
+    id: ['parent', 'a', 'b', 'c', 'kidA', 'kidB', 'kidC', 'kidC2'],
+    parents: [
+      [],
+      [],
+      [],
+      [],
+      [sp(0), sp(1)],
+      [sp(0), sp(2)],
+      [sp(0), sp(3), { parentIndex: 2, edgeType: 'social' }],
+      [sp(0), sp(3)],
+    ],
+    partners: [
+      { partnerIndex1: 0, partnerIndex2: 1, isActive: false },
+      { partnerIndex1: 0, partnerIndex2: 2, isActive: false },
+      { partnerIndex1: 0, partnerIndex2: 3, isActive: true },
+    ],
+  };
+
+  it('draws each line of descent only from the child’s own parents', () => {
+    const result = alignPedigree(ped);
+    const level = result.nid.findIndex((row) => row.includes(4));
+    const above = result.nid[level - 1]!;
+    for (let col = 0; col < result.n[level]!; col++) {
+      const child = result.nid[level]![col]!;
+      const fam = result.fam[level]![col]!;
+      if (fam <= 0) continue;
+      // How the connectors read a family: the couple's left partner, and the
+      // person to its right when a partnership joins them.
+      const left = fam - 1;
+      const drawn = [above[left]!];
+      if ((result.group[level - 1]![left] ?? 0) > 0) {
+        drawn.push(above[left + 1]!);
+      }
+      const parents = ped.parents[child]!.map((p) => p.parentIndex);
+      for (const parent of drawn) {
+        expect(parents, `${ped.id[child]} from ${ped.id[parent]}`).toContain(
+          parent,
+        );
+      }
+      expect(drawn, `${ped.id[child]} from a couple`).toHaveLength(2);
+    }
+  });
+
+  it('joins each parent of a couple that cannot sit together to the child', () => {
+    const result = alignPedigree(ped);
+    const level = result.nid.findIndex((row) => row.includes(4));
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      ped.parents,
+      new Set(['0,3']),
+      undefined,
+      undefined,
+      undefined,
+      ped.id,
+      new Set(['0,1', '0,2', '0,3']),
+    );
+    const direct = new Set(
+      conn.auxiliaryLines.map((line) => line.endpointIds?.join('→')),
+    );
+    let withoutFamily = 0;
+    for (let col = 0; col < result.n[level]!; col++) {
+      if (result.fam[level]![col] !== 0) continue;
+      withoutFamily++;
+      const child = result.nid[level]![col]!;
+      for (const { parentIndex } of ped.parents[child]!) {
+        expect(direct).toContain(`${ped.id[parentIndex]}→${ped.id[child]}`);
+      }
+    }
+    // parent – c is the partnership left apart, so both of its children are
+    // drawn this way.
+    expect(withoutFamily).toBe(2);
+  });
+});
