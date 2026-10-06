@@ -18,6 +18,8 @@ guide's upgrade page, for every release whether or not it changes the schema:
 
 ```bash
 docker compose run --rm --no-deps api maintenance on
+# wait until /readyz names maintenance mode
+until docker compose logs worker | grep -E 'stopped claiming jobs|claiming jobs again' | tail -n 1 | grep -q 'stopped claiming jobs'; do sleep 1; done
 # take your backup now
 docker compose pull
 docker compose up -d web api worker
@@ -27,7 +29,9 @@ docker compose run --rm --no-deps api maintenance off
 
 `maintenance on` closes the instance: every request except `/healthz` and
 `/readyz` gets the maintenance page with 503, and the worker finishes the jobs
-it is running and claims no more. An optional reason — `maintenance on
+it is running and claims no more. The sequence waits for both before the
+backup: the API reads the flag within a second and the worker within about
+two, and the worker logs when it has paused. An optional reason — `maintenance on
 Upgrading to 1.4` — is repeated by `/readyz`. Jobs created while the instance
 is closed wait and are worked once it reopens. `maintenance off` reopens it.
 Nothing in the app or its API can open or close an instance; only the command
@@ -39,7 +43,14 @@ themselves once `migrate` has made the schema current, so an upgrade can start
 the new images before it migrates. `/readyz` gains a `maintenance` check that
 names why the instance is closed: maintenance mode, a migration in progress, a
 schema from another release, a database with no Studio schema, or a server
-still starting.
+still starting. Before the first `migrate`, `/readyz` says the database has not
+been set up for Studio yet.
+
+Rolling an upgrade back is restoring the backup taken during it with the
+previous image digests. The backup page's restore procedure now starts `web`,
+`api` and `worker` from the digests `.env` names and ends with
+`maintenance off`, because a backup taken during an upgrade carries the
+maintenance flag.
 
 Studio now checks once a day for a newer release. A daily worker job fetches
 `https://releases.networkcanvas.com/studio/manifest.json` with a plain `GET`
