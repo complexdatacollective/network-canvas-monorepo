@@ -28,7 +28,8 @@ type FramingControlProps = {
 /**
  * The participant's choice of words for their family, in the stage's
  * toolbar, when the stage leaves the framing to them. Choosing applies at
- * once and closes the popover.
+ * once and closes the popover. Until they have chosen, nothing else closes
+ * it: the words on the canvas depend on the answer.
  */
 function FramingControl({
   value,
@@ -43,7 +44,10 @@ function FramingControl({
     <ToolbarPopover
       ref={ref}
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        if (!next && value === undefined) return;
+        onOpenChange(next);
+      }}
       trigger={
         <ToolbarIconButton
           aria-label={intl.formatMessage(messages.framingControlLabel)}

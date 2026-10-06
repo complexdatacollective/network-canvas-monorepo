@@ -212,47 +212,73 @@ export const FirstVisit: Story = {
   },
 };
 
+const FRAMING_TITLE = 'How should we describe your family?';
+
+/** Parents the participant has not named, so they are described by the
+ * framing's words. */
+const unnamedParents: Family = {
+  people: [
+    { id: 'ego', name: 'Ari', gender: 'nonBinary', ego: true },
+    { id: 'mum', gender: 'woman', sex: 'female' },
+    { id: 'dad', gender: 'man', sex: 'male' },
+  ],
+  links: [
+    { from: 'mum', to: 'dad', kind: 'partner' },
+    { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'ego', kind: 'biological' },
+  ],
+};
+
 /**
  * The stage leaves the framing to the participant. The choice opens from the
- * toolbar when the stage first loads; choosing applies at once and closes it,
- * and the toolbar button reopens it to change the words. The answer is kept
- * in the stage's metadata, so it opens by itself only until it is answered.
+ * toolbar when the stage first loads, with neither answer chosen, and
+ * nothing closes it until the participant chooses one.
  */
 export const ParticipantChoosesFraming: Story = {
   args: { framing: 'participantPreference' },
   render: (args) => (
-    <PedigreeStory
-      {...settings(args)}
-      family={{
-        people: [
-          { id: 'ego', name: 'Ari', gender: 'nonBinary', ego: true },
-          { id: 'mum', gender: 'woman', sex: 'female' },
-          { id: 'dad', gender: 'man', sex: 'male' },
-        ],
-        links: [
-          { from: 'mum', to: 'dad', kind: 'partner' },
-          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
-          { from: 'dad', to: 'ego', kind: 'biological' },
-        ],
-      }}
-    />
+    <PedigreeStory {...settings(args)} family={unnamedParents} />
+  ),
+  play: async ({ canvasElement }) => {
+    // The popover is portalled outside the story's root.
+    const body = within(canvasElement.ownerDocument.body);
+    await body.findByText(FRAMING_TITLE);
+    for (const option of body.getAllByRole('option')) {
+      await expect(option).toHaveAttribute('aria-selected', 'false');
+    }
+    // Neither Escape nor a press elsewhere on the stage closes it.
+    const trigger = within(canvasElement).getByRole('button', {
+      name: 'Words for your family',
+    });
+    await userEvent.keyboard('{Escape}');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(within(canvasElement).getByText(PROMPT));
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  },
+};
+
+/**
+ * Once chosen, the words can be changed from the toolbar at any time.
+ * Choosing applies at once and closes the popover.
+ */
+export const ParticipantChangesFraming: Story = {
+  args: { framing: 'participantPreference' },
+  render: (args) => (
+    <PedigreeStory {...settings(args)} family={unnamedParents} />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // The popover is portalled outside the story's root.
     const body = within(canvasElement.ownerDocument.body);
-    const title = 'How should we describe your family?';
-    await body.findByText(title);
+    await body.findByText(FRAMING_TITLE);
     await userEvent.click(
       body.getByRole('option', { name: /Egg parent, sperm parent, sibling/ }),
     );
-    await waitFor(() => expect(body.queryByText(title)).toBeNull());
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
     // Unnamed parents are now described by the gamete they gave.
     await expect(
       await canvas.findByRole('button', { name: /^Egg parent/ }),
     ).toBeVisible();
 
-    // The toolbar reopens the choice, to change the words.
     await userEvent.click(
       canvas.getByRole('button', { name: 'Words for your family' }),
     );
