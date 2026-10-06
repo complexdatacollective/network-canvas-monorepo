@@ -20,3 +20,7 @@ When someone has more partners than can sit beside them, a child of a couple
 that had to be drawn apart is joined to each of its parents directly. Its line
 of descent used to come from the neighbouring partnership, naming a parent the
 child does not have.
+
+A child whose parents are not a couple, such as a biological parent and a
+step-parent who are not partners, is now joined to each parent directly.
+Previously it was drawn with no parent lines at all.
