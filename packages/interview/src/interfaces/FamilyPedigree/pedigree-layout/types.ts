@@ -69,6 +69,9 @@ export type PedigreeLayout = {
   n: number[];
   nid: number[][]; // integer person indices (no .5)
   pos: number[][]; // optimized x-coordinates
+  /** Each person's family on the level above: the 1-based column of a
+   * couple's left partner, the negated 1-based column of a single parent, or
+   * 0 for none. */
   fam: number[][];
   group: number[][]; // replaces spouse: 0=none, >0=parent group membership
   twins: number[][] | null; // 0=none, 1=MZ, 2=DZ, 3=unknown

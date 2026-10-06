@@ -585,6 +585,33 @@ describe('traditional family regression', () => {
     expect(uniqueFams[0]).toBeGreaterThan(0);
   });
 
+  it('a half-sibling through the left partner keeps a family of their own', () => {
+    // parent1 ⚭ parent2 with a child; a half-sibling of parent1's alone.
+    const ped: PedigreeInput = {
+      id: ['parent1', 'parent2', 'full', 'half'],
+      parents: [
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+        ],
+        [{ parentIndex: 0, edgeType: 'biological' }],
+      ],
+    };
+    const result = alignPedigree(ped, { hints: { order: [1, 2, 3, 4] } });
+    const level = result.nid.findIndex((row) => row.includes(3));
+    const famOf = (person: number) =>
+      result.fam[level]![result.nid[level]!.indexOf(person)]!;
+    expect(famOf(3)).not.toBe(famOf(2));
+    expect(famOf(3)).toBeLessThan(0);
+
+    // Each family has its own line of descent, the half-sibling's from
+    // parent1 alone.
+    const conn = computeConnectors(result, defaultScaling, ped.parents);
+    expect(conn.parentChildLines).toHaveLength(2);
+  });
+
   it('nuclear family: connectors include parent group line and parent-child links', () => {
     const result = alignPedigree(nuclearFamily, {
       hints: { order: [1, 2, 3, 4, 5] },
