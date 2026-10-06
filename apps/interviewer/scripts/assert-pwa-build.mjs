@@ -3,6 +3,8 @@
 // icons, every critical chunk (the interview engine, the entry), and every
 // responsive stage-preview image must be precached. A missing critical asset
 // breaks either the offline boot or the first offline opening of the menu.
+// The bundled Sample protocol chunk must be precached too (offline sample
+// install) but stay out of the initial load.
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -167,6 +169,59 @@ if (excluded.length > 0) {
   fail(`critical chunk(s) excluded from precache: ${excluded.join(', ')}`);
 }
 
+// The initial load: the scripts index.html loads or preloads, plus every chunk
+// they import statically. Dynamic `import()` targets are not followed.
+const indexHtml = readFileSync(path.join(dist, 'index.html'), 'utf8');
+const initialLoad = new Set(
+  [
+    ...indexHtml.matchAll(
+      /<(?:script[^>]*\bsrc|link[^>]*\bhref)="\/assets\/([^"]+\.js)"/g,
+    ),
+  ].map((m) => m[1]),
+);
+for (const chunk of initialLoad) {
+  const source = readFileSync(path.join(assetsDir, chunk), 'utf8');
+  for (const m of source.matchAll(
+    /\b(?:import|export)\s*(?:[\w$*{}\s,]*?\bfrom\s*)?["']\.\/([^"']+\.js)["']/g,
+  )) {
+    initialLoad.add(m[1]);
+  }
+}
+// The entry imports the interview engine statically, so a walk that misses it
+// has stopped matching the HTML or the import syntax, and the check below
+// would pass vacuously.
+const initialLoadChunks = [...initialLoad];
+if (
+  !initialLoadChunks.some((f) => f.startsWith('main-')) ||
+  !initialLoadChunks.some((f) => f.startsWith('interview-engine-'))
+) {
+  fail(
+    `could not resolve the initial-load chunks (found: ${initialLoadChunks.join(', ') || 'none'})`,
+  );
+}
+
+// The bundled Sample protocol inlines ~3.5 MB of media. It must load only when
+// someone installs the sample, and it must be precached so that install still
+// works offline. If its module is imported statically anywhere, Vite folds it
+// into the entry and this chunk disappears.
+const sampleChunks = jsAssets.filter((f) =>
+  f.startsWith('bundledSampleProtocol-'),
+);
+if (sampleChunks.length !== 1) {
+  fail(
+    `expected one lazily loaded bundledSampleProtocol chunk, found ${sampleChunks.length}`,
+  );
+}
+const [sampleChunk] = sampleChunks;
+if (initialLoad.has(sampleChunk)) {
+  fail(`${sampleChunk} is part of the initial load`);
+}
+if (!precached.has(`assets/${sampleChunk}`)) {
+  fail(
+    `${sampleChunk} is excluded from precache, so the sample cannot be installed offline`,
+  );
+}
+
 const interviewRouteMatches = [
   ...sw.matchAll(/!?[$\w]+\.pathname\.startsWith\("\/interview\/"\)/g),
 ];
@@ -316,5 +371,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${sampleChunk} precached and outside the ${initialLoad.size}-chunk initial load`,
 );
