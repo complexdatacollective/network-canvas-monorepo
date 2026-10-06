@@ -1,11 +1,20 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   cleanup,
 } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -13,6 +22,7 @@ import Form from '@codaco/fresco-ui/form/Form';
 import { InterviewI18nProvider } from '@codaco/interview';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VARIABLE_TYPES } from '~/config/variables';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { formatConfig } from '../formatConfig';
@@ -54,6 +64,16 @@ function PreviewProbe() {
   return <output data-testid="preview-locale">{useAppIntl().locale}</output>;
 }
 
+// The provider shows a language once its catalog has loaded. Loading these
+// up front lets a switch to either render synchronously, as the assertions
+// below expect.
+beforeAll(() =>
+  Promise.all([
+    architectCatalogSource.load('es'),
+    architectCatalogSource.load('en-GB'),
+  ]),
+);
+
 beforeEach(() => {
   localStorage.clear();
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
@@ -64,14 +84,20 @@ afterEach(() => {
 });
 
 describe('Architect device language', () => {
-  it('resolves browser regional Spanish before the first render and manages document attributes', () => {
+  it('resolves browser regional Spanish before the first render and manages document attributes', async () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-MX']);
-    render(
-      <ArchitectI18nProvider>
-        <Harness />
-      </ArchitectI18nProvider>,
-    );
-    expect(screen.getByTestId('locale')).toHaveTextContent('es');
+    // The interview mounts in Spanish too, and nothing has loaded its
+    // catalog yet, so the first render commits once that has: the render
+    // goes inside an awaited act so React retries it, and the first query
+    // waits for the commit.
+    await act(async () => {
+      render(
+        <ArchitectI18nProvider>
+          <Harness />
+        </ArchitectI18nProvider>,
+      );
+    });
+    expect(await screen.findByTestId('locale')).toHaveTextContent('es');
     expect(screen.getByTestId('label')).toHaveTextContent('Número');
     expect(document.documentElement).toHaveAttribute('lang', 'es');
     expect(document.documentElement).toHaveAttribute('dir', 'ltr');
@@ -101,7 +127,10 @@ describe('Architect device language', () => {
     expect(screen.getByLabelText('Authored identifier')).toHaveValue(
       'Research_1',
     );
-    expect(screen.getByTestId('preview-locale')).toHaveTextContent('es');
+    // The interview follows once its own Spanish catalog has loaded.
+    await waitFor(() =>
+      expect(screen.getByTestId('preview-locale')).toHaveTextContent('es'),
+    );
     expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBe('es');
     view.unmount();
     render(
@@ -115,12 +144,15 @@ describe('Architect device language', () => {
   it('returns to browser negotiation in automatic mode, following browser changes and cross-tab preferences', async () => {
     localStorage.setItem(ARCHITECT_LOCALE_KEY, 'en-GB');
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-AR']);
-    render(
-      <ArchitectI18nProvider>
-        <Harness />
-      </ArchitectI18nProvider>,
-    );
-    expect(screen.getByTestId('locale')).toHaveTextContent('en-GB');
+    // Mounts the interview in British English, which waits as above.
+    await act(async () => {
+      render(
+        <ArchitectI18nProvider>
+          <Harness />
+        </ArchitectI18nProvider>,
+      );
+    });
+    expect(await screen.findByTestId('locale')).toHaveTextContent('en-GB');
     fireEvent.click(screen.getByRole('button', { name: 'Automatic' }));
     expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBeNull();
     expect(screen.getByTestId('locale')).toHaveTextContent('es');
@@ -194,8 +226,10 @@ it('uses the switched researcher locale for a later thunk failure without changi
   );
 
   fireEvent.click(screen.getByRole('button', { name: 'Spanish' }));
-  expect(screen.getByTestId('preview-locale')).toHaveTextContent('es');
   expect(getArchitectIntl().locale).toBe('es');
+  await waitFor(() =>
+    expect(screen.getByTestId('preview-locale')).toHaveTextContent('es'),
+  );
   const result = await store
     .dispatch(openLibraryProtocol({ id: 'missing_authored_id' }))
     .unwrap();

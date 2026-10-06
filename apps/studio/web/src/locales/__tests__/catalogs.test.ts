@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkOverrideLocale,
   collectSourceFiles,
   extractMessages,
@@ -15,7 +16,7 @@ import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
-import { studioCatalogs } from '../catalogs.ts';
+import { studioCatalogLoaders, studioCatalogSource } from '../catalogs.ts';
 
 /**
  * The catalog artifacts cannot drift silently (design invariant 6). `en.json`
@@ -81,12 +82,26 @@ describe('the Studio client message catalogs', () => {
       expect(overrides[id]).not.toBe(committedEn[id]?.defaultMessage);
     }
   });
+
+  it('wires every committed catalog to a loader that loads its own file', async () => {
+    // The freshness and override checks above read the JSON from disk, so none
+    // of them can see the loader map: a locale whose loader imports a
+    // neighbour's file, or a catalog nobody loads, would pass all of them while
+    // researchers got the wrong language or silently fell back to English.
+    expect(
+      await checkCatalogLoaders(join(srcDir, 'locales'), studioCatalogLoaders),
+    ).toEqual([]);
+  });
 });
+
+// Loaded through the real source rather than rebuilt from the loaders, so the
+// merge order and the packages it merges are exactly what the app ships.
+const enGbMessages = await studioCatalogSource.load('en-GB');
 
 describe('the merged catalog a locale actually renders through', () => {
   const enGb = createAppIntl({
     locale: 'en-GB',
-    messages: studioCatalogs['en-GB'],
+    messages: enGbMessages,
   });
 
   it('renders an overridden string in its British form', () => {
@@ -117,9 +132,7 @@ describe('the merged catalog a locale actually renders through', () => {
     // they change: a merge that dropped the common layer would still return
     // the default message, so the id has to be one the app never defines.
     expect(enGb.formatMessage(commonMessages.retry)).toBe('Try again');
-    expect(Object.keys(studioCatalogs['en-GB'] ?? {})).not.toContain(
-      'common.retry',
-    );
+    expect(Object.keys(enGbMessages)).not.toContain('common.retry');
   });
 
   it('carries the protocol-builder catalog into the same merge', () => {

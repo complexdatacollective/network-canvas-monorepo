@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { announceLoadingScreen, removeLoadingScreen } from '../loadingScreen';
 
@@ -108,22 +109,45 @@ describe('pre-React localized loading announcement', () => {
     return message;
   }
 
-  it('uses the persisted device language before asynchronous app startup', () => {
+  it('uses the persisted device language before asynchronous app startup', async () => {
     const message = mountAnnouncement();
     localStorage.setItem(LOCALE_PREFERENCE_KEY, 'es');
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
     announceLoadingScreen();
-    expect(message.textContent).toBe('Cargando…');
     expect(document.documentElement.lang).toBe('es');
     expect(document.documentElement.dir).toBe('ltr');
+    // Never English under a Spanish `lang`, even while the catalog loads.
+    expect(message.textContent).not.toBe('Loading…');
+    await expect.poll(() => message.textContent).toBe('Cargando…');
   });
 
-  it('ignores a malformed stored preference and negotiates the browser language', () => {
+  it('ignores a malformed stored preference and negotiates the browser language', async () => {
     const message = mountAnnouncement();
     localStorage.setItem(LOCALE_PREFERENCE_KEY, 'invalid_locale');
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-MX']);
     announceLoadingScreen();
-    expect(message.textContent).toBe('Cargando…');
     expect(document.documentElement.lang).toBe('es');
+    await expect.poll(() => message.textContent).toBe('Cargando…');
+  });
+
+  it('announces English at once, with no catalog to wait for', () => {
+    const message = mountAnnouncement();
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
+    announceLoadingScreen();
+    expect(message.textContent).toBe('Loading…');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('keeps the product name when the catalog cannot load', async () => {
+    const message = mountAnnouncement();
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'fr');
+    const load = vi
+      .spyOn(interviewerCatalogSource, 'load')
+      .mockRejectedValue(new Error('offline'));
+    announceLoadingScreen();
+    expect(document.documentElement.lang).toBe('fr');
+    // Settles after the announcement's own handler, which was attached first.
+    await load.mock.results[0]?.value.catch(() => {});
+    expect(message.textContent).toBe('Network Canvas Interviewer');
   });
 });

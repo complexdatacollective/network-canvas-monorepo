@@ -2,12 +2,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, waitFor } from '@testing-library/react';
 import { Effect } from 'effect';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { type UpdateAccountLocaleResult } from '@codaco/studio-contract/schema/account';
 
 import { sessionQueryOptions } from '../../lib/session.ts';
+import { studioCatalogSource } from '../../locales/catalogs.ts';
 import { rpcKey } from '../../runtime/rpc.ts';
 import {
   installRpcHarness,
@@ -88,6 +89,14 @@ function renderProvider({
   );
   return queryClient;
 }
+
+// Locales load on demand, and the cases below start in en-GB or switch to it.
+// Fetching its catalog up front keeps those renders synchronous, as they are in
+// the app once a locale has been fetched; `main.tsx` does the same before the
+// first paint.
+beforeAll(async () => {
+  await studioCatalogSource.load('en-GB');
+});
 
 beforeEach(() => {
   vi.clearAllMocks();

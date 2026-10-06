@@ -8,6 +8,7 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -143,6 +144,12 @@ vi.mock('@codaco/interview', async (importOriginal) => {
 });
 
 import { InterviewRoute } from '../Interview';
+
+// The locale cases switch between these synchronously, as a device that has
+// already loaded them would.
+await Promise.all(
+  ['es', 'en-GB'].map((locale) => interviewerCatalogSource.load(locale)),
+);
 
 function makeSession(overrides: Record<string, unknown> = {}) {
   return {

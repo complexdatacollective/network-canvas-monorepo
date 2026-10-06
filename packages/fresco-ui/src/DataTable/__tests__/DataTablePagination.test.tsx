@@ -2,7 +2,10 @@ import { useTable } from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
 import {
@@ -10,7 +13,7 @@ import {
   arabicNumber as arabic,
   sourceTemplate,
 } from '../../__tests__/catalogFixtures';
-import { frescoUiCatalogs } from '../../locales/catalogs';
+import { frescoUiCatalogLoaders } from '../../locales/catalogs';
 import { DataTablePagination } from '../DataTablePagination';
 import { dataTableFeatures, type DataTableFeatures } from '../features';
 
@@ -19,6 +22,9 @@ type Row = { name: string };
 const PAGE_OF_ID = 'frescoUi.dataTablePagination.pageOf';
 
 const CATALOG = { [PAGE_OF_ID]: sourceTemplate(PAGE_OF_ID) };
+
+const catalogs = createCatalogSource(frescoUiCatalogLoaders);
+await catalogs.load('es');
 
 const Harness = ({ locale = 'ar-EG' }: { locale?: string }) => {
   const table = useTable<DataTableFeatures, Row>({
@@ -34,7 +40,7 @@ const Harness = ({ locale = 'ar-EG' }: { locale?: string }) => {
     <AppI18nProvider
       locale={locale}
       locales={[...ecosystemLocales, ARABIC]}
-      messages={locale === 'ar-EG' ? CATALOG : frescoUiCatalogs[locale]}
+      messages={locale === 'ar-EG' ? CATALOG : catalogs.peek(locale)}
       manageDocument={false}
     >
       <DataTablePagination table={table} />

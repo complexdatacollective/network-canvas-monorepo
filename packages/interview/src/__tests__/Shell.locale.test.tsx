@@ -18,6 +18,7 @@ import {
 
 import ActionButton from '../components/ActionButton';
 import type { InterviewPayload } from '../contract/types';
+import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
 
@@ -123,6 +124,14 @@ const handlers = {
   onRequestAsset: () => Promise.resolve(''),
   analytics: { installationId: 'test', hostApp: 'test' },
 };
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('Shell built-in interface language', () => {
   it.each([

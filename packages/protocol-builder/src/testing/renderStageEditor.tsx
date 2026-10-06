@@ -10,15 +10,18 @@ import { isEqual } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 import { expect } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
-import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
+import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -32,7 +35,7 @@ import {
 } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
-import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../locales/catalogs.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
@@ -70,6 +73,29 @@ import {
 import { HARNESS_PRINCIPAL, SeedProtocolCache } from './seedProtocolCache.tsx';
 
 /**
+ * The layers a host actually mounts, in the order Architect merges them.
+ * `@codaco/protocol-validation`'s is not optional: the validation rule names a
+ * researcher ticks are its descriptors, so leaving it out renders them in
+ * English under a Spanish harness and a locale sweep would read that as copy
+ * this package failed to translate.
+ *
+ * Every locale a harness can be asked for is loaded when this module is, so
+ * `renderStageEditor` stays the one synchronous call the English suite makes:
+ * a test that had to await its catalog before each mount would no longer be
+ * that call. A source rather than a hand-merged map per locale, so the merge
+ * order is written once.
+ */
+const harnessCatalogs = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+  protocolValidationCatalogLoaders,
+);
+await Promise.all(
+  ecosystemLocales.map(({ locale }) => harnessCatalogs.load(locale)),
+);
+
+/**
  * A catalog entry and a `defaultMessage` are both typed as the string OR the
  * pre-parsed ICU form, and only the string one can name a control.
  */
@@ -92,7 +118,7 @@ const defaultSubmitLabel = (locale: string | undefined): string => {
     literal(
       locale === undefined || id === undefined
         ? undefined
-        : protocolBuilderCatalogs[locale]?.[id],
+        : harnessCatalogs.peek(locale)?.[id],
     ) ?? literal(defaultMessage);
   // Thrown rather than fallen back from: an empty name would send every
   // `submit()` in the suite looking for a button called nothing, and every
@@ -595,18 +621,8 @@ function LocaleFrame({
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
-      // The layers a host actually mounts, in the order `architectCatalogs`
-      // merges them. `@codaco/protocol-validation`'s is not optional: the
-      // validation rule names a researcher ticks are its descriptors, so
-      // leaving it out renders them in English under a Spanish harness and a
-      // locale sweep would read that as copy this package failed to
-      // translate.
-      messages={mergeCatalogs(
-        commonCatalogs[locale] ?? {},
-        frescoUiCatalogs[locale] ?? {},
-        protocolBuilderCatalogs[locale] ?? {},
-        protocolValidationCatalogs[locale] ?? {},
-      )}
+      // The layers a host actually mounts; see `harnessCatalogs`.
+      messages={harnessCatalogs.peek(locale)}
       manageDocument={false}
     >
       {children}

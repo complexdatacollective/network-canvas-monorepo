@@ -77,8 +77,9 @@ type ArcPath = {
 export type ParentGroupConnector = {
   type: 'parent-group';
   segment: LineSegment;
-  /** Vertical endpoint leads for a routed, non-adjacent partnership. */
-  endpointSegments?: [LineSegment, LineSegment];
+  /** Leads joining each partner to a routed partnership line: partners who
+   * are not side by side, or who sit on different rows. */
+  endpointSegments?: LineSegment[];
   double: boolean;
   isActive: boolean;
   doubleSegment?: LineSegment;
@@ -100,8 +101,7 @@ export type ParentChildConnector = {
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
-  // Relationship types plus a layout-only kind for parents with no partner.
-  edgeType: RelationshipType | 'unpartnered-parent';
+  edgeType: RelationshipType;
   segment: LineSegment;
   endpointIds?: [string | undefined, string | undefined];
 };

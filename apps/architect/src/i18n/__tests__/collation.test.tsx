@@ -8,11 +8,12 @@ import {
   within,
 } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { sortByLabel } from '~/components/Codebook/helpers';
 import Variables from '~/components/Codebook/Variables';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
@@ -28,6 +29,11 @@ vi.mock('~/components/VariablePill', () => ({
     <span>{labels[uuid]}</span>
   ),
 }));
+
+// The provider shows a language once its catalog has loaded. Loading
+// Spanish up front lets a switch to it render synchronously, as the
+// assertions below expect.
+beforeAll(() => architectCatalogSource.load('es'));
 
 beforeEach(() => {
   localStorage.clear();

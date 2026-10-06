@@ -304,12 +304,27 @@ export default defineConfig(() =>
     // resolve module ids to the symlink's real path (`packages/interview/src/...`),
     // not the package-name path, so the id never contains the string
     // "@codaco/interview" — match the workspace path segment instead.
+    //
+    // Message catalogs are loaded one language at a time, so each language
+    // gets its own chunk, checked before the engine rule so the interview
+    // package's catalogs stay out of the engine chunk. The app's catalog
+    // source loads every package's catalog for a language at once, and the
+    // interview runtime loads its own separately, so those are the two
+    // groups: `locale-<tag>` and `interview-locale-<tag>`.
+    // assert-pwa-build.mjs checks that every one of them is precached.
     build: {
       rollupOptions: {
         input: { main: resolve(here, 'index.html') },
         output: {
           manualChunks(id: string) {
-            if (id.includes('/packages/interview/')) return 'interview-engine';
+            const isInterview = id.includes('/packages/interview/');
+            const locale = /\/src\/locales\/([A-Za-z-]+)\.json$/.exec(id)?.[1];
+            if (locale !== undefined) {
+              return isInterview
+                ? `interview-locale-${locale}`
+                : `locale-${locale}`;
+            }
+            if (isInterview) return 'interview-engine';
             return undefined;
           },
         },

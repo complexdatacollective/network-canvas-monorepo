@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
-import { architectCatalogs } from '~/locales/catalogs';
+import {
+  architectCatalogLoaders,
+  architectCatalogSource,
+} from '~/locales/catalogs';
 import en from '~/locales/en.json';
 import { createValidations } from '~/utils/validations';
 
@@ -14,15 +17,15 @@ const quotedExamples = (text: string) =>
     ([, example]) => example,
   );
 
-const cases = ['en', ...Object.keys(architectCatalogs)].flatMap((locale) =>
-  (['node', 'edge'] as const).map((entity) => ({ locale, entity })),
+const cases = ['en', ...Object.keys(architectCatalogLoaders)].flatMap(
+  (locale) => (['node', 'edge'] as const).map((entity) => ({ locale, entity })),
 );
 
-const examplesIn = (locale: string, entity: 'node' | 'edge') =>
+const examplesIn = async (locale: string, entity: 'node' | 'edge') =>
   quotedExamples(
     createAppIntl({
       locale,
-      messages: architectCatalogs[locale],
+      messages: await architectCatalogSource.load(locale),
     }).formatMessage(
       {
         id: NAME_HINT,
@@ -46,13 +49,13 @@ const isAllowedTypeName = createValidations().allowedNMToken();
 describe('example names in the type name hint', () => {
   it.each(cases)(
     'suggests only valid $entity type names in $locale',
-    ({ locale, entity }) => {
-      const examples = examplesIn(locale, entity);
+    async ({ locale, entity }) => {
+      const examples = await examplesIn(locale, entity);
 
       expect(examples.length).toBeGreaterThan(0);
       // As many as the English offers, so an example in a quotation style the
       // pattern does not recognise fails here rather than going unchecked.
-      expect(examples).toHaveLength(examplesIn('en', entity).length);
+      expect(examples).toHaveLength((await examplesIn('en', entity)).length);
       expect(
         examples.filter((example) => isAllowedTypeName(example) !== undefined),
       ).toEqual([]);

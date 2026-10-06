@@ -12,13 +12,13 @@ import type { ReactNode } from 'react';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
 import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 import type { SupportedStudioLocale } from '@codaco/studio-contract/locales';
 import type { Me } from '@codaco/studio-contract/schema/account';
 
 import { sessionQueryOptions } from '../lib/session.ts';
-import { studioCatalogs } from '../locales/catalogs.ts';
+import { studioCatalogSource } from '../locales/catalogs.ts';
 import { rpcCall, rpcKey } from '../runtime/rpc.ts';
 import { studioDefaultLocale, studioLocales } from './locales.ts';
 import {
@@ -85,6 +85,30 @@ function resolveActiveLocale(preference: string | null): string {
   }).locale;
 }
 
+/**
+ * What the device alone says: the mirror where it names a declared locale,
+ * browser negotiation where it does not. The first paint before identity
+ * loads, and so also the locale whose catalog has to be on hand before
+ * anything renders.
+ */
+function resolveMirroredLocale() {
+  return resolveAppLocale({
+    stored: readLocaleMirror(),
+    requested: navigator.languages,
+    locales: studioLocales,
+    defaultLocale: studioDefaultLocale,
+  });
+}
+
+/**
+ * The locale the provider's first render lands in. `main.tsx` loads its
+ * catalog before rendering, which is how a returning researcher in en-GB gets
+ * a British first paint instead of US English followed by a switch.
+ */
+export function resolveInitialLocale(): string {
+  return resolveMirroredLocale().locale;
+}
+
 export function StudioI18nProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
@@ -94,12 +118,7 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   // a mirror that was absent or no longer declared — only the former is an
   // explicit preference the language page should show.
   const [preference, setPreference] = useState<string | null>(() => {
-    const resolved = resolveAppLocale({
-      stored: readLocaleMirror(),
-      requested: navigator.languages,
-      locales: studioLocales,
-      defaultLocale: studioDefaultLocale,
-    });
+    const resolved = resolveMirroredLocale();
     return resolved.source === 'stored' ? resolved.locale : null;
   });
   const [saveState, setSaveState] = useState<LocaleSaveState>('idle');
@@ -307,6 +326,12 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   );
   const automaticLocale = useMemo(() => resolveActiveLocale(null), []);
 
+  // What the provider renders lags the locale just chosen while its catalog
+  // loads: a switch keeps the previous language on screen until the new one
+  // has arrived, so `<html lang>` and the copy change together. The first
+  // paint never waits here — `main.tsx` has loaded it already.
+  const catalog = useLocaleCatalog(studioCatalogSource, activeLocale);
+
   const value = useMemo<StudioLocaleContextValue>(
     () => ({
       preference,
@@ -321,9 +346,9 @@ export function StudioI18nProvider({ children }: { children: ReactNode }) {
   return (
     <StudioLocaleContext.Provider value={value}>
       <AppI18nProvider
-        locale={activeLocale}
+        locale={catalog.locale}
         locales={studioLocales}
-        messages={studioCatalogs[activeLocale]}
+        messages={catalog.messages}
         onLocaleChange={setLocale}
       >
         {children}

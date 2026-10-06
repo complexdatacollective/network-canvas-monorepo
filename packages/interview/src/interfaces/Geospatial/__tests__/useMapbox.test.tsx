@@ -1,5 +1,13 @@
 import { act, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
@@ -50,6 +58,7 @@ vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 // The hook under test (imported after mocks are declared)
 import {
@@ -152,6 +161,14 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
 });
 
 describe('useMapbox resize handling', () => {

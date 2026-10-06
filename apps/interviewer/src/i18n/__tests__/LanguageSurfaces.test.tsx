@@ -8,9 +8,14 @@ import {
   OnboardingScreenView,
 } from '~/components/OnboardingScreen';
 import { TopActionBarView } from '~/components/TopActionBar';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { InterviewerI18nProvider } from '../InterviewerI18nProvider';
 import { LOCALE_PREFERENCE_KEY } from '../preference';
+
+// Switching to Spanish lands in the render that asked for it once its catalog
+// has loaded, which is what these surfaces are checked against.
+await interviewerCatalogSource.load('es');
 
 const { enrolWithPin, refresh } = vi.hoisted(() => ({
   enrolWithPin: vi.fn(),

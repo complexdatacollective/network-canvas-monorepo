@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
 
 import { ProtocolDeck } from '../ProtocolDeck';
 
@@ -47,11 +46,7 @@ const netcanvas = (name: string) => new File(['{}'], name);
 async function selectFiles(files: File[]) {
   const onImportFile = vi.fn();
   render(
-    <AppI18nProvider
-      locale="en"
-      locales={interviewerProductionLocales}
-      messages={interviewerCatalogs.en}
-    >
+    <AppI18nProvider locale="en" locales={interviewerProductionLocales}>
       <ProtocolDeck
         protocols={[]}
         sessions={[]}
