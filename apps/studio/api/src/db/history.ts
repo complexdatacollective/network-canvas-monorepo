@@ -33,7 +33,7 @@ const studioMigrations = pgTable(HISTORY_TABLE, {
 });
 
 /** Raw because the table is outside `SCHEMA`, so drizzle-kit never renders it. */
-export const HISTORY_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.${HISTORY_TABLE} (
+const HISTORY_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.${HISTORY_TABLE} (
   version text PRIMARY KEY,
   ordinal int NOT NULL UNIQUE,
   manifest_hash text NOT NULL,
@@ -47,7 +47,7 @@ export const HISTORY_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.${HISTORY_TA
  * them covers every table in `public` — this one included. Neither
  * application role may read or rewrite the history the verdicts below trust.
  */
-export const HISTORY_REVOKE_SQL = `REVOKE ALL ON public.${HISTORY_TABLE} FROM PUBLIC, ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance}`;
+const HISTORY_REVOKE_SQL = `REVOKE ALL ON public.${HISTORY_TABLE} FROM PUBLIC, ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance}`;
 
 export type RecordedMigration = {
   readonly version: string;

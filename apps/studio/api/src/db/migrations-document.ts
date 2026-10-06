@@ -20,12 +20,10 @@ export const EXECUTED_ARTEFACTS = [
   'sidecars.sql',
 ] as const;
 
-export type ExecutedArtefact = (typeof EXECUTED_ARTEFACTS)[number];
-
 /** Hashed into the manifest, never executed and never shipped in the image. */
 export const SNAPSHOT_ARTEFACT = 'snapshot.json';
 
-export const REQUIRED_ARTEFACTS = [
+const REQUIRED_ARTEFACTS = [
   'delta.sql',
   'sidecars.sql',
   SNAPSHOT_ARTEFACT,
@@ -59,7 +57,7 @@ export const MigrationManifest = Schema.Struct({
 
 export type MigrationManifest = typeof MigrationManifest.Type;
 
-export const MigrationArtefact = Schema.Struct({
+const MigrationArtefact = Schema.Struct({
   name: Schema.String,
   sql: Schema.String,
 });
@@ -85,10 +83,6 @@ export const decodeManifest = Schema.decodeUnknownSync(
   Schema.fromJsonString(MigrationManifest),
 );
 
-export const decodeMigrationsDocument = Schema.decodeUnknownSync(
-  Schema.fromJsonString(MigrationsDocument),
-);
-
 /** Execution order, then the snapshot last. */
 function canonicalOrder(names: Iterable<string>): string[] {
   const present = new Set(names);
@@ -103,9 +97,7 @@ function canonicalOrder(names: Iterable<string>): string[] {
  * execution order with the snapshot last. History records it as the
  * migration's `manifest_hash`.
  */
-export function combinedHash(
-  artefacts: Readonly<Record<string, string>>,
-): string {
+function combinedHash(artefacts: Readonly<Record<string, string>>): string {
   return sha256(
     canonicalOrder(Object.keys(artefacts))
       .map((name) => `${name}:${artefacts[name]}\n`)

@@ -145,16 +145,18 @@
       "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
     },
-    // The generic `build` inputs do not cover scripts/, and this build runs
-    // one: after vite, `scripts/render-schema-ddl.ts` renders the DDL
-    // `studio-api migrate` executes, from `scripts/apply.ts`. Without these a
-    // change to the rendering would replay a cached bundle carrying the old
+    // The generic `build` inputs do not cover scripts/ or migrations/, and
+    // this build reads both: after vite, `scripts/render-migrations.ts`
+    // renders the numbered migrations under `migrations/` into the
+    // `dist/migrations.json` `studio-api migrate` executes (#1901). Without
+    // these an edited migration would replay a cached bundle carrying the old
     // statements.
     "@codaco/studio-api#build": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "scripts/**",
+        "migrations/**",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
@@ -413,8 +415,9 @@
       // .agents/skills; the release-test suites read .claude/workflows; the
       // changeset guards read .changeset; the release guards read the fresco
       // and studio deployment trees; the CI workflow guard reads
-      // apps/studio/stack-test and the self-host guide the `studio-stack` job
-      // runs.
+      // apps/studio/stack-test, apps/studio/release-test and the self-host
+      // guide the Studio jobs run; the released-migration guard reads
+      // apps/studio/api/migrations.
       "inputs": [
         "scripts/**",
         ".github/**",
@@ -428,6 +431,8 @@
         "apps/fresco/release-test/**",
         "apps/fresco/CLAUDE.md",
         "apps/studio/stack-test/**",
+        "apps/studio/release-test/**",
+        "apps/studio/api/migrations/**",
         "apps/studio/docs/self-host/**",
         "tooling/vitest/**",
         "!**/node_modules/**"
@@ -663,17 +668,28 @@
       ],
       "outputs": []
     },
+    // Every tree a suite reads, or a change confined to it replays a cached
+    // green: the migration suites read migrations/, the formatter guard reads
+    // .oxfmtrc.json, the drizzle-kit pin reads pnpm-workspace.yaml, and the
+    // self-host, compose and lane suites read the docs and stack files.
     "@codaco/studio-api#test": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "scripts/**",
+        "migrations/**",
         "vitest.config.*",
         "package.json",
         ".env",
         ".env.development",
         ".env.example",
-        "$TURBO_ROOT$/apps/studio/README.md"
+        "$TURBO_ROOT$/apps/studio/README.md",
+        "$TURBO_ROOT$/apps/studio/docs/**",
+        "$TURBO_ROOT$/apps/studio/docker-compose*.yml",
+        "$TURBO_ROOT$/apps/studio/stack-test/**",
+        "$TURBO_ROOT$/apps/studio/release-test/**",
+        "$TURBO_ROOT$/.oxfmtrc.json",
+        "$TURBO_ROOT$/pnpm-workspace.yaml"
       ],
       "outputs": []
     },

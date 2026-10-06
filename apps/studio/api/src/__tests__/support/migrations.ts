@@ -91,19 +91,6 @@ export function withMigrations(
   };
 }
 
-/** The first `count` migrations, as the image of an older release. */
-export function truncatedTo(
-  document: MigrationsDocument,
-  count: number,
-): MigrationsDocument {
-  const migrations = document.migrations.slice(0, count);
-  return {
-    fingerprint:
-      migrations.at(-1)?.manifest.fingerprint ?? document.fingerprint,
-    migrations,
-  };
-}
-
 /**
  * The login the runner and convergence suites connect as: `NOSUPERUSER
  * CREATEROLE`, the shape of a managed Postgres owner (#1901 S-2), where every
@@ -112,7 +99,7 @@ export function truncatedTo(
  * application roles because, in a real deployment, it is the login that
  * created them.
  */
-export const TEST_OWNER = 'studio_test_migrate_owner';
+const TEST_OWNER = 'studio_test_migrate_owner';
 
 /** A local test cluster's fixture credential, never a deployment's. */
 const TEST_OWNER_PASSWORD = 'studio-test-migrate-owner';
