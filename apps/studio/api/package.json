@@ -33,6 +33,7 @@
     "start:maintenance": "NODE_ENV=production node --env-file-if-exists=.env dist/maintenance.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
+    "test:released-migrations": "vitest run --config ../../../scripts/vitest.config.ts scripts/ci/studio-released-migrations.test.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
