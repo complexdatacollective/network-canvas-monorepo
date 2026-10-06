@@ -38,6 +38,13 @@ const messages = defineMessages({
     description:
       'Label for the attribute that holds each family member’s gender identity, in the printable protocol summary.',
   },
+  genderIdentityNotAsked: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityNotAsked',
+    defaultMessage:
+      'Not asked. Relatives are described by their sex assigned at birth.',
+    description:
+      'Value shown beside the gender identity label in the printable protocol summary when the Family Pedigree stage does not ask about gender identity, saying what the kinship words follow instead.',
+  },
   genderIdentityTerms: {
     id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityTerms',
     defaultMessage: 'Gender identity words',
@@ -192,8 +199,11 @@ const isGenderWords = (value: string): value is PedigreeGenderWords =>
 
 type NodeConfiguration = {
   nameVariable?: string;
-  genderIdentityVariable?: string;
-  genderIdentityTerms?: { value: string | number; words: string }[];
+  /** Absent when the stage does not ask about gender identity. */
+  genderIdentity?: {
+    variable?: string;
+    terms?: { value: string | number; words: string }[];
+  };
   sexAssignedAtBirthVariable?: string;
   egoVariable?: string;
 };
@@ -253,15 +263,16 @@ const FamilyPedigree = ({
 
   // Every option of the gender identity attribute with the words it takes, so
   // an option the stage does not list reads as the neutral words it gets.
+  const genderIdentity = nodeConfiguration?.genderIdentity;
   const genderVariable =
-    personType === null || !nodeConfiguration?.genderIdentityVariable
+    personType === null || !genderIdentity?.variable
       ? undefined
       : protocol.codebook?.node?.[personType]?.variables?.[
-          nodeConfiguration.genderIdentityVariable
+          genderIdentity.variable
         ];
   const genderOptions =
     genderVariable?.type === 'categorical' ? genderVariable.options : undefined;
-  const genderTerms = nodeConfiguration?.genderIdentityTerms;
+  const genderTerms = genderIdentity?.terms;
   const genderWordsFor = (value: string | number): PedigreeGenderWords => {
     const words = genderTerms?.find((term) => term.value === value)?.words;
     return words !== undefined && isGenderWords(words) ? words : 'neutral';
@@ -291,11 +302,18 @@ const FamilyPedigree = ({
       'name',
       nodeConfiguration?.nameVariable,
     ),
-    ...variableRow(
-      intl.formatMessage(messages.genderIdentity),
-      'gender-identity',
-      nodeConfiguration?.genderIdentityVariable,
-    ),
+    ...(nodeConfiguration !== null && genderIdentity === undefined
+      ? ([
+          [
+            intl.formatMessage(messages.genderIdentity),
+            intl.formatMessage(messages.genderIdentityNotAsked),
+          ],
+        ] as [string, ReactNode][])
+      : variableRow(
+          intl.formatMessage(messages.genderIdentity),
+          'gender-identity',
+          genderIdentity?.variable,
+        )),
     ...(genderTermLines.length > 0
       ? ([
           [

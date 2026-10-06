@@ -46,6 +46,45 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Title of the dialog that creates a new text attribute for family members’ names.',
   },
+  genderIdentityTitle: {
+    id: 'protocolBuilder.pedigree.genderIdentityTitle',
+    defaultMessage: 'Ask about gender identity',
+    description:
+      'Title of the switch, and of the section it opens, that makes a Family Pedigree ask each family member’s gender identity. Switched off, the question is not asked.',
+  },
+  genderIdentityDescription: {
+    id: 'protocolBuilder.pedigree.genderIdentityDescription',
+    defaultMessage:
+      'When off, relatives are described by their sex assigned at birth.',
+    description:
+      'Explains what happens when the gender identity question is switched off: the kinship words (mother, brother, parent) follow the sex a person was assigned at birth instead.',
+  },
+  genderIdentityWaiting: {
+    id: 'protocolBuilder.pedigree.genderIdentityWaiting',
+    defaultMessage:
+      'Choose the node type before choosing the gender identity attribute.',
+    description:
+      'Shown in place of the gender identity section’s description while no node type has been chosen for the stage.',
+  },
+  genderIdentityClearTitle: {
+    id: 'protocolBuilder.pedigree.genderIdentityClearTitle',
+    defaultMessage: 'Stop asking about gender identity?',
+    description:
+      'Title of the confirmation shown before a researcher switches off the gender identity question of a Family Pedigree.',
+  },
+  genderIdentityClearDescription: {
+    id: 'protocolBuilder.pedigree.genderIdentityClearDescription',
+    defaultMessage:
+      'The attribute and the words you chose for each option will be removed from this stage, and relatives will be described by their sex assigned at birth. The attribute and its options stay in the codebook.',
+    description:
+      'Body of the confirmation shown before the gender identity question is switched off, saying what is lost and what is kept. An attribute is a codebook variable.',
+  },
+  genderIdentityClearConfirm: {
+    id: 'protocolBuilder.pedigree.genderIdentityClearConfirm',
+    defaultMessage: 'Stop asking',
+    description:
+      'Button that confirms switching off the gender identity question and discarding the attribute and words chosen for it.',
+  },
   genderOptionsEdit: {
     id: 'protocolBuilder.pedigree.genderOptionsEdit',
     defaultMessage: 'Edit options',

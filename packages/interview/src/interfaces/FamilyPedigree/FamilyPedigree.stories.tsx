@@ -58,6 +58,9 @@ type StoryOptions = {
   /** The researcher's own gender identity options, in place of the six
    * defaults. An option with no `words` takes neutral words. */
   genderIdentities?: GenderIdentities;
+  /** Whether the stage asks about gender identity. Defaults to true; when
+   * false, the stage binds no gender identity attribute. */
+  askGenderIdentity?: boolean;
 };
 
 type GenderIdentities = {
@@ -79,6 +82,7 @@ function buildInterview({
   nominationPrompts,
   shapeBy = 'genderIdentity',
   genderIdentities,
+  askGenderIdentity = true,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
@@ -90,13 +94,14 @@ function buildInterview({
     framing,
     nominationPrompts,
     genderIdentities,
+    askGenderIdentity,
   });
   // The researcher's choice of symbol, made in the codebook: circles for
   // women (or female), squares for men (or male), diamonds for anyone else.
   people.setShape({
     default: 'diamond',
     dynamic:
-      shapeBy === 'genderIdentity'
+      shapeBy === 'genderIdentity' && stage.genderIdentity !== undefined
         ? {
             variable: stage.genderIdentity,
             type: 'discrete',
@@ -127,7 +132,9 @@ function buildInterview({
     si.addManualNode(stage.id, stage.personType, person.id, {
       [stage.ego]: person.ego === true,
       ...(person.name ? { [stage.name]: person.name } : {}),
-      ...(person.gender ? { [stage.genderIdentity]: [person.gender] } : {}),
+      ...(person.gender && stage.genderIdentity
+        ? { [stage.genderIdentity]: [person.gender] }
+        : {}),
       ...(person.sex ? { [stage.sexAssignedAtBirth]: [person.sex] } : {}),
     });
   }
@@ -158,6 +165,7 @@ function PedigreeStory({
   nominationPrompts,
   shapeBy,
   genderIdentities,
+  askGenderIdentity,
 }: StoryOptions) {
   const rawPayload = useMemo(
     () =>
@@ -170,6 +178,7 @@ function PedigreeStory({
           nominationPrompts,
           shapeBy,
           genderIdentities,
+          askGenderIdentity,
         }).getInterviewPayload({ currentStep: 1 }),
       ),
     [
@@ -180,6 +189,7 @@ function PedigreeStory({
       nominationPrompts,
       shapeBy,
       genderIdentities,
+      askGenderIdentity,
     ],
   );
 
@@ -1254,6 +1264,59 @@ export const ResearcherDefinedGenderIdentities: Story = {
     await expect(
       page.queryByRole('radio', { name: 'A different identity' }),
     ).toBeNull();
+  },
+};
+
+const familyWithoutGenderIdentity: Family = {
+  people: [
+    { id: 'ego', name: 'Ari', sex: 'intersex', ego: true },
+    { id: 'mum', sex: 'female' },
+    { id: 'dad', sex: 'male' },
+    { id: 'sibling', sex: 'intersex' },
+  ],
+  links: [
+    { from: 'mum', to: 'dad', kind: 'partner' },
+    { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'ego', kind: 'biological' },
+    { from: 'mum', to: 'sibling', kind: 'biological' },
+    { from: 'dad', to: 'sibling', kind: 'biological' },
+  ],
+};
+
+/**
+ * A stage that does not ask about gender identity. The gendered framing's
+ * words follow sex assigned at birth instead: a parent recorded as female is
+ * a mother, one recorded as male a father, and anyone else a parent or
+ * sibling. The side panel has no gender question.
+ */
+export const WithoutGenderIdentity: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={familyWithoutGenderIdentity}
+      askGenderIdentity={false}
+      shapeBy="sexAssignedAtBirth"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const mother = await canvas.findByRole('button', { name: /^Mother/ });
+    await expect(canvas.getByRole('button', { name: /^Father/ })).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: /^Sibling/ }),
+    ).toBeVisible();
+
+    await userEvent.click(mother);
+    const page = within(canvasElement.ownerDocument.body);
+    // Sex assigned at birth is still asked; gender identity is not.
+    await expect(
+      await page.findByRole('radiogroup', { name: /sex assigned at birth/i }),
+    ).toBeVisible();
+    await expect(
+      page.queryByRole('radiogroup', { name: /gender/i }),
+    ).toBeNull();
+    await expect(page.queryByRole('radio', { name: 'Woman' })).toBeNull();
   },
 };
 

@@ -39,8 +39,7 @@ const familyPedigreeStage = (formVariable: string) => ({
   prompt: 'Who is related to you?',
   nodeConfiguration: {
     nameVariable: 'pedigreeName',
-    genderIdentityVariable: 'pedigreeGender',
-    genderIdentityTerms: [],
+    genderIdentity: { variable: 'pedigreeGender', terms: [] },
     sexAssignedAtBirthVariable: 'pedigreeSab',
     egoVariable: 'pedigreeEgo',
   },

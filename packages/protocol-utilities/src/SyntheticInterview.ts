@@ -277,7 +277,8 @@ type FamilyPedigreeHandle = StageHandleBase & {
   edgeType: string;
   /** Person variable ids, bound by `nodeConfiguration`. */
   name: string;
-  genderIdentity: string;
+  /** Undefined when the stage was added with `askGenderIdentity: false`. */
+  genderIdentity: string | undefined;
   sexAssignedAtBirth: string;
   ego: string;
   /** Edge variable ids, bound by `edgeConfiguration`. */
@@ -716,16 +717,22 @@ export class SyntheticInterview {
 
       entry.nodeConfiguration = {
         nameVariable: personVariable('name', { type: 'text' }),
-        genderIdentityVariable: personVariable('genderIdentity', {
-          type: 'categorical',
-          options: genderIdentities.map(({ value, label }) => ({
-            value,
-            label,
-          })),
-        }),
-        genderIdentityTerms: genderIdentities.flatMap(({ value, words }) =>
-          words === undefined ? [] : [{ value, words }],
-        ),
+        ...(opts?.askGenderIdentity === false
+          ? {}
+          : {
+              genderIdentity: {
+                variable: personVariable('genderIdentity', {
+                  type: 'categorical',
+                  options: genderIdentities.map(({ value, label }) => ({
+                    value,
+                    label,
+                  })),
+                }),
+                terms: genderIdentities.flatMap(({ value, words }) =>
+                  words === undefined ? [] : [{ value, words }],
+                ),
+              },
+            }),
         sexAssignedAtBirthVariable: personVariable('sexAssignedAtBirth', {
           type: 'categorical',
           options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
@@ -1129,7 +1136,7 @@ export class SyntheticInterview {
           personType: entry.subject!.type,
           edgeType: relationship.type,
           name: person.nameVariable,
-          genderIdentity: person.genderIdentityVariable,
+          genderIdentity: person.genderIdentity?.variable,
           sexAssignedAtBirth: person.sexAssignedAtBirthVariable,
           ego: person.egoVariable,
           kind: relationship.kindVariable,

@@ -557,6 +557,7 @@
   "architect.protocolSummary.stage.dataSource.dataSource": "DataSource",
   "architect.protocolSummary.stage.familyPedigree.currentPartner": "Current partner",
   "architect.protocolSummary.stage.familyPedigree.genderIdentity": "Gender identity",
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityNotAsked": "Not asked. Relatives are described by their sex assigned at birth.",
   "architect.protocolSummary.stage.familyPedigree.genderIdentityTerm": "{option}: {words}",
   "architect.protocolSummary.stage.familyPedigree.genderIdentityTerms": "Gender identity words",
   "architect.protocolSummary.stage.familyPedigree.genderWordsFeminine": "Feminine words (mother, sister)",

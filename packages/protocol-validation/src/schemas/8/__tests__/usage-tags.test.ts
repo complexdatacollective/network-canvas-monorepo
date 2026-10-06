@@ -110,8 +110,7 @@ describe('attribute-writer usage tags', () => {
           prompt: 'Build your family',
           nodeConfiguration: {
             nameVariable: 'name',
-            genderIdentityVariable: 'gender',
-            genderIdentityTerms: [],
+            genderIdentity: { variable: 'gender', terms: [] },
             sexAssignedAtBirthVariable: 'sab',
             egoVariable: 'isEgo',
           },

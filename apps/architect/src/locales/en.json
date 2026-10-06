@@ -2247,6 +2247,10 @@
     "defaultMessage": "Gender identity",
     "description": "Label for the attribute that holds each family member’s gender identity, in the printable protocol summary."
   },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityNotAsked": {
+    "defaultMessage": "Not asked. Relatives are described by their sex assigned at birth.",
+    "description": "Value shown beside the gender identity label in the printable protocol summary when the Family Pedigree stage does not ask about gender identity, saying what the kinship words follow instead."
+  },
   "architect.protocolSummary.stage.familyPedigree.genderIdentityTerm": {
     "defaultMessage": "{option}: {words}",
     "description": "One line of the printable protocol summary’s list of gender identity words. option is a gender identity option’s own label, as the researcher wrote it, and words is the name of the kinship words it takes."

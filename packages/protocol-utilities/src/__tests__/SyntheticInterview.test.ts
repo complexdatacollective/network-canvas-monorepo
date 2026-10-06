@@ -912,8 +912,10 @@ describe('SyntheticInterview', () => {
       expect(typeof config.prompt).toBe('string');
       expect(config.nodeConfiguration).toEqual({
         nameVariable: stage.name,
-        genderIdentityVariable: stage.genderIdentity,
-        genderIdentityTerms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
+        genderIdentity: {
+          variable: stage.genderIdentity,
+          terms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
+        },
         sexAssignedAtBirthVariable: stage.sexAssignedAtBirth,
         egoVariable: stage.ego,
       });
@@ -936,7 +938,7 @@ describe('SyntheticInterview', () => {
       const family = (codebook.edge as Typed)[stage.edgeType]!.variables;
       expect(person[stage.name]).toMatchObject({ type: 'text' });
       expect(person[stage.ego]).toMatchObject({ type: 'boolean' });
-      expect(person[stage.genderIdentity]).toMatchObject({
+      expect(person[stage.genderIdentity!]).toMatchObject({
         type: 'categorical',
         options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
           value,
@@ -967,16 +969,16 @@ describe('SyntheticInterview', () => {
       });
       const protocol = si.getProtocol();
       const config = protocol.stages[0] as unknown as {
-        nodeConfiguration: { genderIdentityTerms: unknown };
+        nodeConfiguration: { genderIdentity: { terms: unknown } };
       };
-      expect(config.nodeConfiguration.genderIdentityTerms).toEqual([
+      expect(config.nodeConfiguration.genderIdentity.terms).toEqual([
         { value: 'transWoman', words: 'feminine' },
         { value: 'agender', words: 'neutral' },
       ]);
       type Typed = Record<string, { variables: Record<string, unknown> }>;
       expect(
         (protocol.codebook.node as Typed)[stage.personType]!.variables[
-          stage.genderIdentity
+          stage.genderIdentity!
         ],
       ).toMatchObject({
         options: [
@@ -984,6 +986,31 @@ describe('SyntheticInterview', () => {
           { value: 'agender', label: 'Agender' },
         ],
       });
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('leaves gender identity out when the stage does not ask about it', async () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        askGenderIdentity: false,
+      });
+      const protocol = si.getProtocol();
+      expect(stage.genderIdentity).toBeUndefined();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: Record<string, unknown>;
+      };
+      expect(config.nodeConfiguration).toEqual({
+        nameVariable: stage.name,
+        sexAssignedAtBirthVariable: stage.sexAssignedAtBirth,
+        egoVariable: stage.ego,
+      });
+      // No gender identity variable is created either.
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      const variables = (protocol.codebook.node as Typed)[stage.personType]!
+        .variables;
+      expect(Object.keys(variables)).toHaveLength(3);
       const result = await validateSynthetic(protocol);
       expect(result.error?.issues ?? []).toEqual([]);
       expect(result.success).toBe(true);
@@ -1025,7 +1052,7 @@ describe('SyntheticInterview', () => {
         initialNodes: { count: 2 },
       });
       si.setNodeAttribute(0, stage.ego, true);
-      si.setNodeAttribute(1, stage.genderIdentity, ['woman']);
+      si.setNodeAttribute(1, stage.genderIdentity!, ['woman']);
       si.addEdges([[1, 0]], stage.edgeType);
       si.setEdgeAttribute(0, stage.kind, ['biological']);
 

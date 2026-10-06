@@ -24,15 +24,24 @@ import {
 export type PedigreeConfig = {
   personType: string;
   nameVariable: string;
-  genderIdentityVariable: string;
   /**
-   * Which kinship words each option of the gender identity attribute takes. An
-   * option not listed takes neutral words.
+   * The gender identity question. Absent when the stage does not ask about
+   * gender identity: no question is shown, and the gendered framing's words
+   * follow sex assigned at birth instead.
    */
-  genderIdentityTerms: readonly {
-    value: string | number;
-    words: PedigreeGenderWords;
-  }[];
+  genderIdentity:
+    | {
+        variable: string;
+        /**
+         * Which kinship words each option of the attribute takes. An option
+         * not listed (or no longer an option) takes neutral words.
+         */
+        terms: readonly {
+          value: string | number;
+          words: PedigreeGenderWords;
+        }[];
+      }
+    | undefined;
   sexAssignedAtBirthVariable: string;
   egoVariable: string;
   relationshipType: string;
@@ -52,8 +61,7 @@ export function pedigreeConfigFromStage(
   return {
     personType: stage.subject.type,
     nameVariable: stage.nodeConfiguration.nameVariable,
-    genderIdentityVariable: stage.nodeConfiguration.genderIdentityVariable,
-    genderIdentityTerms: stage.nodeConfiguration.genderIdentityTerms,
+    genderIdentity: stage.nodeConfiguration.genderIdentity,
     sexAssignedAtBirthVariable:
       stage.nodeConfiguration.sexAssignedAtBirthVariable,
     egoVariable: stage.nodeConfiguration.egoVariable,
@@ -74,8 +82,12 @@ export type Person = {
   /** The value of the gender identity option the person was given, whatever
    * the researcher defined it to be. Undefined when not yet answered. */
   genderIdentity: string | number | undefined;
-  /** The kinship words their gender identity option takes. Undefined when
-   * their gender identity has not been answered. */
+  /**
+   * The kinship words the gendered framing uses for them. With gender identity
+   * collected, the words their option takes, undefined until it is answered.
+   * Without it, the words their sex assigned at birth gives: feminine for
+   * female, masculine for male, neutral for anything else or unanswered.
+   */
   genderWords: PedigreeGenderWords | undefined;
   sexAssignedAtBirth: PedigreeSexAssignedAtBirth | undefined;
   /** Siblings or children the participant has said there are none of, or
@@ -135,6 +147,15 @@ function readCategoricalSet<T extends string>(
   return allowed.filter((member) => values.includes(member));
 }
 
+/** The words used for a person when gender identity is not collected. */
+function wordsFromSexAssignedAtBirth(
+  sex: PedigreeSexAssignedAtBirth | undefined,
+): PedigreeGenderWords {
+  if (sex === 'female') return 'feminine';
+  if (sex === 'male') return 'masculine';
+  return 'neutral';
+}
+
 export function readFamily(
   nodes: readonly NcNode[],
   edges: readonly NcEdge[],
@@ -145,24 +166,27 @@ export function readFamily(
     .map((node) => {
       const attributes = node[entityAttributesProperty];
       const name = attributes[config.nameVariable];
-      const genderIdentity = readOption(
-        attributes[config.genderIdentityVariable],
+      const genderIdentityConfig = config.genderIdentity;
+      const genderIdentity = genderIdentityConfig
+        ? readOption(attributes[genderIdentityConfig.variable])
+        : undefined;
+      const sexAssignedAtBirth = readCategorical(
+        attributes[config.sexAssignedAtBirthVariable],
+        PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
       );
       return {
         id: node[entityPrimaryKeyProperty],
         isEgo: attributes[config.egoVariable] === true,
         name: typeof name === 'string' && name.trim() !== '' ? name : undefined,
         genderIdentity,
-        genderWords:
-          genderIdentity === undefined
+        genderWords: genderIdentityConfig
+          ? genderIdentity === undefined
             ? undefined
-            : (config.genderIdentityTerms.find(
+            : (genderIdentityConfig.terms.find(
                 (term) => term.value === genderIdentity,
-              )?.words ?? 'neutral'),
-        sexAssignedAtBirth: readCategorical(
-          attributes[config.sexAssignedAtBirthVariable],
-          PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
-        ),
+              )?.words ?? 'neutral')
+          : wordsFromSexAssignedAtBirth(sexAssignedAtBirth),
+        sexAssignedAtBirth,
         relativesNotRecorded: readCategoricalSet(
           config.relativesNotRecordedVariable
             ? attributes[config.relativesNotRecordedVariable]
@@ -267,16 +291,19 @@ const isEmpty = (value: VariableValue | undefined) =>
 
 /**
  * The required details not yet given for a person: the interface's own
- * person attributes, then every researcher field whose attribute the codebook
- * marks required. A name is never required — a participant may not know it,
+ * person attributes (gender identity only where the stage collects it), then
+ * every researcher field whose attribute the codebook marks required. A name is never required — a participant may not know it,
  * and an unnamed person is shown by how they are related to the participant.
  */
 export function missingDetailsFor(
   person: Person,
   requiredFormVariables: readonly string[],
+  config: Pick<PedigreeConfig, 'genderIdentity'>,
 ): MissingDetail[] {
   const missing: MissingDetail[] = [];
-  if (person.genderIdentity === undefined) missing.push('genderIdentity');
+  if (config.genderIdentity && person.genderIdentity === undefined) {
+    missing.push('genderIdentity');
+  }
   if (person.sexAssignedAtBirth === undefined) {
     missing.push('sexAssignedAtBirth');
   }

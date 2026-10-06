@@ -55,15 +55,17 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   prompt: 'Add the members of your family.',
   nodeConfiguration: {
     nameVariable: 'fm_name',
-    genderIdentityVariable: 'genderIdentity',
-    genderIdentityTerms: [
-      { value: 'woman', words: 'feminine' },
-      { value: 'man', words: 'masculine' },
-      { value: 'nonBinary', words: 'neutral' },
-      { value: 'differentIdentity', words: 'neutral' },
-      { value: 'unknown', words: 'unknown' },
-      { value: 'preferNotToSay', words: 'neutral' },
-    ],
+    genderIdentity: {
+      variable: 'genderIdentity',
+      terms: [
+        { value: 'woman', words: 'feminine' },
+        { value: 'man', words: 'masculine' },
+        { value: 'nonBinary', words: 'neutral' },
+        { value: 'differentIdentity', words: 'neutral' },
+        { value: 'unknown', words: 'unknown' },
+        { value: 'preferNotToSay', words: 'neutral' },
+      ],
+    },
     sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'is_ego',
   },

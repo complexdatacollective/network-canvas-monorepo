@@ -6,8 +6,8 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import { formatPersonLabel, KIN_TERMS, labelFamily } from '../kinship';
 import { messages } from '../messages';
-import { readFamily } from '../model';
-import { config, link, person } from './fixtures';
+import { readFamily, type PedigreeConfig } from '../model';
+import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
 const intl = resolveInterviewIntl();
 
@@ -16,8 +16,9 @@ function labelsOf(
   nodes: NcNode[],
   edges: NcEdge[],
   framing: FramingId = 'gendered',
+  stageConfig: PedigreeConfig = config,
 ) {
-  const family = readFamily(nodes, edges, config);
+  const family = readFamily(nodes, edges, stageConfig);
   return Object.fromEntries(
     [...labelFamily(family, framing)].map(([id, label]) => [
       id,
@@ -189,6 +190,67 @@ describe('labelFamily', () => {
       mum: 'Parent',
       sib: 'Sibling',
     });
+  });
+
+  test('with gender identity not collected, the words follow sex assigned at birth', () => {
+    // Whatever the people's recorded gender, the stage does not collect it, so
+    // only sex assigned at birth decides: female feminine, male masculine,
+    // anything else or unanswered neutral.
+    const nodes = [
+      person('ego', { isEgo: true }),
+      person('mum', { sex: ['female'], gender: ['man'] }),
+      person('dad', { sex: ['male'], gender: ['woman'] }),
+      person('sis', { sex: ['female'] }),
+      person('bro', { sex: ['male'] }),
+      person('sib', { sex: ['intersex'] }),
+      person('nan', { sex: ['female'] }),
+      person('grandad', { sex: ['male'] }),
+      person('unasked'),
+    ];
+    const edges = [
+      link('mum', 'ego', 'biological'),
+      link('dad', 'ego', 'biological'),
+      link('mum', 'sis', 'biological'),
+      link('dad', 'sis', 'biological'),
+      link('mum', 'bro', 'biological'),
+      link('dad', 'bro', 'biological'),
+      link('mum', 'sib', 'biological'),
+      link('dad', 'sib', 'biological'),
+      link('nan', 'mum', 'biological'),
+      link('grandad', 'dad', 'biological'),
+      link('mum', 'unasked', 'biological'),
+    ];
+    expect(
+      labelsOf(nodes, edges, 'gendered', configWithoutGenderIdentity),
+    ).toMatchObject({
+      mum: 'Mother',
+      dad: 'Father',
+      sis: 'Sister',
+      bro: 'Brother',
+      sib: 'Sibling',
+      unasked: 'Half-sibling',
+      nan: 'Maternal grandmother',
+      grandad: 'Paternal grandfather',
+    });
+    // The gamete framing is unchanged.
+    expect(
+      labelsOf(nodes, edges, 'gamete', configWithoutGenderIdentity),
+    ).toMatchObject({ mum: 'Egg parent', dad: 'Sperm parent' });
+  });
+
+  test('with gender identity not collected, a parent of another or unanswered sex is neutral, not named by gamete', () => {
+    const nodes = [
+      person('ego', { isEgo: true }),
+      person('parent'),
+      person('other', { sex: ['intersex'] }),
+    ];
+    const edges = [
+      link('parent', 'ego', 'biological'),
+      link('other', 'ego', 'biological'),
+    ];
+    expect(
+      labelsOf(nodes, edges, 'gendered', configWithoutGenderIdentity),
+    ).toMatchObject({ parent: 'Parent 1', other: 'Parent 2' });
   });
 
   test('the side of the family follows the first parent’s words, not their option', () => {

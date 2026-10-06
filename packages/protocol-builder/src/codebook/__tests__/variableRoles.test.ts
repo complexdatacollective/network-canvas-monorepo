@@ -82,8 +82,7 @@ const familySections = (): Record<string, SectionDoc> => ({
     prompt: 'Build your family',
     nodeConfiguration: {
       nameVariable: 'name',
-      genderIdentityVariable: 'genderIdentity',
-      genderIdentityTerms: [],
+      genderIdentity: { variable: 'genderIdentity', terms: [] },
       sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
       egoVariable: 'isEgo',
     },

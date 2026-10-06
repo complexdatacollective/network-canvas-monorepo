@@ -319,8 +319,11 @@ export type StageEntry = {
 /** The person-node variable ids a FamilyPedigree stage binds. */
 export type FamilyPedigreeNodeConfigurationEntry = {
   nameVariable: string;
-  genderIdentityVariable: string;
-  genderIdentityTerms: { value: string | number; words: PedigreeGenderWords }[];
+  /** Absent when the stage does not ask about gender identity. */
+  genderIdentity?: {
+    variable: string;
+    terms: { value: string | number; words: PedigreeGenderWords }[];
+  };
   sexAssignedAtBirthVariable: string;
   egoVariable: string;
 };
@@ -486,6 +489,10 @@ export type AddStageInput = {
   prompt?: string;
   relationshipType?: string;
   framing?: FramingSetting;
+  /** Whether the stage asks about gender identity. Defaults to true; when
+   * false, no gender identity variable is created, `genderIdentities` is
+   * ignored, and the gendered framing's words follow sex assigned at birth. */
+  askGenderIdentity?: boolean;
   /** The options of the gender identity variable and the words each takes;
    * an option with no `words` is left out of the stage's terms, so it takes
    * neutral words. Defaults to the six options Architect seeds a new

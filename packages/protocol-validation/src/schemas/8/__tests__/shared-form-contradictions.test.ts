@@ -147,8 +147,10 @@ const familyPedigreeProtocol = () => ({
       prompt: 'Build your family',
       nodeConfiguration: {
         nameVariable: 'label',
-        genderIdentityVariable: 'genderIdentity',
-        genderIdentityTerms: GENDER_IDENTITY_TERMS,
+        genderIdentity: {
+          variable: 'genderIdentity',
+          terms: GENDER_IDENTITY_TERMS,
+        },
         sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         egoVariable: 'isEgo',
       },

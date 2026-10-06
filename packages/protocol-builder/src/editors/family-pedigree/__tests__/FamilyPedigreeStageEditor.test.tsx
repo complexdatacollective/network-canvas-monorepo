@@ -38,6 +38,7 @@ shimMarkdownEditorMeasurement();
 const SECTIONS = [
   'Node setup',
   'Person attributes',
+  'Ask about gender identity',
   'Relationships',
   'Completeness',
   'Prompt',
@@ -91,6 +92,15 @@ function variableIdByName(
 
 const nodeConfigurationOf = (document: SectionDoc | undefined) =>
   isRecord(document?.nodeConfiguration) ? document.nodeConfiguration : {};
+
+/** Switches on the question that asks each family member's gender identity. */
+const switchOnGenderIdentity = async (
+  harness: StageEditorHarness,
+): Promise<void> => {
+  await harness.user.click(
+    await screen.findByRole('switch', { name: 'Ask about gender identity' }),
+  );
+};
 
 describe('the family pedigree stage editor', () => {
   it('claims exactly this interface', () => {
@@ -147,6 +157,7 @@ describe('the family pedigree stage editor', () => {
       await screen.findByRole('radio', { name: 'family member' }),
     );
     await bindSlot(harness, 'Name', 'fm_name');
+    await switchOnGenderIdentity(harness);
     await bindSlot(harness, 'Gender identity', 'genderIdentity');
     await bindSlot(harness, 'Sex assigned at birth', 'sexAssignedAtBirth');
     await bindSlot(harness, 'Participant marker', 'is_ego');
@@ -173,12 +184,15 @@ describe('the family pedigree stage editor', () => {
         'Add the members of your family. Select a person to add their relatives.',
       nodeConfiguration: {
         nameVariable: 'fm_name',
-        genderIdentityVariable: 'genderIdentity',
-        // The fixture attribute's options are the interface's defaults, so
-        // binding it maps each to the words its default takes.
-        genderIdentityTerms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(
-          ({ value, words }) => ({ value, words }),
-        ),
+        genderIdentity: {
+          variable: 'genderIdentity',
+          // The fixture attribute's options are the interface's defaults, so
+          // binding it maps each to the words its default takes.
+          terms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
+            value,
+            words,
+          })),
+        },
         sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         egoVariable: 'is_ego',
       },
@@ -212,7 +226,7 @@ describe('the family pedigree stage editor', () => {
       stage: familyPedigreeStageWith({
         nodeConfiguration: {
           nameVariable: 'fm_name',
-          genderIdentityVariable: 'genderIdentity',
+          genderIdentity: { variable: 'genderIdentity', terms: [] },
           sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         },
       }),
@@ -302,10 +316,13 @@ describe('the attribute slots', () => {
 
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument)).toMatchObject({
-      genderIdentityVariable: created,
-      genderIdentityTerms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(
-        ({ value, words }) => ({ value, words }),
-      ),
+      genderIdentity: {
+        variable: created,
+        terms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
+          value,
+          words,
+        })),
+      },
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
@@ -397,6 +414,110 @@ describe('the attribute slots', () => {
   });
 });
 
+describe('asking about gender identity', () => {
+  const genderIdentitySwitch = () =>
+    screen.findByRole('switch', { name: 'Ask about gender identity' });
+
+  it('is on for a stage that holds a gender identity attribute, and says what off means', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(await genderIdentitySwitch()).toBeChecked();
+    expect(
+      screen.getByText(
+        'When off, relatives are described by their sex assigned at birth.',
+      ),
+    ).toBeVisible();
+    expect(
+      await screen.findByText('Gender identity', { selector: 'label' }),
+    ).toBeVisible();
+  });
+
+  it('is off for a new stage, which asks nothing about gender identity', async () => {
+    const harness = openNewStage();
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'family member' }),
+    );
+
+    expect(await genderIdentitySwitch()).not.toBeChecked();
+    expect(
+      screen.queryByText('Gender identity', { selector: 'label' }),
+    ).toBeNull();
+  });
+
+  it('saves a stage the schema accepts with no gender identity at all', async () => {
+    const harness = openNewStage();
+
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'family member' }),
+    );
+    await bindSlot(harness, 'Name', 'fm_name');
+    await bindSlot(harness, 'Sex assigned at birth', 'sexAssignedAtBirth');
+    await bindSlot(harness, 'Participant marker', 'is_ego');
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family_edge' }),
+    );
+    await bindSlot(harness, 'Relationship kind', 'relationshipKind');
+    await bindSlot(harness, 'Gestational carrier', 'isGestationalCarrier');
+    await bindSlot(harness, 'Current partner', 'isCurrentPartner');
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Stage name' }),
+      'Family',
+    );
+
+    const request = await harness.submit();
+
+    expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
+      nameVariable: 'fm_name',
+      sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
+      egoVariable: 'is_ego',
+    });
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('removes the attribute and the words together when switched off again', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    await harness.user.click(await genderIdentitySwitch());
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Stop asking' }),
+    );
+
+    const request = await harness.submit();
+    expect(nodeConfigurationOf(request?.stageDocument)).not.toHaveProperty(
+      'genderIdentity',
+    );
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+    // The attribute stays in the codebook: only this stage stopped asking.
+    expect(variableIdByName(harness, 'genderIdentity')).toEqual(
+      expect.any(String),
+    );
+  });
+
+  it('refuses a switched-on question with no attribute chosen', async () => {
+    const harness = openNewStage();
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'family member' }),
+    );
+    await bindSlot(harness, 'Name', 'fm_name');
+    await harness.user.click(await genderIdentitySwitch());
+    await screen.findByText('Gender identity', { selector: 'label' });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      harness
+        .outline()
+        .find((section) => section.title === 'Ask about gender identity')
+        ?.state,
+    ).toBe('Has a problem');
+  });
+});
+
 describe('the gender identity options, which this stage manages', () => {
   const OPTIONS = (harness: StageEditorHarness): unknown => {
     const variables =
@@ -438,8 +559,11 @@ describe('the gender identity options, which this stage manages', () => {
       ).toBeNull(),
     );
     const request = await harness.submit();
-    const terms = nodeConfigurationOf(request?.stageDocument)
-      .genderIdentityTerms as { value: string }[];
+    const terms = (
+      nodeConfigurationOf(request?.stageDocument).genderIdentity as {
+        terms: { value: string }[];
+      }
+    ).terms;
     expect(terms.map((term) => term.value)).not.toContain('preferNotToSay');
     expect(terms).toHaveLength(5);
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
@@ -614,16 +738,24 @@ describe('the gender identity words', () => {
   const withTerms = (terms: readonly Record<string, unknown>[]) => {
     const nodeConfiguration =
       loadFixtureStage('family-pedigree-1').fields.nodeConfiguration;
+    const genderIdentity = isRecord(nodeConfiguration)
+      ? nodeConfiguration.genderIdentity
+      : undefined;
     return familyPedigreeStageWith({
       nodeConfiguration: {
         ...(isRecord(nodeConfiguration) ? nodeConfiguration : {}),
-        genderIdentityTerms: [...terms],
+        genderIdentity: {
+          ...(isRecord(genderIdentity) ? genderIdentity : {}),
+          terms: [...terms],
+        },
       },
     });
   };
 
-  const termsOf = (document: SectionDoc | undefined) =>
-    nodeConfigurationOf(document).genderIdentityTerms;
+  const termsOf = (document: SectionDoc | undefined) => {
+    const genderIdentity = nodeConfigurationOf(document).genderIdentity;
+    return isRecord(genderIdentity) ? genderIdentity.terms : undefined;
+  };
 
   it('has a row for each option of the attribute, set to the words it takes', async () => {
     const harness = openFixture();
@@ -730,6 +862,7 @@ describe('the gender identity words', () => {
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
+    await switchOnGenderIdentity(harness);
     await screen.findByText('Gender identity', { selector: 'label' });
     expect(screen.queryByText('Words for each gender identity')).toBeNull();
 
@@ -778,6 +911,7 @@ describe('the gender identity words', () => {
         otherGender: OTHER_GENDER,
       });
       await harness.opened();
+      await switchOnGenderIdentity(harness);
       return harness;
     };
 

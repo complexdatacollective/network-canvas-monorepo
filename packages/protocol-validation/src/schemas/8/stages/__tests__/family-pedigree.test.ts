@@ -23,8 +23,7 @@ const base = {
   prompt: 'Draw your family',
   nodeConfiguration: {
     nameVariable: 'name',
-    genderIdentityVariable: 'gender',
-    genderIdentityTerms: GENDER_IDENTITY_TERMS,
+    genderIdentity: { variable: 'gender', terms: GENDER_IDENTITY_TERMS },
     sexAssignedAtBirthVariable: 'sab',
     egoVariable: 'isEgo',
   },
@@ -205,16 +204,35 @@ describe('FamilyPedigree in a whole protocol', () => {
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
-  it('accepts gender identity words for an option the attribute does not have', () => {
-    // The attribute's options are edited before the stage that owns their words
-    // is saved, so a stale entry is not an error; the interview ignores it.
+  it('accepts gender identity words for an option the attribute no longer has', () => {
     const result = ProtocolSchemaV8.safeParse(
       protocolWith(base, [
         { value: 'woman', label: 'Woman' },
         { value: 'man', label: 'Man' },
       ]),
     );
-    expect(result.error?.issues ?? null).toBeNull();
+    expect(result.success ? null : result.error.issues).toBeNull();
+  });
+
+  it('accepts a stage that does not ask about gender identity', () => {
+    const { genderIdentity: _omitted, ...nodeConfiguration } =
+      base.nodeConfiguration;
+    const result = ProtocolSchemaV8.safeParse(
+      protocolWith({ ...base, nodeConfiguration }),
+    );
+    expect(result.success ? null : result.error.issues).toBeNull();
+  });
+
+  it('refuses gender identity that names a variable but no words', () => {
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nodeConfiguration: {
+          ...base.nodeConfiguration,
+          genderIdentity: { variable: 'gender' },
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it('requires each nomination prompt variable to be a boolean', () => {

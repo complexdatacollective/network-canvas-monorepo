@@ -11,14 +11,16 @@ import type { PedigreeConfig } from '../model';
 export const config: PedigreeConfig = {
   personType: 'person',
   nameVariable: 'name',
-  genderIdentityVariable: 'gender',
-  genderIdentityTerms: [
-    { value: 'woman', words: 'feminine' },
-    { value: 'man', words: 'masculine' },
-    { value: 'nonBinary', words: 'neutral' },
-    { value: 'unknown', words: 'unknown' },
-    { value: 'transWoman', words: 'feminine' },
-  ],
+  genderIdentity: {
+    variable: 'gender',
+    terms: [
+      { value: 'woman', words: 'feminine' },
+      { value: 'man', words: 'masculine' },
+      { value: 'nonBinary', words: 'neutral' },
+      { value: 'unknown', words: 'unknown' },
+      { value: 'transWoman', words: 'feminine' },
+    ],
+  },
   sexAssignedAtBirthVariable: 'sex',
   egoVariable: 'isEgo',
   relationshipType: 'family',
@@ -26,6 +28,12 @@ export const config: PedigreeConfig = {
   gestationalCarrierVariable: 'carrier',
   currentPartnerVariable: 'current',
   relativesNotRecordedVariable: 'notRecorded',
+};
+
+/** The same stage with gender identity not collected. */
+export const configWithoutGenderIdentity: PedigreeConfig = {
+  ...config,
+  genderIdentity: undefined,
 };
 
 export const person = (

@@ -25,8 +25,10 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   prompt: 'Build your family',
   nodeConfiguration: {
     nameVariable: 'fmName',
-    genderIdentityVariable: 'genderIdentity',
-    genderIdentityTerms: GENDER_IDENTITY_TERMS,
+    genderIdentity: {
+      variable: 'genderIdentity',
+      terms: GENDER_IDENTITY_TERMS,
+    },
     sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'isEgo',
   },
@@ -118,8 +120,10 @@ describe('stage subjects resolve during collection', () => {
       familyPedigree({
         nodeConfiguration: {
           nameVariable: 'notInCodebook',
-          genderIdentityVariable: 'genderIdentity',
-          genderIdentityTerms: GENDER_IDENTITY_TERMS,
+          genderIdentity: {
+            variable: 'genderIdentity',
+            terms: GENDER_IDENTITY_TERMS,
+          },
           sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
           egoVariable: 'isEgo',
         },

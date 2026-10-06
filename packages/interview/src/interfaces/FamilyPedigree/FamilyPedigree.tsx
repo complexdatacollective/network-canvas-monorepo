@@ -268,13 +268,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // The gender identity question offers the attribute's own options, with
   // the labels the researcher gave them.
+  const genderIdentityVariable = config.genderIdentity?.variable;
   const genderIdentityOptions = useMemo(() => {
+    if (genderIdentityVariable === undefined) return [];
     const definition =
-      codebook.node?.[config.personType]?.variables?.[
-        config.genderIdentityVariable
-      ];
+      codebook.node?.[config.personType]?.variables?.[genderIdentityVariable];
     return definition?.type === 'categorical' ? definition.options : [];
-  }, [codebook, config.personType, config.genderIdentityVariable]);
+  }, [codebook, config.personType, genderIdentityVariable]);
 
   const requiredFormVariables = useMemo(() => {
     const variables = codebook.node?.[config.personType]?.variables ?? {};
@@ -618,10 +618,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             family,
             completeness.scope,
             (person) =>
-              missingDetailsFor(person, requiredFormVariables).length > 0,
+              missingDetailsFor(person, requiredFormVariables, config).length >
+              0,
           )
         : null,
-    [family, completeness, requiredFormVariables],
+    [family, completeness, requiredFormVariables, config],
   );
   const [trackerOpen, setTrackerOpen] = useState(false);
 
@@ -726,7 +727,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       mode: {
         kind: 'edit',
         person,
-        missing: missingDetailsFor(person, requiredFormVariables),
+        missing: missingDetailsFor(person, requiredFormVariables, config),
       },
       ids: [],
     });
@@ -1313,8 +1314,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     hasMissingDetails={
                       !nomination &&
                       family.byId.has(personId) &&
-                      missingDetailsFor(person, requiredFormVariables).length >
-                        0
+                      missingDetailsFor(person, requiredFormVariables, config)
+                        .length > 0
                     }
                     adopted={shown.links.some(
                       (link) =>

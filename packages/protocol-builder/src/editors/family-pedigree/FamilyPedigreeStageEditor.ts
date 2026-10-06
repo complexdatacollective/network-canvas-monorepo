@@ -4,6 +4,7 @@ import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import {
   completeness,
+  genderIdentity,
   pedigreePrompt,
   nodeConfiguration,
   personFormFields,
@@ -16,13 +17,14 @@ import {
  * each new person in a side panel.
  *
  * The sections run in the order a researcher decides them: which node type
- * people are, where the interface records what it asks about each person, how
- * relationships are recorded, the instruction shown on the canvas, and any
+ * people are, where the interface records what it asks about each person,
+ * whether it asks about gender identity, how relationships are recorded, the instruction shown on the canvas, and any
  * further questions about each person.
  */
 export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
   subjectPicker({ entity: 'node' }),
   nodeConfiguration(),
+  genderIdentity(),
   relationships(),
   completeness(),
   pedigreePrompt(),

@@ -691,8 +691,10 @@ const ProtocolSchema = z
     // retyped attribute is reported by the reference validator above.
     protocol.stages.forEach((stage, stageIndex) => {
       if (stage.type !== 'FamilyPedigree') return;
+      const genderIdentity = stage.nodeConfiguration.genderIdentity;
+      if (!genderIdentity) return;
       const seen = new Set<string | number>();
-      stage.nodeConfiguration.genderIdentityTerms.forEach((term, termIndex) => {
+      genderIdentity.terms.forEach((term, termIndex) => {
         if (seen.has(term.value)) {
           ctx.addIssue({
             code: 'custom' as const,
@@ -701,7 +703,8 @@ const ProtocolSchema = z
               'stages',
               stageIndex,
               'nodeConfiguration',
-              'genderIdentityTerms',
+              'genderIdentity',
+              'terms',
               termIndex,
               'value',
             ],

@@ -45,11 +45,13 @@ describe('Protocol Summary family pedigree', () => {
           personType="person"
           prompt={null}
           nodeConfiguration={{
-            genderIdentityVariable: 'gender',
-            genderIdentityTerms: [
-              { value: 'woman', words: 'feminine' },
-              { value: 'transWoman', words: 'feminine' },
-            ],
+            genderIdentity: {
+              variable: 'gender',
+              terms: [
+                { value: 'woman', words: 'feminine' },
+                { value: 'transWoman', words: 'feminine' },
+              ],
+            },
           }}
           edgeConfiguration={null}
           completeness={null}
@@ -67,5 +69,29 @@ describe('Protocol Summary family pedigree', () => {
     expect(
       screen.getByText('Agender: Neutral words (parent, sibling)'),
     ).toBeInTheDocument();
+  });
+
+  it('says relatives follow sex assigned at birth when gender identity is not asked', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={{ nameVariable: 'name' }}
+          edgeConfiguration={null}
+          completeness={null}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Gender identity')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Not asked. Relatives are described by their sex assigned at birth.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Gender identity words')).toBeNull();
   });
 });

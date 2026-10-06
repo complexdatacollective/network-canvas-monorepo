@@ -14,14 +14,15 @@ import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 
 /**
- * Where the stage keeps each node configuration slot. `genderIdentityTerms` is
- * not an attribute: it says which kinship words each option of the gender
- * identity attribute takes.
+ * Where the stage keeps each node configuration slot. `genderIdentity` is
+ * optional and holds two things: the attribute (`variable`) and which kinship
+ * words each of its options takes (`terms`, not an attribute).
  */
 export const NODE_CONFIGURATION_PATHS = Object.freeze({
   nameVariable: 'nodeConfiguration.nameVariable',
-  genderIdentityVariable: 'nodeConfiguration.genderIdentityVariable',
-  genderIdentityTerms: 'nodeConfiguration.genderIdentityTerms',
+  genderIdentity: 'nodeConfiguration.genderIdentity',
+  genderIdentityVariable: 'nodeConfiguration.genderIdentity.variable',
+  genderIdentityTerms: 'nodeConfiguration.genderIdentity.terms',
   sexAssignedAtBirthVariable: 'nodeConfiguration.sexAssignedAtBirthVariable',
   egoVariable: 'nodeConfiguration.egoVariable',
 });

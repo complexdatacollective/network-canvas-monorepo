@@ -18,8 +18,7 @@ type Stage = Record<string, unknown>;
 
 const nodeConfiguration = {
   nameVariable: 'fmName',
-  genderIdentityVariable: 'genderIdentity',
-  genderIdentityTerms: GENDER_IDENTITY_TERMS,
+  genderIdentity: { variable: 'genderIdentity', terms: GENDER_IDENTITY_TERMS },
   sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
   egoVariable: 'isEgo',
 };
@@ -301,7 +300,7 @@ describe('findStageManagedOptionBindings', () => {
         descriptor: { owner: 'the kin words each option takes' },
         stageId: 'fp1',
         stageLabel: 'Family Pedigree',
-        path: ['stages', 0, 'nodeConfiguration', 'genderIdentityVariable'],
+        path: ['stages', 0, 'nodeConfiguration', 'genderIdentity', 'variable'],
       },
     ]);
   });
@@ -316,6 +315,14 @@ describe('findStageManagedOptionBindings', () => {
         (binding) => binding.stageId,
       ),
     ).toEqual(['fp1', 'fp2']);
+  });
+
+  it('finds nothing when the stage does not ask about gender identity', () => {
+    const { genderIdentity: _omitted, ...withoutGender } = nodeConfiguration;
+    const protocol = protocolWith([
+      familyPedigree({ nodeConfiguration: withoutGender }),
+    ]);
+    expect(findStageManagedOptionBindings(protocol)).toEqual([]);
   });
 
   it('does not bind variables that other stages merely write', () => {

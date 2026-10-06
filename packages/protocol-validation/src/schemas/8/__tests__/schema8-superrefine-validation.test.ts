@@ -2627,12 +2627,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     const protocolWithLockedVariables = ({
       genderIdentityOptions = GENDER_IDENTITY_OPTIONS,
       genderIdentityTerms = GENDER_IDENTITY_TERMS,
+      askGenderIdentity = true,
       sexAssignedAtBirthType = 'categorical',
       sexAssignedAtBirthOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
       relationshipKindOptions = PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
     }: {
       genderIdentityOptions?: Options;
       genderIdentityTerms?: { value: string | number; words: string }[];
+      askGenderIdentity?: boolean;
       sexAssignedAtBirthType?: 'categorical' | 'ordinal';
       sexAssignedAtBirthOptions?: Options;
       relationshipKindOptions?: Options;
@@ -2688,8 +2690,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           prompt: 'Build your family',
           nodeConfiguration: {
             nameVariable: 'name',
-            genderIdentityVariable: 'gender',
-            genderIdentityTerms,
+            ...(askGenderIdentity
+              ? {
+                  genderIdentity: {
+                    variable: 'gender',
+                    terms: genderIdentityTerms,
+                  },
+                }
+              : {}),
             sexAssignedAtBirthVariable: 'sab',
             egoVariable: 'isEgo',
           },
@@ -2758,6 +2766,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
+    it('accepts a stage that does not ask about gender identity', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({ askGenderIdentity: false }),
+      );
+      expect(result.success).toBe(true);
+    });
+
     it('rejects words given twice for one option', () => {
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
@@ -2779,7 +2794,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'stages',
           0,
           'nodeConfiguration',
-          'genderIdentityTerms',
+          'genderIdentity',
+          'terms',
           1,
           'value',
         ]);

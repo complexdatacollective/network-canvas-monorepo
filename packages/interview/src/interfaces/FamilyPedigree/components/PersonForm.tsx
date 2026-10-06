@@ -123,7 +123,8 @@ type PersonFormProps = {
   /** The stage's words for family members, gendered or by gamete. */
   framing: FramingId;
   /** The options of the codebook's gender identity attribute, as the
-   * researcher defined them. */
+   * researcher defined them. Empty when the stage does not ask about gender
+   * identity. */
   genderIdentityOptions: GenderIdentityOption[];
   formFields: FormField[];
   displayName: (personId: string) => string;
@@ -190,7 +191,7 @@ export default function PersonForm({
     const set: PersonDetails = readOwnDetails(values, config);
     const unset = [
       config.nameVariable,
-      config.genderIdentityVariable,
+      ...(config.genderIdentity ? [config.genderIdentity.variable] : []),
       config.sexAssignedAtBirthVariable,
     ].filter((variable) => !(variable in set));
 
@@ -298,15 +299,17 @@ export default function PersonForm({
             initialValue={person?.name}
             autoComplete="off"
           />
-          <Field
-            component={RadioGroupField}
-            name={config.genderIdentityVariable}
-            nameMode="opaque"
-            label={intl.formatMessage(messages.genderIdentityLabel)}
-            options={genderIdentityOptions}
-            required
-            initialValue={person?.genderIdentity}
-          />
+          {config.genderIdentity && (
+            <Field
+              component={RadioGroupField}
+              name={config.genderIdentity.variable}
+              nameMode="opaque"
+              label={intl.formatMessage(messages.genderIdentityLabel)}
+              options={genderIdentityOptions}
+              required
+              initialValue={person?.genderIdentity}
+            />
+          )}
           <Field
             component={RadioGroupField}
             name={config.sexAssignedAtBirthVariable}
@@ -643,8 +646,8 @@ function ParentLinkFields({
   );
 }
 
-/** The interface's own details about the person: name, gender identity and
- * sex assigned at birth, where given. */
+/** The interface's own details about the person: name, gender identity (where
+ * the stage asks) and sex assigned at birth, where given. */
 function readOwnDetails(
   values: Record<string, FieldValue | undefined>,
   config: PedigreeConfig,
@@ -652,9 +655,11 @@ function readOwnDetails(
   const details: PersonDetails = {};
   const name = asString(values[config.nameVariable])?.trim();
   if (name) details[config.nameVariable] = name;
-  const gender = asOption(values[config.genderIdentityVariable]);
-  if (gender !== undefined && gender !== '') {
-    details[config.genderIdentityVariable] = [gender];
+  if (config.genderIdentity) {
+    const gender = asOption(values[config.genderIdentity.variable]);
+    if (gender !== undefined && gender !== '') {
+      details[config.genderIdentity.variable] = [gender];
+    }
   }
   const sex = asString(values[config.sexAssignedAtBirthVariable]);
   if (sex) details[config.sexAssignedAtBirthVariable] = [sex];
@@ -678,7 +683,7 @@ function DraftWatcher({
 }) {
   const values = useFormValue([
     config.nameVariable,
-    config.genderIdentityVariable,
+    ...(config.genderIdentity ? [config.genderIdentity.variable] : []),
     config.sexAssignedAtBirthVariable,
     ...Object.values(ROLE),
   ]);

@@ -157,7 +157,7 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     prompt: 'Tell us about your family',
     nodeConfiguration: {
       nameVariable: 'var-name',
-      genderIdentityVariable: 'var-gender',
+      genderIdentity: { variable: 'var-gender', terms: [] },
       sexAssignedAtBirthVariable: 'var-sex',
       egoVariable: 'var-ego',
     },

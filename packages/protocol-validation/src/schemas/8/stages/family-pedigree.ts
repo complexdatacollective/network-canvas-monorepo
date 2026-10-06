@@ -42,6 +42,47 @@ const GenderIdentityTermSchema = z.strictObject({
 });
 
 /**
+ * Collecting gender identity, which is optional.
+ *
+ * - Absent: the participant is not asked about gender identity. The gendered
+ *   framing's words follow sex assigned at birth instead: female takes
+ *   feminine words, male masculine words, and anything else or unanswered
+ *   neutral ones.
+ * - Present: the participant is asked, and `terms` decides the words. An
+ *   option whose words are `unknown`, or an unanswered question, names a
+ *   biological parent from sex assigned at birth ("biological mother").
+ *
+ * The gamete framing is unaffected: it never uses gendered words.
+ *
+ * The researcher defines the attribute's options, but the options are managed
+ * by this stage: they can be added, removed, relabelled or re-valued only from
+ * a pedigree stage that binds the attribute (see `stageManagedOptions`), so the
+ * words below cannot drift from them. Other parts of the protocol may still
+ * write the attribute. A `terms` entry whose value is not (or is no longer) one
+ * of the attribute's options is ignored by the interview, as if the option had
+ * been left out; no value may be listed twice.
+ */
+const GenderIdentitySchema = z.strictObject({
+  // Categorical attribute holding gender identity. (A person's symbol is the
+  // person type's codebook shape, which the researcher may map to this or to
+  // sex assigned at birth.)
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+    requireType: ['categorical'],
+    stageManagedOptions: {
+      owner: 'the kin words each option takes',
+    },
+  }),
+  // Which kinship words each option takes (mother or father, sister or
+  // brother, parent or sibling). An option not listed takes neutral words.
+  // `unknown` marks an option meaning the person's gender is not known, so a
+  // biological parent is named from their sex assigned at birth ("biological
+  // mother").
+  terms: z.array(GenderIdentityTermSchema),
+});
+
+/**
  * Binds the interface to the person node type: the attributes it collects for
  * every family member, in the side panel, before any researcher-defined field.
  */
@@ -52,31 +93,9 @@ export const NodeConfigurationSchema = z.strictObject({
     usage: 'validatedAttribute',
     requireType: ['text'],
   }),
-  // Categorical attribute holding gender identity. The researcher defines its
-  // options; `genderIdentityTerms` says which kinship words each takes. (A
-  // person's symbol is the person type's codebook shape, which the researcher
-  // may map to this or to sex assigned at birth.)
-  //
-  // The options are managed by this stage: they can be added, removed,
-  // relabelled or re-valued only from a pedigree stage that binds the attribute
-  // (see `stageManagedOptions`), so `genderIdentityTerms` cannot drift from
-  // them. Other parts of the protocol may still write the attribute.
-  genderIdentityVariable: entityAttributeReference({
-    subject: 'stageSubject',
-    usage: 'unvalidatedAttribute',
-    requireType: ['categorical'],
-    stageManagedOptions: {
-      owner: 'the kin words each option takes',
-    },
-  }),
-  // Which kinship words each option of the gender identity attribute takes
-  // (mother or father, sister or brother, parent or sibling). An option not
-  // listed takes neutral words. `unknown` marks an option meaning the person's
-  // gender is not known, so a biological parent is named from their sex
-  // assigned at birth ("biological mother"). A `value` that is not (or is no
-  // longer) one of the attribute's options is ignored by the interview, as if
-  // the option had been left out; none may be listed twice.
-  genderIdentityTerms: z.array(GenderIdentityTermSchema),
+  // Optional: the gender identity question and the words it decides. See
+  // `GenderIdentitySchema`.
+  genderIdentity: GenderIdentitySchema.optional(),
   // Categorical attribute holding sex assigned at birth.
   sexAssignedAtBirthVariable: entityAttributeReference({
     subject: 'stageSubject',

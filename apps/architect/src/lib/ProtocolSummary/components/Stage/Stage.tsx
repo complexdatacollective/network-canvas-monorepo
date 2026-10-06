@@ -196,8 +196,10 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   const nodeConfiguration = configuration.nodeConfiguration as
     | {
         nameVariable?: string;
-        genderIdentityVariable?: string;
-        genderIdentityTerms?: { value: string | number; words: string }[];
+        genderIdentity?: {
+          variable?: string;
+          terms?: { value: string | number; words: string }[];
+        };
         sexAssignedAtBirthVariable?: string;
         egoVariable?: string;
       }

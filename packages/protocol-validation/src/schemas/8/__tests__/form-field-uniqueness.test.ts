@@ -23,8 +23,7 @@ const pedigreeStage = (form?: { variable: string; prompt: string }[]) => ({
   prompt: 'Build your family',
   nodeConfiguration: {
     nameVariable: 'name',
-    genderIdentityVariable: 'gender',
-    genderIdentityTerms: GENDER_IDENTITY_TERMS,
+    genderIdentity: { variable: 'gender', terms: GENDER_IDENTITY_TERMS },
     sexAssignedAtBirthVariable: 'sab',
     egoVariable: 'isEgo',
   },

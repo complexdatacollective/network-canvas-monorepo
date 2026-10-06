@@ -12,7 +12,7 @@ import {
   readFamily,
   siblingsOf,
 } from '../model';
-import { config, link, person } from './fixtures';
+import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
 /** Ego with two parents and a full sibling; the parents are partners. */
 function nuclearFamily(): Family {
@@ -100,6 +100,27 @@ describe('readFamily', () => {
     expect(read('e')).toEqual([undefined, undefined]);
   });
 
+  test('without gender identity, reads the words from sex assigned at birth and ignores any gender value', () => {
+    const family = readFamily(
+      [
+        person('a', { sex: ['female'], gender: ['man'] }),
+        person('b', { sex: ['male'] }),
+        person('c', { sex: ['intersex'] }),
+        person('d'),
+      ],
+      [],
+      configWithoutGenderIdentity,
+    );
+    const read = (id: string) => {
+      const found = family.byId.get(id);
+      return [found?.genderIdentity, found?.genderWords];
+    };
+    expect(read('a')).toEqual([undefined, 'feminine']);
+    expect(read('b')).toEqual([undefined, 'masculine']);
+    expect(read('c')).toEqual([undefined, 'neutral']);
+    expect(read('d')).toEqual([undefined, 'neutral']);
+  });
+
   test('ignores words given for an option the attribute no longer has', () => {
     // The attribute's options are edited before the stage that owns their words
     // is saved, so the stage can briefly list words for an option that is gone.
@@ -112,10 +133,13 @@ describe('readFamily', () => {
       [],
       {
         ...config,
-        genderIdentityTerms: [
-          ...config.genderIdentityTerms,
-          { value: 'removedOption', words: 'masculine' },
-        ],
+        genderIdentity: {
+          variable: 'gender',
+          terms: [
+            ...(config.genderIdentity?.terms ?? []),
+            { value: 'removedOption', words: 'masculine' },
+          ],
+        },
       },
     );
     expect(family.byId.get('a')?.genderWords).toBe('feminine');
@@ -168,12 +192,30 @@ describe('relatives', () => {
 describe('missingDetailsFor', () => {
   test('lists the built-in details not yet given', () => {
     const family = nuclearFamily();
-    expect(missingDetailsFor(family.byId.get('dad')!, [])).toEqual([
+    expect(missingDetailsFor(family.byId.get('dad')!, [], config)).toEqual([
       'sexAssignedAtBirth',
     ]);
-    expect(missingDetailsFor(family.byId.get('sib')!, [])).toEqual([
+    expect(missingDetailsFor(family.byId.get('sib')!, [], config)).toEqual([
       'genderIdentity',
       'sexAssignedAtBirth',
+    ]);
+  });
+
+  test('gender identity is asked for only when the stage collects it', () => {
+    const family = readFamily(
+      [person('a', { sex: ['male'] }), person('b')],
+      [],
+      configWithoutGenderIdentity,
+    );
+    expect(
+      missingDetailsFor(family.byId.get('a')!, [], configWithoutGenderIdentity),
+    ).toEqual([]);
+    expect(
+      missingDetailsFor(family.byId.get('b')!, [], configWithoutGenderIdentity),
+    ).toEqual(['sexAssignedAtBirth']);
+    // The same person, with the question configured, is missing it.
+    expect(missingDetailsFor(family.byId.get('a')!, [], config)).toEqual([
+      'genderIdentity',
     ]);
   });
 
@@ -183,7 +225,7 @@ describe('missingDetailsFor', () => {
       [],
       config,
     );
-    expect(missingDetailsFor(family.byId.get('a')!, [])).toEqual([]);
+    expect(missingDetailsFor(family.byId.get('a')!, [], config)).toEqual([]);
   });
 
   test('includes required researcher fields that are empty', () => {
@@ -200,9 +242,9 @@ describe('missingDetailsFor', () => {
       [],
       config,
     );
-    expect(missingDetailsFor(family.byId.get('a')!, ['age', 'notes'])).toEqual([
-      { variable: 'notes' },
-    ]);
+    expect(
+      missingDetailsFor(family.byId.get('a')!, ['age', 'notes'], config),
+    ).toEqual([{ variable: 'notes' }]);
   });
 });
 
