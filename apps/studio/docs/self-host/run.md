@@ -51,9 +51,9 @@ openssl rand -hex 32             # → GARAGE_ADMIN_TOKEN
 ```
 
 Leave `S3_REGION`, `S3_BUCKET`, `POSTGRES_USER` and `POSTGRES_DB` as they come.
-Leave `DATABASE_URL`, `S3_ENDPOINT` and `REDIS_URL` commented out — each one
-points Studio at a service of your own instead of the stack's, and
-[swap an element](./swap.md) is where that belongs.
+Leave `DATABASE_URL`, `S3_ENDPOINT`, `REDIS_URL` and the Azure Blob Storage
+lines commented out — each one points Studio at a service of your own instead
+of the stack's, and [swap an element](./swap.md) is where that belongs.
 
 Pin the two image variables to a digest rather than a tag on a real instance.
 A tag can be moved, and an instance that pulls a moved tag has upgraded without
@@ -205,12 +205,13 @@ docker compose up -d worker
 
 Whichever provider you use, its host is one of the instance's
 [outbound hosts](./requirements.md#outbound-hosts) — it must be reachable from
-this machine, and it is the only one of them that is yours to choose.
+this machine, and it is yours to choose, like the host of any service you
+swap in.
 
 ## Where to go next
 
 - [Back up and restore](./backup.md) — do this before the instance carries
   anything you would miss.
 - [Upgrade](./upgrade.md) — the five commands, for every release.
-- [Swap an element](./swap.md) — a managed database or bucket, or your own
-  reverse proxy.
+- [Swap an element](./swap.md) — a managed database or bucket, Azure Blob
+  Storage, or your own reverse proxy.

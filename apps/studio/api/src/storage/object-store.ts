@@ -1,17 +1,21 @@
 import { createHash } from 'node:crypto';
 
-import {
-  GetObjectCommand,
-  HeadBucketCommand,
-  HeadObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
-import { Context, Effect, Layer, Option, Schema } from 'effect';
+import { Context, Effect, Option, Schema } from 'effect';
 
-import { Environment, type S3Env } from '../env.ts';
-
-const KEY_PREFIX = 'assets/';
+// The object store is a port with one implementation per storage platform
+// (#2077): `./s3/` for every S3-compatible store and `./azure-blob/` for Azure
+// Blob Storage. Nothing else in Studio sees a provider — routes, the protocol
+// builder and readiness ask for `ObjectStore` — and each provider's SDK is
+// imported by its own implementation alone, which
+// src/__tests__/process-separation.test.ts holds.
+//
+// An implementation is an `ObjectBackend`: the four SDK calls, as promises,
+// and the provider's own not-found signal. Everything that must not differ by
+// provider — the content hash, the key layout, put's existence check, what
+// "absent" means and how a failure is wrapped — is `fromBackend` below, so a
+// provider cannot drift on it. An operation added to the port is added here
+// and to every backend, and src/storage/__tests__/contract.ts gains a case for
+// it in the same change.
 
 export type StoredAsset = {
   hash: string;
@@ -39,13 +43,6 @@ export class ObjectStoreError extends Schema.TaggedError<ObjectStoreError>()(
   }
 }
 
-function isNotFound(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.name === 'NoSuchKey' || error.name === 'NotFound')
-  );
-}
-
 export class ObjectStore extends Context.Service<
   ObjectStore,
   {
@@ -60,112 +57,112 @@ export class ObjectStore extends Context.Service<
     readonly head: Effect.Effect<void, ObjectStoreError>;
   }
 >()('@studio/ObjectStore') {
-  static readonly make = (env: S3Env): ObjectStore['Service'] => {
-    const client = new S3Client({
-      endpoint: env.endpoint,
-      region: env.region,
-      credentials: {
-        accessKeyId: env.accessKeyId,
-        secretAccessKey: env.secretAccessKey,
-      },
-      forcePathStyle: true,
-    });
-
-    const request = <A>(
-      operation: ObjectStoreError['operation'],
-      send: (abortSignal: AbortSignal) => Promise<A>,
-    ): Effect.Effect<A, ObjectStoreError> =>
-      Effect.tryPromise({
-        try: send,
-        catch: (cause) => new ObjectStoreError({ operation, cause }),
-      });
-
-    return ObjectStore.of({
-      configured: true,
-      put: Effect.fnUntraced(function* (bytes: Uint8Array, mediaType: string) {
-        const hash = createHash('sha256').update(bytes).digest('hex');
-        const key = `${KEY_PREFIX}${hash}`;
-        // Re-uploading identical bytes with a different media type must not
-        // rewrite the object's metadata: cached copies live for a year.
-        const existing = yield* request('put', (abortSignal) =>
-          client
-            .send(new HeadObjectCommand({ Bucket: env.bucket, Key: key }), {
-              abortSignal,
-            })
-            .then(
-              (found) => found,
-              (error: unknown) =>
-                isNotFound(error) ? undefined : Promise.reject(error),
-            ),
-        );
-        if (existing !== undefined) {
-          return {
-            hash,
-            size: existing.ContentLength ?? bytes.byteLength,
-            mediaType: existing.ContentType ?? mediaType,
-          };
-        }
-        yield* request('put', (abortSignal) =>
-          client.send(
-            new PutObjectCommand({
-              Bucket: env.bucket,
-              Key: key,
-              Body: bytes,
-              ContentType: mediaType,
-              ContentLength: bytes.byteLength,
-            }),
-            { abortSignal },
-          ),
-        );
-        return { hash, size: bytes.byteLength, mediaType };
-      }),
-      get: (hash) =>
-        Effect.map(
-          request('get', (abortSignal) =>
-            client
-              .send(
-                new GetObjectCommand({
-                  Bucket: env.bucket,
-                  Key: `${KEY_PREFIX}${hash}`,
-                }),
-                { abortSignal },
-              )
-              .then(
-                (found) => found,
-                (error: unknown) =>
-                  isNotFound(error) ? undefined : Promise.reject(error),
-              ),
-          ),
-          (response) =>
-            response?.Body === undefined
-              ? Option.none()
-              : Option.some({
-                  body: response.Body.transformToWebStream(),
-                  mediaType: response.ContentType ?? 'application/octet-stream',
-                  size: response.ContentLength,
-                }),
-        ),
-      head: Effect.asVoid(
-        request('head', (abortSignal) =>
-          client.send(new HeadBucketCommand({ Bucket: env.bucket }), {
-            abortSignal,
-          }),
-        ),
-      ),
-    });
-  };
-
   static readonly absent: ObjectStore['Service'] = ObjectStore.of({
     configured: false,
     put: () => Effect.die(new Error('no object store is configured')),
     get: () => Effect.die(new Error('no object store is configured')),
     head: Effect.die(new Error('no object store is configured')),
   });
+}
 
-  static readonly layer: Layer.Layer<ObjectStore, never, Environment> =
-    Layer.effect(ObjectStore)(
-      Effect.map(Environment, (env) =>
-        env.s3 === undefined ? ObjectStore.absent : ObjectStore.make(env.s3),
+/** What a stored object's metadata says, where the provider reported it. */
+type ObjectMetadata = {
+  readonly size: number | undefined;
+  readonly mediaType: string | undefined;
+};
+
+/**
+ * One provider's SDK calls. Each takes the signal Effect aborts when the
+ * caller stops waiting, so an abandoned request ends rather than only being
+ * ignored. `stat` and `read` reject with whatever the SDK throws for a missing
+ * object, and `isNotFound` says which rejections those are.
+ */
+export type ObjectBackend = {
+  readonly stat: (key: string, signal: AbortSignal) => Promise<ObjectMetadata>;
+  readonly write: (
+    key: string,
+    bytes: Uint8Array,
+    mediaType: string,
+    signal: AbortSignal,
+  ) => Promise<unknown>;
+  readonly read: (
+    key: string,
+    signal: AbortSignal,
+  ) => Promise<
+    ObjectMetadata & { readonly body: ReadableStream<Uint8Array> | undefined }
+  >;
+  /** Whether the bucket or container exists and answers, for `/readyz`. */
+  readonly probe: (signal: AbortSignal) => Promise<unknown>;
+  readonly isNotFound: (error: unknown) => boolean;
+};
+
+function assetKey(hash: string): string {
+  return `assets/${hash}`;
+}
+
+function contentHash(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+const FALLBACK_MEDIA_TYPE = 'application/octet-stream';
+
+export function fromBackend(backend: ObjectBackend): ObjectStore['Service'] {
+  const request = <A>(
+    operation: ObjectStoreError['operation'],
+    send: (signal: AbortSignal) => Promise<A>,
+  ): Effect.Effect<A, ObjectStoreError> =>
+    Effect.tryPromise({
+      try: send,
+      catch: (cause) => new ObjectStoreError({ operation, cause }),
+    });
+
+  const unlessAbsent = <A>(
+    operation: ObjectStoreError['operation'],
+    send: (signal: AbortSignal) => Promise<A>,
+  ): Effect.Effect<Option.Option<A>, ObjectStoreError> =>
+    request(operation, (signal) =>
+      send(signal).then(
+        (found) => Option.some(found),
+        (error: unknown) =>
+          backend.isNotFound(error) ? Option.none<A>() : Promise.reject(error),
       ),
     );
+
+  return ObjectStore.of({
+    configured: true,
+    put: Effect.fnUntraced(function* (bytes: Uint8Array, mediaType: string) {
+      const hash = contentHash(bytes);
+      const key = assetKey(hash);
+      // Re-uploading identical bytes with a different media type must not
+      // rewrite the object's metadata: cached copies live for a year.
+      const existing = yield* unlessAbsent('put', (signal) =>
+        backend.stat(key, signal),
+      );
+      if (Option.isSome(existing)) {
+        return {
+          hash,
+          size: existing.value.size ?? bytes.byteLength,
+          mediaType: existing.value.mediaType ?? mediaType,
+        };
+      }
+      yield* request('put', (signal) =>
+        backend.write(key, bytes, mediaType, signal),
+      );
+      return { hash, size: bytes.byteLength, mediaType };
+    }),
+    get: (hash) =>
+      Effect.map(
+        unlessAbsent('get', (signal) => backend.read(assetKey(hash), signal)),
+        Option.flatMap(({ body, mediaType, size }) =>
+          body === undefined
+            ? Option.none()
+            : Option.some({
+                body,
+                mediaType: mediaType ?? FALLBACK_MEDIA_TYPE,
+                size,
+              }),
+        ),
+      ),
+    head: Effect.asVoid(request('head', backend.probe)),
+  });
 }

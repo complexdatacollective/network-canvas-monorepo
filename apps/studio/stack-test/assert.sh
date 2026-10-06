@@ -154,6 +154,11 @@ case "$VARIANT" in
     equals "the stack's garage-init container is gone" '' "$(container_id garage-init)"
     differs 'the stub object store is running' '' "$(container_id external-garage)"
     ;;
+  external-bucket-azure)
+    equals "the stack's garage container is gone" '' "$(container_id garage)"
+    equals "the stack's garage-init container is gone" '' "$(container_id garage-init)"
+    differs 'the stub blob store is running' '' "$(container_id external-azurite)"
+    ;;
   external-redis)
     equals "the stack's valkey container is gone" '' "$(container_id valkey)"
     # Exists, not runs: `container_id` reads Docker's labels, which is what can
@@ -256,9 +261,10 @@ equals 'and refused as not found' NotFound "$RPC_ERROR"
 
 # ── The object store, end to end ──────────────────────────────────────────
 #
-# `/readyz` proves the bucket answers HeadBucket; this proves Studio can write
-# bytes to it and read them back. For external-bucket it is the swap's whole
-# contract, exercised over the same routes the reference stack uses.
+# `/readyz` proves the bucket or container answers; this proves Studio can
+# write bytes to it and read them back. For the two object-store swaps it is
+# the swap's whole contract, exercised over the same routes the reference
+# stack uses.
 section 'the object store'
 probe="stack-test $VARIANT $(date -u +%Y-%m-%dT%H:%M:%SZ) $RANDOM"
 request -X POST "$URL/storage" \

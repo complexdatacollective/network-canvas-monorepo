@@ -39,6 +39,39 @@ export function PortalContainerProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Points `usePortalContainer` at an element that already exists, for
+ * everything rendered below this. Unlike `PortalContainerProvider` it renders
+ * no element of its own.
+ *
+ * `Modal` uses it to point the popups inside a dialog at the dialog's own Base
+ * UI portal node. This is the nesting Base UI does itself when no `container`
+ * is passed: a portal is created inside its parent portal. When a modal dialog
+ * opens, its focus manager hides everything outside it from assistive
+ * technology (`aria-hidden`), leaving alone only the portals inside the
+ * dialog's own portal node. A popup portalled into the shared container sits
+ * beside the dialog, so one that stays mounted while closed (`DropdownMenu`,
+ * `Popover`) was hidden.
+ *
+ * While `container` is still `null` (the first render, before the node is
+ * attached), descendants get `null`, as they would outside any provider. A
+ * Base UI portal then falls back to its own parent portal (or, before that
+ * exists, to `document.body`) and moves here once the node is attached.
+ */
+export function PortalContainerScope({
+  container,
+  children,
+}: {
+  container: HTMLElement | null;
+  children: ReactNode;
+}) {
+  return (
+    <PortalContainerContext.Provider value={container}>
+      {children}
+    </PortalContainerContext.Provider>
+  );
+}
+
 export function usePortalContainer() {
   return useContext(PortalContainerContext);
 }

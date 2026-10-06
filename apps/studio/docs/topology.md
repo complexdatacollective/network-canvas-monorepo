@@ -14,7 +14,7 @@ workflows and staging — is
 
 Seven long-running containers and two one-shots on one network. Three of them —
 the database, the object store and the rate-limit store — are swappable for an
-institution's own service by setting one variable, and the ingress is swappable
+institution's own service from `.env`, and the ingress is swappable
 by reproducing the routing table below in another proxy. See
 [swap an element](./self-host/swap.md).
 
@@ -87,8 +87,10 @@ flowchart TB
 
 The four nodes with a dashed outline are the swappable elements. `traefik` is
 the odd one out: the other three are swapped by pointing `DATABASE_URL`,
-`S3_ENDPOINT` or `REDIS_URL` elsewhere in `.env`, while the ingress is a routing
-table rather than an address, so swapping it means reproducing the table below.
+`S3_ENDPOINT` or `REDIS_URL` elsewhere in `.env` (or, for Azure Blob Storage,
+by setting `STUDIO_OBJECT_STORE=azure-blob` and the `AZURE_STORAGE_*`
+variables), while the ingress is a routing table rather than an address, so
+swapping it means reproducing the table below.
 
 `worker` publishes no port at all. Its readiness listener binds `127.0.0.1`
 inside the container so the compose healthcheck has something to ask; nothing

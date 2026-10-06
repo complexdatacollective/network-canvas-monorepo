@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -663,5 +663,32 @@ describe('the image', () => {
     expect(
       Object.keys(platformNodeSnapshot().dependencies ?? {}),
     ).not.toContain('redis');
+  });
+});
+
+describe('the object-store providers', () => {
+  // Each provider's SDK stays inside its implementation of the port (#2077),
+  // so a third provider is one new directory and nothing else in Studio learns
+  // which store is behind `ObjectStore`.
+  const SDKS = [
+    { scope: '@aws-sdk/', home: 'src/storage/s3/' },
+    { scope: '@azure/', home: 'src/storage/azure-blob/' },
+  ];
+
+  const sources = ['src', 'scripts'].flatMap((dir) =>
+    readdirSync(resolve(SERVER_ROOT, dir), { recursive: true })
+      .map(String)
+      .filter((path) => path.endsWith('.ts'))
+      .map((path) => `${dir}/${path}`),
+  );
+
+  it.each(SDKS)('imports $scope only from $home', ({ scope, home }) => {
+    const importers = sources.filter((path) =>
+      moduleSpecifiers(readFileSync(resolve(SERVER_ROOT, path), 'utf8')).some(
+        (specifier) => specifier.startsWith(scope),
+      ),
+    );
+    expect(importers.length).toBeGreaterThan(0);
+    expect(importers.filter((path) => !path.startsWith(home))).toEqual([]);
   });
 });

@@ -1142,7 +1142,7 @@ importers:
         version: 7.10.0
       '@prisma/client':
         specifier: ^7.10.0
-        version: 7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
+        version: 7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
       '@simplewebauthn/browser':
         specifier: ^14.0.0
         version: 14.0.0
@@ -1927,6 +1927,12 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1143.0
         version: 3.1143.0
+      '@azure/identity':
+        specifier: ^4.13.3
+        version: 4.13.3(supports-color@10.2.2)
+      '@azure/storage-blob':
+        specifier: ^12.34.0
+        version: 12.34.0(supports-color@10.2.2)
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../../../packages/protocol-builder-core
@@ -1962,7 +1968,7 @@ importers:
         version: 2.4.0
       better-auth:
         specifier: 'catalog:'
-        version: 1.7.6(f910dfdff4849eaf6d3863baea3b19af)
+        version: 1.7.6(bf17a5580de4ebcfb19bb7f4893ac54a)
       drizzle-orm:
         specifier: 'catalog:'
         version: 1.0.0-rc.5-5935859(patch_hash=da6e5acf797448dcdf25ef928078d5533acd034d90164ff69f64e8a5b1242320)(@effect/sql-pg@4.0.0(effect@4.0.0))(@electric-sql/pglite@0.4.3)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(effect@4.0.0)(mssql@11.0.1(supports-color@10.2.2))(mysql2@3.24.2(@types/node@24.19.0))(pg@8.23.1)(postgres@3.4.7)(valibot@1.4.2(typescript@7.0.2))(zod@4.6.5)
@@ -2083,7 +2089,7 @@ importers:
         version: 6.1.1(babel-plugin-react-compiler@1.0.0)(vite@8.3.1(@types/node@24.19.0)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
       better-auth:
         specifier: 'catalog:'
-        version: 1.7.6(f910dfdff4849eaf6d3863baea3b19af)
+        version: 1.7.6(bf17a5580de4ebcfb19bb7f4893ac54a)
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -3574,6 +3580,13 @@ packages:
     resolution: {integrity: sha512-JjQWO6akOck45PH/XBrxzsQGAiKrfFl4m5iggJ0ItMIz5omRufOXWpqCPpdjKN3vKDzlSUvFjaMb7Zwf0gvAdA==}
     engines: {node: '>=22.0.0'}
 
+  '@azure/core-http-compat@2.5.0':
+    resolution: {integrity: sha512-BoSmXPx2er1Ai+wKlDvj29jIQespCNBwEmKyZVHO2kEFsWbGjAjwMCGzug3DJM5/QYIV3vej0S1zcU5bq9fa8w==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@azure/core-client': ^1.10.0
+      '@azure/core-rest-pipeline': ^1.22.0
+
   '@azure/core-lro@2.7.2':
     resolution: {integrity: sha512-0YIpccoX8m/k00O7mDDMdJpbr6mf1yWo2dfmxt5A8XVZVVMz2SSKaEbMCeJRvgQ0IaSlqhjT47p4hVIRRy90xw==}
     engines: {node: '>=18.0.0'}
@@ -3598,8 +3611,16 @@ packages:
     resolution: {integrity: sha512-9n2pWK61veAuN0V20t9lOuoV4CFMdyAZ1ygZzvBGk/pBBJRib/PjL9PLXa/aI2CcPpyHfqVsxxqLCYl6uZlfDw==}
     engines: {node: '>=22.0.0'}
 
+  '@azure/core-xml@1.6.0':
+    resolution: {integrity: sha512-e7lX/dk//F6Qf7BB6PTY4+p2yuOQtyOeHGyapYHNwqSp2OnYpwQt49A/Nin2XmKBQ69pwagR4k/lQBq8lbHQkA==}
+    engines: {node: '>=22.0.0'}
+
   '@azure/identity@4.13.2':
     resolution: {integrity: sha512-NXL2/pCJctLxgw8bvrwwgge743kEq8LBT+O1pmV0vyUwetzFPH9auP6jhkU/cgZCPPtWoewAe3ncaGCgPo07fA==}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/identity@4.13.3':
+    resolution: {integrity: sha512-zGQPtqvXPgSA8yfV2CkIQ1qirqk0p9AIVpC5uEkdXQYcKl07QHvyaGYRnZOk0AsQUmxNb4wfkcwY5di8Z5xa9A==}
     engines: {node: '>=22.0.0'}
 
   '@azure/keyvault-common@2.1.0':
@@ -3622,9 +3643,25 @@ packages:
     resolution: {integrity: sha512-rOAy0KUcyBbdwVJ+f3uPpthXatFLLZN+/KWAsTLzk1aB23Xl9DRmmXYwSvBFOZyXj4jUQQ5FKxxRkhAFW1fOow==}
     engines: {node: '>=0.8.0'}
 
+  '@azure/msal-common@16.14.1':
+    resolution: {integrity: sha512-Or6xhPNyi4zHW25158yxBoyxuCqNSPa5YBVqfF1J5Ks4MJWBo/USXdp05DQIPu1Zli00YZu6t0+h6KvHJealxQ==}
+    engines: {node: '>=0.8.0'}
+
   '@azure/msal-node@5.6.0':
     resolution: {integrity: sha512-uFY9NxrWHw8PwZx7gAX6PDn+9vdfS05+levc/kwkx77IkjfaldnQbbcQzzDIZ5Hq5Zdr6/z92oAIoRWKp6MnOA==}
     engines: {node: '>=20'}
+
+  '@azure/msal-node@6.0.1':
+    resolution: {integrity: sha512-ixSO1Y/kCVRthRs+hSx/5qkwaunX1/RAePhlMN0wIpIQ4WEZ6AREGGnGd1AP0qspHVsAwzWQKGubpjh50JyJIQ==}
+    engines: {node: '>=20'}
+
+  '@azure/storage-blob@12.34.0':
+    resolution: {integrity: sha512-cXDTCAMwDx8Ng9yUe82kOOd2kPnZ8AQqe4FkLMcpaQ3Mvr3/PXVdvRhyP0FtY5/U5Oh6JGk3EcEibaFOymRLFw==}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/storage-common@12.5.0':
+    resolution: {integrity: sha512-bttzuhQiCIwrkzjPDA+AtAR7dg19L/CC6ztcqJ5LfvWpXuys9mHp0UQ0udYnoUvv9SCT9KTR5kqFvFr0e6k0lQ==}
+    engines: {node: '>=22.0.0'}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -6391,6 +6428,9 @@ packages:
   '@noble/hashes@2.4.0':
     resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
     engines: {node: '>= 20.19.0'}
+
+  '@nodable/entities@3.1.0':
+    resolution: {integrity: sha512-LsS/DjHr+uDM647Gru/cA8+J3a3HfhttwCKLyuoyN7yXTFCxKBtSgMQBvrW9yNPa2/zDRUNuGPaH5QUFoa4arQ==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -9644,6 +9684,13 @@ packages:
     resolution: {integrity: sha512-QiVbZhyy4xAZ17UPEuG3YTOt8ZaoeOR1CvEAqrEsDBsOqINslaB147i9xqljZqoyf5S+EUlGStaj+t22LT9MOg==}
     engines: {node: '>=16'}
 
+  anynum@1.0.1:
+    resolution: {integrity: sha512-N6//FLET/tXYNM/F6ABca1oH6fWB+KlTt909Le28WMDBk8oaT4vY17DCrwg2MvmuqUKt3Ni4N5dGJ/EoBgcO6A==}
+
+  apache-arrow@21.2.0:
+    resolution: {integrity: sha512-Hxe6Agq26gQOM954qpzYSllJBPJl+e16U5CkfuMUhLrNba+5nKkttIVlflaovN6oaTratqMGAO8H5u/aNhmHWQ==}
+    hasBin: true
+
   app-builder-lib@26.16.1:
     resolution: {integrity: sha512-FhaO6YOup01ZfQW0Z6gt3AyukJjv1gW4uFK47jTgwcHZKqyN/fSlK2LqPf9tAeZYLP2bRJLDzeOkRImsw2X4Pg==}
     engines: {node: '>=14.0.0'}
@@ -11732,6 +11779,13 @@ packages:
   fast-wrap-ansi@0.2.2:
     resolution: {integrity: sha512-7F2Fl+TjRSenLqlU3UjSH0iyqopqoZIu7eZVpEirP2g1GtWa2G/ecEmBdgz31+Mxr+ELclgg6sokpSFIQiZ02Q==}
 
+  fast-xml-builder@1.3.1:
+    resolution: {integrity: sha512-pIM/1n3ntFXKYrUZwW7QCK0gAW7XY+wzj1YMIV3tLDvPj/V+zTGJK5e3/4WJfwj0qWw2ElNXiTixda/R+3YSug==}
+
+  fast-xml-parser@5.11.2:
+    resolution: {integrity: sha512-R9iDuNrQYeQut46cn2r2wHKn4HYzVDvDm5J1wW+koZewykv0yuO2HChTYeZtrULyHIDM9cj9TUXloCsueCQUog==}
+    hasBin: true
+
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
 
@@ -11826,6 +11880,9 @@ packages:
   flat-cache@4.0.1:
     resolution: {integrity: sha512-f7ccFPK3SXFHpx15UIGyRJ/FJQctuKZ0zVuN3frBo4HnK3cay9VEW0R6yPYFHC0AgqhukPzKjq22t5DmAyqGyw==}
     engines: {node: '>=16'}
+
+  flatbuffers@25.9.23:
+    resolution: {integrity: sha512-MI1qs7Lo4Syw0EOzUl0xjs2lsoeqFku44KpngfIduHBYvzm8h2+7K8YMQh1JtVVVrUvhLpNwqVi4DERegUJhPQ==}
 
   flatted@3.4.4:
     resolution: {integrity: sha512-5+ybhBZANEJxaH3X5evAFatUxLfEHSr7n6kYJ+1Qd0mUqr4eu9gIf6GDbWHf8RJijHrjjO8G+la14SlL2SeS1Q==}
@@ -12671,6 +12728,9 @@ packages:
     resolution: {integrity: sha512-p3EcsicXjit7SaskXHs1hA91QxgTw46Fv6EFKKGS5DRFLD8yKnohjF3hxoju94b/OcMZoQukzpPpBE9uLVKzgQ==}
     engines: {node: '>= 0.4'}
 
+  is-unsafe@2.0.2:
+    resolution: {integrity: sha512-HgbIHPBH0KHHCcjLfGsCvhtPTVxjaAZlXjwdz7/GQC40SjSe4sfQsar8J5VFo8JOSbarkpV0OLG95bbaNd9aAQ==}
+
   is-weakmap@2.0.2:
     resolution: {integrity: sha512-K5pXYOm9wqY1RgjpL3YTkF39tni1XajUIkawTLUo9EZEVUFga5gSQJF8nNS7ZwJQ02y+1YCNYcMh+HIf1ZqE+w==}
     engines: {node: '>= 0.4'}
@@ -12841,6 +12901,9 @@ packages:
 
   json-stringify-safe@5.0.1:
     resolution: {integrity: sha512-ZClg6AaYvamvYEE82d3Iyd3vSSIjQ+odgjaTzRuO3s7toCdFKczob2i0zCh7JE8kWn17yvAWhUVxvqGwUalsRA==}
+
+  json-with-bigint@3.5.12:
+    resolution: {integrity: sha512-uwbF/wSSuOgC7qqlq27Xp5B6a2MHVug3t0idZdTqu0JnlFvgJuH7ju+KAk/J06C7GfhoYy2gnb9wz2INqcne7w==}
 
   json5@1.0.2:
     resolution: {integrity: sha512-g1MWMLBiz8FKi1e4w0UyVL3w+iJceWAFBAaBnnGKOpNa5f8TLktkbre1+s6oICydWAm+HRUGTmI+//xv2hvXYA==}
@@ -14127,6 +14190,10 @@ packages:
   path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
     engines: {node: '>=8'}
+
+  path-expression-matcher@1.6.2:
+    resolution: {integrity: sha512-enSlaiat05iasnzmgNxRj8reFdj3puY2QpNgP1aPIaVfT6nn9ICuPoFlKHk8EN22HcwewshO+mN2DGbkCEOtqQ==}
+    engines: {node: '>=14.0.0'}
 
   path-is-absolute@1.0.1:
     resolution: {integrity: sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGqTTsmXfaIiMpnr5DlDhfJOuLj9Sf95ZPVDAUerDfEk88MPmPe7UCQg==}
@@ -15999,6 +16066,9 @@ packages:
   strip-markdown@4.2.0:
     resolution: {integrity: sha512-sZYHI1KoKOOBfIq78R3E62NHg7kk6aKtZSqiH7wWxFB6Ak6PTZe4N88aJnzjV00Lbfw91oyLpy3baYfTTqNYBA==}
 
+  strnum@2.4.2:
+    resolution: {integrity: sha512-rDG3Ah4TV0k1hWvLSzkZtMmLN9+eS+h3knq4MP6A42Y3Yh5qGNnOUs1jJkoSr8FG5dsL28c7KgkIBzSEykqtuw==}
+
   strtok3@10.3.5:
     resolution: {integrity: sha512-ki4hZQfh5rX0QDLLkOCj+h+CVNkqmp/CMf8v8kZpkNVK6jGQooMytqzLZYUVYIZcFZ6yDB70EfD8POcFXiF5oA==}
     engines: {node: '>=18'}
@@ -17187,18 +17257,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.21.3:
-    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.22.0:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
     engines: {node: '>=10.0.0'}
@@ -17226,6 +17284,10 @@ packages:
   xml-name-validator@5.0.0:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
     engines: {node: '>=18'}
+
+  xml-naming@0.3.0:
+    resolution: {integrity: sha512-ghig2TBE/H11aOVgmahA3MhimvkBr6JIYknH/Dhdk10nXwdbIqBJsbfMxpvFPG8bAw77gN29aQWvKpmVoPlvPQ==}
+    engines: {node: '>=16.0.0'}
 
   xml2js@0.5.0:
     resolution: {integrity: sha512-drPFnkQJik/O+uPKpqSgr22mpuFHqKdbS835iAQrUC73L2F5WkboIRd63ai/2Yg6I1jzifPFKH2NTK+cfglkIA==}
@@ -17726,7 +17788,6 @@ snapshots:
   '@azure/abort-controller@2.2.0':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@azure/core-auth@1.11.0(supports-color@10.2.2)':
     dependencies:
@@ -17735,7 +17796,6 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@azure/core-client@1.11.0(supports-color@10.2.2)':
     dependencies:
@@ -17748,7 +17808,12 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
+
+  '@azure/core-http-compat@2.5.0(@azure/core-client@1.11.0(supports-color@10.2.2))(@azure/core-rest-pipeline@1.25.0(supports-color@10.2.2))':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-client': 1.11.0(supports-color@10.2.2)
+      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
 
   '@azure/core-lro@2.7.2(supports-color@10.2.2)':
     dependencies:
@@ -17758,15 +17823,12 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@azure/core-paging@1.7.0':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
-  '@azure/core-process@1.0.0':
-    optional: true
+  '@azure/core-process@1.0.0': {}
 
   '@azure/core-rest-pipeline@1.25.0(supports-color@10.2.2)':
     dependencies:
@@ -17779,12 +17841,10 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@azure/core-tracing@1.4.0':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@azure/core-util@1.14.0(supports-color@10.2.2)':
     dependencies:
@@ -17793,7 +17853,11 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
+
+  '@azure/core-xml@1.6.0':
+    dependencies:
+      fast-xml-parser: 5.11.2
+      tslib: 2.8.1
 
   '@azure/identity@4.13.2(supports-color@10.2.2)':
     dependencies:
@@ -17812,6 +17876,23 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
     optional: true
+
+  '@azure/identity@4.13.3(supports-color@10.2.2)':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-auth': 1.11.0(supports-color@10.2.2)
+      '@azure/core-client': 1.11.0(supports-color@10.2.2)
+      '@azure/core-process': 1.0.0
+      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
+      '@azure/core-tracing': 1.4.0
+      '@azure/core-util': 1.14.0(supports-color@10.2.2)
+      '@azure/logger': 1.4.0(supports-color@10.2.2)
+      '@azure/msal-browser': 5.19.0
+      '@azure/msal-node': 6.0.1
+      open: 10.2.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@azure/keyvault-common@2.1.0(supports-color@10.2.2)':
     dependencies:
@@ -17850,21 +17931,60 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@azure/msal-browser@5.19.0':
     dependencies:
       '@azure/msal-common': 16.13.0
-    optional: true
 
-  '@azure/msal-common@16.13.0':
-    optional: true
+  '@azure/msal-common@16.13.0': {}
+
+  '@azure/msal-common@16.14.1': {}
 
   '@azure/msal-node@5.6.0':
     dependencies:
       '@azure/msal-common': 16.13.0
       jsonwebtoken: 9.0.3
     optional: true
+
+  '@azure/msal-node@6.0.1':
+    dependencies:
+      '@azure/msal-common': 16.14.1
+      jsonwebtoken: 9.0.3
+
+  '@azure/storage-blob@12.34.0(supports-color@10.2.2)':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-auth': 1.11.0(supports-color@10.2.2)
+      '@azure/core-client': 1.11.0(supports-color@10.2.2)
+      '@azure/core-http-compat': 2.5.0(@azure/core-client@1.11.0(supports-color@10.2.2))(@azure/core-rest-pipeline@1.25.0(supports-color@10.2.2))
+      '@azure/core-lro': 2.7.2(supports-color@10.2.2)
+      '@azure/core-paging': 1.7.0
+      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
+      '@azure/core-tracing': 1.4.0
+      '@azure/core-util': 1.14.0(supports-color@10.2.2)
+      '@azure/core-xml': 1.6.0
+      '@azure/logger': 1.4.0(supports-color@10.2.2)
+      '@azure/storage-common': 12.5.0(@azure/core-client@1.11.0(supports-color@10.2.2))(supports-color@10.2.2)
+      apache-arrow: 21.2.0
+      events: 3.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/storage-common@12.5.0(@azure/core-client@1.11.0(supports-color@10.2.2))(supports-color@10.2.2)':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-auth': 1.11.0(supports-color@10.2.2)
+      '@azure/core-http-compat': 2.5.0(@azure/core-client@1.11.0(supports-color@10.2.2))(@azure/core-rest-pipeline@1.25.0(supports-color@10.2.2))
+      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
+      '@azure/core-tracing': 1.4.0
+      '@azure/core-util': 1.14.0(supports-color@10.2.2)
+      '@azure/logger': 1.4.0(supports-color@10.2.2)
+      events: 3.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@azure/core-client'
+      - supports-color
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -18767,12 +18887,12 @@ snapshots:
       '@better-auth/core': 1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2)
       '@better-auth/utils': 0.4.2
 
-  '@better-auth/prisma-adapter@1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@prisma/client@7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2))(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))':
+  '@better-auth/prisma-adapter@1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@prisma/client@7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2))(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))':
     dependencies:
       '@better-auth/core': 1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2)
       '@better-auth/utils': 0.4.2
     optionalDependencies:
-      '@prisma/client': 7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
+      '@prisma/client': 7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
       prisma: 7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)
 
   '@better-auth/telemetry@1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)':
@@ -20739,6 +20859,8 @@ snapshots:
 
   '@noble/hashes@2.4.0': {}
 
+  '@nodable/entities@3.1.0': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -21492,7 +21614,7 @@ snapshots:
 
   '@prisma/client-runtime-utils@7.10.0': {}
 
-  '@prisma/client@7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)':
+  '@prisma/client@7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)':
     dependencies:
       '@prisma/client-runtime-utils': 7.10.0
     optionalDependencies:
@@ -23079,7 +23201,6 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@ungap/structured-clone@1.3.0': {}
 
@@ -23640,6 +23761,15 @@ snapshots:
 
   antlr4@4.13.2: {}
 
+  anynum@1.0.1: {}
+
+  apache-arrow@21.2.0:
+    dependencies:
+      '@types/node': 24.19.0
+      flatbuffers: 25.9.23
+      json-with-bigint: 3.5.12
+      tslib: 2.8.1
+
   app-builder-lib@26.16.1(dmg-builder@26.16.1)(electron-builder-squirrel-windows@26.16.1)(supports-color@10.2.2):
     dependencies:
       '@electron/asar': 3.4.1
@@ -24028,14 +24158,14 @@ snapshots:
 
   baseline-browser-mapping@2.11.26: {}
 
-  better-auth@1.7.6(f910dfdff4849eaf6d3863baea3b19af):
+  better-auth@1.7.6(bf17a5580de4ebcfb19bb7f4893ac54a):
     dependencies:
       '@better-auth/core': 1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2)
       '@better-auth/drizzle-adapter': 1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(drizzle-orm@1.0.0-rc.5-5935859(patch_hash=da6e5acf797448dcdf25ef928078d5533acd034d90164ff69f64e8a5b1242320)(@effect/sql-pg@4.0.0(effect@4.0.0))(@electric-sql/pglite@0.4.3)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(effect@4.0.0)(mssql@11.0.1(supports-color@10.2.2))(mysql2@3.24.2(@types/node@24.19.0))(pg@8.23.1)(postgres@3.4.7)(valibot@1.4.2(typescript@7.0.2))(zod@4.6.5))
       '@better-auth/kysely-adapter': 1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(kysely@0.29.5)
       '@better-auth/memory-adapter': 1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)
       '@better-auth/mongo-adapter': 1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)
-      '@better-auth/prisma-adapter': 1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@prisma/client@7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2))(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))
+      '@better-auth/prisma-adapter': 1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@prisma/client@7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2))(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))
       '@better-auth/telemetry': 1.7.6(@better-auth/core@1.7.6(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.5))(jose@6.2.8)(kysely@0.29.5)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)
       '@better-auth/utils': 0.4.2
       '@better-fetch/fetch': 1.3.2
@@ -24048,7 +24178,7 @@ snapshots:
       nanostores: 1.4.2
       zod: 4.6.5
     optionalDependencies:
-      '@prisma/client': 7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
+      '@prisma/client': 7.10.0(prisma@7.10.0(@types/node@24.19.0)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2))(typescript@7.0.2)
       drizzle-kit: 1.0.0-rc.5-5935859
       drizzle-orm: 1.0.0-rc.5-5935859(patch_hash=da6e5acf797448dcdf25ef928078d5533acd034d90164ff69f64e8a5b1242320)(@effect/sql-pg@4.0.0(effect@4.0.0))(@electric-sql/pglite@0.4.3)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(effect@4.0.0)(mssql@11.0.1(supports-color@10.2.2))(mysql2@3.24.2(@types/node@24.19.0))(pg@8.23.1)(postgres@3.4.7)(valibot@1.4.2(typescript@7.0.2))(zod@4.6.5)
       mysql2: 3.24.2(@types/node@24.19.0)
@@ -24150,8 +24280,7 @@ snapshots:
 
   buffer-crc32@1.0.0: {}
 
-  buffer-equal-constant-time@1.0.1:
-    optional: true
+  buffer-equal-constant-time@1.0.1: {}
 
   buffer-from@1.1.2: {}
 
@@ -25152,7 +25281,6 @@ snapshots:
   ecdsa-sig-formatter@1.0.11:
     dependencies:
       safe-buffer: 5.2.1
-    optional: true
 
   editorconfig@1.0.7:
     dependencies:
@@ -25940,6 +26068,20 @@ snapshots:
     dependencies:
       fast-string-width: 3.0.2
 
+  fast-xml-builder@1.3.1:
+    dependencies:
+      path-expression-matcher: 1.6.2
+      xml-naming: 0.3.0
+
+  fast-xml-parser@5.11.2:
+    dependencies:
+      '@nodable/entities': 3.1.0
+      fast-xml-builder: 1.3.1
+      is-unsafe: 2.0.2
+      path-expression-matcher: 1.6.2
+      strnum: 2.4.2
+      xml-naming: 0.3.0
+
   fastq@1.20.1:
     dependencies:
       reusify: 1.1.0
@@ -26056,6 +26198,8 @@ snapshots:
     dependencies:
       flatted: 3.4.4
       keyv: 4.5.4
+
+  flatbuffers@25.9.23: {}
 
   flatted@3.4.4: {}
 
@@ -27004,6 +27148,8 @@ snapshots:
     dependencies:
       which-typed-array: 1.1.20
 
+  is-unsafe@2.0.2: {}
+
   is-weakmap@2.0.2: {}
 
   is-weakref@1.1.1:
@@ -27173,6 +27319,8 @@ snapshots:
 
   json-stringify-safe@5.0.1: {}
 
+  json-with-bigint@3.5.12: {}
+
   json5@1.0.2:
     dependencies:
       minimist: 1.2.8
@@ -27209,7 +27357,6 @@ snapshots:
       lodash.once: 4.1.1
       ms: 2.1.3
       semver: 7.8.5
-    optional: true
 
   jss-plugin-camel-case@10.10.0:
     dependencies:
@@ -27285,13 +27432,11 @@ snapshots:
       buffer-equal-constant-time: 1.0.1
       ecdsa-sig-formatter: 1.0.11
       safe-buffer: 5.2.1
-    optional: true
 
   jws@4.0.1:
     dependencies:
       jwa: 2.0.1
       safe-buffer: 5.2.1
-    optional: true
 
   keyv@4.5.4:
     dependencies:
@@ -27524,33 +27669,27 @@ snapshots:
 
   lodash.flattendeep@4.4.0: {}
 
-  lodash.includes@4.3.0:
-    optional: true
+  lodash.includes@4.3.0: {}
 
-  lodash.isboolean@3.0.3:
-    optional: true
+  lodash.isboolean@3.0.3: {}
 
   lodash.isequal@4.5.0: {}
 
   lodash.isequalwith@4.4.0: {}
 
-  lodash.isinteger@4.0.4:
-    optional: true
+  lodash.isinteger@4.0.4: {}
 
   lodash.ismatch@4.4.0: {}
 
-  lodash.isnumber@3.0.3:
-    optional: true
+  lodash.isnumber@3.0.3: {}
 
   lodash.isplainobject@4.0.6: {}
 
-  lodash.isstring@4.0.1:
-    optional: true
+  lodash.isstring@4.0.1: {}
 
   lodash.merge@4.6.2: {}
 
-  lodash.once@4.1.1:
-    optional: true
+  lodash.once@4.1.1: {}
 
   lodash.sortby@4.7.0: {}
 
@@ -28841,6 +28980,8 @@ snapshots:
   path-exists@3.0.0: {}
 
   path-exists@4.0.0: {}
+
+  path-expression-matcher@1.6.2: {}
 
   path-is-absolute@1.0.1: {}
 
@@ -30950,7 +31091,7 @@ snapshots:
       recast: 0.23.11
       semver: 7.8.5
       use-sync-external-store: 1.6.0(react@19.3.0)
-      ws: 8.21.3
+      ws: 8.22.0
     optionalDependencies:
       '@types/react': 19.3.0
       prettier: 2.8.8
@@ -31105,6 +31246,10 @@ snapshots:
   strip-json-comments@5.0.3: {}
 
   strip-markdown@4.2.0: {}
+
+  strnum@2.4.2:
+    dependencies:
+      anynum: 1.0.1
 
   strtok3@10.3.5:
     dependencies:
@@ -32391,8 +32536,6 @@ snapshots:
 
   ws@8.21.0: {}
 
-  ws@8.21.3: {}
-
   ws@8.22.0: {}
 
   wsl-utils@0.1.0:
@@ -32409,6 +32552,8 @@ snapshots:
       sax: 1.6.0
 
   xml-name-validator@5.0.0: {}
+
+  xml-naming@0.3.0: {}
 
   xml2js@0.5.0:
     dependencies:
