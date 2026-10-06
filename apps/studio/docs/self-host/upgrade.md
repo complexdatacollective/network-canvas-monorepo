@@ -18,6 +18,8 @@ Put the new image digests in `.env` (`STUDIO_API_IMAGE` and
 
 ```bash
 docker compose run --rm --no-deps api maintenance on
+# wait until /readyz names maintenance mode — see step 2
+until docker compose logs worker | grep -E 'stopped claiming jobs|claiming jobs again' | tail -n 1 | grep -q 'stopped claiming jobs'; do sleep 1; done
 # take your backup now — see ./backup.md
 docker compose pull
 docker compose up -d web api worker
@@ -36,8 +38,13 @@ curl https://studio.example.org/readyz
 
 This block is not only documentation. Studio's release test runs these lines
 exactly as written against a running instance, with the backup page's commands
-in place of the comment, and fails if the instance answered a request between
-the first command and the last.
+in place of the backup comment and a wait for `/readyz` in place of the other.
+While they run it reads `/readyz` and one API route a few times a second, and
+fails if, from the moment `/readyz` first names maintenance mode (it must
+within three seconds of the first command returning) until the last command
+starts, either answered 200, the API route answered with anything but the
+maintenance page, or `/readyz` gave a reason other than maintenance mode. It
+checks what those two routes answered when it asked, not every request.
 
 Step by step:
 
@@ -50,8 +57,25 @@ Step by step:
    other in flight. `--no-deps` because this only writes a flag to the
    database: it needs no other service started on its account. A reason is
    optional — `maintenance on Upgrading to 1.4` — and `/readyz` repeats it.
-2. **Back up.** Now, while nothing is writing. [Back up and
-   restore](./backup.md) is the order to do it in.
+2. **Wait for the window to close, then back up.** `maintenance on` returns
+   before every process has read the flag, so wait for both before you copy
+   anything:
+
+   - the API: `curl https://studio.example.org/readyz` names maintenance mode
+     (the first line of the table below), which takes up to a second;
+   - the worker: its log says it has stopped claiming jobs, which takes up to
+     about two. The `until` line waits for exactly that: it reads the worker's
+     most recent pause or resume line and returns once that line is the
+     pause. `docker compose logs worker` shows the same line.
+
+   From then on no request is served and no job is claimed. Two things can
+   still write, and neither matters to the backup: a job the worker claimed
+   just before it paused runs to its end, and the worker's schedule can still
+   queue its routine jobs, unclaimed, until the instance reopens. The job log
+   (`docker compose logs worker`) shows the last claimed job finishing if you
+   want to wait for that too. [Back up and restore](./backup.md) is the order
+   to take the backup in.
+
 3. **`pull`** fetches the image digests `.env` names. Change
    `STUDIO_API_IMAGE` and `STUDIO_WEB_IMAGE` before this step, not after.
 4. **`up -d web api worker`** replaces the three containers built from those
@@ -102,13 +126,20 @@ curl https://studio.example.org/readyz
 # {"status":"failing","checks":{…,"maintenance":"failed: maintenance mode is on: Upgrading to 1.4"}}
 ```
 
-| `maintenance` says                                   | Means                                                                                   |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `failed: maintenance mode is on` (`: <your reason>`) | Step 1 set the flag and step 6 has not cleared it.                                      |
-| `failed: a schema migration is running`              | `migrate` holds the schema lock. Wait for it.                                           |
-| `failed: the database schema is not this build’s`    | This image and the database are from different releases. Run `migrate` with this image. |
-| `failed: the database has no Studio schema`          | A new, empty database. Run `migrate`.                                                   |
-| `failed: the server is starting`                     | The process has not finished its first checks yet. Seconds.                             |
+| `maintenance` says                                   | Means                                                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `failed: maintenance mode is on` (`: <your reason>`) | Step 1 set the flag and step 6 has not cleared it.                                                      |
+| `failed: a schema migration is running`              | `migrate` holds the schema lock. Wait for it.                                                           |
+| `failed: the database schema is not this build’s`    | This image and the database are from different releases. Run `migrate` with this image.                 |
+| `failed: the database has no Studio schema`          | A new, empty database. Run `migrate`.                                                                   |
+| `failed: the server is starting`                     | The process has not finished its first checks. Seconds — except before the first `migrate` (see below). |
+
+On a database `migrate` has never set up — a first start, before
+[Run step 6](./run.md#6-create-the-schema-and-read-what-it-prints) — the
+Studio roles do not exist yet, so `/readyz` reports `db` and `schema` as
+`failed: the database has not been set up for Studio yet` and `maintenance` as
+`failed: the server is starting`, and stays that way until `migrate` runs. That
+is not a fault: `migrate` is the remedy.
 
 The flag is checked first, so during an upgrade you see the first line until
 step 6, whatever else is true. The other four close the instance on their own
@@ -137,8 +168,22 @@ at a half-upgraded instance.
 
 ## Rollback
 
-**Restore the backup into a fresh database and start the previous image
-digests.** That is the whole procedure, and it is the only one claimed.
+**Restore the backup from step 2 and start the previous image digests.** That
+is the whole procedure, and it is the only one claimed:
+
+1. Put the digests you replaced back in `.env` (`STUDIO_API_IMAGE` and
+   `STUDIO_WEB_IMAGE`).
+2. Follow [Restoring](./backup.md#restoring) with the backup from step 2. It
+   restores into a fresh database, starts `web`, `api` and `worker` from the
+   digests `.env` now names, and ends with `maintenance off`. That last line
+   is what reopens the instance: the backup was taken after step 1, so the
+   restored database still has maintenance mode on, and without it the
+   instance would stay closed with `/readyz` naming maintenance mode.
+3. Confirm `/readyz` answers `ok`.
+
+Studio's release test performs this rollback after each upgrade it runs —
+the restore block as written, with the previous digests — and fails unless the
+instance reopens with every row it had before the upgrade.
 
 Putting the old digests back in `.env` and running `up -d` alone works only
 for a code-only release. When the release carried a schema change, the

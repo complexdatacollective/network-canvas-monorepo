@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import { test } from 'vitest';
 
@@ -50,6 +55,8 @@ test('the upgrade guide carries the block the lane executes, in the sequence the
   assert.ok(lines, 'upgrade.md marks its sequence for the lane');
   assert.deepEqual(lines, [
     'docker compose run --rm --no-deps api maintenance on',
+    '# wait until /readyz names maintenance mode — see step 2',
+    "until docker compose logs worker | grep -E 'stopped claiming jobs|claiming jobs again' | tail -n 1 | grep -q 'stopped claiming jobs'; do sleep 1; done",
     '# take your backup now — see ./backup.md',
     'docker compose pull',
     'docker compose up -d web api worker',
@@ -67,6 +74,59 @@ test('the backup guide marks the block the lane runs in place of the backup comm
   // Nothing in it may name the Compose project: the lane's is not `studio`,
   // and neither is every self-hoster's.
   assert.ok(lines.every((line) => !line.includes('studio_garage-data')));
+});
+
+test('the restore block ends by reopening the instance, after starting the release .env names', () => {
+  const lines = guideBlock(guide('backup.md'), 'backup-restore');
+  assert.ok(lines, 'backup.md marks its restore block for the lane');
+  // A backup taken during an upgrade carries the flag, so the restore must
+  // clear it, and only once the release's containers are started.
+  assert.equal(
+    lines.at(-1),
+    'docker compose run --rm --no-deps api maintenance off',
+  );
+  assert.equal(lines.at(-2), 'docker compose up -d web api worker');
+  assert.ok(lines.some((line) => line.includes('pg_restore')));
+  // Run by the lane as one script: nothing in it may need a real hostname.
+  assert.ok(lines.every((line) => !line.includes('studio.example.org')));
+});
+
+test('the guide waits for the worker pause the way the worker logs it', () => {
+  const wait = guideBlock(guide('upgrade.md'), 'upgrade-sequence').find(
+    (line) => line.startsWith('until '),
+  );
+  const worker = readFileSync(
+    new URL('../../apps/studio/api/src/jobs/maintenance.ts', import.meta.url),
+    'utf8',
+  );
+  // The two transitions the wait tells apart, as the gate words them.
+  for (const words of ['stopped claiming jobs', 'claiming jobs again']) {
+    assert.ok(wait.includes(words), `the wait looks for '${words}'`);
+    assert.ok(worker.includes(words), `the worker logs '${words}'`);
+  }
+  const check = (log) =>
+    spawnSync(
+      'bash',
+      ['-c', wait.replace('docker compose logs worker', 'cat')],
+      {
+        input: log,
+        encoding: 'utf8',
+        timeout: 3000,
+      },
+    );
+  const paused =
+    '{"message":"maintenance is over: the job worker is claiming jobs again"}\n' +
+    '{"message":"the deployment is in maintenance: the job worker has stopped claiming jobs on every queue"}\n';
+  assert.equal(
+    check(paused).status,
+    0,
+    'returns once the last transition is the pause',
+  );
+  const resumed =
+    '{"message":"the deployment is in maintenance: the job worker has stopped claiming jobs on every queue"}\n' +
+    '{"message":"maintenance is over: the job worker is claiming jobs again"}\n';
+  // Still looping when the bound kills it: an earlier pause does not count.
+  assert.notEqual(check(resumed).status, 0, 'keeps waiting after a resume');
 });
 
 // ── The window oracle ─────────────────────────────────────────────────────
@@ -398,49 +458,98 @@ test('the masks cover their own rows and nothing beside them', () => {
 
 // ── The previous release, and the fail-closed lane ────────────────────────
 
-const token = (status, body = { token: 't' }) => ({ status, body });
-
-test('the previous release is read from GHCR, and doubt is never read as none', () => {
-  assert.deepEqual(
-    decide({
-      authenticated: true,
-      token: token(200),
-      tags: { status: 404, body: { errors: [{ code: 'NAME_UNKNOWN' }] } },
-    }).status,
-    'none',
-  );
+test('the previous release is the newest @codaco/studio-api@x.y.z tag, and nothing else counts', () => {
+  assert.equal(newestVersion([]), null);
   assert.equal(
-    decide({ authenticated: false, token: token(403, {}), tags: null }).status,
-    'none',
+    newestVersion([
+      '@codaco/studio-api@0.9.9',
+      '@codaco/studio-api@0.10.0',
+      '@codaco/studio-api@0.2.0',
+    ]),
+    '0.10.0',
   );
-  const published = decide({
-    authenticated: true,
-    token: token(200),
-    tags: {
-      status: 200,
-      body: { tags: ['latest', '1.2.0', '1.10.0', 'sha-abc'] },
-    },
-  });
+  // A prerelease, another package's tag and a bare version are not releases.
+  assert.equal(
+    newestVersion([
+      '@codaco/studio-api@2.0.0-rc.1',
+      '@codaco/studio-web@3.0.0',
+      '9.9.9',
+      'studio-api@4.0.0',
+    ]),
+    null,
+  );
+
+  const none = decide(['@codaco/studio-web@1.0.0']);
+  assert.equal(none.status, 'none');
+  assert.equal(none.tag, null);
+  assert.match(none.detail, /no migration-era Studio release/);
+
+  const published = decide([
+    '@codaco/studio-api@1.2.0',
+    '@codaco/studio-api@1.10.0',
+  ]);
   assert.equal(published.status, 'published');
   assert.equal(published.newest, '1.10.0');
-  assert.equal(
-    decide({
-      authenticated: true,
-      token: token(200),
-      tags: { status: 200, body: { tags: ['latest'] } },
-    }).status,
-    'none',
+  assert.equal(published.tag, '@codaco/studio-api@1.10.0');
+  assert.match(
+    published.detail,
+    /ghcr\.io\/complexdatacollective\/studio-api:1\.10\.0/,
   );
-  for (const doubt of [
-    { authenticated: true, token: token(403, {}), tags: null },
-    { authenticated: true, token: token(200), tags: { status: 500, body: '' } },
-    { authenticated: false, token: token(500, {}), tags: null },
-    { authenticated: true, token: token(200), tags: { status: 404, body: {} } },
-  ]) {
-    assert.throws(() => decide(doubt), undefined, JSON.stringify(doubt));
+});
+
+/**
+ * Runs previous-release.mjs against a throwaway repository carrying `tags`,
+ * with `fetch` replaced by one that fails the run: the answer must come from
+ * git alone, never from a registry.
+ */
+function previousReleaseIn(tags) {
+  const repo = mkdtempSync(join(tmpdir(), 'studio-previous-release-'));
+  try {
+    const git = (...args) =>
+      execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' });
+    git('init', '-q');
+    git('config', 'user.email', 'ci@example.org');
+    git('config', 'user.name', 'CI');
+    git('commit', '-q', '--allow-empty', '-m', 'base');
+    for (const tag of tags) git('tag', tag);
+    const noNetwork =
+      'data:text/javascript,globalThis.fetch=()=>{throw new Error("previous-release.mjs asked the network")}';
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--import',
+        noNetwork,
+        fileURLToPath(
+          new URL(
+            '../../apps/studio/release-test/previous-release.mjs',
+            import.meta.url,
+          ),
+        ),
+        repo,
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
   }
-  assert.equal(newestVersion(['0.9.9', '0.10.0', '0.2.0']), '0.10.0');
-  assert.equal(newestVersion([]), null);
+}
+
+test('previous-release.mjs answers from the repository tags without asking any registry', () => {
+  const none = previousReleaseIn([]);
+  assert.equal(none.status, 'none');
+  assert.equal(
+    laneVerdict({ release: none, runs: [{ run: 'A', ok: true }] }).runC,
+    'not applicable: no migration-era release is published (no @codaco/studio-api@<x.y.z> tag), so there is no published upgrade path to test',
+  );
+
+  const published = previousReleaseIn([
+    '@codaco/studio-api@1.0.0',
+    '@codaco/studio-api@1.1.0',
+  ]);
+  assert.equal(published.status, 'published');
+  assert.equal(published.tag, '@codaco/studio-api@1.1.0');
 });
 
 test('a published release adds run C, and the lane fails without it', () => {

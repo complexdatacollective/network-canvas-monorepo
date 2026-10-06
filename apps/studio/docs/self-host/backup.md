@@ -107,7 +107,11 @@ daily is much the easier answer.
 
 Same order. Into a **fresh** database rather than over a live one: the schema is
 created by the dump, and restoring across an existing one is how a half-restored
-instance happens.
+instance happens. Set `.env`'s image digests to the release that took the
+backup first — when you are [rolling back an upgrade](./upgrade.md#rollback),
+the digests you replaced.
+
+<!-- backup-restore start -->
 
 ```bash
 set -a && . ./.env && set +a
@@ -139,19 +143,40 @@ docker compose start garage
 cp backup/studio-secrets-key secrets/studio-secrets-key
 chmod 644 secrets/studio-secrets-key   # readable by the container; secrets/ itself is 700
 
-docker compose up -d api worker
-curl https://studio.example.org/readyz
+# Start the release .env names, then reopen the instance.
+docker compose up -d web api worker
+docker compose run --rm --no-deps api maintenance off
 ```
+
+<!-- backup-restore end -->
+
+Then confirm it is back:
+
+```bash
+curl https://studio.example.org/readyz
+# {"status":"ok","checks":{…}}
+```
+
+**The last line matters.** A backup taken during an upgrade — step 2 of
+[the upgrade sequence](./upgrade.md) — was taken with maintenance mode on, so
+the restored database has it on too, and the instance would stay closed, with
+`/readyz` naming maintenance mode, until something turns it off. On a backup
+taken while the instance was open, `maintenance off` changes nothing.
 
 `globals.sql` will report that roles it is creating already exist, on a host
 that has run Studio before. That is expected and not a failure.
 
-If `/readyz` then names the schema — `failed: the database schema is not this
-build’s` — the backup was taken by a different release from the one the images
-now carry, and the instance stays closed rather than serve it. Put the matching
-image digests in `.env`, or run `docker compose run --rm migrate` to bring the
-restored database forward to this release. `migrate` refuses a backup taken by a
-newer release than the images, naming it; deploy that release instead.
+If the images `.env` names are not the release that took the backup,
+`/readyz` names the schema — `failed: the database schema is not this build’s`
+— and the instance stays closed rather than serve it. Put the matching image
+digests in `.env` and run the last two lines again, or run
+`docker compose run --rm migrate` to bring the restored database forward to
+this release. `migrate` refuses a backup taken by a newer release than the
+images, naming it; deploy that release instead.
+
+Studio's release test runs this block as written after each upgrade it
+performs, to roll that upgrade back, and fails unless the instance reopens
+holding every row it had before the upgrade.
 
 **Practise this before you need it.** A backup nobody has restored is a
 hypothesis.

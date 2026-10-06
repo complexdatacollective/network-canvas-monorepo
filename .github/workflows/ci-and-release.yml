@@ -1257,9 +1257,10 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read
-      # previous-release.mjs asks GHCR for the published studio-api tags with
-      # this job's token. Under CI an unauthenticated query is refused rather
-      # than read as "nothing published".
+      # Run C. The previous release is the newest `@codaco/studio-api@<x.y.z>`
+      # git tag (previous-release.mjs); with none, GHCR is never asked. With
+      # one, run.sh logs in to ghcr.io with this job's token and pulls that
+      # release's images, and any failure fails the job.
       packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -1300,12 +1301,15 @@ jobs:
           # other's build of the candidate images.
           BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
           BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # Used only for run C's `docker login ghcr.io`, which happens only
+          # when a release tag exists.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: apps/studio/release-test/run.sh --runs A,B
 
       # The lane's evidence, kept whatever the verdict: the observer's ticks,
-      # the step timings, the window and diff verdicts, and each run's
-      # `docker compose ps` and whole log. Named rather than the directory: the
+      # the step timings, the window, diff and restore verdicts, what the new
+      # worker logged, and each run's `docker compose ps` and whole log, both
+      # as upgraded and after the rollback. Named rather than the directory: the
       # deployment's `.env`, the backup (which holds a copy of the keyring),
       # the data exports and `migrate`'s output (which can carry a setup
       # token) also live there.
@@ -1319,6 +1323,10 @@ jobs:
             ${{ runner.temp }}/studio-release-test/run-*/summary.json
             ${{ runner.temp }}/studio-release-test/run-*/window.json
             ${{ runner.temp }}/studio-release-test/run-*/diff.json
+            ${{ runner.temp }}/studio-release-test/run-*/diff-restored.json
+            ${{ runner.temp }}/studio-release-test/run-*/new-worker.json
+            ${{ runner.temp }}/studio-release-test/run-*/restore.log
+            ${{ runner.temp }}/studio-release-test/run-*/logs-upgraded.txt
             ${{ runner.temp }}/studio-release-test/run-*/events.tsv
             ${{ runner.temp }}/studio-release-test/run-*/observe.tsv
             ${{ runner.temp }}/studio-release-test/run-*/ps.txt

@@ -127,10 +127,26 @@ docker compose up -d
 ```
 
 **`api` and `worker` start closed until the next step has run.** There is no
-schema yet, so `api` answers every request with the maintenance page and its
-`/readyz` fails naming the reason, and `worker` runs no jobs. That is expected.
-Both check again every few seconds and open by themselves once `migrate` has
-run, with no restart.
+schema yet, so `api` answers every request with the maintenance page and
+`worker` runs no jobs. That is expected. Until `migrate` has run, `/readyz`
+fails with:
+
+```json
+{
+  "status": "failing",
+  "checks": {
+    "db": "failed: the database has not been set up for Studio yet",
+    "schema": "failed: the database has not been set up for Studio yet",
+    "maintenance": "failed: the server is starting"
+  }
+}
+```
+
+(with the object store and rate-limit store checks beside them). The database
+is reachable; the roles Studio connects as do not exist until `migrate` creates
+them, and the server does not finish starting until they do. Both processes
+check again every few seconds and open by themselves once `migrate` has run,
+with no restart.
 
 ## 6. Create the schema, and read what it prints
 

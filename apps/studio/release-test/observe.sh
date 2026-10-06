@@ -2,7 +2,13 @@
 # The maintenance-window observer (#1901): what a user and a monitor saw for
 # the whole of an upgrade, four times a second, until it is killed.
 #
-#   apps/studio/release-test/observe.sh <base-url> <log-file>
+#   apps/studio/release-test/observe.sh <base-url> <log-file> [<fast-file>]
+#
+# While <fast-file> exists the observer ticks as fast as its requests allow
+# (a 50 ms pause rather than 250 ms): upgrade.sh creates it for the length of
+# `migrate`, a step of a second or two, so the claim that the instance named
+# maintenance mode while the schema moved rests on a dozen readings rather
+# than two or three.
 #
 # Each tick appends one tab-separated line:
 #
@@ -21,12 +27,13 @@
 # deploy script can run it unchanged against a real deployment.
 set -uo pipefail
 
-[ $# -eq 2 ] || {
-  echo "usage: observe.sh <base-url> <log-file>" >&2
+[ $# -eq 2 ] || [ $# -eq 3 ] || {
+  echo "usage: observe.sh <base-url> <log-file> [<fast-file>]" >&2
   exit 64
 }
 BASE="$1"
 LOG="$2"
+FAST_FILE="${3:-}"
 READY_BODY="$(mktemp)"
 PROBE_BODY="$(mktemp)"
 trap 'rm -f "$READY_BODY" "$PROBE_BODY"' EXIT
@@ -63,5 +70,9 @@ while :; do
   esac
 
   printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$ready_code" "${ready_body:--}" "$probe_code" "$kind" >> "$LOG"
-  sleep 0.25
+  if [ -n "$FAST_FILE" ] && [ -e "$FAST_FILE" ]; then
+    sleep 0.05
+  else
+    sleep 0.25
+  fi
 done

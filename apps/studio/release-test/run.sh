@@ -16,15 +16,20 @@
 #                      sidecar, against seeded rows
 #   C  from a release  the previous PUBLISHED studio-api/studio-web → the
 #                      candidate. Runs whenever previous-release.mjs finds a
-#                      published release, and the lane fails if it then did not
-#                      run and pass. Until one is published the summary says
-#                      `previousRelease: none` — there is no migration-era
-#                      release to upgrade from — and A and B are the proof.
+#                      `@codaco/studio-api@<x.y.z>` tag, pulling that
+#                      release's images from GHCR, and the lane fails if it
+#                      then did not run and pass. Until a tag exists the
+#                      summary says `previousRelease: none` — there is no
+#                      migration-era release to upgrade from, and GHCR is not
+#                      asked anything — and A and B are the proof.
 #
 # Each run: up with the "from" images, migrate, seed, first-run setup, export;
 # upgrade.sh (the guide's sequence under the observer); export again; diff;
-# then the run's own checks. Everything lands in $WORK_DIR/run-<name>/ and
-# $WORK_DIR/summary.json.
+# the run's own checks; then the guide's rollback — the "from" digests back in
+# `.env` and backup.md's restore block, as written, from the backup the
+# upgrade took — and a third export, which must match the first. Everything
+# lands in $WORK_DIR/run-<name>/ and $WORK_DIR/summary.json, and under GitHub
+# Actions each run's line is added to the job's step summary.
 #
 # Requires Docker with Compose 2.24+, curl, perl, openssl, node, and this
 # checkout with its dependencies installed — the seed and the candidate-next
@@ -54,6 +59,12 @@ done
 hex() { openssl rand -hex "$1"; }
 SUMMARY="$WORK_DIR/summary.json"
 RESULTS=()
+
+# A line of the job's step summary, under GitHub Actions; nothing elsewhere.
+step_summary() {
+  [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+  printf '%s\n' "$@" >> "$GITHUB_STEP_SUMMARY"
+}
 
 # ── Preflight ─────────────────────────────────────────────────────────────
 command -v perl > /dev/null || die 'perl is required (the observer clock)'
@@ -85,6 +96,8 @@ previous="$(node "$RELEASE_TEST_DIR/previous-release.mjs")" \
 previous_status="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).status)' "$previous")"
 previous_newest="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).newest ?? "")' "$previous")"
 say "previous release: $previous"
+step_summary '### Studio upgrade lane' '' \
+  "- Previous release: $(node -e 'const r = JSON.parse(process.argv[1]); process.stdout.write(`${r.status === "published" ? r.newest : "none"} — ${r.detail}`)' "$previous")"
 RUNS="$(node --input-type=module -e '
   const { requiredRuns } = await import(process.argv[1]);
   process.stdout.write(requiredRuns(process.argv[2].split(","), JSON.parse(process.argv[3])).join(","));
@@ -108,11 +121,6 @@ NEXT_API="$(image_var "$IMAGES_ENV" NEXT_API)"
 NEXT_VERSION="$(image_var "$IMAGES_ENV" NEXT_VERSION)"
 
 # ── One run ───────────────────────────────────────────────────────────────
-psql_() {
-  docker compose exec -T postgres \
-    sh -c 'psql -X -q -v ON_ERROR_STOP=1 -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
-}
-
 teardown() {
   [ -n "${DEPLOY_DIR:-}" ] && [ -f "$DEPLOY_DIR/.env" ] || return 0
   compose_all ps --all > "$RUN_DIR/ps.txt" 2>&1 || true
@@ -230,12 +238,89 @@ history_versions() {
   echo 'SELECT string_agg(version, $$,$$ ORDER BY ordinal) FROM studio_migrations;' | psql_
 }
 
+RESTORE="$(guide_block "$STUDIO_DIR/docs/self-host/backup.md" backup-restore)"
+[ -n "$RESTORE" ] || die 'docs/self-host/backup.md has no <!-- backup-restore --> bash block'
+grep -q 'maintenance off' <<< "$RESTORE" \
+  || die "backup.md's restore block no longer ends maintenance mode; a backup taken during an upgrade carries the flag"
+
+# Run C's "from" images: the release the tag names, from GHCR. Under GitHub
+# Actions with the job's token (`packages: read`), and on a developer's
+# machine with whatever `docker login ghcr.io` it already has. Any failure is
+# the lane's: a tag whose images cannot be pulled is a broken release.
+pull_previous_release() { # version
+  local logged_in=false
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    printf '%s' "$GITHUB_TOKEN" \
+      | docker login ghcr.io -u "${GITHUB_ACTOR:-x-access-token}" --password-stdin > /dev/null \
+      || die "could not log in to ghcr.io to pull the release @codaco/studio-api@$1"
+    logged_in=true
+  elif [ -n "${CI:-}" ]; then
+    die "run C needs GITHUB_TOKEN (with packages: read) to pull @codaco/studio-api@$1's images from ghcr.io"
+  fi
+  local image status=0
+  for image in "ghcr.io/complexdatacollective/studio-api:$1" "ghcr.io/complexdatacollective/studio-web:$1"; do
+    docker pull -q "$image" > /dev/null || {
+      status=$?
+      echo "[release-test] could not pull $image, the image of the tag @codaco/studio-api@$1" >&2
+    }
+  done
+  if $logged_in; then docker logout ghcr.io > /dev/null 2>&1 || true; fi
+  [ "$status" -eq 0 ] || die "the release @codaco/studio-api@$1 is tagged but its images cannot be pulled"
+}
+
+# The guide's rollback (upgrade.md): the digests that were replaced back in
+# `.env`, then backup.md's restore block as written, from the backup the
+# upgrade took. Its last line is `maintenance off`, because that backup was
+# taken with the flag on. Then the instance must be ready, running the "from"
+# images and the "from" history, holding every row it held before the
+# upgrade.
+rollback() { # from-api from-web history-before probe-job
+  local code=0
+  set_images "$1" "$2"
+  say "rollback: backup.md's restore block, with the previous digests in .env"
+  (cd "$DEPLOY_DIR" && bash -eo pipefail -c "$RESTORE") < /dev/null > "$RUN_DIR/restore.log" 2>&1 || code=$?
+  if [ "$code" -ne 0 ]; then
+    tail -n 30 "$RUN_DIR/restore.log" >&2
+    problems+=("backup.md's restore block exited $code (restore.log)")
+    return 0
+  fi
+  checks+=("backup.md's restore block ran as written and exited 0")
+  if wait_ready 180; then
+    checks+=('after the restore, /readyz answered 200')
+  else
+    problems+=("after the restore, /readyz did not answer 200: $(curl -k -s --max-time 5 "$URL/readyz" || true)")
+    return 0
+  fi
+  local flag
+  flag="$(echo 'SELECT maintenance FROM deployment_state WHERE id = 1;' | psql_)"
+  [ "$flag" = f ] && checks+=('after the restore, maintenance mode is off') \
+    || problems+=("after the restore, maintenance is '$flag'")
+  for service in api worker; do
+    running_image_is "$service" "$1" && checks+=("after the restore, $service runs $1") \
+      || problems+=("after the restore, $service is not running $1")
+  done
+  running_image_is web "$2" && checks+=("after the restore, web runs $2") \
+    || problems+=("after the restore, web is not running $2")
+  local history
+  history="$(history_versions)"
+  [ "$history" = "$3" ] && checks+=("after the restore, the history is $history again") \
+    || problems+=("after the restore, the history is $history, not $3")
+  node "$RELEASE_TEST_DIR/export.mjs" "$RUN_DIR/restored"
+  if node "$RELEASE_TEST_DIR/diff-export.mjs" "$RUN_DIR/before" "$RUN_DIR/restored" \
+    "$RUN_DIR/diff-restored.json" ${4:+--probe-job "$4"}; then
+    restore_ok=true
+    checks+=('the restored instance holds every row it held before the upgrade (diff-restored.json)')
+  else
+    problems+=('the restored instance differs from the one before the upgrade (diff-restored.json)')
+  fi
+}
+
 # run_one <name> <from-api> <from-web> <to-api> <to-web> <seed-checkout>
 run_one() {
   RUN_NAME="$1"
   local from_api="$2" from_web="$3" to_api="$4" to_web="$5" checkout="$6"
   RUN_DIR="$WORK_DIR/run-$RUN_NAME"
-  local started checks=() problems=() diff_ok=false window_ok=false
+  local started checks=() problems=() diff_ok=false window_ok=false restore_ok=false
   started="$(date +%s)"
   rm -rf "$RUN_DIR"
   mkdir -p "$RUN_DIR/deploy"
@@ -319,13 +404,25 @@ run_one() {
       [ "$comment" = release-test-next ] \
         && checks+=('the changed sidecar statement is installed') \
         || problems+=("the changed sidecar was not re-run (comment: '${comment}')")
+      # The new worker started on the old schema, so it waited for migrate
+      # and then paused for the flag: the gate the window proved is the new
+      # build's own.
+      node -e 'process.exit(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).loggedSchemaCurrent?0:1)' \
+        "$RUN_DIR/new-worker.json" 2> /dev/null \
+        && checks+=("the new worker waited for $NEXT_VERSION, logged 'Database schema current.', and paused") \
+        || problems+=("the new worker never logged 'Database schema current.' (new-worker.json): it did not wait for $NEXT_VERSION inside the window")
       ;;
   esac
+
+  # The upgraded stack's logs, before the rollback replaces its containers.
+  compose_all logs --no-color > "$RUN_DIR/logs-upgraded.txt" 2>&1 || true
+  rollback "$from_api" "$from_web" "$history_before" "$probe"
 
   teardown
   trap - EXIT
   local ok=true
   $window_ok || problems+=('the maintenance window did not hold (window.json)')
+  $restore_ok || problems+=('the rollback did not restore the instance as it was (see above)')
   [ "${#problems[@]}" -eq 0 ] || ok=false
 
   node - "$RUN_DIR" "$RUN_NAME" "$from_api" "$to_api" "$ok" "$(($(date +%s) - started))" \
@@ -335,15 +432,20 @@ const [dir, name, from, to, ok, seconds, checks, problems] = process.argv.slice(
 const read = (file) => (fs.existsSync(`${dir}/${file}`) ? JSON.parse(fs.readFileSync(`${dir}/${file}`, 'utf8')) : null);
 const window = read('window.json');
 const diff = read('diff.json');
+const restored = read('diff-restored.json');
+const newWorker = read('new-worker.json');
 const lines = (text) => text.split('\n').filter((line) => line !== '');
 console.log(JSON.stringify({
   run: name, from, to, ok: ok === 'true', seconds: Number(seconds),
   window: window && { ok: window.ok, failures: window.failures, ...window.evidence },
   diff: diff && { ok: diff.ok, tables: diff.tables, rowsBefore: diff.rowsBefore, unmasked: diff.differences.length, masked: diff.masked },
+  newWorker,
+  restore: restored && { ok: restored.ok, tables: restored.tables, rowsBefore: restored.rowsBefore, unmasked: restored.differences.length, masked: restored.masked },
   checks: lines(checks), problems: lines(problems),
 }, null, 2));
 NODE
   RESULTS+=("$RUN_DIR/summary.json")
+  step_summary "- Run $RUN_NAME ($from_api → $to_api): $($ok && echo passed || echo '**FAILED**') in $(($(date +%s) - started))s${problems[0]:+ — ${problems[*]}}"
   if $ok; then
     say "run $RUN_NAME passed in $(($(date +%s) - started))s"
   else
@@ -367,7 +469,8 @@ for run in "${selected[@]}"; do
       previous_tree="$WORK_DIR/previous-tree"
       git -C "$REPO_ROOT" worktree remove --force "$previous_tree" > /dev/null 2>&1 || true
       git -C "$REPO_ROOT" worktree add --detach "$previous_tree" "@codaco/studio-api@$previous_newest" \
-        || die "no tag @codaco/studio-api@$previous_newest to seed the previous release from"
+        || die "could not check out the tag @codaco/studio-api@$previous_newest to seed the previous release from"
+      pull_previous_release "$previous_newest"
       (cd "$previous_tree" && pnpm install --frozen-lockfile --prefer-offline > "$WORK_DIR/previous-install.log" 2>&1) \
         || die "could not install the previous release's checkout (see $WORK_DIR/previous-install.log)"
       run_one C "ghcr.io/complexdatacollective/studio-api:$previous_newest" \
@@ -395,5 +498,11 @@ for (const run of runs) {
   console.log(`[release-test] run ${run.run}: ${run.ok ? 'passed' : 'FAILED'} in ${run.seconds}s`);
 }
 console.log(`[release-test] ${summary.ok ? 'PASSED' : 'FAILED'} — ${out}`);
+if (process.env.GITHUB_STEP_SUMMARY) {
+  fs.appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    `- Run C: ${summary.runC}\n- Verdict: ${summary.ok ? 'passed' : '**FAILED**'}\n`,
+  );
+}
 process.exit(summary.ok ? 0 : 1);
 NODE

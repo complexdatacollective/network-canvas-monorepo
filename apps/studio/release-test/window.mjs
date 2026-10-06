@@ -21,7 +21,10 @@
 //     migration lock or the schema instead was serving on those triggers
 //     alone, which is what a missing `maintenance on` looks like.
 //  4. At least one /readyz answer from the API fell inside `migrate`, naming
-//     maintenance mode: the window held while the schema moved.
+//     maintenance mode: the window held while the schema moved. The observer
+//     samples as fast as its requests allow while `migrate` runs (observe.sh's
+//     fast file), so on a one-to-two-second `migrate` this rests on about a
+//     dozen readings; it remains a sample, not a continuous watch.
 //  5. After `maintenance off` returned, /readyz and the probe both reached 200.
 //
 // It also checks the observer was alive throughout: no two ticks inside the

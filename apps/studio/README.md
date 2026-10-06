@@ -1092,7 +1092,11 @@ schema fingerprint, and the object store where one is configured; the worker
 checks its maintenance pool, the schema, and whether its queue is working. A
 surface this deployment has not configured is left out rather than reported
 failed: it refuses by design, and a check for it would make an instance that
-never wanted one permanently unready.
+never wanted one permanently unready. Before the first `migrate` both processes
+report `db` and `schema` as `failed: the database has not been set up for
+Studio yet`, and `api` reports `maintenance` as `failed: the server is
+starting`, until `migrate` has run (see
+[Database schema and seeding](#database-schema-and-seeding)).
 
 The worker's listener binds `127.0.0.1` and nothing else. It is not a service
 anything routes to, and `WORKER_HEALTH_PORT` (default 3001) exists so the
@@ -1161,7 +1165,11 @@ them:
   fingerprint at boot. A database whose schema is absent or not this build's
   does not stop it: `api` answers every request with the maintenance page,
   the worker claims no jobs, and `/readyz` names the reason, until `migrate`
-  makes the schema current — which is what lets an upgrade start the new image
+  makes the schema current. On a database `migrate` has never set up, the
+  roles the processes connect as do not exist yet, so `/readyz` reports `db`
+  and `schema` as `failed: the database has not been set up for Studio yet`
+  and `maintenance` as `failed: the server is starting` until `migrate` runs.
+  Waiting rather than refusing is what lets an upgrade start the new image
   before it migrates ([Upgrade](./docs/self-host/upgrade.md)). A configured
   database it cannot reach still fails the boot. The development lane waits
   the same way, naming `db:reset` rather than `migrate` (`dev.ts --prepare`

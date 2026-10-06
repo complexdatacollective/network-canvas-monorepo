@@ -2058,8 +2058,8 @@ test('studio-upgrade runs the lane and is required by the quality gate', () => {
       `the job never runs on ${excluded}`,
     );
   }
-  // previous-release.mjs refuses an anonymous query under CI, so the token
-  // and the permission to read packages are what make run C reachable.
+  // Run C pulls a tagged release's images from ghcr.io, logging in with the
+  // job's token, which needs the permission to read packages.
   assert.match(upgrade, /packages: read/);
   assert.match(upgrade, /GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
   // build-next.sh seals against history and run C checks out a tag.

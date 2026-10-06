@@ -82,6 +82,33 @@ compose_all() {
   docker compose --profile migrate "$@"
 }
 
+# The fenced bash block between `<!-- <name> start -->` and
+# `<!-- <name> end -->` in a guide page: what the lane runs, as written.
+guide_block() { # file name
+  awk -v start="<!-- $2 start -->" -v end="<!-- $2 end -->" '
+    $0 == start { marked = 1; next }
+    $0 == end { marked = 0 }
+    marked && /^```bash$/ { fenced = 1; next }
+    marked && /^```$/ { fenced = 0; next }
+    marked && fenced { print }
+  ' "$1"
+}
+
+# Points the deployment's `.env` at a release, as the guide's operator does
+# before an upgrade (upgrade.md) and before a rollback's restore.
+set_images() { # api-image web-image
+  sed -i.bak \
+    -e "s|^STUDIO_API_IMAGE=.*|STUDIO_API_IMAGE=$1|" \
+    -e "s|^STUDIO_WEB_IMAGE=.*|STUDIO_WEB_IMAGE=$2|" \
+    "$DEPLOY_DIR/.env"
+  rm -f "$DEPLOY_DIR/.env.bak"
+}
+
+psql_() { # sql on stdin; prints rows
+  docker compose exec -T postgres \
+    sh -c 'psql -X -q -v ON_ERROR_STOP=1 -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+}
+
 # The value of one variable in an images.env-shaped file.
 image_var() { # file name
   sed -n "s/^$2=//p" "$1" | tail -n 1
