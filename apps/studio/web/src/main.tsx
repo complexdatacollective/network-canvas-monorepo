@@ -8,13 +8,23 @@ import { createRoot } from 'react-dom/client';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 
+import { resolveInitialLocale } from './i18n/StudioI18nProvider.tsx';
 import { queryClient } from './lib/queryClient.ts';
+import { studioCatalogSource } from './locales/catalogs.ts';
 import { router } from './router.tsx';
 
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Missing #root container');
 }
+
+// A catalog is a chunk away, so a researcher whose device already speaks
+// en-GB would otherwise get a blank page or US English until it arrived. Load
+// the locale the provider is about to start in — the same resolution it makes —
+// so the first paint is already in their language (design invariant 7). A
+// failed load is not the end of the page: the provider asks again when it
+// renders, and a second failure reaches the router's error screen.
+await studioCatalogSource.load(resolveInitialLocale()).catch(() => undefined);
 
 createRoot(container).render(
   <StrictMode>

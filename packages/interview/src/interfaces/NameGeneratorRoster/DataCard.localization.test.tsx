@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import DataCard from './DataCard';
 
@@ -20,6 +21,14 @@ function Example({ locale }: { locale?: string }) {
     card
   );
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('roster built-in value localization', () => {
   it('switches boolean display text without translating authored names, questions, or stored data', () => {

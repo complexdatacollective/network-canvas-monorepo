@@ -7,10 +7,14 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import type * as Download from '~/lib/files/download';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 import { renderedMessage } from '~/testUtils/renderedMessage';
 
 import { useSessionMutations } from '../useSessionMutations';
+
+// The renders below show Spanish synchronously, as a device that has already
+// loaded it would, so its catalog loads before any of them.
+await interviewerCatalogSource.load('es');
 
 const markSessionsExported = vi.fn().mockResolvedValue(undefined);
 const markSessionUnfinished = vi.fn().mockResolvedValue(undefined);
@@ -165,7 +169,7 @@ describe('useSessionMutations — export flow marks exported from the save outco
       return createElement(AppI18nProvider, {
         locale,
         locales: interviewerProductionLocales,
-        messages: interviewerCatalogs[locale],
+        messages: interviewerCatalogSource.peek(locale),
         // This .ts test supplies the provider's required children prop without JSX.
         // eslint-disable-next-line react/no-children-prop
         children,

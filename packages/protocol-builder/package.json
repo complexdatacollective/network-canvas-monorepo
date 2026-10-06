@@ -12,7 +12,6 @@
   "type": "module",
   "exports": {
     "./locales": "./src/locales/catalogs.ts",
-    "./locales/en-GB": "./src/locales/en-GB.json",
     "./codebook/components/CodebookEntityEditor": "./src/codebook/components/CodebookEntityEditor.tsx",
     "./codebook/components/CodebookSurface": "./src/codebook/components/CodebookSurface.tsx",
     "./codebook/components/VariableEditor": "./src/codebook/components/VariableEditor.tsx",

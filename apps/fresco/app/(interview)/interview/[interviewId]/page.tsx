@@ -5,8 +5,10 @@ import { Suspense } from 'react';
 import SuperJSON from 'superjson';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
 import type { ActivityLocalization } from '~/i18n/activityDetails';
+import { getFrescoI18nInitialization } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
@@ -132,6 +134,11 @@ async function InterviewContent({
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
   // environment override also opts the interview runtime out of telemetry.
   const disableAnalytics = (await getDisableAnalytics()) ?? false;
+  // The interview's own messages, in the language its Shell will negotiate
+  // from Fresco's, travel with the page: otherwise hydration waits on a
+  // separate download before the participant sees anything.
+  const { locale } = await getFrescoI18nInitialization();
+  const catalog = await loadInterviewCatalog(locale);
 
   return (
     <InterviewClient
@@ -141,6 +148,7 @@ async function InterviewContent({
       initialSyncRevision={initialSyncRevision}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
+      catalog={catalog}
     />
   );
 }

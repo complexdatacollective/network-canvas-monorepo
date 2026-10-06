@@ -6,10 +6,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import AutoFileDrop from '~/components/Form/AutoFileDrop';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
@@ -22,6 +23,11 @@ const imports = vi.hoisted(() => ({
 // The file importer has its own data tests. Keep the real accepted-drop path,
 // warning construction, queued dialog, AppMessage, and locale subscription.
 vi.mock('~/ducks/hooks', () => ({ useAppDispatch: () => imports.dispatch }));
+
+// The provider shows a language once its catalog has loaded. Loading
+// Spanish up front lets a switch to it render synchronously, as the
+// assertions below expect.
+beforeAll(() => architectCatalogSource.load('es'));
 
 beforeEach(() => {
   localStorage.clear();

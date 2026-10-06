@@ -5,10 +5,11 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import TypeEditor from '~/components/TypeEditor/TypeEditor';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
@@ -33,6 +34,11 @@ vi.mock('~/selectors/protocol', () => ({
 vi.mock('~/ducks/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
+// The provider shows a language once its catalog has loaded. Loading
+// British English up front lets a switch to it render synchronously, as the
+// assertions below expect.
+beforeAll(() => architectCatalogSource.load('en-GB'));
+
 beforeEach(() => {
   localStorage.clear();
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);

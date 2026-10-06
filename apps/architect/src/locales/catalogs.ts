@@ -1,94 +1,37 @@
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { mergeCatalogs, type CatalogMessages } from '@codaco/app-i18n/locales';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
-import { protocolBuilderCatalogs } from '@codaco/protocol-builder/locales';
-import { protocolUtilitiesCatalogs } from '@codaco/protocol-utilities/locales';
-import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  type CatalogLoaders,
+} from '@codaco/app-i18n/locales';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
+import { protocolBuilderCatalogLoaders } from '@codaco/protocol-builder/locales';
+import { protocolUtilitiesCatalogLoaders } from '@codaco/protocol-utilities/locales';
+import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 
-import de from './de.json';
-import enGb from './en-GB.json';
-import es from './es.json';
-import fr from './fr.json';
-import it from './it.json';
-import nl from './nl.json';
-import ptBR from './pt-BR.json';
-import zhHans from './zh-Hans.json';
-import zhHant from './zh-Hant.json';
-
-/** Static imports include every production locale in installed/offline builds. */
-export const architectCatalogs: Readonly<
-  Record<string, CatalogMessages | undefined>
-> = {
-  'en-GB': mergeCatalogs(
-    commonCatalogs['en-GB'] ?? {},
-    frescoUiCatalogs['en-GB'] ?? {},
-    protocolBuilderCatalogs['en-GB'] ?? {},
-    protocolValidationCatalogs['en-GB'] ?? {},
-    protocolUtilitiesCatalogs['en-GB'] ?? {},
-    enGb,
-  ),
-  'es': mergeCatalogs(
-    commonCatalogs.es ?? {},
-    frescoUiCatalogs.es ?? {},
-    protocolBuilderCatalogs.es ?? {},
-    protocolValidationCatalogs.es ?? {},
-    protocolUtilitiesCatalogs.es ?? {},
-    es,
-  ),
-  'zh-Hans': mergeCatalogs(
-    commonCatalogs['zh-Hans'] ?? {},
-    frescoUiCatalogs['zh-Hans'] ?? {},
-    protocolBuilderCatalogs['zh-Hans'] ?? {},
-    protocolValidationCatalogs['zh-Hans'] ?? {},
-    protocolUtilitiesCatalogs['zh-Hans'] ?? {},
-    zhHans,
-  ),
-  'zh-Hant': mergeCatalogs(
-    commonCatalogs['zh-Hant'] ?? {},
-    frescoUiCatalogs['zh-Hant'] ?? {},
-    protocolBuilderCatalogs['zh-Hant'] ?? {},
-    protocolValidationCatalogs['zh-Hant'] ?? {},
-    protocolUtilitiesCatalogs['zh-Hant'] ?? {},
-    zhHant,
-  ),
-  'de': mergeCatalogs(
-    commonCatalogs.de ?? {},
-    frescoUiCatalogs.de ?? {},
-    protocolBuilderCatalogs.de ?? {},
-    protocolValidationCatalogs.de ?? {},
-    protocolUtilitiesCatalogs.de ?? {},
-    de,
-  ),
-  'nl': mergeCatalogs(
-    commonCatalogs.nl ?? {},
-    frescoUiCatalogs.nl ?? {},
-    protocolBuilderCatalogs.nl ?? {},
-    protocolValidationCatalogs.nl ?? {},
-    protocolUtilitiesCatalogs.nl ?? {},
-    nl,
-  ),
-  'pt-BR': mergeCatalogs(
-    commonCatalogs['pt-BR'] ?? {},
-    frescoUiCatalogs['pt-BR'] ?? {},
-    protocolBuilderCatalogs['pt-BR'] ?? {},
-    protocolValidationCatalogs['pt-BR'] ?? {},
-    protocolUtilitiesCatalogs['pt-BR'] ?? {},
-    ptBR,
-  ),
-  'it': mergeCatalogs(
-    commonCatalogs.it ?? {},
-    frescoUiCatalogs.it ?? {},
-    protocolBuilderCatalogs.it ?? {},
-    protocolValidationCatalogs.it ?? {},
-    protocolUtilitiesCatalogs.it ?? {},
-    it,
-  ),
-  'fr': mergeCatalogs(
-    commonCatalogs.fr ?? {},
-    frescoUiCatalogs.fr ?? {},
-    protocolBuilderCatalogs.fr ?? {},
-    protocolValidationCatalogs.fr ?? {},
-    protocolUtilitiesCatalogs.fr ?? {},
-    fr,
-  ),
+/** Architect's own catalogs, one loader per translated locale. */
+export const architectCatalogLoaders: CatalogLoaders = {
+  'en-GB': () => import('./en-GB.json'),
+  'es': () => import('./es.json'),
+  'zh-Hans': () => import('./zh-Hans.json'),
+  'zh-Hant': () => import('./zh-Hant.json'),
+  'de': () => import('./de.json'),
+  'nl': () => import('./nl.json'),
+  'pt-BR': () => import('./pt-BR.json'),
+  'it': () => import('./it.json'),
+  'fr': () => import('./fr.json'),
 };
+
+/**
+ * Every message Architect renders, one language at a time. Each language is
+ * its own chunk (see `manualChunks` in vite.config.ts), fetched only when the
+ * researcher uses it — and the service worker precaches every chunk, so an
+ * installed Architect can still switch language offline.
+ */
+export const architectCatalogSource = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+  protocolValidationCatalogLoaders,
+  protocolUtilitiesCatalogLoaders,
+  architectCatalogLoaders,
+);

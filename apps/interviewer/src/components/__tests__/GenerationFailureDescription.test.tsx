@@ -7,7 +7,7 @@ import {
   type ConstraintConflict,
 } from '@codaco/protocol-utilities';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { GenerationFailureDescription } from '../GenerationFailureDescription';
 
@@ -56,7 +56,7 @@ it('renders same-id conflicts from different subjects without duplicate React ke
   ).toBe(false);
 });
 
-it('keeps authored names while translating the actionable conflict and validation rules', () => {
+it('keeps authored names while translating the actionable conflict and validation rules', async () => {
   const error = new SyntheticDataConstraintError([
     {
       entity: 'node',
@@ -82,7 +82,7 @@ it('keeps authored names while translating the actionable conflict and validatio
     <AppI18nProvider
       locale="es"
       locales={interviewerProductionLocales}
-      messages={interviewerCatalogs.es}
+      messages={await interviewerCatalogSource.load('es')}
     >
       <GenerationFailureDescription error={error} />
     </AppI18nProvider>,
