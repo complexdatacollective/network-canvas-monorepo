@@ -256,16 +256,17 @@ describe.each([
     expect((await db.sessions.get('s1'))?.protocolHash).toBe(hash);
   });
 
-  it('rewrites in place when migrating does not change the protocol structure', async () => {
-    // The hash covers codebook + stages only. An empty protocol migrates to an
-    // identical structure, so the row keeps its key and nothing has to move.
+  it('rewrites in place when migrating does not change the protocol hash', async () => {
+    // Every migration to schema 9 adds the localization declaration, which the
+    // hash covers, so no real document keeps its hash. Storing the row under
+    // the hash its migration produces is the state a later migration that
+    // leaves the hash alone reaches: the row keeps its key and nothing moves.
     const emptyV7 = {
       schemaVersion: 7,
       codebook: { node: {}, edge: {}, ego: {} },
       stages: [],
     };
-    const hash = hashProtocol(asStoredDocument(emptyV7));
-    expect(migratedHash(emptyV7, 'Empty Study')).toBe(hash);
+    const hash = migratedHash(emptyV7, 'Empty Study');
 
     await seedProtocol(storedRow(hash, 'Empty Study', emptyV7));
     await seedSession('s1', hash);
@@ -286,7 +287,7 @@ describe.each([
 
   it('refuses a collision with an existing row and leaves everything untouched', async () => {
     // Equal structural hashes do NOT make two rows interchangeable — the hash
-    // covers codebook and stages only, and the rows can carry different media
+    // covers structure only, and the rows can carry different media
     // or API keys. Merging would resume this row's interviews against the
     // other row's resources, so the sweep must refuse.
     const collisionHash = migratedHash(v7Document(), 'Alpha Study');
