@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Post-build assertion: a production PWA build must emit the SW + manifest +
-// icons, every critical chunk (the interview engine, the entry), and every
-// responsive stage-preview image must be precached. A missing critical asset
-// breaks either the offline boot or the first offline opening of the menu.
-// Chunks loaded on demand (the bundled sample protocol, the synthetic data
-// generator and its faker dependency) must stay out of the initial load.
-import { readFileSync } from 'node:fs';
+// icons, every critical chunk (the interview engine, the entry), every
+// lazily loaded locale chunk, and every responsive stage-preview image must be
+// precached. A missing critical asset breaks either the offline boot, an
+// offline language switch, or the first offline opening of the menu.
+// Chunks loaded on demand (each UI language, the bundled sample protocol, the
+// synthetic data generator and its faker dependency) must stay out of the
+// initial load.
+import { readdirSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -262,6 +264,66 @@ if (fakerInInitialLoad.length > 0) {
   );
 }
 
+// Each UI language's messages are a chunk of their own, loaded only when a
+// device shows that language (vite.config.ts names them). Three things have to
+// hold for that to work offline and to stay lazy:
+//
+// - Every committed catalog has a chunk. A missing group means the catalogs
+//   lost their naming and scattered into anonymous chunks this check cannot
+//   see, or fell back into a static chunk every device downloads in full.
+// - Every one is precached. Switching language offline loads a chunk the
+//   device may never have fetched, and only the precache can supply it.
+// - None is imported statically, by the HTML or by another chunk. A named
+//   chunk proves only where the catalog went, not how it is loaded; a static
+//   import would fetch every language on every launch.
+const catalogTags = (localesDir) =>
+  readdirSync(localesDir)
+    .map((f) => /^([A-Za-z-]+)\.json$/.exec(f)?.[1])
+    .filter((tag) => tag !== undefined && tag !== 'en');
+const localeGroups = [
+  { prefix: 'locale-', dir: path.join(appRoot, 'src/locales') },
+  {
+    prefix: 'interview-locale-',
+    dir: path.join(appRoot, '../../packages/interview/src/locales'),
+  },
+];
+const localeChunks = jsAssets.filter((f) =>
+  localeGroups.some(({ prefix }) => f.startsWith(prefix)),
+);
+const missingLocaleChunks = localeGroups.flatMap(({ prefix, dir }) =>
+  catalogTags(dir)
+    .map((tag) => `${prefix}${tag}`)
+    .filter((name) => !localeChunks.some((f) => f.startsWith(`${name}-`))),
+);
+if (missingLocaleChunks.length > 0) {
+  fail(`no chunk for locale catalog(s): ${missingLocaleChunks.join(', ')}`);
+}
+const unprecachedLocaleChunks = localeChunks.filter(
+  (f) => !precached.has(`assets/${f}`),
+);
+if (unprecachedLocaleChunks.length > 0) {
+  fail(
+    `locale chunk(s) excluded from precache, so offline language switching cannot load them: ${unprecachedLocaleChunks.join(', ')}`,
+  );
+}
+// `from"./x.js"` and `import"./x.js"` are static; a dynamic import is
+// `import(` and never matches.
+const staticLocaleImport =
+  /(?:\bfrom|\bimport)\s*["'`]\.\/(?:interview-)?locale-[^"'`]+["'`]/;
+const staticLocaleImporters = [
+  ...(/["'`/](?:interview-)?locale-[^"'`/]+\.js["'`]/.test(indexHtml)
+    ? ['index.html']
+    : []),
+  ...jsAssets.filter((f) =>
+    staticLocaleImport.test(readFileSync(path.join(assetsDir, f), 'utf8')),
+  ),
+];
+if (staticLocaleImporters.length > 0) {
+  fail(
+    `locale chunk(s) loaded statically, so every launch downloads every language: ${staticLocaleImporters.join(', ')}`,
+  );
+}
+
 const interviewRouteMatches = [
   ...sw.matchAll(/!?[$\w]+\.pathname\.startsWith\("\/interview\/"\)/g),
 ];
@@ -411,5 +473,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

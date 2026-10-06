@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
-import { protocolValidationCatalogs } from '../../locales/catalogs.ts';
+import { protocolValidationCatalogLoaders } from '../../locales/catalogs.ts';
 import {
   describeProtocolFileErrorMessage,
   formatValidationContradiction,
@@ -26,7 +27,7 @@ import {
 const en = createAppIntl({ locale: 'en' });
 const es = createAppIntl({
   locale: 'es',
-  messages: protocolValidationCatalogs.es,
+  messages: await loadCatalog('es', protocolValidationCatalogLoaders),
 });
 // Keyed rather than listed, so `satisfies` makes a new union member a compile
 // error here instead of a silently uncovered reason: the table below claims to

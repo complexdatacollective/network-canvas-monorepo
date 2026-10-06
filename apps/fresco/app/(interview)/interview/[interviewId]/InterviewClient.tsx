@@ -13,6 +13,7 @@ import {
   type InterviewPayload,
   type StepChangeHandler,
 } from '@codaco/interview';
+import type { InterviewCatalog } from '@codaco/interview/catalog';
 import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
@@ -27,6 +28,7 @@ type Props = {
   initialSyncRevision: number;
   installationId: string;
   disableAnalytics: boolean;
+  catalog: InterviewCatalog;
 };
 
 export default function InterviewClient({
@@ -36,6 +38,7 @@ export default function InterviewClient({
   initialSyncRevision,
   installationId,
   disableAnalytics,
+  catalog,
 }: Props) {
   const router = useRouter();
   const { locale } = useFrescoLocale();
@@ -129,6 +132,7 @@ export default function InterviewClient({
       // negotiates its own catalogs; authored protocol copy remains literal.
       // Menu choices are temporary and do not change a researcher account.
       requestedLocale={locale}
+      catalog={catalog}
       payload={payload}
       currentStep={currentStep}
       onStepChange={onStepChange}

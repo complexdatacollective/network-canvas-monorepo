@@ -7,7 +7,7 @@ import {
   syntheticGenerationEventSchema,
   syntheticGenerationFailureSchema,
 } from '~/schemas/synthetic-interviews';
-import { frescoCatalogs } from '~/src/locales/catalogs';
+import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 vi.mock('server-only', () => ({}));
 const {
@@ -48,8 +48,11 @@ const request = (
     headers: { 'Content-Type': 'application/json' },
     body,
   });
+// Loaded up front, so the Spanish formatter below is synchronous.
+await frescoCatalogSource.load('es');
+
 const intl = (locale: string) =>
-  createAppIntl({ locale, messages: frescoCatalogs[locale] });
+  createAppIntl({ locale, messages: frescoCatalogSource.peek(locale) });
 
 beforeEach(() => {
   vi.resetAllMocks();

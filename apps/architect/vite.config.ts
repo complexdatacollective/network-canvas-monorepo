@@ -378,9 +378,19 @@ export default defineConfig(({ mode }) => {
           preview: resolve(rootDir, 'preview/index.html'),
         },
         output: {
+          // One chunk per language, holding that language's catalog from every
+          // package, so a language switch is one request. The interview's
+          // catalogs get chunks of their own: only the preview's Shell renders
+          // them, and folding them in would make every researcher download
+          // participant copy to use Architect in their own language.
           manualChunks(id: string) {
-            const locale = /\/src\/locales\/([A-Za-z-]+)\.json$/.exec(id)?.[1];
-            return locale ? `locale-${locale}` : undefined;
+            const match =
+              /(\/packages\/interview)?\/src\/locales\/([A-Za-z-]+)\.json$/.exec(
+                id,
+              );
+            if (!match) return undefined;
+            const [, interview, locale] = match;
+            return `${interview ? 'interview-' : ''}locale-${locale}`;
           },
         },
       },

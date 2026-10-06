@@ -255,7 +255,7 @@ describe('the protocol editor', () => {
         (_file, specifier) =>
           (specifier.startsWith('@codaco/protocol-builder') ||
             specifier.startsWith('@codaco/protocol-validation')) &&
-          specifier !== '@codaco/protocol-builder/locales/en-GB',
+          specifier !== '@codaco/protocol-builder/locales',
       ),
     ).toEqual(['routes/Editor.tsx', 'runtime/hostClient.ts']);
   });

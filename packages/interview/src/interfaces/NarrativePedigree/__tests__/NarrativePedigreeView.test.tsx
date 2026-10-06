@@ -16,6 +16,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
@@ -337,6 +338,14 @@ function FramingProbe() {
     <output aria-label="Restored framing">{framing ?? 'unselected'}</output>
   );
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('source pedigree framing on reopening', () => {
   it.each([

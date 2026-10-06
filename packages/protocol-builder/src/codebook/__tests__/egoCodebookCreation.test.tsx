@@ -4,8 +4,11 @@ import { Effect } from 'effect';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -13,7 +16,7 @@ import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import {
@@ -24,6 +27,12 @@ import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts
 import { useCodebookSectionWrite } from '../writes.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
+
+const catalogs = createCatalogSource(
+  commonCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+);
+await catalogs.load('es');
 
 const EGO = sectionId({ kind: 'codebookEgo' });
 const SUBJECT = { entity: 'ego' } as const;
@@ -103,10 +112,7 @@ const renderAdding = (
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={mergeCatalogs(
-          commonCatalogs[locale] ?? {},
-          protocolBuilderCatalogs[locale] ?? {},
-        )}
+        messages={catalogs.peek(locale)}
         manageDocument={false}
       >
         {tree}

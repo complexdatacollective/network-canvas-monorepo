@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -15,6 +16,7 @@ import {
 } from '@codaco/app-i18n/catalog-guards';
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 
+import { architectCatalogLoaders } from '../../locales/catalogs';
 import fr from '../../locales/fr.json';
 import ptBR from '../../locales/pt-BR.json';
 import { architectProductionLocales } from '../locales';
@@ -98,6 +100,11 @@ describe('Architect catalog contract', () => {
     const supported = new Set(ecosystemLocales.map((x) => x.locale));
     expect(
       architectProductionLocales.filter((x) => !supported.has(x.locale)),
+    ).toEqual([]);
+  });
+  it('loads each locale from its own committed catalog', async () => {
+    expect(
+      await checkCatalogLoaders(localesDir, architectCatalogLoaders),
     ).toEqual([]);
   });
   it('detects a removed Spanish message and an altered ICU argument', () => {

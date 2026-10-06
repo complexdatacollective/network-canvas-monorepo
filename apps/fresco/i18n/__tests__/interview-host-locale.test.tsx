@@ -11,14 +11,17 @@ import { renderToString } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { InterviewPayload } from '@codaco/interview';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import InterviewClient from '~/app/(interview)/interview/[interviewId]/InterviewClient';
 import ParticipantLayout from '~/app/(interview)/layout';
 import { FrescoI18nProvider } from '~/i18n/FrescoI18nProvider';
 import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 import type { FrescoI18nInitialization } from '~/i18n/resolve';
+import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 const { shell, updateLocale, refresh } = vi.hoisted(() => ({
   shell: vi.fn(),
@@ -91,6 +94,14 @@ const payload: InterviewPayload = {
   },
 };
 const originalPayload = structuredClone(payload);
+// The catalogs the root layout delivers with each request below, and British
+// English loaded up front for the switch to Automatic.
+const en = await frescoCatalogSource.load('en');
+const es = await frescoCatalogSource.load('es');
+await frescoCatalogSource.load('en-GB');
+// What the interview page loads on the server for a Spanish request.
+const interviewCatalog = await loadInterviewCatalog('es');
+
 const spanish: FrescoI18nInitialization = {
   locale: 'es',
   preference: 'es',
@@ -104,9 +115,15 @@ function ParticipantChrome() {
     <button type="button">{intl.formatMessage(commonMessages.continue)}</button>
   );
 }
-function Host({ initial = spanish }: { initial?: FrescoI18nInitialization }) {
+function Host({
+  initial = spanish,
+  messages = es,
+}: {
+  initial?: FrescoI18nInitialization;
+  messages?: CatalogMessages;
+}) {
   return (
-    <FrescoI18nProvider initial={initial}>
+    <FrescoI18nProvider initial={initial} messages={messages}>
       <FrescoLocaleSwitcher />
       <ParticipantLayout>
         <ParticipantChrome />
@@ -117,6 +134,7 @@ function Host({ initial = spanish }: { initial?: FrescoI18nInitialization }) {
           initialSyncRevision={0}
           installationId="test-installation"
           disableAnalytics
+          catalog={interviewCatalog}
         />
       </ParticipantLayout>
     </FrescoI18nProvider>
@@ -143,7 +161,11 @@ describe('Fresco passes its resolved host request to the interview package', () 
       screen.getByRole('button', { name: 'Continue' }).closest('[lang]'),
     ).toHaveAttribute('lang', 'en');
     expect(shell).toHaveBeenLastCalledWith(
-      expect.objectContaining({ requestedLocale: 'es', payload }),
+      expect.objectContaining({
+        requestedLocale: 'es',
+        catalog: interviewCatalog,
+        payload,
+      }),
     );
     // Omitting this callback keeps a participant menu choice out of the
     // researcher preference persistence path.
@@ -177,6 +199,7 @@ describe('Fresco passes its resolved host request to the interview package', () 
           userId: 'bob',
           requested: ['en'],
         }}
+        messages={en}
       />,
     );
     expect(screen.getByTestId('shell-request')).toHaveAttribute(

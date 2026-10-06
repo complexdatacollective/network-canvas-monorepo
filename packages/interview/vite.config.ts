@@ -225,16 +225,19 @@ export default defineConfig({
     // is unaffected — no JS here imports `.css`; `src/styles.css` is copied
     // verbatim by cssCopyPlugin and consumed via the `./styles.css` export.
     lib: {
-      // Three entries: the main (React) public API, a server-safe `contract`
-      // bundle re-exporting only React-free utilities/types, and the standalone
-      // protocol schema compatibility constant. The React code (`Shell`,
-      // contexts) is reachable only from `index`, so it never lands in the
-      // `contract` bundle — letting server (RSC) code import the contract
-      // without evaluating any module-level `createContext`. The
-      // `protocol-schema-version` entry is its own bundle so a host's Node
-      // scripts can import just that constant.
+      // The main (React) public API, plus React-free entries a server can
+      // import: the `contract` bundle of utilities/types, the per-language
+      // `locales` loaders, and the `catalog` loader a server host awaits to
+      // hand `Shell` its messages. The React code (`Shell`, contexts) is
+      // reachable only from `index`, so it never lands in those bundles —
+      // letting server (RSC) code import them without evaluating any
+      // module-level `createContext`. `catalog` and `index` share one catalog
+      // source through a common chunk, so a language loaded through either is
+      // loaded for both. The `protocol-schema-version` entry is its own bundle
+      // so a host's Node scripts can import just that constant.
       entry: {
         'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
+        'catalog': resolve(__dirname, 'src/i18n/catalog.ts'),
         'index': resolve(__dirname, 'src/index.ts'),
         'contract': resolve(__dirname, 'src/contract/index.ts'),
         'protocol-schema-version': resolve(

@@ -25,7 +25,7 @@ pnpm test:storybook    # vitest run --project=storybook
 pnpm storybook         # Storybook dev server on :6006
 ```
 
-`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, or if a critical JS chunk (interview engine, entry point) or responsive stage-preview image got silently dropped from the Workbox precache manifest. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
+`build` is the command CI deploys with. It runs Vite and then fails if the service worker, manifest, or icons are missing from `dist/`, if a critical JS chunk (interview engine, entry point), a per-language locale chunk, or a responsive stage-preview image got silently dropped from the Workbox precache manifest, or if a locale chunk is missing or loaded statically. Treat an `assert-pwa-build.mjs` failure as a real bug, not noise.
 
 ## Source Surface
 
@@ -67,7 +67,7 @@ One entry per directory. Per-file granularity rots; per-directory framing tells 
   _Touch when:_ Asset resolution bugs in the interview engine.
 - **`src/styles/`** — `globals.css` — Tailwind base + interview-mode token block. TODO note in-file: move tokens into `@codaco/tailwind-config`.
   _Touch when:_ Token additions/changes for interview-mode visual treatment.
-- **`vite.config.ts`** — The PWA build: `VitePWA` (`generateSW`, `registerType: 'prompt'`), precache size ceiling raised for the interview-engine chunk (which bundles mapbox-gl), `globIgnores` for the dev-only bundled-protocol chunk, `manualChunks` splitting out the interview engine, Mapbox tile requests set `NetworkOnly`.
+- **`vite.config.ts`** — The PWA build: `VitePWA` (`generateSW`, `registerType: 'prompt'`), precache size ceiling raised for the interview-engine chunk (which bundles mapbox-gl), `globIgnores` for the dev-only bundled-protocol chunk, `manualChunks` splitting out the interview engine and giving each UI language its own lazily loaded chunk (`locale-<tag>` for the app's catalogs, `interview-locale-<tag>` for the interview runtime's), Mapbox tile requests set `NetworkOnly`.
   _Touch when:_ PWA manifest/caching behaviour, chunking, precache size limits.
 
 ## Why this structure
