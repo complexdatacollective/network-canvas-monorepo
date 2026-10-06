@@ -461,14 +461,15 @@ export const promptLeaveEditor = async (
   }
 };
 
-// Opens the discard-draft confirmation when Back leaves unsaved work behind
-// without leaving the protocol — either the stage editor's own uncommitted
-// draft, or a nested editor left open anywhere (the Codebook's type editor, a
-// Resources editor), which is not gated on the stage-editor path at all. On
-// confirm, runs `performLeave` with the bypass flag set so the navigation isn't
-// re-guarded. Skips if a prompt is already in flight, so a single Back can
-// never stack two confirmations.
-const promptDiscardDraft = async (
+// Opens the discard-draft confirmation when Back, or a link, leaves unsaved
+// work behind without leaving the protocol — either the stage editor's own
+// uncommitted draft, or a nested editor left open anywhere (the Codebook's type
+// editor, a Resources editor, the Languages page's translation editors), which
+// is not gated on the stage-editor path at all. On confirm, runs `performLeave`
+// with the bypass flag set so the navigation isn't re-guarded. Skips if a
+// prompt is already in flight, so a single Back can never stack two
+// confirmations.
+export const promptDiscardDraft = async (
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void,
   // Whether the STAGE editor's own draft is what is being discarded. A dirty

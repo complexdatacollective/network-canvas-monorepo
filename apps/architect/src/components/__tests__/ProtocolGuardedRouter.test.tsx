@@ -123,6 +123,65 @@ describe('ProtocolGuardedRouter', () => {
   });
 });
 
+describe('ProtocolGuardedRouter within the protocol', () => {
+  const moveWithinProtocol = (to = '/protocol') => {
+    window.history.pushState(null, '', '/protocol/localization');
+    capturedAroundNav!(navigateSpy, to, {});
+  };
+
+  beforeEach(() => {
+    stageDraftDirty = false;
+    nestedDraftDirty = false;
+    navigateSpy.mockReset();
+    promptLeaveEditor.mockReset();
+    openDialogSpy.mockReset();
+    render(<ProtocolGuardedRouter>content</ProtocolGuardedRouter>);
+  });
+
+  it('moves straight to another page when no editor holds unsaved work', () => {
+    moveWithinProtocol();
+
+    expect(navigateSpy).toHaveBeenCalledWith('/protocol', {});
+    expect(openDialogSpy).not.toHaveBeenCalled();
+  });
+
+  it('asks before another page discards an open editor’s unsaved work', async () => {
+    // The Languages page's translation editors live on the page itself, so a
+    // nav link that leaves it unmounts them and the typed text with them.
+    nestedDraftDirty = true;
+    openDialogSpy.mockResolvedValue(false);
+
+    moveWithinProtocol();
+
+    await waitFor(() => expect(openDialogSpy).toHaveBeenCalledTimes(1));
+    expect(renderQueuedMessage(openDialogSpy.mock.calls[0]![0].title)).toBe(
+      'Discard unsaved changes?',
+    );
+    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(promptLeaveEditor).not.toHaveBeenCalled();
+  });
+
+  it('moves on once the researcher chooses to discard', async () => {
+    nestedDraftDirty = true;
+    openDialogSpy.mockResolvedValue(true);
+
+    moveWithinProtocol();
+
+    await waitFor(() =>
+      expect(navigateSpy).toHaveBeenCalledWith('/protocol', {}),
+    );
+  });
+
+  it('does not ask when the link stays on the same page', () => {
+    nestedDraftDirty = true;
+
+    moveWithinProtocol('/protocol/localization?language=fr');
+
+    expect(navigateSpy).toHaveBeenCalledTimes(1);
+    expect(openDialogSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe('promptLeaveEditor copy', () => {
   it('never claims work is saved automatically once anything is unsaved', async () => {
     const actual = await vi.importActual<
