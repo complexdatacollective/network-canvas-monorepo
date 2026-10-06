@@ -138,8 +138,9 @@ run, with no restart.
 docker compose run --rm migrate
 ```
 
-It creates the bucket, applies this build's schema, and — because the instance
-has no owner yet — issues the first-run setup token and prints it:
+It creates the bucket, applies every migration this build carries — on a new
+database, all of them, which is what creates the schema — and, because the
+instance has no owner yet, issues the first-run setup token and prints it:
 
 ```text
 ────────────────────────────────────────────────────────────────────────
@@ -165,7 +166,7 @@ Confirm the stack is healthy before you go on:
 
 ```bash
 curl https://studio.example.org/readyz
-# {"status":"ok","checks":{"db":"ok","schema":"ok","objectStore":"ok"}}
+# {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok"}}
 ```
 
 ## 7. Finish setup in the browser
