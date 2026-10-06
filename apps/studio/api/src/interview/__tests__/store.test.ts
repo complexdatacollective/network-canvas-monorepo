@@ -113,6 +113,9 @@ describe.skipIf(!testDb)('the interview store', () => {
             pauseGraceMinutes: 60,
             participationMode: 'managed',
             protocolVersionId: fixture.versionId,
+            waveOpensAt: null,
+            waveClosesAt: null,
+            participantCode: fixture.participantCode,
           });
         }).pipe(Effect.orDie),
       );

@@ -286,6 +286,8 @@ describe('audit mutation policy', () => {
       'studies.create',
       'protocols.addInformationStage',
       'protocols.moveStage',
+      'participant.redeem',
+      'participant.finish',
       'Submit',
       'Create',
       'Delete',

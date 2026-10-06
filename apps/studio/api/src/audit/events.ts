@@ -375,6 +375,51 @@ const StudyCreationDeniedV1EventSchema = Schema.Struct({
   }),
 });
 
+const CommonInterviewV1EventSchema = Schema.Struct({
+  teamId: Identifier,
+  teamLabel: Label,
+  actorKind: Schema.Literal('participant'),
+  actorId: Identifier,
+  actorLabel: Label,
+  requestId: RequestId,
+  eventVersion: Schema.Literal(1),
+  category: Schema.Literal('participant_data'),
+  outcome: Schema.Literal('succeeded'),
+  subjectType: Schema.NullOr(Schema.Literal('participant')),
+  subjectId: Schema.NullOr(Identifier),
+  subjectLabel: Schema.NullOr(Label),
+  resourceType: Schema.Literal('interview_session'),
+  resourceId: Identifier,
+  resourceLabel: Schema.Null,
+});
+
+const InterviewStartedV1EventSchema = Schema.Struct({
+  ...CommonInterviewV1EventSchema.fields,
+  eventType: Schema.Literal('interview.started'),
+  details: Schema.Struct({
+    studyId: Identifier,
+    waveId: Identifier,
+    resumed: Schema.Boolean,
+  }),
+});
+
+const InterviewCompletedV1EventSchema = Schema.Struct({
+  ...CommonInterviewV1EventSchema.fields,
+  eventType: Schema.Literal('interview.completed'),
+  details: Schema.Struct({
+    studyId: Identifier,
+    waveId: Identifier,
+    nodeCount: Schema.Number.check(
+      Schema.isInt(),
+      Schema.isGreaterThanOrEqualTo(0),
+    ),
+    edgeCount: Schema.Number.check(
+      Schema.isInt(),
+      Schema.isGreaterThanOrEqualTo(0),
+    ),
+  }),
+});
+
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
 export const AuditEventInputSchema = Schema.Union([
@@ -396,6 +441,8 @@ export const AuditEventInputSchema = Schema.Union([
   ProtocolDraftCommittedV1EventSchema,
   StudyCreatedV1EventSchema,
   StudyCreationDeniedV1EventSchema,
+  InterviewStartedV1EventSchema,
+  InterviewCompletedV1EventSchema,
 ]);
 
 export type AuditEventInput = typeof AuditEventInputSchema.Type;
@@ -463,6 +510,24 @@ const FIXTURE_STUDY_V1_COMMON = {
   subjectType: null,
   subjectId: null,
   subjectLabel: null,
+} as const;
+
+const FIXTURE_INTERVIEW_V1_COMMON = {
+  teamId: 'fixture-team',
+  teamLabel: 'Fixture team',
+  actorKind: 'participant',
+  actorId: 'fixture-session',
+  actorLabel: 'P-0001',
+  requestId: '00000000-0000-4000-8000-000000000001',
+  eventVersion: 1,
+  category: 'participant_data',
+  outcome: 'succeeded',
+  subjectType: 'participant',
+  subjectId: 'fixture-participant',
+  subjectLabel: 'P-0001',
+  resourceType: 'interview_session',
+  resourceId: 'fixture-session',
+  resourceLabel: null,
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
@@ -782,6 +847,39 @@ export const AUDIT_EVENT_REGISTRY = {
       resourceId: null,
       resourceLabel: null,
       details: { reason: 'insufficient_permission' },
+    },
+  },
+  'interview.started@1': {
+    inputSchema: InterviewStartedV1EventSchema,
+    title: 'Interview started',
+    detailFields: ['studyId', 'waveId', 'resumed'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_INTERVIEW_V1_COMMON,
+      eventType: 'interview.started',
+      details: {
+        studyId: 'fixture-study',
+        waveId: 'fixture-wave',
+        resumed: false,
+      },
+    },
+  },
+  'interview.completed@1': {
+    inputSchema: InterviewCompletedV1EventSchema,
+    title: 'Interview completed',
+    detailFields: ['studyId', 'waveId', 'nodeCount', 'edgeCount'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_INTERVIEW_V1_COMMON,
+      eventType: 'interview.completed',
+      details: {
+        studyId: 'fixture-study',
+        waveId: 'fixture-wave',
+        nodeCount: 12,
+        edgeCount: 9,
+      },
     },
   },
 } as const satisfies Record<AuditEventKey, AuditEventDefinition>;

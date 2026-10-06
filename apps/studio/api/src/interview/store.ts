@@ -12,10 +12,18 @@ import {
 
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { tenantTeamId, Transaction } from '../db/tenant.ts';
+import {
+  decodeAttributes,
+  decodeSecureAttributes,
+  type EgoColumns,
+} from '../network/mapping.ts';
+import { PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { STUDY_TABLES } from '../study/schema.ts';
 
 const { interviewLinks, interviewSessions, participants, studies, studyWaves } =
   STUDY_TABLES;
+
+const { protocolVersions } = PROTOCOL_TABLES;
 
 const decodeStatus = Schema.decodeUnknownSync(ParticipantSessionStatus);
 const decodeStudyState = Schema.decodeUnknownSync(StudyState);
@@ -35,6 +43,9 @@ export type RedeemableLink = {
   readonly pauseGraceMinutes: number;
   readonly participationMode: StudyParticipationMode;
   readonly protocolVersionId: string | null;
+  readonly waveOpensAt: Date | null;
+  readonly waveClosesAt: Date | null;
+  readonly participantCode: string | null;
 };
 
 export const findLinkByTokenHash: (
@@ -58,6 +69,9 @@ export const findLinkByTokenHash: (
         pauseGraceMinutes: studies.pauseGraceMinutes,
         participationMode: studies.participationMode,
         protocolVersionId: studyWaves.protocolVersionId,
+        waveOpensAt: studyWaves.opensAt,
+        waveClosesAt: studyWaves.closesAt,
+        participantCode: participants.participantCode,
       })
       .from(interviewLinks)
       .innerJoin(
@@ -72,6 +86,13 @@ export const findLinkByTokenHash: (
         and(
           eq(studyWaves.id, interviewLinks.waveId),
           eq(studyWaves.teamId, interviewLinks.teamId),
+        ),
+      )
+      .leftJoin(
+        participants,
+        and(
+          eq(participants.id, interviewLinks.participantId),
+          eq(participants.teamId, interviewLinks.teamId),
         ),
       )
       .where(
@@ -315,7 +336,10 @@ export type RevisionOutcome =
   | { readonly _tag: 'Applied'; readonly revision: bigint }
   | { readonly _tag: 'Replayed'; readonly revision: bigint }
   | { readonly _tag: 'TakenOver'; readonly holderEpoch: number }
-  | { readonly _tag: 'Ended'; readonly status: ParticipantSessionStatus }
+  | {
+      readonly _tag: 'Ended';
+      readonly status: Exclude<ParticipantSessionStatus, 'in_progress'>;
+    }
   | { readonly _tag: 'Missing' };
 
 export const advanceRevision: (
@@ -380,4 +404,196 @@ export const advanceRevision: (
     _tag: 'Replayed',
     revision: found.revision,
   } satisfies RevisionOutcome;
+}, sqlErrorsOnly);
+
+export const reopenAbandonedSession: (
+  sessionId: string,
+) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
+  'interview.store.reopenAbandonedSession',
+)(function* (sessionId: string) {
+  const { tx } = yield* Transaction;
+  const teamId = yield* tenantTeamId;
+  const rows = yield* tx
+    .update(interviewSessions)
+    .set({ status: 'in_progress', abandonedAt: null })
+    .where(
+      and(
+        eq(interviewSessions.teamId, teamId),
+        eq(interviewSessions.id, sessionId),
+        eq(interviewSessions.status, 'abandoned'),
+      ),
+    )
+    .returning({ id: interviewSessions.id });
+  return rows.length === 1;
+}, sqlErrorsOnly);
+
+export type SessionContext = {
+  readonly sessionId: string;
+  readonly studyId: string;
+  readonly waveId: string;
+  readonly participantId: string | null;
+  readonly participantCode: string | null;
+  readonly status: ParticipantSessionStatus;
+  readonly holderEpoch: number;
+  readonly clientRevision: bigint;
+  readonly stageIndex: number;
+  readonly stageId: string | null;
+  readonly stageMetadata: Readonly<Record<string, unknown>>;
+  readonly egoUid: string;
+  readonly egoAttributes: Readonly<Record<string, unknown>>;
+  readonly egoSecureAttributes: EgoColumns['egoSecureAttributes'];
+  readonly startedAt: Date;
+  readonly lastActivityAt: Date;
+  readonly protocolVersionId: string;
+  readonly protocolId: string;
+  readonly schemaVersion: number;
+  readonly publishedAt: Date;
+  readonly studyState: StudyState;
+  readonly studyPausedAt: Date | null;
+  readonly pauseGraceMinutes: number;
+};
+
+export const loadSessionContext: (
+  sessionId: string,
+  options?: { readonly lock?: boolean },
+) => Effect.Effect<SessionContext | null, SqlError.SqlError, Transaction> =
+  Effect.fn('interview.store.loadSessionContext')(function* (
+    sessionId: string,
+    options?: { readonly lock?: boolean },
+  ) {
+    const { tx } = yield* Transaction;
+    const teamId = yield* tenantTeamId;
+    const query = tx
+      .select({
+        sessionId: interviewSessions.id,
+        studyId: interviewSessions.studyId,
+        waveId: interviewSessions.waveId,
+        participantId: interviewSessions.participantId,
+        participantCode: participants.participantCode,
+        status: interviewSessions.status,
+        holderEpoch: interviewSessions.holderEpoch,
+        clientRevision: interviewSessions.clientRevision,
+        stageIndex: interviewSessions.currentStageIndex,
+        stageId: interviewSessions.currentStageId,
+        stageMetadata: interviewSessions.stageMetadata,
+        egoUid: interviewSessions.egoUid,
+        egoAttributes: interviewSessions.egoAttributes,
+        egoSecureAttributes: interviewSessions.egoSecureAttributes,
+        startedAt: interviewSessions.startedAt,
+        lastActivityAt: interviewSessions.lastActivityAt,
+        protocolVersionId: interviewSessions.protocolVersionId,
+        protocolId: protocolVersions.protocolId,
+        schemaVersion: protocolVersions.schemaVersion,
+        publishedAt: protocolVersions.publishedAt,
+        studyState: studies.state,
+        studyPausedAt: studies.pausedAt,
+        pauseGraceMinutes: studies.pauseGraceMinutes,
+      })
+      .from(interviewSessions)
+      .innerJoin(
+        studies,
+        and(
+          eq(studies.id, interviewSessions.studyId),
+          eq(studies.teamId, interviewSessions.teamId),
+        ),
+      )
+      .innerJoin(
+        protocolVersions,
+        and(
+          eq(protocolVersions.id, interviewSessions.protocolVersionId),
+          eq(protocolVersions.teamId, interviewSessions.teamId),
+        ),
+      )
+      .leftJoin(
+        participants,
+        and(
+          eq(participants.id, interviewSessions.participantId),
+          eq(participants.teamId, interviewSessions.teamId),
+        ),
+      )
+      .where(
+        and(
+          eq(interviewSessions.teamId, teamId),
+          eq(interviewSessions.id, sessionId),
+        ),
+      );
+    const rows = yield* options?.lock === true
+      ? query.for('update', { of: interviewSessions })
+      : query;
+    const row = rows[0];
+    if (row === undefined) return null;
+    return {
+      ...row,
+      status: decodeStatus(row.status),
+      holderEpoch: Number(row.holderEpoch),
+      stageMetadata: decodeAttributes(row.stageMetadata),
+      egoAttributes: decodeAttributes(row.egoAttributes),
+      egoSecureAttributes: decodeSecureAttributes(row.egoSecureAttributes),
+      studyState: decodeStudyState(row.studyState),
+    };
+  }, sqlErrorsOnly);
+
+export type SessionProgress = {
+  readonly stageIndex: number;
+  readonly stageId: string | null;
+  readonly stageMetadata: Readonly<Record<string, unknown>>;
+  readonly ego: EgoColumns;
+};
+
+export const recordProgress: (
+  sessionId: string,
+  progress: SessionProgress,
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'interview.store.recordProgress',
+)(function* (sessionId: string, progress: SessionProgress) {
+  const { tx } = yield* Transaction;
+  const teamId = yield* tenantTeamId;
+  const rows = yield* tx
+    .update(interviewSessions)
+    .set({
+      currentStageIndex: progress.stageIndex,
+      currentStageId: progress.stageId,
+      stageMetadata: progress.stageMetadata,
+      egoUid: progress.ego.egoUid,
+      egoAttributes: progress.ego.egoAttributes,
+      egoSecureAttributes: progress.ego.egoSecureAttributes,
+    })
+    .where(
+      and(
+        eq(interviewSessions.teamId, teamId),
+        eq(interviewSessions.id, sessionId),
+        eq(interviewSessions.status, 'in_progress'),
+      ),
+    )
+    .returning({ id: interviewSessions.id });
+  if (rows.length === 0) {
+    return yield* Effect.die(
+      new Error(`session ${sessionId} left progress mid-write`),
+    );
+  }
+}, sqlErrorsOnly);
+
+export const completeSession: (
+  sessionId: string,
+) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
+  'interview.store.completeSession',
+)(function* (sessionId: string) {
+  const { tx } = yield* Transaction;
+  const teamId = yield* tenantTeamId;
+  const rows = yield* tx
+    .update(interviewSessions)
+    .set({
+      status: 'completed',
+      completedAt: sql`now()`,
+      lastActivityAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(interviewSessions.teamId, teamId),
+        eq(interviewSessions.id, sessionId),
+        eq(interviewSessions.status, 'in_progress'),
+      ),
+    )
+    .returning({ id: interviewSessions.id });
+  return rows.length === 1;
 }, sqlErrorsOnly);

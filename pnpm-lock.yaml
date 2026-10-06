@@ -1933,6 +1933,9 @@ importers:
       '@azure/storage-blob':
         specifier: ^12.34.0
         version: 12.34.0(supports-color@10.2.2)
+      '@codaco/interview':
+        specifier: workspace:^
+        version: link:../../../packages/interview
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../../../packages/protocol-builder-core
