@@ -134,10 +134,11 @@ export const JOB_SCHEDULES = [
   // longer cadence would leave a burst unrecorded for as long as the cadence,
   // and the job does nothing at all when no window was suppressed.
   { queue: 'denied-attempts-summary', cron: '* * * * *', tz: 'UTC' },
-  // Daily, at a fixed minute off the hour: every instance contacts the
-  // manifest host, and a round-number minute would land them all on the same
-  // second. A fixed minute rather than a random one so the schedule row does
-  // not change on each boot.
+  // Daily, at a fixed minute off the hour. The minute is the same for every
+  // instance, so the manifest host sees them arrive together; that is accepted
+  // (no jitter, by decision, 16 Sep 2026). The off-the-hour minute only keeps
+  // the check clear of the top-of-the-hour crons, and a fixed minute rather
+  // than a random one keeps the schedule row from changing on each boot.
   { queue: 'update-check', cron: '23 4 * * *', tz: 'UTC' },
 ] as const satisfies readonly JobSchedule[];
 
