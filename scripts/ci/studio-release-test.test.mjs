@@ -194,7 +194,8 @@ test('a closed window, a held migrate and a reopened instance pass', () => {
   const result = analyse(observation());
   assert.deepEqual(result.failures, []);
   assert.equal(result.ok, true);
-  assert.ok(result.evidence.migrateTicksNamingMaintenance > 0);
+  assert.ok(result.evidence.migrateTicks > 0);
+  assert.ok(result.evidence.newApiTicksNamingMaintenance > 0);
 });
 
 test('a sequence without maintenance on is refused, and its evidence names what readiness said', () => {
@@ -262,17 +263,51 @@ test('a window that never closes, or closes late, is refused', () => {
   );
 });
 
-test('migrate with no answer from the API naming maintenance is refused', () => {
+// Seen on a CI runner: a code-only migrate runs entirely while the api up -d
+// started is still booting, so Traefik answers every tick. Closed, and the
+// new api is seen closed once it is up, before maintenance off.
+test('a migrate the new api had not come up for passes when the new api is seen closed before maintenance off', () => {
   const overrides = {};
-  for (let ts = 10000; ts <= 11800; ts += 250) {
+  for (let ts = 8000; ts <= 11800; ts += 250) {
+    overrides[ts] = tick(ts, '502', 'Bad Gateway', '503', 'page');
+  }
+  // The lane's wait for the new api, between migrate (ends 11800) and
+  // maintenance off (starts 12000).
+  const lines = observation(overrides).split('\n');
+  const at = lines.findIndex((line) => line.startsWith('12000\t'));
+  lines.splice(at, 0, tick(11900, '503', CLOSED, '503', 'page'));
+  const result = analyse(lines.join('\n'));
+  assert.deepEqual(result.failures, []);
+  assert.equal(result.evidence.migrateTicksNamingMaintenance, 0);
+  assert.equal(result.evidence.newApiTicksNamingMaintenance, 1);
+});
+
+test('a new api never seen closed before maintenance off is refused', () => {
+  const overrides = {};
+  for (let ts = 8000; ts < 13000; ts += 250) {
     overrides[ts] = tick(ts, '502', 'Bad Gateway', '503', 'page');
   }
   const result = analyse(observation(overrides));
   assert.equal(result.ok, false);
   assert.ok(
     result.failures.includes(
-      'no /readyz answer inside migrate named maintenance mode',
+      'the api up -d started never answered /readyz naming maintenance mode before maintenance off',
     ),
+  );
+});
+
+test('a migrate the observer took no reading of is refused', () => {
+  const kept = observation()
+    .split('\n')
+    .filter((line) => {
+      const ts = Number(line.split('\t')[0]);
+      return ts < 10000 || ts > 11800;
+    })
+    .join('\n');
+  const result = analyse(kept);
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.failures.includes('the observer took no reading while migrate ran'),
   );
 });
 

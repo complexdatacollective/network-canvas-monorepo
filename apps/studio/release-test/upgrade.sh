@@ -30,10 +30,12 @@
 #     worker — the one `up -d` started — is running with the flag on, and it
 #     must be completed after `maintenance off` cleared the flag;
 #   - before `maintenance off`, the lane waits for that new worker to start,
-#     so the new build's own maintenance gate is live inside the window. The
-#     guide does not need this wait (the flag keeps a late worker closed
-#     either way); the proof does, or the new worker would only ever start
-#     after the window and its gate would go untested.
+#     and for the new api to answer /readyz naming maintenance mode, so the
+#     new build's own maintenance gates are live inside the window. The
+#     guide does not need these waits (the flag keeps a late process closed
+#     either way); the proof does, or on a fast `migrate` the new processes
+#     would only ever start after the window and their gates would go
+#     untested.
 set -euo pipefail
 
 # shellcheck source=./lib.sh
@@ -130,6 +132,25 @@ enqueue_probe() {
 
 worker_container() { docker compose ps -q worker; }
 
+# The api `up -d` started has taken its first reading of the flag: /readyz
+# names maintenance mode. Only the new api is running by now (`up -d`
+# replaced the old one), so any api answer is its. Until it has read the flag
+# it says it is starting, or Traefik answers for it.
+wait_for_new_api() { # since-ms
+  local deadline=$((SECONDS + NEW_WORKER_BOUND))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    case "$(curl -k -s --max-time 1 "$URL/readyz" || true)" in
+      *'"maintenance":"failed: maintenance mode is on'*)
+        say "  the new api named maintenance mode by $(($(now_ms) - $1)) ms after up -d returned"
+        return 0
+        ;;
+    esac
+    sleep 0.25
+  done
+  fail "the new api did not answer /readyz naming maintenance mode within ${NEW_WORKER_BOUND}s of up -d"
+  return 1
+}
+
 # The worker `up -d` started has come up with the flag on: it logged that it
 # started, which it does only once its schema is current and its maintenance
 # gate has taken its first reading — and that reading paused it. A worker
@@ -215,6 +236,9 @@ while IFS= read -r line; do
           # the upgrade.
           if [ -n "$new_worker" ]; then
             wait_for_new_worker "$new_worker" "$up_returned_ms" || true
+          fi
+          if [ -n "$up_returned_ms" ]; then
+            wait_for_new_api "$up_returned_ms" || true
           fi
           state="$(job_state)"
           if [ "$state" = created ]; then

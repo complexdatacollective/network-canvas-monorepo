@@ -20,12 +20,20 @@
 //     the flag at all, "the server is starting". An API that named the
 //     migration lock or the schema instead was serving on those triggers
 //     alone, which is what a missing `maintenance on` looks like.
-//  4. At least one /readyz answer from the API fell inside `migrate`, naming
-//     maintenance mode: the window held while the schema moved. The observer
-//     samples as fast as its requests allow while `migrate` runs (observe.sh's
-//     fast file), so on a one-to-two-second `migrate` this rests on about a
-//     dozen readings; it remains a sample, not a continuous watch.
-//  5. After `maintenance off` returned, /readyz and the probe both reached 200.
+//  4. At least one tick fell inside `migrate`: the observer watched the
+//     schema move, and rule 3 judged what it saw. The observer samples as
+//     fast as its requests allow while `migrate` runs (observe.sh's fast
+//     file), so on a one-to-two-second `migrate` this rests on about a dozen
+//     readings; it remains a sample, not a continuous watch. Whether the API
+//     `up -d` started is answering yet by then depends on how fast it boots,
+//     which the sequence does not wait for: on a CI runner a code-only
+//     `migrate` ran entirely while it was still starting, every tick getting
+//     the page from Traefik.
+//  5. Between `up -d` returning and `maintenance off` starting, the API `up -d`
+//     started answered /readyz naming maintenance mode: the new build's own
+//     gate held the window. The guide does not need it to be up before
+//     `maintenance off`; the proof does, so upgrade.sh waits for it there.
+//  6. After `maintenance off` returned, /readyz and the probe both reached 200.
 //
 // It also checks the observer was alive throughout: no two ticks inside the
 // window more than MAX_GAP_MS apart, so silence cannot pass for closure.
@@ -238,14 +246,31 @@ export function analyseWindow(ticks, steps) {
   }
 
   const duringMigrate = window.filter(
-    (tick) =>
-      tick.ts >= migrate.start &&
-      tick.ts <= migrate.end &&
-      tick.reason === 'maintenance',
+    (tick) => tick.ts >= migrate.start && tick.ts <= migrate.end,
   );
-  evidence.migrateTicksNamingMaintenance = duringMigrate.length;
+  evidence.migrateTicks = duringMigrate.length;
+  evidence.migrateTicksNamingMaintenance = duringMigrate.filter(
+    (tick) => tick.reason === 'maintenance',
+  ).length;
   if (duringMigrate.length === 0) {
-    failures.push('no /readyz answer inside migrate named maintenance mode');
+    failures.push('the observer took no reading while migrate ran');
+  }
+
+  const upD = steps.find((step) =>
+    /\bup\s+-d\b.*\bapi\b/.test(step.command ?? ''),
+  );
+  if (!upD) {
+    failures.push('the executed sequence never started the new api');
+  } else {
+    const newApiClosed = window.filter(
+      (tick) => tick.ts > upD.end && tick.reason === 'maintenance',
+    );
+    evidence.newApiTicksNamingMaintenance = newApiClosed.length;
+    if (newApiClosed.length === 0) {
+      failures.push(
+        'the api up -d started never answered /readyz naming maintenance mode before maintenance off',
+      );
+    }
   }
 
   const after = ticks.filter((tick) => tick.ts >= off.end);
@@ -277,7 +302,7 @@ function main([observePath, eventsPath, outPath]) {
   if (result.ok) {
     const { window } = result.evidence;
     console.log(
-      `  ok    closed ${window.closedAfterOnMs} ms after maintenance on; ${window.ticks} ticks over ${window.ms} ms, none served; ${result.evidence.migrateTicksNamingMaintenance} inside migrate named maintenance; reopened ${result.evidence.reopenedAfterOffMs} ms after maintenance off`,
+      `  ok    closed ${window.closedAfterOnMs} ms after maintenance on; ${window.ticks} ticks over ${window.ms} ms, none served; ${result.evidence.migrateTicks} inside migrate (${result.evidence.migrateTicksNamingMaintenance} from the api, naming maintenance); the new api named maintenance ${result.evidence.newApiTicksNamingMaintenance} time(s); reopened ${result.evidence.reopenedAfterOffMs} ms after maintenance off`,
     );
   }
   process.exit(result.ok ? 0 : 1);
