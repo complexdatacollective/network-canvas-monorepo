@@ -596,11 +596,15 @@ export function computeConnectors(
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
       const childId = layout.nid[i]![j]!;
       if (childId < 0) continue;
+      // A child without a family (its couple could not sit together) has no
+      // sibling bar, so each of its donors and surrogates joins it directly.
       const famId = layout.fam[i]?.[j] ?? 0;
-      if (famId <= 0) continue;
+      if (famId < 0) continue;
 
       const famKey = `${i},${famId}`;
-      familyChildCount.set(famKey, (familyChildCount.get(famKey) ?? 0) + 1);
+      if (famId > 0) {
+        familyChildCount.set(famKey, (familyChildCount.get(famKey) ?? 0) + 1);
+      }
 
       const childParents = parents[childId] ?? [];
       for (const pc of childParents) {

@@ -974,6 +974,31 @@ describe('partnership chains', () => {
     });
   });
 
+  it('keeps a chain together where it returns to the same sibship', () => {
+    // mum + dad → sibA, sibB, sibC. sibA – p1 – p2 – sibB – p3 – sibC.
+    expectEveryCoupleAdjacent({
+      id: ['mum', 'dad', 'sibA', 'sibB', 'sibC', 'p1', 'p2', 'p3'],
+      parents: [
+        [],
+        [],
+        [sp(0), sp(1)],
+        [sp(0), sp(1)],
+        [sp(0), sp(1)],
+        [],
+        [],
+        [],
+      ],
+      partners: [
+        couple(0, 1),
+        couple(2, 5),
+        couple(5, 6),
+        couple(6, 3),
+        couple(3, 7),
+        couple(7, 4),
+      ],
+    });
+  });
+
   it('seats a donor beside a couple without splitting the chain', () => {
     // you – alex – alexsFormer; you + alex → child, with an egg donor.
     expectEveryCoupleAdjacent({
@@ -1098,5 +1123,38 @@ describe('a person with three partners', () => {
     // parent – c is the partnership left apart, so both of its children are
     // drawn this way.
     expect(withoutFamily).toBe(2);
+  });
+
+  it('joins a donor to a child whose couple cannot sit together', () => {
+    // kidC2 of the couple left apart, conceived with an egg donor.
+    const withDonor: PedigreeInput = {
+      ...ped,
+      id: [...ped.id, 'donor'],
+      parents: [
+        ...ped.parents.slice(0, 7),
+        [sp(0), sp(3), { parentIndex: 8, edgeType: 'donor' }],
+        [],
+      ],
+    };
+    const result = alignPedigree(withDonor);
+    const level = result.nid.findIndex((row) => row.includes(7));
+    expect(result.fam[level]![result.nid[level]!.indexOf(7)]).toBe(0);
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      withDonor.parents,
+      new Set(['0,3']),
+      undefined,
+      undefined,
+      undefined,
+      withDonor.id,
+      new Set(['0,1', '0,2', '0,3']),
+    );
+    const donorLines = conn.auxiliaryLines.filter(
+      (line) => line.edgeType === 'donor',
+    );
+    expect(donorLines.map((line) => line.endpointIds)).toStrictEqual([
+      ['donor', 'kidC2'],
+    ]);
   });
 });
