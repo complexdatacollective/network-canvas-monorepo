@@ -14,7 +14,12 @@ process.loadEnvFile(
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/__tests__/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/__tests__/**/*.test.ts',
+      // The checkout-lane scripts' own suites (migrate:generate).
+      'scripts/**/__tests__/**/*.test.ts',
+    ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     // The protocol suites validate whole fixture protocols and build a
     // fourteen-table schema per file.

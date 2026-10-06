@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import {
   generateDrizzleJson,
   generateMigration,
@@ -11,6 +9,8 @@ import pg from 'pg';
 
 import { OwnerDatabase } from '../src/db/client.ts';
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
+import { HISTORY_TABLE } from '../src/db/history.ts';
+import { sha256 } from '../src/db/migrations-document.ts';
 import {
   SCHEMA,
   SCHEMA_LOCK_KEY,
@@ -23,8 +23,10 @@ import { JOB_SCHEMA, renderJobStatements } from '../src/jobs/queues.ts';
 import { seed, type SeedOptions, type SeedResult } from './seed/seed.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach the
-// image's bundles. `studio-api migrate` applies the same schema from the DDL
-// this file renders at build time — see src/db/migrate.ts.
+// image's bundles. This is the checkout lane's push path: development
+// databases and test fixtures. A deployment is upgraded only by `studio-api
+// migrate`, from the numbered migrations under `migrations/` (#1901), and
+// `applySchema` refuses any database that carries their history.
 
 export { renderJobStatements };
 
@@ -49,11 +51,48 @@ export async function renderSchemaStatements(): Promise<string[]> {
  * statements name their own schema rather than running inside that one.
  */
 export async function computeSchemaFingerprint(): Promise<string> {
-  const statements = [
-    ...(await renderSchemaStatements()),
-    ...renderJobStatements(),
-  ];
-  return createHash('sha256').update(statements.join('\n')).digest('hex');
+  return schemaFingerprintOf(
+    await renderDrizzleSchemaStatements(),
+    SIDECARS,
+    renderJobStatements(),
+  );
+}
+
+/**
+ * The fingerprint's one definition: the drizzle statements an empty database
+ * needs, then the sidecars, then the job schema's statements, joined with
+ * newlines and hashed. Parameterised so `migrate:generate`'s tests can
+ * fingerprint a fixture schema exactly as the real one is fingerprinted.
+ */
+export function schemaFingerprintOf(
+  drizzleStatements: readonly string[],
+  sidecars: readonly string[],
+  jobStatements: readonly string[],
+): string {
+  return sha256(
+    [...drizzleStatements, ...sidecars, ...jobStatements].join('\n'),
+  );
+}
+
+export class MigratedDatabaseRefused extends Error {}
+
+async function refuseMigratedDatabase(lock: pg.PoolClient): Promise<void> {
+  const history = await lock.query<{ present: boolean }>(
+    `select to_regclass('public.${HISTORY_TABLE}') is not null as present`,
+  );
+  if (!history.rows[0]?.present) return;
+  const recorded = await lock.query<{ count: number; newest: string | null }>(
+    `select count(*)::int as count, max(version) as newest from public.${HISTORY_TABLE}`,
+  );
+  const { count = 0, newest = null } = recorded.rows[0] ?? {};
+  if (count > 0) {
+    throw new MigratedDatabaseRefused(
+      [
+        `This database is managed by migrate (${count} migration(s), newest ${newest}); apply-schema never touches a migrated database.`,
+        'Upgrade it with `studio-api migrate` (in the reference stack: `docker compose run --rm migrate`), or recreate a development database with `pnpm --filter @codaco/studio-api db:reset`.',
+      ].join('\n'),
+    );
+  }
 }
 
 export type ApplyOutcome = {
@@ -82,6 +121,11 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
   const lock = await pool.connect();
   try {
     await lock.query(`select pg_advisory_lock(${SCHEMA_LOCK_KEY})`);
+    // Before anything is touched, the stamp included: a database carrying
+    // migration history is upgraded by `migrate` alone (#1901). Pushing over
+    // it would reconcile the schema without recording a migration, and the
+    // next `migrate` would find history that no longer describes it.
+    await refuseMigratedDatabase(lock);
     // A matching stamp must not survive a failed apply: a drifted database
     // would keep reading `current`. Cleared here, restored only on success.
     const stamped = await lock.query<{ present: boolean }>(

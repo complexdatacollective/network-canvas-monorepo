@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { Console, Effect, Layer, Schema } from 'effect';
 
 import { OwnerDatabase } from '../db/client.ts';
-import { migrateDatabaseEffect, type SchemaDdl } from '../db/migrate.ts';
+import {
+  migrateDatabaseEffect,
+  readVerifiedMigrations,
+} from '../db/migrate.ts';
 import { OwnerScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
@@ -42,13 +45,12 @@ class MigrateFailed extends Schema.TaggedError<MigrateFailed>()(
 
 /**
  * Read through `import.meta.url` rather than the working directory, which a
- * container runtime may set to anything.
+ * container runtime may set to anything. Rendered beside the bundle at build
+ * time by `scripts/render-migrations.ts`; decoded and verified by
+ * `readVerifiedMigrations`.
  */
-const readSchemaDdl = Effect.tryPromise({
-  try: async () =>
-    JSON.parse(
-      await readFile(new URL('./schema-ddl.json', import.meta.url), 'utf8'),
-    ) as SchemaDdl,
+const readMigrations = Effect.tryPromise({
+  try: () => readFile(new URL('./migrations.json', import.meta.url), 'utf8'),
   catch: (cause) => new MigrateFailed({ cause }),
 });
 
@@ -63,14 +65,20 @@ const migrate = Effect.gen(function* () {
   }
 
   yield* Console.log(`Network Canvas Studio migrate ${STUDIO_VERSION}`);
-  const ddl = yield* readSchemaDdl;
+  // Before the database is touched: a document this build did not render
+  // is refused without a connection.
+  const migrations = yield* readMigrations.pipe(
+    Effect.flatMap((text) => readVerifiedMigrations(text)),
+    Effect.catch((cause) => new MigrateFailed({ cause })),
+  );
 
   const owner = yield* Layer.build(OwnerDatabase.layer(db)).pipe(
     Effect.catch((cause) => new MigrateFailed({ cause })),
   );
 
-  yield* migrateDatabaseEffect(ddl, {
+  yield* migrateDatabaseEffect(migrations, {
     log: (line) => Effect.runSync(Console.log(line)),
+    appliedBy: STUDIO_VERSION,
   }).pipe(
     Effect.catch((cause) => new MigrateFailed({ cause })),
     Effect.catchDefect((cause) => new MigrateFailed({ cause })),
