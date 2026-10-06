@@ -101,3 +101,106 @@ export function mergeCatalogs(
 ): CatalogMessages {
   return Object.assign({}, ...catalogs) as CatalogMessages;
 }
+
+/**
+ * One package's catalogs: for each locale it translates, a dynamic `import()`
+ * of its `src/locales/<tag>.json`. Behind the import every language is its
+ * own chunk, so a host downloads, parses and keeps in memory only the one it
+ * renders — and still has the rest a request away, which for an offline PWA
+ * means its precache, not the network.
+ *
+ * English has no entry and needs none: every descriptor carries its own
+ * `defaultMessage`, and `en.json` is extraction data, never a runtime input.
+ */
+export type CatalogLoaders = Readonly<
+  Partial<Record<string, () => Promise<Readonly<{ default: CatalogMessages }>>>>
+>;
+
+/** What a locale nobody translates renders from: its descriptors alone. */
+const NO_CATALOG: CatalogMessages = Object.freeze({});
+
+/**
+ * Loads one locale from each package and merges them, in the order given —
+ * the same common → shared packages → app order `mergeCatalogs` documents.
+ * A package with no catalog for the locale contributes nothing.
+ */
+export async function loadCatalog(
+  locale: string,
+  ...packages: readonly CatalogLoaders[]
+): Promise<CatalogMessages> {
+  const modules = await Promise.all(
+    packages.map((loaders) => loaders[locale]?.()),
+  );
+  return mergeCatalogs(
+    ...modules.map((module) => module?.default ?? NO_CATALOG),
+  );
+}
+
+/**
+ * A host's merged catalogs, loaded one locale at a time and kept once
+ * loaded. Read synchronously with `peek` (which is how a render reads it) and
+ * filled with `load` (which is how a host gets a locale ready before it
+ * renders it).
+ */
+export type CatalogSource = Readonly<{
+  /**
+   * The merged catalog for a locale that has finished loading, otherwise
+   * undefined. A locale no package translates — the source language, the
+   * pseudo-locale — has nothing to wait for and is always ready.
+   */
+  peek: (locale: string) => CatalogMessages | undefined;
+  /**
+   * Loads a locale once: concurrent and repeated calls share the one request.
+   * A failed load is not remembered, so the next call tries again rather than
+   * replaying the failure for the rest of the session.
+   */
+  load: (locale: string) => Promise<CatalogMessages>;
+  /** Called after any locale finishes loading. Returns the unsubscribe. */
+  subscribe: (onLoad: () => void) => () => void;
+}>;
+
+/**
+ * The catalog source for a host that renders messages from every package
+ * given, merged in argument order (common → shared packages → app).
+ */
+export function createCatalogSource(
+  ...packages: readonly CatalogLoaders[]
+): CatalogSource {
+  const loaded = new Map<string, CatalogMessages>();
+  const inFlight = new Map<string, Promise<CatalogMessages>>();
+  const listeners = new Set<() => void>();
+  const translated = (locale: string) =>
+    packages.some((loaders) => loaders[locale] !== undefined);
+
+  const load = (locale: string): Promise<CatalogMessages> => {
+    const ready = translated(locale) ? loaded.get(locale) : NO_CATALOG;
+    if (ready !== undefined) return Promise.resolve(ready);
+    const existing = inFlight.get(locale);
+    if (existing !== undefined) return existing;
+    const request = loadCatalog(locale, ...packages).then(
+      (messages) => {
+        inFlight.delete(locale);
+        loaded.set(locale, messages);
+        for (const listener of listeners) listener();
+        return messages;
+      },
+      (error: unknown) => {
+        inFlight.delete(locale);
+        throw error;
+      },
+    );
+    inFlight.set(locale, request);
+    return request;
+  };
+
+  return {
+    peek: (locale) => (translated(locale) ? loaded.get(locale) : NO_CATALOG),
+    load,
+    subscribe: (onLoad) => {
+      listeners.add(onLoad);
+      return () => {
+        listeners.delete(onLoad);
+      };
+    },
+  };
+}

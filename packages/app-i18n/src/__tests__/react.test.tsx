@@ -1,16 +1,22 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
-import { useEffect } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { Suspense, useEffect } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '../common.ts';
-import { defineAppLocales, pseudoAppLocale } from '../locales.ts';
+import {
+  createCatalogSource,
+  defineAppLocales,
+  pseudoAppLocale,
+} from '../locales.ts';
+import type { CatalogMessages, CatalogSource } from '../locales.ts';
 import { defineMessages } from '../messages.ts';
 import {
   AppI18nProvider,
   AppMessage,
   useAppIntl,
   useAppLocale,
+  useLocaleCatalog,
 } from '../react.tsx';
 
 const registry = defineAppLocales([
@@ -398,5 +404,131 @@ describe('AppMessage', () => {
       </AppI18nProvider>,
     );
     expect(view.container.textContent).toBe('مرحبا Ada');
+  });
+});
+
+describe('useLocaleCatalog', () => {
+  // The suites above leave their trees mounted; these assert on copy they share.
+  afterEach(cleanup);
+  const translated = defineAppLocales([
+    { locale: 'en', label: 'English', direction: 'ltr' },
+    { locale: 'es', label: 'Español', direction: 'ltr' },
+    { locale: 'fr', label: 'Français', direction: 'ltr' },
+  ]);
+  const spanish = { 'demo.greeting': 'Hola {name}' };
+  const french = { 'demo.greeting': 'Bonjour {name}' };
+
+  /** A catalog module the test releases when it chooses. */
+  const pending = (catalog: CatalogMessages) => {
+    let release = () => {};
+    const loaded = new Promise<{ default: CatalogMessages }>((resolve) => {
+      release = () => resolve({ default: catalog });
+    });
+    return { load: () => loaded, release };
+  };
+
+  function Host(props: {
+    source: CatalogSource;
+    locale: string;
+    preloaded?: { locale: string; messages: CatalogMessages };
+  }) {
+    const catalog = useLocaleCatalog(
+      props.source,
+      props.locale,
+      props.preloaded,
+    );
+    return (
+      <AppI18nProvider
+        locale={catalog.locale}
+        locales={translated}
+        messages={catalog.messages}
+      >
+        <Greeting name="Ada" />
+      </AppI18nProvider>
+    );
+  }
+
+  it('keeps the current language on screen until the next one has loaded', async () => {
+    cleanup();
+    const es = pending(spanish);
+    const source = createCatalogSource({
+      es: es.load,
+      fr: () => Promise.resolve({ default: french }),
+    });
+    await source.load('fr');
+
+    const { rerender } = render(<Host source={source} locale="fr" />);
+    expect(screen.getByText('Bonjour Ada')).toBeDefined();
+
+    rerender(<Host source={source} locale="es" />);
+    // Neither English nor a half-switched screen while Spanish is in flight.
+    expect(screen.getByText('Bonjour Ada')).toBeDefined();
+    expect(document.documentElement.lang).toBe('fr');
+
+    await act(async () => es.release());
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+    expect(document.documentElement.lang).toBe('es');
+  });
+
+  it('suspends a first render until its catalog has loaded instead of flashing English', async () => {
+    const es = pending(spanish);
+    const source = createCatalogSource({ es: es.load });
+
+    // React retries a suspended render only when it began in an awaited act.
+    await act(async () => {
+      render(
+        <Suspense fallback={<p>Waiting</p>}>
+          <Host source={source} locale="es" />
+        </Suspense>,
+      );
+    });
+    expect(screen.getByText('Waiting')).toBeDefined();
+    expect(screen.queryByText('Hello Ada')).toBeNull();
+
+    await act(async () => es.release());
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+  });
+
+  it('renders a catalog loaded before the first render straight away', async () => {
+    const source = createCatalogSource({
+      es: () => Promise.resolve({ default: spanish }),
+    });
+    await source.load('es');
+
+    render(<Host source={source} locale="es" />);
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+  });
+
+  it('renders a preloaded catalog without loading it again', () => {
+    const es = vi.fn(() => Promise.resolve({ default: spanish }));
+    const source = createCatalogSource({ es });
+
+    render(
+      <Host
+        source={source}
+        locale="es"
+        preloaded={{ locale: 'es', messages: spanish }}
+      />,
+    );
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+    expect(es).not.toHaveBeenCalled();
+  });
+
+  it('switches away from a preloaded catalog by loading the new locale', async () => {
+    const fr = pending(french);
+    const source = createCatalogSource({
+      es: () => Promise.resolve({ default: spanish }),
+      fr: fr.load,
+    });
+    const preloaded = { locale: 'es', messages: spanish };
+
+    const { rerender } = render(
+      <Host source={source} locale="es" preloaded={preloaded} />,
+    );
+    rerender(<Host source={source} locale="fr" preloaded={preloaded} />);
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+
+    await act(async () => fr.release());
+    expect(screen.getByText('Bonjour Ada')).toBeDefined();
   });
 });

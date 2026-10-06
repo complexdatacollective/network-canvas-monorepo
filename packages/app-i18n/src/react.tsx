@@ -7,17 +7,20 @@
 
 import {
   createContext,
+  use,
   useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useState,
+  useSyncExternalStore,
 } from 'react';
 import type { ReactNode } from 'react';
 import type { IntlShape } from 'react-intl';
 
 import { PSEUDO_LOCALE } from './locales.ts';
-import type { AppLocale, CatalogMessages } from './locales.ts';
+import type { AppLocale, CatalogMessages, CatalogSource } from './locales.ts';
 import { createAppIntl, formatMessageError } from './messages.ts';
 import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
 import { createPseudoIntl } from './pseudo.ts';
@@ -148,6 +151,60 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
   return (
     <AppI18nContext.Provider value={value}>{children}</AppI18nContext.Provider>
   );
+}
+
+type RenderedCatalog = Readonly<{ locale: string; messages: CatalogMessages }>;
+
+/**
+ * Which locale to render, and its messages, for a host whose catalogs load on
+ * demand from a `CatalogSource`. Pass the result to `AppI18nProvider` in place
+ * of the requested locale: the two differ while a switch is loading.
+ *
+ * A switch keeps the language already on screen until the new one has
+ * loaded, then changes over in one render — never through English, and
+ * never with half the interface in each language.
+ *
+ * With nothing on screen yet there is no language to keep, so the first load
+ * suspends rather than render English it would replace a moment later. A
+ * client host avoids even that by awaiting `source.load(locale)` before its
+ * first render; anywhere else (a component that mounts in a locale the page
+ * has not loaded yet) needs a Suspense boundary above it. A server render
+ * suspends the same way and streams the result, and hydration waits for the
+ * same catalog instead of rendering a mismatch. A failed first load throws to
+ * the nearest error boundary.
+ *
+ * `preloaded` is a catalog delivered some other way — a server passing the
+ * request locale's messages down as props — which renders without a load
+ * while it matches `locale`.
+ */
+export function useLocaleCatalog(
+  source: CatalogSource,
+  locale: string,
+  preloaded?: RenderedCatalog,
+): RenderedCatalog {
+  const peek = () => source.peek(locale);
+  const loaded = useSyncExternalStore(source.subscribe, peek, peek);
+  const ready = preloaded?.locale === locale ? preloaded.messages : loaded;
+
+  const [rendered, setRendered] = useState<RenderedCatalog | null>(() =>
+    ready === undefined ? null : { locale, messages: ready },
+  );
+  if (
+    ready !== undefined &&
+    (rendered?.locale !== locale || rendered.messages !== ready)
+  ) {
+    setRendered({ locale, messages: ready });
+  }
+
+  useEffect(() => {
+    // Unhandled on purpose: a switch that cannot load leaves the previous
+    // language on screen, and the rejection is the report of why.
+    if (ready === undefined) void source.load(locale);
+  }, [source, locale, ready]);
+
+  if (ready !== undefined) return { locale, messages: ready };
+  if (rendered !== null) return rendered;
+  return { locale, messages: use(source.load(locale)) };
 }
 
 /**

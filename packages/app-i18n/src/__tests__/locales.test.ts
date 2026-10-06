@@ -1,11 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createCatalogSource,
   defineAppLocales,
   ecosystemLocales,
+  loadCatalog,
   mergeCatalogs,
   pseudoAppLocale,
 } from '../locales.ts';
+import type { CatalogMessages } from '../locales.ts';
 
 describe('defineAppLocales', () => {
   it('rejects non-canonical tags, duplicates, and empty labels', () => {
@@ -42,5 +45,77 @@ describe('mergeCatalogs', () => {
     expect(
       mergeCatalogs({ 'a.x': 'one', 'a.y': 'keep' }, { 'a.x': 'two' }),
     ).toEqual({ 'a.x': 'two', 'a.y': 'keep' });
+  });
+});
+
+const moduleOf = (catalog: CatalogMessages) =>
+  Promise.resolve({ default: catalog });
+
+describe('loadCatalog', () => {
+  it('merges one locale from each package in the order given', async () => {
+    expect(
+      await loadCatalog(
+        'es',
+        { es: () => moduleOf({ 'common.x': 'uno', 'shared.y': 'base' }) },
+        { de: () => moduleOf({ 'app.z': 'nicht geladen' }) },
+        { es: () => moduleOf({ 'shared.y': 'app' }) },
+      ),
+    ).toEqual({ 'common.x': 'uno', 'shared.y': 'app' });
+  });
+
+  it('loads only the locale asked for', async () => {
+    const de = vi.fn(() => moduleOf({ 'a.x': 'eins' }));
+    await loadCatalog('es', { es: () => moduleOf({}), de });
+    expect(de).not.toHaveBeenCalled();
+  });
+});
+
+describe('createCatalogSource', () => {
+  it('has a locale nobody translates ready without a load', () => {
+    const es = vi.fn(() => moduleOf({ 'a.x': 'uno' }));
+    const source = createCatalogSource({ es });
+    expect(source.peek('en')).toEqual({});
+    expect(source.peek('en-XA')).toEqual({});
+    expect(es).not.toHaveBeenCalled();
+  });
+
+  it('holds a translated locale back until it has loaded, then keeps it', async () => {
+    const es = vi.fn(() => moduleOf({ 'a.x': 'uno' }));
+    const source = createCatalogSource({ es });
+    expect(source.peek('es')).toBeUndefined();
+
+    const first = source.load('es');
+    const second = source.load('es');
+    expect(second).toBe(first);
+    expect(await first).toEqual({ 'a.x': 'uno' });
+    expect(source.peek('es')).toEqual({ 'a.x': 'uno' });
+
+    expect(await source.load('es')).toBe(source.peek('es'));
+    expect(es).toHaveBeenCalledOnce();
+  });
+
+  it('tells subscribers when a locale finishes loading', async () => {
+    const source = createCatalogSource({ es: () => moduleOf({}) });
+    const onLoad = vi.fn();
+    const unsubscribe = source.subscribe(onLoad);
+    await source.load('es');
+    expect(onLoad).toHaveBeenCalledOnce();
+
+    unsubscribe();
+    await createCatalogSource({ fr: () => moduleOf({}) }).load('fr');
+    expect(onLoad).toHaveBeenCalledOnce();
+  });
+
+  it('forgets a failed load, so the next one tries again', async () => {
+    const es = vi
+      .fn<() => Promise<{ default: CatalogMessages }>>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockImplementation(() => moduleOf({ 'a.x': 'uno' }));
+    const source = createCatalogSource({ es });
+
+    await expect(source.load('es')).rejects.toThrow('offline');
+    expect(source.peek('es')).toBeUndefined();
+    expect(await source.load('es')).toEqual({ 'a.x': 'uno' });
+    expect(es).toHaveBeenCalledTimes(2);
   });
 });
