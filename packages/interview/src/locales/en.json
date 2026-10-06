@@ -447,6 +447,10 @@
     "defaultMessage": "{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}",
     "description": "Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them."
   },
+  "interview.familyPedigree.showWholeFamily": {
+    "defaultMessage": "Show the whole family",
+    "description": "Toolbar button that zooms and moves the family tree so everyone in it fits on screen."
+  },
   "interview.familyPedigree.siblingKindHint": {
     "defaultMessage": "{isYou, select, true {This can differ from how you are related to them, for example if only one of you was adopted.} other {This can differ from how “{name}” is related to them, for example if only one of the two siblings was adopted.}}",
     "description": "Hint under the question about how a new sibling is related to the parents they share. name is the person the sibling is being added to."
@@ -506,6 +510,14 @@
   "interview.familyPedigree.yourNameLabel": {
     "defaultMessage": "Your name (optional)",
     "description": "Label of the field for the participant’s own name."
+  },
+  "interview.familyPedigree.zoomIn": {
+    "defaultMessage": "Zoom in",
+    "description": "Toolbar button that makes the family tree larger."
+  },
+  "interview.familyPedigree.zoomOut": {
+    "defaultMessage": "Zoom out",
+    "description": "Toolbar button that makes the family tree smaller."
   },
   "interview.interfaces.addNamePlaceholder": {
     "defaultMessage": "Type a name, then press Enter",

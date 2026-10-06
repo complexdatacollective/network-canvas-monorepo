@@ -6,9 +6,10 @@ import {
   type AnimationPlaybackControls,
   type MotionValue,
   useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
 } from 'motion/react';
-import { type RefObject, useCallback, useMemo, useRef } from 'react';
+import { type RefObject, useCallback, useMemo, useRef, useState } from 'react';
 
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 2.5;
@@ -57,6 +58,12 @@ export type PanZoom = {
   bringIntoView: (element: HTMLElement) => void;
   /** Zooms by a power of two about the viewport's centre. */
   zoomBy: (exponent: number) => void;
+  /** Fits an element of the content in the viewport, inside the given
+   * insets, at no more than its natural size. */
+  fitToView: (
+    element: HTMLElement,
+    insets: { top: number; right: number; bottom: number; left: number },
+  ) => void;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
   holdInPlace: (
@@ -133,7 +140,7 @@ export function usePanZoom({
 
   // Zooms so the content point under (clientX, clientY) stays under it.
   const zoomAt = useCallback(
-    (nextScale: number, clientX: number, clientY: number) => {
+    (nextScale: number, clientX: number, clientY: number, animated = false) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const bounded = clamp(nextScale, MIN_SCALE, MAX_SCALE);
@@ -145,7 +152,7 @@ export function usePanZoom({
         pointX - (pointX - x.get()) * ratio,
         pointY - (pointY - y.get()) * ratio,
         bounded,
-        false,
+        animated,
       );
     },
     [viewportRef, moveTo, x, y, scale],
@@ -168,7 +175,10 @@ export function usePanZoom({
         event.preventDefault();
         zoomAt(nextScale, originX, originY);
       },
-      onWheel: ({ event }) => {
+      // The gesture's closing call, a moment after the wheel stops, repeats
+      // its last event; it is not more wheel.
+      onWheel: ({ event, last }) => {
+        if (last) return;
         event.preventDefault();
         stopAnimating();
         zoomAt(
@@ -281,9 +291,36 @@ export function usePanZoom({
         scale.get() * 2 ** exponent,
         box.left + box.width / 2,
         box.top + box.height / 2,
+        true,
       );
     },
     [viewportRef, zoomAt, scale],
+  );
+
+  const fitToView = useCallback<PanZoom['fitToView']>(
+    (element, insets) => {
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+      const width = element.offsetWidth;
+      const height = element.offsetHeight;
+      if (width === 0 || height === 0) return;
+      const centre = contentPositionOf(element);
+      const availableWidth = viewport.clientWidth - insets.left - insets.right;
+      const availableHeight =
+        viewport.clientHeight - insets.top - insets.bottom;
+      const nextScale = clamp(
+        Math.min(availableWidth / width, availableHeight / height),
+        MIN_SCALE,
+        1,
+      );
+      moveTo(
+        insets.left + availableWidth / 2 - centre.x * nextScale,
+        insets.top + availableHeight / 2 - centre.y * nextScale,
+        nextScale,
+        true,
+      );
+    },
+    [viewportRef, contentPositionOf, moveTo],
   );
 
   const holdInPlace = useCallback<PanZoom['holdInPlace']>(
@@ -309,10 +346,12 @@ export function usePanZoom({
       centreOn,
       bringIntoView,
       zoomBy,
+      fitToView,
       holdInPlace,
       contentPositionOf,
     }),
     [
+      fitToView,
       x,
       y,
       scale,
@@ -323,4 +362,17 @@ export function usePanZoom({
       contentPositionOf,
     ],
   );
+}
+
+/** Whether the zoom is at either end of its range, for the zoom buttons. */
+export function useZoomLimits(scale: MotionValue<number>) {
+  const limitOf = (value: number) =>
+    value <= MIN_SCALE + 0.001
+      ? 'min'
+      : value >= MAX_SCALE - 0.001
+        ? 'max'
+        : null;
+  const [limit, setLimit] = useState(() => limitOf(scale.get()));
+  useMotionValueEvent(scale, 'change', (value) => setLimit(limitOf(value)));
+  return { atMin: limit === 'min', atMax: limit === 'max' };
 }

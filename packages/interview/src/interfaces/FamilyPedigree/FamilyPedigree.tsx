@@ -1,6 +1,13 @@
 'use client';
 
-import { MousePointer2, Unlink, Waypoints } from 'lucide-react';
+import {
+  MousePointer2,
+  Scan,
+  Unlink,
+  Waypoints,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   useCallback,
@@ -101,7 +108,7 @@ import {
   nearestInDirection,
   type Point,
 } from './spatialNavigation';
-import { usePanZoom } from './usePanZoom';
+import { usePanZoom, useZoomLimits } from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -300,6 +307,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const panZoom = usePanZoom({ viewportRef, contentRef });
+  const zoomLimits = useZoomLimits(panZoom.scale);
+  const promptRef = useRef<HTMLDivElement>(null);
+  const toolbarAreaRef = useRef<HTMLDivElement>(null);
+  // The whole family, clear of the prompt above and the toolbar below.
+  const showWholeFamily = () => {
+    const layout = contentRef.current?.firstElementChild;
+    const viewport = viewportRef.current;
+    if (!(layout instanceof HTMLElement) || !viewport) return;
+    const toolbarTop = toolbarAreaRef.current?.getBoundingClientRect().top;
+    const viewportBottom = viewport.getBoundingClientRect().bottom;
+    panZoom.fitToView(layout, {
+      top: promptRef.current?.offsetHeight ?? 0,
+      bottom: toolbarTop === undefined ? 32 : viewportBottom - toolbarTop + 16,
+      left: 32,
+      right: 32,
+    });
+  };
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
@@ -1058,7 +1082,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       className="relative flex h-full w-full flex-col"
       onPointerDown={handleStagePointerDown}
     >
-      <div className="from-background via-background/80 pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b to-transparent px-4 pt-4 pb-10">
+      <div
+        ref={promptRef}
+        className="from-background via-background/80 pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b to-transparent px-4 pt-4 pb-10"
+      >
         <Prompts
           prompts={[{ id: 'pedigree', text: stage.prompt }]}
           currentPromptId="pedigree"
@@ -1160,7 +1187,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             />
           </motion.div>
         </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4">
+        <div
+          ref={toolbarAreaRef}
+          className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+        >
           {tool !== 'pointer' && (
             <p
               className="text-sm opacity-80"
@@ -1247,6 +1277,27 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   onOpenChange={setFramingOpen}
                 />
               )}
+              <ToolbarSeparator />
+              <ToolbarIconButton
+                aria-label={intl.formatMessage(messages.zoomOut)}
+                icon={<ZoomOut />}
+                disabled={zoomLimits.atMin}
+                onClick={() => panZoom.zoomBy(-0.5)}
+                data-testid="pedigree-zoom-out"
+              />
+              <ToolbarIconButton
+                aria-label={intl.formatMessage(messages.zoomIn)}
+                icon={<ZoomIn />}
+                disabled={zoomLimits.atMax}
+                onClick={() => panZoom.zoomBy(0.5)}
+                data-testid="pedigree-zoom-in"
+              />
+              <ToolbarIconButton
+                aria-label={intl.formatMessage(messages.showWholeFamily)}
+                icon={<Scan />}
+                onClick={showWholeFamily}
+                data-testid="pedigree-zoom-fit"
+              />
               {progress && completeness && <ToolbarSeparator />}
               {progress && completeness && (
                 <CompletenessTracker

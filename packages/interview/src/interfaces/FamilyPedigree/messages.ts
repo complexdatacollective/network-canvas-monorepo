@@ -334,6 +334,22 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
   },
+  zoomIn: {
+    id: 'interview.familyPedigree.zoomIn',
+    defaultMessage: 'Zoom in',
+    description: 'Toolbar button that makes the family tree larger.',
+  },
+  zoomOut: {
+    id: 'interview.familyPedigree.zoomOut',
+    defaultMessage: 'Zoom out',
+    description: 'Toolbar button that makes the family tree smaller.',
+  },
+  showWholeFamily: {
+    id: 'interview.familyPedigree.showWholeFamily',
+    defaultMessage: 'Show the whole family',
+    description:
+      'Toolbar button that zooms and moves the family tree so everyone in it fits on screen.',
+  },
   framingControlLabel: {
     id: 'interview.familyPedigree.framingControlLabel',
     defaultMessage: 'Words for your family',

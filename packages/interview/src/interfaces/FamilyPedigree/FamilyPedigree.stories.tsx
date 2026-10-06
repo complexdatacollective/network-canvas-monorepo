@@ -259,6 +259,51 @@ export const PanAndZoom: Story = {
       expect(new DOMMatrix(transform()).a).toBeLessThan(before.a),
     );
 
+    // The toolbar zooms too, for anyone who cannot pinch or scroll.
+    const zoomedOut = new DOMMatrix(transform()).a;
+    await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
+    await waitFor(() =>
+      expect(new DOMMatrix(transform()).a).toBeGreaterThan(zoomedOut),
+    );
+    // Pushed off to one side, the family comes back whole.
+    fireEvent.pointerDown(viewport, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: box.left + 40,
+      clientY: box.top + 300,
+      buttons: 1,
+    });
+    for (let step = 1; step <= 10; step++) {
+      fireEvent.pointerMove(viewport, {
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+        clientX: box.left + 40 + step * 60,
+        clientY: box.top + 300,
+        buttons: 1,
+      });
+    }
+    fireEvent.pointerUp(viewport, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: box.left + 640,
+      clientY: box.top + 300,
+    });
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Show the whole family' }),
+    );
+    await waitFor(() => {
+      for (const person of canvas.getAllByTestId('pedigree-person')) {
+        const shown = person.getBoundingClientRect();
+        expect(shown.left).toBeGreaterThanOrEqual(box.left);
+        expect(shown.right).toBeLessThanOrEqual(box.right);
+        expect(shown.top).toBeGreaterThanOrEqual(box.top);
+        expect(shown.bottom).toBeLessThanOrEqual(box.bottom);
+      }
+    });
+
     // A drag pans even when it starts on a button, and the click that ends
     // it does nothing. (A person ignores a click after a drag themselves;
     // the add menu's buttons rely on the canvas.)
