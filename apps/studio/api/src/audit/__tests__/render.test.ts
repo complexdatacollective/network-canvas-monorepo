@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { renderAuditEventDetail } from '../render.ts';
+import { renderAuditEventDetail, renderAuditEventSummary } from '../render.ts';
 import type { StoredAuditEvent } from '../store.ts';
 
 function storedEvent(details: Record<string, unknown>): StoredAuditEvent {
@@ -63,4 +63,19 @@ describe('renderAuditEventDetail details allowlist', () => {
 
     expect(rendered.details).toEqual({});
   });
+});
+
+describe('renderAuditEventSummary', () => {
+  it.each([
+    ['category', { category: 'not_a_category' }],
+    ['outcome', { outcome: 'not_an_outcome' }],
+    ['actorKind', { actorKind: 'not_an_actor' }],
+  ] as const)(
+    'refuses a stored %s the contract does not name',
+    (_field, row) => {
+      expect(() =>
+        renderAuditEventSummary({ ...storedEvent({}), ...row }),
+      ).toThrow();
+    },
+  );
 });

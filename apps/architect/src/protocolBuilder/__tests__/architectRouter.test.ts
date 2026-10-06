@@ -1422,6 +1422,48 @@ describe("Architect's in-process protocol-builder host", () => {
     );
   });
 
+  it('frees a released lock, and tells the stream it is free', async () => {
+    const { store, client } = openProtocol();
+    const stream = await openStream(client);
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    await client.call('ReleaseLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    await waitFor(
+      () =>
+        stream.seen.some(
+          ({ event }) =>
+            event.type === 'lock' &&
+            event.sectionId === INFORMATION &&
+            event.holder === undefined,
+        ),
+      'the release to reach the stream',
+    );
+    const { error, isSuccess } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: { ...held.document, label: 'Saved after the release' },
+        revision: held.revision,
+      }),
+    );
+    expect(isSuccess).toBe(false);
+    expect(error).toBeInstanceOf(NotLockHolder);
+    expect(stageLabel(store, 'information-1')).toBe('Information');
+
+    await client.call('Delete', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    expect(stageIds(store)).not.toContain('information-1');
+  });
+
   it('lists the committed asset manifest as resources', async () => {
     const { client } = openProtocol();
 

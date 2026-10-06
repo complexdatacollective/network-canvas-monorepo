@@ -168,8 +168,15 @@ jobs:
 
           # flag <package>: true if any file in the package's workspace dep
           # tree changed between PREV and CURR, false otherwise.
+          # A name that resolves to no workspace fails the step.
           flag() {
             local pkg=$1
+            local paths
+            if ! paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json \
+              | jq -r '.packages.items[].path') || [[ -z "$paths" ]]; then
+              echo "::error::detect: '${pkg}' names no workspace package" >&2
+              return 1
+            fi
             if [[ "$FORCE_RUN" == "true" || "$WORKFLOW_CHANGED" == "true" ]]; then
               echo true; return
             fi
@@ -178,9 +185,6 @@ jobs:
             if [[ -z "$PREV" ]]; then
               echo true; return
             fi
-            local paths
-            paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json 2>/dev/null \
-              | jq -r '.packages.items[].path')
             local pathspec=()
             while IFS= read -r p; do
               [[ -n "$p" ]] && pathspec+=("$p")

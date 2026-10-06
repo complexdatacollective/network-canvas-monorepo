@@ -329,12 +329,6 @@ minimumReleaseAgeExclude:
   - '@next/third-parties@16.3.8'
   - 'better-auth@1.7.5'
   - 'electron@43.7.7'
-  # Effect 4.0.0; inert once it ages out at 2026-10-02T03:12Z.
-  - 'effect@4.0.0'
-  - '@effect/platform-node@4.0.0'
-  - '@effect/platform-node-shared@4.0.0'
-  - '@effect/sql-pg@4.0.0'
-  - '@effect/vitest@4.0.0'
 patchedDependencies:
   # The addon applies a story's `viewport` parameter by importing `page` from
   # `@vitest/browser/context`, an entry point Vitest 5 no longer serves to a
