@@ -372,6 +372,12 @@ export async function loadInterviewPayload(
 node already initialised — call it once when you create a new interview
 record so subsequent loads pass schema validation.
 
+A host that holds the validated protocol document itself, rather than
+flattened database records, builds the protocol half with
+`currentProtocolToPayload(protocol, { id, importedAt })` from
+`@codaco/interview/contract`. Pass the same `id` and `importedAt` every time
+the same protocol is loaded.
+
 ---
 
 ## Sparse entity attribute flow
@@ -500,6 +506,7 @@ type ResolvedAsset = {
   name: string;
   type: 'image' | 'video' | 'audio' | 'network' | 'geojson' | 'apikey';
   value?: string; // apikey only
+  source?: string; // the file's name in the protocol, used for MIME type and CSV/JSON decisions
 };
 
 type SyncOptions = {
