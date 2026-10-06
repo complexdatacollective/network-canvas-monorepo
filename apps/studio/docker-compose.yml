@@ -7,9 +7,11 @@
 #   docker compose up -d
 #   docker compose run --rm migrate
 #
-# Between those two commands `api` and `worker` restart in a loop — there is no
-# schema for them to verify yet, and `docker compose ps` says `Restarting (1)`
-# — which is expected and stops the moment `migrate` has run.
+# Between those two commands `api` and `worker` are up but closed: there is no
+# schema yet, so `api` answers every request with the maintenance page and its
+# `/readyz` fails naming the reason, and `worker` runs no jobs. Both re-check
+# the schema every few seconds and open on their own once `migrate` has run,
+# with no restart. An upgrade passes through the same state.
 #
 # Read `migrate`'s output: besides creating the schema it prints the first-run
 # setup token, which is what `/setup` takes to create the first owner account.
@@ -377,9 +379,10 @@ configs:
               # A stopped API container is a connection error, which Traefik
               # reports as 502. "Bad gateway" is not what is happening — the
               # instance is temporarily unavailable — and 503 is also what the
-              # API itself answers with once maintenance mode exists (#1901),
-              # so a client and a monitor see one status for the whole window
-              # however it started.
+              # API itself answers while it is closed: maintenance mode, a
+              # migration holding the lock, a schema that is not this build's,
+              # or a boot whose checks have not finished (#1901). A client and a
+              # monitor see one status for the whole window however it started.
               statusRewrites:
                 "502-503": 503
 

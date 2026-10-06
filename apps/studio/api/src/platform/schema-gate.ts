@@ -12,30 +12,23 @@ import { Environment } from '../env.ts';
 
 const RETRY_INTERVAL = '3 seconds';
 
-export class StaleSchema extends Schema.TaggedError<StaleSchema>()(
-  'StaleSchema',
-  {
-    kind: Schema.Literals(['absent', 'stale']),
-    reason: Schema.String,
-    remedy: Schema.String,
-  },
-) {
-  static fromState(state: SchemaProblem): StaleSchema {
-    const [reason = '', ...remedy] = schemaProblemMessage(
-      state,
-      'deployed',
-    ).split('\n');
-    return new StaleSchema({
-      kind: state.kind,
-      reason,
-      remedy: remedy.join('\n'),
-    });
-  }
+const DEPLOYED_WAIT =
+  'Waiting for it, with no restart needed: the API answers every request with the maintenance page and the worker runs no jobs until the schema is current. Checked every 3 seconds.';
 
-  override get message(): string {
-    return `${this.reason}\n${this.remedy}`;
+/**
+ * Both lanes wait for an absent or stale schema rather than refuse it (#1901):
+ * an upgrade starts the new image before `migrate` runs, and the processes it
+ * started have to be there, closed, when the schema arrives. Only the words
+ * differ by lane, because only the remedies do.
+ */
+const waitingMessage = (state: SchemaProblem, devDefaults: boolean): string => {
+  if (!devDefaults) {
+    return `${schemaProblemMessage(state, 'deployed')}\n${DEPLOYED_WAIT}`;
   }
-}
+  return state.kind === 'absent'
+    ? 'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-api db:reset'
+    : 'Database schema is not from this build; waiting for the development reset (pnpm dev runs it on boot; otherwise: pnpm --filter @codaco/studio-api db:reset)';
+};
 
 export class SchemaUnreachable extends Schema.TaggedError<SchemaUnreachable>()(
   'SchemaUnreachable',
@@ -51,12 +44,13 @@ export class SchemaStatus extends Context.Service<
   SchemaStatus,
   {
     readonly read: Effect.Effect<SchemaState, SchemaUnreachable>;
+    /** Completes once the schema is this build's, and never before. */
     readonly current: Effect.Effect<void>;
   }
 >()('@studio/SchemaStatus') {
   static readonly layer: Layer.Layer<
     SchemaStatus,
-    StaleSchema | SchemaUnreachable,
+    SchemaUnreachable,
     Environment | ReadinessDatabase
   > = Layer.effect(
     SchemaStatus,
@@ -88,11 +82,7 @@ export class SchemaStatus extends Context.Service<
       );
 
       const waitForSchema = Effect.fnUntraced(function* (state: SchemaProblem) {
-        yield* Effect.logWarning(
-          state.kind === 'absent'
-            ? 'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-api db:reset'
-            : 'Database schema is not from this build; waiting for the development reset (pnpm dev runs it on boot; otherwise: pnpm --filter @codaco/studio-api db:reset)',
-        );
+        yield* Effect.logWarning(waitingMessage(state, env.devDefaults));
         yield* waitUntilCurrent;
       });
 
@@ -103,11 +93,12 @@ export class SchemaStatus extends Context.Service<
         // The client runs as a role the schema apply creates, so a
         // never-applied database refuses the connection.
         if (isMissingRole(failure.cause)) {
-          if (!env.devDefaults)
-            return yield* StaleSchema.fromState({ kind: 'absent' });
           yield* waitForSchema({ kind: 'absent' });
           return status;
         }
+        // A database that does not answer is not something `migrate` fixes,
+        // so a deployment refuses it and leaves the retry to the container
+        // runtime; the development lane waits for `pnpm dev` to start it.
         if (!env.devDefaults) return yield* failure;
         yield* Effect.logWarning(
           `Database unreachable; sign-in will fail until it is available: ${String(failure.cause)}`,
@@ -122,7 +113,6 @@ export class SchemaStatus extends Context.Service<
         return status;
       }
 
-      if (!env.devDefaults) return yield* StaleSchema.fromState(state);
       yield* waitForSchema(state);
       return status;
     }),

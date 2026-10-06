@@ -6,6 +6,7 @@ import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem
 import { Database } from '../../db/client.ts';
 import { migrationLockHeld } from '../../db/readiness.ts';
 import type { SchemaState } from '../../db/schema.ts';
+import { BootChecks } from '../../platform/boot-checks.ts';
 import {
   cachedReading,
   MaintenanceState,
@@ -13,15 +14,21 @@ import {
 import { SchemaStatus } from '../../platform/schema-gate.ts';
 import type { CheckVerdict, HealthCheck } from '../health.ts';
 
-// Triggers are checked flag, lock, schema, and each stops the walk: the order
-// keeps the schema read, which a migration's DDL holds, out of a migration's way.
+// Triggers are checked flag, lock, schema, starting, and each stops the walk:
+// the order keeps the schema read, which a migration's DDL holds, out of a
+// migration's way, and names the operator's window before anything automatic,
+// so readiness says `maintenance` for as long as the flag is set. `starting`
+// is last because it reads nothing from the database: it is what keeps the
+// gate closed when every reading above has failed open.
 
 export type Closure = {
-  readonly trigger: 'maintenance' | 'migration' | 'schema';
+  readonly trigger: 'maintenance' | 'migration' | 'schema' | 'starting';
   readonly detail: string;
 };
 
 const CURRENT: SchemaState = { kind: 'current' };
+
+const PASSED = Effect.succeed(true);
 
 export class MaintenanceTriggers extends Context.Service<
   MaintenanceTriggers,
@@ -29,9 +36,15 @@ export class MaintenanceTriggers extends Context.Service<
     readonly closure: Effect.Effect<Option.Option<Closure>>;
   }
 >()('@studio/http/MaintenanceTriggers') {
+  /**
+   * @param probes.bootPassed whether the process has finished its boot checks
+   * (`BootChecks`). Left out, the process counts as started, which only a test
+   * of the other triggers wants; `layer` always passes it.
+   */
   static readonly layerWith = (probes: {
     readonly lockHeld: Effect.Effect<boolean, unknown>;
     readonly schema: Effect.Effect<SchemaState, unknown>;
+    readonly bootPassed?: Effect.Effect<boolean>;
   }): Layer.Layer<MaintenanceTriggers, never, MaintenanceState> =>
     Layer.effect(
       MaintenanceTriggers,
@@ -47,6 +60,7 @@ export class MaintenanceTriggers extends Context.Service<
           read: probes.schema,
           initial: CURRENT,
         });
+        const bootPassed = probes.bootPassed ?? PASSED;
 
         const closure = Effect.gen(function* () {
           const flag = yield* state.read;
@@ -75,6 +89,12 @@ export class MaintenanceTriggers extends Context.Service<
                   : 'the database schema is not this build’s',
             });
           }
+          if (!(yield* bootPassed)) {
+            return Option.some<Closure>({
+              trigger: 'starting',
+              detail: 'the server is starting',
+            });
+          }
           return Option.none<Closure>();
         });
 
@@ -85,14 +105,16 @@ export class MaintenanceTriggers extends Context.Service<
   static readonly layer: Layer.Layer<
     MaintenanceTriggers,
     never,
-    MaintenanceState | SchemaStatus | Database
+    MaintenanceState | SchemaStatus | BootChecks | Database
   > = Layer.unwrap(
     Effect.gen(function* () {
       const { sql } = yield* Database;
       const status = yield* SchemaStatus;
+      const boot = yield* BootChecks;
       return MaintenanceTriggers.layerWith({
         lockHeld: migrationLockHeld(sql),
         schema: status.read,
+        bootPassed: boot.passed,
       });
     }),
   );
