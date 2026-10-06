@@ -147,8 +147,9 @@ const SCALES: Record<
 };
 
 /**
- * `schemaFingerprint` and `deployment_state` are kept: both rows are written
- * only by the schema step.
+ * `schemaFingerprint`, `deployment_state` and `studio_migrations` are kept:
+ * their rows are written only by the schema step, and a migrated database
+ * whose history was wiped is one `migrate` refuses as foreign (#1901).
  *
  * Driven off `pg_tables` rather than a hardcoded list, so a table added to
  * the schema later is wiped too instead of silently accumulating stale rows
@@ -171,7 +172,7 @@ const wipe = Effect.fnUntraced(function* () {
       for r in
         select tablename from pg_tables
         where schemaname = current_schema()
-          and tablename not in ('schemaFingerprint', 'deployment_state')
+          and tablename not in ('schemaFingerprint', 'deployment_state', 'studio_migrations')
       loop
         execute format('select exists (select 1 from %I)', r.tablename)
           into populated;
