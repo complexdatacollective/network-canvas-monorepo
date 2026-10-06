@@ -1329,7 +1329,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   }}
                 >
                   <ToolbarButton
-                    className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
+                    className="flex-col gap-0.5 px-3 text-xs [&>.lucide]:h-5"
                     value="pointer"
                     icon={<MousePointer2 />}
                     data-testid="pedigree-tool-pointer"
@@ -1337,7 +1337,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     {intl.formatMessage(messages.pointerTool)}
                   </ToolbarButton>
                   <ToolbarButton
-                    className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
+                    className="flex-col gap-0.5 px-3 text-xs [&>.lucide]:h-5"
                     value="connect"
                     icon={<Waypoints />}
                     data-testid="pedigree-tool-connect"
@@ -1345,7 +1345,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     {intl.formatMessage(messages.connectTool)}
                   </ToolbarButton>
                   <ToolbarButton
-                    className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
+                    className="flex-col gap-0.5 px-3 text-xs [&>.lucide]:h-5"
                     value="disconnect"
                     icon={<Unlink />}
                     data-testid="pedigree-tool-disconnect"

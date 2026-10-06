@@ -50,7 +50,7 @@ function FramingControl({
       }}
       trigger={
         <ToolbarButton
-          className="flex-col gap-0.5 px-3 text-sm [&>.lucide]:h-5"
+          className="flex-col gap-0.5 px-3 text-xs [&>.lucide]:h-5"
           icon={<Speech />}
           data-testid="pedigree-framing"
         >
