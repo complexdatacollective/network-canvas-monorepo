@@ -54,18 +54,22 @@ const closeWith = (socket: Socket.Socket, event: Socket.CloseEvent) =>
   );
 
 /**
- * The operator's window alone: a `migrate` with nothing to apply takes the lock
- * for milliseconds on every deploy.
+ * Every closure but the migration lock alone. A `migrate` with nothing to
+ * apply takes the lock for milliseconds, and a write a socket sends while a
+ * real migration holds it runs before or after the migration's transaction,
+ * never inside a half-applied one. Once that transaction commits the schema is
+ * no longer this build's, and that closes the socket: an old server must not
+ * keep writing to a database a newer release has moved.
  */
-const operatorWindow = (triggers: MaintenanceTriggers['Service']) =>
+const socketClosure = (triggers: MaintenanceTriggers['Service']) =>
   Effect.map(
     triggers.closure,
-    Option.filter((closure) => closure.trigger === 'maintenance'),
+    Option.filter((closure) => closure.trigger !== 'migration'),
   );
 
 const windowOpened = (triggers: MaintenanceTriggers['Service']) =>
   Effect.gen(function* () {
-    while (Option.isNone(yield* operatorWindow(triggers))) {
+    while (Option.isNone(yield* socketClosure(triggers))) {
       yield* Effect.sleep(MAINTENANCE_WATCH_INTERVAL);
     }
   });
@@ -115,7 +119,7 @@ const WsRoute = HttpRouter.use((router) =>
         reader: Effect.map(socket.reader, (reader) => ({
           upgrade: reader.upgrade,
           pull: Effect.flatMap(reader.pull, (frames) =>
-            Effect.flatMap(operatorWindow(triggers), (closure) =>
+            Effect.flatMap(socketClosure(triggers), (closure) =>
               Option.isNone(closure)
                 ? Effect.succeed(frames)
                 : Effect.andThen(
