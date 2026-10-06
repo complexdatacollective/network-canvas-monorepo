@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor } from 'storybook/test';
 
 import Button from '../../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../Popover';
+import { presentationalTextValue } from '../../../PresentationalText';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
@@ -792,5 +793,70 @@ export const LocalizedOptions: Story = {
       'dir',
       'rtl',
     );
+  },
+};
+
+const languageOptions: ComboboxOption[] = [
+  { value: 'bs', label: 'Bosnian' },
+  { value: 'pt-BR', label: 'Brazilian Portuguese' },
+  { value: 'br', label: 'Breton' },
+  { value: 'en-GB', label: 'British English' },
+  { value: 'bg', label: 'Bulgarian' },
+  { value: 'my', label: 'Burmese' },
+  { value: 'ca', label: 'Catalan' },
+  { value: 'zh-Hans', label: 'Chinese (Simplified)' },
+  { value: 'zh-Hant', label: 'Chinese (Traditional)' },
+  { value: 'hr', label: 'Croatian' },
+  { value: 'cs', label: 'Czech' },
+  { value: 'da', label: 'Danish' },
+];
+
+/**
+ * `renderValue` can list the whole selection, which is far longer than the
+ * field. The trigger stays inside its container and truncates the text instead
+ * of widening to fit it, and the chevron stays visible at the end.
+ */
+export const LongSelection: Story = {
+  render: function LongSelectionStory() {
+    const [value, setValue] = useState<(string | number)[]>(
+      languageOptions.map((option) => option.value),
+    );
+
+    return (
+      <div className="w-80" data-testid="long-selection-container">
+        <ComboboxField
+          name="long-selection"
+          aria-label="Protocol languages"
+          options={languageOptions}
+          renderValue={(selectedOptions) =>
+            selectedOptions
+              .map((option) => presentationalTextValue(option.label))
+              .join(', ')
+          }
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    const trigger = await screen.findByRole('combobox', {
+      name: 'Protocol languages',
+    });
+    const container = screen.getByTestId('long-selection-container');
+    await expect(trigger).toHaveTextContent('Bosnian, Brazilian Portuguese');
+
+    const chevron = trigger.querySelector('svg');
+    await expect(chevron).toBeInTheDocument();
+
+    await waitFor(() => {
+      const triggerBox = trigger.getBoundingClientRect();
+      expect(triggerBox.width).toBeLessThanOrEqual(
+        container.getBoundingClientRect().width,
+      );
+      expect(chevron?.getBoundingClientRect().right).toBeLessThanOrEqual(
+        triggerBox.right,
+      );
+    });
   },
 };

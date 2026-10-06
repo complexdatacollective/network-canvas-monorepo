@@ -11,6 +11,12 @@ import {
 } from '../../../styles/controlVariants';
 import { cva } from '../../../utils/cva';
 
+// Overrides `controlVariants`' `min-w-fit`, which would widen the field to fit
+// a long option label instead of letting it truncate.
+const selectWrapperOwnVariants = cva({
+  base: 'max-w-full min-w-0',
+});
+
 // Wrapper variants for select elements (shared by native and styled)
 export const selectWrapperVariants = cva({
   composes: [
@@ -22,6 +28,7 @@ export const selectWrapperVariants = cva({
     wrapperPaddingVariants,
     stateVariants,
     interactiveStateVariants,
+    selectWrapperOwnVariants,
   ],
 });
 

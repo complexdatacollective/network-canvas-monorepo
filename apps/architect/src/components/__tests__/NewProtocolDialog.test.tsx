@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
@@ -148,10 +148,19 @@ describe('NewProtocolDialog protocol languages', () => {
 
   const languageList = () =>
     screen.getByRole('combobox', { name: 'Protocol languages' });
-  const codeInput = () =>
-    screen.getByRole('textbox', { name: 'Other language code' });
   const defaultSelect = () =>
     screen.queryByRole('combobox', { name: 'Default language' });
+
+  // Each option is named "<name> (<tag>)", then the language's own name.
+  const toggleLanguages = async (user: UserEvent, tags: readonly string[]) => {
+    await user.click(languageList());
+    for (const tag of tags) {
+      await user.click(
+        await screen.findByRole('option', { name: new RegExp(`\\(${tag}\\)`) }),
+      );
+    }
+    await user.keyboard('{Escape}');
+  };
 
   it('starts on the language that best matches Architect’s own, and names it', () => {
     renderWithLanguages();
@@ -180,10 +189,11 @@ describe('NewProtocolDialog protocol languages', () => {
   });
 
   it('asks for the default among several languages, starting on Architect’s own', async () => {
+    const user = userEvent.setup();
     const onSubmit = renderWithLanguages();
 
     fireEvent.change(nameInput(), { target: { value: 'Étude' } });
-    fireEvent.change(codeInput(), { target: { value: 'fr-CA' } });
+    await toggleLanguages(user, ['fr-CA']);
 
     const select = await screen.findByRole('combobox', {
       name: 'Default language',
@@ -205,15 +215,16 @@ describe('NewProtocolDialog protocol languages', () => {
   });
 
   it('never keeps a default that is no longer one of the chosen languages', async () => {
+    const user = userEvent.setup();
     const onSubmit = renderWithLanguages();
 
     fireEvent.change(nameInput(), { target: { value: 'Étude' } });
-    fireEvent.change(codeInput(), { target: { value: 'fr-CA' } });
+    await toggleLanguages(user, ['fr-CA']);
     fireEvent.change(
       await screen.findByRole('combobox', { name: 'Default language' }),
       { target: { value: 'fr-CA' } },
     );
-    fireEvent.change(codeInput(), { target: { value: 'de' } });
+    await toggleLanguages(user, ['fr-CA', 'de']);
 
     await waitFor(() => expect(defaultSelect()).toHaveValue('en'));
     submit();
@@ -231,15 +242,7 @@ describe('NewProtocolDialog protocol languages', () => {
     const onSubmit = renderWithLanguages();
 
     fireEvent.change(nameInput(), { target: { value: 'Étude' } });
-    await user.click(languageList());
-    await user.click(
-      await screen.findByRole('option', { name: 'English (en)' }),
-    );
-    await user.click(
-      await screen.findByRole('option', { name: /^French \(fr\)/ }),
-    );
-    await user.keyboard('{Escape}');
-    fireEvent.change(codeInput(), { target: { value: 'de' } });
+    await toggleLanguages(user, ['en', 'fr', 'de']);
 
     await waitFor(() => expect(defaultSelect()).toHaveValue('fr'));
     submit();
@@ -257,17 +260,11 @@ describe('NewProtocolDialog protocol languages', () => {
     const onSubmit = renderWithLanguages();
 
     fireEvent.change(nameInput(), { target: { value: 'Étude' } });
-    await user.click(languageList());
-    await user.click(
-      await screen.findByRole('option', { name: 'English (en)' }),
-    );
-    await user.keyboard('{Escape}');
+    await toggleLanguages(user, ['en']);
     submit();
 
     expect(
-      await screen.findByText(
-        'Choose at least one language, or enter a language code.',
-      ),
+      await screen.findByText('Choose at least one language.'),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });

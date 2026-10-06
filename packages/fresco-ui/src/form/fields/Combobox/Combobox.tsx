@@ -271,7 +271,7 @@ function ComboboxField(props: ComboboxFieldProps) {
           state,
         })}
       >
-        <span className="flex-1 truncate text-start">
+        <span className="min-w-0 flex-1 truncate text-start">
           <Combobox.Value
             placeholder={
               <span className="text-input-contrast/50 italic">

@@ -17,5 +17,9 @@ beside its indicator. `isPresentationalText`, `presentationalTextValue` and
 `presentationalTextProps` help components handle both forms. The Language
 Chooser stage type has a colour and icon.
 
+`Combobox`, `Select` and `IconPicker` fields no longer grow wider than the
+space they are given when the text they show is long. The text is cut off with
+an ellipsis instead of running past the edge of its dialog.
+
 **Breaking:** `SelectOption.lang` is removed. Pass a label in another language
 as `{ text, lang, dir }` instead, as `LocaleSelect` now does.
