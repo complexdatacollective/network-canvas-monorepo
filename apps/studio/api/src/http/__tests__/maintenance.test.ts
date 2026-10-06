@@ -6,15 +6,24 @@ import { describe } from 'vitest';
 
 import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
 
-import { TestDatabaseLive, testDb } from '../../__tests__/support/database.ts';
+import {
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+} from '../../__tests__/support/database.ts';
+import { Database, ReadinessDatabase } from '../../db/client.ts';
 import {
   type DeploymentState,
   readDeploymentState,
   setMaintenance,
 } from '../../db/deployment-state.ts';
-import type { SchemaState } from '../../db/schema.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { SCHEMA_LOCK_KEY, type SchemaState } from '../../db/schema.ts';
 import { MaintenanceScope } from '../../db/tenant.ts';
+import { Environment, readEnv } from '../../env.ts';
+import { BootChecks } from '../../platform/boot-checks.ts';
 import { MaintenanceState } from '../../platform/maintenance-state.ts';
+import { SchemaStatus } from '../../platform/schema-gate.ts';
 import { HealthRoutes } from '../health.ts';
 import {
   maintenanceCheck,
@@ -137,12 +146,16 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
     const withGate = <A, E, R>(
       control: Triggers,
       body: Effect.Effect<A, E, R>,
+      booted?: MutableRef.MutableRef<boolean>,
     ) =>
       body.pipe(
         Effect.provide(
-          MaintenanceTriggers.layerWith(probesOf(control)).pipe(
-            Layer.provide(MaintenanceState.layer),
-          ),
+          MaintenanceTriggers.layerWith({
+            ...probesOf(control),
+            ...(booted === undefined
+              ? {}
+              : { bootPassed: Effect.sync(() => MutableRef.get(booted)) }),
+          }).pipe(Layer.provide(MaintenanceState.layer)),
         ),
         Effect.scoped,
         Effect.ensuring(Effect.orDie(flag(false))),
@@ -316,6 +329,251 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
                 maintenance: 'failed: the database has no Studio schema',
               },
             });
+          }),
+        );
+      },
+    );
+
+    suite.effect(
+      'names the operator’s window first, then the migration, the schema and the boot',
+      () => {
+        // Every trigger at once, lifted one at a time: readiness has to say
+        // `maintenance` for as long as the flag is set, whatever else holds the
+        // gate, because that is what an upgrade's deploy script watches for.
+        const control = triggers();
+        const booted = MutableRef.make(false);
+        const served = MutableRef.make(0);
+        const named = (detail: string) => ({
+          status: 'failing',
+          checks: { maintenance: `failed: ${detail}` },
+        });
+        return withGate(
+          control,
+          Effect.gen(function* () {
+            yield* flag(true, 'Upgrading');
+            MutableRef.set(control.lock, true);
+            MutableRef.set(control.schema, { kind: 'absent' });
+            const request = yield* openStack(served);
+            const lift = (change: () => void) =>
+              Effect.andThen(
+                Effect.sync(change),
+                TestClock.adjust(Duration.millis(1001)),
+              );
+
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('maintenance mode is on: Upgrading'),
+            );
+
+            yield* flag(false);
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('a schema migration is running'),
+            );
+
+            yield* lift(() => MutableRef.set(control.lock, false));
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('the database has no Studio schema'),
+            );
+
+            yield* lift(() =>
+              MutableRef.set(control.schema, { kind: 'current' }),
+            );
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('the server is starting'),
+            );
+            assert.deepStrictEqual(yield* request('/rpc'), REFUSAL);
+            assert.strictEqual(MutableRef.get(served), 0);
+
+            MutableRef.set(booted, true);
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 1);
+          }),
+          booted,
+        );
+      },
+    );
+  });
+
+  /**
+   * The production wiring, `MaintenanceTriggers.layer`, over the readings a
+   * deployed process takes: the real `pg_locks` probe, the real fingerprint
+   * through `SchemaStatus`, and the real `deployment_state` row. Only the boot
+   * checks are a switch here — their real run is `boot-refusals.test.ts`.
+   */
+  layer(TestDatabaseLive)('over the real probes', (suite) => {
+    const Deployed = Layer.succeed(Environment, {
+      ...readEnv(),
+      devDefaults: false,
+    });
+
+    const ReadinessFromApp = Layer.effect(
+      ReadinessDatabase,
+      Effect.gen(function* () {
+        return yield* Database;
+      }),
+    );
+
+    const withRealProbes = <A, E, R>(
+      booted: MutableRef.MutableRef<boolean>,
+      body: Effect.Effect<A, E, R>,
+    ) =>
+      body.pipe(
+        Effect.provide(
+          MaintenanceTriggers.layer.pipe(
+            Layer.provide(
+              Layer.succeed(BootChecks)(
+                BootChecks.of({
+                  passed: Effect.sync(() => MutableRef.get(booted)),
+                }),
+              ),
+            ),
+            Layer.provide(MaintenanceState.layer),
+            Layer.provide(
+              SchemaStatus.layer.pipe(
+                Layer.provide(ReadinessFromApp),
+                Layer.provide(Deployed),
+              ),
+            ),
+          ),
+        ),
+        Effect.scoped,
+        Effect.ensuring(Effect.orDie(flag(false))),
+      );
+
+    /** What `migrate` holds, on a connection of its own, for as long as it runs. */
+    const holdMigrationLock = Effect.gen(function* () {
+      const { owner } = yield* TestDatabase;
+      const connection = yield* owner.sql.reserve;
+      yield* Effect.acquireRelease(
+        connection.executeUnprepared(
+          `select pg_advisory_lock(${SCHEMA_LOCK_KEY})`,
+          [],
+          undefined,
+        ),
+        () =>
+          Effect.orDie(
+            connection.executeUnprepared(
+              `select pg_advisory_unlock(${SCHEMA_LOCK_KEY})`,
+              [],
+              undefined,
+            ),
+          ),
+      );
+    });
+
+    const stamp = (fingerprint: string) =>
+      Effect.gen(function* () {
+        const { owner } = yield* TestDatabase;
+        yield* owner.sql`update "schemaFingerprint" set "fingerprint" = ${fingerprint}`;
+      });
+
+    suite.effect(
+      'refuses while migrate holds the advisory lock, and reopens once it lets go',
+      () => {
+        const booted = MutableRef.make(true);
+        const served = MutableRef.make(0);
+        return withRealProbes(
+          booted,
+          Effect.gen(function* () {
+            const request = yield* openStack(served);
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+
+            yield* Effect.scoped(
+              Effect.gen(function* () {
+                yield* holdMigrationLock;
+                yield* TestClock.adjust(Duration.millis(1001));
+                assert.deepStrictEqual(yield* request('/rpc'), REFUSAL);
+                assert.deepStrictEqual((yield* request('/readyz')).body, {
+                  status: 'failing',
+                  checks: {
+                    maintenance: 'failed: a schema migration is running',
+                  },
+                });
+              }),
+            );
+            assert.strictEqual(MutableRef.get(served), 1);
+
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 2);
+          }),
+        );
+      },
+    );
+
+    suite.effect(
+      'refuses a database another build stamped, with no flag, and reopens once it is current',
+      () => {
+        const booted = MutableRef.make(true);
+        const served = MutableRef.make(0);
+        return withRealProbes(
+          booted,
+          Effect.gen(function* () {
+            const request = yield* openStack(served);
+            yield* Effect.acquireRelease(stamp('an-older-build'), () =>
+              Effect.orDie(stamp(SCHEMA_FINGERPRINT)),
+            );
+
+            assert.deepStrictEqual(yield* request('/api/v1/studies'), REFUSAL);
+            assert.deepStrictEqual((yield* request('/readyz')).body, {
+              status: 'failing',
+              checks: {
+                maintenance: 'failed: the database schema is not this build’s',
+              },
+            });
+            assert.strictEqual(MutableRef.get(served), 0);
+
+            yield* stamp(SCHEMA_FINGERPRINT);
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.strictEqual((yield* request('/api/v1/studies')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 1);
+          }),
+        );
+      },
+    );
+
+    suite.effect(
+      'stays closed while the boot checks run, though every reading says open',
+      () => {
+        // A fresh install's first seconds: no flag, no lock, a current schema
+        // as far as any reading can tell — and a keyring nobody has checked.
+        const booted = MutableRef.make(false);
+        const served = MutableRef.make(0);
+        return withRealProbes(
+          booted,
+          Effect.gen(function* () {
+            const request = yield* openStack(served);
+            for (const path of REFUSED) {
+              assert.deepStrictEqual(yield* request(path), REFUSAL, path);
+            }
+            assert.strictEqual(MutableRef.get(served), 0);
+            assert.deepStrictEqual((yield* request('/readyz')).body, {
+              status: 'failing',
+              checks: { maintenance: 'failed: the server is starting' },
+            });
+            assert.strictEqual((yield* request('/healthz')).status, 200);
+
+            yield* flag(true, 'Upgrading');
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.deepStrictEqual((yield* request('/readyz')).body, {
+              status: 'failing',
+              checks: {
+                maintenance: 'failed: maintenance mode is on: Upgrading',
+              },
+            });
+
+            // The checks pass inside the operator's window: the flag still
+            // holds the gate until it is cleared.
+            MutableRef.set(booted, true);
+            assert.deepStrictEqual(yield* request('/rpc'), REFUSAL);
+            yield* flag(false);
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 1);
           }),
         );
       },

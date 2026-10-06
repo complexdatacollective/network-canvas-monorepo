@@ -1,0 +1,12 @@
+# The release-test lane's one addition to the reference stack (#1901).
+#
+# Postgres is published on the loopback so the seed — run from a checkout,
+# never by a self-hoster — can reach the database. Nothing else is added,
+# replaced or removed: the upgrade the lane proves is the reference stack's,
+# and every command it runs is the guide's, verbatim. Kept out of
+# stack-test/variants deliberately: it is not a swap, and that directory is
+# the list of swaps the studio-stack job runs.
+services:
+  postgres:
+    ports:
+      - '127.0.0.1:55433:5432'

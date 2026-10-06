@@ -1,4 +1,4 @@
-import { Cause, Effect, Layer } from 'effect';
+import { Deferred, Effect, Layer } from 'effect';
 import { HttpRouter, HttpServer } from 'effect/http';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -16,6 +16,7 @@ import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { BootChecks, type BootRefusal } from '../platform/boot-checks.ts';
 import {
   HttpServerLive,
   RedactedHeadersLive,
@@ -29,7 +30,6 @@ import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
-import { KeyringVerified, verifyKeyring } from '../secrets/verify.ts';
 import { ObjectStoreLive } from '../storage/live.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
@@ -62,32 +62,11 @@ function Serve(studio: Studio, checks: HealthChecks) {
   );
 }
 
-function BootChecks(env: StudioEnv) {
-  if (!env.devDefaults) {
-    return KeyringVerified.pipe(
-      Layer.provide(
-        Layer.effectDiscard(SchemaStatus.use((status) => status.current)),
-      ),
-    );
-  }
-  return Layer.effectDiscard(
-    Effect.forkScoped(
-      Effect.tapCause(
-        SchemaStatus.use((status) =>
-          Effect.andThen(status.current, verifyKeyring),
-        ),
-        (cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.void
-            : Effect.logError(cause).pipe(
-                Effect.andThen(Effect.sync(() => process.exit(1))),
-              ),
-      ),
-    ),
-  );
-}
-
-function withDatabase(env: StudioEnv, db: DbEnv) {
+function withDatabase(
+  env: StudioEnv,
+  db: DbEnv,
+  refusal: Deferred.Deferred<never, BootRefusal>,
+) {
   return Layer.unwrap(
     Effect.gen(function* () {
       const readiness = yield* ReadinessDatabase;
@@ -113,8 +92,12 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       });
     }),
   ).pipe(
-    Layer.provide(BootChecks(env)),
+    // Listening does not wait for the schema or the keyring: an upgrade starts
+    // this process before `migrate` runs, and it answers closed meanwhile.
+    // `BootChecks` runs both in the background and holds the gate closed
+    // until they pass (#1901).
     Layer.provide(MaintenanceTriggers.layer),
+    Layer.provide(BootChecks.layer(refusal)),
     Layer.provide(MaintenanceState.layer),
     Layer.provide(SchemaStatus.layer),
     Layer.provide(ObjectStoreLive),
@@ -159,15 +142,26 @@ function withoutDatabase(env: StudioEnv) {
   );
 }
 
-const ServeProgramLayer = Layer.unwrap(
-  Effect.gen(function* () {
-    const env = yield* Environment;
-    return env.db ? withDatabase(env, env.db) : withoutDatabase(env);
-  }),
-).pipe(
-  Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('serve'))),
-  Layer.provide(Environment.layer),
-);
+const ServeProgramLayer = (refusal: Deferred.Deferred<never, BootRefusal>) =>
+  Layer.unwrap(
+    Effect.gen(function* () {
+      const env = yield* Environment;
+      return env.db ? withDatabase(env, env.db, refusal) : withoutDatabase(env);
+    }),
+  ).pipe(
+    Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('serve'))),
+    Layer.provide(Environment.layer),
+  );
 
-export const ServeProgram =
-  Layer.launch(ServeProgramLayer).pipe(reportingRefusals);
+/**
+ * Serves until interrupted, or until a boot check refuses: the server is
+ * already listening by then, so the refusal is raced against it, and losing
+ * the race shuts it down before the refusal is reported.
+ */
+export const ServeProgram = Effect.gen(function* () {
+  const refusal = yield* Deferred.make<never, BootRefusal>();
+  return yield* Effect.raceFirst(
+    Layer.launch(ServeProgramLayer(refusal)),
+    Deferred.await(refusal),
+  );
+}).pipe(reportingRefusals);

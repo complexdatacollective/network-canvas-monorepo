@@ -83,9 +83,17 @@ function scanDoubleQuoted(script: string, open: number): number {
   return script.length;
 }
 
+/** Postgres ends a `--` comment at a carriage return as well as a newline. */
 function scanLineComment(script: string, open: number): number {
-  const end = script.indexOf('\n', open + 2);
-  return end === -1 ? script.length : end;
+  let index = open + 2;
+  while (
+    index < script.length &&
+    script[index] !== '\n' &&
+    script[index] !== '\r'
+  ) {
+    index += 1;
+  }
+  return index;
 }
 
 /** Postgres block comments nest: an inner opener needs its own closer. */
@@ -186,4 +194,54 @@ export function splitStatements(script: string): readonly string[] {
 
   flush(script.length);
   return statements;
+}
+
+/**
+ * What Postgres reads as SQL syntax in `statement`: every comment and every
+ * quoted span — a string literal, a quoted identifier, a dollar-quoted body —
+ * becomes one space, so a keyword can be searched for without matching the
+ * same word inside a value, a name or a function body. Read by the same
+ * scanners as `splitStatements`, so the two never disagree about where a
+ * quote or a comment ends. With `keepIdentifiers`, a quoted identifier stays
+ * as written, for a reader that matches names.
+ */
+export function executableText(
+  statement: string,
+  { keepIdentifiers = false }: { readonly keepIdentifiers?: boolean } = {},
+): string {
+  let text = '';
+  let index = 0;
+  while (index < statement.length) {
+    const character = statement[index]!;
+    let end = -1;
+    if (character === '-' && statement[index + 1] === '-') {
+      end = scanLineComment(statement, index);
+    } else if (character === '/' && statement[index + 1] === '*') {
+      end = scanBlockComment(statement, index);
+    } else if (character === "'") {
+      const previous = statement[index - 1];
+      const escapes =
+        (previous === 'E' || previous === 'e') &&
+        !isNameCharacter(statement[index - 2]);
+      end = scanSingleQuoted(statement, index, escapes);
+    } else if (character === '"') {
+      end = scanDoubleQuoted(statement, index);
+      if (keepIdentifiers) {
+        text += statement.slice(index, end);
+        index = end;
+        continue;
+      }
+    } else if (character === '$' && !isNameCharacter(statement[index - 1])) {
+      const bodyStart = dollarQuoteBodyStart(statement, index);
+      if (bodyStart !== -1) end = scanDollarQuoted(statement, index, bodyStart);
+    }
+    if (end === -1) {
+      text += character;
+      index += 1;
+    } else {
+      text += ' ';
+      index = end;
+    }
+  }
+  return text;
 }

@@ -120,8 +120,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: 'the deployment-status read of the installation row, which belongs to no team',
   },
   [`${SERVER}/src/db/deployment-state.ts › UntenantedScope.open`]: {
-    count: 1,
-    why: '`readDeploymentState`: one untenanted row, read-only',
+    count: 2,
+    why: '`readDeploymentState` and `readLatestRelease`: the one untenanted row, read-only, as two selects so the flag read never names the release columns (#1901 R-1)',
   },
   [`${SERVER}/src/db/deployment-state.ts › MaintenanceScope.open`]: {
     count: 1,
@@ -177,6 +177,10 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 4,
       why: 'the delivery state machine’s bookkeeping on `team_invitations` (attempt count, send, outcome); the invitation’s creation and cancellation are the audited acts',
     },
+  [`${SERVER}/src/jobs/handlers/update-check.ts › MaintenanceScope.open`]: {
+    count: 1,
+    why: 'the daily update check’s four touches of rows that belong to no team, through the one helper `inMaintenance`: recording the manifest on `deployment_state`, reading the installation owner’s name and address, claiming the notification for a version, and giving that claim back',
+  },
   [`${SERVER}/src/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore › MaintenanceScope.open`]:
     {
       count: 1,

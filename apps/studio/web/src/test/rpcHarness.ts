@@ -62,6 +62,9 @@ const unimplementedHandlers: StudioHandlers = {
   'protocols.moveStage': unimplemented('protocols.moveStage'),
   'setup.complete': unimplemented('setup.complete'),
   'status': unimplemented('status'),
+  // Answered, not unimplemented: the notice sits in the shell, so every shell
+  // test asks it, and "no update" is the answer that leaves them undisturbed.
+  'status.updateAvailable': () => Effect.succeed(null),
   'studies.counts': unimplemented('studies.counts'),
   'studies.create': unimplemented('studies.create'),
   'studies.get': unimplemented('studies.get'),

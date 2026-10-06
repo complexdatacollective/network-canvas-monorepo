@@ -9,6 +9,7 @@ import {
   type RateLimitRule,
   type RateLimitScope,
 } from '../rate-limit/scopes.ts';
+import { UPDATE_MANIFEST_URL } from '../update/manifest.ts';
 
 // The drift guard between the self-host guide's outbound-host table and the
 // checked-in list beside it (#1909). The list is what #1897's no-outbound CI
@@ -75,6 +76,18 @@ describe('the self-host guide’s outbound hosts', () => {
 
   it('documents exactly the hosts the allowlist carries', () => {
     expect([...documented].sort()).toEqual([...listed].sort());
+  });
+
+  // The daily update check is the one call Studio makes that no setting turns
+  // off, so the host it contacts is fixed in code (`UPDATE_MANIFEST_URL`).
+  // This ties that constant to the allowlist #1897's no-outbound job reads:
+  // changing the URL without the list would either fail that job or put a
+  // call on the wire that the firewall team was never told about.
+  it('lists the host the update check contacts, in the allowlist and in the guide', () => {
+    const { host, protocol } = new URL(UPDATE_MANIFEST_URL);
+    expect(protocol).toBe('https:');
+    expect(listed).toContain(host);
+    expect(documented).toContain(host);
   });
 });
 

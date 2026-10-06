@@ -1,5 +1,4 @@
 import {
-  Cause,
   Context,
   Duration,
   Effect,
@@ -15,6 +14,7 @@ import {
   readDeploymentState,
   readDeploymentStateAsMaintenance,
 } from '../db/deployment-state.ts';
+import { logFailedReading } from '../db/errors.ts';
 
 // The tag lives here, beside no implementation either process may not load.
 
@@ -51,8 +51,9 @@ export const cachedReading = <A>(options: {
           const previous = yield* Ref.get(last);
           if (!previous.failing) {
             yield* Ref.set(last, { ...previous, failing: true });
-            yield* Effect.logWarning(
-              `could not read ${options.name}; answering with the last value read until it can: ${Cause.pretty(cause)}`,
+            yield* logFailedReading(
+              `could not read ${options.name}; answering with the last value read until it can`,
+              cause,
             );
           }
           return previous.value;

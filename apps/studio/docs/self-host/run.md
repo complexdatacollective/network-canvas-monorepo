@@ -126,9 +126,27 @@ rate-limit store are reachable only from the stack's own network.
 docker compose up -d
 ```
 
-**`api` and `worker` restart in a loop until the next step has run**, and
-`docker compose ps` says `Restarting (1)`. That is expected: there is no schema
-for them to verify yet. It stops the moment `migrate` has run.
+**`api` and `worker` start closed until the next step has run.** There is no
+schema yet, so `api` answers every request with the maintenance page and
+`worker` runs no jobs. That is expected. Until `migrate` has run, `/readyz`
+fails with:
+
+```json
+{
+  "status": "failing",
+  "checks": {
+    "db": "failed: the database has not been set up for Studio yet",
+    "schema": "failed: the database has not been set up for Studio yet",
+    "maintenance": "failed: the server is starting"
+  }
+}
+```
+
+(with the object store and rate-limit store checks beside them). The database
+is reachable; the roles Studio connects as do not exist until `migrate` creates
+them, and the server does not finish starting until they do. Both processes
+check again every few seconds and open by themselves once `migrate` has run,
+with no restart.
 
 ## 6. Create the schema, and read what it prints
 
@@ -136,8 +154,9 @@ for them to verify yet. It stops the moment `migrate` has run.
 docker compose run --rm migrate
 ```
 
-It creates the bucket, applies this build's schema, and — because the instance
-has no owner yet — issues the first-run setup token and prints it:
+It creates the bucket, applies every migration this build carries — on a new
+database, all of them, which is what creates the schema — and, because the
+instance has no owner yet, issues the first-run setup token and prints it:
 
 ```text
 ────────────────────────────────────────────────────────────────────────
@@ -163,7 +182,7 @@ Confirm the stack is healthy before you go on:
 
 ```bash
 curl https://studio.example.org/readyz
-# {"status":"ok","checks":{"db":"ok","schema":"ok","objectStore":"ok"}}
+# {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok"}}
 ```
 
 ## 7. Finish setup in the browser
@@ -212,6 +231,6 @@ swap in.
 
 - [Back up and restore](./backup.md) — do this before the instance carries
   anything you would miss.
-- [Upgrade](./upgrade.md) — the five commands, for every release.
+- [Upgrade](./upgrade.md) — the six commands, for every release.
 - [Swap an element](./swap.md) — a managed database or bucket, Azure Blob
   Storage, or your own reverse proxy.
