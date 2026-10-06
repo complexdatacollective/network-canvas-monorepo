@@ -24,9 +24,10 @@ Nine service blocks: seven long-running containers and two one-shots.
 | `migrate`     | one-shot. Creates this build's schema, and prints the first-run setup token         |
 | `garage-init` | one-shot. Creates the bucket and its access key. `migrate` runs it for you          |
 
-`postgres`, `garage` and `valkey` are each swappable for a managed service by
-setting one variable, and `traefik` is swappable for an institution's own
-reverse proxy. See [swap an element](./swap.md).
+`postgres`, `garage` and `valkey` are each swappable for a managed service
+from `.env` — `garage` for any S3-compatible bucket or for Azure Blob Storage —
+and `traefik` is swappable for an institution's own reverse proxy. See
+[swap an element](./swap.md).
 
 The [topology diagrams](../topology.md) draw the stack and the routing table.
 
@@ -53,7 +54,7 @@ of every process environment, and out of any log line that prints one.
 | [Run the stack](./run.md)                             | From nothing to a signed-in owner                                                                         |
 | [Back up and restore](./backup.md)                    | What to copy, in what order, and why a database without its keyring is not a backup                       |
 | [Upgrade](./upgrade.md)                               | The five commands, and rollback                                                                           |
-| [Swap an element](./swap.md)                          | A managed database, bucket or Redis, and your own reverse proxy                                           |
+| [Swap an element](./swap.md)                          | A managed database, bucket, Azure Blob container or Redis, and your own reverse proxy                     |
 | [Postgres major upgrade](./postgres-major-upgrade.md) | Moving from one Postgres major to the next without losing the volume you came from                        |
 
 Read [Requirements](./requirements.md) first if you are deciding whether a host

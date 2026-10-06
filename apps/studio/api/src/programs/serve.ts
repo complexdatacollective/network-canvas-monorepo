@@ -27,6 +27,7 @@ import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { KeyringVerified, verifyKeyring } from '../secrets/verify.ts';
+import { ObjectStoreLive } from '../storage/live.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -113,7 +114,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Layer.provide(MaintenanceTriggers.layer),
     Layer.provide(MaintenanceState.layer),
     Layer.provide(SchemaStatus.layer),
-    Layer.provide(ObjectStore.layer),
+    Layer.provide(ObjectStoreLive),
     Layer.provide(AuthService.layerFromEnvironment),
     // Acquired before anything that charges a limit, so it releases after the
     // listener closes.
@@ -143,7 +144,7 @@ function withoutDatabase(env: StudioEnv) {
     }),
   ).pipe(
     Layer.provide(MaintenanceTriggers.layerOpen),
-    Layer.provide(ObjectStore.layer),
+    Layer.provide(ObjectStoreLive),
     Layer.provide(AuthService.layerFromEnvironment),
     Layer.provide(DeniedAttempts.layer),
     Layer.provide(RateLimiter.layer),

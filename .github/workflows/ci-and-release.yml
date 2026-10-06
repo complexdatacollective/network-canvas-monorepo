@@ -613,6 +613,20 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Starts the dev Garage and Azurite from the dev compose stack (project
+      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
+      # suite inside the Studio server suite runs against both and, like the
+      # Postgres and Valkey suites, refuses to skip under CI; the `asset
+      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
+      # for want of a store, now runs too. A step rather than a `services:`
+      # entry because Garage needs a mounted configuration file and a bootstrap
+      # one-shot, which the compose stack already defines. `continue-on-error`
+      # and an `id:` like the seeding steps below, so a failure here is
+      # reported by name rather than only as the Studio suite failing after it.
+      - name: Start the dev object stores
+        id: object-stores
+        continue-on-error: true
+        run: pnpm --filter @codaco/studio-api dev:object-stores
       # Seeded on its own first, for the reason the `test` job gives: this
       # suite's assertions are wall-clock budgets, and turbo kills the
       # in-flight tasks when any task in the run fails. On 2026-09-06 a
@@ -694,6 +708,7 @@ jobs:
       - name: Report seed step outcomes
         if: always()
         env:
+          OBJECT_STORES_OUTCOME: ${{ steps.object-stores.outcome }}
           STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
           BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
@@ -701,12 +716,14 @@ jobs:
           {
             echo "### Turbo cache seed outcomes"
             echo
+            echo "- object stores: $OBJECT_STORES_OUTCOME"
             echo "- studio-server: $STUDIO_SERVER_OUTCOME"
             echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
             echo "- test: $TEST_OUTCOME"
           } >> "$GITHUB_STEP_SUMMARY"
           failed=false
           for result in \
+            "object stores=$OBJECT_STORES_OUTCOME" \
             "studio-server=$STUDIO_SERVER_OUTCOME" \
             "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
             "test=$TEST_OUTCOME"; do
@@ -944,6 +961,16 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Starts the dev Garage and Azurite from the dev compose stack (project
+      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
+      # suite inside the Studio server suite runs against both and, like the
+      # Postgres and Valkey suites, refuses to skip under CI; the `asset
+      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
+      # for want of a store, now runs too. A step rather than a `services:`
+      # entry because Garage needs a mounted configuration file and a bootstrap
+      # one-shot, which the compose stack already defines.
+      - name: Start the dev object stores
+        run: pnpm --filter @codaco/studio-api dev:object-stores
       - name: Run the Studio server suite
         # The only workspace suite whose assertions are wall-clock budgets
         # rather than logic. The one that a starved event loop actually
@@ -1020,9 +1047,9 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio == 'true'
     runs-on: ubuntu-latest
-    # The build is most of this. Four variant cycles cost about a minute each
-    # once the images exist; a cold build of studio-api is the rest, and the
-    # GitHub Actions cache below is what keeps it off the critical path on
+    # The build is most of this. The six variant cycles cost about a minute
+    # each once the images exist; a cold build of studio-api is the rest, and
+    # the GitHub Actions cache below is what keeps it off the critical path on
     # every run after the first.
     timeout-minutes: 40
     steps:
@@ -1100,6 +1127,14 @@ jobs:
       - name: Tear down the swapped object store
         if: always()
         run: apps/studio/stack-test/down.sh --variant external-bucket
+
+      - name: A swapped object store (Azure Blob)
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket-azure
+          apps/studio/stack-test/assert.sh --variant external-bucket-azure
+      - name: Tear down the swapped object store (Azure Blob)
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-bucket-azure
 
       - name: A swapped rate-limit store
         run: |
