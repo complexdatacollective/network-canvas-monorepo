@@ -312,6 +312,66 @@ test('a probe without the page is refused, except while web itself is replaced',
   }
 });
 
+// Seen in run B, 6 Oct 2026: the guide's wait saw the flag and the stop took
+// the api down before the observer's next tick, so no reading showed the old
+// release closed. Here the first reading naming maintenance mode comes inside
+// the stop (4000-5800) — within the close bound, but after the api it reads
+// may already be the one Traefik answers for.
+test('a window first seen closed only after stop api worker started is refused', () => {
+  const overrides = {};
+  for (let ts = 2250; ts < 4250; ts += 250) {
+    overrides[ts] = tick(ts, '503', ready(REASONS.starting), '503', 'page');
+  }
+  const late = analyse(observation(overrides));
+  assert.equal(late.ok, false);
+  assert.deepEqual(late.failures, [
+    'the observer did not see the old release name maintenance mode before stop api worker',
+  ]);
+
+  // The same observation, closed at 3750 instead — before the stop — passes.
+  delete overrides[3750];
+  assert.deepEqual(analyse(observation(overrides)).failures, []);
+});
+
+// Seen in every lane run while `stop api worker` has `api` down, through the
+// backup and `pull`: Traefik's error middleware gives the probe the page with
+// 503, and `/readyz` — which no page sits in front of — Traefik's own bare
+// 502. That is the answer the rule already accepts, so the stopped api gets no
+// allowance of its own: a probe without the page there fails as anywhere.
+test('a stopped api is closed when the probe gets the page, and refused when it does not', () => {
+  const stopped = {};
+  for (let ts = 4250; ts < 8000; ts += 250) {
+    stopped[ts] = tick(ts, '502', 'Bad Gateway', '503', 'page');
+  }
+  const paged = analyse(observation(stopped));
+  assert.deepEqual(paged.failures, []);
+  assert.equal(
+    paged.evidence.steps[1].command,
+    'docker compose stop api worker',
+  );
+  assert.deepEqual(paged.evidence.steps[1].probeKind, { page: 8 });
+
+  for (const [ts, status, kind] of [
+    [4500, '503', 'other'], // inside the stop
+    [6500, '000', 'other'], // inside the backup
+    [5000, '502', 'other'],
+  ]) {
+    const unpaged = analyse(
+      observation({
+        ...stopped,
+        [ts]: tick(ts, '502', 'Bad Gateway', status, kind),
+      }),
+    );
+    assert.equal(unpaged.ok, false, `${status}/${kind} at ${ts}`);
+    assert.match(
+      unpaged.failures.join('\n'),
+      new RegExp(
+        `did not get the maintenance page \\(saw ${status}/${kind}\\)`,
+      ),
+    );
+  }
+});
+
 test('a silent observer is refused, and so is an instance that never reopens', () => {
   // Nothing between 4000 and 10000: six seconds, with migrate's ticks kept so
   // only the gap is wrong.

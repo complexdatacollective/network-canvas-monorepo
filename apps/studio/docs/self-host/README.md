@@ -53,7 +53,7 @@ of every process environment, and out of any log line that prints one.
 | [Requirements](./requirements.md)                     | Host sizing, Docker versions, ports, DNS, every outbound host, and what a swapped-in service must provide |
 | [Run the stack](./run.md)                             | From nothing to a signed-in owner                                                                         |
 | [Back up and restore](./backup.md)                    | What to copy, in what order, and why a database without its keyring is not a backup                       |
-| [Upgrade](./upgrade.md)                               | The five commands, and rollback                                                                           |
+| [Upgrade](./upgrade.md)                               | The six commands, and rollback                                                                            |
 | [Swap an element](./swap.md)                          | A managed database, bucket, Azure Blob container or Redis, and your own reverse proxy                     |
 | [Postgres major upgrade](./postgres-major-upgrade.md) | Moving from one Postgres major to the next without losing the volume you came from                        |
 

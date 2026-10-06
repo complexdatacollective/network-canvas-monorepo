@@ -10,7 +10,11 @@
 //     maintenance mode, in that order.
 //  2. The window closed: within CLOSE_BOUND_MS of `maintenance on` returning,
 //     /readyz named maintenance mode. The gate reads the flag through a
-//     one-second cache, so this is a bound on the cache, not a sleep.
+//     one-second cache, so this is a bound on the cache, not a sleep. Where
+//     the sequence stops `api` and `worker`, that reading came before the
+//     stop started: afterwards Traefik answers for the stopped api, so it is
+//     the only evidence that the release being replaced closed by its own
+//     gate (upgrade.sh waits for the observer to take it).
 //  3. From then until `maintenance off` started, no tick saw a 200 — not from
 //     /readyz and not from the probe — every probe got the maintenance page
 //     (or the API's own maintenance problem; a bare 503 or no answer is
@@ -127,6 +131,7 @@ export function parseSteps(text) {
 const isMaintenance = (state) => (step) =>
   /\bmaintenance\s+(on|off)\b/.exec(step.command ?? '')?.[1] === state;
 const isMigrate = (step) => /\brun\s+--rm\s+migrate\b/.test(step.command ?? '');
+const isStop = (step) => /\bstop\s+api\s+worker\b/.test(step.command ?? '');
 
 function tally(ticks) {
   const count = (key) =>
@@ -178,6 +183,16 @@ export function analyseWindow(ticks, steps) {
       `/readyz did not name maintenance mode within ${CLOSE_BOUND_MS} ms of maintenance on returning`,
     );
     return { ok: false, failures, evidence };
+  }
+
+  // Once `stop` has the api down, Traefik's page answers every probe whatever
+  // the api would have said, so the readings before it are the only ones that
+  // show the release being replaced closed by its own gate.
+  const stop = steps.find(isStop);
+  if (stop && closedTick.ts >= stop.start) {
+    failures.push(
+      'the observer did not see the old release name maintenance mode before stop api worker',
+    );
   }
 
   const window = ticks.filter(

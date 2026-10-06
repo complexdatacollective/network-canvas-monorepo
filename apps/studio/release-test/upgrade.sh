@@ -35,6 +35,10 @@
 #     write to the database), and the ones `stop` stopped must have exited
 #     through their own shutdown rather than been killed at the end of their
 #     stop grace period — stopped.json records what was seen;
+#   - after the guide's /readyz wait and before `stop api worker`, the lane
+#     waits for the observer itself to have recorded /readyz naming
+#     maintenance mode: once `api` is stopped Traefik's page answers every
+#     probe, so those readings are the only evidence the OLD release closed;
 #   - before `maintenance off`, the lane waits for that new worker to start,
 #     and for the new api to answer /readyz naming maintenance mode, so the
 #     new build's own maintenance gates are live inside the window. The
@@ -128,6 +132,28 @@ wait_readyz_maintenance() {
     sleep 0.25
   done
   echo '/readyz did not name maintenance mode within 10 s' >&2
+  return 1
+}
+
+# The observer has itself recorded /readyz naming maintenance mode since
+# `maintenance on` started — the OLD release's own gate, closed. The guide's
+# wait returns the moment it sees that, and the stop that follows it takes the
+# api down within a few hundred milliseconds, after which Traefik's page
+# answers every probe whatever the api would have said: an observer that
+# ticked just before the flag landed and next just after the stop never sees
+# the old release closed at all (seen in run B, 6 Oct 2026). The guide does
+# not need this wait; the proof does, or a release whose `maintenance on`
+# closed nothing would pass behind the stop.
+wait_for_observer_closed() { # since-ms
+  local deadline=$((SECONDS + 10))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if awk -F'\t' -v since="$1" '$1 >= since && index($3, "\"maintenance\":\"failed: maintenance mode is on") { found = 1 } END { exit !found }' "$OBSERVED"; then
+      say "  the observer saw the old api name maintenance mode before the stop"
+      return 0
+    fi
+    sleep 0.1
+  done
+  fail 'the observer did not see the old api name maintenance mode within 10 s of the guide'"'"'s wait returning, so nothing shows the old release closed before the stop'
   return 1
 }
 
@@ -258,6 +284,7 @@ run_step() { # bound-seconds label command…
   }
 }
 
+on_started_ms=''
 old_worker=''
 new_worker=''
 up_returned_ms=''
@@ -271,11 +298,13 @@ while IFS= read -r line; do
     '# wait until /readyz names maintenance mode'*)
       run_step "$WAIT_STEP_BOUND" 'wait until /readyz names maintenance mode (upgrade.md step 2)' \
         wait_readyz_maintenance || break
+      wait_for_observer_closed "$on_started_ms" || true
       ;;
     '#'*) continue ;;
     *)
       bound="$STEP_BOUND"
       case "$line" in
+        *'maintenance on'*) on_started_ms="$(now_ms)" ;;
         # `-a`: step 2 stopped it, and a stopped container is still the one
         # `up -d` must replace.
         *'up -d'*) old_worker="$(docker compose ps -a -q worker)" ;;
